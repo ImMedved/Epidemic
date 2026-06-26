@@ -4,6 +4,11 @@
 #include "core/modules/module_registry.h"
 #include "core/services/service_container.h"
 #include "core/tasks/task_scheduler.h"
+#include "foundation/error/error.h"
+#include "foundation/handles/handle.h"
+#include "foundation/ids/string_id.h"
+#include "foundation/paths/path.h"
+#include "foundation/result/result.h"
 
 #include <atomic>
 #include <cstdlib>
@@ -104,6 +109,55 @@ struct QueuedTestEvent
 {
     int value{};
 };
+
+void TestFoundationResult()
+{
+    const auto ok = epidemic::foundation::Result<int>::Success(42);
+    Assert(ok.HasValue(), "Result<int>::Success must hold a value");
+    Assert(ok.Value() == 42, "Successful result must return stored value");
+
+    const auto failure =
+        epidemic::foundation::Result<int>::Failure(epidemic::foundation::Error::Create("test.failure", "Failure path"));
+    Assert(!failure.HasValue(), "Result<int>::Failure must not hold a value");
+    Assert(failure.GetError().HasCode("test.failure"), "Failure result must expose stored error code");
+
+    const auto void_ok = epidemic::foundation::Result<void>::Success();
+    Assert(void_ok.HasValue(), "Result<void>::Success must represent success");
+}
+
+void TestFoundationPath()
+{
+    const auto path = epidemic::foundation::Path::FromString("resource\\textures\\..\\models");
+    Assert(path.GenericString() == "resource/models", "Path must normalize separators and dot segments");
+
+    const auto joined = path.Join("ship");
+    Assert(joined.GenericString() == "resource/models/ship", "Path::Join must append child segment");
+}
+
+void TestFoundationIdsAndHandles()
+{
+    constexpr auto first_string_id = epidemic::foundation::StringId::FromString("storm");
+    constexpr auto second_string_id = epidemic::foundation::StringId::FromString("storm");
+    constexpr auto third_string_id = epidemic::foundation::StringId::FromString("epidemic");
+    static_assert(first_string_id == second_string_id, "Equal string ids must hash identically");
+    static_assert(!(first_string_id == third_string_id), "Different string ids must differ");
+
+    const auto first_name_id = epidemic::foundation::NameId::FromString("Renderer.Main");
+    const auto second_name_id = epidemic::foundation::NameId::FromString("Renderer.Main");
+    Assert(first_name_id == second_name_id, "Equal name ids must compare equal");
+
+    struct TextureTag
+    {
+    };
+
+    const epidemic::foundation::Handle<TextureTag> invalid_handle;
+    const epidemic::foundation::Handle<TextureTag> valid_handle(7, 3);
+
+    Assert(!invalid_handle.IsValid(), "Default handle must be invalid");
+    Assert(valid_handle.IsValid(), "Explicit handle must be valid");
+    Assert(valid_handle.Index() == 7, "Handle index must be preserved");
+    Assert(valid_handle.Generation() == 3, "Handle generation must be preserved");
+}
 
 void TestServiceContainer()
 {
@@ -215,6 +269,9 @@ int RunAllTests()
     };
 
     const std::vector<NamedTest> tests{
+        {"FoundationResult", &TestFoundationResult},
+        {"FoundationPath", &TestFoundationPath},
+        {"FoundationIdsAndHandles", &TestFoundationIdsAndHandles},
         {"ServiceContainer", &TestServiceContainer},
         {"ModuleLifecycleOrderAndDependencies", &TestModuleLifecycleOrderAndDependencies},
         {"EventBus", &TestEventBus},

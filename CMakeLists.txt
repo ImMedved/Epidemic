@@ -8,6 +8,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_TESTING "Build Epidemic Engine tests" ON)
 
+add_library(epidemic_foundation INTERFACE)
+
+target_include_directories(epidemic_foundation INTERFACE
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+
 add_library(epidemic_core STATIC
     src/core/application/application.cpp
     src/core/config/memory_configuration.cpp
@@ -21,6 +27,10 @@ target_include_directories(epidemic_core PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/src"
 )
 
+target_link_libraries(epidemic_core
+    PUBLIC epidemic_foundation
+)
+
 add_library(epidemic_layers_runtime STATIC
     src/layers/runtime/placeholders/null_services.cpp
 )
@@ -30,7 +40,19 @@ target_include_directories(epidemic_layers_runtime PUBLIC
 )
 
 target_link_libraries(epidemic_layers_runtime
-    PUBLIC epidemic_core
+    PUBLIC epidemic_core epidemic_foundation
+)
+
+add_library(epidemic_layers_platform STATIC
+    src/layers/platform/placeholders/windows_platform_runtime_stub.cpp
+)
+
+target_include_directories(epidemic_layers_platform PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/src"
+)
+
+target_link_libraries(epidemic_layers_platform
+    PUBLIC epidemic_core epidemic_foundation
 )
 
 add_library(epidemic_apps_epidemic_app STATIC
@@ -42,7 +64,7 @@ target_include_directories(epidemic_apps_epidemic_app PUBLIC
 )
 
 target_link_libraries(epidemic_apps_epidemic_app
-    PUBLIC epidemic_core epidemic_layers_runtime
+    PUBLIC epidemic_core epidemic_layers_runtime epidemic_layers_platform epidemic_foundation
 )
 
 add_executable(epidemic_app
@@ -54,7 +76,7 @@ target_link_libraries(epidemic_app
 )
 
 if(MSVC)
-    foreach(target epidemic_core epidemic_layers_runtime epidemic_apps_epidemic_app epidemic_app)
+    foreach(target epidemic_core epidemic_layers_runtime epidemic_layers_platform epidemic_apps_epidemic_app epidemic_app)
         target_compile_options(${target} PRIVATE /W4 /permissive-)
     endforeach()
 endif()
@@ -67,7 +89,7 @@ if(BUILD_TESTING)
     )
 
     target_link_libraries(epidemic_tests
-        PRIVATE epidemic_core epidemic_layers_runtime
+        PRIVATE epidemic_core epidemic_layers_runtime epidemic_layers_platform epidemic_foundation
     )
 
     if(MSVC)

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <filesystem>
+#include "foundation/paths/path.h"
 
 namespace epidemic::layers::runtime
 {
@@ -9,7 +9,7 @@ class IVirtualFileSystem
   public:
     virtual ~IVirtualFileSystem() = default;
 
-    virtual bool Mount(const std::filesystem::path &root) = 0;
-    [[nodiscard]] virtual bool Exists(const std::filesystem::path &path) const = 0;
+    virtual bool Mount(const epidemic::foundation::Path &root) = 0;
+    [[nodiscard]] virtual bool Exists(const epidemic::foundation::Path &path) const = 0;
 };
 } // namespace epidemic::layers::runtime

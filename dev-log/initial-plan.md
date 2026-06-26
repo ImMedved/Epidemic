@@ -57,6 +57,8 @@
 
 ### 3. Platform Layer
 
+- [x] platform-agnostic runtime interface
+- [x] Windows-first stub implementation
 - [ ] process startup
 - [ ] Win32 windowing
 - [ ] input polling/mapping
@@ -67,7 +69,7 @@
 - [ ] crash handling
 - [ ] dynamic library loading
 
-Статус: не начато. Windows-first остается целевым направлением.
+Статус: начат базовый skeleton. Слой уже физически выделен и подключен в runtime composition, но пока остается headless/stub без реального Win32 windowing.
 
 ### 4. RHI and Renderer Layer
 
@@ -132,7 +134,7 @@
 - [x] `src/layers/runtime/*` — runtime-layer contracts и placeholder implementations
 - [x] `src/apps/*` — исполняемые хосты
 - [x] `tests/*` — unit/integration tests
-- [ ] `src/layers/platform/*`
+- [x] `src/layers/platform/*`
 - [ ] `src/layers/rhi/*`
 - [ ] `src/layers/renderer/*`
 - [ ] `src/layers/compatibility/*`
@@ -345,7 +347,7 @@
 ## Ближайший следующий вектор
 
 0. [ ] минимальный Foundation slice: Result/Error, Path, StringId/NameId, Handle<T>
-1. [ ] platform layer skeleton
+1. [x] platform layer skeleton
 2. [ ] DX11 bootstrap
 3. [ ] runtime VFS skeleton
 4. [ ] resource manager contracts

@@ -66,6 +66,16 @@
 
 Содержит временные stub/null implementations этих контрактов. Они нужны, чтобы `core` уже умел собирать runtime composition, не дожидаясь реальных подсистем.
 
+## Текущий слой `platform`
+
+### `layers/platform/interfaces`
+
+Содержит platform-agnostic contracts для хост-платформы. На текущем этапе это минимальный runtime interface, через который `core` может обращаться к платформенному слою без знания о Win32 API.
+
+### `layers/platform/placeholders`
+
+Содержит Windows-first stub implementation. Это еще не полноценный platform subsystem, а точка расширения под следующий этап, где появятся process startup, Win32 windowing и platform event pump.
+
 ## Текущий app host
 
 ### `apps/epidemic_app`

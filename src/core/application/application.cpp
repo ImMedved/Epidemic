@@ -9,6 +9,8 @@
 #include "layers/runtime/interfaces/iscript_host.h"
 #include "layers/runtime/interfaces/ivirtual_file_system.h"
 #include "layers/runtime/placeholders/null_services.h"
+#include "layers/platform/interfaces/iplatform_runtime.h"
+#include "layers/platform/placeholders/windows_platform_runtime_stub.h"
 
 #include <stdexcept>
 #include <string>
@@ -88,8 +90,10 @@ int Application::Run()
     logger->Info("Application", "Run started");
 
     const auto event_bus = services_.Get<events::IEventBus>();
+    const auto platform_runtime = services_.Get<layers::platform::IPlatformRuntime>();
     const auto scheduler = services_.Get<tasks::ITaskScheduler>();
 
+    platform_runtime->PumpEvents();
     const auto drained = event_bus->DrainQueued();
     scheduler->WaitIdle();
 
@@ -140,6 +144,7 @@ void Application::RegisterCoreServices()
     services_.Emplace<config::IConfiguration, config::MemoryConfiguration>();
     services_.Emplace<events::IEventBus, events::EventBus>();
     services_.Emplace<tasks::ITaskScheduler, tasks::SimpleTaskScheduler>(options_.worker_count);
+    services_.Emplace<layers::platform::IPlatformRuntime, layers::platform::WindowsPlatformRuntimeStub>();
     services_.Emplace<layers::runtime::IVirtualFileSystem, layers::runtime::NullVirtualFileSystem>();
     services_.Emplace<layers::runtime::IResourceManager, layers::runtime::NullResourceManager>();
     services_.Emplace<layers::runtime::IRenderer, layers::runtime::NullRenderer>();

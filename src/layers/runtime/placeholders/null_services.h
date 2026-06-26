@@ -10,8 +10,8 @@ namespace epidemic::layers::runtime
 class NullVirtualFileSystem final : public IVirtualFileSystem
 {
   public:
-    bool Mount(const std::filesystem::path &root) override;
-    [[nodiscard]] bool Exists(const std::filesystem::path &path) const override;
+    bool Mount(const epidemic::foundation::Path &root) override;
+    [[nodiscard]] bool Exists(const epidemic::foundation::Path &path) const override;
 };
 
 class NullResourceManager final : public IResourceManager

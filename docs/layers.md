@@ -39,6 +39,9 @@
 
 ```text
 src/layers/
+  platform/
+    interfaces/
+    placeholders/
   runtime/
     interfaces/
     placeholders/
@@ -76,5 +79,6 @@ src/layers/
 
 - `core` уже физически отделен от слоев;
 - `runtime` уже существует как отдельный слой с placeholder interfaces;
+- `platform` уже существует как отдельный слой с Windows-first stub implementation;
 - `apps` уже отделены от внутренних модулей;
 - дальнейшие subsystem-реализации должны добавляться только внутрь `layers/*`.

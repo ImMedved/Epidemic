@@ -3,6 +3,7 @@
 #include "core/diagnostics/logger.h"
 #include "core/events/event_bus.h"
 #include "core/tasks/task_scheduler.h"
+#include "layers/platform/interfaces/iplatform_runtime.h"
 
 namespace epidemic::apps::epidemic_app
 {
@@ -69,7 +70,9 @@ void EventPipelineModule::OnInitialize(epidemic::core::ServiceContainer &service
 
     const auto logger = services.Get<ILogger>();
     const auto event_bus = services.Get<IEventBus>();
+    const auto platform_runtime = services.Get<epidemic::layers::platform::IPlatformRuntime>();
 
+    logger->Info("Platform", "Using platform runtime: " + std::string(platform_runtime->Name()));
     event_bus->SubscribeSync<DemoSyncEvent>(
         [logger](const DemoSyncEvent &event) { logger->Info("Event", "Sync event received: " + event.message); });
 

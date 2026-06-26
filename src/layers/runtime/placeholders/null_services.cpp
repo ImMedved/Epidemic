@@ -2,14 +2,14 @@
 
 namespace epidemic::layers::runtime
 {
-bool NullVirtualFileSystem::Mount(const std::filesystem::path &root)
+bool NullVirtualFileSystem::Mount(const epidemic::foundation::Path &root)
 {
-    return !root.empty();
+    return !root.Empty();
 }
 
-bool NullVirtualFileSystem::Exists(const std::filesystem::path &path) const
+bool NullVirtualFileSystem::Exists(const epidemic::foundation::Path &path) const
 {
-    return !path.empty();
+    return !path.Empty();
 }
 
 bool NullResourceManager::HasResource(std::string_view resource_id) const
