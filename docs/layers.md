@@ -2,24 +2,24 @@
 
 ## Общий принцип
 
-Проект делится на три крупные зоны:
+Проект делится на пять основных зон:
 
+- `src/foundation` — базовые value-type primitives;
 - `src/core` — микроядро и только микроядро;
-- `src/layers` — все подключаемые слои runtime;
+- `src/layers` — подключаемые слои runtime;
 - `src/apps` — executable hosts и composition roots;
-- `tests` — unit/integration tests.
+- `tests` — unit, integration и regression tests.
 
-Это сделано специально, чтобы архитектурный центр проекта был виден по дереву файлов, а не только по договоренности в голове.
+Архитектурные границы должны быть видны прямо по структуре каталогов.
 
 ## Правило `core`
 
-`core` не должен знать:
+`core` не знает:
 
-- о Storm compatibility;
 - о DX11;
 - о форматах ресурсов;
 - о gameplay logic;
-- о string-based service aliases.
+- о platform-specific деталях beyond contracts.
 
 `core` знает только про:
 
@@ -31,54 +31,70 @@
 - diagnostics;
 - configuration.
 
+## Правило `foundation`
+
+`foundation` находится ниже `core` и всех слоев. Это место только для маленьких и стабильных примитивов:
+
+- `Result` / `Error`;
+- `Path`;
+- `StringId` / `NameId`;
+- `Handle<T>`.
+
+Если тип не является общим низкоуровневым примитивом, ему не место в `foundation`.
+
 ## Правило `layers`
 
-Каждый слой живет в своей подпапке и не "растекается" по проекту.
+Каждый слой живет в своей подпапке и не растекается по проекту.
 
 Текущая форма:
 
 ```text
+src/foundation/
+  error/
+  result/
+  paths/
+  ids/
+  handles/
+
 src/layers/
   platform/
     interfaces/
-    placeholders/
+    windows/
   runtime/
     interfaces/
     placeholders/
 ```
 
-Дальше сюда будут добавляться:
+Следующими должны появляться:
 
-- `platform/`
 - `rhi/`
 - `renderer/`
-- `compatibility/`
-- `gameplay_host/`
+- `gameplay/`
+- `tools/`
 
 ## Правило границ между слоями
 
 - слой зависит от `core`, но не наоборот;
-- слой не пишет файлы в чужую подпапку;
+- `core` и `layers` могут зависеть от `foundation`;
 - public contracts слоя лежат внутри самого слоя;
-- placeholder/stub implementations лежат рядом с контрактами своего слоя;
-- executable host в `src/apps/*` собирает слой вместе с `core`, но не переносит логику обратно в ядро.
+- placeholder и stub-реализации лежат рядом со своим слоем;
+- executable host в `src/apps/*` собирает composition root, но не переносит логику обратно в ядро.
 
 ## Почему это важно
 
-Если мы не закрепим границы сейчас, новый движок быстро скатится в ту же форму, что и старый:
+Без жестких границ проект быстро деградирует в:
 
 - размытые зависимости;
 - скрытые сервисные связи;
 - глобальное состояние;
-- непонятный порядок инициализации;
-- смешение runtime, renderer и gameplay logic.
+- смешение runtime, renderer и gameplay.
 
-Новая структура нужна не ради красоты, а ради удержания архитектурной дисциплины на длинной дистанции.
+Эта структура нужна для архитектурной дисциплины, а не ради косметики.
 
 ## Текущий статус
 
 - `core` уже физически отделен от слоев;
+- `foundation` уже существует как отдельная базовая зона;
 - `runtime` уже существует как отдельный слой с placeholder interfaces;
-- `platform` уже существует как отдельный слой с Windows-first stub implementation;
-- `apps` уже отделены от внутренних модулей;
+- `platform` уже существует как отдельный слой с Windows-first runtime implementation;
 - дальнейшие subsystem-реализации должны добавляться только внутрь `layers/*`.

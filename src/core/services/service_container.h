@@ -20,6 +20,7 @@ class ServiceContainer
         static_assert(std::is_base_of_v<TService, TImplementation>,
                       "Implementation must derive from the requested service interface");
 
+        // Construct the implementation first and then register it under the service interface.
         auto instance = std::make_shared<TImplementation>(std::forward<TArgs>(args)...);
         RegisterInstance<TService>(instance);
         return instance;
@@ -33,6 +34,7 @@ class ServiceContainer
         }
 
         std::unique_lock lock(mutex_);
+        // Service identity is defined by its interface type, not by a string name.
         const auto key = std::type_index(typeid(TService));
         if (services_.contains(key))
         {

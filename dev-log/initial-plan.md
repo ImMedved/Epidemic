@@ -2,50 +2,52 @@
 
 ## Видение
 
-`Epidemic Engine v1.0` создается как новый runtime, который сохраняет совместимость со Storm на внешней границе, но полностью заменяет внутреннюю архитектуру. Старый движок остается рядом как спецификация поведения, форматов данных и ожидаемых контрактов, а не как кодовая основа.
+`Epidemic Engine v1.0` создается как новый runtime для полностью новой игры. Внутренняя архитектура строится с нуля как модульная, тестируемая и пригодная для долгого развития под современный renderer, большие миры, сложную симуляцию и тяжелые asset pipeline.
 
 ## Базовые архитектурные принципы
 
-- минимальное и строгое микроядро без привязки к игровым системам;
-- совместимость решается адаптерами, а не переносом старых архитектурных ошибок;
-- платформенные, графические, ресурсные, скриптовые и симуляционные подсистемы изолируются в модули и слои;
-- максимум локального владения данными, минимум глобального mutable state;
-- проектирование под асинхронную загрузку, streaming и большие миры с первого дня;
-- детерминированность там, где это критично для логики, сейвов, событий и тестов.
+- минимальное и строгое микроядро без игровой логики внутри;
+- явные границы между `foundation`, `core`, `layers`, `apps` и `tests`;
+- typed interfaces вместо строковых сервисных контрактов;
+- минимум глобального mutable state;
+- ownership через RAII и стандартные контейнеры;
+- асинхронность, streaming и масштабирование закладываются заранее;
+- каждая новая подсистема закрепляется тестами и понятной структурой каталогов.
 
 ## Целевая форма runtime
 
 ### 1. Microkernel
 
-- [x] Владеет жизненным циклом приложения.
-- [x] Владеет регистрацией модулей и вычислением порядка запуска.
-- [x] Строит typed service graph.
-- [x] Инициализирует sync/queued event bus.
-- [x] Инициализирует task scheduler.
-- [x] Инициализирует diagnostics.
-- [x] Инициализирует configuration service.
-- [x] Управляет завершением модулей в обратном порядке.
-- [x] Не знает о Storm-логике, DX11, форматах данных и legacy service names.
+- [x] Жизненный цикл приложения `bootstrap -> initialize -> run -> shutdown`
+- [x] Реестр модулей и вычисление dependency-aware порядка запуска
+- [x] Typed service graph
+- [x] Sync/queued event bus
+- [x] Task scheduler bootstrap
+- [x] Diagnostics bootstrap
+- [x] Configuration bootstrap
+- [x] Обратный порядок shutdown
+- [x] Изоляция от renderer, gameplay и content-систем
 
-Статус блока: выполнен в первом рабочем приближении. К микроядру можно долго не возвращаться, пока не появятся новые реальные требования со стороны платформы, compatibility layer или hot-reload модулей.
+Статус: базовый блок завершен и может долго не меняться.
 
 ### 2. Foundation Layer
+
 - [ ] memory allocators и ownership helpers
 - [ ] string/encoding utilities
-- [ ] containers/handles/id helpers
+- [x] containers/handles/id helpers
 - [ ] math library
-- [ ] filesystem helpers
-- [ ] error/result types
+- [x] filesystem helpers
+- [x] error/result types
 - [ ] serialization helpers
 - [ ] shared reflection hooks
 
-Статус: инкрементальная реализация. Foundation не выделяется сейчас в большой самостоятельный этап, чтобы не проектировать абстракции без реальных потребителей. Базовые примитивы выносятся в Foundation по мере появления требований от platform, VFS, resource manager, renderer и compatibility layer.
+Статус: реализован минимальный рабочий slice.
 
 Ближайший минимальный набор:
-- [ ] error/result types
-- [ ] filesystem path helpers
-- [ ] string/id helpers
-- [ ] handle/generation id helpers
+- [x] error/result types
+- [x] filesystem path helpers
+- [x] string/id helpers
+- [x] handle/generation id helpers
 - [ ] базовые diagnostics primitives
 
 Остальное остается отложенным до появления реальных потребителей:
@@ -58,18 +60,18 @@
 ### 3. Platform Layer
 
 - [x] platform-agnostic runtime interface
-- [x] Windows-first stub implementation
-- [ ] process startup
+- [x] Windows-first runtime implementation
+- [x] process startup
 - [ ] Win32 windowing
 - [ ] input polling/mapping
 - [ ] file watching
-- [ ] timers
+- [x] timers
 - [ ] clipboard
 - [ ] monitor and DPI
 - [ ] crash handling
-- [ ] dynamic library loading
+- [x] dynamic library loading
 
-Статус: начат базовый skeleton. Слой уже физически выделен и подключен в runtime composition, но пока остается headless/stub без реального Win32 windowing.
+Статус: реализован headless Windows-first slice без окна и input.
 
 ### 4. RHI and Renderer Layer
 
@@ -78,10 +80,10 @@
 - [ ] `Renderer` поверх RHI
 - [ ] frame graph
 - [ ] scene submission
-- [ ] materials/lighting/UI/post-process/debug draw
-- [ ] future-ready boundary for Vulkan
+- [ ] materials, lighting, UI, post-process, debug draw
+- [ ] готовая граница для Vulkan
 
-Статус: не начато. В текущем шаге оставлен только placeholder interface.
+Статус: не начато.
 
 ### 5. Runtime Services Layer
 
@@ -97,61 +99,56 @@
 - [ ] font subsystem
 - [ ] save/load system
 - [ ] networking hooks
-- [ ] scripting host integration
+- [x] scripting host interface
+- [ ] scripting host implementation
 - [ ] diagnostics/telemetry extensions
 
-Статус: не начато. Пока есть только placeholder interfaces для `VFS`, `ResourceManager`, `Renderer`, `ScriptHost`.
+Статус: пока есть только контракты и placeholder-реализации.
 
-### 6. Compatibility Layer
+### 6. Gameplay Framework Layer
 
-- [ ] Storm service-name adapter
-- [ ] `ATTRIBUTES` facade
-- [ ] `MESSAGE` facade
-- [ ] legacy event adapter
-- [ ] script host bridge
-- [ ] path/VFS alias resolver
-- [ ] legacy format loaders
-- [ ] INI compatibility parser
-- [ ] font/text compatibility adapter
-- [ ] input command-name compatibility table
+- [ ] gameplay world bootstrap
+- [ ] entity/system contracts
+- [ ] scene ownership model
+- [ ] input-to-gameplay bridge
+- [ ] game state flow
+- [ ] content-driven feature modules
 
-Статус: не начато по договоренности.
+Статус: не начато.
 
-### 7. Gameplay Host Layer
+### 7. Tools and Content Pipeline
 
-- [ ] script VM runtime
-- [ ] engine-call bindings
-- [ ] quest/event dispatch bridge
-- [ ] savegame object binding
-- [ ] legacy UI binding
-- [ ] character/sea/world/inventory/dialog/battle/location adapters
+- [ ] asset import pipeline
+- [ ] resource cooking
+- [ ] editor/tooling bootstrap
+- [ ] content validation
+- [ ] hot-reload friendly build steps
 
 Статус: не начато.
 
 ## Карта модулей проекта
 
+- [x] `src/foundation/*` — базовые value-oriented primitives
 - [x] `src/core/*` — микроядро и его внутренние подсистемы
-- [x] `src/layers/runtime/*` — runtime-layer contracts и placeholder implementations
+- [x] `src/layers/platform/*` — platform contracts и Windows-first runtime slice
+- [x] `src/layers/runtime/*` — runtime contracts и placeholder implementations
 - [x] `src/apps/*` — исполняемые хосты
-- [x] `tests/*` — unit/integration tests
-- [x] `src/layers/platform/*`
+- [x] `tests/*` — unit, integration и regression tests
 - [ ] `src/layers/rhi/*`
 - [ ] `src/layers/renderer/*`
-- [ ] `src/layers/compatibility/*`
-- [ ] `src/layers/gameplay_host/*`
-- [ ] `tools/*`
+- [ ] `src/layers/gameplay/*`
+- [ ] `src/layers/tools/*`
 
 ## Стратегия typed service container
 
 - [x] interface-based registration
 - [x] typed lookup
 - [x] scoped ownership через `std::shared_ptr`
-- [x] запрет null-instance registration
-- [x] защита от double registration
-- [x] тесты на register/get/contains
+- [x] запрет null registration
+- [x] защита от duplicate registration
+- [x] тесты на register/get/contains/error paths
 - [ ] lazy initialization
 - [ ] startup descriptors
-- [ ] compatibility aliases по строковым именам
 - [ ] startup graph diagnostics export
 
 ## Стратегия event system
@@ -160,15 +157,16 @@
 - [x] sync events
 - [x] queued events
 - [x] queued event drain
+- [x] FIFO-базовый контракт для queued dispatch
 - [x] тесты на sync/queued dispatch
-- [ ] legacy string event bridge
-- [ ] deterministic ordering modes beyond current baseline
+- [ ] deterministic ordering modes beyond baseline
 - [ ] latency/origin tracing
 
 ## Стратегия VFS
 
 - [ ] mount table
 - [ ] normalized virtual paths
+- [x] общий path-тип `Path`
 - [ ] fast lookup cache
 - [ ] async reads
 - [ ] streaming handles
@@ -186,25 +184,16 @@
 - [ ] GPU upload queue
 - [ ] residency budgets
 - [ ] hot reload
-- [ ] handle-based ownership
-
-## Совместимость со старыми форматами и API
-
-- [ ] old scripts
-- [ ] old resources
-- [ ] old INI semantics
-- [ ] `ATTRIBUTES`
-- [ ] `MESSAGE`
-- [ ] old service names
+- [x] foundation для handle-based ownership
 
 ## Открытый мир и сложная симуляция
 
-- [ ] world partitioning/streaming cells
+- [ ] world partitioning и streaming cells
 - [ ] entity activation by relevance
 - [ ] async background loading
 - [ ] simulation LOD
 - [ ] saveable world state deltas
-- [ ] deterministic quest-critical state handling
+- [ ] deterministic critical state handling
 
 ## Готовность к 4K и современным asset pipelines
 
@@ -214,16 +203,15 @@
 - [ ] upload throttling
 - [ ] format conversion pipeline
 - [ ] compressed textures
-- [ ] asset metadata for memory/priority
+- [ ] asset metadata for memory and priority
 
-## Хостинг скриптов и legacy game logic
+## Хостинг скриптов
 
 - [x] интерфейс `IScriptHost`
 - [x] stub-реализация без VM
 - [ ] VM host
 - [ ] binding layer
-- [ ] legacy API adapters
-- [ ] script diagnostics/performance hooks
+- [ ] script diagnostics и performance hooks
 
 ## Итеративный план поставки
 
@@ -231,7 +219,6 @@
 
 - [x] инициализировать новый repo в `Epidemic engine v1.0`
 - [x] создать docs и базовую структуру
-- [x] оставить старый Storm Engine рядом как reference
 - [x] зафиксировать branch model `main` / `dev`
 
 ### Phase 1. Kernel Bootstrap
@@ -245,116 +232,102 @@
 - [x] startup/shutdown graph
 - [x] sync/queued events
 - [x] task scheduler stub
-- [x] placeholder interfaces для `VFS`, `ResourceManager`, `Renderer`, `ScriptHost`
-- [x] unit/integration tests на container, lifecycle, events, scheduler
+- [x] placeholder interfaces для runtime-сервисов
+- [x] unit и integration tests для container, lifecycle, events и scheduler
 
 Результат:
-
 - [x] headless bootstrap стартует, выполняет модули в правильном порядке и корректно завершается
 
-### Phase 2. Platform + DX11 RHI
+### Phase 2. Foundation Slice
 
-- [ ] Win32 platform layer
+- [x] `Result` / `Error`
+- [x] `Path`
+- [x] `StringId` / `NameId`
+- [x] `Handle<T>`
+- [x] базовые тесты и регрессионные проверки
+
+Результат:
+- [x] foundation уже используется в runtime-контрактах и test suite
+
+### Phase 3. Platform Slice
+
+- [x] platform runtime interface
+- [x] Windows-first implementation
+- [x] process info
+- [x] monotonic clock
+- [x] dynamic library loading
+- [x] symbol lookup
+- [x] platform tests и regression tests
+
+Результат:
+- [x] platform слой уже является реальной частью composition root
+
+### Phase 4. DX11 Bootstrap
+
 - [ ] DX11 device bootstrap
 - [ ] swap chain
 - [ ] command submission abstraction
 - [ ] debug layer integration
 
 Результат:
-
 - [ ] clear-screen sample через RHI abstraction
 
-### Phase 3. VFS + Resource Core
+### Phase 5. VFS + Resource Core
 
 - [ ] mount system
 - [ ] virtual paths
 - [ ] async file IO
 - [ ] resource handles
 - [ ] loader registry
-- [ ] texture/INI loading foundation
+- [ ] texture loading foundation
 
 Результат:
+- [ ] runtime умеет находить и читать данные через virtual paths
 
-- [ ] runtime умеет находить и читать legacy files через virtual paths
+### Phase 6. Gameplay Framework
 
-### Phase 4. Compatibility Core
-
-- [ ] old service-name lookup adapter
-- [ ] `ATTRIBUTES` facade
-- [ ] `MESSAGE` facade
-- [ ] legacy event bridge
-- [ ] path alias compatibility
+- [ ] gameplay world bootstrap
+- [ ] scene ownership
+- [ ] input bridge
+- [ ] first gameplay state flow
 
 Результат:
-
-- [ ] old-style engine-facing calls мапятся в новые контракты
-
-### Phase 5. Script Host Bridge
-
-- [ ] VM bootstrap
-- [ ] legacy function bindings
-- [ ] script event dispatch
-- [ ] diagnostics/tracing
-
-Результат:
-
-- [ ] можно запускать изолированные legacy scripts в новом runtime shell
-
-### Phase 6. First Visual Content
-
-- [ ] texture loader
-- [ ] font subsystem
-- [ ] model reader
-- [ ] basic scene submission
-- [ ] simple camera/debug UI
-
-Результат:
-
-- [ ] legacy assets рендерятся в test scene/viewer
-
-### Phase 7. Gameplay Vertical Slice
-
-- [ ] location loading
-- [ ] player input mapping
-- [ ] one interaction flow
-- [ ] one UI screen
-- [ ] save/load slice
-
-Результат:
-
-- [ ] маленький playable compatibility slice
+- [ ] минимальный playable slice новой игры
 
 ## Правила зависимостей
 
-- [x] `core` не зависит от compatibility и gameplay host
+- [x] `foundation` находится ниже `core` и `layers`
+- [x] `core` не зависит от gameplay и renderer
 - [x] `layers/*` подключаются к `core` через явные interfaces и contracts
 - [x] `apps/*` только собирают runtime composition root
-- [x] `tests/*` могут зависеть от `core` и конкретных слоев
-- [ ] compatibility layer может зависеть от runtime services, но не от platform internals напрямую
+- [x] `tests/*` могут зависеть от `foundation`, `core` и конкретных слоев
 - [ ] renderer зависит от RHI, но не наоборот
 
 ## Стратегия тестирования
 
+- [x] tests для foundation slice
+- [x] tests для platform slice
 - [x] unit tests для service container
 - [x] integration tests для module lifecycle
 - [x] tests для sync/queued events
 - [x] tests для task scheduler
-- [ ] contract tests against old behavior
+- [x] regression tests для null registration, duplicate registration, duplicate module id, missing dependency, circular dependency и platform error paths
+- [x] application smoke tests
 - [ ] render smoke tests
 - [ ] golden-data tests
 - [ ] streaming/simulation stress tests
 
 ## Ближайший следующий вектор
 
-0. [ ] минимальный Foundation slice: Result/Error, Path, StringId/NameId, Handle<T>
-1. [x] platform layer skeleton
+0. [x] минимальный Foundation slice: `Result/Error`, `Path`, `StringId/NameId`, `Handle<T>`
+1. [x] Platform layer skeleton
 2. [ ] DX11 bootstrap
-3. [ ] runtime VFS skeleton
-4. [ ] resource manager contracts
-5. [ ] compatibility layer skeleton
+3. [ ] Runtime VFS skeleton
+4. [ ] Resource Manager contracts
+5. [ ] Gameplay framework skeleton
 
 Текущий итог:
 
-- [x] Минимальный backbone нового runtime уже существует и собирается.
-- [x] Микроядро выделено отдельно от слоев.
-- [x] Мы можем двигаться дальше без возврата к базовой структуре.
+- [x] Минимальный backbone нового runtime уже существует и собирается
+- [x] Foundation, Core и Platform выделены как отдельные архитектурные зоны
+- [x] Проект покрыт базовыми и регрессионными тестами и может безопасно двигаться дальше

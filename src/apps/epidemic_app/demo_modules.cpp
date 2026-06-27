@@ -73,6 +73,7 @@ void EventPipelineModule::OnInitialize(epidemic::core::ServiceContainer &service
     const auto platform_runtime = services.Get<epidemic::layers::platform::IPlatformRuntime>();
 
     logger->Info("Platform", "Using platform runtime: " + std::string(platform_runtime->Name()));
+    logger->Info("Platform", "Executable: " + platform_runtime->GetProcessInfo().executable_path.GenericString());
     event_bus->SubscribeSync<DemoSyncEvent>(
         [logger](const DemoSyncEvent &event) { logger->Info("Event", "Sync event received: " + event.message); });
 

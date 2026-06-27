@@ -27,6 +27,7 @@ class IEventBus
 
     template <typename EventT, typename HandlerT> HandlerToken SubscribeSync(HandlerT &&handler)
     {
+        // Sync handlers run immediately on PublishSync in the caller's thread.
         auto typed_handler = std::function<void(const EventT &)>(std::forward<HandlerT>(handler));
         return SubscribeImpl(typeid(EventT), EventDispatchMode::Sync,
                              [typed_handler = std::move(typed_handler)](const std::any &payload) {
@@ -36,6 +37,7 @@ class IEventBus
 
     template <typename EventT, typename HandlerT> HandlerToken SubscribeQueued(HandlerT &&handler)
     {
+        // Queued handlers run later when the bus is explicitly drained.
         auto typed_handler = std::function<void(const EventT &)>(std::forward<HandlerT>(handler));
         return SubscribeImpl(typeid(EventT), EventDispatchMode::Queued,
                              [typed_handler = std::move(typed_handler)](const std::any &payload) {
@@ -45,14 +47,17 @@ class IEventBus
 
     template <typename EventT> void PublishSync(const EventT &event)
     {
+        // Immediate dispatch path for orchestration-critical events.
         PublishSyncImpl(typeid(EventT), std::any(event));
     }
 
     template <typename EventT> void Enqueue(const EventT &event)
     {
+        // Deferred dispatch path for work that should be processed in the runtime loop.
         EnqueueImpl(typeid(EventT), std::any(event));
     }
 
+    // Delivers all queued events and returns the number of dispatched entries.
     [[nodiscard]] virtual std::size_t DrainQueued() = 0;
 
   private:
@@ -64,6 +69,7 @@ class IEventBus
 class EventBus final : public IEventBus
 {
   public:
+    // Flushes the queued event FIFO in submission order.
     [[nodiscard]] std::size_t DrainQueued() override;
 
   private:

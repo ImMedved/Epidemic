@@ -1,3 +1,4 @@
+#include "core/application/application.h"
 #include "core/config/configuration.h"
 #include "core/diagnostics/logger.h"
 #include "core/events/event_bus.h"
@@ -9,15 +10,25 @@
 #include "foundation/ids/string_id.h"
 #include "foundation/paths/path.h"
 #include "foundation/result/result.h"
+#include "layers/platform/interfaces/iplatform_runtime.h"
+#include "layers/platform/windows/windows_platform_runtime.h"
+#include "layers/runtime/interfaces/irenderer.h"
+#include "layers/runtime/interfaces/iresource_manager.h"
+#include "layers/runtime/interfaces/iscript_host.h"
+#include "layers/runtime/interfaces/ivirtual_file_system.h"
+#include "layers/runtime/placeholders/null_services.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdlib>
 #include <exception>
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 namespace
@@ -136,8 +147,8 @@ void TestFoundationPath()
 
 void TestFoundationIdsAndHandles()
 {
-    constexpr auto first_string_id = epidemic::foundation::StringId::FromString("storm");
-    constexpr auto second_string_id = epidemic::foundation::StringId::FromString("storm");
+    constexpr auto first_string_id = epidemic::foundation::StringId::FromString("alpha");
+    constexpr auto second_string_id = epidemic::foundation::StringId::FromString("alpha");
     constexpr auto third_string_id = epidemic::foundation::StringId::FromString("epidemic");
     static_assert(first_string_id == second_string_id, "Equal string ids must hash identically");
     static_assert(!(first_string_id == third_string_id), "Different string ids must differ");
@@ -159,6 +170,72 @@ void TestFoundationIdsAndHandles()
     Assert(valid_handle.Generation() == 3, "Handle generation must be preserved");
 }
 
+void TestPlatformProcessInfoAndClock()
+{
+    epidemic::layers::platform::WindowsPlatformRuntime platform_runtime;
+
+    Assert(platform_runtime.Name() == "WindowsPlatformRuntime", "Platform runtime name must match implementation");
+    Assert(!platform_runtime.GetProcessInfo().working_directory.Empty(),
+           "Platform runtime must expose non-empty working directory");
+    Assert(!platform_runtime.GetProcessInfo().executable_path.Empty(),
+           "Platform runtime must expose executable path");
+    Assert(!platform_runtime.GetProcessInfo().arguments.empty(),
+           "Platform runtime must expose command line arguments");
+
+    const auto start = platform_runtime.Now();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    const auto finish = platform_runtime.Now();
+    Assert(finish >= start, "Platform clock must be monotonic");
+}
+
+void TestPlatformDynamicLibraryLoading()
+{
+    epidemic::layers::platform::WindowsPlatformRuntime platform_runtime;
+
+    const auto library_result = platform_runtime.LoadDynamicLibrary(epidemic::foundation::Path::FromString("kernel32.dll"));
+    Assert(library_result.HasValue(), "Platform runtime must load kernel32.dll");
+
+    const auto symbol_result = library_result.Value()->FindSymbol("GetTickCount64");
+    Assert(symbol_result.HasValue(), "Platform runtime must resolve GetTickCount64");
+    Assert(symbol_result.Value() != nullptr, "Resolved dynamic library symbol must not be null");
+}
+
+void TestPlatformDynamicLibraryFailures()
+{
+    epidemic::layers::platform::WindowsPlatformRuntime platform_runtime;
+
+    const auto empty_path_result = platform_runtime.LoadDynamicLibrary(epidemic::foundation::Path{});
+    Assert(!empty_path_result.HasValue(), "Empty dynamic library path must fail");
+    Assert(empty_path_result.GetError().HasCode("platform.empty_library_path"),
+           "Empty path failure must expose stable error code");
+
+    const auto valid_library_result =
+        platform_runtime.LoadDynamicLibrary(epidemic::foundation::Path::FromString("kernel32.dll"));
+    Assert(valid_library_result.HasValue(), "Valid library must load before symbol failure test");
+
+    const auto missing_symbol_result = valid_library_result.Value()->FindSymbol("DefinitelyMissingSymbol_12345");
+    Assert(!missing_symbol_result.HasValue(), "Missing symbol lookup must fail");
+    Assert(missing_symbol_result.GetError().HasCode("platform.symbol_not_found"),
+           "Missing symbol must expose stable error code");
+
+    const auto missing_library_result =
+        platform_runtime.LoadDynamicLibrary(epidemic::foundation::Path::FromString("DefinitelyMissingLibrary_12345.dll"));
+    Assert(!missing_library_result.HasValue(), "Missing dynamic library must fail");
+    Assert(missing_library_result.GetError().HasCode("platform.load_library_failed"),
+           "Missing library must expose stable error code");
+}
+
+void TestRuntimePathContract()
+{
+    epidemic::layers::runtime::NullVirtualFileSystem vfs;
+
+    Assert(!vfs.Mount(epidemic::foundation::Path{}), "Mount on empty path must fail");
+    Assert(vfs.Mount(epidemic::foundation::Path::FromString("content")), "Mount on non-empty path must succeed");
+    Assert(!vfs.Exists(epidemic::foundation::Path{}), "Exists on empty path must be false");
+    Assert(vfs.Exists(epidemic::foundation::Path::FromString("content/texture.dds")),
+           "Exists on non-empty path must be true in placeholder runtime");
+}
+
 void TestServiceContainer()
 {
     epidemic::core::ServiceContainer services;
@@ -170,6 +247,60 @@ void TestServiceContainer()
     Assert(services.Get<ILogger>() == logger, "Service container must return the same logger instance");
     Assert(services.Get<epidemic::core::config::IConfiguration>()->GetString("known") == "value",
            "Configuration service should return its stored value");
+}
+
+void TestServiceContainerRejectsNullRegistration()
+{
+    epidemic::core::ServiceContainer services;
+
+    bool failed = false;
+    try
+    {
+        services.RegisterInstance<ILogger>({});
+    }
+    catch (const std::exception &)
+    {
+        failed = true;
+    }
+
+    Assert(failed, "Service container must reject null registration");
+}
+
+void TestServiceContainerRejectsDuplicateRegistration()
+{
+    epidemic::core::ServiceContainer services;
+    services.RegisterInstance<ILogger>(std::make_shared<RecordingLogger>());
+
+    bool failed = false;
+    try
+    {
+        services.RegisterInstance<ILogger>(std::make_shared<RecordingLogger>());
+    }
+    catch (const std::exception &)
+    {
+        failed = true;
+    }
+
+    Assert(failed, "Service container must reject duplicate registration");
+}
+
+void TestModuleRegistryRejectsDuplicateId()
+{
+    epidemic::core::ModuleRegistry registry;
+    std::vector<std::string> trace;
+    registry.Register(std::make_unique<ProbeModule>("runtime", "Runtime", std::vector<std::string>{}, trace));
+
+    bool failed = false;
+    try
+    {
+        registry.Register(std::make_unique<ProbeModule>("runtime", "Runtime 2", std::vector<std::string>{}, trace));
+    }
+    catch (const std::exception &)
+    {
+        failed = true;
+    }
+
+    Assert(failed, "Module registry must reject duplicate ids");
 }
 
 void TestModuleLifecycleOrderAndDependencies()
@@ -203,6 +334,30 @@ void TestModuleLifecycleOrderAndDependencies()
     Assert(trace == expected, "Modules must respect dependency order and reverse shutdown order");
 }
 
+void TestMissingModuleDependencyFails()
+{
+    epidemic::core::ServiceContainer services;
+    auto logger = std::make_shared<RecordingLogger>();
+    services.RegisterInstance<ILogger>(logger);
+
+    epidemic::core::ModuleRegistry registry;
+    std::vector<std::string> trace;
+    registry.Register(
+        std::make_unique<ProbeModule>("runtime", "Runtime", std::vector<std::string>{"missing.module"}, trace));
+
+    bool failed = false;
+    try
+    {
+        registry.BootstrapAll(services, *logger);
+    }
+    catch (const std::exception &)
+    {
+        failed = true;
+    }
+
+    Assert(failed, "Missing module dependency must fail during bootstrap planning");
+}
+
 void TestEventBus()
 {
     epidemic::core::events::EventBus event_bus;
@@ -225,6 +380,22 @@ void TestEventBus()
     Assert(queued_total == 7, "Queued event should dispatch during drain");
 }
 
+void TestEventBusQueuedFifoOrdering()
+{
+    epidemic::core::events::EventBus event_bus;
+    std::vector<int> observed_values;
+
+    event_bus.SubscribeQueued<QueuedTestEvent>(
+        [&observed_values](const QueuedTestEvent &event) { observed_values.push_back(event.value); });
+
+    event_bus.Enqueue(QueuedTestEvent{1});
+    event_bus.Enqueue(QueuedTestEvent{2});
+    event_bus.Enqueue(QueuedTestEvent{3});
+
+    Assert(event_bus.DrainQueued() == 3, "All queued events must be drained");
+    Assert(observed_values == std::vector<int>({1, 2, 3}), "Queued events must preserve FIFO order");
+}
+
 void TestTaskScheduler()
 {
     epidemic::core::tasks::SimpleTaskScheduler scheduler(1);
@@ -234,6 +405,23 @@ void TestTaskScheduler()
     scheduler.WaitIdle();
 
     Assert(counter.load() == 1, "Scheduled task should execute exactly once");
+}
+
+void TestTaskSchedulerRejectsNullTask()
+{
+    epidemic::core::tasks::SimpleTaskScheduler scheduler(1);
+
+    bool failed = false;
+    try
+    {
+        scheduler.Schedule({});
+    }
+    catch (const std::exception &)
+    {
+        failed = true;
+    }
+
+    Assert(failed, "Task scheduler must reject empty tasks");
 }
 
 void TestCircularModuleDependencyFails()
@@ -260,6 +448,39 @@ void TestCircularModuleDependencyFails()
     Assert(failed, "Circular module dependency must fail during bootstrap planning");
 }
 
+void TestApplicationRegistersCoreServices()
+{
+    epidemic::core::Application application;
+
+    Assert(application.Bootstrap() == 0, "Application bootstrap must succeed");
+
+    auto &services = application.Services();
+    Assert(services.Contains<ILogger>(), "Application must register logger service");
+    Assert(services.Contains<epidemic::core::config::IConfiguration>(),
+           "Application must register configuration service");
+    Assert(services.Contains<epidemic::core::events::IEventBus>(), "Application must register event bus");
+    Assert(services.Contains<epidemic::core::tasks::ITaskScheduler>(), "Application must register task scheduler");
+    Assert(services.Contains<epidemic::layers::platform::IPlatformRuntime>(),
+           "Application must register platform runtime");
+    Assert(services.Contains<epidemic::layers::runtime::IVirtualFileSystem>(), "Application must register VFS");
+    Assert(services.Contains<epidemic::layers::runtime::IResourceManager>(),
+           "Application must register resource manager");
+    Assert(services.Contains<epidemic::layers::runtime::IRenderer>(), "Application must register renderer");
+    Assert(services.Contains<epidemic::layers::runtime::IScriptHost>(), "Application must register script host");
+
+    Assert(application.Shutdown() == 0, "Application shutdown must succeed");
+}
+
+void TestApplicationLifecycleSmoke()
+{
+    epidemic::core::Application application;
+
+    Assert(application.Bootstrap() == 0, "Application bootstrap must succeed");
+    Assert(application.Initialize() == 0, "Application initialize must succeed");
+    Assert(application.Run() == 0, "Application run must succeed");
+    Assert(application.Shutdown() == 0, "Application shutdown must succeed");
+}
+
 int RunAllTests()
 {
     struct NamedTest
@@ -272,11 +493,23 @@ int RunAllTests()
         {"FoundationResult", &TestFoundationResult},
         {"FoundationPath", &TestFoundationPath},
         {"FoundationIdsAndHandles", &TestFoundationIdsAndHandles},
+        {"PlatformProcessInfoAndClock", &TestPlatformProcessInfoAndClock},
+        {"PlatformDynamicLibraryLoading", &TestPlatformDynamicLibraryLoading},
+        {"PlatformDynamicLibraryFailures", &TestPlatformDynamicLibraryFailures},
+        {"RuntimePathContract", &TestRuntimePathContract},
         {"ServiceContainer", &TestServiceContainer},
+        {"ServiceContainerRejectsNullRegistration", &TestServiceContainerRejectsNullRegistration},
+        {"ServiceContainerRejectsDuplicateRegistration", &TestServiceContainerRejectsDuplicateRegistration},
+        {"ModuleRegistryRejectsDuplicateId", &TestModuleRegistryRejectsDuplicateId},
         {"ModuleLifecycleOrderAndDependencies", &TestModuleLifecycleOrderAndDependencies},
+        {"MissingModuleDependencyFails", &TestMissingModuleDependencyFails},
         {"EventBus", &TestEventBus},
+        {"EventBusQueuedFifoOrdering", &TestEventBusQueuedFifoOrdering},
         {"TaskScheduler", &TestTaskScheduler},
+        {"TaskSchedulerRejectsNullTask", &TestTaskSchedulerRejectsNullTask},
         {"CircularModuleDependencyFails", &TestCircularModuleDependencyFails},
+        {"ApplicationRegistersCoreServices", &TestApplicationRegistersCoreServices},
+        {"ApplicationLifecycleSmoke", &TestApplicationLifecycleSmoke},
     };
 
     for (const auto &test : tests)

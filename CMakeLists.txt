@@ -44,7 +44,7 @@ target_link_libraries(epidemic_layers_runtime
 )
 
 add_library(epidemic_layers_platform STATIC
-    src/layers/platform/placeholders/windows_platform_runtime_stub.cpp
+    src/layers/platform/windows/windows_platform_runtime.cpp
 )
 
 target_include_directories(epidemic_layers_platform PUBLIC

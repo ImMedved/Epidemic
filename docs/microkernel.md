@@ -2,26 +2,24 @@
 
 ## Назначение
 
-Микроядро в `Epidemic Engine v1.0` отвечает только за orchestration runtime, но не за игровую логику, графику, совместимость со Storm или форматы ресурсов. Его задача — быть маленьким, предсказуемым и долгоживущим центром композиции.
+Микроядро в `Epidemic Engine v1.0` отвечает только за orchestration runtime. Его задача — управлять жизненным циклом приложения, сервисами, модулями, событиями и задачами, не втягивая в себя renderer, gameplay и контентные подсистемы.
 
 ## Что входит в микроядро
 
 - жизненный цикл приложения: `bootstrap -> initialize -> run -> shutdown`;
-- реестр модулей и вычисление порядка выполнения;
+- реестр модулей и вычисление dependency-aware порядка выполнения;
 - typed service container;
-- bootstrap диагностических сервисов;
-- bootstrap конфигурации;
-- bootstrap event bus;
-- bootstrap task scheduler;
+- bootstrap diagnostics и configuration;
+- sync/queued event bus;
+- task scheduler;
 - безопасное завершение модулей в обратном порядке.
 
 ## Что не входит в микроядро
 
 - DirectX 11 и любой конкретный rendering backend;
-- Storm compatibility layer;
-- VFS и Resource Manager как реальные подсистемы;
+- реальная реализация VFS и Resource Manager;
 - scripting VM;
-- gameplay logic;
+- gameplay systems;
 - platform-specific windowing beyond future contracts.
 
 ## Текущая структура
@@ -37,44 +35,44 @@ src/core/
   tasks/
 ```
 
-Каждая подпапка отвечает только за один технический аспект микроядра.
+Каждая подпапка отвечает только за один технический аспект базового runtime.
 
 ## Жизненный цикл
 
 ### Bootstrap
 
 - регистрируются базовые typed services;
-- вычисляется dependency-aware порядок модулей;
+- вычисляется порядок модулей;
 - модули проходят стадию `OnBootstrap`.
 
 ### Initialize
 
 - модули инициализируются в уже рассчитанном порядке;
-- на этом этапе допустимо подписываться на события и публиковать sync events;
+- здесь допустимо подписываться на события;
 - runtime-level services уже доступны по typed interface.
 
 ### Run
 
+- вызывается platform event pump;
 - дренируются queued events;
-- дожидаются завершения запланированных задач;
-- хост-приложение получает стабильную headless execution loop baseline.
+- дожидаются завершения запланированных задач.
 
 ### Shutdown
 
-- модули завершаются строго в обратном порядке относительно execution plan;
+- модули завершаются строго в обратном порядке;
 - task scheduler доводится до idle state;
-- приложение завершает работу без утечек raw owning state.
+- runtime завершает работу без raw owning state.
 
 ## Модель модулей
 
-Модуль обязан предоставить:
+Каждый модуль предоставляет:
 
-- manifest с `id`, `name` и списком зависимостей;
+- manifest с `id`, `name` и зависимостями;
 - `OnBootstrap`;
 - `OnInitialize`;
 - `OnShutdown`.
 
-Микроядро само вычисляет порядок выполнения по зависимостям. Это защищает нас от хрупкого "ручного порядка регистрации" в `main`.
+Порядок выполнения всегда вычисляет само микроядро.
 
 ## Модель сервисов
 
@@ -85,50 +83,46 @@ Service container поддерживает только typed interfaces:
 - `Get<T>()`
 - `Contains<T>()`
 
-Особенности:
+Контракты:
 
 - null service instance запрещен;
 - повторная регистрация одного typed service запрещена;
-- старые string-based aliases здесь не допускаются;
-- старые service names будут жить только в compatibility layer.
+- новый код не использует строковой service locator.
 
 ## События
 
-Сейчас микроядро поддерживает две модели событий:
+Микроядро поддерживает две модели событий:
 
 - `PublishSync(event)` — немедленная доставка;
 - `Enqueue(event)` + `DrainQueued()` — отложенная доставка.
 
-Это уже дает правильную границу между логикой рантайма и фоновой работой. Legacy string events будут добавлены позже поверх адаптеров, но не внутри `core`.
+Для queued dispatch зафиксирован базовый FIFO-контракт, который закреплен тестами.
 
 ## Task Scheduler
 
 На первом этапе используется простой scheduler на `std::jthread`:
 
 - принимает задачи через `Schedule`;
-- умеет ждать состояния `idle` через `WaitIdle`;
+- умеет ждать `idle` через `WaitIdle`;
 - не использует fibers;
-- уже покрыт тестом как базовый execution primitive.
-
-Этого достаточно для раннего bootstrap и дальнейшего перехода к VFS/Resource pipeline.
+- покрыт unit и regression tests.
 
 ## Гарантии текущей реализации
 
 - проект собирается через CMake;
 - исполняемый файл стартует;
-- модули проходят bootstrap/init/shutdown;
+- модули проходят bootstrap, initialize и shutdown;
 - shutdown идет в обратном порядке;
-- typed services реально используются, а не имитируются;
+- typed services реально используются;
 - sync/queued events работают;
 - scheduler исполняет простые задачи;
-- есть базовые тесты на container, lifecycle, events и scheduler.
+- есть базовые и регрессионные тесты на container, lifecycle, events, scheduler и composition root.
 
 ## Что считать завершенным в блоке Microkernel
 
-На текущем этапе блок `1. Microkernel` считается закрытым для долгого цикла работ, потому что:
+Блок `1. Microkernel` сейчас можно считать закрытым на длительный этап работ, потому что:
 
 - composition root уже существует;
-- ядро не зависит от Storm-кода;
 - ядро не зависит от DX11;
-- слои можно подключать поверх `core`, не меняя саму модель приложения;
-- дальнейшие изменения будут происходить в `layers/*`, а не внутри базовой orchestration-модели.
+- новые слои можно подключать поверх `core`, не меняя модель приложения;
+- дальнейшее развитие должно происходить в `layers/*`, а не внутри базовой orchestration-модели.

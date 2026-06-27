@@ -18,13 +18,16 @@ class ITaskScheduler
 
     virtual ~ITaskScheduler() = default;
 
+    // Queues a task for background execution.
     virtual void Schedule(Task task) = 0;
+    // Blocks until the scheduler has no queued or active tasks.
     virtual void WaitIdle() = 0;
 };
 
 class SimpleTaskScheduler final : public ITaskScheduler
 {
   public:
+    // Creates a small worker pool used by the bootstrap runtime.
     explicit SimpleTaskScheduler(std::size_t worker_count = 1);
     ~SimpleTaskScheduler() override;
 
@@ -32,7 +35,9 @@ class SimpleTaskScheduler final : public ITaskScheduler
     void WaitIdle() override;
 
   private:
+    // Worker loop that pulls tasks until shutdown is requested.
     void WorkerLoop(std::stop_token stop_token);
+    // Stops workers and prevents new task submission.
     void Shutdown();
 
     std::mutex mutex_;
