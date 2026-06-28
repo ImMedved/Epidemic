@@ -11,10 +11,12 @@
 #include <Epidemic/Foundation/path.h>
 #include <Epidemic/Foundation/result.h>
 #include <Epidemic/Foundation/string_id.h>
+#include <Epidemic/Foundation/time.h>
 #include <Epidemic/Platform/iplatform_runtime.h>
 #include <Epidemic/Platform/windows_platform_runtime.h>
 
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
 #include <exception>
 #include <functional>
@@ -24,6 +26,7 @@
 #include <string>
 #include <string_view>
 #include <thread>
+#include <unordered_set>
 #include <vector>
 
 namespace
@@ -41,6 +44,11 @@ void Assert(bool condition, std::string_view message)
     {
         throw TestFailure(std::string(message));
     }
+}
+
+bool NearlyEqual(double left, double right, double epsilon = 1e-9)
+{
+    return std::abs(left - right) <= epsilon;
 }
 
 class RecordingLogger final : public ILogger
@@ -118,9 +126,12 @@ void TestFoundationPrimitives()
     Assert(ok.Value() == 42, "Successful result must return stored value");
 
     const auto failure = epidemic::foundation::Result<int>::Failure(
-        epidemic::foundation::Error::Create("test.failure", "Failure path"));
+        epidemic::foundation::Error::Create("test.failure", "Failure path", "foundation.tests"));
     Assert(!failure.HasValue(), "Result<int>::Failure must not hold a value");
     Assert(failure.GetError().HasCode("test.failure"), "Failure result must expose stored error code");
+    Assert(failure.GetError().message == "Failure path", "Failure result must expose stored error message");
+    Assert(failure.GetError().HasContext(), "Failure result must expose optional error context");
+    Assert(failure.GetError().context == "foundation.tests", "Failure result must preserve error context");
 
     const auto path = epidemic::foundation::Path::FromString("resource\\textures\\..\\models");
     Assert(path.GenericString() == "resource/models", "Path must normalize separators and dot segments");
@@ -132,14 +143,61 @@ void TestFoundationPrimitives()
     static_assert(!empty_string_id.IsValid(), "Empty string id must be invalid");
     static_assert(first_string_id == second_string_id, "Equal string ids must hash identically");
 
+    const auto empty_name_id = epidemic::foundation::NameId::FromString("");
+    const auto first_name_id = epidemic::foundation::NameId::FromString("Renderer.Main");
+    const auto second_name_id = epidemic::foundation::NameId::FromString("Renderer.Main");
+    Assert(!empty_name_id.IsValid(), "Empty name id must be invalid");
+    Assert(first_name_id == second_name_id, "Equal name ids must compare equal");
+
+    const auto module_id = epidemic::foundation::ModuleId::FromString("core.module");
+    const auto duplicate_module_id = epidemic::foundation::ModuleId::FromString("core.module");
+    const auto service_id = epidemic::foundation::ServiceId::FromString("diagnostics.logger");
+    const auto duplicate_service_id = epidemic::foundation::ServiceId::FromString("diagnostics.logger");
+    const auto event_type_id = epidemic::foundation::EventTypeId::FromString("window.close_requested");
+    const auto duplicate_event_type_id = epidemic::foundation::EventTypeId::FromString("window.close_requested");
+    Assert(module_id.IsValid(), "ModuleId must be valid for non-empty text");
+    Assert(service_id.IsValid(), "ServiceId must be valid for non-empty text");
+    Assert(event_type_id.IsValid(), "EventTypeId must be valid for non-empty text");
+    Assert(module_id == duplicate_module_id, "ModuleId generation must be stable");
+    Assert(service_id == duplicate_service_id, "ServiceId generation must be stable");
+    Assert(event_type_id == duplicate_event_type_id, "EventTypeId generation must be stable");
+
+    std::unordered_set<epidemic::foundation::ModuleId> module_ids;
+    module_ids.insert(module_id);
+    module_ids.insert(duplicate_module_id);
+    Assert(module_ids.size() == 1, "ModuleId hash support must deduplicate equal ids");
+
     struct TextureTag
     {
     };
 
     const epidemic::foundation::Handle<TextureTag> invalid_handle;
     const epidemic::foundation::Handle<TextureTag> valid_handle(7, 3);
+    const epidemic::foundation::Handle<TextureTag> same_valid_handle(7, 3);
     Assert(!invalid_handle.IsValid(), "Default handle must be invalid");
     Assert(valid_handle.IsValid(), "Explicit handle must be valid");
+    Assert(valid_handle == same_valid_handle, "Equal handles must compare equal");
+
+    std::unordered_set<epidemic::foundation::Handle<TextureTag>> handles;
+    handles.insert(valid_handle);
+    handles.insert(same_valid_handle);
+    Assert(handles.size() == 1, "Handle hash support must deduplicate equal handles");
+
+    const auto frame_time_from_seconds = epidemic::foundation::FrameTime::FromSeconds(0.5);
+    const auto frame_time_from_milliseconds = epidemic::foundation::FrameTime::FromMilliseconds(16.5);
+    Assert(NearlyEqual(frame_time_from_seconds.Milliseconds(), 500.0), "FrameTime seconds conversion must work");
+    Assert(NearlyEqual(frame_time_from_milliseconds.Seconds(), 0.0165), "FrameTime millisecond conversion must work");
+
+    epidemic::foundation::FrameIndex frame_index;
+    Assert(frame_index.Value() == 0, "Default FrameIndex must start at zero");
+    ++frame_index;
+    Assert(frame_index.Value() == 1, "FrameIndex increment must work");
+    Assert(frame_index.Next().Value() == 2, "FrameIndex next value must work");
+
+    std::unordered_set<epidemic::foundation::FrameIndex> frame_indices;
+    frame_indices.insert(frame_index);
+    frame_indices.insert(epidemic::foundation::FrameIndex(1));
+    Assert(frame_indices.size() == 1, "FrameIndex hash support must deduplicate equal values");
 }
 
 void TestServiceContainerContracts()
@@ -205,7 +263,8 @@ void TestModuleLifecycleAndFailures()
     epidemic::core::ModuleRegistry failing_registry;
     std::vector<std::string> failure_trace;
     failing_registry.Register(std::make_unique<ProbeModule>("first", "First", std::vector<std::string>{}, failure_trace));
-    failing_registry.Register(std::make_unique<ProbeModule>("second", "Second", std::vector<std::string>{"first"}, failure_trace, true));
+    failing_registry.Register(
+        std::make_unique<ProbeModule>("second", "Second", std::vector<std::string>{"first"}, failure_trace, true));
 
     bool bootstrap_failed = false;
     try

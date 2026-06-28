@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <limits>
 
 namespace epidemic::foundation
@@ -31,6 +32,11 @@ template <typename TTag> class Handle
         return generation_;
     }
 
+    [[nodiscard]] constexpr std::uint64_t Packed() const noexcept
+    {
+        return (static_cast<std::uint64_t>(generation_) << 32u) | index_;
+    }
+
     [[nodiscard]] constexpr bool operator==(const Handle &) const noexcept = default;
 
   private:
@@ -38,3 +44,14 @@ template <typename TTag> class Handle
     std::uint32_t generation_{0};
 };
 } // namespace epidemic::foundation
+
+namespace std
+{
+template <typename TTag> struct hash<epidemic::foundation::Handle<TTag>>
+{
+    [[nodiscard]] size_t operator()(const epidemic::foundation::Handle<TTag> &value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.Packed());
+    }
+};
+} // namespace std

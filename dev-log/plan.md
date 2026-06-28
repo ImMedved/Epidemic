@@ -1609,21 +1609,21 @@ Lower systems do not know about future upper systems
 
 ### Шаг 1. Структура `EngineBase`
 
-* [ ] Создана или приведена в порядок папка `EngineBase`
-* [ ] Создан модуль `Foundation`
-* [ ] Создан модуль `Memory`
-* [ ] Создан модуль `Diagnostics`
-* [ ] Создан модуль `Core`
-* [ ] Создан модуль `Platform`
-* [ ] Создан модуль `Input`
-* [ ] Создан модуль `RHI`
-* [ ] Создан модуль `RHI_D3D11`
-* [ ] Создана папка `Apps`
-* [ ] Создана папка `Tests`
-* [ ] Каждый модуль является отдельной CMake-библиотекой
-* [ ] Настроены public/private include boundaries
-* [ ] Проект собирается
-* [ ] CTest видит тесты
+* [x] Создана или приведена в порядок папка `EngineBase`
+* [x] Создан модуль Foundation
+* [x] Создан модуль Memory
+* [x] Создан модуль Diagnostics
+* [x] Создан модуль Core
+* [x] Создан модуль Platform
+* [x] Создан модуль Input
+* [x] Создан модуль RHI
+* [x] Создан модуль RHI_D3D11
+* [x] Создана папка Apps
+* [x] Создана папка Tests
+* [x] Каждый модуль является отдельной CMake-библиотекой
+* [x] Настроены public/private include boundaries (Проект Windows-only)
+* [x] Проект собирается
+* [x] CTest видит тесты
 
 ### Шаг 2. Foundation
 
@@ -1774,6 +1774,7 @@ Lower systems do not know about future upper systems
 
 ### Шаг 12. Тестирование и заморозка контрактов
 
+* [ ] Написать отдельное покрытие каждого из модулей
 * [ ] Unit tests проходят
 * [ ] Integration tests проходят
 * [ ] Regression tests проходят
@@ -1783,4 +1784,5 @@ Lower systems do not know about future upper systems
 * [ ] Создан `EngineBase/API_STABILITY.md`
 * [ ] В документации нет завышенных `[x]`
 * [ ] Lower layers не зависят от future upper layers
+* [ ] Документирование работы с ядром и план разработки дальнейших внешних слоев
 * [ ] `Stable Runtime Base` готов для разработки следующих слоев

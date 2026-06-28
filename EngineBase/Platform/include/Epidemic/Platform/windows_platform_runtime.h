@@ -11,7 +11,7 @@ class WindowsPlatformRuntime final : public IPlatformRuntime
 
     [[nodiscard]] std::string_view Name() const override;
     [[nodiscard]] const ProcessInfo &GetProcessInfo() const override;
-    [[nodiscard]] std::chrono::steady_clock::time_point Now() const override;
+    [[nodiscard]] epidemic::foundation::TimePoint Now() const override;
     [[nodiscard]] epidemic::foundation::Result<DynamicLibraryPtr>
     LoadDynamicLibrary(const epidemic::foundation::Path &path) override;
     void PumpEvents() override;

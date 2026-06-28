@@ -10,6 +10,11 @@ namespace epidemic::core
 {
 namespace
 {
+[[nodiscard]] foundation::ModuleId ToModuleId(std::string_view id_text)
+{
+    return foundation::ModuleId::FromString(id_text);
+}
+
 std::string BuildLifecycleMessage(std::string_view action, const ModuleManifest &manifest)
 {
     std::string message(action);
@@ -35,17 +40,18 @@ void ModuleRegistry::Register(std::unique_ptr<IModule> module)
     }
 
     const auto &manifest = module->Manifest();
-    if (manifest.id.empty())
+    const auto module_id = ToModuleId(manifest.id);
+    if (!module_id.IsValid())
     {
         throw std::runtime_error("Module id must not be empty");
     }
 
-    if (module_index_by_id_.contains(manifest.id))
+    if (module_index_by_id_.contains(module_id))
     {
         throw std::runtime_error("Module id already registered: " + manifest.id);
     }
 
-    module_index_by_id_.emplace(manifest.id, modules_.size());
+    module_index_by_id_.emplace(module_id, modules_.size());
     modules_.push_back(std::move(module));
     execution_plan_.clear();
     state_ = LifecycleState::Registered;
@@ -177,12 +183,18 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
 
         visit_states[module_index] = VisitState::Visiting;
         const auto &manifest = modules_[module_index]->Manifest();
-        for (const auto &dependency_id : manifest.dependencies)
+        for (const auto &dependency_id_text : manifest.dependencies)
         {
+            const auto dependency_id = ToModuleId(dependency_id_text);
+            if (!dependency_id.IsValid())
+            {
+                throw std::runtime_error("Module '" + manifest.id + "' contains an empty dependency id");
+            }
+
             const auto dependency_it = module_index_by_id_.find(dependency_id);
             if (dependency_it == module_index_by_id_.end())
             {
-                throw std::runtime_error("Missing module dependency '" + dependency_id + "' for module '" + manifest.id + "'");
+                throw std::runtime_error("Missing module dependency '" + dependency_id_text + "' for module '" + manifest.id + "'");
             }
 
             visit(dependency_it->second);

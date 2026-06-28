@@ -6,6 +6,7 @@
 
 namespace epidemic::foundation
 {
+// Native filesystem path primitive. This type is intentionally not a virtual resource path.
 class Path
 {
   public:

@@ -176,9 +176,9 @@ const ProcessInfo &WindowsPlatformRuntime::GetProcessInfo() const
     return process_info_;
 }
 
-std::chrono::steady_clock::time_point WindowsPlatformRuntime::Now() const
+epidemic::foundation::TimePoint WindowsPlatformRuntime::Now() const
 {
-    return std::chrono::steady_clock::now();
+    return epidemic::foundation::Clock::now();
 }
 
 epidemic::foundation::Result<DynamicLibraryPtr>

@@ -2,9 +2,9 @@
 
 #include <Epidemic/Foundation/path.h>
 #include <Epidemic/Foundation/result.h>
+#include <Epidemic/Foundation/time.h>
 #include <Epidemic/Platform/idynamic_library.h>
 
-#include <chrono>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -25,7 +25,7 @@ class IPlatformRuntime
 
     [[nodiscard]] virtual std::string_view Name() const = 0;
     [[nodiscard]] virtual const ProcessInfo &GetProcessInfo() const = 0;
-    [[nodiscard]] virtual std::chrono::steady_clock::time_point Now() const = 0;
+    [[nodiscard]] virtual epidemic::foundation::TimePoint Now() const = 0;
     [[nodiscard]] virtual epidemic::foundation::Result<DynamicLibraryPtr>
     LoadDynamicLibrary(const epidemic::foundation::Path &path) = 0;
     virtual void PumpEvents() = 0;

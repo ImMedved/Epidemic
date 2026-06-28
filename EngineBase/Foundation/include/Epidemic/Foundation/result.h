@@ -54,6 +54,16 @@ template <typename TValue> class Result
         return std::get<TValue>(storage_);
     }
 
+    [[nodiscard]] TValue &&Value() &&
+    {
+        if (!HasValue())
+        {
+            throw std::runtime_error("Result does not contain a value");
+        }
+
+        return std::get<TValue>(std::move(storage_));
+    }
+
     [[nodiscard]] Error &GetError() &
     {
         if (HasValue())
