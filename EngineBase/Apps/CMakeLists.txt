@@ -1,0 +1,4 @@
+add_subdirectory(HeadlessCoreApp)
+add_subdirectory(WindowSmokeApp)
+add_subdirectory(InputSmokeApp)
+add_subdirectory(RhiClearScreenApp)

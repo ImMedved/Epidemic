@@ -1,100 +1,39 @@
-# Слои и границы
+# Layers and Boundaries
 
-## Общий принцип
+The repository now follows the `EngineBase/` layout from `dev-log/plan.md` Step 1.
 
-Проект делится на пять основных зон:
-
-- `src/foundation` — базовые value-type primitives;
-- `src/core` — микроядро и только микроядро;
-- `src/layers` — подключаемые слои runtime;
-- `src/apps` — executable hosts и composition roots;
-- `tests` — unit, integration и regression tests.
-
-Архитектурные границы должны быть видны прямо по структуре каталогов.
-
-## Правило `core`
-
-`core` не знает:
-
-- о DX11;
-- о форматах ресурсов;
-- о gameplay logic;
-- о platform-specific деталях beyond contracts.
-
-`core` знает только про:
-
-- lifecycle;
-- typed services;
-- modules;
-- events;
-- tasks;
-- diagnostics;
-- configuration.
-
-## Правило `foundation`
-
-`foundation` находится ниже `core` и всех слоев. Это место только для маленьких и стабильных примитивов:
-
-- `Result` / `Error`;
-- `Path`;
-- `StringId` / `NameId`;
-- `Handle<T>`.
-
-Если тип не является общим низкоуровневым примитивом, ему не место в `foundation`.
-
-## Правило `layers`
-
-Каждый слой живет в своей подпапке и не растекается по проекту.
-
-Текущая форма:
+## Current module layout
 
 ```text
-src/foundation/
-  error/
-  result/
-  paths/
-  ids/
-  handles/
-
-src/layers/
-  platform/
-    interfaces/
-    windows/
-  runtime/
-    interfaces/
-    placeholders/
+EngineBase/
+  Foundation/
+  Memory/
+  Diagnostics/
+  Core/
+  Platform/
+  Input/
+  RHI/
+  RHI_D3D11/
+  Apps/
+  Tests/
 ```
 
-Следующими должны появляться:
+## Dependency intent
 
-- `rhi/`
-- `renderer/`
-- `gameplay/`
-- `tools/`
+- `Foundation` stays at the bottom and exposes only low-level primitives.
+- `Diagnostics`, `Core`, and `Platform` contain the currently implemented runtime slice.
+- `Memory`, `Input`, `RHI`, and `RHI_D3D11` already exist as separate module targets so later steps can grow them without another repository move.
+- Composition lives under `EngineBase/Apps/*`.
+- Test entry points live under `EngineBase/Tests/*`.
 
-## Правило границ между слоями
+## Include boundary rule
 
-- слой зависит от `core`, но не наоборот;
-- `core` и `layers` могут зависеть от `foundation`;
-- public contracts слоя лежат внутри самого слоя;
-- placeholder и stub-реализации лежат рядом со своим слоем;
-- executable host в `src/apps/*` собирает composition root, но не переносит логику обратно в ядро.
+Public headers are consumed only through module include roots such as:
 
-## Почему это важно
+```cpp
+#include <Epidemic/Foundation/result.h>
+#include <Epidemic/Core/application.h>
+#include <Epidemic/Platform/iplatform_runtime.h>
+```
 
-Без жестких границ проект быстро деградирует в:
-
-- размытые зависимости;
-- скрытые сервисные связи;
-- глобальное состояние;
-- смешение runtime, renderer и gameplay.
-
-Эта структура нужна для архитектурной дисциплины, а не ради косметики.
-
-## Текущий статус
-
-- `core` уже физически отделен от слоев;
-- `foundation` уже существует как отдельная базовая зона;
-- `runtime` уже существует как отдельный слой с placeholder interfaces;
-- `platform` уже существует как отдельный слой с Windows-first runtime implementation;
-- дальнейшие subsystem-реализации должны добавляться только внутрь `layers/*`.
+No code should include another module through private source paths.

@@ -1,0 +1,21 @@
+function(epidemic_configure_target target_name)
+    target_compile_features(${target_name} PUBLIC cxx_std_20)
+
+    if(MSVC)
+        target_compile_options(${target_name} PRIVATE /W4 /permissive-)
+    endif()
+endfunction()
+
+add_subdirectory(Foundation)
+add_subdirectory(Memory)
+add_subdirectory(Diagnostics)
+add_subdirectory(Core)
+add_subdirectory(Platform)
+add_subdirectory(Input)
+add_subdirectory(RHI)
+add_subdirectory(RHI_D3D11)
+add_subdirectory(Apps)
+
+if(BUILD_TESTING)
+    add_subdirectory(Tests)
+endif()

@@ -1,0 +1,3 @@
+add_subdirectory(Unit)
+add_subdirectory(Integration)
+add_subdirectory(Regression)
