@@ -12,15 +12,17 @@
 - bootstrap diagnostics и configuration;
 - sync/queued event bus;
 - task scheduler;
-- безопасное завершение модулей в обратном порядке.
+- безопасное завершение модулей в обратном порядке;
+- защита от повторной некорректной инициализации после lifecycle failure.
 
 ## Что не входит в микроядро
 
 - DirectX 11 и любой конкретный rendering backend;
 - реальная реализация VFS и Resource Manager;
+- platform runtime implementations;
 - scripting VM;
 - gameplay systems;
-- platform-specific windowing beyond future contracts.
+- composition root приложения.
 
 ## Текущая структура
 
@@ -41,7 +43,7 @@ src/core/
 
 ### Bootstrap
 
-- регистрируются базовые typed services;
+- регистрируются только core typed services;
 - вычисляется порядок модулей;
 - модули проходят стадию `OnBootstrap`.
 
@@ -49,13 +51,13 @@ src/core/
 
 - модули инициализируются в уже рассчитанном порядке;
 - здесь допустимо подписываться на события;
-- runtime-level services уже доступны по typed interface.
+- runtime-level services уже доступны, если их зарегистрировал host.
 
 ### Run
 
-- вызывается platform event pump;
 - дренируются queued events;
-- дожидаются завершения запланированных задач.
+- дожидаются завершения запланированных задач;
+- это один runtime slice, а не полноценный platform loop.
 
 ### Shutdown
 
@@ -87,14 +89,16 @@ Service container поддерживает только typed interfaces:
 
 - null service instance запрещен;
 - повторная регистрация одного typed service запрещена;
-- новый код не использует строковой service locator.
+- новый код не использует строковой service locator;
+- `core` регистрирует только свои default-сервисы.
 
 ## События
 
 Микроядро поддерживает две модели событий:
 
 - `PublishSync(event)` — немедленная доставка;
-- `Enqueue(event)` + `DrainQueued()` — отложенная доставка.
+- `Enqueue(event)` + `DrainQueued()` — отложенная доставка;
+- `Unsubscribe(token)` — явная отписка handler'ов.
 
 Для queued dispatch зафиксирован базовый FIFO-контракт, который закреплен тестами.
 
@@ -105,24 +109,25 @@ Service container поддерживает только typed interfaces:
 - принимает задачи через `Schedule`;
 - умеет ждать `idle` через `WaitIdle`;
 - не использует fibers;
-- покрыт unit и regression tests.
+- не проглатывает исключения бесследно, а пробрасывает первую ошибку через `WaitIdle`.
 
 ## Гарантии текущей реализации
 
 - проект собирается через CMake;
 - исполняемый файл стартует;
 - модули проходят bootstrap, initialize и shutdown;
-- shutdown идет в обратном порядке;
+- shutdown идет в обратном порядке, включая частично bootstrapped состояние после ошибки;
 - typed services реально используются;
 - sync/queued events работают;
-- scheduler исполняет простые задачи;
+- scheduler исполняет простые задачи и не скрывает падения;
 - есть базовые и регрессионные тесты на container, lifecycle, events, scheduler и composition root.
 
 ## Что считать завершенным в блоке Microkernel
 
 Блок `1. Microkernel` сейчас можно считать закрытым на длительный этап работ, потому что:
 
-- composition root уже существует;
+- composition root уже вынесен в `src/apps/*`;
 - ядро не зависит от DX11;
+- ядро не зависит от concrete platform/runtime implementations;
 - новые слои можно подключать поверх `core`, не меняя модель приложения;
 - дальнейшее развитие должно происходить в `layers/*`, а не внутри базовой orchestration-модели.

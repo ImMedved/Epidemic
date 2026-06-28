@@ -7,6 +7,7 @@
 
 #include <filesystem>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -58,6 +59,39 @@ namespace
     return utf8_string;
 }
 
+[[nodiscard]] std::string FormatWindowsErrorMessage(DWORD error_code)
+{
+    if (error_code == 0)
+    {
+        return "code=0";
+    }
+
+    std::wstring message_buffer(512, L'\0');
+    const auto message_length =
+        FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error_code, 0,
+                       message_buffer.data(), static_cast<DWORD>(message_buffer.size()), nullptr);
+
+    std::ostringstream stream;
+    stream << "code=" << error_code;
+    if (message_length > 0)
+    {
+        std::wstring_view windows_message(message_buffer.data(), message_length);
+        while (!windows_message.empty() &&
+               (windows_message.back() == L'\r' || windows_message.back() == L'\n' || windows_message.back() == L' '))
+        {
+            windows_message.remove_suffix(1);
+        }
+
+        const auto utf8_message = NarrowWideString(windows_message);
+        if (!utf8_message.empty())
+        {
+            stream << ", message=" << utf8_message;
+        }
+    }
+
+    return stream.str();
+}
+
 [[nodiscard]] ProcessInfo BuildProcessInfo()
 {
     ProcessInfo process_info;
@@ -107,12 +141,16 @@ class WindowsDynamicLibrary final : public IDynamicLibrary
 
     [[nodiscard]] epidemic::foundation::Result<void *> FindSymbol(std::string_view symbol_name) const override
     {
+        SetLastError(ERROR_SUCCESS);
         const auto *symbol = GetProcAddress(module_handle_, std::string(symbol_name).c_str());
         if (symbol == nullptr)
         {
+            const auto error_code = GetLastError();
             return epidemic::foundation::Result<void *>::Failure(
-                epidemic::foundation::Error::Create("platform.symbol_not_found",
-                                                    "Failed to resolve dynamic library symbol"));
+                epidemic::foundation::Error::Create(
+                    "platform.symbol_not_found",
+                    "Failed to resolve symbol '" + std::string(symbol_name) + "' in library '" + name_ + "' (" +
+                        FormatWindowsErrorMessage(error_code) + ")"));
         }
 
         return epidemic::foundation::Result<void *>::Success(reinterpret_cast<void *>(symbol));
@@ -155,8 +193,12 @@ WindowsPlatformRuntime::LoadDynamicLibrary(const epidemic::foundation::Path &pat
     const auto module_handle = LoadLibraryW(path.Native().c_str());
     if (module_handle == nullptr)
     {
+        const auto error_code = GetLastError();
         return epidemic::foundation::Result<DynamicLibraryPtr>::Failure(
-            epidemic::foundation::Error::Create("platform.load_library_failed", "Failed to load dynamic library"));
+            epidemic::foundation::Error::Create(
+                "platform.load_library_failed",
+                "Failed to load dynamic library '" + path.GenericString() + "' (" + FormatWindowsErrorMessage(error_code) +
+                    ")"));
     }
 
     const auto library_name = path.GenericString().empty() ? path.Native().string() : path.GenericString();

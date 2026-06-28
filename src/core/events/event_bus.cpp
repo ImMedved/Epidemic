@@ -1,11 +1,17 @@
 #include "core/events/event_bus.h"
 
+#include <stdexcept>
 #include <utility>
 
 namespace epidemic::core::events
 {
 IEventBus::HandlerToken EventBus::SubscribeImpl(std::type_index event_type, EventDispatchMode mode, AnyEventHandler handler)
 {
+    if (!handler)
+    {
+        throw std::invalid_argument("Event handler must be valid");
+    }
+
     std::scoped_lock lock(mutex_);
 
     auto &subscriptions = mode == EventDispatchMode::Sync ? sync_subscriptions_ : queued_subscriptions_;
@@ -48,6 +54,34 @@ std::size_t EventBus::DrainQueued()
     }
 
     return drained;
+}
+
+bool EventBus::Unsubscribe(HandlerToken token)
+{
+    std::scoped_lock lock(mutex_);
+
+    auto erase_from_subscriptions = [token](auto &subscriptions) {
+        for (auto subscription_it = subscriptions.begin(); subscription_it != subscriptions.end(); ++subscription_it)
+        {
+            auto &bucket = subscription_it->second;
+            for (auto bucket_it = bucket.begin(); bucket_it != bucket.end(); ++bucket_it)
+            {
+                if (bucket_it->token == token)
+                {
+                    bucket.erase(bucket_it);
+                    if (bucket.empty())
+                    {
+                        subscriptions.erase(subscription_it);
+                    }
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    };
+
+    return erase_from_subscriptions(sync_subscriptions_) || erase_from_subscriptions(queued_subscriptions_);
 }
 
 void EventBus::DispatchSync(std::type_index event_type, const std::any &event)

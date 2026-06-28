@@ -4,13 +4,6 @@
 #include "core/diagnostics/console_logger.h"
 #include "core/events/event_bus.h"
 #include "core/tasks/task_scheduler.h"
-#include "layers/runtime/interfaces/irenderer.h"
-#include "layers/runtime/interfaces/iresource_manager.h"
-#include "layers/runtime/interfaces/iscript_host.h"
-#include "layers/runtime/interfaces/ivirtual_file_system.h"
-#include "layers/runtime/placeholders/null_services.h"
-#include "layers/platform/interfaces/iplatform_runtime.h"
-#include "layers/platform/windows/windows_platform_runtime.h"
 
 #include <stdexcept>
 #include <string>
@@ -53,13 +46,21 @@ int Application::Bootstrap()
         throw std::runtime_error("Application bootstrap called in invalid state");
     }
 
-    RegisterCoreServices();
-    auto logger = Logger();
-    logger->Info("Application", "Bootstrap started");
-    modules_.BootstrapAll(services_, *logger);
-    logger->Info("Application", "Bootstrap finished");
-    state_ = State::Bootstrapped;
-    return 0;
+    try
+    {
+        RegisterCoreServices();
+        auto logger = Logger();
+        logger->Info("Application", "Bootstrap started");
+        modules_.BootstrapAll(services_, *logger);
+        logger->Info("Application", "Bootstrap finished");
+        state_ = State::Bootstrapped;
+        return 0;
+    }
+    catch (...)
+    {
+        state_ = State::Failed;
+        throw;
+    }
 }
 
 int Application::Initialize()
@@ -69,12 +70,20 @@ int Application::Initialize()
         throw std::runtime_error("Application initialize called in invalid state");
     }
 
-    auto logger = Logger();
-    logger->Info("Application", "Initialization started");
-    modules_.InitializeAll(services_, *logger);
-    logger->Info("Application", "Initialization finished");
-    state_ = State::Initialized;
-    return 0;
+    try
+    {
+        auto logger = Logger();
+        logger->Info("Application", "Initialization started");
+        modules_.InitializeAll(services_, *logger);
+        logger->Info("Application", "Initialization finished");
+        state_ = State::Initialized;
+        return 0;
+    }
+    catch (...)
+    {
+        state_ = State::Failed;
+        throw;
+    }
 }
 
 int Application::Run()
@@ -86,21 +95,27 @@ int Application::Run()
 
     state_ = State::Running;
 
-    auto logger = Logger();
-    logger->Info("Application", "Run started");
+    try
+    {
+        auto logger = Logger();
+        logger->Info("Application", "Run started");
 
-    const auto event_bus = services_.Get<events::IEventBus>();
-    const auto platform_runtime = services_.Get<layers::platform::IPlatformRuntime>();
-    const auto scheduler = services_.Get<tasks::ITaskScheduler>();
+        const auto event_bus = services_.Get<events::IEventBus>();
+        const auto scheduler = services_.Get<tasks::ITaskScheduler>();
 
-    platform_runtime->PumpEvents();
-    const auto drained = event_bus->DrainQueued();
-    scheduler->WaitIdle();
+        const auto drained = event_bus->DrainQueued();
+        scheduler->WaitIdle();
 
-    logger->Info("Application", "Queued events drained: " + std::to_string(drained));
-    logger->Info("Application", "Run finished");
-    state_ = State::Initialized;
-    return 0;
+        logger->Info("Application", "Queued events drained: " + std::to_string(drained));
+        logger->Info("Application", "Run finished");
+        state_ = State::Initialized;
+        return 0;
+    }
+    catch (...)
+    {
+        state_ = State::Failed;
+        throw;
+    }
 }
 
 int Application::Shutdown()
@@ -117,20 +132,29 @@ int Application::Shutdown()
     }
 
     RegisterCoreServices();
-    auto logger = Logger();
-    logger->Info("Application", "Shutdown started");
-
-    if (state_ == State::Bootstrapped || state_ == State::Initialized || state_ == State::Running)
+    try
     {
-        modules_.ShutdownAll(services_, *logger);
+        auto logger = Logger();
+        logger->Info("Application", "Shutdown started");
+
+        if (state_ == State::Bootstrapped || state_ == State::Initialized || state_ == State::Running ||
+            state_ == State::Failed)
+        {
+            modules_.ShutdownAll(services_, *logger);
+        }
+
+        const auto scheduler = services_.Get<tasks::ITaskScheduler>();
+        scheduler->WaitIdle();
+
+        logger->Info("Application", "Shutdown finished");
+        state_ = State::ShutDown;
+        return 0;
     }
-
-    const auto scheduler = services_.Get<tasks::ITaskScheduler>();
-    scheduler->WaitIdle();
-
-    logger->Info("Application", "Shutdown finished");
-    state_ = State::ShutDown;
-    return 0;
+    catch (...)
+    {
+        state_ = State::Failed;
+        throw;
+    }
 }
 
 void Application::RegisterCoreServices()
@@ -140,15 +164,22 @@ void Application::RegisterCoreServices()
         return;
     }
 
-    services_.Emplace<diagnostics::ILogger, diagnostics::ConsoleLogger>();
-    services_.Emplace<config::IConfiguration, config::MemoryConfiguration>();
-    services_.Emplace<events::IEventBus, events::EventBus>();
-    services_.Emplace<tasks::ITaskScheduler, tasks::SimpleTaskScheduler>(options_.worker_count);
-    services_.Emplace<layers::platform::IPlatformRuntime, layers::platform::WindowsPlatformRuntime>();
-    services_.Emplace<layers::runtime::IVirtualFileSystem, layers::runtime::NullVirtualFileSystem>();
-    services_.Emplace<layers::runtime::IResourceManager, layers::runtime::NullResourceManager>();
-    services_.Emplace<layers::runtime::IRenderer, layers::runtime::NullRenderer>();
-    services_.Emplace<layers::runtime::IScriptHost, layers::runtime::NullScriptHost>();
+    if (!services_.Contains<diagnostics::ILogger>())
+    {
+        services_.Emplace<diagnostics::ILogger, diagnostics::ConsoleLogger>();
+    }
+    if (!services_.Contains<config::IConfiguration>())
+    {
+        services_.Emplace<config::IConfiguration, config::MemoryConfiguration>();
+    }
+    if (!services_.Contains<events::IEventBus>())
+    {
+        services_.Emplace<events::IEventBus, events::EventBus>();
+    }
+    if (!services_.Contains<tasks::ITaskScheduler>())
+    {
+        services_.Emplace<tasks::ITaskScheduler, tasks::SimpleTaskScheduler>(options_.worker_count);
+    }
 
     const auto configuration = services_.Get<config::IConfiguration>();
     configuration->SetString("application.name", options_.application_name);

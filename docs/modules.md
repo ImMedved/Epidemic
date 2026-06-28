@@ -10,8 +10,10 @@
 - initialize;
 - run;
 - shutdown;
-- регистрацию базовых сервисов;
+- регистрацию только core-сервисов;
 - orchestration module registry.
+
+`core/application` не знает о concrete platform/runtime implementations и не собирает composition root.
 
 ### `core/modules`
 
@@ -21,7 +23,8 @@
 - manifest модуля;
 - зависимости модулей;
 - вычисление execution plan;
-- обратный порядок shutdown.
+- обратный порядок shutdown;
+- корректное завершение уже bootstrapped модулей после lifecycle failure.
 
 ### `core/services`
 
@@ -33,7 +36,8 @@
 
 - sync dispatch;
 - queued dispatch;
-- drain queued events.
+- drain queued events;
+- explicit unsubscribe by handler token.
 
 ### `core/tasks`
 
@@ -41,7 +45,8 @@
 
 - worker thread pool stub;
 - queue задач;
-- ожидание `idle`.
+- ожидание `idle`;
+- проброс первой ошибки из worker task через `WaitIdle`.
 
 ### `core/diagnostics`
 
@@ -67,7 +72,7 @@
 
 ### `foundation/ids`
 
-Содержит `StringId` и `NameId` как легкие strongly-typed идентификаторы поверх стабильного hash-представления строки.
+Содержит `StringId` и `NameId` как легкие strongly-typed идентификаторы поверх стабильного hash-представления строки. Пустая строка намеренно дает invalid id.
 
 ### `foundation/handles`
 
@@ -87,6 +92,7 @@
 - предоставлять monotonic clock;
 - загружать dynamic libraries;
 - искать exported symbols;
+- отдавать более подробные platform diagnostics при ошибках загрузки и symbol lookup;
 - участвовать в composition root как typed platform service.
 
 ## Текущий слой `runtime`
@@ -102,7 +108,12 @@
 
 ### `layers/runtime/placeholders`
 
-Содержит временные stub/null implementations этих контрактов. Они нужны, чтобы `core` уже умел собирать runtime composition, не дожидаясь реальных подсистем.
+Содержит честные null implementations этих контрактов. Они не притворяются рабочими subsystems и не скрывают отсутствие реальной реализации:
+
+- `NullVirtualFileSystem` ничего не монтирует и не сообщает о существующих файлах;
+- `NullResourceManager` не сообщает о существующих ресурсах;
+- `NullRenderer` является no-op;
+- `NullScriptHost` всегда not ready.
 
 ## Текущий app host
 
@@ -111,7 +122,8 @@
 Содержит:
 
 - entry point;
-- composition root;
+- `application_composition.*` как composition root;
+- регистрацию concrete platform/runtime services;
 - demo modules, которые демонстрируют lifecycle, события и задачи.
 
 Это технический bootstrap host, а не игровое приложение.
@@ -122,7 +134,7 @@
 - интерфейс и реализация живут рядом внутри своего модуля;
 - зависимости между модулями должны быть явными;
 - `core` не разрастается в сторону rendering, resources или gameplay;
-- если подсистема не является частью orchestration, ей не место в `core`.
+- concrete implementations подключаются из `apps/*`, а не из `core`.
 
 ## Что будет следующим
 

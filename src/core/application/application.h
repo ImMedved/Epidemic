@@ -1,15 +1,16 @@
 #pragma once
 
-#include "core/config/configuration.h"
-#include "core/diagnostics/logger.h"
-#include "core/events/event_bus.h"
 #include "core/modules/module_registry.h"
 #include "core/services/service_container.h"
-#include "core/tasks/task_scheduler.h"
 
 #include <cstddef>
 #include <memory>
 #include <string>
+
+namespace epidemic::core::diagnostics
+{
+class ILogger;
+}
 
 namespace epidemic::core
 {
@@ -48,6 +49,7 @@ class Application
         Bootstrapped,
         Initialized,
         Running,
+        Failed,
         ShutDown,
     };
 

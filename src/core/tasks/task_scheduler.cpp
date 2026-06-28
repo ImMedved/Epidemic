@@ -47,6 +47,15 @@ void SimpleTaskScheduler::WaitIdle()
 {
     std::unique_lock lock(mutex_);
     idle_cv_.wait(lock, [this] { return tasks_.empty() && active_tasks_ == 0; });
+
+    auto first_exception = first_exception_;
+    first_exception_ = nullptr;
+    lock.unlock();
+
+    if (first_exception)
+    {
+        std::rethrow_exception(first_exception);
+    }
 }
 
 void SimpleTaskScheduler::WorkerLoop(std::stop_token stop_token)
@@ -74,6 +83,11 @@ void SimpleTaskScheduler::WorkerLoop(std::stop_token stop_token)
         }
         catch (...)
         {
+            std::scoped_lock lock(mutex_);
+            if (first_exception_ == nullptr)
+            {
+                first_exception_ = std::current_exception();
+            }
         }
 
         {

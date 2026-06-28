@@ -1,4 +1,4 @@
-#include "apps/epidemic_app/demo_modules.h"
+#include "apps/epidemic_app/application_composition.h"
 #include "core/application/application.h"
 
 #include <exception>
@@ -9,11 +9,8 @@ int main()
     try
     {
         epidemic::core::Application application;
-        auto modules = epidemic::apps::epidemic_app::CreateDemoModules();
-        for (auto &module : modules)
-        {
-            application.Modules().Register(std::move(module));
-        }
+        epidemic::apps::epidemic_app::RegisterApplicationServices(application.Services());
+        epidemic::apps::epidemic_app::RegisterApplicationModules(application.Modules());
 
         application.Bootstrap();
         application.Initialize();

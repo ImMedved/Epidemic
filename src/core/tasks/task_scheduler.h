@@ -2,6 +2,7 @@
 
 #include <condition_variable>
 #include <cstddef>
+#include <exception>
 #include <functional>
 #include <mutex>
 #include <queue>
@@ -46,6 +47,7 @@ class SimpleTaskScheduler final : public ITaskScheduler
     std::queue<Task> tasks_;
     std::vector<std::jthread> workers_;
     std::size_t active_tasks_{0};
+    std::exception_ptr first_exception_;
     bool stopping_{false};
 };
 } // namespace epidemic::core::tasks

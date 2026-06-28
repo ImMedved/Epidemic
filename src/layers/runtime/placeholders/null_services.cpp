@@ -4,17 +4,20 @@ namespace epidemic::layers::runtime
 {
 bool NullVirtualFileSystem::Mount(const epidemic::foundation::Path &root)
 {
-    return !root.Empty();
+    static_cast<void>(root);
+    return false;
 }
 
 bool NullVirtualFileSystem::Exists(const epidemic::foundation::Path &path) const
 {
-    return !path.Empty();
+    static_cast<void>(path);
+    return false;
 }
 
 bool NullResourceManager::HasResource(std::string_view resource_id) const
 {
-    return !resource_id.empty();
+    static_cast<void>(resource_id);
+    return false;
 }
 
 void NullRenderer::RequestFrame()

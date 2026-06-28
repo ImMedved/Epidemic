@@ -43,6 +43,10 @@ target_link_libraries(epidemic_layers_runtime
     PUBLIC epidemic_core epidemic_foundation
 )
 
+if(NOT WIN32)
+    message(FATAL_ERROR "Epidemic Engine v1.0 currently supports only Windows for the platform slice.")
+endif()
+
 add_library(epidemic_layers_platform STATIC
     src/layers/platform/windows/windows_platform_runtime.cpp
 )
@@ -56,6 +60,7 @@ target_link_libraries(epidemic_layers_platform
 )
 
 add_library(epidemic_apps_epidemic_app STATIC
+    src/apps/epidemic_app/application_composition.cpp
     src/apps/epidemic_app/demo_modules.cpp
 )
 
@@ -89,7 +94,7 @@ if(BUILD_TESTING)
     )
 
     target_link_libraries(epidemic_tests
-        PRIVATE epidemic_core epidemic_layers_runtime epidemic_layers_platform epidemic_foundation
+        PRIVATE epidemic_apps_epidemic_app epidemic_core epidemic_layers_runtime epidemic_layers_platform epidemic_foundation
     )
 
     if(MSVC)

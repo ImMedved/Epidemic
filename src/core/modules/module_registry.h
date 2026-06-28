@@ -33,6 +33,7 @@ class ModuleRegistry
         Registered,
         Bootstrapped,
         Initialized,
+        Failed,
         ShutDown,
     };
 
@@ -42,6 +43,7 @@ class ModuleRegistry
     std::vector<std::unique_ptr<IModule>> modules_;
     std::unordered_map<std::string, std::size_t> module_index_by_id_;
     std::vector<std::size_t> execution_plan_;
+    std::size_t bootstrapped_count_{0};
     LifecycleState state_{LifecycleState::Empty};
 };
 } // namespace epidemic::core

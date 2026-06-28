@@ -5,6 +5,7 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <stdexcept>
 #include <typeindex>
 #include <unordered_map>
 #include <vector>
@@ -29,6 +30,10 @@ class IEventBus
     {
         // Sync handlers run immediately on PublishSync in the caller's thread.
         auto typed_handler = std::function<void(const EventT &)>(std::forward<HandlerT>(handler));
+        if (!typed_handler)
+        {
+            throw std::invalid_argument("Event handler must be valid");
+        }
         return SubscribeImpl(typeid(EventT), EventDispatchMode::Sync,
                              [typed_handler = std::move(typed_handler)](const std::any &payload) {
                                  typed_handler(std::any_cast<const EventT &>(payload));
@@ -39,6 +44,10 @@ class IEventBus
     {
         // Queued handlers run later when the bus is explicitly drained.
         auto typed_handler = std::function<void(const EventT &)>(std::forward<HandlerT>(handler));
+        if (!typed_handler)
+        {
+            throw std::invalid_argument("Event handler must be valid");
+        }
         return SubscribeImpl(typeid(EventT), EventDispatchMode::Queued,
                              [typed_handler = std::move(typed_handler)](const std::any &payload) {
                                  typed_handler(std::any_cast<const EventT &>(payload));
@@ -59,6 +68,8 @@ class IEventBus
 
     // Delivers all queued events and returns the number of dispatched entries.
     [[nodiscard]] virtual std::size_t DrainQueued() = 0;
+    // Removes a previously registered event handler by token.
+    [[nodiscard]] virtual bool Unsubscribe(HandlerToken token) = 0;
 
   private:
     virtual HandlerToken SubscribeImpl(std::type_index event_type, EventDispatchMode mode, AnyEventHandler handler) = 0;
@@ -71,6 +82,7 @@ class EventBus final : public IEventBus
   public:
     // Flushes the queued event FIFO in submission order.
     [[nodiscard]] std::size_t DrainQueued() override;
+    [[nodiscard]] bool Unsubscribe(HandlerToken token) override;
 
   private:
     struct Subscription

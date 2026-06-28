@@ -1,5 +1,6 @@
 #include "core/modules/module_registry.h"
 
+#include <algorithm>
 #include <functional>
 #include <sstream>
 #include <stdexcept>
@@ -58,14 +59,25 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
     }
 
     EnsureExecutionPlan(logger);
-    for (const auto index : execution_plan_)
-    {
-        const auto &module = modules_[index];
-        logger.Info("Core", BuildLifecycleMessage("Bootstrapping", module->Manifest()));
-        module->OnBootstrap(services);
-    }
+    bootstrapped_count_ = 0;
 
-    state_ = LifecycleState::Bootstrapped;
+    try
+    {
+        for (const auto index : execution_plan_)
+        {
+            const auto &module = modules_[index];
+            logger.Info("Core", BuildLifecycleMessage("Bootstrapping", module->Manifest()));
+            module->OnBootstrap(services);
+            ++bootstrapped_count_;
+        }
+
+        state_ = LifecycleState::Bootstrapped;
+    }
+    catch (...)
+    {
+        state_ = LifecycleState::Failed;
+        throw;
+    }
 }
 
 void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILogger &logger)
@@ -75,19 +87,28 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
         throw std::runtime_error("Invalid state for module initialization");
     }
 
-    for (const auto index : execution_plan_)
+    try
     {
-        const auto &module = modules_[index];
-        logger.Info("Core", BuildLifecycleMessage("Initializing", module->Manifest()));
-        module->OnInitialize(services);
-    }
+        for (const auto index : execution_plan_)
+        {
+            const auto &module = modules_[index];
+            logger.Info("Core", BuildLifecycleMessage("Initializing", module->Manifest()));
+            module->OnInitialize(services);
+        }
 
-    state_ = LifecycleState::Initialized;
+        state_ = LifecycleState::Initialized;
+    }
+    catch (...)
+    {
+        state_ = LifecycleState::Failed;
+        throw;
+    }
 }
 
 void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
-    if (state_ != LifecycleState::Bootstrapped && state_ != LifecycleState::Initialized)
+    if (state_ != LifecycleState::Bootstrapped && state_ != LifecycleState::Initialized &&
+        state_ != LifecycleState::Failed)
     {
         if (state_ == LifecycleState::ShutDown)
         {
@@ -98,14 +119,26 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
     }
 
     EnsureExecutionPlan(logger);
-    for (auto it = execution_plan_.rbegin(); it != execution_plan_.rend(); ++it)
-    {
-        const auto &module = modules_[*it];
-        logger.Info("Core", BuildLifecycleMessage("Shutting down", module->Manifest()));
-        module->OnShutdown(services);
-    }
+    const auto shutdown_count = std::min(bootstrapped_count_, execution_plan_.size());
 
-    state_ = LifecycleState::ShutDown;
+    try
+    {
+        for (std::size_t reverse_index = shutdown_count; reverse_index > 0; --reverse_index)
+        {
+            const auto execution_index = execution_plan_[reverse_index - 1];
+            const auto &module = modules_[execution_index];
+            logger.Info("Core", BuildLifecycleMessage("Shutting down", module->Manifest()));
+            module->OnShutdown(services);
+        }
+
+        bootstrapped_count_ = 0;
+        state_ = LifecycleState::ShutDown;
+    }
+    catch (...)
+    {
+        state_ = LifecycleState::Failed;
+        throw;
+    }
 }
 
 std::size_t ModuleRegistry::Size() const noexcept
