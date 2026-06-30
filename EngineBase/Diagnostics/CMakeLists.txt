@@ -1,5 +1,8 @@
 add_library(EpidemicDiagnostics STATIC
     src/console_logger.cpp
+    src/counters.cpp
+    src/profiling.cpp
+    src/thread_context.cpp
 )
 
 target_include_directories(EpidemicDiagnostics PUBLIC

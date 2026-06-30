@@ -1,5 +1,7 @@
 #include <Epidemic/Core/module_registry.h>
 
+#include <Epidemic/Diagnostics/profiling.h>
+
 #include <algorithm>
 #include <functional>
 #include <sstream>
@@ -59,11 +61,13 @@ void ModuleRegistry::Register(std::unique_ptr<IModule> module)
 
 void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
+    EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::BootstrapAll");
     if (state_ != LifecycleState::Registered && state_ != LifecycleState::Empty)
     {
         throw std::runtime_error("Invalid state for module bootstrap");
     }
 
+    logger.Info("Core", "Modules", "Registered modules: " + std::to_string(modules_.size()));
     EnsureExecutionPlan(logger);
     bootstrapped_count_ = 0;
 
@@ -72,7 +76,7 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Info("Core", BuildLifecycleMessage("Bootstrapping", module->Manifest()));
+            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Bootstrapping", module->Manifest()));
             module->Bootstrap(services);
             ++bootstrapped_count_;
         }
@@ -88,6 +92,7 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
 
 void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
+    EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::InitializeAll");
     if (state_ != LifecycleState::Bootstrapped)
     {
         throw std::runtime_error("Invalid state for module initialization");
@@ -98,7 +103,7 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Info("Core", BuildLifecycleMessage("Initializing", module->Manifest()));
+            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Initializing", module->Manifest()));
             module->Initialize(services);
         }
 
@@ -113,6 +118,7 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
 
 void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
+    EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::TickAll");
     if (state_ != LifecycleState::Initialized)
     {
         throw std::runtime_error("Invalid state for module tick");
@@ -123,7 +129,7 @@ void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &l
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Debug("Core", BuildLifecycleMessage("Ticking", module->Manifest()));
+            logger.Debug("Core", "Lifecycle", BuildLifecycleMessage("Ticking", module->Manifest()));
             module->Tick(services);
         }
     }
@@ -136,6 +142,7 @@ void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &l
 
 void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
+    EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::ShutdownAll");
     if (state_ == LifecycleState::Empty || state_ == LifecycleState::Registered || state_ == LifecycleState::ShutDown)
     {
         return;
@@ -155,7 +162,7 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
         {
             const auto execution_index = execution_plan_[reverse_index - 1];
             const auto &module = modules_[execution_index];
-            logger.Info("Core", BuildLifecycleMessage("Shutting down", module->Manifest()));
+            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Shutting down", module->Manifest()));
             module->Shutdown(services);
         }
 
@@ -243,6 +250,6 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
         }
         stream << modules_[execution_plan_[index]]->Manifest().id;
     }
-    logger.Info("Core", stream.str());
+    logger.Info("Core", "Modules", stream.str());
 }
 } // namespace epidemic::core

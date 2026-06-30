@@ -1,5 +1,9 @@
 #include <Epidemic/Core/task_scheduler.h>
 
+#include <Epidemic/Diagnostics/counters.h>
+#include <Epidemic/Diagnostics/profiling.h>
+#include <Epidemic/Diagnostics/thread_context.h>
+
 #include <stdexcept>
 #include <utility>
 
@@ -21,7 +25,6 @@ struct TaskGroup::State
     std::size_t remaining_tasks{0};
     std::exception_ptr first_exception;
 };
-
 
 bool TaskHandle::IsValid() const noexcept
 {
@@ -54,9 +57,15 @@ SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count)
     worker_names_.reserve(worker_count);
     for (std::size_t index = 0; index < worker_count; ++index)
     {
-        worker_names_.push_back("EpidemicWorker-" + std::to_string(index));
-        workers_.emplace_back([this](std::stop_token stop_token) { WorkerLoop(stop_token); });
+        const auto worker_name = "EpidemicWorker-" + std::to_string(index);
+        worker_names_.push_back(worker_name);
+        workers_.emplace_back([this, worker_name](std::stop_token stop_token) {
+            diagnostics::SetCurrentThreadName(worker_name);
+            WorkerLoop(stop_token);
+        });
     }
+
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::WorkerCount, static_cast<std::int64_t>(worker_names_.size()));
 }
 
 SimpleTaskScheduler::~SimpleTaskScheduler()
@@ -112,6 +121,7 @@ void SimpleTaskScheduler::Wait(const TaskGroup &group)
 
 void SimpleTaskScheduler::WaitIdle()
 {
+    EPIDEMIC_PROFILE_SCOPE("TaskScheduler::WaitIdle");
     std::unique_lock lock(mutex_);
     idle_cv_.wait(lock, [this] { return tasks_.empty() && active_tasks_ == 0; });
 
@@ -133,7 +143,6 @@ void SimpleTaskScheduler::Shutdown()
         {
             return;
         }
-
 
         stopping_ = true;
     }
@@ -171,7 +180,6 @@ TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGrou
     auto handle_state = std::make_shared<TaskHandle::State>();
     handle_state->debug_name = std::move(debug_name);
 
-
     {
         std::scoped_lock lock(mutex_);
         if (stopping_)
@@ -186,6 +194,7 @@ TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGrou
         }
 
         tasks_.push(QueuedTask{std::move(task), handle_state, std::move(group_state)});
+        diagnostics::GlobalCounters().Increment(diagnostics::CounterId::TasksScheduled);
     }
 
     cv_.notify_one();
@@ -248,6 +257,7 @@ void SimpleTaskScheduler::WorkerLoop(std::stop_token stop_token)
             }
             --active_tasks_;
             ++completed_tasks_;
+            diagnostics::GlobalCounters().Increment(diagnostics::CounterId::TasksCompleted);
         }
 
         idle_cv_.notify_all();

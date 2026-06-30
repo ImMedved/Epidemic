@@ -1,5 +1,8 @@
 #include <Epidemic/Core/event_bus.h>
 
+#include <Epidemic/Diagnostics/counters.h>
+#include <Epidemic/Diagnostics/profiling.h>
+
 #include <stdexcept>
 #include <utility>
 
@@ -29,10 +32,12 @@ void EventBus::EnqueueImpl(std::type_index event_type, std::any event)
 {
     std::scoped_lock lock(mutex_);
     queued_events_.push(QueuedEvent{event_type, std::move(event)});
+    diagnostics::GlobalCounters().Increment(diagnostics::CounterId::QueuedEvents);
 }
 
 std::size_t EventBus::DrainQueued()
 {
+    EPIDEMIC_PROFILE_SCOPE("EventBus::DrainQueued");
     std::size_t drained = 0;
 
     while (true)
@@ -49,6 +54,7 @@ std::size_t EventBus::DrainQueued()
             queued_events_.pop();
         }
 
+        diagnostics::GlobalCounters().Decrement(diagnostics::CounterId::QueuedEvents);
         DispatchQueued(next_event.type, next_event.payload);
         ++drained;
     }

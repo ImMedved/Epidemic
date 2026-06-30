@@ -6,7 +6,10 @@
 #include <Epidemic/Core/module_registry.h>
 #include <Epidemic/Core/service_container.h>
 #include <Epidemic/Core/task_scheduler.h>
+#include <Epidemic/Diagnostics/counters.h>
 #include <Epidemic/Diagnostics/logger.h>
+#include <Epidemic/Diagnostics/profiling.h>
+#include <Epidemic/Diagnostics/thread_context.h>
 #include <Epidemic/Foundation/error.h>
 #include <Epidemic/Foundation/handle.h>
 #include <Epidemic/Foundation/path.h>
@@ -61,12 +64,25 @@ bool NearlyEqual(double left, double right, double epsilon = 1e-9)
 class RecordingLogger final : public ILogger
 {
   public:
-    void Log(epidemic::diagnostics::LogLevel, std::string_view category, std::string_view message) override
+    struct Entry
     {
-        entries.emplace_back(std::string(category) + ":" + std::string(message));
+        epidemic::diagnostics::LogLevel level{};
+        std::string module_name;
+        std::string category;
+        std::string message;
+        std::string thread_name;
+    };
+
+    void Log(const epidemic::diagnostics::LogMessage &message) override
+    {
+        entries.emplace_back(std::string(message.module_name) + ":" + std::string(message.category) + ":" +
+                             std::string(message.message));
+        records.push_back(Entry{message.level, std::string(message.module_name), std::string(message.category),
+                                std::string(message.message), std::string(message.thread_name)});
     }
 
     std::vector<std::string> entries;
+    std::vector<Entry> records;
 };
 
 class ProbeModule final : public epidemic::core::IModule
@@ -328,6 +344,51 @@ void TestMemoryBaseline()
     Assert(tracker.GetStatistics(AllocationTag::Tests).allocated_bytes == 0,
            "Tracking allocator must normalize zero-sized frees consistently");
 }
+void TestDiagnosticsBaseline()
+{
+    epidemic::diagnostics::GlobalCounters().Reset();
+    epidemic::diagnostics::SetCurrentThreadName("DiagnosticsTest");
+
+    RecordingLogger logger;
+    logger.Info("Diagnostics", "Logger", "baseline ready");
+    Assert(logger.records.size() == 1, "Logger must receive messages");
+    Assert(logger.records.front().module_name == "Diagnostics", "Logger must preserve module name");
+    Assert(logger.records.front().category == "Logger", "Logger must preserve category");
+    Assert(logger.records.front().message == "baseline ready", "Logger must preserve message text");
+    Assert(logger.records.front().thread_name == "DiagnosticsTest", "Logger must capture thread name when available");
+
+    auto collector = std::make_shared<epidemic::diagnostics::InMemoryProfileCollector>();
+    epidemic::diagnostics::SetProfileCollector(collector);
+    epidemic::diagnostics::SetProfilingEnabled(true);
+    {
+        EPIDEMIC_PROFILE_SCOPE("DiagnosticsScope");
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+
+    const auto profile_events = collector->Snapshot();
+    Assert(profile_events.size() == 1, "Profiling scope must record an event");
+    Assert(profile_events.front().name == "DiagnosticsScope", "Profiling scope must preserve the scope name");
+    Assert(profile_events.front().duration.count() > 0, "Profiling scope must record a non-zero duration");
+
+    epidemic::diagnostics::GlobalCounters().Increment(epidemic::diagnostics::CounterId::Frames);
+    epidemic::diagnostics::GlobalCounters().Increment(epidemic::diagnostics::CounterId::TasksScheduled, 3);
+    epidemic::diagnostics::GlobalCounters().Decrement(epidemic::diagnostics::CounterId::TasksScheduled);
+    epidemic::diagnostics::GlobalCounters().Set(epidemic::diagnostics::CounterId::FrameTimeMicros, 16667);
+    Assert(epidemic::diagnostics::GlobalCounters().Get(epidemic::diagnostics::CounterId::Frames) == 1,
+           "Diagnostics counters must increment correctly");
+    Assert(epidemic::diagnostics::GlobalCounters().Get(epidemic::diagnostics::CounterId::TasksScheduled) == 2,
+           "Diagnostics counters must support increment and decrement");
+    Assert(epidemic::diagnostics::GlobalCounters().Get(epidemic::diagnostics::CounterId::FrameTimeMicros) == 16667,
+           "Diagnostics counters must support explicit set/get");
+
+    epidemic::diagnostics::SetProfileCollector(nullptr);
+    epidemic::diagnostics::SetProfilingEnabled(false);
+    {
+        EPIDEMIC_PROFILE_SCOPE("DisabledDiagnosticsScope");
+    }
+    epidemic::diagnostics::SetProfilingEnabled(true);
+}
+
 void TestConfigurationContracts()
 {
     epidemic::core::config::BasicConfiguration configuration;
@@ -801,6 +862,7 @@ int RunAllTests()
     const std::vector<NamedTest> tests{
         {"FoundationPrimitives", &TestFoundationPrimitives},
         {"MemoryBaseline", &TestMemoryBaseline},
+        {"DiagnosticsBaseline", &TestDiagnosticsBaseline},
         {"ConfigurationContracts", &TestConfigurationContracts},
         {"ServiceContainerContracts", &TestServiceContainerContracts},
         {"ModuleRegistryContracts", &TestModuleRegistryContracts},
@@ -832,6 +894,9 @@ int main()
         return EXIT_FAILURE;
     }
 }
+
+
+
 
 
 

@@ -1670,14 +1670,14 @@ Lower systems do not know about future upper systems
 
 ### Шаг 5. Diagnostics / Profiling Baseline
 
-* [ ] Реализован logger interface
-* [ ] Реализованы уровни логирования
-* [ ] В логах есть module/category/thread/timestamp
-* [ ] Реализован profiling scope API
-* [ ] Реализованы counters
-* [ ] Реализован startup/shutdown diagnostics output
-* [ ] Diagnostics можно отключить без падения
-* [ ] Добавлены тесты Diagnostics
+* [x] Реализован logger interface
+* [x] Реализованы уровни логирования
+* [x] В логах есть module/category/thread/timestamp
+* [x] Реализован profiling scope API
+* [x] Реализованы counters
+* [x] Реализован startup/shutdown diagnostics output
+* [x] Diagnostics можно отключить без падения
+* [x] Добавлены тесты Diagnostics
 
 ### Шаг 6. Frame Loop / Frame Phases
 

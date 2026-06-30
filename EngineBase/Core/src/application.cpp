@@ -3,9 +3,13 @@
 #include <Epidemic/Core/configuration.h>
 #include <Epidemic/Core/event_bus.h>
 #include <Epidemic/Core/task_scheduler.h>
+#include <Epidemic/Diagnostics/counters.h>
 #include <Epidemic/Diagnostics/logger.h>
+#include <Epidemic/Diagnostics/profiling.h>
 
+#include <chrono>
 #include <stdexcept>
+#include <string>
 #include <utility>
 
 namespace epidemic::core
@@ -67,9 +71,24 @@ int Application::Bootstrap()
         }
 
         auto logger = Logger();
-        logger->Info("Application", "Bootstrap started");
+        logger->Info("Application", "Lifecycle", "Bootstrap started");
+        if (const auto runtime_name = configuration->GetRuntimeName(); runtime_name.has_value())
+        {
+            logger->Info("Application", "Config", "Runtime name: " + *runtime_name);
+        }
+        if (const auto worker_count = configuration->GetWorkerCount(); worker_count.has_value())
+        {
+            diagnostics::GlobalCounters().Set(diagnostics::CounterId::WorkerCount, static_cast<std::int64_t>(*worker_count));
+            logger->Info("Application", "Config", "Worker threads: " + std::to_string(*worker_count));
+        }
+        if (const auto memory_tracking = configuration->GetMemoryTrackingEnabled(); memory_tracking.has_value())
+        {
+            logger->Info("Application", "Config",
+                         std::string("Memory tracking: ") + (*memory_tracking ? "enabled" : "disabled"));
+        }
+
         modules_.BootstrapAll(services_, *logger);
-        logger->Info("Application", "Bootstrap finished");
+        logger->Info("Application", "Lifecycle", "Bootstrap finished");
         state_ = State::Bootstrapped;
         return 0;
     }
@@ -90,9 +109,9 @@ int Application::Initialize()
     try
     {
         auto logger = Logger();
-        logger->Info("Application", "Initialization started");
+        logger->Info("Application", "Lifecycle", "Initialization started");
         modules_.InitializeAll(services_, *logger);
-        logger->Info("Application", "Initialization finished");
+        logger->Info("Application", "Lifecycle", "Initialization finished");
         state_ = State::Initialized;
         return 0;
     }
@@ -110,12 +129,14 @@ int Application::Tick()
         throw std::runtime_error("Application tick called in invalid state");
     }
 
+    EPIDEMIC_PROFILE_SCOPE("Application::Tick");
+    const auto tick_start = std::chrono::steady_clock::now();
     state_ = State::Running;
 
     try
     {
         auto logger = Logger();
-        logger->Debug("Application", "Tick started");
+        logger->Debug("Application", "Lifecycle", "Tick started");
 
         modules_.TickAll(services_, *logger);
 
@@ -124,7 +145,12 @@ int Application::Tick()
         static_cast<void>(event_bus->DrainQueued());
         scheduler->WaitIdle();
 
-        logger->Debug("Application", "Tick finished");
+        diagnostics::GlobalCounters().Increment(diagnostics::CounterId::Frames);
+        diagnostics::GlobalCounters().Set(
+            diagnostics::CounterId::FrameTimeMicros,
+            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tick_start).count());
+
+        logger->Debug("Application", "Lifecycle", "Tick finished");
         state_ = State::Initialized;
         return 0;
     }
@@ -143,9 +169,9 @@ int Application::Run()
     }
 
     auto logger = Logger();
-    logger->Info("Application", "Run started");
+    logger->Info("Application", "Lifecycle", "Run started");
     const auto result = Tick();
-    logger->Info("Application", "Run finished");
+    logger->Info("Application", "Lifecycle", "Run finished");
     return result;
 }
 
@@ -166,7 +192,7 @@ int Application::Shutdown()
     {
         ValidateCoreServices();
         auto logger = Logger();
-        logger->Info("Application", "Shutdown started");
+        logger->Info("Application", "Lifecycle", "Shutdown started");
 
         modules_.ShutdownAll(services_, *logger);
 
@@ -174,7 +200,7 @@ int Application::Shutdown()
         scheduler->Shutdown();
         scheduler->WaitIdle();
 
-        logger->Info("Application", "Shutdown finished");
+        logger->Info("Application", "Lifecycle", "Shutdown finished");
         state_ = State::ShutDown;
         return 0;
     }
@@ -198,4 +224,3 @@ std::shared_ptr<diagnostics::ILogger> Application::Logger() const
     return services_.Get<diagnostics::ILogger>();
 }
 } // namespace epidemic::core
-
