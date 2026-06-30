@@ -17,6 +17,7 @@ class ModuleRegistry
     void Register(std::unique_ptr<IModule> module);
     void BootstrapAll(ServiceContainer &services, diagnostics::ILogger &logger);
     void InitializeAll(ServiceContainer &services, diagnostics::ILogger &logger);
+    void TickAll(ServiceContainer &services, diagnostics::ILogger &logger);
     void ShutdownAll(ServiceContainer &services, diagnostics::ILogger &logger);
     [[nodiscard]] std::size_t Size() const noexcept;
 

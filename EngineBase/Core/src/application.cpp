@@ -3,16 +3,25 @@
 #include <Epidemic/Core/configuration.h>
 #include <Epidemic/Core/event_bus.h>
 #include <Epidemic/Core/task_scheduler.h>
-#include <Epidemic/Diagnostics/console_logger.h>
-
-#include "memory_configuration.h"
+#include <Epidemic/Diagnostics/logger.h>
 
 #include <stdexcept>
-#include <string>
 #include <utility>
 
 namespace epidemic::core
 {
+namespace
+{
+template <typename TService>
+void EnsureRegistered(const ServiceContainer &services, std::string_view service_name)
+{
+    if (!services.Contains<TService>())
+    {
+        throw std::runtime_error("Required service is not registered: " + std::string(service_name));
+    }
+}
+} // namespace
+
 Application::Application(ApplicationOptions options) : options_(std::move(options))
 {
 }
@@ -50,7 +59,13 @@ int Application::Bootstrap()
 
     try
     {
-        RegisterCoreServices();
+        ValidateCoreServices();
+        const auto configuration = services_.Get<config::IConfiguration>();
+        if (!configuration->GetRuntimeName().has_value())
+        {
+            configuration->SetRuntimeName(options_.application_name);
+        }
+
         auto logger = Logger();
         logger->Info("Application", "Bootstrap started");
         modules_.BootstrapAll(services_, *logger);
@@ -88,11 +103,11 @@ int Application::Initialize()
     }
 }
 
-int Application::Run()
+int Application::Tick()
 {
     if (state_ != State::Initialized)
     {
-        throw std::runtime_error("Application run called in invalid state");
+        throw std::runtime_error("Application tick called in invalid state");
     }
 
     state_ = State::Running;
@@ -100,16 +115,16 @@ int Application::Run()
     try
     {
         auto logger = Logger();
-        logger->Info("Application", "Run started");
+        logger->Debug("Application", "Tick started");
+
+        modules_.TickAll(services_, *logger);
 
         const auto event_bus = services_.Get<events::IEventBus>();
         const auto scheduler = services_.Get<tasks::ITaskScheduler>();
-
-        const auto drained = event_bus->DrainQueued();
+        static_cast<void>(event_bus->DrainQueued());
         scheduler->WaitIdle();
 
-        logger->Info("Application", "Queued events drained: " + std::to_string(drained));
-        logger->Info("Application", "Run finished");
+        logger->Debug("Application", "Tick finished");
         state_ = State::Initialized;
         return 0;
     }
@@ -118,6 +133,20 @@ int Application::Run()
         state_ = State::Failed;
         throw;
     }
+}
+
+int Application::Run()
+{
+    if (state_ != State::Initialized)
+    {
+        throw std::runtime_error("Application run called in invalid state");
+    }
+
+    auto logger = Logger();
+    logger->Info("Application", "Run started");
+    const auto result = Tick();
+    logger->Info("Application", "Run finished");
+    return result;
 }
 
 int Application::Shutdown()
@@ -133,19 +162,16 @@ int Application::Shutdown()
         return 0;
     }
 
-    RegisterCoreServices();
     try
     {
+        ValidateCoreServices();
         auto logger = Logger();
         logger->Info("Application", "Shutdown started");
 
-        if (state_ == State::Bootstrapped || state_ == State::Initialized || state_ == State::Running ||
-            state_ == State::Failed)
-        {
-            modules_.ShutdownAll(services_, *logger);
-        }
+        modules_.ShutdownAll(services_, *logger);
 
         const auto scheduler = services_.Get<tasks::ITaskScheduler>();
+        scheduler->Shutdown();
         scheduler->WaitIdle();
 
         logger->Info("Application", "Shutdown finished");
@@ -159,34 +185,12 @@ int Application::Shutdown()
     }
 }
 
-void Application::RegisterCoreServices()
+void Application::ValidateCoreServices() const
 {
-    if (services_registered_)
-    {
-        return;
-    }
-
-    if (!services_.Contains<diagnostics::ILogger>())
-    {
-        services_.Emplace<diagnostics::ILogger, diagnostics::ConsoleLogger>();
-    }
-    if (!services_.Contains<config::IConfiguration>())
-    {
-        services_.Emplace<config::IConfiguration, config::MemoryConfiguration>();
-    }
-    if (!services_.Contains<events::IEventBus>())
-    {
-        services_.Emplace<events::IEventBus, events::EventBus>();
-    }
-    if (!services_.Contains<tasks::ITaskScheduler>())
-    {
-        services_.Emplace<tasks::ITaskScheduler, tasks::SimpleTaskScheduler>(options_.worker_count);
-    }
-
-    const auto configuration = services_.Get<config::IConfiguration>();
-    configuration->SetString("application.name", options_.application_name);
-
-    services_registered_ = true;
+    EnsureRegistered<diagnostics::ILogger>(services_, "diagnostics::ILogger");
+    EnsureRegistered<config::IConfiguration>(services_, "config::IConfiguration");
+    EnsureRegistered<events::IEventBus>(services_, "events::IEventBus");
+    EnsureRegistered<tasks::ITaskScheduler>(services_, "tasks::ITaskScheduler");
 }
 
 std::shared_ptr<diagnostics::ILogger> Application::Logger() const
@@ -194,3 +198,4 @@ std::shared_ptr<diagnostics::ILogger> Application::Logger() const
     return services_.Get<diagnostics::ILogger>();
 }
 } // namespace epidemic::core
+

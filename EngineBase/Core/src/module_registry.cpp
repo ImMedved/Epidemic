@@ -73,7 +73,7 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
         {
             const auto &module = modules_[index];
             logger.Info("Core", BuildLifecycleMessage("Bootstrapping", module->Manifest()));
-            module->OnBootstrap(services);
+            module->Bootstrap(services);
             ++bootstrapped_count_;
         }
 
@@ -99,7 +99,7 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
         {
             const auto &module = modules_[index];
             logger.Info("Core", BuildLifecycleMessage("Initializing", module->Manifest()));
-            module->OnInitialize(services);
+            module->Initialize(services);
         }
 
         state_ = LifecycleState::Initialized;
@@ -111,16 +111,38 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
     }
 }
 
+void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &logger)
+{
+    if (state_ != LifecycleState::Initialized)
+    {
+        throw std::runtime_error("Invalid state for module tick");
+    }
+
+    try
+    {
+        for (const auto index : execution_plan_)
+        {
+            const auto &module = modules_[index];
+            logger.Debug("Core", BuildLifecycleMessage("Ticking", module->Manifest()));
+            module->Tick(services);
+        }
+    }
+    catch (...)
+    {
+        state_ = LifecycleState::Failed;
+        throw;
+    }
+}
+
 void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
-    if (state_ != LifecycleState::Bootstrapped && state_ != LifecycleState::Initialized &&
-        state_ != LifecycleState::Failed)
+    if (state_ == LifecycleState::Empty || state_ == LifecycleState::Registered || state_ == LifecycleState::ShutDown)
     {
-        if (state_ == LifecycleState::ShutDown)
-        {
-            return;
-        }
+        return;
+    }
 
+    if (state_ != LifecycleState::Bootstrapped && state_ != LifecycleState::Initialized && state_ != LifecycleState::Failed)
+    {
         throw std::runtime_error("Invalid state for module shutdown");
     }
 
@@ -134,7 +156,7 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
             const auto execution_index = execution_plan_[reverse_index - 1];
             const auto &module = modules_[execution_index];
             logger.Info("Core", BuildLifecycleMessage("Shutting down", module->Manifest()));
-            module->OnShutdown(services);
+            module->Shutdown(services);
         }
 
         bootstrapped_count_ = 0;

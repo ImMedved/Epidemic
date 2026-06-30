@@ -3,7 +3,7 @@ add_executable(EpidemicRegressionTests
 )
 
 target_link_libraries(EpidemicRegressionTests
-    PRIVATE EpidemicFoundation EpidemicCore EpidemicDiagnostics EpidemicPlatform
+    PRIVATE EpidemicFoundation EpidemicMemory EpidemicCore EpidemicDiagnostics EpidemicPlatform
 )
 
 epidemic_configure_target(EpidemicRegressionTests)

@@ -1627,46 +1627,46 @@ Lower systems do not know about future upper systems
 
 ### Шаг 2. Foundation
 
-* [ ] Реализован `Result<T>`
-* [ ] Реализован `Error`
-* [ ] Реализован `StringId`
-* [ ] Реализован `NameId`
-* [ ] Реализован `ModuleId`
-* [ ] Реализован `ServiceId`
-* [ ] Реализован `EventTypeId`
-* [ ] Пустая строка дает invalid id
-* [ ] Реализован `Handle<T>`
-* [ ] Реализованы time primitives
-* [ ] Реализован базовый `Path`
-* [ ] Добавлены тесты Foundation
+* [x] Реализован `Result<T>`
+* [x] Реализован `Error`
+* [x] Реализован `StringId`
+* [x] Реализован `NameId`
+* [x] Реализован `ModuleId`
+* [x] Реализован `ServiceId`
+* [x] Реализован `EventTypeId`
+* [x] Пустая строка дает invalid id
+* [x] Реализован `Handle<T>`
+* [x] Реализованы time primitives
+* [x] Реализован базовый `Path`
+* [x] Добавлены тесты Foundation
 
 ### Шаг 3. Memory / Allocators Baseline
 
-* [ ] Реализован memory tracking
-* [ ] Реализованы allocation tags
-* [ ] Реализован учет allocated bytes
-* [ ] Реализован учет peak allocated bytes
-* [ ] Реализован учет allocation count
-* [ ] Реализована per-tag statistics
-* [ ] Реализован memory budget interface
-* [ ] Реализован over-budget detection
-* [ ] Добавлены тесты Memory
+* [x] Реализован memory tracking
+* [x] Реализованы allocation tags
+* [x] Реализован учет allocated bytes
+* [x] Реализован учет peak allocated bytes
+* [x] Реализован учет allocation count
+* [x] Реализована per-tag statistics
+* [x] Реализован memory budget interface
+* [x] Реализован over-budget detection
+* [x] Добавлены тесты Memory
 
 ### Шаг 4. Microkernel / Core
 
-* [ ] Реализован application lifecycle
-* [ ] Реализован module interface
-* [ ] Реализован dependency-aware module registry
-* [ ] Реализован reverse shutdown
-* [ ] Реализован service container
-* [ ] Реализован event bus
-* [ ] Реализован unsubscribe для event bus
-* [ ] Реализован task scheduler
-* [ ] Реализован worker pool
-* [ ] Реализована exception propagation из задач
-* [ ] Реализован configuration service
-* [ ] Core не зависит от Platform/Input/RHI/D3D11
-* [ ] Добавлены тесты Core
+* [x] Реализован application lifecycle
+* [x] Реализован module interface
+* [x] Реализован dependency-aware module registry
+* [x] Реализован reverse shutdown
+* [x] Реализован service container
+* [x] Реализован event bus
+* [x] Реализован unsubscribe для event bus
+* [x] Реализован task scheduler
+* [x] Реализован worker pool
+* [x] Реализована exception propagation из задач
+* [x] Реализован configuration service
+* [x] Core не зависит от Platform/Input/RHI/D3D11
+* [x] Добавлены тесты Core
 
 ### Шаг 5. Diagnostics / Profiling Baseline
 
