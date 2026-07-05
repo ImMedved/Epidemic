@@ -8,8 +8,12 @@
 #include <Epidemic/Diagnostics/profiling.h>
 
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <queue>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace epidemic::core
@@ -22,6 +26,34 @@ void EnsureRegistered(const ServiceContainer &services, std::string_view service
     if (!services.Contains<TService>())
     {
         throw std::runtime_error("Required service is not registered: " + std::string(service_name));
+    }
+}
+
+[[nodiscard]] constexpr std::size_t ToIndex(FramePhase phase) noexcept
+{
+    return static_cast<std::size_t>(phase);
+}
+
+void UpdatePhaseDiagnostics(FramePhase phase, std::int64_t duration_micros) noexcept
+{
+    using diagnostics::CounterId;
+
+    switch (phase)
+    {
+    case FramePhase::PumpPlatformEvents:
+        diagnostics::GlobalCounters().Set(CounterId::PlatformPumpTimeMicros, duration_micros);
+        break;
+    case FramePhase::UpdateInput:
+        diagnostics::GlobalCounters().Set(CounterId::InputUpdateTimeMicros, duration_micros);
+        break;
+    case FramePhase::TickModules:
+        diagnostics::GlobalCounters().Set(CounterId::ModuleTickTimeMicros, duration_micros);
+        break;
+    case FramePhase::Present:
+        diagnostics::GlobalCounters().Set(CounterId::PresentTimeMicros, duration_micros);
+        break;
+    default:
+        break;
     }
 }
 } // namespace
@@ -86,6 +118,10 @@ int Application::Bootstrap()
             logger->Info("Application", "Config",
                          std::string("Memory tracking: ") + (*memory_tracking ? "enabled" : "disabled"));
         }
+        if (options_.frame_limit.has_value())
+        {
+            logger->Info("Application", "Config", "Frame limit: " + std::to_string(*options_.frame_limit));
+        }
 
         modules_.BootstrapAll(services_, *logger);
         logger->Info("Application", "Lifecycle", "Bootstrap finished");
@@ -129,28 +165,11 @@ int Application::Tick()
         throw std::runtime_error("Application tick called in invalid state");
     }
 
-    EPIDEMIC_PROFILE_SCOPE("Application::Tick");
-    const auto tick_start = std::chrono::steady_clock::now();
     state_ = State::Running;
 
     try
     {
-        auto logger = Logger();
-        logger->Debug("Application", "Lifecycle", "Tick started");
-
-        modules_.TickAll(services_, *logger);
-
-        const auto event_bus = services_.Get<events::IEventBus>();
-        const auto scheduler = services_.Get<tasks::ITaskScheduler>();
-        static_cast<void>(event_bus->DrainQueued());
-        scheduler->WaitIdle();
-
-        diagnostics::GlobalCounters().Increment(diagnostics::CounterId::Frames);
-        diagnostics::GlobalCounters().Set(
-            diagnostics::CounterId::FrameTimeMicros,
-            std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tick_start).count());
-
-        logger->Debug("Application", "Lifecycle", "Tick finished");
+        ExecuteFrame();
         state_ = State::Initialized;
         return 0;
     }
@@ -170,9 +189,36 @@ int Application::Run()
 
     auto logger = Logger();
     logger->Info("Application", "Lifecycle", "Run started");
-    const auto result = Tick();
-    logger->Info("Application", "Lifecycle", "Run finished");
-    return result;
+    state_ = State::Running;
+
+    try
+    {
+        while (!StopRequested() && !ReachedFrameLimit())
+        {
+            ExecuteFrame();
+        }
+
+        if (StopRequested())
+        {
+            logger->Info("Application", "Lifecycle", "Run finished (stop requested)");
+        }
+        else if (ReachedFrameLimit())
+        {
+            logger->Info("Application", "Lifecycle", "Run finished (frame limit reached)");
+        }
+        else
+        {
+            logger->Info("Application", "Lifecycle", "Run finished");
+        }
+
+        state_ = State::Initialized;
+        return 0;
+    }
+    catch (...)
+    {
+        state_ = State::Failed;
+        throw;
+    }
 }
 
 int Application::Shutdown()
@@ -197,8 +243,35 @@ int Application::Shutdown()
         modules_.ShutdownAll(services_, *logger);
 
         const auto scheduler = services_.Get<tasks::ITaskScheduler>();
-        scheduler->Shutdown();
-        scheduler->WaitIdle();
+        try
+        {
+            scheduler->Shutdown();
+        }
+        catch (const std::exception &exception)
+        {
+            logger->Error("Application", "Shutdown",
+                          "Task scheduler shutdown reported an error: " + std::string(exception.what()));
+        }
+        catch (...)
+        {
+            logger->Error("Application", "Shutdown",
+                          "Task scheduler shutdown reported an unknown error");
+        }
+
+        try
+        {
+            scheduler->WaitIdle();
+        }
+        catch (const std::exception &exception)
+        {
+            logger->Error("Application", "Shutdown",
+                          "Task scheduler drain reported an error during shutdown: " + std::string(exception.what()));
+        }
+        catch (...)
+        {
+            logger->Error("Application", "Shutdown",
+                          "Task scheduler drain reported an unknown error during shutdown");
+        }
 
         logger->Info("Application", "Lifecycle", "Shutdown finished");
         state_ = State::ShutDown;
@@ -209,6 +282,57 @@ int Application::Shutdown()
         state_ = State::Failed;
         throw;
     }
+}
+
+void Application::RequestStop() noexcept
+{
+    stop_requested_.store(true, std::memory_order_relaxed);
+}
+
+void Application::ResetStopRequest() noexcept
+{
+    stop_requested_.store(false, std::memory_order_relaxed);
+}
+
+bool Application::StopRequested() const noexcept
+{
+    return stop_requested_.load(std::memory_order_relaxed);
+}
+
+void Application::SetFrameLimit(std::optional<std::uint64_t> frame_limit) noexcept
+{
+    options_.frame_limit = frame_limit;
+}
+
+std::optional<std::uint64_t> Application::FrameLimit() const noexcept
+{
+    return options_.frame_limit;
+}
+
+void Application::AddFramePhaseHandler(FramePhase phase, FramePhaseCallback callback, std::string debug_name)
+{
+    if (!callback)
+    {
+        throw std::invalid_argument("Frame phase handler must not be empty");
+    }
+
+    phase_handlers_[ToIndex(phase)].push_back(PhaseHandler{std::move(callback), std::move(debug_name)});
+}
+
+void Application::ScheduleMainThreadTask(MainThreadTask task, std::string debug_name)
+{
+    if (!task)
+    {
+        throw std::invalid_argument("Main thread task must not be empty");
+    }
+
+    std::scoped_lock lock(main_thread_tasks_mutex_);
+    main_thread_tasks_.push(ScheduledMainThreadTask{std::move(task), std::move(debug_name)});
+}
+
+const FrameContext &Application::CurrentFrameContext() const noexcept
+{
+    return current_frame_context_;
 }
 
 void Application::ValidateCoreServices() const
@@ -223,4 +347,189 @@ std::shared_ptr<diagnostics::ILogger> Application::Logger() const
 {
     return services_.Get<diagnostics::ILogger>();
 }
+
+void Application::ExecuteFrame()
+{
+    EPIDEMIC_PROFILE_SCOPE("Application::Tick");
+    const auto tick_start = std::chrono::steady_clock::now();
+    auto logger = Logger();
+    const auto frame_context = BuildNextFrameContext();
+
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::CurrentFrameIndex,
+                                      static_cast<std::int64_t>(frame_context.frame_index.Value()));
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::PlatformPumpTimeMicros, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::InputUpdateTimeMicros, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::ModuleTickTimeMicros, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::PresentTimeMicros, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::MainThreadTasksExecuted, 0);
+
+    logger->Debug("Application", "Frame", "Frame " + std::to_string(frame_context.frame_index.Value()) + " started");
+
+    for (const auto phase : FramePhaseOrder())
+    {
+        ExecutePhase(phase, frame_context, *logger);
+    }
+
+    const auto scheduler = services_.Get<tasks::ITaskScheduler>();
+    scheduler->WaitIdle();
+
+    diagnostics::GlobalCounters().Increment(diagnostics::CounterId::Frames);
+    diagnostics::GlobalCounters().Set(
+        diagnostics::CounterId::FrameTimeMicros,
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tick_start).count());
+
+    logger->Debug("Application", "Frame", "Frame " + std::to_string(frame_context.frame_index.Value()) + " finished");
+    ++executed_frame_count_;
+}
+
+void Application::ExecutePhase(FramePhase phase, const FrameContext &frame_context, diagnostics::ILogger &logger)
+{
+    const auto phase_start = std::chrono::steady_clock::now();
+
+    switch (phase)
+    {
+    case FramePhase::BeginFrame:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::BeginFrame");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        break;
+    }
+    case FramePhase::PumpPlatformEvents:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::PumpPlatformEvents");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        break;
+    }
+    case FramePhase::UpdateInput:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::UpdateInput");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        break;
+    }
+    case FramePhase::DrainEvents:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::DrainEvents");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        const auto event_bus = services_.Get<events::IEventBus>();
+        static_cast<void>(event_bus->DrainQueued());
+        break;
+    }
+    case FramePhase::RunScheduledMainThreadTasks:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::RunScheduledMainThreadTasks");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        static_cast<void>(RunScheduledMainThreadTasks());
+        break;
+    }
+    case FramePhase::TickModules:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::TickModules");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        modules_.TickAll(services_, logger, frame_context);
+        break;
+    }
+    case FramePhase::RhiBeginFrame:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::RhiBeginFrame");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        break;
+    }
+    case FramePhase::RhiEndFrame:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::RhiEndFrame");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        break;
+    }
+    case FramePhase::Present:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::Present");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        break;
+    }
+    case FramePhase::EndFrame:
+    {
+        EPIDEMIC_PROFILE_SCOPE("Application::Phase::EndFrame");
+        ExecuteRegisteredPhaseHandlers(phase, frame_context);
+        break;
+    }
+    case FramePhase::Count:
+        break;
+    }
+
+    const auto duration_micros =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - phase_start).count();
+    UpdatePhaseDiagnostics(phase, duration_micros);
+}
+
+void Application::ExecuteRegisteredPhaseHandlers(FramePhase phase, const FrameContext &frame_context)
+{
+    for (const auto &handler : phase_handlers_[ToIndex(phase)])
+    {
+        handler.callback(frame_context);
+    }
+}
+
+FrameContext Application::BuildNextFrameContext()
+{
+    const auto now = foundation::Clock::now();
+    if (!frame_clock_initialized_)
+    {
+        run_start_time_ = now;
+        previous_frame_time_ = now;
+        frame_clock_initialized_ = true;
+    }
+
+    auto raw_delta_time = now - previous_frame_time_;
+    if (executed_frame_count_ == 0)
+    {
+        raw_delta_time = foundation::Duration::zero();
+    }
+
+    previous_frame_time_ = now;
+
+    current_frame_context_ = FrameContext{
+        foundation::FrameIndex(executed_frame_count_),
+        foundation::FrameTime::FromDuration(raw_delta_time),
+        foundation::FrameTime::FromDuration(now - run_start_time_),
+        foundation::FrameTime::FromDuration(raw_delta_time),
+    };
+    return current_frame_context_;
+}
+
+bool Application::ReachedFrameLimit() const noexcept
+{
+    return options_.frame_limit.has_value() && executed_frame_count_ >= *options_.frame_limit;
+}
+
+std::size_t Application::RunScheduledMainThreadTasks()
+{
+    std::queue<ScheduledMainThreadTask> pending_tasks;
+    {
+        std::scoped_lock lock(main_thread_tasks_mutex_);
+        std::swap(pending_tasks, main_thread_tasks_);
+    }
+
+    std::size_t executed_tasks = 0;
+    try
+    {
+        while (!pending_tasks.empty())
+        {
+            auto task = std::move(pending_tasks.front());
+            pending_tasks.pop();
+            task.task();
+            ++executed_tasks;
+        }
+    }
+    catch (...)
+    {
+        diagnostics::GlobalCounters().Set(diagnostics::CounterId::MainThreadTasksExecuted,
+                                          static_cast<std::int64_t>(executed_tasks));
+        throw;
+    }
+
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::MainThreadTasksExecuted,
+                                      static_cast<std::int64_t>(executed_tasks));
+    return executed_tasks;
+}
 } // namespace epidemic::core
+

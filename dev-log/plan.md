@@ -1681,50 +1681,50 @@ Lower systems do not know about future upper systems
 
 ### Шаг 6. Frame Loop / Frame Phases
 
-* [ ] Реализован `FrameContext`
-* [ ] Реализован `FrameIndex`
-* [ ] Реализованы frame phases
-* [ ] Зафиксирован порядок фаз кадра
-* [ ] Зафиксированы main thread responsibilities
-* [ ] Реализован stop request
-* [ ] Реализован frame limit для smoke/tests
-* [ ] Реализованы frame diagnostics counters/scopes
-* [ ] Добавлены тесты Frame Loop
+* [x] Реализован `FrameContext`
+* [x] Реализован `FrameIndex`
+* [x] Реализованы frame phases
+* [x] Зафиксирован порядок фаз кадра
+* [x] Зафиксированы main thread responsibilities
+* [x] Реализован stop request
+* [x] Реализован frame limit для smoke/tests
+* [x] Реализованы frame diagnostics counters/scopes
+* [x] Добавлены тесты Frame Loop
 
 ### Шаг 7. Platform / Windows / Window
 
-* [ ] Реализован `IPlatformRuntime`
-* [ ] Реализован `IWindow`
-* [ ] Реализован `IWindowSystem`
-* [ ] Реализован `NativeWindowHandle`
-* [ ] Реализован Windows runtime
-* [ ] Реализован process info
-* [ ] Реализован high-resolution timer
-* [ ] Реализована dynamic library loading
-* [ ] Реализован symbol lookup
-* [ ] Реализовано Win32 window creation
-* [ ] Реализован message pump
-* [ ] Реализованы close/resize/focus/minimize/restore events
-* [ ] Реализованы DPI/client size basics
-* [ ] Добавлены тесты Platform
-* [ ] Создан `WindowSmokeApp`
+* [x] Реализован `IPlatformRuntime`
+* [x] Реализован `IWindow`
+* [x] Реализован `IWindowSystem`
+* [x] Реализован `NativeWindowHandle`
+* [x] Реализован Windows runtime
+* [x] Реализован process info
+* [x] Реализован high-resolution timer
+* [x] Реализована dynamic library loading
+* [x] Реализован symbol lookup
+* [x] Реализовано Win32 window creation
+* [x] Реализован message pump
+* [x] Реализованы close/resize/focus/minimize/restore events
+* [x] Реализованы DPI/client size basics
+* [x] Добавлены тесты Platform
+* [x] Создан `WindowSmokeApp`
 
 ### Шаг 8. Input
 
-* [ ] Реализован `IInputSystem`
-* [ ] Реализован `InputEvent`
-* [ ] Реализован `InputSnapshot`
-* [ ] Реализован `KeyboardState`
-* [ ] Реализован `MouseState`
-* [ ] Реализована обработка key down/up
-* [ ] Реализована обработка mouse move
-* [ ] Реализована обработка mouse buttons
-* [ ] Реализована обработка mouse wheel
-* [ ] Реализован сброс input state при потере фокуса
-* [ ] Реализован per-frame input snapshot
-* [ ] Input не содержит gameplay actions
-* [ ] Добавлены тесты Input
-* [ ] Создан `InputSmokeApp`
+* [x] Реализован `IInputSystem`
+* [x] Реализован `InputEvent`
+* [x] Реализован `InputSnapshot`
+* [x] Реализован `KeyboardState`
+* [x] Реализован `MouseState`
+* [x] Реализована обработка key down/up
+* [x] Реализована обработка mouse move
+* [x] Реализована обработка mouse buttons
+* [x] Реализована обработка mouse wheel
+* [x] Реализован сброс input state при потере фокуса
+* [x] Реализован per-frame input snapshot
+* [x] Input не содержит gameplay actions
+* [x] Добавлены тесты Input
+* [x] Создан `InputSmokeApp`
 
 ### Шаг 9. RHI
 

@@ -116,7 +116,7 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
     }
 }
 
-void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &logger)
+void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &logger, const FrameContext &frame_context)
 {
     EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::TickAll");
     if (state_ != LifecycleState::Initialized)
@@ -130,7 +130,7 @@ void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &l
         {
             const auto &module = modules_[index];
             logger.Debug("Core", "Lifecycle", BuildLifecycleMessage("Ticking", module->Manifest()));
-            module->Tick(services);
+            module->Tick(services, frame_context);
         }
     }
     catch (...)

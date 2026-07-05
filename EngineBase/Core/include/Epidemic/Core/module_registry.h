@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Epidemic/Core/frame_context.h>
 #include <Epidemic/Core/imodule.h>
 #include <Epidemic/Diagnostics/logger.h>
 #include <Epidemic/Foundation/string_id.h>
@@ -17,7 +18,7 @@ class ModuleRegistry
     void Register(std::unique_ptr<IModule> module);
     void BootstrapAll(ServiceContainer &services, diagnostics::ILogger &logger);
     void InitializeAll(ServiceContainer &services, diagnostics::ILogger &logger);
-    void TickAll(ServiceContainer &services, diagnostics::ILogger &logger);
+    void TickAll(ServiceContainer &services, diagnostics::ILogger &logger, const FrameContext &frame_context);
     void ShutdownAll(ServiceContainer &services, diagnostics::ILogger &logger);
     [[nodiscard]] std::size_t Size() const noexcept;
 

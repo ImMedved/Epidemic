@@ -42,6 +42,7 @@ int main()
     {
         epidemic::core::Application application;
         RegisterCoreServices(application, "EpidemicHeadlessCoreApp");
+        application.SetFrameLimit(1);
         application.Bootstrap();
         application.Initialize();
         application.Run();

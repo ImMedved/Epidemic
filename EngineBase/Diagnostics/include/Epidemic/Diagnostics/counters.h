@@ -17,6 +17,12 @@ enum class CounterId : std::uint8_t
     MemoryUsed,
     WorkerCount,
     FrameTimeMicros,
+    CurrentFrameIndex,
+    PlatformPumpTimeMicros,
+    InputUpdateTimeMicros,
+    ModuleTickTimeMicros,
+    PresentTimeMicros,
+    MainThreadTasksExecuted,
     Count,
 };
 
@@ -43,6 +49,18 @@ enum class CounterId : std::uint8_t
         return "worker_count";
     case CounterId::FrameTimeMicros:
         return "frame_time_micros";
+    case CounterId::CurrentFrameIndex:
+        return "current_frame_index";
+    case CounterId::PlatformPumpTimeMicros:
+        return "platform_pump_time_micros";
+    case CounterId::InputUpdateTimeMicros:
+        return "input_update_time_micros";
+    case CounterId::ModuleTickTimeMicros:
+        return "module_tick_time_micros";
+    case CounterId::PresentTimeMicros:
+        return "present_time_micros";
+    case CounterId::MainThreadTasksExecuted:
+        return "main_thread_tasks_executed";
     case CounterId::Count:
         break;
     }

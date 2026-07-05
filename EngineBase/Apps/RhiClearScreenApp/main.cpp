@@ -46,6 +46,12 @@ int main()
         epidemic::core::Application application;
         RegisterCoreServices(application, "EpidemicRhiClearScreenApp");
         application.Services().Emplace<epidemic::platform::IPlatformRuntime, epidemic::platform::WindowsPlatformRuntime>();
+        application.SetFrameLimit(1);
+        application.AddFramePhaseHandler(epidemic::core::FramePhase::PumpPlatformEvents,
+                                         [&application](const epidemic::core::FrameContext &) {
+                                             application.Services().Get<epidemic::platform::IPlatformRuntime>()->PumpEvents();
+                                         },
+                                         "RhiClearScreenApp::PumpPlatformEvents");
 
         const auto logger = application.Services().Get<epidemic::diagnostics::ILogger>();
         logger->Info("RhiClearScreenApp", "Platform", "Platform runtime: WindowsPlatformRuntime");

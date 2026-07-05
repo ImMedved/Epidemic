@@ -26,6 +26,15 @@
 #include <Epidemic/Platform/iwindow_system.h>
 #include <Epidemic/Platform/platform_event.h>
 #include <Epidemic/Platform/windows_platform_runtime.h>
+#include <Epidemic/RHI/descriptors.h>
+#include <Epidemic/RHI/null_rhi_device.h>
+
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+#ifdef CreateWindow
+#undef CreateWindow
+#endif
 
 #include <atomic>
 #include <chrono>
@@ -44,7 +53,7 @@
 #include <unordered_set>
 #include <vector>
 
-namespace
+namespace epidemic::tests
 {
 using epidemic::diagnostics::ILogger;
 
@@ -901,6 +910,15 @@ void TestInputContracts()
     Assert(stable_snapshot.update_index == press_snapshot.update_index + 1,
            "Each snapshot publication must advance the snapshot sequence");
 
+    epidemic::platform::PlatformEvent invalid_key_event;
+    invalid_key_event.type = epidemic::platform::PlatformEventType::KeyPressed;
+    invalid_key_event.key_code = 1;
+    input_system.QueuePlatformEvent(invalid_key_event);
+    input_system.PublishSnapshot();
+    Assert(input_system.CurrentEvents().empty(), "Unknown key codes must be ignored");
+    Assert(!input_system.CurrentSnapshot().keyboard.IsKeyDown(static_cast<epidemic::input::KeyCode>(1)),
+           "Unknown key codes must not pollute keyboard state");
+
     epidemic::platform::PlatformEvent key_up_event;
     key_up_event.type = epidemic::platform::PlatformEventType::KeyReleased;
     key_up_event.key_code = static_cast<std::uint32_t>(epidemic::input::KeyCode::A);
@@ -925,6 +943,15 @@ void TestInputContracts()
            "Input snapshot must preserve mouse position");
     Assert(mouse_snapshot.mouse.DeltaX() == 320 && mouse_snapshot.mouse.DeltaY() == 240,
            "Input snapshot must expose mouse deltas within the frame they were produced");
+
+    epidemic::platform::PlatformEvent invalid_mouse_button_event;
+    invalid_mouse_button_event.type = epidemic::platform::PlatformEventType::MouseButtonPressed;
+    invalid_mouse_button_event.mouse_button = 99;
+    input_system.QueuePlatformEvent(invalid_mouse_button_event);
+    input_system.PublishSnapshot();
+    Assert(input_system.CurrentEvents().empty(), "Unknown mouse buttons must be ignored");
+    Assert(!input_system.CurrentSnapshot().mouse.IsButtonDown(epidemic::input::MouseButton::Left),
+           "Unknown mouse buttons must not alias to Left");
 
     epidemic::platform::PlatformEvent mouse_press_event;
     mouse_press_event.type = epidemic::platform::PlatformEventType::MouseButtonPressed;
@@ -988,6 +1015,113 @@ void TestInputContracts()
     const auto snapshot_after_publish = input_system.CurrentSnapshot();
     Assert(snapshot_after_publish.mouse.PositionX() == 400 && snapshot_after_publish.mouse.PositionY() == 260,
            "Queued platform events must become visible only after PublishSnapshot");
+}
+
+void TestRhiContracts()
+{
+    const epidemic::rhi::RhiDeviceDesc invalid_device_desc{false, {}};
+    const auto invalid_device_result = epidemic::rhi::CreateNullRhiDevice(invalid_device_desc);
+    Assert(!invalid_device_result.HasValue(), "RHI device creation must reject empty device names");
+    Assert(invalid_device_result.GetError().HasCode("rhi.empty_device_name"),
+           "RHI device validation must return a meaningful error code");
+
+    const auto device_result = epidemic::rhi::CreateNullRhiDevice(epidemic::rhi::RhiDeviceDesc{true, "UnitTestNullRHI"});
+    Assert(device_result.HasValue(), "Null RHI device creation must succeed for valid descriptors");
+    const auto device = device_result.Value();
+    Assert(device->BackendName() == "NullRHI", "Null RHI device must report its backend name");
+    Assert(device->Descriptor().enable_debug_validation,
+           "RHI device descriptor must preserve debug-validation settings");
+
+    const auto command_context_result = device->CreateCommandContext();
+    Assert(command_context_result.HasValue(), "RHI device must create a command context");
+    const auto command_context = command_context_result.Value();
+    Assert(!command_context->IsFrameActive(), "Fresh RHI command context must start without an active frame");
+    Assert(!command_context->Clear(epidemic::rhi::RhiClearDesc{}).HasValue(),
+           "RHI command context must reject Clear outside an active frame");
+    Assert(command_context->BeginFrame().HasValue(), "RHI command context must begin a frame");
+    Assert(command_context->IsFrameActive(), "BeginFrame must activate the RHI command context");
+    Assert(command_context->BeginFrame().GetError().HasCode("rhi.frame_already_active"),
+           "RHI command context must reject nested BeginFrame calls");
+
+    epidemic::rhi::RhiClearDesc clear_desc;
+    clear_desc.color = epidemic::rhi::RhiColor{0.1f, 0.2f, 0.3f, 1.0f};
+    Assert(command_context->Clear(clear_desc).HasValue(), "RHI command context must accept valid clear operations");
+    Assert(command_context->EndFrame().HasValue(), "RHI command context must end an active frame");
+    Assert(!command_context->IsFrameActive(), "EndFrame must deactivate the RHI command context");
+    Assert(command_context->EndFrame().GetError().HasCode("rhi.no_active_frame"),
+           "RHI command context must reject EndFrame when no frame is active");
+
+    epidemic::rhi::RhiClearDesc invalid_clear_desc;
+    invalid_clear_desc.clear_color = false;
+    const auto invalid_clear_result = epidemic::rhi::Validate(invalid_clear_desc);
+    Assert(!invalid_clear_result.HasValue(), "RHI clear descriptor validation must reject no-op clears");
+    Assert(invalid_clear_result.GetError().HasCode("rhi.nothing_to_clear"),
+           "RHI clear descriptor validation must return a meaningful error code");
+
+    epidemic::rhi::RhiSwapChainDesc invalid_swap_chain_desc;
+    invalid_swap_chain_desc.width = 1280;
+    invalid_swap_chain_desc.height = 720;
+    invalid_swap_chain_desc.buffer_count = 2;
+    invalid_swap_chain_desc.color_format = epidemic::rhi::RhiPixelFormat::B8G8R8A8_UNorm;
+    const auto invalid_swap_chain_result = device->CreateSwapChain(invalid_swap_chain_desc);
+    Assert(!invalid_swap_chain_result.HasValue(), "RHI swap chain creation must reject missing surface handles");
+    Assert(invalid_swap_chain_result.GetError().HasCode("rhi.invalid_surface_handle"),
+           "RHI swap chain validation must return a meaningful error code");
+
+    epidemic::rhi::RhiSwapChainDesc swap_chain_desc;
+    swap_chain_desc.surface_handle = epidemic::rhi::PresentationSurfaceHandle(reinterpret_cast<void *>(1));
+    swap_chain_desc.width = 1280;
+    swap_chain_desc.height = 720;
+    swap_chain_desc.buffer_count = 2;
+    swap_chain_desc.color_format = epidemic::rhi::RhiPixelFormat::B8G8R8A8_UNorm;
+    const auto swap_chain_result = device->CreateSwapChain(swap_chain_desc);
+    Assert(swap_chain_result.HasValue(), "RHI device must create a swap chain for valid descriptors");
+    const auto swap_chain = swap_chain_result.Value();
+    Assert(swap_chain->Width() == 1280 && swap_chain->Height() == 720,
+           "RHI swap chain must preserve initial dimensions");
+    Assert(swap_chain->BufferCount() == 2, "RHI swap chain must preserve initial buffer count");
+    Assert(swap_chain->ColorFormat() == epidemic::rhi::RhiPixelFormat::B8G8R8A8_UNorm,
+           "RHI swap chain must preserve initial color format");
+    Assert(swap_chain->Present().HasValue(), "RHI swap chain must present successfully in the null backend");
+    Assert(swap_chain->Resize(1920, 1080).HasValue(), "RHI swap chain must resize successfully");
+    Assert(swap_chain->Width() == 1920 && swap_chain->Height() == 1080,
+           "RHI swap chain resize must update reported dimensions");
+    Assert(swap_chain->Resize(0, 1080).GetError().HasCode("rhi.invalid_swap_chain_size"),
+           "RHI swap chain resize must reject zero dimensions");
+
+    const auto invalid_buffer_result = device->CreateBuffer(epidemic::rhi::RhiBufferDesc{});
+    Assert(!invalid_buffer_result.HasValue(), "RHI buffer creation must reject zero-sized buffers");
+    Assert(invalid_buffer_result.GetError().HasCode("rhi.invalid_buffer_size"),
+           "RHI buffer validation must return a meaningful error code");
+
+    epidemic::rhi::RhiBufferDesc buffer_desc;
+    buffer_desc.size_bytes = 256;
+    buffer_desc.debug_name = "VertexBuffer";
+    const auto buffer_result = device->CreateBuffer(buffer_desc);
+    Assert(buffer_result.HasValue(), "RHI buffer creation must succeed for valid descriptors");
+    Assert(buffer_result.Value()->SizeBytes() == 256, "RHI buffer must preserve its size");
+    Assert(buffer_result.Value()->DebugName() == "VertexBuffer", "RHI buffer must preserve its debug name");
+
+    epidemic::rhi::RhiTextureDesc invalid_texture_desc;
+    invalid_texture_desc.width = 64;
+    invalid_texture_desc.height = 64;
+    const auto invalid_texture_result = device->CreateTexture(invalid_texture_desc);
+    Assert(!invalid_texture_result.HasValue(), "RHI texture creation must reject unknown formats");
+    Assert(invalid_texture_result.GetError().HasCode("rhi.invalid_texture_format"),
+           "RHI texture validation must return a meaningful error code");
+
+    epidemic::rhi::RhiTextureDesc texture_desc;
+    texture_desc.width = 64;
+    texture_desc.height = 32;
+    texture_desc.format = epidemic::rhi::RhiPixelFormat::R8G8B8A8_UNorm;
+    texture_desc.debug_name = "Albedo";
+    const auto texture_result = device->CreateTexture(texture_desc);
+    Assert(texture_result.HasValue(), "RHI texture creation must succeed for valid descriptors");
+    Assert(texture_result.Value()->Width() == 64 && texture_result.Value()->Height() == 32,
+           "RHI texture must preserve its dimensions");
+    Assert(texture_result.Value()->Format() == epidemic::rhi::RhiPixelFormat::R8G8B8A8_UNorm,
+           "RHI texture must preserve its format");
+    Assert(texture_result.Value()->DebugName() == "Albedo", "RHI texture must preserve its debug name");
 }
 void TestApplicationLifecycle()
 {
@@ -1093,6 +1227,36 @@ void TestApplicationLifecycle()
     Assert(tick_failure_application.Shutdown() == 0, "Application shutdown after tick failure must succeed");
 }
 
+void TestApplicationShutdownContracts()
+{
+    epidemic::core::Application application({"ShutdownContractsApplication"});
+    auto logger = RegisterApplicationCoreServices(application, 1, std::nullopt);
+
+    Assert(application.Bootstrap() == 0, "Shutdown-contract bootstrap must succeed");
+    Assert(application.Initialize() == 0, "Shutdown-contract initialize must succeed");
+
+    const auto scheduler = application.Services().Get<epidemic::core::tasks::ITaskScheduler>();
+    static_cast<void>(scheduler->Schedule([] { throw std::runtime_error("shutdown task failure"); },
+                                          "shutdown-task-failure"));
+
+    Assert(application.Shutdown() == 0,
+           "Application shutdown must finish even when the scheduler captured a task exception");
+
+    bool scheduler_error_logged = false;
+    for (const auto &record : logger->records)
+    {
+        if (record.level == epidemic::diagnostics::LogLevel::Error &&
+            record.category == "Shutdown" &&
+            record.message.find("shutdown task failure") != std::string::npos)
+        {
+            scheduler_error_logged = true;
+            break;
+        }
+    }
+
+    Assert(scheduler_error_logged,
+           "Application shutdown must log the scheduler exception instead of throwing it");
+}
 void TestPlatformRuntime()
 {
     auto platform_runtime = std::make_shared<epidemic::platform::WindowsPlatformRuntime>();
@@ -1145,8 +1309,7 @@ void TestPlatformRuntime()
     platform_runtime->PumpEvents();
     static_cast<void>(services.Get<epidemic::platform::IWindowSystem>()->DrainEvents());
 
-    window->Close();
-    platform_runtime->PumpEvents();
+    SendMessageW(window->GetNativeHandle().As<HWND>(), WM_CLOSE, 0, 0);
     platform_runtime->PumpEvents();
 
     bool close_event_seen = false;
@@ -1158,54 +1321,26 @@ void TestPlatformRuntime()
         }
     }
 
-    Assert(close_event_seen, "Closing a window must emit a close-requested platform event");
-    Assert(platform_runtime->IsExitRequested(), "Closing the last window must request platform exit");
+    Assert(close_event_seen, "WM_CLOSE must emit a close-requested platform event");
+    Assert(window->IsCloseRequested(), "WM_CLOSE must mark the window as close-requested");
+    Assert(services.Get<epidemic::platform::IWindowSystem>()->WindowCount() == 1,
+           "WM_CLOSE must not destroy the window until the app accepts the request");
+    Assert(!platform_runtime->IsExitRequested(),
+           "A close request alone must not mark the runtime as exiting before the window is destroyed");
+
+    window->Close();
+    platform_runtime->PumpEvents();
+    platform_runtime->PumpEvents();
+
+    Assert(platform_runtime->IsExitRequested(), "Destroying the last window must request platform exit");
     Assert(services.Get<epidemic::platform::IWindowSystem>()->WindowCount() == 0,
            "Destroyed windows must be removed from the window system");
 }
+} // namespace epidemic::tests
 
-int RunAllTests()
-{
-    struct NamedTest
-    {
-        const char *name;
-        void (*run)();
-    };
 
-    const std::vector<NamedTest> tests{
-        {"FoundationPrimitives", &TestFoundationPrimitives},
-        {"MemoryBaseline", &TestMemoryBaseline},
-        {"DiagnosticsBaseline", &TestDiagnosticsBaseline},
-        {"ConfigurationContracts", &TestConfigurationContracts},
-        {"ServiceContainerContracts", &TestServiceContainerContracts},
-        {"ModuleRegistryContracts", &TestModuleRegistryContracts},
-        {"EventBusContracts", &TestEventBusContracts},
-        {"TaskSchedulerContracts", &TestTaskSchedulerContracts},
-        {"FrameLoopContracts", &TestFrameLoopContracts},
-        {"InputContracts", &TestInputContracts},
-        {"ApplicationLifecycle", &TestApplicationLifecycle},
-        {"PlatformRuntime", &TestPlatformRuntime},
-    };
 
-    for (const auto &test : tests)
-    {
-        test.run();
-        std::cout << "[PASS] " << test.name << '\n';
-    }
 
-    return EXIT_SUCCESS;
-}
-} // namespace
 
-int main()
-{
-    try
-    {
-        return RunAllTests();
-    }
-    catch (const std::exception &exception)
-    {
-        std::cerr << "[FAIL] " << exception.what() << '\n';
-        return EXIT_FAILURE;
-    }
-}
+
+

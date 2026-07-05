@@ -7,3 +7,5 @@ target_include_directories(EpidemicRHI_D3D11 INTERFACE
 target_link_libraries(EpidemicRHI_D3D11 INTERFACE
     EpidemicFoundation EpidemicRHI
 )
+
+target_compile_features(EpidemicRHI_D3D11 INTERFACE cxx_std_20)

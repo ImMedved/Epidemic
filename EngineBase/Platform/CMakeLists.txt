@@ -16,6 +16,7 @@ target_include_directories(EpidemicPlatform PRIVATE
 
 target_link_libraries(EpidemicPlatform
     PUBLIC EpidemicFoundation
+    PRIVATE user32 shell32
 )
 
 epidemic_configure_target(EpidemicPlatform)
