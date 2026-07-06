@@ -49,6 +49,7 @@ Stable public contracts at this stage:
 - `Platform` Windows runtime, dynamic library loading, window system, platform events
 - `Input` snapshot and event translation contracts
 - `RHI` minimal presentation boundary: device, command context, swap chain, descriptors, clear/present/resize flow
+- diagnostics counters with unambiguous event, memory, and RHI frame accounting
 - EngineBase support/composition helpers for smoke apps, tests, and future upper executables
 
 ## 4. Semi-stable Contracts
@@ -211,7 +212,8 @@ Policy:
 
 - D3D11 creation is routed through the support/composition layer for smoke apps and future executables
 - backend-specific types stay inside backend modules
-- renderer-grade GPU resources, materials, scene rendering, and higher rendering systems belong to future upper layers or future reviewed extensions
+- fake renderer-grade placeholder resources are not part of the stable RHI surface and have been removed from EngineBase
+- renderer-grade GPU resources, pipelines, materials, and higher rendering systems belong to a future EngineRuntime/Renderer foundation or a separately reviewed extension layer
 
 ## 13. Testing and Freeze Rules
 

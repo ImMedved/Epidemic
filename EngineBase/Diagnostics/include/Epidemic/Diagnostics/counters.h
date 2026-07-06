@@ -13,16 +13,23 @@ enum class CounterId : std::uint8_t
     Frames,
     TasksScheduled,
     TasksCompleted,
-    QueuedEvents,
-    MemoryUsed,
     WorkerCount,
-    FrameTimeMicros,
     CurrentFrameIndex,
+    FrameTimeMicros,
     PlatformPumpTimeMicros,
     InputUpdateTimeMicros,
     ModuleTickTimeMicros,
     PresentTimeMicros,
     MainThreadTasksExecuted,
+    EventBusQueuedEvents,
+    EventBusDispatchedEvents,
+    PlatformEventsThisFrame,
+    InputEventsThisFrame,
+    MemoryUsedBytes,
+    MemoryPeakBytes,
+    RhiFrames,
+    RhiPresents,
+    RhiResizeCount,
     Count,
 };
 
@@ -41,16 +48,12 @@ enum class CounterId : std::uint8_t
         return "tasks_scheduled";
     case CounterId::TasksCompleted:
         return "tasks_completed";
-    case CounterId::QueuedEvents:
-        return "queued_events";
-    case CounterId::MemoryUsed:
-        return "memory_used";
     case CounterId::WorkerCount:
         return "worker_count";
-    case CounterId::FrameTimeMicros:
-        return "frame_time_micros";
     case CounterId::CurrentFrameIndex:
         return "current_frame_index";
+    case CounterId::FrameTimeMicros:
+        return "frame_time_micros";
     case CounterId::PlatformPumpTimeMicros:
         return "platform_pump_time_micros";
     case CounterId::InputUpdateTimeMicros:
@@ -61,6 +64,24 @@ enum class CounterId : std::uint8_t
         return "present_time_micros";
     case CounterId::MainThreadTasksExecuted:
         return "main_thread_tasks_executed";
+    case CounterId::EventBusQueuedEvents:
+        return "event_bus_queued_events";
+    case CounterId::EventBusDispatchedEvents:
+        return "event_bus_dispatched_events";
+    case CounterId::PlatformEventsThisFrame:
+        return "platform_events_this_frame";
+    case CounterId::InputEventsThisFrame:
+        return "input_events_this_frame";
+    case CounterId::MemoryUsedBytes:
+        return "memory_used_bytes";
+    case CounterId::MemoryPeakBytes:
+        return "memory_peak_bytes";
+    case CounterId::RhiFrames:
+        return "rhi_frames";
+    case CounterId::RhiPresents:
+        return "rhi_presents";
+    case CounterId::RhiResizeCount:
+        return "rhi_resize_count";
     case CounterId::Count:
         break;
     }

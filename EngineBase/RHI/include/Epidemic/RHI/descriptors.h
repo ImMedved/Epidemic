@@ -4,7 +4,6 @@
 #include <Epidemic/RHI/pixel_format.h>
 #include <Epidemic/RHI/presentation_surface_handle.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <string>
 
@@ -41,23 +40,7 @@ struct RhiSwapChainDesc
     std::string debug_name{"MainSwapChain"};
 };
 
-struct RhiBufferDesc
-{
-    std::size_t size_bytes{};
-    std::string debug_name{"Buffer"};
-};
-
-struct RhiTextureDesc
-{
-    std::uint32_t width{};
-    std::uint32_t height{};
-    RhiPixelFormat format{RhiPixelFormat::Unknown};
-    std::string debug_name{"Texture"};
-};
-
 [[nodiscard]] epidemic::foundation::Result<void> Validate(const RhiDeviceDesc &device_desc);
 [[nodiscard]] epidemic::foundation::Result<void> Validate(const RhiSwapChainDesc &swap_chain_desc);
-[[nodiscard]] epidemic::foundation::Result<void> Validate(const RhiBufferDesc &buffer_desc);
-[[nodiscard]] epidemic::foundation::Result<void> Validate(const RhiTextureDesc &texture_desc);
 [[nodiscard]] epidemic::foundation::Result<void> Validate(const RhiClearDesc &clear_desc);
 } // namespace epidemic::rhi

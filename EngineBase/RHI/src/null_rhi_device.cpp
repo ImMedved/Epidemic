@@ -14,58 +14,6 @@ namespace
     return std::isfinite(value) != 0;
 }
 
-class NullRhiBuffer final : public IRhiBuffer
-{
-  public:
-    explicit NullRhiBuffer(RhiBufferDesc descriptor) : descriptor_(std::move(descriptor))
-    {
-    }
-
-    [[nodiscard]] std::string_view DebugName() const noexcept override
-    {
-        return descriptor_.debug_name;
-    }
-
-    [[nodiscard]] std::size_t SizeBytes() const noexcept override
-    {
-        return descriptor_.size_bytes;
-    }
-
-  private:
-    RhiBufferDesc descriptor_;
-};
-
-class NullRhiTexture final : public IRhiTexture
-{
-  public:
-    explicit NullRhiTexture(RhiTextureDesc descriptor) : descriptor_(std::move(descriptor))
-    {
-    }
-
-    [[nodiscard]] std::string_view DebugName() const noexcept override
-    {
-        return descriptor_.debug_name;
-    }
-
-    [[nodiscard]] std::uint32_t Width() const noexcept override
-    {
-        return descriptor_.width;
-    }
-
-    [[nodiscard]] std::uint32_t Height() const noexcept override
-    {
-        return descriptor_.height;
-    }
-
-    [[nodiscard]] RhiPixelFormat Format() const noexcept override
-    {
-        return descriptor_.format;
-    }
-
-  private:
-    RhiTextureDesc descriptor_;
-};
-
 class NullRhiCommandContext final : public IRhiCommandContext
 {
   public:
@@ -216,32 +164,6 @@ class NullRhiDevice final : public IRhiDevice
             std::make_shared<NullRhiSwapChain>(swap_chain_desc));
     }
 
-    [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiBuffer>>
-    CreateBuffer(const RhiBufferDesc &buffer_desc) override
-    {
-        const auto validation_result = Validate(buffer_desc);
-        if (!validation_result.HasValue())
-        {
-            return epidemic::foundation::Result<std::shared_ptr<IRhiBuffer>>::Failure(validation_result.GetError());
-        }
-
-        return epidemic::foundation::Result<std::shared_ptr<IRhiBuffer>>::Success(
-            std::make_shared<NullRhiBuffer>(buffer_desc));
-    }
-
-    [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiTexture>>
-    CreateTexture(const RhiTextureDesc &texture_desc) override
-    {
-        const auto validation_result = Validate(texture_desc);
-        if (!validation_result.HasValue())
-        {
-            return epidemic::foundation::Result<std::shared_ptr<IRhiTexture>>::Failure(validation_result.GetError());
-        }
-
-        return epidemic::foundation::Result<std::shared_ptr<IRhiTexture>>::Success(
-            std::make_shared<NullRhiTexture>(texture_desc));
-    }
-
   private:
     RhiDeviceDesc descriptor_;
 };
@@ -286,36 +208,6 @@ epidemic::foundation::Result<void> Validate(const RhiSwapChainDesc &swap_chain_d
         return epidemic::foundation::Result<void>::Failure(
             epidemic::foundation::Error::Create("rhi.invalid_color_format",
                                                 "Swap chain color format must be specified"));
-    }
-
-    return epidemic::foundation::Result<void>::Success();
-}
-
-epidemic::foundation::Result<void> Validate(const RhiBufferDesc &buffer_desc)
-{
-    if (buffer_desc.size_bytes == 0)
-    {
-        return epidemic::foundation::Result<void>::Failure(
-            epidemic::foundation::Error::Create("rhi.invalid_buffer_size", "Buffer size must be greater than zero"));
-    }
-
-    return epidemic::foundation::Result<void>::Success();
-}
-
-epidemic::foundation::Result<void> Validate(const RhiTextureDesc &texture_desc)
-{
-    if (texture_desc.width == 0 || texture_desc.height == 0)
-    {
-        return epidemic::foundation::Result<void>::Failure(
-            epidemic::foundation::Error::Create("rhi.invalid_texture_size",
-                                                "Texture dimensions must be greater than zero"));
-    }
-
-    if (texture_desc.format == RhiPixelFormat::Unknown)
-    {
-        return epidemic::foundation::Result<void>::Failure(
-            epidemic::foundation::Error::Create("rhi.invalid_texture_format",
-                                                "Texture format must be specified"));
     }
 
     return epidemic::foundation::Result<void>::Success();

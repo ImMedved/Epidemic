@@ -177,5 +177,3 @@ std::span<const InputEvent> InputSystem::CurrentEvents() const noexcept
     return std::span<const InputEvent>(current_events_.data(), current_events_.size());
 }
 } // namespace epidemic::input
-
-

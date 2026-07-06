@@ -11,7 +11,6 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <queue>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -363,6 +362,9 @@ void Application::ExecuteFrame()
     diagnostics::GlobalCounters().Set(diagnostics::CounterId::ModuleTickTimeMicros, 0);
     diagnostics::GlobalCounters().Set(diagnostics::CounterId::PresentTimeMicros, 0);
     diagnostics::GlobalCounters().Set(diagnostics::CounterId::MainThreadTasksExecuted, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::PlatformEventsThisFrame, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::InputEventsThisFrame, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::EventBusDispatchedEvents, 0);
 
     logger->Debug("Application", "Frame", "Frame " + std::to_string(frame_context.frame_index.Value()) + " started");
 
@@ -509,4 +511,3 @@ std::size_t Application::RunScheduledMainThreadTasks()
     return services_.Get<IMainThreadDispatcher>()->Drain();
 }
 } // namespace epidemic::core
-

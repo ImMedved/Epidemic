@@ -112,58 +112,6 @@ struct D3D11DeviceState
     std::weak_ptr<D3D11RhiSwapChain> active_swap_chain;
 };
 
-class D3D11RhiBuffer final : public IRhiBuffer
-{
-  public:
-    explicit D3D11RhiBuffer(RhiBufferDesc descriptor) : descriptor_(std::move(descriptor))
-    {
-    }
-
-    [[nodiscard]] std::string_view DebugName() const noexcept override
-    {
-        return descriptor_.debug_name;
-    }
-
-    [[nodiscard]] std::size_t SizeBytes() const noexcept override
-    {
-        return descriptor_.size_bytes;
-    }
-
-  private:
-    RhiBufferDesc descriptor_;
-};
-
-class D3D11RhiTexture final : public IRhiTexture
-{
-  public:
-    explicit D3D11RhiTexture(RhiTextureDesc descriptor) : descriptor_(std::move(descriptor))
-    {
-    }
-
-    [[nodiscard]] std::string_view DebugName() const noexcept override
-    {
-        return descriptor_.debug_name;
-    }
-
-    [[nodiscard]] std::uint32_t Width() const noexcept override
-    {
-        return descriptor_.width;
-    }
-
-    [[nodiscard]] std::uint32_t Height() const noexcept override
-    {
-        return descriptor_.height;
-    }
-
-    [[nodiscard]] RhiPixelFormat Format() const noexcept override
-    {
-        return descriptor_.format;
-    }
-
-  private:
-    RhiTextureDesc descriptor_;
-};
-
 class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_from_this<D3D11RhiSwapChain>
 {
   public:
@@ -205,6 +153,14 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
 
     [[nodiscard]] epidemic::foundation::Result<void> Resize(std::uint32_t width, std::uint32_t height) override
     {
+        if (width == 0 || height == 0)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("rhi.invalid_swap_chain_size",
+                                                    "Swap chain resize dimensions must be greater than zero",
+                                                    descriptor_.debug_name));
+        }
+
         descriptor_.width = width;
         descriptor_.height = height;
         width_ = width;
@@ -218,10 +174,6 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
         }
 
         ReleaseBackBufferResources();
-        if (width == 0 || height == 0)
-        {
-            return epidemic::foundation::Result<void>::Success();
-        }
 
         const auto dxgi_format_result = ToDxgiFormat(descriptor_.color_format);
         if (!dxgi_format_result.HasValue())
@@ -541,32 +493,6 @@ class D3D11RhiDevice final : public IRhiDevice
         const auto swap_chain = swap_chain_result.Value();
         state_->active_swap_chain = swap_chain;
         return epidemic::foundation::Result<std::shared_ptr<IRhiSwapChain>>::Success(swap_chain);
-    }
-
-    [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiBuffer>>
-    CreateBuffer(const RhiBufferDesc &buffer_desc) override
-    {
-        const auto validation_result = Validate(buffer_desc);
-        if (!validation_result.HasValue())
-        {
-            return epidemic::foundation::Result<std::shared_ptr<IRhiBuffer>>::Failure(validation_result.GetError());
-        }
-
-        return epidemic::foundation::Result<std::shared_ptr<IRhiBuffer>>::Success(
-            std::make_shared<D3D11RhiBuffer>(buffer_desc));
-    }
-
-    [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiTexture>>
-    CreateTexture(const RhiTextureDesc &texture_desc) override
-    {
-        const auto validation_result = Validate(texture_desc);
-        if (!validation_result.HasValue())
-        {
-            return epidemic::foundation::Result<std::shared_ptr<IRhiTexture>>::Failure(validation_result.GetError());
-        }
-
-        return epidemic::foundation::Result<std::shared_ptr<IRhiTexture>>::Success(
-            std::make_shared<D3D11RhiTexture>(texture_desc));
     }
 
   private:

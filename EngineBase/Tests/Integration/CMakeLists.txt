@@ -1,13 +1,32 @@
-add_executable(EpidemicIntegrationTests
-    integration_test_main.cpp
-    ../test_cases.cpp
+add_executable(EpidemicApplicationCompositionTests
+    application_composition_tests.cpp
 )
 
-target_link_libraries(EpidemicIntegrationTests
-    PRIVATE EpidemicFoundation EpidemicMemory EpidemicCore EpidemicDiagnostics EpidemicPlatform EpidemicInput EpidemicRHI
+target_link_libraries(EpidemicApplicationCompositionTests
+    PRIVATE EpidemicFoundation EpidemicMemory EpidemicDiagnostics EpidemicCore EpidemicEngineBaseSupport
 )
 
-epidemic_configure_target(EpidemicIntegrationTests)
+epidemic_configure_target(EpidemicApplicationCompositionTests)
+add_test(NAME EpidemicApplicationCompositionTests COMMAND EpidemicApplicationCompositionTests)
 
-add_test(NAME EpidemicIntegrationTests COMMAND EpidemicIntegrationTests)
+add_executable(EpidemicPlatformInputIntegrationTests
+    platform_input_integration_tests.cpp
+)
 
+target_link_libraries(EpidemicPlatformInputIntegrationTests
+    PRIVATE EpidemicFoundation EpidemicMemory EpidemicDiagnostics EpidemicCore EpidemicPlatform EpidemicInput EpidemicEngineBaseSupport
+)
+
+epidemic_configure_target(EpidemicPlatformInputIntegrationTests)
+add_test(NAME EpidemicPlatformInputIntegrationTests COMMAND EpidemicPlatformInputIntegrationTests)
+
+add_executable(EpidemicRhiIntegrationTests
+    rhi_integration_tests.cpp
+)
+
+target_link_libraries(EpidemicRhiIntegrationTests
+    PRIVATE EpidemicFoundation EpidemicMemory EpidemicDiagnostics EpidemicCore EpidemicPlatform EpidemicRHI EpidemicRHI_D3D11 EpidemicEngineBaseSupport
+)
+
+epidemic_configure_target(EpidemicRhiIntegrationTests)
+add_test(NAME EpidemicRhiIntegrationTests COMMAND EpidemicRhiIntegrationTests)

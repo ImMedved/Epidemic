@@ -88,6 +88,22 @@ inline void ThrowIfFailed(const epidemic::foundation::Result<void> &result)
         throw std::runtime_error(result.GetError().message);
     }
 }
+
+inline void UpdateMemoryCounters(const std::shared_ptr<memory::IMemoryTracker> &memory_tracker)
+{
+    std::int64_t total_used_bytes = 0;
+    std::int64_t total_peak_bytes = 0;
+
+    for (std::size_t index = 0; index < static_cast<std::size_t>(memory::AllocationTag::Count); ++index)
+    {
+        const auto statistics = memory_tracker->GetStatistics(static_cast<memory::AllocationTag>(index));
+        total_used_bytes += static_cast<std::int64_t>(statistics.allocated_bytes);
+        total_peak_bytes += static_cast<std::int64_t>(statistics.peak_allocated_bytes);
+    }
+
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::MemoryUsedBytes, total_used_bytes);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::MemoryPeakBytes, total_peak_bytes);
+}
 } // namespace detail
 
 [[nodiscard]] inline std::shared_ptr<FramePlatformEvents> EnsureFramePlatformEvents(core::Application &application)
@@ -119,9 +135,23 @@ RegisterEngineBase(core::Application &application, EngineBaseOptions options)
     application.Services().Emplace<core::events::IEventBus, core::events::EventBus>();
     application.Services().Emplace<core::tasks::ITaskScheduler, core::tasks::SimpleTaskScheduler>(options.worker_count);
     application.Services().Emplace<core::IMainThreadDispatcher, core::MainThreadDispatcher>();
-    application.Services().Emplace<memory::IMemoryTracker, memory::MemoryTracker>(options.memory_tracking_enabled);
+    auto memory_tracker = application.Services().Emplace<memory::IMemoryTracker, memory::MemoryTracker>(options.memory_tracking_enabled);
 
-    diagnostics::GlobalCounters().Set(diagnostics::CounterId::MemoryUsed, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::MemoryUsedBytes, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::MemoryPeakBytes, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::EventBusQueuedEvents, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::EventBusDispatchedEvents, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::PlatformEventsThisFrame, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::InputEventsThisFrame, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::RhiFrames, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::RhiPresents, 0);
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::RhiResizeCount, 0);
+
+    application.AddFramePhaseHandler(
+        core::FramePhase::EndFrame,
+        [memory_tracker](const core::FrameContext &) { detail::UpdateMemoryCounters(memory_tracker); },
+        "EngineBaseSupport::UpdateMemoryCounters");
+
     logger->Info(options.log_module, "Startup", "Diagnostics baseline initialized");
     logger->Info(options.log_module, "Startup", "Worker threads: " + std::to_string(options.worker_count));
     logger->Info(options.log_module, "Startup",
@@ -217,7 +247,7 @@ inline void RegisterPlatformFrameLoop(core::Application &application)
             const auto window_system = application.Services().Get<platform::IWindowSystem>();
             platform_runtime->PumpEvents();
             frame_platform_events->events = window_system->DrainEvents();
-            diagnostics::GlobalCounters().Set(diagnostics::CounterId::QueuedEvents,
+            diagnostics::GlobalCounters().Set(diagnostics::CounterId::PlatformEventsThisFrame,
                                               static_cast<std::int64_t>(frame_platform_events->events.size()));
 
             if (platform_runtime->IsExitRequested())
@@ -238,6 +268,8 @@ inline void RegisterInputFrameLoop(core::Application &application)
             const auto input_system = application.Services().Get<input::IInputSystem>();
             input_system->QueuePlatformEvents(frame_platform_events->events);
             input_system->PublishSnapshot();
+            diagnostics::GlobalCounters().Set(diagnostics::CounterId::InputEventsThisFrame,
+                                              static_cast<std::int64_t>(input_system->CurrentEvents().size()));
         },
         "EngineBaseSupport::UpdateInput");
 }
@@ -258,6 +290,7 @@ inline void RegisterRhiFrameLoop(core::Application &application,
 
             detail::ThrowIfFailed(command_context->BeginFrame());
             detail::ThrowIfFailed(command_context->Clear(*clear_desc));
+            diagnostics::GlobalCounters().Increment(diagnostics::CounterId::RhiFrames);
         },
         "EngineBaseSupport::RhiBeginFrame");
 
@@ -282,6 +315,7 @@ inline void RegisterRhiFrameLoop(core::Application &application,
             }
 
             detail::ThrowIfFailed(swap_chain->Present());
+            diagnostics::GlobalCounters().Increment(diagnostics::CounterId::RhiPresents);
         },
         "EngineBaseSupport::Present");
 }

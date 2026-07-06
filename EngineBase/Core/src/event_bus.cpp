@@ -32,7 +32,7 @@ void EventBus::EnqueueImpl(std::type_index event_type, std::any event)
 {
     std::scoped_lock lock(mutex_);
     queued_events_.push(QueuedEvent{event_type, std::move(event)});
-    diagnostics::GlobalCounters().Increment(diagnostics::CounterId::QueuedEvents);
+    diagnostics::GlobalCounters().Increment(diagnostics::CounterId::EventBusQueuedEvents);
 }
 
 std::size_t EventBus::DrainQueued()
@@ -54,7 +54,8 @@ std::size_t EventBus::DrainQueued()
             queued_events_.pop();
         }
 
-        diagnostics::GlobalCounters().Decrement(diagnostics::CounterId::QueuedEvents);
+        diagnostics::GlobalCounters().Decrement(diagnostics::CounterId::EventBusQueuedEvents);
+        diagnostics::GlobalCounters().Increment(diagnostics::CounterId::EventBusDispatchedEvents);
         DispatchQueued(next_event.type, next_event.payload);
         ++drained;
     }

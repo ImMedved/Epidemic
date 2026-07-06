@@ -3,3 +3,4 @@ logs/
 .agents/
 .codex/
 dev-log/
+*.zip
