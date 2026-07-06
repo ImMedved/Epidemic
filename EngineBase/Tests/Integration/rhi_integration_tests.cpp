@@ -13,8 +13,10 @@ void TestNullGraphicsRuntimeRegistration()
     static_cast<void>(epidemic::enginebase::RegisterEngineBase(
         application, {.runtime_name = "RhiIntegration", .log_module = "RhiIntegration"}));
 
-    const auto graphics_runtime = epidemic::enginebase::RegisterGraphicsRuntime(
+    const auto graphics_runtime_result = epidemic::enginebase::RegisterGraphicsRuntime(
         application, {.backend = epidemic::enginebase::GraphicsBackend::Null, .debug_name = "NullGraphicsRuntime"});
+    Assert(graphics_runtime_result.HasValue(), "RegisterGraphicsRuntime(Null) must succeed");
+    const auto graphics_runtime = graphics_runtime_result.Value();
     Assert(graphics_runtime.device != nullptr, "RegisterGraphicsRuntime(Null) must return a device");
     Assert(graphics_runtime.command_context != nullptr, "RegisterGraphicsRuntime(Null) must return a command context");
     Assert(application.Services().Contains<epidemic::rhi::IRhiDevice>(), "Null graphics runtime must register IRhiDevice");
@@ -28,17 +30,11 @@ void TestD3D11GraphicsRuntimeFailurePath()
     static_cast<void>(epidemic::enginebase::RegisterEngineBase(
         application, {.runtime_name = "RhiD3D11Failure", .log_module = "RhiD3D11Failure"}));
 
-    bool failed = false;
-    try
-    {
-        static_cast<void>(epidemic::enginebase::RegisterGraphicsRuntime(
-            application, {.backend = epidemic::enginebase::GraphicsBackend::D3D11, .debug_name = std::string{}}));
-    }
-    catch (const std::runtime_error &exception)
-    {
-        failed = std::string(exception.what()).find("debug name") != std::string::npos;
-    }
-    Assert(failed, "RegisterGraphicsRuntime(D3D11) must surface a meaningful failure message for invalid setup");
+    const auto result = epidemic::enginebase::RegisterGraphicsRuntime(
+        application, {.backend = epidemic::enginebase::GraphicsBackend::D3D11, .debug_name = std::string{}});
+    Assert(!result.HasValue(), "RegisterGraphicsRuntime(D3D11) must report expected runtime failure via Result");
+    Assert(result.GetError().message.find("debug name") != std::string::npos,
+           "RegisterGraphicsRuntime(D3D11) must surface a meaningful failure message for invalid setup");
 }
 }
 

@@ -7,16 +7,13 @@
 #include <Epidemic/Core/task_scheduler.h>
 #include <Epidemic/Diagnostics/counters.h>
 
-#include <atomic>
 #include <memory>
-#include <thread>
 #include <vector>
 
 namespace
 {
 using epidemic::tests::Assert;
 using epidemic::tests::ProbeModule;
-using epidemic::tests::RecordingLogger;
 using epidemic::tests::RegisterCoreServices;
 
 struct SyncTestEvent
@@ -57,6 +54,20 @@ void TestServiceContainerContracts()
         null_failed = true;
     }
     Assert(null_failed, "Null service registration must fail");
+
+    services.Seal();
+    Assert(services.IsSealed(), "Seal must mark the service container as sealed");
+
+    bool sealed_failed = false;
+    try
+    {
+        services.Emplace<epidemic::core::events::IEventBus, epidemic::core::events::EventBus>();
+    }
+    catch (const std::exception &)
+    {
+        sealed_failed = true;
+    }
+    Assert(sealed_failed, "Registering a service after seal must fail");
 }
 
 void TestEventBusContracts()

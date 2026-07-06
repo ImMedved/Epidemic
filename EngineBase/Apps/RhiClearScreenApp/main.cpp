@@ -1,5 +1,7 @@
 #include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
+#include <Epidemic/Core/configuration.h>
+#include <Epidemic/Diagnostics/counters.h>
 #include <Epidemic/Platform/platform_event.h>
 #include <Epidemic/RHI/descriptors.h>
 #include <Epidemic/RHI/irhi_command_context.h>
@@ -12,9 +14,21 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace
 {
+template <typename TValue>
+TValue RequireValue(epidemic::foundation::Result<TValue> result)
+{
+    if (!result.HasValue())
+    {
+        throw std::runtime_error(result.GetError().message);
+    }
+
+    return std::move(result).Value();
+}
+
 void ThrowIfFailed(const epidemic::foundation::Result<void> &result)
 {
     if (!result.HasValue())
@@ -37,19 +51,19 @@ int main()
         const auto logger = application.Services().Get<epidemic::diagnostics::ILogger>();
         logger->Info("RhiClearScreenApp", "Platform", "Platform runtime: WindowsPlatformRuntime");
 
-        auto graphics_runtime = epidemic::enginebase::RegisterGraphicsRuntime(
+        auto graphics_runtime = RequireValue(epidemic::enginebase::RegisterGraphicsRuntime(
             application,
             {.backend = epidemic::enginebase::GraphicsBackend::D3D11,
              .enable_debug_validation = configuration->GetRhiDebugEnabled().value_or(false),
-             .debug_name = "RhiClearScreenAppDevice"});
+             .debug_name = "RhiClearScreenAppDevice"}));
         logger->Info("RhiClearScreenApp", "RHI", "Using D3D11 backend through EngineBase support composition");
 
-        const auto window = epidemic::enginebase::CreateMainWindow(
+        const auto window = RequireValue(epidemic::enginebase::CreateMainWindow(
             application,
             epidemic::platform::WindowCreateInfo{"Epidemic RHI Clear Screen",
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowWidth().value_or(1280)),
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowHeight().value_or(720)),
-                                                 true});
+                                                 true}));
 
         logger->Info("RhiClearScreenApp", "Window",
                      "Window created: " + std::to_string(window->ClientWidth()) + "x" +
@@ -62,7 +76,7 @@ int main()
         swap_chain_desc.color_format = epidemic::rhi::RhiPixelFormat::B8G8R8A8_UNorm;
         swap_chain_desc.vsync = true;
         swap_chain_desc.debug_name = "RhiClearScreenAppSwapChain";
-        const auto swap_chain = epidemic::enginebase::RegisterMainSwapChain(application, window, swap_chain_desc);
+        const auto swap_chain = RequireValue(epidemic::enginebase::RegisterMainSwapChain(application, window, swap_chain_desc));
 
         epidemic::enginebase::RegisterPlatformFrameLoop(application);
         epidemic::enginebase::RegisterFrameThrottle(application, std::chrono::milliseconds(16));
@@ -113,6 +127,7 @@ int main()
                                          "Resize: " + std::to_string(event.client_width) + "x" +
                                              std::to_string(event.client_height));
                             ThrowIfFailed(swap_chain->Resize(event.client_width, event.client_height));
+                            epidemic::diagnostics::GlobalCounters().Increment(epidemic::diagnostics::CounterId::RhiResizeCount);
                             *render_paused = false;
                         }
                         break;

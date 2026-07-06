@@ -7,7 +7,13 @@
 
 namespace epidemic::memory
 {
-struct MemoryTagStatistics;
+struct MemoryTagStatistics
+{
+    std::size_t allocated_bytes{};
+    std::size_t peak_allocated_bytes{};
+    // Counts successful allocation records over time, not the number of active allocations.
+    std::size_t allocation_count{};
+};
 
 class IMemoryTracker
 {

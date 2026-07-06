@@ -1,5 +1,6 @@
 #include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
+#include <Epidemic/Core/configuration.h>
 #include <Epidemic/Platform/platform_event.h>
 
 #include <chrono>
@@ -7,6 +8,21 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
+
+namespace
+{
+template <typename TValue>
+TValue RequireValue(epidemic::foundation::Result<TValue> result)
+{
+    if (!result.HasValue())
+    {
+        throw std::runtime_error(result.GetError().message);
+    }
+
+    return std::move(result).Value();
+}
+} // namespace
 
 int main()
 {
@@ -21,12 +37,12 @@ int main()
         const auto logger = application.Services().Get<epidemic::diagnostics::ILogger>();
         logger->Info("WindowSmokeApp", "Platform", "Platform runtime: WindowsPlatformRuntime");
 
-        const auto window = epidemic::enginebase::CreateMainWindow(
+        const auto window = RequireValue(epidemic::enginebase::CreateMainWindow(
             application,
             epidemic::platform::WindowCreateInfo{"Epidemic Window Smoke",
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowWidth().value_or(1280)),
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowHeight().value_or(720)),
-                                                 true});
+                                                 true}));
 
         epidemic::enginebase::RegisterPlatformFrameLoop(application);
         epidemic::enginebase::RegisterFrameThrottle(application, std::chrono::milliseconds(16));

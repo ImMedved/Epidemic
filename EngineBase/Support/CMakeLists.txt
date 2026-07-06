@@ -1,17 +1,20 @@
-add_library(EpidemicEngineBaseSupport INTERFACE)
-
-target_include_directories(EpidemicEngineBaseSupport INTERFACE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../RHI_D3D11/include"
+add_library(EpidemicEngineBaseSupport
+    src/engine_base_support.cpp
 )
 
-target_link_libraries(EpidemicEngineBaseSupport INTERFACE
-    EpidemicCore
-    EpidemicMemory
-    EpidemicDiagnostics
-    EpidemicPlatform
-    EpidemicInput
-    EpidemicRHI
+target_include_directories(EpidemicEngineBaseSupport
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
-target_compile_features(EpidemicEngineBaseSupport INTERFACE cxx_std_20)
+target_link_libraries(EpidemicEngineBaseSupport
+    PUBLIC
+        EpidemicCore
+        EpidemicMemory
+        EpidemicDiagnostics
+        EpidemicPlatform
+        EpidemicInput
+        EpidemicRHI
+        EpidemicRHI_D3D11
+)
+
+epidemic_configure_target(EpidemicEngineBaseSupport)

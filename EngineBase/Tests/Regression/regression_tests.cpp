@@ -23,8 +23,9 @@ void TestRegressionContracts()
     Assert(app.Services().Contains<epidemic::platform::IPlatformRuntime>(), "RegisterWindowsRuntime must register platform runtime");
     static_cast<void>(epidemic::enginebase::RegisterInputRuntime(app));
     Assert(app.Services().Contains<epidemic::input::IInputSystem>(), "RegisterInputRuntime must register input system");
-    static_cast<void>(epidemic::enginebase::RegisterGraphicsRuntime(
-        app, {.backend = epidemic::enginebase::GraphicsBackend::Null, .debug_name = "RegressionNullRhi"}));
+    const auto graphics_runtime = epidemic::enginebase::RegisterGraphicsRuntime(
+        app, {.backend = epidemic::enginebase::GraphicsBackend::Null, .debug_name = "RegressionNullRhi"});
+    Assert(graphics_runtime.HasValue(), "RegisterGraphicsRuntime must return Result for expected runtime setup");
     Assert(app.Services().Contains<epidemic::rhi::IRhiDevice>(), "RegisterGraphicsRuntime must register IRhiDevice");
     Assert(app.Services().Contains<epidemic::rhi::IRhiCommandContext>(),
            "RegisterGraphicsRuntime must register IRhiCommandContext");

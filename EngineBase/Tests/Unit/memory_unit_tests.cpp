@@ -42,11 +42,11 @@ void TestMemoryBaseline()
 
     tracker.SetTrackingEnabled(true);
     DefaultAllocator default_allocator;
-    TrackingAllocator tracking_allocator(concrete_tracker, default_allocator);
+    TrackingAllocator tracking_allocator(tracker, default_allocator);
     void *pointer = tracking_allocator.Allocate(40, alignof(std::max_align_t), AllocationTag::Tests);
     Assert(pointer != nullptr, "Tracking allocator must return allocated memory");
     Assert(tracker.GetStatistics(AllocationTag::Tests).allocated_bytes == 40,
-           "Tracking allocator must report allocations to the tracker");
+           "Tracking allocator must report allocations to the tracker interface");
     tracking_allocator.Deallocate(pointer, 40, alignof(std::max_align_t), AllocationTag::Tests);
 
     void *zero_pointer = tracking_allocator.Allocate(0, alignof(std::max_align_t), AllocationTag::Tests);

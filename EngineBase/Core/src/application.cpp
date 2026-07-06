@@ -147,6 +147,7 @@ int Application::Initialize()
         auto logger = Logger();
         logger->Info("Application", "Lifecycle", "Initialization started");
         modules_.InitializeAll(services_, *logger);
+        services_.Seal();
         logger->Info("Application", "Lifecycle", "Initialization finished");
         state_ = State::Initialized;
         return 0;
@@ -373,8 +374,7 @@ void Application::ExecuteFrame()
         ExecutePhase(phase, frame_context, *logger);
     }
 
-    const auto scheduler = services_.Get<tasks::ITaskScheduler>();
-    scheduler->WaitIdle();
+
 
     diagnostics::GlobalCounters().Increment(diagnostics::CounterId::Frames);
     const auto frame_time_micros =

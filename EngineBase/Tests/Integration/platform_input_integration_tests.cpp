@@ -15,6 +15,17 @@ namespace
 {
 using epidemic::tests::Assert;
 
+template <typename TValue>
+TValue RequireValue(epidemic::foundation::Result<TValue> result)
+{
+    if (!result.HasValue())
+    {
+        throw std::runtime_error(result.GetError().message);
+    }
+
+    return std::move(result).Value();
+}
+
 void TestPlatformAndInputIntegration()
 {
     epidemic::core::Application application({"PlatformInputIntegration"});
@@ -30,8 +41,8 @@ void TestPlatformAndInputIntegration()
     Assert(application.Services().Contains<epidemic::input::IInputSystem>(),
            "RegisterInputRuntime must register IInputSystem");
 
-    const auto window = epidemic::enginebase::CreateMainWindow(
-        application, epidemic::platform::WindowCreateInfo{"Hidden Platform/Input Test", 320, 240, false});
+    const auto window = RequireValue(epidemic::enginebase::CreateMainWindow(
+        application, epidemic::platform::WindowCreateInfo{"Hidden Platform/Input Test", 320, 240, false}));
     Assert(window->GetNativeHandle().IsValid(), "Created window must expose a valid native handle");
 
     epidemic::platform::PlatformEvent focus_event;

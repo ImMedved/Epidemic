@@ -4,6 +4,9 @@
 #include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Diagnostics/counters.h>
 
+#include <atomic>
+#include <chrono>
+#include <thread>
 #include <vector>
 
 namespace
@@ -29,6 +32,7 @@ void TestRegisterEngineBaseAndLifecycle()
     application.SetFrameLimit(1);
     Assert(application.Bootstrap() == 0, "Application bootstrap must succeed");
     Assert(application.Initialize() == 0, "Application initialize must succeed");
+    Assert(application.Services().IsSealed(), "Application initialize must seal the service container");
     Assert(application.Run() == 0, "Application run must succeed");
     Assert(application.Shutdown() == 0, "Application shutdown must succeed");
 
@@ -60,6 +64,35 @@ void TestPartialInitializationFailureAllowsShutdown()
     Assert(initialize_failed, "Initialize failure must propagate");
     Assert(application.Shutdown() == 0, "Shutdown after partial initialization failure must succeed");
 }
+
+void TestFrameLoopDoesNotWaitIdleEveryFrame()
+{
+    epidemic::core::Application application({"AsyncFrameLoopTests"});
+    static_cast<void>(epidemic::enginebase::RegisterEngineBase(
+        application, {.runtime_name = "AsyncFrameLoopTests", .log_module = "AsyncFrameLoopTests", .worker_count = 1}));
+
+    std::atomic<bool> task_completed{false};
+    application.AddFramePhaseHandler(
+        epidemic::core::FramePhase::BeginFrame,
+        [&application, &task_completed](const epidemic::core::FrameContext &) {
+            application.Services().Get<epidemic::core::tasks::ITaskScheduler>()->Schedule(
+                [&task_completed] {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    task_completed.store(true, std::memory_order_relaxed);
+                },
+                "background-task");
+        },
+        "AsyncFrameLoopTests::ScheduleBackgroundTask");
+
+    application.SetFrameLimit(1);
+    Assert(application.Bootstrap() == 0, "Bootstrap before async frame test must succeed");
+    Assert(application.Initialize() == 0, "Initialize before async frame test must succeed");
+    Assert(application.Run() == 0, "Run before async frame test must succeed");
+    Assert(!task_completed.load(std::memory_order_relaxed),
+           "Run must not wait for unrelated background work at the end of every frame");
+    Assert(application.Shutdown() == 0, "Shutdown after async frame test must succeed");
+    Assert(task_completed.load(std::memory_order_relaxed), "Shutdown must still drain scheduler work");
+}
 }
 
 int main()
@@ -67,5 +100,6 @@ int main()
     return epidemic::tests::RunNamedTests({
         {"RegisterEngineBaseAndLifecycle", &TestRegisterEngineBaseAndLifecycle},
         {"PartialInitializationFailureAllowsShutdown", &TestPartialInitializationFailureAllowsShutdown},
+        {"FrameLoopDoesNotWaitIdleEveryFrame", &TestFrameLoopDoesNotWaitIdleEveryFrame},
     });
 }

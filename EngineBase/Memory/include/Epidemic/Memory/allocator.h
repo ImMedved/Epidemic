@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Epidemic/Memory/allocation_tag.h>
-#include <Epidemic/Memory/memory_tracker.h>
+#include <Epidemic/Memory/imemory_tracker.h>
 
 #include <cstddef>
 #include <new>
@@ -54,7 +54,7 @@ class DefaultAllocator final : public IAllocator
 class TrackingAllocator final : public IAllocator
 {
   public:
-    TrackingAllocator(MemoryTracker &tracker, IAllocator &upstream) noexcept : tracker_(tracker), upstream_(upstream)
+    TrackingAllocator(IMemoryTracker &tracker, IAllocator &upstream) noexcept : tracker_(tracker), upstream_(upstream)
     {
     }
 
@@ -79,7 +79,7 @@ class TrackingAllocator final : public IAllocator
     }
 
   private:
-    MemoryTracker &tracker_;
+    IMemoryTracker &tracker_;
     IAllocator &upstream_;
 };
 

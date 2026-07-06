@@ -1,5 +1,6 @@
 #include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
+#include <Epidemic/Core/configuration.h>
 #include <Epidemic/Input/iinput_system.h>
 #include <Epidemic/Input/input_event.h>
 #include <Epidemic/Input/key_code.h>
@@ -11,9 +12,21 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace
 {
+template <typename TValue>
+TValue RequireValue(epidemic::foundation::Result<TValue> result)
+{
+    if (!result.HasValue())
+    {
+        throw std::runtime_error(result.GetError().message);
+    }
+
+    return std::move(result).Value();
+}
+
 void LogInputEvent(epidemic::diagnostics::ILogger &logger, const epidemic::input::InputEvent &event)
 {
     using epidemic::input::InputEventType;
@@ -75,12 +88,12 @@ int main()
         logger->Info("InputSmokeApp", "Platform", "Platform runtime: WindowsPlatformRuntime");
         logger->Info("InputSmokeApp", "Input", "Input snapshot pipeline enabled");
 
-        const auto window = epidemic::enginebase::CreateMainWindow(
+        const auto window = RequireValue(epidemic::enginebase::CreateMainWindow(
             application,
             epidemic::platform::WindowCreateInfo{"Epidemic Input Smoke",
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowWidth().value_or(1280)),
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowHeight().value_or(720)),
-                                                 true});
+                                                 true}));
 
         epidemic::enginebase::RegisterPlatformFrameLoop(application);
         epidemic::enginebase::RegisterInputFrameLoop(application);

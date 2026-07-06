@@ -33,6 +33,11 @@ class ServiceContainer
         }
 
         std::unique_lock lock(mutex_);
+        if (sealed_)
+        {
+            throw std::runtime_error("Service container is sealed");
+        }
+
         const auto key = std::type_index(typeid(TService));
         if (services_.contains(key))
         {
@@ -60,8 +65,21 @@ class ServiceContainer
         return services_.contains(std::type_index(typeid(TService)));
     }
 
+    void Seal() noexcept
+    {
+        std::unique_lock lock(mutex_);
+        sealed_ = true;
+    }
+
+    [[nodiscard]] bool IsSealed() const noexcept
+    {
+        std::shared_lock lock(mutex_);
+        return sealed_;
+    }
+
   private:
     mutable std::shared_mutex mutex_;
     std::unordered_map<std::type_index, std::shared_ptr<void>> services_;
+    bool sealed_{false};
 };
 } // namespace epidemic::core
