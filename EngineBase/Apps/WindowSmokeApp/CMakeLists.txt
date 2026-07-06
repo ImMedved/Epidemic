@@ -3,7 +3,7 @@ add_executable(EpidemicWindowSmokeApp
 )
 
 target_link_libraries(EpidemicWindowSmokeApp
-    PRIVATE EpidemicCore EpidemicPlatform
+    PRIVATE EpidemicAppSupport
 )
 
 epidemic_configure_target(EpidemicWindowSmokeApp)

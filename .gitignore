@@ -2,3 +2,4 @@ build/
 logs/
 .agents/
 .codex/
+dev-log/

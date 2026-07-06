@@ -27,3 +27,5 @@ Get-Content .\logs\epidemic.log -Wait
 - Documented and asserted WindowsPlatformRuntime as owner-thread/main-thread runtime for window creation, pumping, and destruction.
 - Tightened Input baseline: unknown Win32 key codes are ignored, unknown mouse buttons no longer alias to Left.
 - Split tests into real Unit / Integration / Regression runners with different test sets instead of running one shared main three times.
+- Implemented Step 10 D3D11 baseline: added `EpidemicRHI_D3D11` as a real static library with D3D11 device creation, feature-level selection, DXGI swap-chain creation, render-target recreation on resize, Present, and HRESULT-to-Error conversion.
+- Reworked `EpidemicRhiClearScreenApp` into a real smoke app: it creates a Win32 window, builds the D3D11 RHI device through the abstract RHI contracts, clears the backbuffer every frame, handles resize/minimize safely, and exits on close request.

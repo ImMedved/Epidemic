@@ -374,11 +374,13 @@ void Application::ExecuteFrame()
     scheduler->WaitIdle();
 
     diagnostics::GlobalCounters().Increment(diagnostics::CounterId::Frames);
-    diagnostics::GlobalCounters().Set(
-        diagnostics::CounterId::FrameTimeMicros,
-        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tick_start).count());
+    const auto frame_time_micros =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - tick_start).count();
+    diagnostics::GlobalCounters().Set(diagnostics::CounterId::FrameTimeMicros, frame_time_micros);
 
-    logger->Debug("Application", "Frame", "Frame " + std::to_string(frame_context.frame_index.Value()) + " finished");
+    logger->Debug("Application", "Frame",
+                  "Frame " + std::to_string(frame_context.frame_index.Value()) + " finished in " +
+                      std::to_string(frame_time_micros) + " us");
     ++executed_frame_count_;
 }
 

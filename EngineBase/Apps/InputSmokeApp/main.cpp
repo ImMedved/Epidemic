@@ -1,54 +1,19 @@
+#include <Epidemic/Apps/runtime_app_support.h>
 #include <Epidemic/Core/application.h>
-#include <Epidemic/Core/basic_configuration.h>
-#include <Epidemic/Core/configuration.h>
-#include <Epidemic/Core/event_bus.h>
-#include <Epidemic/Core/frame_phase.h>
-#include <Epidemic/Core/task_scheduler.h>
-#include <Epidemic/Diagnostics/console_logger.h>
-#include <Epidemic/Diagnostics/counters.h>
-#include <Epidemic/Diagnostics/logger.h>
-#include <Epidemic/Diagnostics/thread_context.h>
 #include <Epidemic/Input/iinput_system.h>
 #include <Epidemic/Input/input_event.h>
-#include <Epidemic/Input/input_system.h>
 #include <Epidemic/Input/key_code.h>
 #include <Epidemic/Input/mouse_button.h>
-#include <Epidemic/Platform/iplatform_runtime.h>
-#include <Epidemic/Platform/iwindow_system.h>
 #include <Epidemic/Platform/platform_event.h>
-#include <Epidemic/Platform/windows_platform_runtime.h>
 
 #include <chrono>
 #include <exception>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <thread>
 
 namespace
 {
-void RegisterCoreServices(epidemic::core::Application &application, std::string runtime_name)
-{
-    epidemic::diagnostics::SetCurrentThreadName("Main");
-    application.Services().Emplace<epidemic::diagnostics::ILogger, epidemic::diagnostics::ConsoleLogger>();
-    const auto configuration =
-        application.Services().Emplace<epidemic::core::config::IConfiguration, epidemic::core::config::BasicConfiguration>();
-    configuration->SetRuntimeName(std::move(runtime_name));
-    configuration->SetWorkerCount(1);
-    configuration->SetMemoryTrackingEnabled(true);
-    configuration->SetRhiDebugEnabled(false);
-    configuration->SetDefaultWindowWidth(1280);
-    configuration->SetDefaultWindowHeight(720);
-    application.Services().Emplace<epidemic::core::events::IEventBus, epidemic::core::events::EventBus>();
-    application.Services().Emplace<epidemic::core::tasks::ITaskScheduler, epidemic::core::tasks::SimpleTaskScheduler>(1);
-
-    epidemic::diagnostics::GlobalCounters().Set(epidemic::diagnostics::CounterId::MemoryUsed, 0);
-    const auto logger = application.Services().Get<epidemic::diagnostics::ILogger>();
-    logger->Info("InputSmokeApp", "Startup", "Diagnostics baseline initialized");
-    logger->Info("InputSmokeApp", "Window", "Window creation info: 1280x720 baseline");
-    logger->Info("InputSmokeApp", "Startup", "Memory tracking: enabled");
-}
-
 void LogInputEvent(epidemic::diagnostics::ILogger &logger, const epidemic::input::InputEvent &event)
 {
     using epidemic::input::InputEventType;
@@ -67,7 +32,8 @@ void LogInputEvent(epidemic::diagnostics::ILogger &logger, const epidemic::input
     case InputEventType::MouseMoved:
         logger.Info("InputSmokeApp", "Input",
                     "Mouse moved: x=" + std::to_string(event.mouse_x) + ", y=" + std::to_string(event.mouse_y) +
-                        ", dx=" + std::to_string(event.mouse_delta_x) + ", dy=" + std::to_string(event.mouse_delta_y));
+                        ", dx=" + std::to_string(event.mouse_delta_x) + ", dy=" +
+                        std::to_string(event.mouse_delta_y));
         break;
     case InputEventType::MouseButtonPressed:
         logger.Info("InputSmokeApp", "Input",
@@ -98,13 +64,14 @@ int main()
     try
     {
         epidemic::core::Application application;
-        RegisterCoreServices(application, "EpidemicInputSmokeApp");
+        static_cast<void>(epidemic::apps::RegisterCoreRuntimeServices(
+            application, {.runtime_name = "EpidemicInputSmokeApp", .log_module = "InputSmokeApp"}));
 
-        auto platform_runtime = std::make_shared<epidemic::platform::WindowsPlatformRuntime>();
-        auto input_system = std::make_shared<epidemic::input::InputSystem>();
-        application.Services().RegisterInstance<epidemic::platform::IPlatformRuntime>(platform_runtime);
-        application.Services().RegisterInstance<epidemic::platform::IWindowSystem>(platform_runtime);
-        application.Services().RegisterInstance<epidemic::input::IInputSystem>(input_system);
+        auto platform_runtime = epidemic::apps::RegisterWindowsPlatformServices(application);
+        auto input_system = epidemic::apps::RegisterInputServices(application);
+        auto frame_platform_events = epidemic::apps::RegisterFramePlatformEvents(application);
+        epidemic::apps::RegisterPlatformFrameLoop(application, platform_runtime, frame_platform_events, input_system);
+        epidemic::apps::RegisterFrameThrottle(application, std::chrono::milliseconds(16));
 
         const auto configuration = application.Services().Get<epidemic::core::config::IConfiguration>();
         const auto logger = application.Services().Get<epidemic::diagnostics::ILogger>();
@@ -129,30 +96,22 @@ int main()
 
         application.AddFramePhaseHandler(
             epidemic::core::FramePhase::PumpPlatformEvents,
-            [&application, platform_runtime, input_system, window, logger](const epidemic::core::FrameContext &) {
-                platform_runtime->PumpEvents();
-                const auto platform_events = platform_runtime->DrainEvents();
-                input_system->QueuePlatformEvents(platform_events);
-
-                for (const auto &event : platform_events)
+            [&application, frame_platform_events, logger, window](const epidemic::core::FrameContext &) {
+                for (const auto &event : frame_platform_events->events)
                 {
-                    if (event.type == epidemic::platform::PlatformEventType::WindowCloseRequested)
+                    if (event.type == epidemic::platform::PlatformEventType::WindowCloseRequested &&
+                        event.window_id == window->Id())
                     {
                         logger->Info("InputSmokeApp", "Window", "Close requested");
+                        window->Close();
                         application.RequestStop();
                     }
                 }
-
-                if (platform_runtime->IsExitRequested())
-                {
-                    application.RequestStop();
-                }
             },
-            "InputSmokeApp::PumpPlatformEvents");
+            "InputSmokeApp::HandleClose");
         application.AddFramePhaseHandler(
             epidemic::core::FramePhase::UpdateInput,
             [&application, input_system, logger](const epidemic::core::FrameContext &) {
-                input_system->PublishSnapshot();
                 for (const auto &event : input_system->CurrentEvents())
                 {
                     LogInputEvent(*logger, event);
@@ -164,11 +123,7 @@ int main()
                     application.RequestStop();
                 }
             },
-            "InputSmokeApp::UpdateInput");
-        application.AddFramePhaseHandler(
-            epidemic::core::FramePhase::EndFrame,
-            [](const epidemic::core::FrameContext &) { std::this_thread::sleep_for(std::chrono::milliseconds(16)); },
-            "InputSmokeApp::Throttle");
+            "InputSmokeApp::InspectInputSnapshot");
 
         application.Bootstrap();
         application.Initialize();
@@ -182,4 +137,3 @@ int main()
         return 1;
     }
 }
-

@@ -1,3 +1,4 @@
+add_subdirectory(Common)
 add_subdirectory(HeadlessCoreApp)
 add_subdirectory(WindowSmokeApp)
 add_subdirectory(InputSmokeApp)
