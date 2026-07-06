@@ -2,6 +2,7 @@
 
 #include <Epidemic/Core/configuration.h>
 #include <Epidemic/Core/event_bus.h>
+#include <Epidemic/Core/main_thread_dispatcher.h>
 #include <Epidemic/Core/task_scheduler.h>
 #include <Epidemic/Diagnostics/counters.h>
 #include <Epidemic/Diagnostics/logger.h>
@@ -326,8 +327,7 @@ void Application::ScheduleMainThreadTask(MainThreadTask task, std::string debug_
         throw std::invalid_argument("Main thread task must not be empty");
     }
 
-    std::scoped_lock lock(main_thread_tasks_mutex_);
-    main_thread_tasks_.push(ScheduledMainThreadTask{std::move(task), std::move(debug_name)});
+    services_.Get<IMainThreadDispatcher>()->Post(std::move(task), std::move(debug_name));
 }
 
 const FrameContext &Application::CurrentFrameContext() const noexcept
@@ -341,6 +341,7 @@ void Application::ValidateCoreServices() const
     EnsureRegistered<config::IConfiguration>(services_, "config::IConfiguration");
     EnsureRegistered<events::IEventBus>(services_, "events::IEventBus");
     EnsureRegistered<tasks::ITaskScheduler>(services_, "tasks::ITaskScheduler");
+    EnsureRegistered<IMainThreadDispatcher>(services_, "IMainThreadDispatcher");
 }
 
 std::shared_ptr<diagnostics::ILogger> Application::Logger() const
@@ -505,33 +506,7 @@ bool Application::ReachedFrameLimit() const noexcept
 
 std::size_t Application::RunScheduledMainThreadTasks()
 {
-    std::queue<ScheduledMainThreadTask> pending_tasks;
-    {
-        std::scoped_lock lock(main_thread_tasks_mutex_);
-        std::swap(pending_tasks, main_thread_tasks_);
-    }
-
-    std::size_t executed_tasks = 0;
-    try
-    {
-        while (!pending_tasks.empty())
-        {
-            auto task = std::move(pending_tasks.front());
-            pending_tasks.pop();
-            task.task();
-            ++executed_tasks;
-        }
-    }
-    catch (...)
-    {
-        diagnostics::GlobalCounters().Set(diagnostics::CounterId::MainThreadTasksExecuted,
-                                          static_cast<std::int64_t>(executed_tasks));
-        throw;
-    }
-
-    diagnostics::GlobalCounters().Set(diagnostics::CounterId::MainThreadTasksExecuted,
-                                      static_cast<std::int64_t>(executed_tasks));
-    return executed_tasks;
+    return services_.Get<IMainThreadDispatcher>()->Drain();
 }
 } // namespace epidemic::core
 

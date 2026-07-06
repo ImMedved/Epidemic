@@ -1,4 +1,4 @@
-#include <Epidemic/Apps/runtime_app_support.h>
+#include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
 #include <Epidemic/Input/iinput_system.h>
 #include <Epidemic/Input/input_event.h>
@@ -47,7 +47,8 @@ void LogInputEvent(epidemic::diagnostics::ILogger &logger, const epidemic::input
         logger.Info("InputSmokeApp", "Input", "Mouse wheel: " + std::to_string(event.wheel_delta));
         break;
     case InputEventType::FocusChanged:
-        logger.Info("InputSmokeApp", "Input", std::string("Focus changed: ") + (event.focused ? "focused" : "unfocused"));
+        logger.Info("InputSmokeApp", "Input",
+                    std::string("Focus changed: ") + (event.focused ? "focused" : "unfocused"));
         break;
     case InputEventType::CaptureChanged:
         logger.Info("InputSmokeApp", "Input",
@@ -64,31 +65,28 @@ int main()
     try
     {
         epidemic::core::Application application;
-        static_cast<void>(epidemic::apps::RegisterCoreRuntimeServices(
+        static_cast<void>(epidemic::enginebase::RegisterEngineBase(
             application, {.runtime_name = "EpidemicInputSmokeApp", .log_module = "InputSmokeApp"}));
 
-        auto platform_runtime = epidemic::apps::RegisterWindowsPlatformServices(application);
-        auto input_system = epidemic::apps::RegisterInputServices(application);
-        auto frame_platform_events = epidemic::apps::RegisterFramePlatformEvents(application);
-        epidemic::apps::RegisterPlatformFrameLoop(application, platform_runtime, frame_platform_events, input_system);
-        epidemic::apps::RegisterFrameThrottle(application, std::chrono::milliseconds(16));
-
+        static_cast<void>(epidemic::enginebase::RegisterWindowsRuntime(application));
+        auto input_system = epidemic::enginebase::RegisterInputRuntime(application);
         const auto configuration = application.Services().Get<epidemic::core::config::IConfiguration>();
         const auto logger = application.Services().Get<epidemic::diagnostics::ILogger>();
         logger->Info("InputSmokeApp", "Platform", "Platform runtime: WindowsPlatformRuntime");
         logger->Info("InputSmokeApp", "Input", "Input snapshot pipeline enabled");
 
-        const auto window_result = platform_runtime->CreateWindow(
+        const auto window = epidemic::enginebase::CreateMainWindow(
+            application,
             epidemic::platform::WindowCreateInfo{"Epidemic Input Smoke",
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowWidth().value_or(1280)),
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowHeight().value_or(720)),
                                                  true});
-        if (!window_result.HasValue())
-        {
-            throw std::runtime_error(window_result.GetError().message);
-        }
 
-        const auto window = window_result.Value();
+        epidemic::enginebase::RegisterPlatformFrameLoop(application);
+        epidemic::enginebase::RegisterInputFrameLoop(application);
+        epidemic::enginebase::RegisterFrameThrottle(application, std::chrono::milliseconds(16));
+        const auto frame_platform_events = application.Services().Get<epidemic::enginebase::FramePlatformEvents>();
+
         logger->Info("InputSmokeApp", "Window",
                      "Window created: " + std::to_string(window->ClientWidth()) + "x" +
                          std::to_string(window->ClientHeight()) + ", dpi=" + std::to_string(window->Dpi()));
@@ -109,6 +107,7 @@ int main()
                 }
             },
             "InputSmokeApp::HandleClose");
+
         application.AddFramePhaseHandler(
             epidemic::core::FramePhase::UpdateInput,
             [&application, input_system, logger](const epidemic::core::FrameContext &) {

@@ -1,4 +1,4 @@
-#include <Epidemic/Apps/runtime_app_support.h>
+#include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
 
 #include <exception>
@@ -9,7 +9,7 @@ int main()
     try
     {
         epidemic::core::Application application;
-        static_cast<void>(epidemic::apps::RegisterCoreRuntimeServices(
+        static_cast<void>(epidemic::enginebase::RegisterEngineBase(
             application, {.runtime_name = "EpidemicHeadlessCoreApp", .log_module = "HeadlessCoreApp"}));
         application.SetFrameLimit(1);
         application.Bootstrap();

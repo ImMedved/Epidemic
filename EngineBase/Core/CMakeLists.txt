@@ -2,6 +2,7 @@ add_library(EpidemicCore STATIC
     src/application.cpp
     src/basic_configuration.cpp
     src/event_bus.cpp
+    src/main_thread_dispatcher.cpp
     src/module_registry.cpp
     src/task_scheduler.cpp
 )

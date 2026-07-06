@@ -3,7 +3,7 @@ add_executable(EpidemicHeadlessCoreApp
 )
 
 target_link_libraries(EpidemicHeadlessCoreApp
-    PRIVATE EpidemicAppSupport
+    PRIVATE EpidemicEngineBaseSupport
 )
 
 epidemic_configure_target(EpidemicHeadlessCoreApp)

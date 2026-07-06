@@ -1,4 +1,4 @@
-#include <Epidemic/Apps/runtime_app_support.h>
+#include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
 #include <Epidemic/Platform/platform_event.h>
 
@@ -6,36 +6,32 @@
 #include <exception>
 #include <iostream>
 #include <memory>
-#include <thread>
+#include <string>
 
 int main()
 {
     try
     {
         epidemic::core::Application application;
-        static_cast<void>(epidemic::apps::RegisterCoreRuntimeServices(
+        static_cast<void>(epidemic::enginebase::RegisterEngineBase(
             application, {.runtime_name = "EpidemicWindowSmokeApp", .log_module = "WindowSmokeApp"}));
 
-        auto platform_runtime = epidemic::apps::RegisterWindowsPlatformServices(application);
-        auto frame_platform_events = epidemic::apps::RegisterFramePlatformEvents(application);
-        epidemic::apps::RegisterPlatformFrameLoop(application, platform_runtime, frame_platform_events);
-        epidemic::apps::RegisterFrameThrottle(application, std::chrono::milliseconds(16));
-
+        static_cast<void>(epidemic::enginebase::RegisterWindowsRuntime(application));
         const auto configuration = application.Services().Get<epidemic::core::config::IConfiguration>();
-        const auto width = configuration->GetDefaultWindowWidth().value_or(1280);
-        const auto height = configuration->GetDefaultWindowHeight().value_or(720);
         const auto logger = application.Services().Get<epidemic::diagnostics::ILogger>();
         logger->Info("WindowSmokeApp", "Platform", "Platform runtime: WindowsPlatformRuntime");
 
-        const auto window_result = platform_runtime->CreateWindow(
-            epidemic::platform::WindowCreateInfo{"Epidemic Window Smoke", static_cast<std::uint32_t>(width),
-                                                 static_cast<std::uint32_t>(height), true});
-        if (!window_result.HasValue())
-        {
-            throw std::runtime_error(window_result.GetError().message);
-        }
+        const auto window = epidemic::enginebase::CreateMainWindow(
+            application,
+            epidemic::platform::WindowCreateInfo{"Epidemic Window Smoke",
+                                                 static_cast<std::uint32_t>(configuration->GetDefaultWindowWidth().value_or(1280)),
+                                                 static_cast<std::uint32_t>(configuration->GetDefaultWindowHeight().value_or(720)),
+                                                 true});
 
-        const auto window = window_result.Value();
+        epidemic::enginebase::RegisterPlatformFrameLoop(application);
+        epidemic::enginebase::RegisterFrameThrottle(application, std::chrono::milliseconds(16));
+        const auto frame_platform_events = application.Services().Get<epidemic::enginebase::FramePlatformEvents>();
+
         logger->Info("WindowSmokeApp", "Window",
                      "Window created: " + std::to_string(window->ClientWidth()) + "x" +
                          std::to_string(window->ClientHeight()) + ", dpi=" + std::to_string(window->Dpi()));

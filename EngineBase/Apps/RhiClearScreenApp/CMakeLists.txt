@@ -3,7 +3,7 @@ add_executable(EpidemicRhiClearScreenApp
 )
 
 target_link_libraries(EpidemicRhiClearScreenApp
-    PRIVATE EpidemicAppSupport EpidemicRHI_D3D11
+    PRIVATE EpidemicEngineBaseSupport
 )
 
 epidemic_configure_target(EpidemicRhiClearScreenApp)

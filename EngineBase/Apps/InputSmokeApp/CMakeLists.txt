@@ -3,7 +3,7 @@ add_executable(EpidemicInputSmokeApp
 )
 
 target_link_libraries(EpidemicInputSmokeApp
-    PRIVATE EpidemicAppSupport
+    PRIVATE EpidemicEngineBaseSupport
 )
 
 epidemic_configure_target(EpidemicInputSmokeApp)

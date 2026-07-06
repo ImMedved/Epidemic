@@ -14,6 +14,7 @@ add_subdirectory(Platform)
 add_subdirectory(Input)
 add_subdirectory(RHI)
 add_subdirectory(RHI_D3D11)
+add_subdirectory(Support)
 add_subdirectory(Apps)
 
 if(BUILD_TESTING)

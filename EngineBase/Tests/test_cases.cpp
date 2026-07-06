@@ -3,6 +3,7 @@
 #include <Epidemic/Core/configuration.h>
 #include <Epidemic/Core/event_bus.h>
 #include <Epidemic/Core/imodule.h>
+#include <Epidemic/Core/main_thread_dispatcher.h>
 #include <Epidemic/Core/module_registry.h>
 #include <Epidemic/Core/service_container.h>
 #include <Epidemic/Core/task_scheduler.h>
@@ -21,6 +22,7 @@
 #include <Epidemic/Input/mouse_button.h>
 #include <Epidemic/Memory/allocation_tag.h>
 #include <Epidemic/Memory/allocator.h>
+#include <Epidemic/Memory/imemory_tracker.h>
 #include <Epidemic/Memory/memory_tracker.h>
 #include <Epidemic/Platform/iplatform_runtime.h>
 #include <Epidemic/Platform/iwindow_system.h>
@@ -196,6 +198,8 @@ std::shared_ptr<RecordingLogger> RegisterCoreServices(epidemic::core::ServiceCon
 
     services.Emplace<epidemic::core::events::IEventBus, epidemic::core::events::EventBus>();
     services.Emplace<epidemic::core::tasks::ITaskScheduler, epidemic::core::tasks::SimpleTaskScheduler>(worker_count);
+    services.Emplace<epidemic::core::IMainThreadDispatcher, epidemic::core::MainThreadDispatcher>();
+    services.Emplace<epidemic::memory::IMemoryTracker, epidemic::memory::MemoryTracker>(true);
     return logger;
 }
 
@@ -747,6 +751,63 @@ void TestTaskSchedulerContracts()
     scheduler.Wait(shutdown_group);
 }
 
+void TestMainThreadDispatcherContracts()
+{
+    epidemic::diagnostics::GlobalCounters().Reset();
+
+    epidemic::core::MainThreadDispatcher dispatcher;
+    Assert(dispatcher.IsMainThread(), "Dispatcher must recognize the owning thread as the main thread");
+
+    std::vector<int> execution_order;
+    dispatcher.Post([&execution_order] { execution_order.push_back(1); }, "first");
+    dispatcher.Post([&execution_order] { execution_order.push_back(2); }, "second");
+
+    Assert(dispatcher.Drain() == 2, "Dispatcher must drain all queued tasks");
+    Assert(execution_order == std::vector<int>({1, 2}), "Dispatcher must execute tasks in FIFO order");
+    Assert(epidemic::diagnostics::GlobalCounters().Get(epidemic::diagnostics::CounterId::MainThreadTasksExecuted) == 2,
+           "Dispatcher drain must update the diagnostics counter");
+
+    bool empty_task_rejected = false;
+    try
+    {
+        dispatcher.Post({}, "empty");
+    }
+    catch (const std::invalid_argument &)
+    {
+        empty_task_rejected = true;
+    }
+    Assert(empty_task_rejected, "Dispatcher must reject empty tasks");
+
+    dispatcher.Post([&execution_order] { execution_order.push_back(3); }, "third");
+    dispatcher.Post([] { throw std::runtime_error("dispatcher task failure"); }, "throwing");
+    bool exception_rethrown = false;
+    try
+    {
+        static_cast<void>(dispatcher.Drain());
+    }
+    catch (const std::runtime_error &exception)
+    {
+        exception_rethrown = std::string(exception.what()) == "dispatcher task failure";
+    }
+    Assert(exception_rethrown, "Dispatcher must rethrow task exceptions");
+    Assert(epidemic::diagnostics::GlobalCounters().Get(epidemic::diagnostics::CounterId::MainThreadTasksExecuted) == 1,
+           "Dispatcher must publish the number of tasks completed before an exception");
+
+    bool foreign_drain_rejected = false;
+    std::thread foreign_thread([&dispatcher, &foreign_drain_rejected] {
+        try
+        {
+            static_cast<void>(dispatcher.Drain());
+        }
+        catch (const std::runtime_error &)
+        {
+            foreign_drain_rejected = true;
+        }
+    });
+    foreign_thread.join();
+    Assert(foreign_drain_rejected, "Dispatcher must reject Drain on non-owning threads");
+}
+
 void TestFrameLoopContracts()
 {
     epidemic::diagnostics::GlobalCounters().Reset();
@@ -1152,6 +1213,10 @@ void TestApplicationLifecycle()
            "Application must use externally registered event bus service");
     Assert(application.Services().Contains<epidemic::core::tasks::ITaskScheduler>(),
            "Application must use externally registered task scheduler service");
+    Assert(application.Services().Contains<epidemic::core::IMainThreadDispatcher>(),
+           "Application must use externally registered main-thread dispatcher service");
+    Assert(application.Services().Contains<epidemic::memory::IMemoryTracker>(),
+           "Application must use externally registered memory tracker service");
 
     const std::vector<std::string> expected_trace{
         "core:bootstrap",

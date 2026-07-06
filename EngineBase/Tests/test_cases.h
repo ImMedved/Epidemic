@@ -10,6 +10,7 @@ void TestServiceContainerContracts();
 void TestModuleRegistryContracts();
 void TestEventBusContracts();
 void TestTaskSchedulerContracts();
+void TestMainThreadDispatcherContracts();
 void TestFrameLoopContracts();
 void TestInputContracts();
 void TestRhiContracts();
@@ -17,4 +18,3 @@ void TestApplicationLifecycle();
 void TestApplicationShutdownContracts();
 void TestPlatformRuntime();
 } // namespace epidemic::tests
-

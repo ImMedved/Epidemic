@@ -10,9 +10,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <mutex>
 #include <optional>
-#include <queue>
 #include <string>
 #include <vector>
 
@@ -63,12 +61,6 @@ class Application
         std::string debug_name;
     };
 
-    struct ScheduledMainThreadTask
-    {
-        MainThreadTask task;
-        std::string debug_name;
-    };
-
     enum class State
     {
         Constructed,
@@ -93,8 +85,6 @@ class Application
     ModuleRegistry modules_;
     State state_{State::Constructed};
     std::array<std::vector<PhaseHandler>, FramePhaseCount()> phase_handlers_{};
-    mutable std::mutex main_thread_tasks_mutex_;
-    std::queue<ScheduledMainThreadTask> main_thread_tasks_;
     FrameContext current_frame_context_{};
     foundation::TimePoint run_start_time_{};
     foundation::TimePoint previous_frame_time_{};
