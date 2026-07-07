@@ -78,10 +78,22 @@ bool TestOperationHelpers()
 {
     return epidemic::runtime::IsActiveOperationStatus(AsyncOperationStatus::Pending) &&
            epidemic::runtime::IsActiveOperationStatus(AsyncOperationStatus::Running) &&
+           epidemic::runtime::IsActiveOperationStatus(AsyncOperationStatus::PartiallyComplete) &&
            epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::Completed) &&
            epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::Failed) &&
            epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::Cancelled) &&
-           !epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::WaitingForMainThread);
+           !epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::WaitingForMainThread) &&
+           !epidemic::runtime::IsActiveOperationStatus(AsyncOperationStatus::Completed);
+}
+
+bool TestStateOrderingRepresentsEscalation()
+{
+    return static_cast<int>(ResidencyState::Unloaded) < static_cast<int>(ResidencyState::Resident) &&
+           static_cast<int>(ResidencyState::Resident) < static_cast<int>(ResidencyState::Active) &&
+           static_cast<int>(SimulationLod::Dormant) < static_cast<int>(SimulationLod::Observed) &&
+           static_cast<int>(SimulationLod::Observed) < static_cast<int>(SimulationLod::Active) &&
+           static_cast<int>(PersistenceTier::Disposable) < static_cast<int>(PersistenceTier::PlayerTouched) &&
+           static_cast<int>(PersistenceTier::PlayerTouched) < static_cast<int>(PersistenceTier::QuestCritical);
 }
 } // namespace
 
@@ -132,6 +144,11 @@ int main()
     if (!TestOperationHelpers())
     {
         return 8;
+    }
+
+    if (!TestStateOrderingRepresentsEscalation())
+    {
+        return 9;
     }
 
     return 0;
