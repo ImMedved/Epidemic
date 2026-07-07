@@ -1,5 +1,6 @@
 #include "Epidemic/Runtime/Foundation/runtime_foundation.h"
 
+#include <chrono>
 #include <cstdint>
 #include <type_traits>
 #include <unordered_map>
@@ -7,11 +8,17 @@
 namespace
 {
 using epidemic::runtime::AssetId;
+using epidemic::runtime::AsyncOperationStatus;
 using epidemic::runtime::ChunkId;
+using epidemic::runtime::ObjectRealityLevel;
+using epidemic::runtime::PersistenceTier;
+using epidemic::runtime::ResidencyState;
 using epidemic::runtime::ResourceId;
+using epidemic::runtime::RuntimeBudget;
 using epidemic::runtime::RuntimeObjectId;
 using epidemic::runtime::SceneNodeHandle;
 using epidemic::runtime::SceneNodeId;
+using epidemic::runtime::SimulationLod;
 
 bool TestDefaultInvalidIds()
 {
@@ -54,12 +61,38 @@ bool TestTypedHandlesRemainInvalidByDefault()
     const SceneNodeHandle handle{};
     return !handle.IsValid();
 }
+
+bool TestRuntimeBudgetDefaultsToEmpty()
+{
+    const RuntimeBudget budget{};
+    return budget.IsEmpty() && !budget.HasTimeBudget() && !budget.HasItemBudget() && !budget.HasByteBudget();
+}
+
+bool TestRuntimeBudgetTracksLimits()
+{
+    const RuntimeBudget budget{std::chrono::microseconds{250}, 8u, 4096u};
+    return budget.HasTimeBudget() && budget.HasItemBudget() && budget.HasByteBudget() && !budget.IsEmpty();
+}
+
+bool TestOperationHelpers()
+{
+    return epidemic::runtime::IsActiveOperationStatus(AsyncOperationStatus::Pending) &&
+           epidemic::runtime::IsActiveOperationStatus(AsyncOperationStatus::Running) &&
+           epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::Completed) &&
+           epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::Failed) &&
+           epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::Cancelled) &&
+           !epidemic::runtime::IsTerminalOperationStatus(AsyncOperationStatus::WaitingForMainThread);
+}
 } // namespace
 
 int main()
 {
     static_assert(!std::is_same_v<AssetId, ResourceId>);
     static_assert(!std::is_same_v<RuntimeObjectId, SceneNodeId>);
+    static_assert(static_cast<int>(ResidencyState::Unloaded) != static_cast<int>(ResidencyState::Active));
+    static_assert(static_cast<int>(ObjectRealityLevel::Logical) != static_cast<int>(ObjectRealityLevel::Physical));
+    static_assert(static_cast<int>(PersistenceTier::Disposable) != static_cast<int>(PersistenceTier::QuestCritical));
+    static_assert(static_cast<int>(SimulationLod::Dormant) != static_cast<int>(SimulationLod::Active));
 
     if (!TestDefaultInvalidIds())
     {
@@ -84,6 +117,21 @@ int main()
     if (!TestTypedHandlesRemainInvalidByDefault())
     {
         return 5;
+    }
+
+    if (!TestRuntimeBudgetDefaultsToEmpty())
+    {
+        return 6;
+    }
+
+    if (!TestRuntimeBudgetTracksLimits())
+    {
+        return 7;
+    }
+
+    if (!TestOperationHelpers())
+    {
+        return 8;
     }
 
     return 0;
