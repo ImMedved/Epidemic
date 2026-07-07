@@ -1,0 +1,10 @@
+add_executable(EpidemicRegressionTests
+    regression_tests.cpp
+)
+
+target_link_libraries(EpidemicRegressionTests
+    PRIVATE EpidemicFoundation EpidemicMemory EpidemicDiagnostics EpidemicCore EpidemicPlatform EpidemicInput EpidemicRHI EpidemicRHI_D3D11 EpidemicEngineBaseSupport
+)
+
+epidemic_configure_target(EpidemicRegressionTests)
+add_test(NAME EpidemicRegressionTests COMMAND EpidemicRegressionTests)

@@ -1,80 +1,57 @@
-# Слои и границы
+# Engine Layers
 
-## Общий принцип
+This project is split into layers. Lower layers provide contracts and runtime infrastructure. Higher layers build engine systems and game logic on top.
 
-Проект делится на три крупные зоны:
-
-- `src/core` — микроядро и только микроядро;
-- `src/layers` — все подключаемые слои runtime;
-- `src/apps` — executable hosts и composition roots;
-- `tests` — unit/integration tests.
-
-Это сделано специально, чтобы архитектурный центр проекта был виден по дереву файлов, а не только по договоренности в голове.
-
-## Правило `core`
-
-`core` не должен знать:
-
-- о Storm compatibility;
-- о DX11;
-- о форматах ресурсов;
-- о gameplay logic;
-- о string-based service aliases.
-
-`core` знает только про:
-
-- lifecycle;
-- typed services;
-- modules;
-- events;
-- tasks;
-- diagnostics;
-- configuration.
-
-## Правило `layers`
-
-Каждый слой живет в своей подпапке и не "растекается" по проекту.
-
-Текущая форма:
+## Layer Order
 
 ```text
-src/layers/
-  runtime/
-    interfaces/
-    placeholders/
+EngineBase
+  ↓
+EngineRuntime
+  ↓
+GameFramework
+  ↓
+Game
 ```
 
-Дальше сюда будут добавляться:
+Dependencies may only point downward. `EngineBase` must never include or link against `EngineRuntime`, `GameFramework`, or `Game`.
 
-- `platform/`
-- `rhi/`
-- `renderer/`
-- `compatibility/`
-- `gameplay_host/`
+## EngineBase
 
-## Правило границ между слоями
+`EngineBase` is the stable runtime foundation. It owns the low-level contracts required to start the engine, register services, run the lifecycle, process frames, open a Windows window, publish input snapshots, and present through a minimal RHI boundary.
 
-- слой зависит от `core`, но не наоборот;
-- слой не пишет файлы в чужую подпапку;
-- public contracts слоя лежат внутри самого слоя;
-- placeholder/stub implementations лежат рядом с контрактами своего слоя;
-- executable host в `src/apps/*` собирает слой вместе с `core`, но не переносит логику обратно в ядро.
+It includes Foundation, Memory, Diagnostics, Core, Platform, Input, RHI, RHI_D3D11, Support, smoke apps, and tests.
 
-## Почему это важно
+`EngineBase` is intentionally not a full engine layer. It must not grow into resources, renderer, world streaming, save/load, physics gameplay, NPC logic, quests, scripting, editor tools, or game-specific code.
 
-Если мы не закрепим границы сейчас, новый движок быстро скатится в ту же форму, что и старый:
+## EngineRuntime
 
-- размытые зависимости;
-- скрытые сервисные связи;
-- глобальное состояние;
-- непонятный порядок инициализации;
-- смешение runtime, renderer и gameplay logic.
+`EngineRuntime` is the next layer. It will contain the engine majors: large reusable runtime systems that are still not gameplay-specific.
 
-Новая структура нужна не ради красоты, а ради удержания архитектурной дисциплины на длинной дистанции.
+Expected future majors include resources, assets, serialization, persistence, world/streaming, scene/spatial runtime, renderer foundation, physics runtime, surface state, environment/time/weather foundation, navigation, animation, audio, scripting integration, and simulation runtime.
 
-## Текущий статус
+`EngineRuntime` may use `EngineBase` services such as the task scheduler, diagnostics, memory tracking, main-thread dispatcher, frame phases, and RHI. It must not know about the concrete game.
 
-- `core` уже физически отделен от слоев;
-- `runtime` уже существует как отдельный слой с placeholder interfaces;
-- `apps` уже отделены от внутренних модулей;
-- дальнейшие subsystem-реализации должны добавляться только внутрь `layers/*`.
+## GameFramework
+
+`GameFramework` is the reusable gameplay framework layer.
+
+It may define general gameplay concepts such as actors, items, equipment, inventory, interactions, dialogue framework, quest framework, factions, crime, vendors, schedules, needs, skills, and gameplay AI hooks.
+
+It should use `EngineRuntime` systems instead of talking directly to platform, windowing, D3D11, or low-level orchestration.
+
+## Game
+
+`Game` is the final composition root. It chooses which engine systems and gameplay systems are used, registers game-specific modules, and contains concrete rules, content, balance, quests, NPC types, items, regions, and story logic.
+
+Game-specific code may depend on all lower layers, but lower layers must not depend on it.
+
+## Rule of Thumb
+
+If a feature is required to start and orchestrate the runtime, it may belong in `EngineBase`.
+
+If it is a reusable engine system such as resources, world, renderer, persistence, or simulation, it belongs in `EngineRuntime`.
+
+If it describes general gameplay concepts, it belongs in `GameFramework`.
+
+If it is specific to the actual game, it belongs in `Game`.

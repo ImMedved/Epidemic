@@ -1,2 +1,6 @@
-dev-log/initial-plan.md
 build/
+logs/
+.agents/
+.codex/
+dev-log/
+*.zip
