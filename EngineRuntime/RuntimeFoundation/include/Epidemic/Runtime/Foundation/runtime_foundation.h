@@ -1,6 +1,4 @@
 #pragma once
 
-namespace epidemic::runtime
-{
-inline constexpr int kRuntimeFoundationSkeleton = 1;
-}
+#include "Epidemic/Runtime/Foundation/runtime_handles.h"
+#include "Epidemic/Runtime/Foundation/runtime_ids.h"
