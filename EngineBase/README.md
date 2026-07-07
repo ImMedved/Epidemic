@@ -86,6 +86,8 @@ Logs are written to `logs/epidemic.log`.
 
 When changing `EngineBase`, keep the public API small and stable. Dependencies must flow downward only. Composition code belongs in `Support`, `Apps`, `Tests`, or upper executables, not in lower modules.
 
-Use `Result<T>` for expected runtime failures. The support/composition API returns `Result` for window creation, graphics runtime creation, and swap-chain creation. Treat duplicate services, invalid lifecycle transitions, circular module dependencies, empty handlers, and similar contract violations as programming errors.`r`n`r`n`ServiceContainer` is sealed after successful `Initialize()`. Runtime services must be registered during composition, bootstrap, or initialize, not after startup.
+Use `Result<T>` for expected runtime failures. The support/composition API returns `Result` for window creation, graphics runtime creation, and swap-chain creation. Treat duplicate services, invalid lifecycle transitions, circular module dependencies, empty handlers, and similar contract violations as programming errors.
+
+ServiceContainer is sealed after successful Initialize(). Runtime services must be registered during composition, bootstrap, or initialize, not after startup.
 
 `EngineBase` is currently Windows-only. The validated baseline is Win32 plus D3D11 on Windows 11. Cross-platform support is not part of this stage.

@@ -20,6 +20,7 @@ class ServiceContainer
         static_assert(std::is_base_of_v<TService, TImplementation>,
                       "Implementation must derive from the requested service interface");
 
+        EnsureCanRegister<TService>();
         auto instance = std::make_shared<TImplementation>(std::forward<TArgs>(args)...);
         RegisterInstance<TService>(instance);
         return instance;
@@ -78,6 +79,20 @@ class ServiceContainer
     }
 
   private:
+    template <typename TService> void EnsureCanRegister() const
+    {
+        std::shared_lock lock(mutex_);
+        if (sealed_)
+        {
+            throw std::runtime_error("Service container is sealed");
+        }
+
+        if (services_.contains(std::type_index(typeid(TService))))
+        {
+            throw std::runtime_error("Service already registered");
+        }
+    }
+
     mutable std::shared_mutex mutex_;
     std::unordered_map<std::type_index, std::shared_ptr<void>> services_;
     bool sealed_{false};

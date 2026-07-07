@@ -17,6 +17,7 @@
 #include <Epidemic/RHI/null_rhi_device.h>
 #include <Epidemic/RHI_D3D11/d3d11_rhi_device.h>
 
+#include <stdexcept>
 #include <thread>
 #include <utility>
 
@@ -149,7 +150,8 @@ foundation::Result<GraphicsRuntimeServices> RegisterGraphicsRuntime(core::Applic
         logger->Info("EngineBaseSupport", "RHI", "Graphics runtime ready: backend=" + std::string(device->BackendName()));
     }
 
-    return foundation::Result<GraphicsRuntimeServices>::Success(GraphicsRuntimeServices{std::move(device), std::move(command_context)});
+    return foundation::Result<GraphicsRuntimeServices>::Success(
+        GraphicsRuntimeServices{std::move(device), std::move(command_context)});
 }
 
 foundation::Result<std::shared_ptr<platform::IWindow>>
@@ -191,12 +193,12 @@ RegisterMainSwapChain(core::Application &application,
 void RegisterPlatformFrameLoop(core::Application &application)
 {
     auto frame_platform_events = EnsureFramePlatformEvents(application);
+    const auto platform_runtime = application.Services().Get<platform::IPlatformRuntime>();
+    const auto window_system = application.Services().Get<platform::IWindowSystem>();
 
     application.AddFramePhaseHandler(
         core::FramePhase::PumpPlatformEvents,
-        [&application, frame_platform_events](const core::FrameContext &) {
-            const auto platform_runtime = application.Services().Get<platform::IPlatformRuntime>();
-            const auto window_system = application.Services().Get<platform::IWindowSystem>();
+        [&application, frame_platform_events, platform_runtime, window_system](const core::FrameContext &) {
             platform_runtime->PumpEvents();
             frame_platform_events->events = window_system->DrainEvents();
             diagnostics::GlobalCounters().Set(diagnostics::CounterId::PlatformEventsThisFrame,
@@ -213,11 +215,11 @@ void RegisterPlatformFrameLoop(core::Application &application)
 void RegisterInputFrameLoop(core::Application &application)
 {
     auto frame_platform_events = EnsureFramePlatformEvents(application);
+    const auto input_system = application.Services().Get<input::IInputSystem>();
 
     application.AddFramePhaseHandler(
         core::FramePhase::UpdateInput,
-        [&application, frame_platform_events](const core::FrameContext &) {
-            const auto input_system = application.Services().Get<input::IInputSystem>();
+        [frame_platform_events, input_system](const core::FrameContext &) {
             input_system->QueuePlatformEvents(frame_platform_events->events);
             input_system->PublishSnapshot();
             diagnostics::GlobalCounters().Set(diagnostics::CounterId::InputEventsThisFrame,

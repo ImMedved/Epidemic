@@ -8,6 +8,8 @@
 #include <Epidemic/Diagnostics/counters.h>
 
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <vector>
 
 namespace
@@ -24,6 +26,21 @@ struct SyncTestEvent
 struct QueuedTestEvent
 {
     int value{};
+};
+
+struct CountingService
+{
+    virtual ~CountingService() = default;
+};
+
+struct CountingServiceImpl final : CountingService
+{
+    explicit CountingServiceImpl(int &construction_count) : construction_count_(construction_count)
+    {
+        ++construction_count_;
+    }
+
+    int &construction_count_;
 };
 
 void TestServiceContainerContracts()
@@ -55,19 +72,38 @@ void TestServiceContainerContracts()
     }
     Assert(null_failed, "Null service registration must fail");
 
-    services.Seal();
-    Assert(services.IsSealed(), "Seal must mark the service container as sealed");
+    int duplicate_emplace_construction_count = 0;
+    static_cast<void>(services.Emplace<CountingService, CountingServiceImpl>(duplicate_emplace_construction_count));
+    bool duplicate_emplace_failed = false;
+    try
+    {
+        static_cast<void>(services.Emplace<CountingService, CountingServiceImpl>(duplicate_emplace_construction_count));
+    }
+    catch (const std::exception &)
+    {
+        duplicate_emplace_failed = true;
+    }
+    Assert(duplicate_emplace_failed, "Duplicate Emplace registration must fail");
+    Assert(duplicate_emplace_construction_count == 1,
+           "Duplicate Emplace must validate before constructing the implementation");
 
+    epidemic::core::ServiceContainer sealed_services;
+    sealed_services.Seal();
+    Assert(sealed_services.IsSealed(), "Seal must mark the service container as sealed");
+
+    int sealed_emplace_construction_count = 0;
     bool sealed_failed = false;
     try
     {
-        services.Emplace<epidemic::core::events::IEventBus, epidemic::core::events::EventBus>();
+        static_cast<void>(sealed_services.Emplace<CountingService, CountingServiceImpl>(sealed_emplace_construction_count));
     }
     catch (const std::exception &)
     {
         sealed_failed = true;
     }
     Assert(sealed_failed, "Registering a service after seal must fail");
+    Assert(sealed_emplace_construction_count == 0,
+           "Sealed Emplace must validate before constructing the implementation");
 }
 
 void TestEventBusContracts()
@@ -204,7 +240,7 @@ void TestModuleRegistryContracts()
     }
     Assert(late_register_failed, "Registering a module after lifecycle start must fail");
 }
-}
+} // namespace
 
 int main()
 {

@@ -12,12 +12,20 @@ namespace epidemic::diagnostics
 {
 namespace
 {
+[[nodiscard]] bool IsProjectRootCandidate(const std::filesystem::path &path)
+{
+    const bool has_engine_base_directory = std::filesystem::exists(path / "EngineBase");
+    const bool has_root_cmake = std::filesystem::exists(path / "CMakeLists.txt");
+    const bool has_api_stability = std::filesystem::exists(path / "EngineBase" / "API_STABILITY.md");
+    return has_engine_base_directory && (has_root_cmake || has_api_stability);
+}
+
 std::filesystem::path FindProjectRoot()
 {
     auto current = std::filesystem::current_path();
     while (!current.empty())
     {
-        if (std::filesystem::exists(current / "EngineBase") && std::filesystem::exists(current / "dev-log"))
+        if (IsProjectRootCandidate(current))
         {
             return current;
         }

@@ -4,6 +4,8 @@
 #include <Epidemic/Input/key_code.h>
 #include <Epidemic/Platform/platform_event.h>
 
+#include <stdexcept>
+
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>

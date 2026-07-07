@@ -7,6 +7,7 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <stdexcept>
 #include <vector>
 
 namespace
@@ -75,12 +76,12 @@ void TestFrameLoopDoesNotWaitIdleEveryFrame()
     application.AddFramePhaseHandler(
         epidemic::core::FramePhase::BeginFrame,
         [&application, &task_completed](const epidemic::core::FrameContext &) {
-            application.Services().Get<epidemic::core::tasks::ITaskScheduler>()->Schedule(
+            static_cast<void>(application.Services().Get<epidemic::core::tasks::ITaskScheduler>()->Schedule(
                 [&task_completed] {
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     task_completed.store(true, std::memory_order_relaxed);
                 },
-                "background-task");
+                "background-task"));
         },
         "AsyncFrameLoopTests::ScheduleBackgroundTask");
 

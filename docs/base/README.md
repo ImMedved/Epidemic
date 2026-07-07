@@ -169,7 +169,9 @@ The reusable wiring is intentionally pushed into `EpidemicEngineBaseSupport`, so
 - `InputSmokeApp`: platform + input update, input event logging, Escape-to-exit
 - `RhiClearScreenApp`: D3D11 runtime, swap chain, clear screen, resize/minimize/restore handling
 
-If a smoke app starts re-implementing generalized service registration or frame-loop setup that already exists in `Support`, that is considered architectural drift.`r`n`r`nAfter successful `Initialize()`, the application seals its `ServiceContainer`, so future runtime layers cannot accidentally register new long-lived services in the middle of gameplay.
+If a smoke app starts re-implementing generalized service registration or frame-loop setup that already exists in `Support`, that is considered architectural drift.
+
+After successful `Initialize()`, the application seals its `ServiceContainer`, so future runtime layers cannot accidentally register new long-lived services in the middle of gameplay.
 
 ## Build and Validation
 

@@ -120,8 +120,9 @@ Ownership rules:
 - `Application` owns the `ServiceContainer` and `ModuleRegistry`
 - `ServiceContainer` owns long-lived runtime services through `std::shared_ptr`
 - modules may register services only during composition/bootstrap/initialize stages
-- runtime services are expected to be registered during bootstrap
-- runtime registration after startup is considered exceptional and must be explicitly documented
+- runtime services are expected to be registered during composition/bootstrap/initialize
+- after successful `Application::Initialize()`, `ServiceContainer` is sealed
+- registering new long-lived runtime services after `Initialize()` is forbidden
 - window system owns platform window implementation details
 - a concrete `IWindow` lifetime must outlive the swap chain created for it
 - the RHI device owns backend device state

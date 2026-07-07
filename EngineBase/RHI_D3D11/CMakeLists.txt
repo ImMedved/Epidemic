@@ -11,8 +11,8 @@ target_include_directories(EpidemicRHI_D3D11 PRIVATE
 )
 
 target_link_libraries(EpidemicRHI_D3D11
-    PUBLIC EpidemicFoundation EpidemicPlatform EpidemicRHI
-    PRIVATE d3d11 dxgi
+    PUBLIC EpidemicFoundation EpidemicRHI
+    PRIVATE EpidemicPlatform d3d11 dxgi
 )
 
 target_compile_features(EpidemicRHI_D3D11 PUBLIC cxx_std_20)

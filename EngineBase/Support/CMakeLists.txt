@@ -14,6 +14,7 @@ target_link_libraries(EpidemicEngineBaseSupport
         EpidemicPlatform
         EpidemicInput
         EpidemicRHI
+    PRIVATE
         EpidemicRHI_D3D11
 )
 

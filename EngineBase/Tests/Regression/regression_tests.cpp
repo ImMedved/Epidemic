@@ -6,6 +6,8 @@
 #include <Epidemic/Diagnostics/profiling.h>
 #include <Epidemic/RHI/null_rhi_device.h>
 
+#include <stdexcept>
+
 namespace
 {
 using epidemic::tests::Assert;
