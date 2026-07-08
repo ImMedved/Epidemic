@@ -1,4 +1,6 @@
 #include "Epidemic/Runtime/Assets/asset_catalog.h"
+#include "Epidemic/Runtime/Assets/asset_dependency_manifest.h"
+#include "Epidemic/Runtime/Assets/asset_location_resolver.h"
 
 #include <cstdint>
 #include <optional>
@@ -8,6 +10,7 @@
 namespace
 {
 using epidemic::runtime::AssetDependency;
+using epidemic::runtime::AssetDependencyManifest;
 using epidemic::runtime::AssetId;
 using epidemic::runtime::AssetLocation;
 using epidemic::runtime::AssetLocationKind;
@@ -15,6 +18,7 @@ using epidemic::runtime::AssetMetadata;
 using epidemic::runtime::AssetState;
 using epidemic::runtime::AssetType;
 using epidemic::runtime::IAssetCatalog;
+using epidemic::runtime::IAssetLocationResolver;
 
 class StubAssetCatalog final : public IAssetCatalog
 {
@@ -70,6 +74,30 @@ class StubAssetCatalog final : public IAssetCatalog
     std::optional<AssetMetadata> last_registered_;
 };
 
+class StubAssetLocationResolver final : public IAssetLocationResolver
+{
+  public:
+    explicit StubAssetLocationResolver(AssetId id, AssetLocation location)
+        : id_(id), location_(std::move(location))
+    {
+    }
+
+    [[nodiscard]] epidemic::foundation::Result<AssetLocation> Resolve(AssetId id) const override
+    {
+        if (id == id_)
+        {
+            return epidemic::foundation::Result<AssetLocation>::Success(location_);
+        }
+
+        return epidemic::foundation::Result<AssetLocation>::Failure(
+            epidemic::foundation::Error::Create("asset.not_found", "asset location not registered"));
+    }
+
+  private:
+    AssetId id_{};
+    AssetLocation location_{};
+};
+
 bool TestDefaultMetadataState()
 {
     const AssetMetadata metadata{};
@@ -120,6 +148,33 @@ bool TestAssetCatalogContractCompilesAndReturnsSnapshots()
     return catalog.Contains(metadata.id) && by_id.has_value() && by_id->id == metadata.id && by_type.size() == 1 &&
            by_type.front().id == metadata.id && by_tag.size() == 1 && by_tag.front().id == metadata.id;
 }
+
+bool TestDependencyManifestIsImmediateSnapshot()
+{
+    AssetDependencyManifest manifest{};
+    manifest.root = AssetId::FromString("items/potato.itemdef");
+    manifest.dependencies.push_back(AssetDependency{AssetId::FromString("shared/potato.mesh"), true});
+    manifest.dependencies.push_back(AssetDependency{AssetId::FromString("shared/potato_icon.tex"), false});
+
+    return manifest.root.IsValid() && manifest.dependencies.size() == 2 && manifest.dependencies[0].required &&
+           !manifest.dependencies[1].required;
+}
+
+bool TestAssetLocationResolverReturnsRegisteredLocation()
+{
+    const AssetId id = AssetId::FromString("items/potato.itemdef");
+    const AssetLocation expected_location{AssetLocationKind::VirtualPath, "items/potato.itemdef"};
+    const StubAssetLocationResolver resolver{id, expected_location};
+
+    const auto resolved = resolver.Resolve(id);
+    if (!resolved)
+    {
+        return false;
+    }
+
+    const auto missing = resolver.Resolve(AssetId::FromString("items/missing.itemdef"));
+    return resolved.Value() == expected_location && !missing;
+}
 } // namespace
 
 int main()
@@ -127,6 +182,7 @@ int main()
     static_assert(std::is_same_v<decltype(AssetMetadata{}.content_hash), std::uint64_t>);
     static_assert(std::is_same_v<decltype(AssetMetadata{}.version), std::uint32_t>);
     static_assert(std::has_virtual_destructor_v<IAssetCatalog>);
+    static_assert(std::has_virtual_destructor_v<IAssetLocationResolver>);
 
     if (!TestDefaultMetadataState())
     {
@@ -141,6 +197,16 @@ int main()
     if (!TestAssetCatalogContractCompilesAndReturnsSnapshots())
     {
         return 3;
+    }
+
+    if (!TestDependencyManifestIsImmediateSnapshot())
+    {
+        return 4;
+    }
+
+    if (!TestAssetLocationResolverReturnsRegisteredLocation())
+    {
+        return 5;
     }
 
     return 0;
