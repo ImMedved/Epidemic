@@ -1,5 +1,6 @@
 add_library(EpidemicRuntimeAssets STATIC
     src/assets.cpp
+    src/in_memory_asset_catalog.cpp
 )
 
 target_include_directories(EpidemicRuntimeAssets PUBLIC

@@ -1,11 +1,8 @@
-#include "Epidemic/Runtime/Assets/asset_catalog.h"
 #include "Epidemic/Runtime/Assets/asset_dependency_manifest.h"
-#include "Epidemic/Runtime/Assets/asset_location_resolver.h"
+#include "Epidemic/Runtime/Assets/in_memory_asset_catalog.h"
 
 #include <cstdint>
-#include <optional>
 #include <type_traits>
-#include <vector>
 
 namespace
 {
@@ -19,84 +16,20 @@ using epidemic::runtime::AssetState;
 using epidemic::runtime::AssetType;
 using epidemic::runtime::IAssetCatalog;
 using epidemic::runtime::IAssetLocationResolver;
+using epidemic::runtime::InMemoryAssetCatalog;
 
-class StubAssetCatalog final : public IAssetCatalog
+AssetMetadata MakeMetadata(const char* asset_path, const char* asset_type, const char* tag, AssetLocationKind kind)
 {
-  public:
-    [[nodiscard]] epidemic::foundation::Result<void> RegisterAsset(AssetMetadata metadata) override
-    {
-        last_registered_ = std::move(metadata);
-        return epidemic::foundation::Result<void>::Success();
-    }
-
-    [[nodiscard]] std::optional<AssetMetadata> FindById(AssetId id) const override
-    {
-        if (last_registered_ && last_registered_->id == id)
-        {
-            return last_registered_;
-        }
-
-        return std::nullopt;
-    }
-
-    [[nodiscard]] std::vector<AssetMetadata> FindByType(AssetType type) const override
-    {
-        if (last_registered_ && last_registered_->type == type)
-        {
-            return {*last_registered_};
-        }
-
-        return {};
-    }
-
-    [[nodiscard]] std::vector<AssetMetadata> FindByTag(epidemic::foundation::StringId tag) const override
-    {
-        if (last_registered_)
-        {
-            for (const auto existing_tag : last_registered_->tags)
-            {
-                if (existing_tag == tag)
-                {
-                    return {*last_registered_};
-                }
-            }
-        }
-
-        return {};
-    }
-
-    [[nodiscard]] bool Contains(AssetId id) const override
-    {
-        return last_registered_ && last_registered_->id == id;
-    }
-
-  private:
-    std::optional<AssetMetadata> last_registered_;
-};
-
-class StubAssetLocationResolver final : public IAssetLocationResolver
-{
-  public:
-    explicit StubAssetLocationResolver(AssetId id, AssetLocation location)
-        : id_(id), location_(std::move(location))
-    {
-    }
-
-    [[nodiscard]] epidemic::foundation::Result<AssetLocation> Resolve(AssetId id) const override
-    {
-        if (id == id_)
-        {
-            return epidemic::foundation::Result<AssetLocation>::Success(location_);
-        }
-
-        return epidemic::foundation::Result<AssetLocation>::Failure(
-            epidemic::foundation::Error::Create("asset.not_found", "asset location not registered"));
-    }
-
-  private:
-    AssetId id_{};
-    AssetLocation location_{};
-};
+    AssetMetadata metadata{};
+    metadata.id = AssetId::FromString(asset_path);
+    metadata.type = AssetType{epidemic::foundation::StringId::FromString(asset_type)};
+    metadata.location = AssetLocation{kind, asset_path};
+    metadata.state = AssetState::Indexed;
+    metadata.tags.push_back(epidemic::foundation::StringId::FromString(tag));
+    metadata.content_hash = 1234;
+    metadata.version = 1;
+    return metadata;
+}
 
 bool TestDefaultMetadataState()
 {
@@ -106,47 +39,104 @@ bool TestDefaultMetadataState()
            metadata.tags.empty() && metadata.content_hash == 0 && metadata.version == 0;
 }
 
-bool TestMetadataCarriesDependenciesAndTags()
+bool TestRegisterAssetStoresMetadata()
 {
-    AssetMetadata metadata{};
-    metadata.id = AssetId::FromString("items/potato.itemdef");
-    metadata.type = AssetType{epidemic::foundation::StringId::FromString("itemdef")};
-    metadata.location = AssetLocation{AssetLocationKind::VirtualPath, "items/potato.itemdef"};
-    metadata.state = AssetState::Discovered;
-    metadata.dependencies.push_back(AssetDependency{AssetId::FromString("shared/potato.mesh"), true});
-    metadata.tags.push_back(epidemic::foundation::StringId::FromString("food"));
-    metadata.content_hash = 1234;
-    metadata.version = 2;
+    InMemoryAssetCatalog catalog;
+    const AssetMetadata metadata = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
 
-    return metadata.id.IsValid() && metadata.type.IsValid() && !metadata.location.Empty() &&
-           metadata.location.kind == AssetLocationKind::VirtualPath && metadata.state == AssetState::Discovered &&
-           metadata.dependencies.size() == 1 && metadata.dependencies.front().asset_id.IsValid() &&
-           metadata.dependencies.front().required && metadata.tags.size() == 1 && metadata.content_hash == 1234 &&
-           metadata.version == 2;
+    const auto result = catalog.RegisterAsset(metadata);
+    const auto stored = catalog.FindById(metadata.id);
+
+    return result && stored.has_value() && stored->id == metadata.id && stored->location == metadata.location;
 }
 
-bool TestAssetCatalogContractCompilesAndReturnsSnapshots()
+bool TestDuplicateAssetIdReturnsError()
 {
-    StubAssetCatalog catalog;
+    InMemoryAssetCatalog catalog;
+    const AssetMetadata metadata = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
 
-    AssetMetadata metadata{};
-    metadata.id = AssetId::FromString("items/potato.itemdef");
-    metadata.type = AssetType{epidemic::foundation::StringId::FromString("itemdef")};
-    metadata.location = AssetLocation{AssetLocationKind::VirtualPath, "items/potato.itemdef"};
-    metadata.tags.push_back(epidemic::foundation::StringId::FromString("food"));
+    const auto first = catalog.RegisterAsset(metadata);
+    const auto duplicate = catalog.RegisterAsset(metadata);
 
-    const auto register_result = catalog.RegisterAsset(metadata);
-    if (!register_result)
+    return first && !duplicate && duplicate.GetError().HasCode("asset.duplicate_id");
+}
+
+bool TestFindByIdReturnsSnapshot()
+{
+    InMemoryAssetCatalog catalog;
+    const AssetMetadata metadata = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
+    if (!catalog.RegisterAsset(metadata))
     {
         return false;
     }
 
-    const auto by_id = catalog.FindById(metadata.id);
-    const auto by_type = catalog.FindByType(metadata.type);
-    const auto by_tag = catalog.FindByTag(metadata.tags.front());
+    auto snapshot = catalog.FindById(metadata.id);
+    if (!snapshot)
+    {
+        return false;
+    }
 
-    return catalog.Contains(metadata.id) && by_id.has_value() && by_id->id == metadata.id && by_type.size() == 1 &&
-           by_type.front().id == metadata.id && by_tag.size() == 1 && by_tag.front().id == metadata.id;
+    snapshot->version = 99;
+    snapshot->location.value = "mutated/path.itemdef";
+
+    const auto refetched = catalog.FindById(metadata.id);
+    return refetched.has_value() && refetched->version == metadata.version && refetched->location.value == metadata.location.value;
+}
+
+bool TestFindByTypeWorks()
+{
+    InMemoryAssetCatalog catalog;
+    const AssetMetadata item_asset = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
+    const AssetMetadata mesh_asset = MakeMetadata("meshes/potato.mesh", "mesh", "food", AssetLocationKind::PackageEntry);
+
+    if (!catalog.RegisterAsset(item_asset) || !catalog.RegisterAsset(mesh_asset))
+    {
+        return false;
+    }
+
+    const auto item_type_matches = catalog.FindByType(item_asset.type);
+    return item_type_matches.size() == 1 && item_type_matches.front().id == item_asset.id;
+}
+
+bool TestFindByTagWorks()
+{
+    InMemoryAssetCatalog catalog;
+    const AssetMetadata food_asset = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
+    const AssetMetadata ui_asset = MakeMetadata("ui/potato_icon.tex", "texture", "ui", AssetLocationKind::PackageEntry);
+
+    if (!catalog.RegisterAsset(food_asset) || !catalog.RegisterAsset(ui_asset))
+    {
+        return false;
+    }
+
+    const auto food_matches = catalog.FindByTag(epidemic::foundation::StringId::FromString("food"));
+    const auto missing_matches = catalog.FindByTag(epidemic::foundation::StringId::FromString("missing"));
+
+    return food_matches.size() == 1 && food_matches.front().id == food_asset.id && missing_matches.empty();
+}
+
+bool TestMissingAssetReturnsNulloptAndResolveError()
+{
+    InMemoryAssetCatalog catalog;
+    const AssetId missing_id = AssetId::FromString("items/missing.itemdef");
+
+    const auto missing_snapshot = catalog.FindById(missing_id);
+    const auto missing_location = catalog.Resolve(missing_id);
+
+    return !missing_snapshot.has_value() && !missing_location && missing_location.GetError().HasCode("asset.not_found");
+}
+
+bool TestAssetLocationResolverReturnsRegisteredLocation()
+{
+    InMemoryAssetCatalog catalog;
+    const AssetMetadata metadata = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
+    if (!catalog.RegisterAsset(metadata))
+    {
+        return false;
+    }
+
+    const auto resolved = catalog.Resolve(metadata.id);
+    return resolved && resolved.Value() == metadata.location;
 }
 
 bool TestDependencyManifestIsImmediateSnapshot()
@@ -158,22 +148,6 @@ bool TestDependencyManifestIsImmediateSnapshot()
 
     return manifest.root.IsValid() && manifest.dependencies.size() == 2 && manifest.dependencies[0].required &&
            !manifest.dependencies[1].required;
-}
-
-bool TestAssetLocationResolverReturnsRegisteredLocation()
-{
-    const AssetId id = AssetId::FromString("items/potato.itemdef");
-    const AssetLocation expected_location{AssetLocationKind::VirtualPath, "items/potato.itemdef"};
-    const StubAssetLocationResolver resolver{id, expected_location};
-
-    const auto resolved = resolver.Resolve(id);
-    if (!resolved)
-    {
-        return false;
-    }
-
-    const auto missing = resolver.Resolve(AssetId::FromString("items/missing.itemdef"));
-    return resolved.Value() == expected_location && !missing;
 }
 } // namespace
 
@@ -189,24 +163,44 @@ int main()
         return 1;
     }
 
-    if (!TestMetadataCarriesDependenciesAndTags())
+    if (!TestRegisterAssetStoresMetadata())
     {
         return 2;
     }
 
-    if (!TestAssetCatalogContractCompilesAndReturnsSnapshots())
+    if (!TestDuplicateAssetIdReturnsError())
     {
         return 3;
     }
 
-    if (!TestDependencyManifestIsImmediateSnapshot())
+    if (!TestFindByIdReturnsSnapshot())
     {
         return 4;
     }
 
-    if (!TestAssetLocationResolverReturnsRegisteredLocation())
+    if (!TestFindByTypeWorks())
     {
         return 5;
+    }
+
+    if (!TestFindByTagWorks())
+    {
+        return 6;
+    }
+
+    if (!TestMissingAssetReturnsNulloptAndResolveError())
+    {
+        return 7;
+    }
+
+    if (!TestAssetLocationResolverReturnsRegisteredLocation())
+    {
+        return 8;
+    }
+
+    if (!TestDependencyManifestIsImmediateSnapshot())
+    {
+        return 9;
     }
 
     return 0;
