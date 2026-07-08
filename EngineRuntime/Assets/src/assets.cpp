@@ -1,1 +1,1 @@
-#include "Epidemic/Runtime/Assets/asset_metadata.h"
+#include "Epidemic/Runtime/Assets/asset_catalog.h"
