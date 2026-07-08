@@ -1,9 +1,11 @@
 #pragma once
 
+#include "Epidemic/Runtime/Resources/resource_loader_registry.h"
 #include "Epidemic/Runtime/Resources/resource_manager.h"
 #include "Epidemic/Runtime/Resources/resource_type.h"
 
 #include <cstdint>
+#include <deque>
 #include <unordered_map>
 
 namespace epidemic::runtime
@@ -17,6 +19,23 @@ struct ResourceSlot
     ResourceGeneration generation = 1;
     ResourceState state = ResourceState::Unloaded;
     std::uint32_t reference_count = 0;
+};
+
+struct ResourceLoadJob
+{
+    ResourceRequest request{};
+    ResourceGeneration generation = 0;
+};
+
+class ResourceLoadQueue
+{
+  public:
+    void Enqueue(ResourceLoadJob job);
+    [[nodiscard]] bool IsEmpty() const noexcept;
+    [[nodiscard]] std::optional<ResourceLoadJob> Dequeue();
+
+  private:
+    std::deque<ResourceLoadJob> jobs_;
 };
 
 class ResourceCache
@@ -33,6 +52,9 @@ class ResourceCache
 class ResourceManager final : public IResourceManager
 {
   public:
+    ResourceManager() = default;
+    explicit ResourceManager(IResourceLoaderRegistry* loader_registry);
+
     [[nodiscard]] foundation::Result<ResourceHandle> Request(ResourceRequest request) override;
     void Release(ResourceHandle handle) override;
 
@@ -42,8 +64,11 @@ class ResourceManager final : public IResourceManager
 
   private:
     [[nodiscard]] static bool IsHandleCurrent(const ResourceSlot& slot, ResourceHandle handle);
-    static void ActivateSlot(ResourceSlot& slot, ResourceType type);
+    static void PrepareSlotForLoad(ResourceSlot& slot, ResourceType type);
+    [[nodiscard]] foundation::Result<void> LoadSlot(ResourceSlot& slot, ResourceRequest request);
 
+    IResourceLoaderRegistry* loader_registry_ = nullptr;
     ResourceCache cache_;
+    ResourceLoadQueue load_queue_;
 };
 } // namespace epidemic::runtime
