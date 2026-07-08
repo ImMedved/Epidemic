@@ -1,4 +1,5 @@
 #include "Epidemic/Runtime/Resources/resource_handle.h"
+#include "Epidemic/Runtime/Resources/resource_manager.h"
 #include "Epidemic/Runtime/Resources/resource_request.h"
 #include "Epidemic/Runtime/Resources/resource_result.h"
 #include "Epidemic/Runtime/Resources/resource_state.h"

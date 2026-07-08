@@ -1,5 +1,6 @@
 add_library(EpidemicRuntimeResources STATIC
     src/resources.cpp
+    src/resource_manager.cpp
 )
 
 target_include_directories(EpidemicRuntimeResources PUBLIC
