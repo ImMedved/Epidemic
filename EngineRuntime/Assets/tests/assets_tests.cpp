@@ -1,5 +1,5 @@
 #include "Epidemic/Runtime/Assets/asset_dependency_manifest.h"
-#include "Epidemic/Runtime/Assets/in_memory_asset_catalog.h"
+#include "in_memory_asset_catalog.h"
 
 #include <cstdint>
 #include <type_traits>

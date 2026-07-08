@@ -1,4 +1,4 @@
-#include "Epidemic/Runtime/Assets/in_memory_asset_catalog.h"
+#include "in_memory_asset_catalog.h"
 
 namespace epidemic::runtime
 {

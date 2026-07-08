@@ -17,6 +17,14 @@ The module exists so that `Assets`, `Resources`, `Persistence`, `Environment`, `
 - generic `RuntimeBudget` value data
 - small helper functions that operate only on these generic runtime types
 
+## Placement Rules
+
+If a type is needed by only one runtime major, it should stay inside that major.
+
+If a type seems to be needed by multiple majors, it should first be reviewed as a possible integration smell before being moved into `RuntimeFoundation`.
+
+`RuntimeFoundation` is for shared runtime vocabulary, not for collecting unrelated convenience types.
+
 ## What Does Not Belong Here
 
 `RuntimeFoundation` must not contain:
