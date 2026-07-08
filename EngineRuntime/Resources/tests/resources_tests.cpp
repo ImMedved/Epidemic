@@ -1,3 +1,4 @@
+#include "Epidemic/Runtime/Resources/resource_dependency_graph.h"
 #include "Epidemic/Runtime/Resources/resource_handle.h"
 #include "Epidemic/Runtime/Resources/resource_loader.h"
 #include "Epidemic/Runtime/Resources/resource_loader_registry.h"
@@ -7,17 +8,22 @@
 #include "Epidemic/Runtime/Resources/resource_state.h"
 #include "Epidemic/Runtime/Resources/resource_type.h"
 
+#include "resource_dependency_graph.h"
 #include "resource_loader_registry.h"
 #include "resource_manager.h"
 
 #include <cstdint>
 #include <type_traits>
+#include <utility>
+#include <vector>
 
 namespace
 {
 using epidemic::runtime::IResourceLoader;
 using epidemic::runtime::IResourceLoaderRegistry;
 using epidemic::runtime::IResourceManager;
+using epidemic::runtime::ResourceDependency;
+using epidemic::runtime::ResourceDependencyGraph;
 using epidemic::runtime::ResourceHandle;
 using epidemic::runtime::ResourceId;
 using epidemic::runtime::ResourceLoadArtifact;
@@ -31,7 +37,9 @@ using epidemic::runtime::ResourceType;
 class CountingLoader final : public IResourceLoader
 {
   public:
-    explicit CountingLoader(ResourceType type, bool should_fail = false) : type_(type), should_fail_(should_fail)
+    explicit CountingLoader(ResourceType type, bool should_fail = false,
+        std::vector<ResourceDependency> dependencies = {})
+        : type_(type), should_fail_(should_fail), dependencies_(std::move(dependencies))
     {
     }
 
@@ -51,7 +59,8 @@ class CountingLoader final : public IResourceLoader
                 epidemic::foundation::Error::Create("resource.load_failed", "test loader failed on purpose"));
         }
 
-        return epidemic::foundation::Result<ResourceLoadArtifact>::Success(ResourceLoadArtifact{request.resource_id, request.type});
+        return epidemic::foundation::Result<ResourceLoadArtifact>::Success(
+            ResourceLoadArtifact{request.resource_id, request.type, dependencies_});
     }
 
     [[nodiscard]] int load_count() const noexcept
@@ -69,11 +78,18 @@ class CountingLoader final : public IResourceLoader
     bool should_fail_ = false;
     int load_count_ = 0;
     ResourceRequest last_request_{};
+    std::vector<ResourceDependency> dependencies_;
 };
 
 ResourceRequest MakeRequest(const char* resource_id, const char* type)
 {
     return ResourceRequest{ResourceId::FromString(resource_id), ResourceType{epidemic::foundation::StringId::FromString(type)}, {}};
+}
+
+ResourceDependency MakeDependency(const char* resource_id, const char* type, bool required = true)
+{
+    return ResourceDependency{ResourceId::FromString(resource_id),
+        ResourceType{epidemic::foundation::StringId::FromString(type)}, required};
 }
 
 bool TestDefaultResourceHandleIsInvalid()
@@ -99,6 +115,20 @@ bool TestResourceResultAliasCompiles()
     const auto result = ResourceResult<ResourceHandle>::Success(
         ResourceHandle{epidemic::runtime::ResourceId::FromString("resources/potato.mesh"), 3u});
     return result && result.Value().IsValid() && result.Value().generation == 3u;
+}
+
+bool TestDependencyGraphStoresDependencies()
+{
+    ResourceDependencyGraph graph;
+    const auto root = ResourceId::FromString("resources/tree.mesh");
+    std::vector<ResourceDependency> dependencies;
+    dependencies.push_back(MakeDependency("resources/tree_albedo.tex", "texture"));
+    dependencies.push_back(MakeDependency("resources/tree_normals.tex", "texture", false));
+
+    graph.SetDependencies(root, dependencies);
+    const auto found = graph.FindDependencies(root);
+    return graph.HasDependencies(root) && found.has_value() && found->root == root && found->dependencies.size() == 2 &&
+           found->dependencies[0].required && !found->dependencies[1].required;
 }
 
 bool TestLoaderRegistryRegistersAndFindsLoader()
@@ -156,6 +186,57 @@ bool TestRequestLoadsResourceThroughRegistry()
     return handle.IsValid() && handle.generation == 1u && manager.IsReady(handle) &&
            manager.GetState(handle) == ResourceState::Ready && manager.GetResourceId(handle) == handle.id &&
            loader.load_count() == 1 && loader.last_request().resource_id == handle.id;
+}
+
+bool TestDependenciesLoadBeforeRootBecomesReady()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")}, false,
+        {MakeDependency("resources/tree_albedo.tex", "texture")});
+    CountingLoader texture_loader(ResourceType{epidemic::foundation::StringId::FromString("texture")});
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto result = manager.Request(MakeRequest("resources/tree.mesh", "mesh"));
+    if (!result)
+    {
+        return false;
+    }
+
+    return manager.GetState(result.Value()) == ResourceState::Ready && mesh_loader.load_count() == 1 && texture_loader.load_count() == 1;
+}
+
+bool TestMissingRequiredDependencyFailsRoot()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")}, false,
+        {MakeDependency("resources/tree_albedo.tex", "texture")});
+    if (!registry.RegisterLoader(mesh_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto result = manager.Request(MakeRequest("resources/tree.mesh", "mesh"));
+    return !result && result.GetError().HasCode("resource.loader_not_found");
+}
+
+bool TestOptionalMissingDependencyDoesNotFailRoot()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")}, false,
+        {MakeDependency("resources/tree_fx.tex", "texture", false)});
+    if (!registry.RegisterLoader(mesh_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto result = manager.Request(MakeRequest("resources/tree.mesh", "mesh"));
+    return result && manager.GetState(result.Value()) == ResourceState::Ready;
 }
 
 bool TestRepeatedRequestSharesResidentResource()
@@ -235,6 +316,21 @@ bool TestLoaderFailurePropagatesError()
     const auto result = manager.Request(MakeRequest("resources/bad.mesh", "mesh"));
     return !result && result.GetError().HasCode("resource.load_failed") && loader.load_count() == 1;
 }
+
+bool TestDependencyCycleFailsLoad()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")}, false,
+        {MakeDependency("resources/self.mesh", "mesh")});
+    if (!registry.RegisterLoader(mesh_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto result = manager.Request(MakeRequest("resources/self.mesh", "mesh"));
+    return !result && result.GetError().HasCode("resource.dependency_cycle");
+}
 } // namespace
 
 int main()
@@ -266,49 +362,74 @@ int main()
         return 4;
     }
 
-    if (!TestLoaderRegistryRegistersAndFindsLoader())
+    if (!TestDependencyGraphStoresDependencies())
     {
         return 5;
     }
 
-    if (!TestLoaderRegistryRejectsDuplicateType())
+    if (!TestLoaderRegistryRegistersAndFindsLoader())
     {
         return 6;
     }
 
-    if (!TestRequestRequiresLoaderRegistry())
+    if (!TestLoaderRegistryRejectsDuplicateType())
     {
         return 7;
     }
 
-    if (!TestRequestRequiresRegisteredLoader())
+    if (!TestRequestRequiresLoaderRegistry())
     {
         return 8;
     }
 
-    if (!TestRequestLoadsResourceThroughRegistry())
+    if (!TestRequestRequiresRegisteredLoader())
     {
         return 9;
     }
 
-    if (!TestRepeatedRequestSharesResidentResource())
+    if (!TestRequestLoadsResourceThroughRegistry())
     {
         return 10;
     }
 
-    if (!TestReleaseUnknownHandleIsSafe())
+    if (!TestDependenciesLoadBeforeRootBecomesReady())
     {
         return 11;
     }
 
-    if (!TestHandleBecomesStaleAfterEvictionAndReload())
+    if (!TestMissingRequiredDependencyFailsRoot())
     {
         return 12;
     }
 
-    if (!TestLoaderFailurePropagatesError())
+    if (!TestOptionalMissingDependencyDoesNotFailRoot())
     {
         return 13;
+    }
+
+    if (!TestRepeatedRequestSharesResidentResource())
+    {
+        return 14;
+    }
+
+    if (!TestReleaseUnknownHandleIsSafe())
+    {
+        return 15;
+    }
+
+    if (!TestHandleBecomesStaleAfterEvictionAndReload())
+    {
+        return 16;
+    }
+
+    if (!TestLoaderFailurePropagatesError())
+    {
+        return 17;
+    }
+
+    if (!TestDependencyCycleFailsLoad())
+    {
+        return 18;
     }
 
     return 0;

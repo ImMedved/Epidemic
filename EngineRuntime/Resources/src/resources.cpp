@@ -1,3 +1,4 @@
+#include "Epidemic/Runtime/Resources/resource_dependency_graph.h"
 #include "Epidemic/Runtime/Resources/resource_handle.h"
 #include "Epidemic/Runtime/Resources/resource_loader.h"
 #include "Epidemic/Runtime/Resources/resource_loader_registry.h"

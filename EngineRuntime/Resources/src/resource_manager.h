@@ -1,12 +1,16 @@
 #pragma once
 
+#include "resource_dependency_graph.h"
+
 #include "Epidemic/Runtime/Resources/resource_loader_registry.h"
 #include "Epidemic/Runtime/Resources/resource_manager.h"
 #include "Epidemic/Runtime/Resources/resource_type.h"
 
 #include <cstdint>
 #include <deque>
+#include <optional>
 #include <unordered_map>
+#include <unordered_set>
 
 namespace epidemic::runtime
 {
@@ -66,9 +70,12 @@ class ResourceManager final : public IResourceManager
     [[nodiscard]] static bool IsHandleCurrent(const ResourceSlot& slot, ResourceHandle handle);
     static void PrepareSlotForLoad(ResourceSlot& slot, ResourceType type);
     [[nodiscard]] foundation::Result<void> LoadSlot(ResourceSlot& slot, ResourceRequest request);
+    [[nodiscard]] foundation::Result<void> ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact);
 
     IResourceLoaderRegistry* loader_registry_ = nullptr;
     ResourceCache cache_;
     ResourceLoadQueue load_queue_;
+    ResourceDependencyGraph dependency_graph_;
+    std::unordered_set<ResourceId> loading_resources_;
 };
 } // namespace epidemic::runtime

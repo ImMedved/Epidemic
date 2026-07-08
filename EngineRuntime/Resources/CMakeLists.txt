@@ -1,5 +1,6 @@
 add_library(EpidemicRuntimeResources STATIC
     src/resources.cpp
+    src/resource_dependency_graph.cpp
     src/resource_loader_registry.cpp
     src/resource_manager.cpp
 )

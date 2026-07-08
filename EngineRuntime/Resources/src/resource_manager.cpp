@@ -88,8 +88,8 @@ foundation::Result<ResourceHandle> ResourceManager::Request(ResourceRequest requ
 
     if (loader_registry_ == nullptr)
     {
-        return foundation::Result<ResourceHandle>::Failure(
-            foundation::Error::Create("resource.loader_registry_missing", "resource loader registry is required before requesting resources"));
+        return foundation::Result<ResourceHandle>::Failure(foundation::Error::Create(
+            "resource.loader_registry_missing", "resource loader registry is required before requesting resources"));
     }
 
     auto* loader = loader_registry_->FindLoader(request.type);
@@ -194,11 +194,20 @@ void ResourceManager::PrepareSlotForLoad(ResourceSlot& slot, ResourceType type)
 
 foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, ResourceRequest request)
 {
+    if (loading_resources_.contains(slot.id))
+    {
+        slot.state = ResourceState::Failed;
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("resource.dependency_cycle", "resource dependency cycle detected during load"));
+    }
+
+    loading_resources_.insert(slot.id);
     load_queue_.Enqueue(ResourceLoadJob{request, slot.generation});
 
     const auto job = load_queue_.Dequeue();
     if (!job)
     {
+        loading_resources_.erase(slot.id);
         slot.state = ResourceState::Failed;
         return foundation::Result<void>::Failure(
             foundation::Error::Create("resource.load_queue_empty", "resource load queue failed to return a queued job"));
@@ -207,6 +216,7 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, ResourceR
     auto* loader = loader_registry_->FindLoader(job->request.type);
     if (loader == nullptr)
     {
+        loading_resources_.erase(slot.id);
         slot.state = ResourceState::Failed;
         return foundation::Result<void>::Failure(
             foundation::Error::Create("resource.loader_not_found", "resource loader is not registered for the requested type"));
@@ -216,6 +226,7 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, ResourceR
     const auto load_result = loader->Load(job->request);
     if (!load_result)
     {
+        loading_resources_.erase(slot.id);
         slot.state = ResourceState::Failed;
         return foundation::Result<void>::Failure(load_result.GetError());
     }
@@ -223,19 +234,79 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, ResourceR
     const ResourceLoadArtifact& artifact = load_result.Value();
     if (artifact.resource_id != slot.id)
     {
+        loading_resources_.erase(slot.id);
         slot.state = ResourceState::Failed;
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("resource.loader_mismatched_id", "resource loader returned an artifact for a different resource id"));
+        return foundation::Result<void>::Failure(foundation::Error::Create(
+            "resource.loader_mismatched_id", "resource loader returned an artifact for a different resource id"));
     }
 
     if (artifact.type != slot.type)
     {
+        loading_resources_.erase(slot.id);
         slot.state = ResourceState::Failed;
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("resource.loader_mismatched_type", "resource loader returned an artifact for a different resource type"));
+        return foundation::Result<void>::Failure(foundation::Error::Create(
+            "resource.loader_mismatched_type", "resource loader returned an artifact for a different resource type"));
+    }
+
+    dependency_graph_.SetDependencies(slot.id, artifact.dependencies);
+    const auto dependencies_result = ResolveDependencies(slot, artifact);
+    loading_resources_.erase(slot.id);
+    if (!dependencies_result)
+    {
+        return dependencies_result;
     }
 
     slot.state = ResourceState::Ready;
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> ResourceManager::ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact)
+{
+    if (artifact.dependencies.empty())
+    {
+        return foundation::Result<void>::Success();
+    }
+
+    slot.state = ResourceState::WaitingForDependencies;
+    for (const ResourceDependency& dependency : artifact.dependencies)
+    {
+        if (!dependency.resource_id.IsValid())
+        {
+            if (dependency.required)
+            {
+                slot.state = ResourceState::Failed;
+                return foundation::Result<void>::Failure(foundation::Error::Create(
+                    "resource.dependency_invalid_id", "required resource dependency must have a valid resource id"));
+            }
+
+            continue;
+        }
+
+        if (!dependency.type.IsValid())
+        {
+            if (dependency.required)
+            {
+                slot.state = ResourceState::Failed;
+                return foundation::Result<void>::Failure(foundation::Error::Create(
+                    "resource.dependency_invalid_type", "required resource dependency must have a valid resource type"));
+            }
+
+            continue;
+        }
+
+        const auto dependency_result = Request(ResourceRequest{dependency.resource_id, dependency.type, {}});
+        if (!dependency_result)
+        {
+            if (dependency.required)
+            {
+                slot.state = ResourceState::Failed;
+                return foundation::Result<void>::Failure(dependency_result.GetError());
+            }
+
+            continue;
+        }
+    }
+
     return foundation::Result<void>::Success();
 }
 } // namespace epidemic::runtime
