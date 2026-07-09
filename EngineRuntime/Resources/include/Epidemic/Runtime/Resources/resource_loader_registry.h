@@ -10,6 +10,8 @@ class IResourceLoaderRegistry
   public:
     virtual ~IResourceLoaderRegistry() = default;
 
+    // The loader registry does not own loaders. Registered loaders must outlive the
+    // registry and any resource manager that resolves loaders through it.
     [[nodiscard]] virtual foundation::Result<void> RegisterLoader(IResourceLoader& loader) = 0;
     [[nodiscard]] virtual IResourceLoader* FindLoader(ResourceType type) = 0;
     [[nodiscard]] virtual const IResourceLoader* FindLoader(ResourceType type) const = 0;

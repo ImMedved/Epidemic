@@ -34,9 +34,6 @@ struct SurfaceIdTag
 struct SimulationZoneIdTag
 {
 };
-struct SceneNodeIdTag
-{
-};
 
 template <typename Tag> struct NumericRuntimeId
 {
@@ -63,38 +60,6 @@ template <typename Tag> struct NumericRuntimeId
     }
 
     [[nodiscard]] constexpr bool operator==(const NumericRuntimeId&) const noexcept = default;
-};
-
-template <typename Tag> struct StringRuntimeId
-{
-    constexpr StringRuntimeId() noexcept = default;
-    constexpr explicit StringRuntimeId(foundation::StringId raw_value) noexcept : value(raw_value)
-    {
-    }
-
-    foundation::StringId value{};
-
-    [[nodiscard]] static constexpr StringRuntimeId FromString(std::string_view source) noexcept
-    {
-        return StringRuntimeId{foundation::StringId::FromString(source)};
-    }
-
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
-
-    [[nodiscard]] constexpr std::uint64_t Raw() const noexcept
-    {
-        return value.Raw();
-    }
-
-    [[nodiscard]] constexpr explicit operator bool() const noexcept
-    {
-        return IsValid();
-    }
-
-    [[nodiscard]] constexpr bool operator==(const StringRuntimeId&) const noexcept = default;
 };
 } // namespace detail
 
@@ -191,11 +156,6 @@ struct SimulationZoneId : detail::NumericRuntimeId<detail::SimulationZoneIdTag>
 {
     using detail::NumericRuntimeId<detail::SimulationZoneIdTag>::NumericRuntimeId;
 };
-
-struct SceneNodeId : detail::NumericRuntimeId<detail::SceneNodeIdTag>
-{
-    using detail::NumericRuntimeId<detail::SceneNodeIdTag>::NumericRuntimeId;
-};
 } // namespace epidemic::runtime
 
 namespace std
@@ -267,14 +227,6 @@ template <> struct hash<epidemic::runtime::SurfaceId>
 template <> struct hash<epidemic::runtime::SimulationZoneId>
 {
     [[nodiscard]] size_t operator()(epidemic::runtime::SimulationZoneId value) const noexcept
-    {
-        return hash<std::uint64_t>{}(value.Raw());
-    }
-};
-
-template <> struct hash<epidemic::runtime::SceneNodeId>
-{
-    [[nodiscard]] size_t operator()(epidemic::runtime::SceneNodeId value) const noexcept
     {
         return hash<std::uint64_t>{}(value.Raw());
     }

@@ -4,6 +4,7 @@ namespace epidemic::runtime
 {
 enum class ResourceState
 {
+    Unknown,
     Unloaded,
     Queued,
     Loading,

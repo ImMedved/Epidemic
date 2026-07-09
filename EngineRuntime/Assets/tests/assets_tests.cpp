@@ -1,3 +1,4 @@
+#include "Epidemic/Runtime/Assets/asset_catalog_writer.h"
 #include "Epidemic/Runtime/Assets/asset_dependency_manifest.h"
 #include "in_memory_asset_catalog.h"
 
@@ -15,6 +16,7 @@ using epidemic::runtime::AssetMetadata;
 using epidemic::runtime::AssetState;
 using epidemic::runtime::AssetType;
 using epidemic::runtime::IAssetCatalog;
+using epidemic::runtime::IAssetCatalogWriter;
 using epidemic::runtime::IAssetLocationResolver;
 using epidemic::runtime::InMemoryAssetCatalog;
 
@@ -42,9 +44,10 @@ bool TestDefaultMetadataState()
 bool TestRegisterAssetStoresMetadata()
 {
     InMemoryAssetCatalog catalog;
+    IAssetCatalogWriter& writer = catalog;
     const AssetMetadata metadata = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
 
-    const auto result = catalog.RegisterAsset(metadata);
+    const auto result = writer.RegisterAsset(metadata);
     const auto stored = catalog.FindById(metadata.id);
 
     return result && stored.has_value() && stored->id == metadata.id && stored->location == metadata.location;
@@ -53,10 +56,11 @@ bool TestRegisterAssetStoresMetadata()
 bool TestDuplicateAssetIdReturnsError()
 {
     InMemoryAssetCatalog catalog;
+    IAssetCatalogWriter& writer = catalog;
     const AssetMetadata metadata = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
 
-    const auto first = catalog.RegisterAsset(metadata);
-    const auto duplicate = catalog.RegisterAsset(metadata);
+    const auto first = writer.RegisterAsset(metadata);
+    const auto duplicate = writer.RegisterAsset(metadata);
 
     return first && !duplicate && duplicate.GetError().HasCode("asset.duplicate_id");
 }
@@ -64,8 +68,9 @@ bool TestDuplicateAssetIdReturnsError()
 bool TestFindByIdReturnsSnapshot()
 {
     InMemoryAssetCatalog catalog;
+    IAssetCatalogWriter& writer = catalog;
     const AssetMetadata metadata = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
-    if (!catalog.RegisterAsset(metadata))
+    if (!writer.RegisterAsset(metadata))
     {
         return false;
     }
@@ -86,10 +91,11 @@ bool TestFindByIdReturnsSnapshot()
 bool TestFindByTypeWorks()
 {
     InMemoryAssetCatalog catalog;
+    IAssetCatalogWriter& writer = catalog;
     const AssetMetadata item_asset = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
     const AssetMetadata mesh_asset = MakeMetadata("meshes/potato.mesh", "mesh", "food", AssetLocationKind::PackageEntry);
 
-    if (!catalog.RegisterAsset(item_asset) || !catalog.RegisterAsset(mesh_asset))
+    if (!writer.RegisterAsset(item_asset) || !writer.RegisterAsset(mesh_asset))
     {
         return false;
     }
@@ -101,10 +107,11 @@ bool TestFindByTypeWorks()
 bool TestFindByTagWorks()
 {
     InMemoryAssetCatalog catalog;
+    IAssetCatalogWriter& writer = catalog;
     const AssetMetadata food_asset = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
     const AssetMetadata ui_asset = MakeMetadata("ui/potato_icon.tex", "texture", "ui", AssetLocationKind::PackageEntry);
 
-    if (!catalog.RegisterAsset(food_asset) || !catalog.RegisterAsset(ui_asset))
+    if (!writer.RegisterAsset(food_asset) || !writer.RegisterAsset(ui_asset))
     {
         return false;
     }
@@ -129,8 +136,9 @@ bool TestMissingAssetReturnsNulloptAndResolveError()
 bool TestAssetLocationResolverReturnsRegisteredLocation()
 {
     InMemoryAssetCatalog catalog;
+    IAssetCatalogWriter& writer = catalog;
     const AssetMetadata metadata = MakeMetadata("items/potato.itemdef", "itemdef", "food", AssetLocationKind::VirtualPath);
-    if (!catalog.RegisterAsset(metadata))
+    if (!writer.RegisterAsset(metadata))
     {
         return false;
     }
@@ -156,6 +164,7 @@ int main()
     static_assert(std::is_same_v<decltype(AssetMetadata{}.content_hash), std::uint64_t>);
     static_assert(std::is_same_v<decltype(AssetMetadata{}.version), std::uint32_t>);
     static_assert(std::has_virtual_destructor_v<IAssetCatalog>);
+    static_assert(std::has_virtual_destructor_v<IAssetCatalogWriter>);
     static_assert(std::has_virtual_destructor_v<IAssetLocationResolver>);
 
     if (!TestDefaultMetadataState())

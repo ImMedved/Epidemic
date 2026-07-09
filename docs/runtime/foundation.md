@@ -3,7 +3,7 @@
 ## Purpose
 
 `RuntimeFoundation` is the shared runtime vocabulary layer for `EngineRuntime`.
-It defines stable identity types, lightweight handles, common runtime states, async operation status, and generic runtime budgets.
+It defines stable identity types, common runtime states, async operation status, and generic runtime budgets.
 
 The module exists so that `Assets`, `Resources`, `Persistence`, `Environment`, `Scene`, `World`, and future runtime majors use the same language instead of inventing incompatible ids, enums, and status values.
 
@@ -11,11 +11,11 @@ The module exists so that `Assets`, `Resources`, `Persistence`, `Environment`, `
 
 `RuntimeFoundation` contains:
 
-- runtime identity types such as `AssetId`, `ResourceId`, `RuntimeObjectId`, `PersistentObjectId`, `RegionId`, `ChunkId`, `SurfaceId`, `SimulationZoneId`, and `SceneNodeId`
-- lightweight runtime handles
+- runtime identity types such as `AssetId`, `ResourceId`, `RuntimeObjectId`, `PersistentObjectId`, `RegionId`, `ChunkId`, `SurfaceId`, and `SimulationZoneId`
 - common runtime state enums such as residency, reality level, persistence tier, simulation lod, and async operation status
 - generic `RuntimeBudget` value data
 - small helper functions that operate only on these generic runtime types
+- an optional generic `RuntimeHandle<Tag>` helper for future majors that need local typed handles without reserving semantic names in `RuntimeFoundation`
 
 ## Placement Rules
 
@@ -29,6 +29,8 @@ If a type seems to be needed by multiple majors, it should first be reviewed as 
 
 `RuntimeFoundation` must not contain:
 
+- scene-specific ids or handles such as `SceneNodeId`
+- semantic handles such as `AssetHandle` or `ResourceHandle`
 - asset catalog logic
 - resource loading or caching
 - serialization formats or save/load behavior
@@ -42,11 +44,12 @@ If a type seems to be needed by multiple majors, it should first be reviewed as 
 Current public headers:
 
 - `runtime_ids.h`
-- `runtime_handles.h`
 - `runtime_states.h`
 - `runtime_budget.h`
 - `runtime_operation.h`
 - `runtime_foundation.h`
+
+`runtime_handles.h` remains an optional generic helper header and is intentionally not part of the umbrella header.
 
 The contracts are intentionally lightweight and header-oriented. They provide data vocabulary, not runtime behavior orchestration.
 
@@ -73,7 +76,7 @@ It also has no dependency on `Time` concepts and does not depend on `Simulation`
 
 `ResidencyState` describes whether runtime data is unloaded, loading, resident, active, sleeping, or unloading.
 
-`ObjectRealityLevel` distinguishes between physical runtime presence, logical existence, and abstract facts.
+`ObjectRealityLevel` distinguishes between abstract facts, logical existence, and physical runtime presence. Use helper functions instead of relying on enum ordinals outside tests.
 
 `PersistenceTier` expresses how strongly an object should survive over time, from disposable data to quest-critical state.
 
@@ -105,8 +108,9 @@ if (asset_id.IsValid() && object_id.IsValid() && !budget.IsEmpty())
 - default id invalid state
 - id equality
 - hash compatibility with `unordered_map`
-- default invalid handle state
+- compatibility between `runtime_foundation.h` and `Resources/resource_handle.h`
 - state enums compile and preserve intended ordering assumptions
+- explicit helper semantics for `ObjectRealityLevel`
 - async operation helper semantics
 - budget default-empty and populated-budget semantics
 - target-level protection against links to other runtime majors through CMake validation

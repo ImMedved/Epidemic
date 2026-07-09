@@ -1,4 +1,5 @@
 #include "Epidemic/Runtime/Foundation/runtime_foundation.h"
+#include "Epidemic/Runtime/Resources/resource_handle.h"
 
 #include <chrono>
 #include <cstdint>
@@ -13,11 +14,10 @@ using epidemic::runtime::ChunkId;
 using epidemic::runtime::ObjectRealityLevel;
 using epidemic::runtime::PersistenceTier;
 using epidemic::runtime::ResidencyState;
+using epidemic::runtime::ResourceHandle;
 using epidemic::runtime::ResourceId;
 using epidemic::runtime::RuntimeBudget;
 using epidemic::runtime::RuntimeObjectId;
-using epidemic::runtime::SceneNodeHandle;
-using epidemic::runtime::SceneNodeId;
 using epidemic::runtime::SimulationLod;
 
 bool TestDefaultInvalidIds()
@@ -25,9 +25,8 @@ bool TestDefaultInvalidIds()
     const AssetId asset_id{};
     const ResourceId resource_id{};
     const RuntimeObjectId runtime_object_id{};
-    const SceneNodeId scene_node_id{};
 
-    return !asset_id.IsValid() && !resource_id.IsValid() && !runtime_object_id.IsValid() && !scene_node_id.IsValid();
+    return !asset_id.IsValid() && !resource_id.IsValid() && !runtime_object_id.IsValid();
 }
 
 bool TestEquality()
@@ -56,9 +55,9 @@ bool TestAssetAndResourceIdsUseStringBackedRuntimeIds()
     return asset_id.IsValid() && resource_id.IsValid() && asset_id.Raw() != resource_id.Raw();
 }
 
-bool TestTypedHandlesRemainInvalidByDefault()
+bool TestRuntimeFoundationAndResourcesHeadersCanCoexist()
 {
-    const SceneNodeHandle handle{};
+    const ResourceHandle handle{};
     return !handle.IsValid();
 }
 
@@ -95,14 +94,23 @@ bool TestStateOrderingRepresentsEscalation()
            static_cast<int>(PersistenceTier::Disposable) < static_cast<int>(PersistenceTier::PlayerTouched) &&
            static_cast<int>(PersistenceTier::PlayerTouched) < static_cast<int>(PersistenceTier::QuestCritical);
 }
+
+bool TestObjectRealityHelpersAreExplicit()
+{
+    return epidemic::runtime::RealityRank(ObjectRealityLevel::AbstractFact) <
+               epidemic::runtime::RealityRank(ObjectRealityLevel::Logical) &&
+           epidemic::runtime::RealityRank(ObjectRealityLevel::Logical) <
+               epidemic::runtime::RealityRank(ObjectRealityLevel::Physical) &&
+           epidemic::runtime::IsMoreConcreteRealityLevel(ObjectRealityLevel::Physical, ObjectRealityLevel::Logical) &&
+           epidemic::runtime::IsLessConcreteRealityLevel(ObjectRealityLevel::AbstractFact, ObjectRealityLevel::Physical);
+}
 } // namespace
 
 int main()
 {
     static_assert(!std::is_same_v<AssetId, ResourceId>);
-    static_assert(!std::is_same_v<RuntimeObjectId, SceneNodeId>);
     static_assert(static_cast<int>(ResidencyState::Unloaded) != static_cast<int>(ResidencyState::Active));
-    static_assert(static_cast<int>(ObjectRealityLevel::Logical) != static_cast<int>(ObjectRealityLevel::Physical));
+    static_assert(static_cast<int>(ObjectRealityLevel::AbstractFact) < static_cast<int>(ObjectRealityLevel::Physical));
     static_assert(static_cast<int>(PersistenceTier::Disposable) != static_cast<int>(PersistenceTier::QuestCritical));
     static_assert(static_cast<int>(SimulationLod::Dormant) != static_cast<int>(SimulationLod::Active));
 
@@ -126,7 +134,7 @@ int main()
         return 4;
     }
 
-    if (!TestTypedHandlesRemainInvalidByDefault())
+    if (!TestRuntimeFoundationAndResourcesHeadersCanCoexist())
     {
         return 5;
     }
@@ -149,6 +157,11 @@ int main()
     if (!TestStateOrderingRepresentsEscalation())
     {
         return 9;
+    }
+
+    if (!TestObjectRealityHelpersAreExplicit())
+    {
+        return 10;
     }
 
     return 0;

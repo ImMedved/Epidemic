@@ -5,6 +5,8 @@
 #include "Epidemic/Runtime/Resources/resource_request.h"
 #include "Epidemic/Runtime/Resources/resource_type.h"
 
+#include <vector>
+
 namespace epidemic::runtime
 {
 struct ResourceLoadArtifact

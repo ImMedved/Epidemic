@@ -1,13 +1,14 @@
 #pragma once
 
 #include "Epidemic/Runtime/Assets/asset_catalog.h"
+#include "Epidemic/Runtime/Assets/asset_catalog_writer.h"
 #include "Epidemic/Runtime/Assets/asset_location_resolver.h"
 
 #include <unordered_map>
 
 namespace epidemic::runtime
 {
-class InMemoryAssetCatalog final : public IAssetCatalog, public IAssetLocationResolver
+class InMemoryAssetCatalog final : public IAssetCatalog, public IAssetCatalogWriter, public IAssetLocationResolver
 {
   public:
     [[nodiscard]] foundation::Result<void> RegisterAsset(AssetMetadata metadata) override;

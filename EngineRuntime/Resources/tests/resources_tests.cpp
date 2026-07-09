@@ -12,6 +12,7 @@
 #include "resource_loader_registry.h"
 #include "resource_manager.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 #include <utility>
@@ -31,14 +32,14 @@ using epidemic::runtime::ResourceLoaderRegistry;
 using epidemic::runtime::ResourceManager;
 using epidemic::runtime::ResourceRequest;
 using epidemic::runtime::ResourceResult;
+using epidemic::runtime::ResourceSlot;
 using epidemic::runtime::ResourceState;
 using epidemic::runtime::ResourceType;
 
 class CountingLoader final : public IResourceLoader
 {
   public:
-    explicit CountingLoader(ResourceType type, bool should_fail = false,
-        std::vector<ResourceDependency> dependencies = {})
+    explicit CountingLoader(ResourceType type, bool should_fail = false, std::vector<ResourceDependency> dependencies = {})
         : type_(type), should_fail_(should_fail), dependencies_(std::move(dependencies))
     {
     }
@@ -90,6 +91,11 @@ ResourceDependency MakeDependency(const char* resource_id, const char* type, boo
 {
     return ResourceDependency{ResourceId::FromString(resource_id),
         ResourceType{epidemic::foundation::StringId::FromString(type)}, required};
+}
+
+const ResourceSlot* Slot(const ResourceManager& manager, const char* resource_id)
+{
+    return manager.InspectSlot(ResourceId::FromString(resource_id));
 }
 
 bool TestDefaultResourceHandleIsInvalid()
@@ -188,6 +194,28 @@ bool TestRequestLoadsResourceThroughRegistry()
            loader.load_count() == 1 && loader.last_request().resource_id == handle.id;
 }
 
+bool TestTypeMismatchRejectsConflictingRequest()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")});
+    CountingLoader texture_loader(ResourceType{epidemic::foundation::StringId::FromString("texture")});
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto mesh_request = manager.Request(MakeRequest("resources/shared.asset", "mesh"));
+    const auto texture_request = manager.Request(MakeRequest("resources/shared.asset", "texture"));
+    if (!mesh_request)
+    {
+        return false;
+    }
+
+    return !texture_request && texture_request.GetError().HasCode("resource.type_mismatch") &&
+           manager.GetState(mesh_request.Value()) == ResourceState::Ready;
+}
+
 bool TestDependenciesLoadBeforeRootBecomesReady()
 {
     ResourceLoaderRegistry registry;
@@ -206,7 +234,79 @@ bool TestDependenciesLoadBeforeRootBecomesReady()
         return false;
     }
 
-    return manager.GetState(result.Value()) == ResourceState::Ready && mesh_loader.load_count() == 1 && texture_loader.load_count() == 1;
+    const ResourceSlot* dependency_slot = Slot(manager, "resources/tree_albedo.tex");
+    return manager.GetState(result.Value()) == ResourceState::Ready && mesh_loader.load_count() == 1 &&
+           texture_loader.load_count() == 1 && dependency_slot != nullptr && dependency_slot->reference_count == 1;
+}
+
+bool TestReleasingRootReleasesDependency()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")}, false,
+        {MakeDependency("resources/tree_albedo.tex", "texture")});
+    CountingLoader texture_loader(ResourceType{epidemic::foundation::StringId::FromString("texture")});
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto root = manager.Request(MakeRequest("resources/tree.mesh", "mesh"));
+    if (!root)
+    {
+        return false;
+    }
+
+    const ResourceSlot* dependency_before = Slot(manager, "resources/tree_albedo.tex");
+    if (dependency_before == nullptr || dependency_before->reference_count != 1 || dependency_before->state != ResourceState::Ready)
+    {
+        return false;
+    }
+
+    manager.Release(root.Value());
+    const ResourceSlot* dependency_after = Slot(manager, "resources/tree_albedo.tex");
+    return manager.GetState(root.Value()) == ResourceState::Unknown && dependency_after != nullptr &&
+           dependency_after->reference_count == 0 && dependency_after->state == ResourceState::Unloaded &&
+           dependency_after->dependency_handles.empty();
+}
+
+bool TestSharedDependencyRemainsAliveUntilBothRootsRelease()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")}, false,
+        {MakeDependency("resources/shared.tex", "texture")});
+    CountingLoader material_loader(ResourceType{epidemic::foundation::StringId::FromString("material")}, false,
+        {MakeDependency("resources/shared.tex", "texture")});
+    CountingLoader texture_loader(ResourceType{epidemic::foundation::StringId::FromString("texture")});
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(material_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto first_root = manager.Request(MakeRequest("resources/tree.mesh", "mesh"));
+    const auto second_root = manager.Request(MakeRequest("resources/tree.mat", "material"));
+    if (!first_root || !second_root)
+    {
+        return false;
+    }
+
+    const ResourceSlot* shared_before = Slot(manager, "resources/shared.tex");
+    if (shared_before == nullptr || shared_before->reference_count != 2 || shared_before->state != ResourceState::Ready)
+    {
+        return false;
+    }
+
+    manager.Release(first_root.Value());
+    const ResourceSlot* shared_mid = Slot(manager, "resources/shared.tex");
+    if (shared_mid == nullptr || shared_mid->reference_count != 1 || shared_mid->state != ResourceState::Ready)
+    {
+        return false;
+    }
+
+    manager.Release(second_root.Value());
+    const ResourceSlot* shared_after = Slot(manager, "resources/shared.tex");
+    return shared_after != nullptr && shared_after->reference_count == 0 && shared_after->state == ResourceState::Unloaded;
 }
 
 bool TestMissingRequiredDependencyFailsRoot()
@@ -256,19 +356,22 @@ bool TestRepeatedRequestSharesResidentResource()
         return false;
     }
 
-    return first.Value() == second.Value() && loader.load_count() == 1 && manager.GetState(first.Value()) == ResourceState::Ready;
+    const ResourceSlot* slot = Slot(manager, "resources/rock.mesh");
+    return first.Value() == second.Value() && loader.load_count() == 1 && manager.GetState(first.Value()) == ResourceState::Ready &&
+           slot != nullptr && slot->reference_count == 2;
 }
 
-bool TestReleaseUnknownHandleIsSafe()
+bool TestUnknownHandleStateIsReportedAsUnknown()
 {
     ResourceLoaderRegistry registry;
     ResourceManager manager(&registry);
     manager.Release(ResourceHandle{});
-    manager.Release(ResourceHandle{ResourceId::FromString("resources/missing.mesh"), 99u});
-    return manager.GetState(ResourceHandle{ResourceId::FromString("resources/missing.mesh"), 99u}) == ResourceState::Evicted;
+    const ResourceHandle missing_handle{ResourceId::FromString("resources/missing.mesh"), 99u};
+    manager.Release(missing_handle);
+    return manager.GetState(ResourceHandle{}) == ResourceState::Unknown && manager.GetState(missing_handle) == ResourceState::Unknown;
 }
 
-bool TestHandleBecomesStaleAfterEvictionAndReload()
+bool TestReleaseMakesHandleStaleAndReloadUsesNextGeneration()
 {
     ResourceLoaderRegistry registry;
     CountingLoader loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")});
@@ -285,22 +388,67 @@ bool TestHandleBecomesStaleAfterEvictionAndReload()
     }
 
     manager.Release(first.Value());
-    if (manager.GetState(first.Value()) != ResourceState::Evicted || manager.IsReady(first.Value()))
+    if (manager.GetState(first.Value()) != ResourceState::Unknown || manager.IsReady(first.Value()))
+    {
+        return false;
+    }
+
+    const ResourceSlot* unloaded_slot = Slot(manager, "resources/house.mesh");
+    if (unloaded_slot == nullptr || unloaded_slot->state != ResourceState::Unloaded || unloaded_slot->reference_count != 0)
     {
         return false;
     }
 
     const auto second = manager.Request(MakeRequest("resources/house.mesh", "mesh"));
-    if (!second)
+    return second && second.Value().generation == first.Value().generation + 1u && manager.GetState(second.Value()) == ResourceState::Ready;
+}
+
+bool TestExplicitEvictionChangesState()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")});
+    if (!registry.RegisterLoader(loader))
     {
         return false;
     }
 
-    return second.Value().generation == first.Value().generation + 1u &&
-           manager.GetState(first.Value()) == ResourceState::Evicted &&
-           !manager.GetResourceId(first.Value()).has_value() &&
-           manager.GetState(second.Value()) == ResourceState::Ready &&
-           loader.load_count() == 2;
+    ResourceManager manager(&registry);
+    const auto handle = manager.Request(MakeRequest("resources/evict.mesh", "mesh"));
+    if (!handle)
+    {
+        return false;
+    }
+
+    manager.Release(handle.Value());
+    const auto evict_result = manager.Evict(ResourceId::FromString("resources/evict.mesh"));
+    const ResourceSlot* slot = Slot(manager, "resources/evict.mesh");
+    return evict_result && slot != nullptr && slot->state == ResourceState::Evicted;
+}
+
+bool TestEvictUnreferencedEvictsOnlyUnreferencedSlots()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(ResourceType{epidemic::foundation::StringId::FromString("mesh")});
+    CountingLoader texture_loader(ResourceType{epidemic::foundation::StringId::FromString("texture")});
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto kept = manager.Request(MakeRequest("resources/kept.mesh", "mesh"));
+    const auto dropped = manager.Request(MakeRequest("resources/dropped.tex", "texture"));
+    if (!kept || !dropped)
+    {
+        return false;
+    }
+
+    manager.Release(dropped.Value());
+    const std::size_t evicted = manager.EvictUnreferenced();
+    const ResourceSlot* kept_slot = Slot(manager, "resources/kept.mesh");
+    const ResourceSlot* dropped_slot = Slot(manager, "resources/dropped.tex");
+    return evicted == 1u && kept_slot != nullptr && kept_slot->state == ResourceState::Ready && dropped_slot != nullptr &&
+           dropped_slot->state == ResourceState::Evicted;
 }
 
 bool TestLoaderFailurePropagatesError()
@@ -337,7 +485,7 @@ int main()
 {
     static_assert(std::is_same_v<decltype(ResourceHandle{}.generation), std::uint32_t>);
     static_assert(std::is_same_v<decltype(ResourceRequest{}.budget_hint), epidemic::runtime::RuntimeBudget>);
-    static_assert(static_cast<int>(ResourceState::Unloaded) != static_cast<int>(ResourceState::Ready));
+    static_assert(std::is_same_v<decltype(ResourceManager{}.EvictUnreferenced()), std::size_t>);
     static_assert(std::is_abstract_v<IResourceManager>);
     static_assert(std::is_abstract_v<IResourceLoader>);
     static_assert(std::is_abstract_v<IResourceLoaderRegistry>);
@@ -392,44 +540,69 @@ int main()
         return 10;
     }
 
-    if (!TestDependenciesLoadBeforeRootBecomesReady())
+    if (!TestTypeMismatchRejectsConflictingRequest())
     {
         return 11;
     }
 
-    if (!TestMissingRequiredDependencyFailsRoot())
+    if (!TestDependenciesLoadBeforeRootBecomesReady())
     {
         return 12;
     }
 
-    if (!TestOptionalMissingDependencyDoesNotFailRoot())
+    if (!TestReleasingRootReleasesDependency())
     {
         return 13;
     }
 
-    if (!TestRepeatedRequestSharesResidentResource())
+    if (!TestSharedDependencyRemainsAliveUntilBothRootsRelease())
     {
         return 14;
     }
 
-    if (!TestReleaseUnknownHandleIsSafe())
+    if (!TestMissingRequiredDependencyFailsRoot())
     {
         return 15;
     }
 
-    if (!TestHandleBecomesStaleAfterEvictionAndReload())
+    if (!TestOptionalMissingDependencyDoesNotFailRoot())
     {
         return 16;
     }
 
-    if (!TestLoaderFailurePropagatesError())
+    if (!TestRepeatedRequestSharesResidentResource())
     {
         return 17;
     }
 
-    if (!TestDependencyCycleFailsLoad())
+    if (!TestUnknownHandleStateIsReportedAsUnknown())
     {
         return 18;
+    }
+
+    if (!TestReleaseMakesHandleStaleAndReloadUsesNextGeneration())
+    {
+        return 19;
+    }
+
+    if (!TestExplicitEvictionChangesState())
+    {
+        return 20;
+    }
+
+    if (!TestEvictUnreferencedEvictsOnlyUnreferencedSlots())
+    {
+        return 21;
+    }
+
+    if (!TestLoaderFailurePropagatesError())
+    {
+        return 22;
+    }
+
+    if (!TestDependencyCycleFailsLoad())
+    {
+        return 23;
     }
 
     return 0;

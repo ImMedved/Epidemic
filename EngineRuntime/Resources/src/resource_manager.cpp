@@ -2,6 +2,8 @@
 
 #include "Epidemic/Foundation/error.h"
 
+#include <limits>
+
 namespace epidemic::runtime
 {
 namespace
@@ -68,6 +70,16 @@ ResourceSlot& ResourceCache::FindOrCreate(ResourceId id, ResourceType type)
     return iterator->second;
 }
 
+std::unordered_map<ResourceId, ResourceSlot>& ResourceCache::Entries()
+{
+    return slots_;
+}
+
+const std::unordered_map<ResourceId, ResourceSlot>& ResourceCache::Entries() const
+{
+    return slots_;
+}
+
 ResourceManager::ResourceManager(IResourceLoaderRegistry* loader_registry) : loader_registry_(loader_registry)
 {
 }
@@ -84,6 +96,13 @@ foundation::Result<ResourceHandle> ResourceManager::Request(ResourceRequest requ
     {
         return foundation::Result<ResourceHandle>::Failure(
             foundation::Error::Create("resource.invalid_type", "resource type must be valid before requesting"));
+    }
+
+    auto* existing_slot = cache_.Find(request.resource_id);
+    if (existing_slot != nullptr && existing_slot->type.IsValid() && existing_slot->type != request.type)
+    {
+        return foundation::Result<ResourceHandle>::Failure(
+            foundation::Error::Create("resource.type_mismatch", "resource id is already associated with a different type"));
     }
 
     if (loader_registry_ == nullptr)
@@ -130,21 +149,66 @@ void ResourceManager::Release(ResourceHandle handle)
     --slot->reference_count;
     if (slot->reference_count == 0)
     {
-        slot->state = ResourceState::Evicted;
+        ReleaseDependencyHandles(*slot);
+        slot->state = ResourceState::Unloaded;
+        slot->generation = NextGeneration(slot->generation);
     }
+}
+
+foundation::Result<void> ResourceManager::Evict(ResourceId id)
+{
+    if (!id.IsValid())
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("resource.invalid_id", "resource id must be valid before eviction"));
+    }
+
+    auto* slot = cache_.Find(id);
+    if (slot == nullptr)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("resource.not_found", "resource slot was not found for eviction"));
+    }
+
+    if (slot->reference_count != 0)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("resource.in_use", "resource cannot be evicted while references are held"));
+    }
+
+    ReleaseDependencyHandles(*slot);
+    slot->state = ResourceState::Evicted;
+    return foundation::Result<void>::Success();
+}
+
+std::size_t ResourceManager::EvictUnreferenced()
+{
+    std::size_t evicted_count = 0;
+    for (auto& [resource_id, slot] : cache_.Entries())
+    {
+        (void)resource_id;
+        if (slot.reference_count == 0 && slot.state != ResourceState::Evicted)
+        {
+            ReleaseDependencyHandles(slot);
+            slot.state = ResourceState::Evicted;
+            ++evicted_count;
+        }
+    }
+
+    return evicted_count;
 }
 
 ResourceState ResourceManager::GetState(ResourceHandle handle) const
 {
     if (!handle.IsValid())
     {
-        return ResourceState::Evicted;
+        return ResourceState::Unknown;
     }
 
     const auto* slot = cache_.Find(handle.id);
     if (slot == nullptr || !IsHandleCurrent(*slot, handle))
     {
-        return ResourceState::Evicted;
+        return ResourceState::Unknown;
     }
 
     return slot->state;
@@ -171,25 +235,50 @@ std::optional<ResourceId> ResourceManager::GetResourceId(ResourceHandle handle) 
     return slot->id;
 }
 
+const ResourceSlot* ResourceManager::InspectSlot(ResourceId id) const
+{
+    return cache_.Find(id);
+}
+
 bool ResourceManager::IsHandleCurrent(const ResourceSlot& slot, ResourceHandle handle)
 {
     return slot.id == handle.id && slot.generation == handle.generation;
 }
 
+ResourceGeneration ResourceManager::NextGeneration(ResourceGeneration generation)
+{
+    if (generation == 0 || generation == std::numeric_limits<ResourceGeneration>::max())
+    {
+        return kInitialGeneration;
+    }
+
+    return generation + 1;
+}
+
 void ResourceManager::PrepareSlotForLoad(ResourceSlot& slot, ResourceType type)
 {
     slot.type = type;
-    if (slot.state == ResourceState::Evicted)
-    {
-        ++slot.generation;
-    }
-
     if (slot.generation == 0)
     {
         slot.generation = kInitialGeneration;
     }
 
     slot.state = ResourceState::Queued;
+}
+
+void ResourceManager::ReleaseDependencyHandles(ResourceSlot& slot)
+{
+    ReleaseDependencyHandles(slot.dependency_handles);
+}
+
+void ResourceManager::ReleaseDependencyHandles(std::vector<ResourceHandle>& handles)
+{
+    for (const ResourceHandle handle : handles)
+    {
+        Release(handle);
+    }
+
+    handles.clear();
 }
 
 foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, ResourceRequest request)
@@ -262,12 +351,15 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, ResourceR
 
 foundation::Result<void> ResourceManager::ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact)
 {
+    ReleaseDependencyHandles(slot);
+
     if (artifact.dependencies.empty())
     {
         return foundation::Result<void>::Success();
     }
 
     slot.state = ResourceState::WaitingForDependencies;
+    std::vector<ResourceHandle> acquired_handles;
     for (const ResourceDependency& dependency : artifact.dependencies)
     {
         if (!dependency.resource_id.IsValid())
@@ -275,6 +367,7 @@ foundation::Result<void> ResourceManager::ResolveDependencies(ResourceSlot& slot
             if (dependency.required)
             {
                 slot.state = ResourceState::Failed;
+                ReleaseDependencyHandles(acquired_handles);
                 return foundation::Result<void>::Failure(foundation::Error::Create(
                     "resource.dependency_invalid_id", "required resource dependency must have a valid resource id"));
             }
@@ -287,6 +380,7 @@ foundation::Result<void> ResourceManager::ResolveDependencies(ResourceSlot& slot
             if (dependency.required)
             {
                 slot.state = ResourceState::Failed;
+                ReleaseDependencyHandles(acquired_handles);
                 return foundation::Result<void>::Failure(foundation::Error::Create(
                     "resource.dependency_invalid_type", "required resource dependency must have a valid resource type"));
             }
@@ -300,13 +394,17 @@ foundation::Result<void> ResourceManager::ResolveDependencies(ResourceSlot& slot
             if (dependency.required)
             {
                 slot.state = ResourceState::Failed;
+                ReleaseDependencyHandles(acquired_handles);
                 return foundation::Result<void>::Failure(dependency_result.GetError());
             }
 
             continue;
         }
+
+        acquired_handles.push_back(dependency_result.Value());
     }
 
+    slot.dependency_handles = std::move(acquired_handles);
     return foundation::Result<void>::Success();
 }
 } // namespace epidemic::runtime
