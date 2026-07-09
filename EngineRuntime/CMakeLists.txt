@@ -1,3 +1,4 @@
 add_subdirectory(RuntimeFoundation)
 add_subdirectory(Assets)
 add_subdirectory(Resources)
+add_subdirectory(Serialization)
