@@ -1,3 +1,5 @@
+// This file exercises the Diagnostics baseline contracts such as logging, counters, profiling, and thread naming.
+
 #include "../test_assert.h"
 
 #include <Epidemic/Diagnostics/counters.h>
@@ -25,6 +27,7 @@ class RecordingLogger final : public epidemic::diagnostics::ILogger
     std::vector<std::string> records;
 };
 
+// Verifies the baseline diagnostics services and helper primitives.
 void TestDiagnosticsBaseline()
 {
     epidemic::diagnostics::GlobalCounters().Reset();
@@ -61,6 +64,7 @@ void TestDiagnosticsBaseline()
 }
 }
 
+// Runs the Diagnostics unit-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({{"DiagnosticsBaseline", &TestDiagnosticsBaseline}});

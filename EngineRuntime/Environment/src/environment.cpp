@@ -1,0 +1,8 @@
+#include "Epidemic/Runtime/Environment/climate_profile.h"
+#include "Epidemic/Runtime/Environment/environment_projection.h"
+#include "Epidemic/Runtime/Environment/environment_runtime.h"
+#include "Epidemic/Runtime/Environment/environment_snapshot.h"
+#include "Epidemic/Runtime/Environment/environment_update.h"
+#include "Epidemic/Runtime/Environment/season_state.h"
+#include "Epidemic/Runtime/Environment/surface_state.h"
+#include "Epidemic/Runtime/Environment/weather_state.h"

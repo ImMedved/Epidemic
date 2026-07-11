@@ -18,15 +18,20 @@
 
 namespace epidemic::rhi::d3d11
 {
+// This file implements the baseline D3D11 backend.
+// Public contracts live in the RHI headers; local helpers and private classes below translate them to D3D11 calls.
+
 namespace
 {
 using Microsoft::WRL::ComPtr;
 
+// Returns whether a floating-point clear-color component is finite.
 [[nodiscard]] bool IsFinite(float value) noexcept
 {
     return std::isfinite(value) != 0;
 }
 
+// Converts a UTF-16 Windows string into UTF-8 for diagnostics output.
 [[nodiscard]] std::string NarrowWideString(const std::wstring_view wide_string)
 {
     if (wide_string.empty())
@@ -48,6 +53,7 @@ using Microsoft::WRL::ComPtr;
     return utf8_string;
 }
 
+// Formats an HRESULT into a stable textual diagnostic payload.
 [[nodiscard]] std::string FormatHResult(HRESULT result)
 {
     std::wstring message_buffer(512, L'\0');
@@ -76,6 +82,7 @@ using Microsoft::WRL::ComPtr;
     return stream.str();
 }
 
+// Builds a structured Error for a failed D3D11 operation.
 [[nodiscard]] epidemic::foundation::Error MakeD3D11Error(std::string_view error_code, std::string_view operation,
                                                          HRESULT result, std::string_view error_context = {})
 {
@@ -85,6 +92,7 @@ using Microsoft::WRL::ComPtr;
                                                error_context);
 }
 
+// Converts the baseline pixel-format enum into the corresponding DXGI format.
 [[nodiscard]] epidemic::foundation::Result<DXGI_FORMAT> ToDxgiFormat(RhiPixelFormat pixel_format)
 {
     switch (pixel_format)
@@ -112,9 +120,11 @@ struct D3D11DeviceState
     std::weak_ptr<D3D11RhiSwapChain> active_swap_chain;
 };
 
+// Swap-chain implementation that owns the DXGI swap chain and render-target resources.
 class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_from_this<D3D11RhiSwapChain>
 {
   public:
+        // Creates, initializes, and returns a D3D11 swap-chain wrapper.
     static epidemic::foundation::Result<std::shared_ptr<D3D11RhiSwapChain>>
     Create(std::shared_ptr<D3D11DeviceState> state, const RhiSwapChainDesc &descriptor)
     {
@@ -128,11 +138,13 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
         return epidemic::foundation::Result<std::shared_ptr<D3D11RhiSwapChain>>::Success(std::move(swap_chain));
     }
 
+        // Releases back-buffer resources before the swap chain is destroyed.
     ~D3D11RhiSwapChain() override
     {
         ReleaseBackBufferResources();
     }
 
+        // Presents the current back buffer when presentation resources are valid.
     [[nodiscard]] epidemic::foundation::Result<void> Present() override
     {
         if (swap_chain_ == nullptr || width_ == 0 || height_ == 0 || render_target_view_ == nullptr)
@@ -151,6 +163,7 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Resizes DXGI buffers and recreates render-target resources.
     [[nodiscard]] epidemic::foundation::Result<void> Resize(std::uint32_t width, std::uint32_t height) override
     {
         if (width == 0 || height == 0)
@@ -192,31 +205,37 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
         return CreateBackBufferResources();
     }
 
+        // Returns the current swap-chain width.
     [[nodiscard]] std::uint32_t Width() const noexcept override
     {
         return width_;
     }
 
+        // Returns the current swap-chain height.
     [[nodiscard]] std::uint32_t Height() const noexcept override
     {
         return height_;
     }
 
+        // Returns the configured DXGI buffer count.
     [[nodiscard]] std::uint32_t BufferCount() const noexcept override
     {
         return descriptor_.buffer_count;
     }
 
+        // Returns the configured color format.
     [[nodiscard]] RhiPixelFormat ColorFormat() const noexcept override
     {
         return descriptor_.color_format;
     }
 
+        // Returns whether a render-target view currently exists for presentation.
     [[nodiscard]] bool HasRenderTarget() const noexcept
     {
         return render_target_view_ != nullptr && width_ > 0 && height_ > 0;
     }
 
+        // Binds the current render target and viewport to the immediate context.
     void BindForRendering()
     {
         if (!HasRenderTarget())
@@ -235,6 +254,7 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
         state_->immediate_context->RSSetViewports(1, &viewport);
     }
 
+        // Clears the active render target with the requested color.
     void ClearRenderTarget(const RhiColor &color)
     {
         if (!HasRenderTarget())
@@ -247,11 +267,13 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
     }
 
   private:
+        // Stores device state and the immutable descriptor prior to initialization.
     D3D11RhiSwapChain(std::shared_ptr<D3D11DeviceState> state, RhiSwapChainDesc descriptor)
         : state_(std::move(state)), descriptor_(std::move(descriptor)), width_(descriptor_.width), height_(descriptor_.height)
     {
     }
 
+        // Creates the underlying DXGI swap chain and its first back-buffer resources.
     [[nodiscard]] epidemic::foundation::Result<void> Initialize()
     {
         const auto validation_result = Validate(descriptor_);
@@ -323,6 +345,7 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
         return CreateBackBufferResources();
     }
 
+        // Acquires the DXGI back buffer and creates the render-target view.
     [[nodiscard]] epidemic::foundation::Result<void> CreateBackBufferResources()
     {
         if (swap_chain_ == nullptr || width_ == 0 || height_ == 0)
@@ -353,6 +376,7 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Releases D3D11 back-buffer resources and unbinds them from the immediate context.
     void ReleaseBackBufferResources()
     {
         if (state_ && state_->immediate_context)
@@ -375,13 +399,16 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
     ComPtr<ID3D11RenderTargetView> render_target_view_;
 };
 
+// Command-context implementation that issues the baseline clear-screen operations through the D3D11 immediate context.
 class D3D11RhiCommandContext final : public IRhiCommandContext
 {
   public:
+        // Stores shared device state used for immediate-mode rendering.
     explicit D3D11RhiCommandContext(std::shared_ptr<D3D11DeviceState> state) : state_(std::move(state))
     {
     }
 
+        // Starts a command-context frame and rejects nested BeginFrame calls.
     [[nodiscard]] epidemic::foundation::Result<void> BeginFrame() override
     {
         if (frame_active_)
@@ -395,6 +422,7 @@ class D3D11RhiCommandContext final : public IRhiCommandContext
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Validates the clear descriptor and clears the currently active swap chain.
     [[nodiscard]] epidemic::foundation::Result<void> Clear(const RhiClearDesc &clear_desc) override
     {
         if (!frame_active_)
@@ -432,6 +460,7 @@ class D3D11RhiCommandContext final : public IRhiCommandContext
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Ends the active frame and unbinds the render target from the immediate context.
     [[nodiscard]] epidemic::foundation::Result<void> EndFrame() override
     {
         if (!frame_active_)
@@ -447,6 +476,7 @@ class D3D11RhiCommandContext final : public IRhiCommandContext
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Returns whether a D3D11 frame is currently active on this context.
     [[nodiscard]] bool IsFrameActive() const noexcept override
     {
         return frame_active_;
@@ -457,24 +487,29 @@ class D3D11RhiCommandContext final : public IRhiCommandContext
     bool frame_active_{false};
 };
 
+// Top-level D3D11 backend device that manufactures command contexts and swap chains.
 class D3D11RhiDevice final : public IRhiDevice
 {
   public:
+        // Stores the immutable descriptor and shared D3D11 device state.
     D3D11RhiDevice(RhiDeviceDesc descriptor, std::shared_ptr<D3D11DeviceState> state)
         : descriptor_(std::move(descriptor)), state_(std::move(state))
     {
     }
 
+        // Returns the stable backend name.
     [[nodiscard]] std::string_view BackendName() const noexcept override
     {
         return "D3D11";
     }
 
+        // Returns the immutable device descriptor.
     [[nodiscard]] const RhiDeviceDesc &Descriptor() const noexcept override
     {
         return descriptor_;
     }
 
+        // Creates a command context bound to the shared D3D11 device state.
     [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiCommandContext>> CreateCommandContext() override
     {
         return epidemic::foundation::Result<std::shared_ptr<IRhiCommandContext>>::Success(
@@ -482,6 +517,7 @@ class D3D11RhiDevice final : public IRhiDevice
     }
 
     [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiSwapChain>>
+        // Creates a swap chain and makes it the active presentation target for the shared device state.
     CreateSwapChain(const RhiSwapChainDesc &swap_chain_desc) override
     {
         const auto swap_chain_result = D3D11RhiSwapChain::Create(state_, swap_chain_desc);
@@ -501,6 +537,7 @@ class D3D11RhiDevice final : public IRhiDevice
 };
 } // namespace
 
+// Creates the D3D11 device and immediate context and returns the backend device wrapper.
 epidemic::foundation::Result<std::shared_ptr<IRhiDevice>> CreateD3D11RhiDevice(const RhiDeviceDesc &device_desc)
 {
     const auto validation_result = Validate(device_desc);

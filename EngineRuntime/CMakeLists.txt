@@ -1,0 +1,8 @@
+add_subdirectory(RuntimeFoundation)
+add_subdirectory(Assets)
+add_subdirectory(Resources)
+add_subdirectory(Serialization)
+add_subdirectory(Persistence)
+add_subdirectory(Time)
+add_subdirectory(Environment)
+add_subdirectory(Scene)

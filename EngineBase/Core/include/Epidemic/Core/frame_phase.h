@@ -8,8 +8,9 @@
 
 namespace epidemic::core
 {
-// These phases are orchestrated on the main thread. Platform pumping, input publication,
-// module tick entry points, and present hooks all plug into this order.
+// This file defines the canonical frame-phase ordering used by Application.
+// Support wiring and future upper layers hook into these phases to run work at stable points.
+
 enum class FramePhase : std::uint8_t
 {
     BeginFrame,
@@ -25,11 +26,13 @@ enum class FramePhase : std::uint8_t
     Count,
 };
 
+// Returns the number of phases in the canonical frame loop.
 [[nodiscard]] constexpr std::size_t FramePhaseCount() noexcept
 {
     return static_cast<std::size_t>(FramePhase::Count);
 }
 
+// Converts a frame phase to a stable name for logs and diagnostics.
 [[nodiscard]] inline std::string_view ToString(FramePhase phase) noexcept
 {
     switch (phase)
@@ -74,6 +77,7 @@ inline constexpr std::array<FramePhase, FramePhaseCount()> kFramePhaseOrder{
     FramePhase::EndFrame,
 };
 
+// Returns the canonical ordered view consumed by Application::ExecuteFrame().
 [[nodiscard]] inline constexpr std::span<const FramePhase> FramePhaseOrder() noexcept
 {
     return std::span<const FramePhase>(kFramePhaseOrder.data(), kFramePhaseOrder.size());

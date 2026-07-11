@@ -4,3 +4,5 @@ logs/
 .codex/
 dev-log/
 *.zip
+cmake-build-debug/
+.idea/

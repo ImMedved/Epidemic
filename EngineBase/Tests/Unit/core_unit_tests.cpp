@@ -1,3 +1,5 @@
+// This file exercises the Core module contracts including services, events, tasks, dispatch, modules, and application lifecycle behavior.
+
 #include "../core_test_support.h"
 
 #include <Epidemic/Core/event_bus.h>
@@ -43,6 +45,7 @@ struct CountingServiceImpl final : CountingService
     int &construction_count_;
 };
 
+// Verifies registration, lookup, duplicate rejection, and sealing behavior of ServiceContainer.
 void TestServiceContainerContracts()
 {
     epidemic::core::ServiceContainer services;
@@ -106,6 +109,7 @@ void TestServiceContainerContracts()
            "Sealed Emplace must validate before constructing the implementation");
 }
 
+// Verifies synchronous and queued event-bus dispatch semantics.
 void TestEventBusContracts()
 {
     epidemic::core::events::EventBus event_bus;
@@ -134,6 +138,7 @@ void TestEventBusContracts()
     Assert(empty_handler_failed, "Empty event handler must fail");
 }
 
+// Verifies scheduler grouping, exception propagation, and main-thread dispatch behavior.
 void TestTaskSchedulerAndDispatcherContracts()
 {
     epidemic::core::tasks::SimpleTaskScheduler scheduler(1);
@@ -169,6 +174,7 @@ void TestTaskSchedulerAndDispatcherContracts()
     Assert(empty_task_failed, "Dispatcher must reject empty tasks");
 }
 
+// Verifies module dependency ordering and lifecycle failure handling.
 void TestModuleRegistryContracts()
 {
     epidemic::core::ServiceContainer services;
@@ -242,6 +248,7 @@ void TestModuleRegistryContracts()
 }
 } // namespace
 
+// Runs the Core unit-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({
