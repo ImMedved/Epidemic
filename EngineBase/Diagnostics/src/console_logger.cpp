@@ -10,8 +10,12 @@
 
 namespace epidemic::diagnostics
 {
+// This file implements the default console-and-file logger used by EngineBase.
+// The logger detects the repository root from stable markers and writes logs to logs/epidemic.log.
+
 namespace
 {
+// Returns true when the supplied directory looks like the repository root expected by EngineBase.
 [[nodiscard]] bool IsProjectRootCandidate(const std::filesystem::path &path)
 {
     const bool has_engine_base_directory = std::filesystem::exists(path / "EngineBase");
@@ -20,6 +24,8 @@ namespace
     return has_engine_base_directory && (has_root_cmake || has_api_stability);
 }
 
+// Walks upward from the current working directory until a repository root marker is found.
+// Output: resolved project root, or current_path() as a safe fallback when detection fails.
 std::filesystem::path FindProjectRoot()
 {
     auto current = std::filesystem::current_path();
@@ -43,6 +49,7 @@ std::filesystem::path FindProjectRoot()
 }
 } // namespace
 
+// Opens the log file lazily so simple test runs do not pay setup cost until the first log write.
 void ConsoleLogger::EnsureLogFileInitialized()
 {
     if (file_initialized_)
@@ -63,6 +70,7 @@ void ConsoleLogger::EnsureLogFileInitialized()
     file_.open(logs_directory / "epidemic.log", std::ios::out | std::ios::app);
 }
 
+// Formats one log line, writes it to stdout, and mirrors it to the persistent log file when available.
 void ConsoleLogger::Log(const LogMessage &message)
 {
     const auto time = std::chrono::system_clock::to_time_t(message.timestamp);

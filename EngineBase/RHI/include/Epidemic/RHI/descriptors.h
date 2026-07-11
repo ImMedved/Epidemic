@@ -9,6 +9,9 @@
 
 namespace epidemic::rhi
 {
+// This file defines the value descriptors used by the baseline RHI interfaces.
+// Validation helpers keep expected runtime setup failures in Result instead of exceptions.
+
 struct RhiColor
 {
     float red{};
@@ -40,7 +43,12 @@ struct RhiSwapChainDesc
     std::string debug_name{"MainSwapChain"};
 };
 
+// Validates device creation parameters.
 [[nodiscard]] epidemic::foundation::Result<void> Validate(const RhiDeviceDesc &device_desc);
+
+// Validates swap-chain creation parameters.
 [[nodiscard]] epidemic::foundation::Result<void> Validate(const RhiSwapChainDesc &swap_chain_desc);
+
+// Validates a clear operation descriptor.
 [[nodiscard]] epidemic::foundation::Result<void> Validate(const RhiClearDesc &clear_desc);
 } // namespace epidemic::rhi

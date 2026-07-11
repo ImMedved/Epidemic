@@ -7,10 +7,15 @@
 
 namespace epidemic::core
 {
+// This file implements the baseline main-thread task queue.
+// The dispatcher captures an owner thread at construction and enforces that Drain runs only there.
+
+// Captures the constructing thread as the owner.
 MainThreadDispatcher::MainThreadDispatcher() : owner_thread_id_(std::this_thread::get_id())
 {
 }
 
+// Queues a task for later execution on the owner thread.
 void MainThreadDispatcher::Post(std::function<void()> task, std::string debug_name)
 {
     if (!task)
@@ -22,6 +27,7 @@ void MainThreadDispatcher::Post(std::function<void()> task, std::string debug_na
     tasks_.push(PendingTask{std::move(task), std::move(debug_name)});
 }
 
+// Executes queued tasks in FIFO order on the owner thread and updates diagnostics counters.
 std::size_t MainThreadDispatcher::Drain()
 {
     if (!IsMainThread())
@@ -58,6 +64,7 @@ std::size_t MainThreadDispatcher::Drain()
     return executed_tasks;
 }
 
+// Returns whether the caller is the owning thread.
 bool MainThreadDispatcher::IsMainThread() const noexcept
 {
     return std::this_thread::get_id() == owner_thread_id_;

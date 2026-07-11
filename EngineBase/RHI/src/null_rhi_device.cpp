@@ -7,16 +7,22 @@
 
 namespace epidemic::rhi
 {
+// This file implements the baseline null RHI backend.
+// The backend preserves descriptor validation and command sequencing behavior without requiring a graphics device.
+
 namespace
 {
+// Returns whether a floating-point clear-color component is finite.
 [[nodiscard]] bool IsFinite(float value) noexcept
 {
     return std::isfinite(value) != 0;
 }
 
+// Command-context implementation that validates sequencing without talking to hardware.
 class NullRhiCommandContext final : public IRhiCommandContext
 {
   public:
+        // Starts a synthetic frame and rejects nested BeginFrame calls.
     [[nodiscard]] epidemic::foundation::Result<void> BeginFrame() override
     {
         if (frame_active_)
@@ -30,6 +36,7 @@ class NullRhiCommandContext final : public IRhiCommandContext
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Validates and records one synthetic clear operation inside the active frame.
     [[nodiscard]] epidemic::foundation::Result<void> Clear(const RhiClearDesc &clear_desc) override
     {
         if (!frame_active_)
@@ -50,6 +57,7 @@ class NullRhiCommandContext final : public IRhiCommandContext
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Ends the synthetic frame and rejects EndFrame without BeginFrame.
     [[nodiscard]] epidemic::foundation::Result<void> EndFrame() override
     {
         if (!frame_active_)
@@ -63,6 +71,7 @@ class NullRhiCommandContext final : public IRhiCommandContext
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Returns whether BeginFrame has been called without a matching EndFrame.
     [[nodiscard]] bool IsFrameActive() const noexcept override
     {
         return frame_active_;
@@ -74,19 +83,23 @@ class NullRhiCommandContext final : public IRhiCommandContext
     RhiClearDesc last_clear_desc_{};
 };
 
+// Swap-chain implementation that only stores descriptor state and counters.
 class NullRhiSwapChain final : public IRhiSwapChain
 {
   public:
+        // Stores the validated descriptor for later resize/present simulation.
     explicit NullRhiSwapChain(RhiSwapChainDesc descriptor) : descriptor_(std::move(descriptor))
     {
     }
 
+        // Simulates one present operation.
     [[nodiscard]] epidemic::foundation::Result<void> Present() override
     {
         ++present_count_;
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Validates and stores new swap-chain dimensions.
     [[nodiscard]] epidemic::foundation::Result<void> Resize(std::uint32_t width, std::uint32_t height) override
     {
         if (width == 0 || height == 0)
@@ -102,21 +115,25 @@ class NullRhiSwapChain final : public IRhiSwapChain
         return epidemic::foundation::Result<void>::Success();
     }
 
+        // Returns the stored swap-chain width.
     [[nodiscard]] std::uint32_t Width() const noexcept override
     {
         return descriptor_.width;
     }
 
+        // Returns the stored swap-chain height.
     [[nodiscard]] std::uint32_t Height() const noexcept override
     {
         return descriptor_.height;
     }
 
+        // Returns the stored buffer count.
     [[nodiscard]] std::uint32_t BufferCount() const noexcept override
     {
         return descriptor_.buffer_count;
     }
 
+        // Returns the stored color format.
     [[nodiscard]] RhiPixelFormat ColorFormat() const noexcept override
     {
         return descriptor_.color_format;
@@ -128,23 +145,28 @@ class NullRhiSwapChain final : public IRhiSwapChain
     std::size_t resize_count_{};
 };
 
+// Top-level null backend device that manufactures null command contexts and swap chains.
 class NullRhiDevice final : public IRhiDevice
 {
   public:
+        // Stores the immutable descriptor for later inspection.
     explicit NullRhiDevice(RhiDeviceDesc descriptor) : descriptor_(std::move(descriptor))
     {
     }
 
+        // Returns the stable backend name.
     [[nodiscard]] std::string_view BackendName() const noexcept override
     {
         return "NullRHI";
     }
 
+        // Returns the immutable creation descriptor.
     [[nodiscard]] const RhiDeviceDesc &Descriptor() const noexcept override
     {
         return descriptor_;
     }
 
+        // Creates a fresh null command context.
     [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiCommandContext>> CreateCommandContext() override
     {
         return epidemic::foundation::Result<std::shared_ptr<IRhiCommandContext>>::Success(
@@ -152,6 +174,7 @@ class NullRhiDevice final : public IRhiDevice
     }
 
     [[nodiscard]] epidemic::foundation::Result<std::shared_ptr<IRhiSwapChain>>
+        // Validates and creates a null swap chain.
     CreateSwapChain(const RhiSwapChainDesc &swap_chain_desc) override
     {
         const auto validation_result = Validate(swap_chain_desc);
@@ -169,6 +192,7 @@ class NullRhiDevice final : public IRhiDevice
 };
 } // namespace
 
+// Validates device creation parameters shared by all backends.
 epidemic::foundation::Result<void> Validate(const RhiDeviceDesc &device_desc)
 {
     if (device_desc.debug_name.empty())
@@ -180,6 +204,7 @@ epidemic::foundation::Result<void> Validate(const RhiDeviceDesc &device_desc)
     return epidemic::foundation::Result<void>::Success();
 }
 
+// Validates swap-chain creation parameters shared by all backends.
 epidemic::foundation::Result<void> Validate(const RhiSwapChainDesc &swap_chain_desc)
 {
     if (!swap_chain_desc.surface_handle.IsValid())
@@ -213,6 +238,7 @@ epidemic::foundation::Result<void> Validate(const RhiSwapChainDesc &swap_chain_d
     return epidemic::foundation::Result<void>::Success();
 }
 
+// Validates clear-operation parameters shared by all backends.
 epidemic::foundation::Result<void> Validate(const RhiClearDesc &clear_desc)
 {
     if (!clear_desc.clear_color)
@@ -233,6 +259,7 @@ epidemic::foundation::Result<void> Validate(const RhiClearDesc &clear_desc)
     return epidemic::foundation::Result<void>::Success();
 }
 
+// Creates the null RHI device after descriptor validation succeeds.
 epidemic::foundation::Result<std::shared_ptr<IRhiDevice>> CreateNullRhiDevice(const RhiDeviceDesc &device_desc)
 {
     const auto validation_result = Validate(device_desc);

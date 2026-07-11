@@ -7,6 +7,9 @@
 
 namespace epidemic::input
 {
+// This file defines the transient input events emitted during one PublishSnapshot() call.
+// InputEvent complements InputSnapshot by preserving per-event details such as repeat and wheel deltas.
+
 enum class InputEventType : std::uint8_t
 {
     None,

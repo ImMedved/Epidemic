@@ -1,3 +1,6 @@
+// This file defines a smoke app that exercises the input normalization pipeline on top of the Win32 runtime.
+// It logs normalized InputEvent values and exits on Escape or window close.
+
 #include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
 #include <Epidemic/Core/configuration.h>
@@ -17,6 +20,7 @@
 
 namespace
 {
+// Unwraps a Result value for smoke-app code and throws with the contained error message on failure.
 template <typename TValue>
 TValue RequireValue(epidemic::foundation::Result<TValue> result)
 {
@@ -28,6 +32,7 @@ TValue RequireValue(epidemic::foundation::Result<TValue> result)
     return std::move(result).Value();
 }
 
+// Formats one normalized input event into a readable log line.
 void LogInputEvent(epidemic::diagnostics::ILogger &logger, const epidemic::input::InputEvent &event)
 {
     using epidemic::input::InputEventType;
@@ -74,6 +79,7 @@ void LogInputEvent(epidemic::diagnostics::ILogger &logger, const epidemic::input
 }
 } // namespace
 
+// Composes platform and input services, opens a window, and logs live normalized input until exit.
 int main()
 {
     try

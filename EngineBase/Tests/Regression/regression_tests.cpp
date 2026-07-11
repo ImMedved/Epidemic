@@ -1,3 +1,5 @@
+// This file preserves high-value regression checks that span multiple baseline subsystems at once.
+
 #include "../core_test_support.h"
 #include "../test_assert.h"
 
@@ -15,6 +17,7 @@ using epidemic::tests::ProbeModule;
 using epidemic::tests::RegisterApplicationCoreServices;
 using epidemic::tests::RegisterCoreServices;
 
+// Verifies previously fixed cross-cutting regressions across services, tasks, modules, diagnostics, and RHI paths.
 void TestRegressionContracts()
 {
     epidemic::core::Application app({"RegressionApp"});
@@ -148,6 +151,7 @@ void TestRegressionContracts()
 }
 }
 
+// Runs the regression-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({{"RegressionContracts", &TestRegressionContracts}});

@@ -4,6 +4,9 @@
 
 namespace epidemic::platform
 {
+// This file defines the raw event payload emitted by the platform layer.
+// PlatformEvent is intentionally a flat POD-style structure so the window runtime can queue events cheaply.
+
 using WindowId = std::uint64_t;
 
 constexpr WindowId kInvalidWindowId = 0;
@@ -25,6 +28,8 @@ enum class PlatformEventType : std::uint8_t
     MouseCaptureChanged,
 };
 
+// Carries one normalized platform event.
+// Relationship: InputSystem consumes the input-related subset, while apps may inspect window events directly.
 struct PlatformEvent
 {
     PlatformEventType type{PlatformEventType::None};

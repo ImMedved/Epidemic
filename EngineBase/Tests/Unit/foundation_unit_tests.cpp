@@ -1,3 +1,5 @@
+// This file exercises the small value types and utility contracts in EngineBase/Foundation.
+
 #include "../test_assert.h"
 
 #include <Epidemic/Foundation/error.h>
@@ -14,11 +16,13 @@ namespace
 {
 using epidemic::tests::Assert;
 
+// Compares floating-point values with an epsilon for stable test assertions.
 bool NearlyEqual(double left, double right, double epsilon = 1e-9)
 {
     return std::abs(left - right) <= epsilon;
 }
 
+// Verifies the baseline Foundation value types and helper contracts.
 void TestFoundationPrimitives()
 {
     const auto ok = epidemic::foundation::Result<int>::Success(42);
@@ -63,6 +67,7 @@ void TestFoundationPrimitives()
 }
 }
 
+// Runs the Foundation unit-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({{"FoundationPrimitives", &TestFoundationPrimitives}});

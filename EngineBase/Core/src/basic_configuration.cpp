@@ -2,6 +2,10 @@
 
 namespace epidemic::core::config
 {
+// This file implements the default in-memory configuration store.
+// The methods are thin locked wrappers around typed maps declared in basic_configuration.h.
+
+// Returns the stored string value for the requested key.
 std::optional<std::string> BasicConfiguration::GetString(std::string_view key) const
 {
     std::scoped_lock lock(mutex_);
@@ -15,12 +19,14 @@ std::optional<std::string> BasicConfiguration::GetString(std::string_view key) c
     return it->second;
 }
 
+// Stores or replaces a string value.
 void BasicConfiguration::SetString(std::string key, std::string value)
 {
     std::scoped_lock lock(mutex_);
     string_values_.insert_or_assign(std::move(key), std::move(value));
 }
 
+// Returns the stored integer value for the requested key.
 std::optional<std::int64_t> BasicConfiguration::GetInt(std::string_view key) const
 {
     std::scoped_lock lock(mutex_);
@@ -34,12 +40,14 @@ std::optional<std::int64_t> BasicConfiguration::GetInt(std::string_view key) con
     return it->second;
 }
 
+// Stores or replaces an integer value.
 void BasicConfiguration::SetInt(std::string key, std::int64_t value)
 {
     std::scoped_lock lock(mutex_);
     int_values_.insert_or_assign(std::move(key), value);
 }
 
+// Returns the stored boolean value for the requested key.
 std::optional<bool> BasicConfiguration::GetBool(std::string_view key) const
 {
     std::scoped_lock lock(mutex_);
@@ -53,6 +61,7 @@ std::optional<bool> BasicConfiguration::GetBool(std::string_view key) const
     return it->second;
 }
 
+// Stores or replaces a boolean value.
 void BasicConfiguration::SetBool(std::string key, bool value)
 {
     std::scoped_lock lock(mutex_);
