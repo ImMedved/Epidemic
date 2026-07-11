@@ -1,0 +1,50 @@
+#pragma once
+
+#include "Epidemic/Runtime/World/chunk.h"
+#include "Epidemic/Runtime/World/object_materialization.h"
+#include "Epidemic/Runtime/World/region.h"
+#include "Epidemic/Runtime/World/world_object_registry.h"
+#include "Epidemic/Runtime/World/world_query.h"
+#include "Epidemic/Runtime/World/world_state.h"
+
+#include <unordered_map>
+
+namespace epidemic::runtime
+{
+class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorldObjectRegistry, public IObjectMaterializer, public IWorldQuery
+{
+  public:
+    [[nodiscard]] foundation::Result<void> RegisterRegion(RegionDescriptor region) override;
+    [[nodiscard]] std::optional<RegionDescriptor> FindRegion(RegionId id) const override;
+
+    [[nodiscard]] foundation::Result<void> RegisterChunk(ChunkDescriptor chunk) override;
+    [[nodiscard]] std::optional<ChunkDescriptor> FindChunk(ChunkId id) const override;
+    [[nodiscard]] ChunkState GetChunkState(ChunkId id) const override;
+
+    [[nodiscard]] foundation::Result<RuntimeObjectId> CreateObject(WorldObjectRecord record) override;
+    [[nodiscard]] foundation::Result<void> DestroyObject(RuntimeObjectId id) override;
+    [[nodiscard]] std::optional<WorldObjectRecord> FindObject(RuntimeObjectId id) const override;
+    [[nodiscard]] std::vector<WorldObjectRecord> FindObjectsInRegion(RegionId region) const override;
+    [[nodiscard]] std::vector<WorldObjectRecord> FindObjectsInChunk(ChunkId chunk) const override;
+    [[nodiscard]] std::vector<WorldObjectRecord> FindObjectsByReality(ObjectRealityLevel reality) const override;
+    [[nodiscard]] foundation::Result<void> SetPlacement(RuntimeObjectId id, ObjectPlacement placement) override;
+    [[nodiscard]] foundation::Result<void> SetResidency(RuntimeObjectId id, ResidencyState state) override;
+
+    [[nodiscard]] foundation::Result<RuntimeObjectId> Materialize(const MaterializationRequest& request) override;
+    [[nodiscard]] foundation::Result<void> Demote(const DemotionRequest& request) override;
+
+    foundation::Result<void> SetChunkState(ChunkId id, ChunkState state);
+
+  protected:
+    struct ChunkRecord
+    {
+        ChunkDescriptor descriptor{};
+        ChunkState state = ChunkState::Unloaded;
+    };
+
+    std::unordered_map<RegionId, RegionDescriptor> regions_;
+    std::unordered_map<ChunkId, ChunkRecord> chunks_;
+    std::unordered_map<RuntimeObjectId, WorldObjectRecord> world_objects_;
+    std::uint64_t next_runtime_object_value_ = 1;
+};
+} // namespace epidemic::runtime
