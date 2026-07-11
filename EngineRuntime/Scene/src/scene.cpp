@@ -1,0 +1,8 @@
+#include "Epidemic/Runtime/Scene/bounds.h"
+#include "Epidemic/Runtime/Scene/scene_node.h"
+#include "Epidemic/Runtime/Scene/scene_node_registry.h"
+#include "Epidemic/Runtime/Scene/scene_query.h"
+#include "Epidemic/Runtime/Scene/scene_state.h"
+#include "Epidemic/Runtime/Scene/spatial_index.h"
+#include "Epidemic/Runtime/Scene/transform.h"
+#include "Epidemic/Runtime/Scene/transform_registry.h"
