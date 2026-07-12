@@ -655,4 +655,4 @@ foundation::Result<void> ResourceManager::ResolveDependencies(ResourceSlot& slot
     slot.dependency_handles = std::move(acquired_handles);
     return foundation::Result<void>::Success();
 }
-} // namespace epidemic::runtime
+} 

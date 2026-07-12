@@ -15,4 +15,4 @@ enum class ChunkState
     Sleeping,
     Unloading,
 };
-} // namespace epidemic::runtime
+} 

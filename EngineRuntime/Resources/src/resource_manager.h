@@ -219,4 +219,4 @@ class ResourceManager final : public IResourceManager
     ResourceDependencyGraph dependency_graph_;
     std::unordered_set<ResourceId> loading_resources_;
 };
-} // namespace epidemic::runtime
+} 

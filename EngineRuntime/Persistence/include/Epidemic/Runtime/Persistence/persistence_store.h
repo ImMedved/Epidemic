@@ -72,4 +72,4 @@ class IPersistenceStore
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual std::unique_ptr<ISaveTransaction> OpenTransaction() = 0;
 };
-} // namespace epidemic::runtime
+} 

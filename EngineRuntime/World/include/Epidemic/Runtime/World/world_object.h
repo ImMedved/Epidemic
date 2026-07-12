@@ -22,4 +22,4 @@ struct WorldObjectRecord
 
     [[nodiscard]] constexpr bool operator==(const WorldObjectRecord&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

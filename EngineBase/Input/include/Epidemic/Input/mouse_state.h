@@ -135,4 +135,4 @@ class MouseState
     bool has_focus_{false};
     bool has_capture_{false};
 };
-} // namespace epidemic::input
+} 

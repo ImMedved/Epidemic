@@ -32,4 +32,4 @@ struct SurfaceState
 
     [[nodiscard]] constexpr bool operator==(const SurfaceState&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

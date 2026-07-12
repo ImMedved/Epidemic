@@ -62,4 +62,4 @@ class IObjectMaterializer
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual foundation::Result<void> Demote(const DemotionRequest& request) = 0;
 };
-} // namespace epidemic::runtime
+} 

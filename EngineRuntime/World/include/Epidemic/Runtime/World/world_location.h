@@ -15,4 +15,4 @@ struct WorldLocation
 
     [[nodiscard]] constexpr bool operator==(const WorldLocation&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

@@ -233,4 +233,4 @@ void EnvironmentRuntime::ApplyDrying(std::int64_t game_delta_ticks)
         }
     }
 }
-} // namespace epidemic::runtime
+} 

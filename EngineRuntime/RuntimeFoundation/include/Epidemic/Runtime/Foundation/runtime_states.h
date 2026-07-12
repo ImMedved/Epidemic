@@ -66,4 +66,4 @@ enum class SimulationLod
     Observed,
     Active,
 };
-} // namespace epidemic::runtime
+} 

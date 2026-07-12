@@ -378,4 +378,4 @@ std::unique_ptr<ISaveTransaction> InMemoryPersistenceStore::OpenTransaction()
 {
     return std::make_unique<InMemorySaveTransaction>();
 }
-} // namespace epidemic::runtime
+} 

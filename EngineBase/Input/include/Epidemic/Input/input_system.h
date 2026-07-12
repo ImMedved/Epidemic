@@ -25,4 +25,4 @@ class InputSystem final : public IInputSystem
     std::vector<InputEvent> current_events_{};
     std::uint64_t next_update_index_{};
 };
-} // namespace epidemic::input
+} 

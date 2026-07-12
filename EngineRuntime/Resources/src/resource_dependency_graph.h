@@ -36,4 +36,4 @@ class ResourceDependencyGraph
   private:
     std::unordered_map<ResourceId, ResourceDependencySet> dependencies_;
 };
-} // namespace epidemic::runtime
+} 

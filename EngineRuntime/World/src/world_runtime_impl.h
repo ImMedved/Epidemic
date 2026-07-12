@@ -131,4 +131,4 @@ class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorl
     std::unordered_map<RuntimeObjectId, WorldObjectRecord> world_objects_;
     std::uint64_t next_runtime_object_value_ = 1;
 };
-} // namespace epidemic::runtime
+} 

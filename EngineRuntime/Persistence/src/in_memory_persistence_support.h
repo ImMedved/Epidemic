@@ -226,4 +226,4 @@ class InMemoryPersistenceStore final : public IPersistenceStore
     InMemoryZoneOverrideStore zone_override_store_;
     std::unordered_multimap<PersistentObjectId, LazyRuleRecord> lazy_rules_;
 };
-} // namespace epidemic::runtime
+} 

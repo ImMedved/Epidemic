@@ -41,4 +41,4 @@ class ResourceLoaderRegistry final : public IResourceLoaderRegistry
   private:
     std::unordered_map<foundation::StringId, IResourceLoader*> loaders_;
 };
-} // namespace epidemic::runtime
+} 

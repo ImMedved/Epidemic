@@ -94,4 +94,4 @@ class ITimeRuntime : public IGameClock
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual foundation::Result<void> Skip(GameDuration duration) = 0;
 };
-} // namespace epidemic::runtime
+} 

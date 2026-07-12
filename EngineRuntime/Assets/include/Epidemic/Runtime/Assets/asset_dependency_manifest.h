@@ -15,4 +15,4 @@ struct AssetDependencyManifest
     AssetId root{};
     std::vector<AssetDependency> dependencies;
 };
-} // namespace epidemic::runtime
+} 

@@ -33,4 +33,4 @@ struct AssetMetadata
     std::uint64_t content_hash = 0;
     std::uint32_t version = 0;
 };
-} // namespace epidemic::runtime
+} 

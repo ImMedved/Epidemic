@@ -56,4 +56,4 @@ enum class MouseButton : std::uint8_t
 
     return "Unknown";
 }
-} // namespace epidemic::input
+} 

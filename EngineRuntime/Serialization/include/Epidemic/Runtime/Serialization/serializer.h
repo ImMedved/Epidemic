@@ -44,4 +44,4 @@ class ISerializer
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual SchemaVersion GetSchemaVersion() const = 0;
 };
-} // namespace epidemic::runtime
+} 

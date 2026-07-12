@@ -44,4 +44,4 @@ class ISerializerRegistry
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual bool HasSerializer(foundation::StringId type_id) const = 0;
 };
-} // namespace epidemic::runtime
+} 

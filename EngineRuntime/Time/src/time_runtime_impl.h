@@ -151,4 +151,4 @@ class TimeRuntime final : public ITimeRuntime
     TimeSnapshot snapshot_{};
     std::vector<TimeEvent> events_;
 };
-} // namespace epidemic::runtime
+} 

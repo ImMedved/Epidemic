@@ -55,4 +55,4 @@ struct ArchiveObject
 {
     std::unordered_map<std::string, ArchiveValue> fields;
 };
-} // namespace epidemic::runtime
+} 

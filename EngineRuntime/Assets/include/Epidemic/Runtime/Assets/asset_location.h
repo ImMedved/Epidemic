@@ -28,4 +28,4 @@ struct AssetLocation
 
     [[nodiscard]] bool operator==(const AssetLocation&) const = default;
 };
-} // namespace epidemic::runtime
+} 

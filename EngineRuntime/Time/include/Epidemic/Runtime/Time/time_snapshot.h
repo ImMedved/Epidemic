@@ -21,4 +21,4 @@ struct TimeSnapshot
 
     [[nodiscard]] constexpr bool operator==(const TimeSnapshot&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

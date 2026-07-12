@@ -65,4 +65,4 @@ class IArchiveReader
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual foundation::Result<bool> ReadBool(std::string_view name) const = 0;
 };
-} // namespace epidemic::runtime
+} 

@@ -63,4 +63,4 @@ class IResourceManager
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual std::optional<ResourceId> GetResourceId(ResourceHandle handle) const = 0;
 };
-} // namespace epidemic::runtime
+} 

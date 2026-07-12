@@ -15,4 +15,4 @@ struct Aabb
 
     [[nodiscard]] constexpr bool operator==(const Aabb&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

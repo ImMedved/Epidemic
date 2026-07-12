@@ -49,4 +49,4 @@ class InMemoryAssetCatalog final : public IAssetCatalog, public IAssetCatalogWri
   private:
     std::unordered_map<AssetId, AssetMetadata> assets_;
 };
-} // namespace epidemic::runtime
+} 

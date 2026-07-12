@@ -36,4 +36,4 @@ struct GameTime
 {
     return GameDuration{left.ticks - right.ticks};
 }
-} // namespace epidemic::runtime
+} 

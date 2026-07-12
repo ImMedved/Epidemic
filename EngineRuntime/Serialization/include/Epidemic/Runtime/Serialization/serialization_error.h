@@ -15,4 +15,4 @@ namespace epidemic::runtime
 {
     return foundation::Error::Create(code, message, context);
 }
-} // namespace epidemic::runtime
+} 

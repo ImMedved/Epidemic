@@ -369,4 +369,4 @@ const SceneRuntime::SceneNodeRecord* SceneRuntime::FindRecord(SceneNodeId node) 
 
     return &iterator->second;
 }
-} // namespace epidemic::runtime
+} 

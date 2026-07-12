@@ -175,7 +175,7 @@ struct SimulationZoneId : detail::NumericRuntimeId<detail::SimulationZoneIdTag>
 {
     using detail::NumericRuntimeId<detail::SimulationZoneIdTag>::NumericRuntimeId;
 };
-} // namespace epidemic::runtime
+} 
 
 namespace std
 {

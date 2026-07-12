@@ -17,4 +17,4 @@ struct SchemaVersion
 
     [[nodiscard]] constexpr auto operator<=>(const SchemaVersion&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

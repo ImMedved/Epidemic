@@ -20,4 +20,4 @@ class IAssetLocationResolver
     // Relation: commonly implemented by the same catalog that stores metadata.
     [[nodiscard]] virtual foundation::Result<AssetLocation> Resolve(AssetId id) const = 0;
 };
-} // namespace epidemic::runtime
+} 

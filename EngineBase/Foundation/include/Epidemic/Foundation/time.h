@@ -105,7 +105,7 @@ class FrameIndex
   private:
     std::uint64_t value_{};
 };
-} // namespace epidemic::foundation
+} 
 
 namespace std
 {

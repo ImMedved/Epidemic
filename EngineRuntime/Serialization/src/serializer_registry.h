@@ -41,4 +41,4 @@ class SerializerRegistry final : public ISerializerRegistry
   private:
     std::unordered_map<foundation::StringId, ISerializer*> serializers_;
 };
-} // namespace epidemic::runtime
+} 

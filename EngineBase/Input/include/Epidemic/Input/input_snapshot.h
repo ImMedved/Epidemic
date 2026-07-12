@@ -23,4 +23,4 @@ struct InputSnapshot
         return mouse.HasCapture();
     }
 };
-} // namespace epidemic::input
+} 

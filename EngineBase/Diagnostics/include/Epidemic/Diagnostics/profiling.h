@@ -59,6 +59,6 @@ class ProfileScope
     std::chrono::steady_clock::time_point start_time_{};
     bool enabled_{false};
 };
-} // namespace epidemic::diagnostics
+} 
 
 #define EPIDEMIC_PROFILE_SCOPE(name) ::epidemic::diagnostics::ProfileScope epidemic_profile_scope_##__LINE__(name)

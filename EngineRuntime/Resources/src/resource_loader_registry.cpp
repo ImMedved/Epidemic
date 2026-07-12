@@ -82,4 +82,4 @@ bool ResourceLoaderRegistry::HasLoader(ResourceType type) const
 {
     return FindLoader(type) != nullptr;
 }
-} // namespace epidemic::runtime
+} 

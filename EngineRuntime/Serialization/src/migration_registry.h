@@ -41,4 +41,4 @@ class MigrationRegistry final : public IMigrationRegistry
   private:
     std::unordered_map<MigrationKey, IMigration*> migrations_;
 };
-} // namespace epidemic::runtime
+} 

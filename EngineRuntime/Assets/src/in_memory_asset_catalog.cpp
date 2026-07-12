@@ -113,4 +113,4 @@ foundation::Result<AssetLocation> InMemoryAssetCatalog::Resolve(AssetId id) cons
 
     return foundation::Result<AssetLocation>::Success(metadata->location);
 }
-} // namespace epidemic::runtime
+} 

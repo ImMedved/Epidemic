@@ -82,4 +82,4 @@ bool MigrationRegistry::HasMigration(const MigrationKey& key) const
 {
     return FindMigration(key) != nullptr;
 }
-} // namespace epidemic::runtime
+} 

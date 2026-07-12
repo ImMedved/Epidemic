@@ -74,7 +74,6 @@ ProfileScope::~ProfileScope()
         return;
     }
 
-    current_collector->Record(ProfileEvent{name_, std::chrono::steady_clock::now() - start_time_, std::this_thread::get_id(),
-                                           std::string(GetCurrentThreadName())});
+    current_collector->Record(ProfileEvent{name_, std::chrono::steady_clock::now() - start_time_, std::this_thread::get_id(), std::string(GetCurrentThreadName())});
 }
-} // namespace epidemic::diagnostics
+} 

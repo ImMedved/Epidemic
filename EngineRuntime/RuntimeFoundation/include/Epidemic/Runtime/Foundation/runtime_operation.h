@@ -27,4 +27,4 @@ enum class AsyncOperationStatus
 {
     return !IsTerminalOperationStatus(status);
 }
-} // namespace epidemic::runtime
+} 

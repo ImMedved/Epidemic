@@ -31,4 +31,4 @@ struct Error
         return !context.empty();
     }
 };
-} // namespace epidemic::foundation
+} 

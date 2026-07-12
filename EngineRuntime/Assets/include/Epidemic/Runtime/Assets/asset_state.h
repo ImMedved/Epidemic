@@ -16,4 +16,4 @@ enum class AssetState
     Invalid,
     Deprecated,
 };
-} // namespace epidemic::runtime
+} 

@@ -32,4 +32,4 @@ enum class ObjectProtectionFlags : std::uint32_t
 {
     return mask | ToProtectionMask(flag);
 }
-} // namespace epidemic::runtime
+} 

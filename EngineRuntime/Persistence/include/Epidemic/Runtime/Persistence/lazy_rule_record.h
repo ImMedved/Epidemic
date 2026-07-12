@@ -35,4 +35,4 @@ struct LazyRuleRecord
     std::uint64_t evaluate_after_game_time = 0;
     std::uint64_t rule_seed = 0;
 };
-} // namespace epidemic::runtime
+} 

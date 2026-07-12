@@ -21,4 +21,4 @@ class IInputSystem
     [[nodiscard]] virtual const InputSnapshot &CurrentSnapshot() const noexcept = 0;
     [[nodiscard]] virtual std::span<const InputEvent> CurrentEvents() const noexcept = 0;
 };
-} // namespace epidemic::input
+} 

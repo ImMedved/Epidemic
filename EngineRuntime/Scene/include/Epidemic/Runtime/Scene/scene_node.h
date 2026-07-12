@@ -41,7 +41,7 @@ struct SceneNode
 
     [[nodiscard]] constexpr bool operator==(const SceneNode&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 
 
 namespace std
 {

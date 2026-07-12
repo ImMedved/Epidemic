@@ -19,4 +19,4 @@ struct ResourceType
 
     [[nodiscard]] constexpr bool operator==(const ResourceType&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

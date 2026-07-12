@@ -64,4 +64,4 @@ class IEnvironmentRuntime
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual foundation::Result<void> Update(const EnvironmentUpdateInput& input) = 0;
 };
-} // namespace epidemic::runtime
+} 

@@ -82,4 +82,4 @@ bool SerializerRegistry::HasSerializer(foundation::StringId type_id) const
 {
     return FindSerializer(type_id) != nullptr;
 }
-} // namespace epidemic::runtime
+} 

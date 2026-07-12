@@ -43,4 +43,4 @@ class IRegionRegistry
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual std::optional<RegionDescriptor> FindRegion(RegionId id) const = 0;
 };
-} // namespace epidemic::runtime
+} 

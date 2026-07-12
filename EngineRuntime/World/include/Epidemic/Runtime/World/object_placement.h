@@ -29,4 +29,4 @@ struct ObjectPlacement
 
     [[nodiscard]] constexpr bool operator==(const ObjectPlacement&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

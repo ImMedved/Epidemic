@@ -18,4 +18,4 @@ enum class SceneNodeState
     Hidden,
     Culled,
 };
-} // namespace epidemic::runtime
+} 

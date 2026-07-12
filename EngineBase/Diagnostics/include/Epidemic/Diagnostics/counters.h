@@ -108,4 +108,4 @@ class DiagnosticsCounters
 };
 
 [[nodiscard]] DiagnosticsCounters &GlobalCounters() noexcept;
-} // namespace epidemic::diagnostics
+} 

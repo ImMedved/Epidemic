@@ -15,4 +15,4 @@ struct ClimateProfile
 
     [[nodiscard]] constexpr bool operator==(const ClimateProfile&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

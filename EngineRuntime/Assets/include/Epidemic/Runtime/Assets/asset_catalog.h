@@ -39,4 +39,4 @@ class IAssetCatalog
     // Relation: convenience helper for callers that only need presence checks.
     [[nodiscard]] virtual bool Contains(AssetId id) const = 0;
 };
-} // namespace epidemic::runtime
+} 

@@ -35,4 +35,4 @@ struct RuntimeBudget
         return !HasTimeBudget() && !HasItemBudget() && !HasByteBudget();
     }
 };
-} // namespace epidemic::runtime
+} 

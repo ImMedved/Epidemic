@@ -28,4 +28,4 @@ struct WeatherState
 
     [[nodiscard]] constexpr bool operator==(const WeatherState&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

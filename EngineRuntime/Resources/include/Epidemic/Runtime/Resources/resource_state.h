@@ -19,4 +19,4 @@ enum class ResourceState
     Evicted,
     Reloading,
 };
-} // namespace epidemic::runtime
+} 

@@ -41,4 +41,4 @@ class IResourceLoaderRegistry
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual bool HasLoader(ResourceType type) const = 0;
 };
-} // namespace epidemic::runtime
+} 

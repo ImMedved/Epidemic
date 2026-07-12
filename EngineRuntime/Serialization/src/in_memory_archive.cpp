@@ -495,4 +495,4 @@ foundation::Result<const ArchiveValue*> InMemoryArchiveReader::FindValue(std::st
 
     return foundation::Result<const ArchiveValue*>::Success(&iterator->second);
 }
-} // namespace epidemic::runtime
+} 

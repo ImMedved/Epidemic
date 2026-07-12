@@ -16,4 +16,4 @@ struct ResourceRequest
     ResourceType type{};
     RuntimeBudget budget_hint{};
 };
-} // namespace epidemic::runtime
+} 

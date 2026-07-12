@@ -47,4 +47,4 @@ class ISaveTransaction
     // neighboring query/update helpers defined in the same class or file.
     virtual void Rollback() = 0;
 };
-} // namespace epidemic::runtime
+} 

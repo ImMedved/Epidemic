@@ -51,4 +51,4 @@ bool ResourceDependencyGraph::HasDependencies(ResourceId root) const
     const auto entry = FindDependencies(root);
     return entry.has_value() && !entry->dependencies.empty();
 }
-} // namespace epidemic::runtime
+} 

@@ -19,4 +19,4 @@ class IAssetCatalogWriter
     // Relation: writes data later consumed through IAssetCatalog read APIs.
     [[nodiscard]] virtual foundation::Result<void> RegisterAsset(AssetMetadata metadata) = 0;
 };
-} // namespace epidemic::runtime
+} 

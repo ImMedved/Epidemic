@@ -155,4 +155,4 @@ class InMemoryArchiveReader final : public IArchiveReader
     ArchiveObjectPtr root_;
     std::vector<const ArchiveObject*> stack_;
 };
-} // namespace epidemic::runtime
+} 

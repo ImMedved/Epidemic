@@ -22,4 +22,4 @@ struct EnvironmentSnapshot
 
     [[nodiscard]] constexpr bool operator==(const EnvironmentSnapshot&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

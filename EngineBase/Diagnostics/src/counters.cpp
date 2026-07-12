@@ -39,4 +39,4 @@ DiagnosticsCounters &GlobalCounters() noexcept
 {
     return global_counters;
 }
-} // namespace epidemic::diagnostics
+} 

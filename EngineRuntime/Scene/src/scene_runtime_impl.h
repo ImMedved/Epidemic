@@ -137,4 +137,4 @@ class SceneRuntime final : public ISceneNodeRegistry, public ITransformRegistry,
     std::unordered_map<SceneNodeId, SceneNodeRecord> nodes_;
     std::uint64_t next_node_value_ = 1;
 };
-} // namespace epidemic::runtime
+} 

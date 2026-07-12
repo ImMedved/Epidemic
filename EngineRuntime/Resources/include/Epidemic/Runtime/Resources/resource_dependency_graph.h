@@ -25,4 +25,4 @@ struct ResourceDependencySet
     ResourceId root{};
     std::vector<ResourceDependency> dependencies;
 };
-} // namespace epidemic::runtime
+} 

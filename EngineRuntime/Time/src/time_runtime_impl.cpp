@@ -458,4 +458,4 @@ void TimeRuntime::ClearEvents()
 {
     events_.clear();
 }
-} // namespace epidemic::runtime
+} 

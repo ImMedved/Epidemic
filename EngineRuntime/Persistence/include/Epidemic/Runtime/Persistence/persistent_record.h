@@ -27,4 +27,4 @@ struct PersistentObjectRecord
     std::uint32_t protection_flags = 0;
     std::uint64_t condition_hash = 0;
 };
-} // namespace epidemic::runtime
+} 

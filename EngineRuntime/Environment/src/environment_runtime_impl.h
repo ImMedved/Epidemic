@@ -96,4 +96,4 @@ class EnvironmentRuntime final : public IEnvironmentRuntime
     std::unordered_map<RegionId, ClimateProfile> climate_by_region_;
     std::unordered_map<SurfaceId, SurfaceState> surface_states_;
 };
-} // namespace epidemic::runtime
+} 

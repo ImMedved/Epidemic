@@ -43,4 +43,4 @@ class IResourceLoader
     // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual foundation::Result<ResourceLoadArtifact> Load(ResourceRequest request) = 0;
 };
-} // namespace epidemic::runtime
+} 

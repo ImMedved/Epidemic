@@ -18,4 +18,4 @@ struct EnvironmentUpdateInput
 
     [[nodiscard]] constexpr bool operator==(const EnvironmentUpdateInput&) const noexcept = default;
 };
-} // namespace epidemic::runtime
+} 

@@ -18,4 +18,4 @@ std::string_view GetCurrentThreadName() noexcept
 {
     return current_thread_name;
 }
-} // namespace epidemic::diagnostics
+} 
