@@ -1,5 +1,8 @@
 #include "environment_runtime_impl.h"
 
+// File note:
+// Focused module-level tests for the surrounding runtime component. Each helper builds
+// a narrow fixture, and each Test* function verifies one public contract or regression.
 #include "Epidemic/Runtime/Environment/climate_profile.h"
 #include "Epidemic/Runtime/Environment/environment_projection.h"
 #include "Epidemic/Runtime/Environment/environment_runtime.h"
@@ -28,6 +31,7 @@ using epidemic::runtime::SurfaceState;
 using epidemic::runtime::WeatherKind;
 using epidemic::runtime::WeatherState;
 
+// Verifies default weather is clear.
 bool TestDefaultWeatherIsClear()
 {
     EnvironmentRuntime runtime;
@@ -35,6 +39,7 @@ bool TestDefaultWeatherIsClear()
     return weather.kind == WeatherKind::Clear && weather.intensity == 0.0f;
 }
 
+// Verifies set get weather by region.
 bool TestSetGetWeatherByRegion()
 {
     EnvironmentRuntime runtime;
@@ -45,6 +50,7 @@ bool TestSetGetWeatherByRegion()
     return weather.kind == WeatherKind::Storm && weather.wind_speed == 12.0f && weather.precipitation == 0.9f;
 }
 
+// Verifies set get season by region.
 bool TestSetGetSeasonByRegion()
 {
     EnvironmentRuntime runtime;
@@ -55,6 +61,7 @@ bool TestSetGetSeasonByRegion()
     return season.kind == SeasonKind::Winter && season.progress == 0.4f;
 }
 
+// Verifies set get surface state.
 bool TestSetGetSurfaceState()
 {
     EnvironmentRuntime runtime;
@@ -64,6 +71,7 @@ bool TestSetGetSurfaceState()
     return surface.has_value() && surface->condition == SurfaceConditionKind::Muddy && surface->mud_depth == 0.4f;
 }
 
+// Verifies snapshot stores climate and region.
 bool TestSnapshotStoresClimateAndRegion()
 {
     EnvironmentRuntime runtime;
@@ -74,6 +82,7 @@ bool TestSnapshotStoresClimateAndRegion()
            snapshot.climate.average_wind_speed == 3.5f;
 }
 
+// Verifies projection is snapshot copy.
 bool TestProjectionIsSnapshotCopy()
 {
     EnvironmentRuntime runtime;
@@ -89,6 +98,7 @@ bool TestProjectionIsSnapshotCopy()
            projection.season.kind == SeasonKind::Autumn && projection.temperature == 9.5f && projection.humidity == 0.8f;
 }
 
+// Verifies update can dry wet surface.
 bool TestUpdateCanDryWetSurface()
 {
     EnvironmentRuntime runtime;
@@ -102,15 +112,56 @@ bool TestUpdateCanDryWetSurface()
 }
 } // namespace
 
+// Runs the local test suite and maps failures to stable exit codes.
 int main()
 {
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<WeatherState>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<SeasonState>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<ClimateProfile>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<SurfaceState>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<EnvironmentSnapshot>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<EnvironmentProjection>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<EnvironmentUpdateInput>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<IEnvironmentRuntime>);
 
     if (!TestDefaultWeatherIsClear())

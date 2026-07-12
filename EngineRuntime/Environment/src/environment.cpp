@@ -1,3 +1,6 @@
+// File note:
+// Umbrella translation unit that anchors the public headers of this module in the build.
+
 #include "Epidemic/Runtime/Environment/climate_profile.h"
 #include "Epidemic/Runtime/Environment/environment_projection.h"
 #include "Epidemic/Runtime/Environment/environment_runtime.h"

@@ -1,3 +1,6 @@
+// File note:
+// Umbrella translation unit that anchors the public headers of this module in the build.
+
 #include "Epidemic/Runtime/World/chunk.h"
 #include "Epidemic/Runtime/World/object_materialization.h"
 #include "Epidemic/Runtime/World/object_placement.h"

@@ -49,3 +49,4 @@ migrations.RegisterMigration(&migration);
 ## Testing Strategy
 
 Validate primitive and nested archive behavior, duplicate serializer rejection and duplicate migration rejection.
+    

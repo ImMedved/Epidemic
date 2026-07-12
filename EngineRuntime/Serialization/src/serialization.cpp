@@ -1,3 +1,6 @@
+// File note:
+// Umbrella translation unit that anchors the public headers of this module in the build.
+
 #include "Epidemic/Runtime/Serialization/archive_reader.h"
 #include "Epidemic/Runtime/Serialization/archive_value.h"
 #include "Epidemic/Runtime/Serialization/archive_writer.h"

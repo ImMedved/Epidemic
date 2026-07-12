@@ -2,6 +2,10 @@
 
 #include "Epidemic/Foundation/string_id.h"
 
+// File note:
+// Header for runtime contracts or module-local helpers. Comments document how each
+// function participates in the module API and what state it observes or mutates.
+
 #include <cstdint>
 #include <functional>
 #include <string_view>
@@ -37,6 +41,11 @@ struct SimulationZoneIdTag
 
 template <typename Tag> struct NumericRuntimeId
 {
+    // Function note: Handles numeric runtime id.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     constexpr NumericRuntimeId() noexcept = default;
     constexpr explicit NumericRuntimeId(std::uint64_t raw_value) noexcept : value(raw_value)
     {
@@ -65,6 +74,11 @@ template <typename Tag> struct NumericRuntimeId
 
 struct AssetId
 {
+    // Function note: Handles asset id.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     constexpr AssetId() noexcept = default;
     constexpr explicit AssetId(foundation::StringId raw_value) noexcept : value(raw_value)
     {
@@ -97,6 +111,11 @@ struct AssetId
 
 struct ResourceId
 {
+    // Function note: Handles resource id.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     constexpr ResourceId() noexcept = default;
     constexpr explicit ResourceId(foundation::StringId raw_value) noexcept : value(raw_value)
     {

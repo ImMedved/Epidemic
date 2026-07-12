@@ -1,5 +1,8 @@
 #include "time_runtime_impl.h"
 
+// File note:
+// Focused module-level tests for the surrounding runtime component. Each helper builds
+// a narrow fixture, and each Test* function verifies one public contract or regression.
 #include "Epidemic/Runtime/Time/game_calendar.h"
 #include "Epidemic/Runtime/Time/game_time.h"
 #include "Epidemic/Runtime/Time/time_events.h"
@@ -21,6 +24,7 @@ using epidemic::runtime::TimeEventKind;
 using epidemic::runtime::TimeRuntime;
 using epidemic::runtime::TimeRuntimeState;
 
+// Verifies default game time starts at zero.
 bool TestDefaultGameTimeStartsAtZero()
 {
     const GameTime time{};
@@ -29,6 +33,7 @@ bool TestDefaultGameTimeStartsAtZero()
     return time.ticks == 0 && duration.IsZero();
 }
 
+// Verifies game time arithmetic works.
 bool TestGameTimeArithmeticWorks()
 {
     const GameTime start{120};
@@ -38,18 +43,21 @@ bool TestGameTimeArithmeticWorks()
     return end.ticks == 165 && (end - start).ticks == 45;
 }
 
+// Verifies calendar date defaults to first minute.
 bool TestCalendarDateDefaultsToFirstMinute()
 {
     const CalendarDate date{};
     return date.year == 1 && date.day_of_year == 1 && date.hour == 0 && date.minute == 0;
 }
 
+// Verifies time state enums remain distinct.
 bool TestTimeStateEnumsRemainDistinct()
 {
     return static_cast<int>(DayPhase::Dawn) != static_cast<int>(DayPhase::Night) &&
            static_cast<int>(TimeRuntimeState::Running) != static_cast<int>(TimeRuntimeState::PhaseChanged);
 }
 
+// Verifies time runtime contract can be consumed through read only clock.
 bool TestTimeRuntimeContractCanBeConsumedThroughReadOnlyClock()
 {
     TimeRuntime runtime;
@@ -60,6 +68,7 @@ bool TestTimeRuntimeContractCanBeConsumedThroughReadOnlyClock()
     return clock.GetTimeScale() == 3.0f && clock.IsPaused();
 }
 
+// Verifies initial time is valid.
 bool TestInitialTimeIsValid()
 {
     TimeRuntime runtime;
@@ -68,6 +77,7 @@ bool TestInitialTimeIsValid()
     return runtime.Now().ticks == 0 && runtime.LastDelta().ticks == 0 && snapshot.date.year == 1 && !snapshot.paused;
 }
 
+// Verifies advance updates game time.
 bool TestAdvanceUpdatesGameTime()
 {
     TimeRuntime runtime;
@@ -79,6 +89,7 @@ bool TestAdvanceUpdatesGameTime()
            !events.empty() && events.front().kind == TimeEventKind::TimeAdvanced;
 }
 
+// Verifies pause stops game delta.
 bool TestPauseStopsGameDelta()
 {
     TimeRuntime runtime;
@@ -89,6 +100,7 @@ bool TestPauseStopsGameDelta()
     return runtime.Now().ticks == 60 && runtime.LastDelta().ticks == 0 && runtime.GetSnapshot().paused;
 }
 
+// Verifies resume continues advance.
 bool TestResumeContinuesAdvance()
 {
     TimeRuntime runtime;
@@ -100,6 +112,7 @@ bool TestResumeContinuesAdvance()
     return !runtime.IsPaused() && runtime.Now().ticks == 30 && runtime.LastDelta().ticks == 30;
 }
 
+// Verifies time scale changes delta multiplier.
 bool TestTimeScaleChangesDeltaMultiplier()
 {
     TimeRuntime runtime;
@@ -111,6 +124,7 @@ bool TestTimeScaleChangesDeltaMultiplier()
            !events.empty() && events.front().kind == TimeEventKind::TimeAdvanced;
 }
 
+// Verifies skip moves time forward.
 bool TestSkipMovesTimeForward()
 {
     TimeRuntime runtime;
@@ -119,6 +133,7 @@ bool TestSkipMovesTimeForward()
     return result.HasValue() && runtime.Now().ticks == 90 && runtime.LastDelta().ticks == 90;
 }
 
+// Verifies calendar date conversion is deterministic.
 bool TestCalendarDateConversionIsDeterministic()
 {
     TimeRuntime runtime;
@@ -132,6 +147,7 @@ bool TestCalendarDateConversionIsDeterministic()
     return date.year == 1 && date.day_of_year == 2 && date.hour == 1 && date.minute == 1;
 }
 
+// Verifies day phase changes at expected thresholds.
 bool TestDayPhaseChangesAtExpectedThresholds()
 {
     TimeRuntime runtime;
@@ -169,6 +185,7 @@ bool TestDayPhaseChangesAtExpectedThresholds()
     return to_night.HasValue() && runtime.GetDayPhase() == DayPhase::Night;
 }
 
+// Verifies day phase boundary event is produced.
 bool TestDayPhaseBoundaryEventIsProduced()
 {
     TimeRuntime runtime;
@@ -191,13 +208,44 @@ bool TestDayPhaseBoundaryEventIsProduced()
 }
 } // namespace
 
+// Runs the local test suite and maps failures to stable exit codes.
 int main()
 {
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<GameTime>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<GameDuration>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<CalendarDate>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<IGameClock>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ITimeRuntime>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_base_of_v<IGameClock, ITimeRuntime>);
 
     if (!TestDefaultGameTimeStartsAtZero())

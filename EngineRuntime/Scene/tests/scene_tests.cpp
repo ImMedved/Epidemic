@@ -1,5 +1,8 @@
 #include "scene_runtime_impl.h"
 
+// File note:
+// Focused module-level tests for the surrounding runtime component. Each helper builds
+// a narrow fixture, and each Test* function verifies one public contract or regression.
 #include "Epidemic/Runtime/Scene/bounds.h"
 #include "Epidemic/Runtime/Scene/scene_node.h"
 #include "Epidemic/Runtime/Scene/scene_node_registry.h"
@@ -26,6 +29,7 @@ using epidemic::runtime::SceneRuntime;
 using epidemic::runtime::Transform;
 using epidemic::runtime::Vec3;
 
+// Helper used by the tests to evaluate contains node.
 bool ContainsNode(const std::vector<SceneNodeId>& nodes, SceneNodeId target)
 {
     for (const SceneNodeId node : nodes)
@@ -39,30 +43,35 @@ bool ContainsNode(const std::vector<SceneNodeId>& nodes, SceneNodeId target)
     return false;
 }
 
+// Verifies default transform has identity rotation and unit scale.
 bool TestDefaultTransformHasIdentityRotationAndUnitScale()
 {
     const Transform transform{};
     return transform.position == Vec3{} && transform.rotation == Quat{} && transform.scale == Vec3{1.0f, 1.0f, 1.0f};
 }
 
+// Verifies default bounds are zeroed.
 bool TestDefaultBoundsAreZeroed()
 {
     const Aabb bounds{};
     return bounds.min == Vec3{} && bounds.max == Vec3{};
 }
 
+// Verifies scene node id starts invalid.
 bool TestSceneNodeIdStartsInvalid()
 {
     const SceneNodeId id{};
     return !id.IsValid();
 }
 
+// Verifies scene node defaults to detached.
 bool TestSceneNodeDefaultsToDetached()
 {
     const SceneNode node{};
     return !node.id.IsValid() && node.state == SceneNodeState::Detached;
 }
 
+// Verifies create node returns valid id.
 bool TestCreateNodeReturnsValidId()
 {
     SceneRuntime runtime;
@@ -70,6 +79,7 @@ bool TestCreateNodeReturnsValidId()
     return result.HasValue() && result.Value().IsValid() && runtime.Exists(result.Value());
 }
 
+// Verifies destroy node removes node.
 bool TestDestroyNodeRemovesNode()
 {
     SceneRuntime runtime;
@@ -84,6 +94,7 @@ bool TestDestroyNodeRemovesNode()
     return destroyed.HasValue() && !runtime.Exists(node);
 }
 
+// Verifies set get transform.
 bool TestSetGetTransform()
 {
     SceneRuntime runtime;
@@ -100,6 +111,7 @@ bool TestSetGetTransform()
     return set_result.HasValue() && transform.has_value() && transform.value() == expected;
 }
 
+// Verifies transform dirty flag set and clear.
 bool TestTransformDirtyFlagSetAndClear()
 {
     SceneRuntime runtime;
@@ -120,6 +132,7 @@ bool TestTransformDirtyFlagSetAndClear()
     return !runtime.IsTransformDirty(node);
 }
 
+// Verifies set get bounds.
 bool TestSetGetBounds()
 {
     SceneRuntime runtime;
@@ -136,6 +149,7 @@ bool TestSetGetBounds()
     return set_result.HasValue() && bounds.has_value() && bounds.value() == expected;
 }
 
+// Verifies bounds dirty flag set and clear.
 bool TestBoundsDirtyFlagSetAndClear()
 {
     SceneRuntime runtime;
@@ -156,6 +170,7 @@ bool TestBoundsDirtyFlagSetAndClear()
     return !runtime.IsBoundsDirty(node);
 }
 
+// Verifies query aabb returns expected nodes.
 bool TestQueryAabbReturnsExpectedNodes()
 {
     SceneRuntime runtime;
@@ -177,6 +192,7 @@ bool TestQueryAabbReturnsExpectedNodes()
     return ContainsNode(result, first.Value()) && !ContainsNode(result, second.Value());
 }
 
+// Verifies query sphere returns expected nodes.
 bool TestQuerySphereReturnsExpectedNodes()
 {
     SceneRuntime runtime;
@@ -199,17 +215,68 @@ bool TestQuerySphereReturnsExpectedNodes()
 }
 } // namespace
 
+// Runs the local test suite and maps failures to stable exit codes.
 int main()
 {
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<Vec3>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<Quat>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<Transform>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<Aabb>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<SceneNodeId>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<SceneNode>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ITransformRegistry>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ISceneNodeRegistry>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ISpatialIndex>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ISceneQuery>);
 
     if (!TestDefaultTransformHasIdentityRotationAndUnitScale())

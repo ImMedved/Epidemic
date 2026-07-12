@@ -1,3 +1,6 @@
+// File note:
+// Umbrella translation unit that anchors the public headers of this module in the build.
+
 #include "Epidemic/Runtime/Scene/bounds.h"
 #include "Epidemic/Runtime/Scene/scene_node.h"
 #include "Epidemic/Runtime/Scene/scene_node_registry.h"

@@ -1,5 +1,8 @@
 #include "world_runtime_impl.h"
 
+// File note:
+// Focused module-level tests for the surrounding runtime component. Each helper builds
+// a narrow fixture, and each Test* function verifies one public contract or regression.
 #include "Epidemic/Foundation/string_id.h"
 #include "Epidemic/Runtime/Foundation/runtime_budget.h"
 #include "Epidemic/Runtime/Foundation/runtime_states.h"
@@ -35,9 +38,15 @@ using epidemic::runtime::WorldLocation;
 using epidemic::runtime::WorldObjectRecord;
 using epidemic::runtime::WorldRuntime;
 
+// Verifies register and find region.
 bool TestRegisterAndFindRegion()
 {
     WorldRuntime runtime;
+    // Function note: Handles from string.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     const RegionDescriptor region{RegionId{1}, StringId::FromString("test-region")};
     const auto result = runtime.RegisterRegion(region);
     const auto stored = runtime.FindRegion(region.id);
@@ -45,6 +54,7 @@ bool TestRegisterAndFindRegion()
     return result.HasValue() && stored.has_value() && stored.value() == region;
 }
 
+// Verifies register and find chunk.
 bool TestRegisterAndFindChunk()
 {
     WorldRuntime runtime;
@@ -56,6 +66,7 @@ bool TestRegisterAndFindChunk()
     return region_result.HasValue() && chunk_result.HasValue() && stored.has_value() && stored.value() == chunk;
 }
 
+// Verifies chunk state defaults to unloaded and can change.
 bool TestChunkStateDefaultsToUnloadedAndCanChange()
 {
     WorldRuntime runtime;
@@ -75,20 +86,32 @@ bool TestChunkStateDefaultsToUnloadedAndCanChange()
     return set_state.HasValue() && runtime.GetChunkState(ChunkId{15}) == ChunkState::Active;
 }
 
+// Verifies create object returns valid runtime id.
 bool TestCreateObjectReturnsValidRuntimeId()
 {
     WorldRuntime runtime;
     WorldObjectRecord record{};
+    // Function note: Handles from string.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     record.asset_id = AssetId::FromString("items/rope");
     const auto created = runtime.CreateObject(record);
 
     return created.HasValue() && created.Value().IsValid();
 }
 
+// Verifies find object returns snapshot.
 bool TestFindObjectReturnsSnapshot()
 {
     WorldRuntime runtime;
     WorldObjectRecord record{};
+    // Function note: Handles from string.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     record.asset_id = AssetId::FromString("items/apple");
     record.persistence_tier = PersistenceTier::PlayerTouched;
     const auto created = runtime.CreateObject(record);
@@ -102,6 +125,7 @@ bool TestFindObjectReturnsSnapshot()
            stored->persistence_tier == PersistenceTier::PlayerTouched;
 }
 
+// Verifies set placement updates placement.
 bool TestSetPlacementUpdatesPlacement()
 {
     WorldRuntime runtime;
@@ -111,6 +135,11 @@ bool TestSetPlacementUpdatesPlacement()
         return false;
     }
 
+    // Function note: Handles from string.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     const ObjectPlacement placement{ObjectPlacementKind::WorldSurface, RegionId{4}, ChunkId{9}, {}, StringId::FromString("ground")};
     const auto updated = runtime.SetPlacement(created.Value(), placement);
     const auto stored = runtime.FindObject(created.Value());
@@ -118,6 +147,7 @@ bool TestSetPlacementUpdatesPlacement()
     return updated.HasValue() && stored.has_value() && stored->placement == placement;
 }
 
+// Verifies set residency updates state.
 bool TestSetResidencyUpdatesState()
 {
     WorldRuntime runtime;
@@ -133,6 +163,7 @@ bool TestSetResidencyUpdatesState()
     return updated.HasValue() && stored.has_value() && stored->residency == ResidencyState::Resident;
 }
 
+// Verifies find objects in chunk works.
 bool TestFindObjectsInChunkWorks()
 {
     WorldRuntime runtime;
@@ -151,6 +182,7 @@ bool TestFindObjectsInChunkWorks()
     return matches.size() == 1 && matches.front().runtime_id == first_created.Value();
 }
 
+// Verifies find objects in region works.
 bool TestFindObjectsInRegionWorks()
 {
     WorldRuntime runtime;
@@ -169,6 +201,7 @@ bool TestFindObjectsInRegionWorks()
     return matches.size() == 1 && matches.front().runtime_id == first_created.Value();
 }
 
+// Verifies find objects by reality works.
 bool TestFindObjectsByRealityWorks()
 {
     WorldRuntime runtime;
@@ -187,6 +220,7 @@ bool TestFindObjectsByRealityWorks()
     return matches.size() == 1 && matches.front().runtime_id == physical_created.Value();
 }
 
+// Verifies materialize changes logical to physical.
 bool TestMaterializeChangesLogicalToPhysical()
 {
     WorldRuntime runtime;
@@ -206,6 +240,7 @@ bool TestMaterializeChangesLogicalToPhysical()
            stored->residency == ResidencyState::Active;
 }
 
+// Verifies demote changes physical to logical.
 bool TestDemoteChangesPhysicalToLogical()
 {
     WorldRuntime runtime;
@@ -225,6 +260,7 @@ bool TestDemoteChangesPhysicalToLogical()
            stored->residency == ResidencyState::Resident;
 }
 
+// Verifies world location stores region and chunk.
 bool TestWorldLocationStoresRegionAndChunk()
 {
     const WorldLocation location{RegionId{8}, ChunkId{22}};
@@ -232,14 +268,50 @@ bool TestWorldLocationStoresRegionAndChunk()
 }
 } // namespace
 
+// Runs the local test suite and maps failures to stable exit codes.
 int main()
 {
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<ChunkDescriptor>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<RegionDescriptor>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<WorldLocation>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<ObjectPlacement>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<WorldObjectRecord>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<MaterializationRequest>);
+    // Function note: Handles static assert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<DemotionRequest>);
 
     if (!TestRegisterAndFindRegion())

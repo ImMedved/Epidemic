@@ -8,6 +8,10 @@
 #include "Epidemic/Runtime/Persistence/tombstone_store.h"
 #include "Epidemic/Runtime/Persistence/zone_override_store.h"
 
+// File note:
+// Header for runtime contracts or module-local helpers. Comments document how each
+// function participates in the module API and what state it observes or mutates.
+
 #include <unordered_map>
 #include <unordered_set>
 
@@ -27,9 +31,29 @@ struct PersistenceLocationHash
 class InMemoryDirtyTracker final : public IDirtyTracker
 {
   public:
+    // Function note: Marks dirty.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     void MarkDirty(PersistentObjectId id) override;
+    // Function note: Marks clean.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     void MarkClean(PersistentObjectId id) override;
+    // Function note: Checks dirty.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] bool IsDirty(PersistentObjectId id) const override;
+    // Function note: Handles collect dirty.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] std::vector<PersistentObjectId> CollectDirty() const override;
 
   private:
@@ -39,7 +63,17 @@ class InMemoryDirtyTracker final : public IDirtyTracker
 class InMemoryTombstoneStore final : public ITombstoneStore
 {
   public:
+    // Function note: Handles add tombstone.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] foundation::Result<void> AddTombstone(PersistentObjectId id) override;
+    // Function note: Checks tombstoned.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] bool IsTombstoned(PersistentObjectId id) const override;
 
   private:
@@ -49,8 +83,23 @@ class InMemoryTombstoneStore final : public ITombstoneStore
 class InMemoryZoneOverrideStore final : public IZoneOverrideStore
 {
   public:
+    // Function note: Handles upsert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] foundation::Result<void> Upsert(ZoneOverrideSnapshot snapshot) override;
+    // Function note: Finds the associated runtime state.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] std::optional<ZoneOverrideSnapshot> Find(const PersistenceLocation& location) const override;
+    // Function note: Handles remove.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] foundation::Result<void> Remove(const PersistenceLocation& location) override;
 
   private:
@@ -60,9 +109,29 @@ class InMemoryZoneOverrideStore final : public IZoneOverrideStore
 class InMemoryPersistentObjectStore final : public IPersistentObjectStore
 {
   public:
+    // Function note: Handles upsert.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] foundation::Result<void> Upsert(PersistentObjectRecord record) override;
+    // Function note: Finds the associated runtime state.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] std::optional<PersistentObjectRecord> Find(PersistentObjectId id) const override;
+    // Function note: Finds by location.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] std::vector<PersistentObjectRecord> FindByLocation(const PersistenceLocation& location) const override;
+    // Function note: Handles remove.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] foundation::Result<void> Remove(PersistentObjectId id) override;
 
   private:
@@ -72,10 +141,30 @@ class InMemoryPersistentObjectStore final : public IPersistentObjectStore
 class InMemorySaveTransaction final : public ISaveTransaction
 {
   public:
+    // Function note: Handles in memory save transaction.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     InMemorySaveTransaction();
 
+    // Function note: Gets state.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] SaveTransactionState GetState() const override;
+    // Function note: Handles commit.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] foundation::Result<void> Commit() override;
+    // Function note: Handles rollback.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     void Rollback() override;
 
   private:
@@ -85,14 +174,49 @@ class InMemorySaveTransaction final : public ISaveTransaction
 class InMemoryPersistenceStore final : public IPersistenceStore
 {
   public:
+    // Function note: Handles objects.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] IPersistentObjectStore& Objects() override;
+    // Function note: Handles dirty.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] IDirtyTracker& Dirty() override;
+    // Function note: Handles tombstones.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] ITombstoneStore& Tombstones() override;
+    // Function note: Handles zone overrides.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] IZoneOverrideStore& ZoneOverrides() override;
 
+    // Function note: Handles upsert lazy rule.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] foundation::Result<void> UpsertLazyRule(LazyRuleRecord record) override;
+    // Function note: Finds lazy rules.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] std::vector<LazyRuleRecord> FindLazyRules(PersistentObjectId target_id) const override;
 
+    // Function note: Handles open transaction.
+    // Inputs/outputs: see the signature; the method consumes caller-provided values and
+    // returns either a value, status flag or Result according to the surrounding API.
+    // Relations: this member is part of the local runtime workflow and pairs with
+    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] std::unique_ptr<ISaveTransaction> OpenTransaction() override;
 
   private:

@@ -1,3 +1,6 @@
+// File note:
+// Umbrella translation unit that anchors the public headers of this module in the build.
+
 #include "Epidemic/Runtime/Resources/resource_dependency_graph.h"
 #include "Epidemic/Runtime/Resources/resource_handle.h"
 #include "Epidemic/Runtime/Resources/resource_loader.h"

@@ -7,6 +7,9 @@
 
 namespace
 {
+// File note:
+// Asset runtime smoke tests. Each helper builds a narrow fixture and then verifies
+// one contract of the public API or the in-memory catalog implementation.
 using epidemic::runtime::AssetDependency;
 using epidemic::runtime::AssetDependencyManifest;
 using epidemic::runtime::AssetId;
@@ -20,6 +23,11 @@ using epidemic::runtime::IAssetCatalogWriter;
 using epidemic::runtime::IAssetLocationResolver;
 using epidemic::runtime::InMemoryAssetCatalog;
 
+// Builds a reusable metadata fixture for the catalog tests.
+// Input: asset path, asset type name, single tag and chosen location kind.
+// Output: fully populated AssetMetadata value object.
+// Relation: reused by most test cases to keep fixture setup consistent.
+// Builds a reusable fixture object for metadata.
 AssetMetadata MakeMetadata(const char* asset_path, const char* asset_type, const char* tag, AssetLocationKind kind)
 {
     AssetMetadata metadata{};
@@ -33,6 +41,8 @@ AssetMetadata MakeMetadata(const char* asset_path, const char* asset_type, const
     return metadata;
 }
 
+// Verifies that the default metadata value stays neutral and invalid until populated.
+// Verifies default metadata state.
 bool TestDefaultMetadataState()
 {
     const AssetMetadata metadata{};
@@ -41,6 +51,8 @@ bool TestDefaultMetadataState()
            metadata.tags.empty() && metadata.content_hash == 0 && metadata.version == 0;
 }
 
+// Verifies that registering metadata persists it and makes it queryable by id.
+// Verifies register asset stores metadata.
 bool TestRegisterAssetStoresMetadata()
 {
     InMemoryAssetCatalog catalog;
@@ -53,6 +65,8 @@ bool TestRegisterAssetStoresMetadata()
     return result && stored.has_value() && stored->id == metadata.id && stored->location == metadata.location;
 }
 
+// Verifies duplicate registrations fail with the documented error code.
+// Verifies duplicate asset id returns error.
 bool TestDuplicateAssetIdReturnsError()
 {
     InMemoryAssetCatalog catalog;
@@ -65,6 +79,8 @@ bool TestDuplicateAssetIdReturnsError()
     return first && !duplicate && duplicate.GetError().HasCode("asset.duplicate_id");
 }
 
+// Verifies catalog reads return detached snapshots rather than mutable storage references.
+// Verifies find by id returns snapshot.
 bool TestFindByIdReturnsSnapshot()
 {
     InMemoryAssetCatalog catalog;
@@ -88,6 +104,8 @@ bool TestFindByIdReturnsSnapshot()
     return refetched.has_value() && refetched->version == metadata.version && refetched->location.value == metadata.location.value;
 }
 
+// Verifies filtering by asset type returns only matching records.
+// Verifies find by type works.
 bool TestFindByTypeWorks()
 {
     InMemoryAssetCatalog catalog;
@@ -104,6 +122,8 @@ bool TestFindByTypeWorks()
     return item_type_matches.size() == 1 && item_type_matches.front().id == item_asset.id;
 }
 
+// Verifies filtering by tag returns tagged records and ignores missing tags.
+// Verifies find by tag works.
 bool TestFindByTagWorks()
 {
     InMemoryAssetCatalog catalog;
@@ -122,6 +142,8 @@ bool TestFindByTagWorks()
     return food_matches.size() == 1 && food_matches.front().id == food_asset.id && missing_matches.empty();
 }
 
+// Verifies unresolved ids surface both nullopt and the documented resolver error.
+// Verifies missing asset returns nullopt and resolve error.
 bool TestMissingAssetReturnsNulloptAndResolveError()
 {
     InMemoryAssetCatalog catalog;
@@ -133,6 +155,8 @@ bool TestMissingAssetReturnsNulloptAndResolveError()
     return !missing_snapshot.has_value() && !missing_location && missing_location.GetError().HasCode("asset.not_found");
 }
 
+// Verifies location resolution returns the exact registered location snapshot.
+// Verifies asset location resolver returns registered location.
 bool TestAssetLocationResolverReturnsRegisteredLocation()
 {
     InMemoryAssetCatalog catalog;
@@ -147,6 +171,8 @@ bool TestAssetLocationResolverReturnsRegisteredLocation()
     return resolved && resolved.Value() == metadata.location;
 }
 
+// Verifies the dependency manifest remains a plain value snapshot with ordered entries.
+// Verifies dependency manifest is immediate snapshot.
 bool TestDependencyManifestIsImmediateSnapshot()
 {
     AssetDependencyManifest manifest{};
@@ -159,6 +185,8 @@ bool TestDependencyManifestIsImmediateSnapshot()
 }
 } // namespace
 
+// Runs the local asset test suite and maps each failed check to a stable exit code.
+// Runs the local test suite and maps failures to stable exit codes.
 int main()
 {
     static_assert(std::is_same_v<decltype(AssetMetadata{}.content_hash), std::uint64_t>);

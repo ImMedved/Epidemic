@@ -1,3 +1,6 @@
+// File note:
+// Umbrella translation unit that anchors the public headers of this module in the build.
+
 #include "Epidemic/Runtime/Persistence/dirty_tracker.h"
 #include "Epidemic/Runtime/Persistence/lazy_rule_record.h"
 #include "Epidemic/Runtime/Persistence/persistence_location.h"
