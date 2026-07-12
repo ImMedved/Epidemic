@@ -8,3 +8,5 @@ add_subdirectory(Environment)
 add_subdirectory(Scene)
 add_subdirectory(World)
 add_subdirectory(Streaming)
+add_subdirectory(Renderer)
+
