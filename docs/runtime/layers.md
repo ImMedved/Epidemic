@@ -6,17 +6,18 @@
 EngineBase
   -> EngineRuntime/RuntimeFoundation
      -> EngineRuntime/<Major>
-        -> Support (future composition layer)
+        -> EngineRuntime/Support
 ```
 
 ## Rules
 
-- `RuntimeFoundation` is the only shared runtime vocabulary layer.
-- Runtime majors depend on `RuntimeFoundation` and selected `EngineBase` modules only.
+- `RuntimeFoundation` is the shared runtime vocabulary layer.
+- Runtime majors depend on `RuntimeFoundation` and selected public contracts only.
 - Direct major-to-major commanding is forbidden.
-- Data crosses major boundaries only through ids, snapshots, projections, events, queues or a future support layer.
+- Data crosses major boundaries only through ids, snapshots, projections, events, command/effect queues or Support composition.
+- `Support` is a composition layer. It knows majors, but majors do not know `Support`.
 
-## First Group Layout
+## Major Layout
 
 ```text
 RuntimeFoundation
@@ -28,8 +29,16 @@ Time
 Environment
 Scene
 World
+Streaming
+Renderer
+Physics
+Navigation
+Animation
+Audio
+Simulation
+Support
 ```
 
-## Support
+## Ownership
 
-`Support` is intentionally absent at this stage. Composition must happen only after majors are implemented, tested and documented.
+Runtime majors own their local runtime state only. They must not secretly mutate another major's state. Cross-major operations should be represented as public contracts or buffered effects and resolved by explicit orchestration.

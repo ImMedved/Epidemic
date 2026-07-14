@@ -1,7 +1,7 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
-#include "Epidemic/Runtime/Resources/resource_state.h"
+#include "Epidemic/Runtime/Resources/resource_payload.h"
 #include "Epidemic/Runtime/Scene/scene_node.h"
 
 #include <cstdint>
@@ -9,10 +9,6 @@
 
 namespace epidemic::runtime::renderer
 {
-// File note:
-// Shared value types for the Renderer major. They describe render proxies, view identity,
-// frame state and public descriptor data without exposing renderer implementation details.
-
 struct RenderProxyId
 {
     std::uint64_t value = 0;
@@ -29,18 +25,56 @@ struct ViewId
     [[nodiscard]] constexpr bool operator==(const ViewId&) const noexcept = default;
 };
 
-enum class RenderProxyState
+enum class RenderProxyLifecycle
 {
     Unregistered,
     Registered,
-    ResourceMissing,
+    DestroyPending,
+    Destroyed,
+};
+
+enum class RenderProxyReadiness
+{
+    MissingResources,
     Ready,
+};
+
+enum class RenderProxyVisibility
+{
+    Hidden,
     Visible,
     Culled,
-    DirtyTransform,
-    DirtyMaterial,
-    Destroyed
 };
+
+enum class RenderProxyDirtyFlags : std::uint32_t
+{
+    None = 0,
+    Transform = 1u << 0,
+    Material = 1u << 1,
+    Visibility = 1u << 2,
+};
+
+using RenderProxyDirtyMask = std::uint32_t;
+
+[[nodiscard]] constexpr RenderProxyDirtyMask ToRenderDirtyMask(RenderProxyDirtyFlags flag) noexcept
+{
+    return static_cast<RenderProxyDirtyMask>(flag);
+}
+
+[[nodiscard]] constexpr bool HasRenderDirtyFlag(RenderProxyDirtyMask mask, RenderProxyDirtyFlags flag) noexcept
+{
+    return (mask & ToRenderDirtyMask(flag)) != 0u;
+}
+
+[[nodiscard]] constexpr RenderProxyDirtyMask AddRenderDirtyFlag(RenderProxyDirtyMask mask, RenderProxyDirtyFlags flag) noexcept
+{
+    return mask | ToRenderDirtyMask(flag);
+}
+
+[[nodiscard]] constexpr RenderProxyDirtyMask ClearRenderDirtyFlag(RenderProxyDirtyMask mask, RenderProxyDirtyFlags flag) noexcept
+{
+    return mask & ~ToRenderDirtyMask(flag);
+}
 
 enum class RenderLayer
 {
@@ -57,8 +91,15 @@ enum class RenderFrameState
     Preparing,
     ReadyToRender,
     Rendering,
-    Presented,
+    Submitted,
     Failed
+};
+
+enum class ViewLifecycle
+{
+    Active,
+    DestroyPending,
+    Destroyed,
 };
 
 struct RenderProxyDesc
@@ -68,6 +109,7 @@ struct RenderProxyDesc
     ResourceId material{};
     SceneNodeId transform_node{};
     RenderLayer layer = RenderLayer::Opaque;
+    RenderProxyVisibility visibility = RenderProxyVisibility::Visible;
 };
 
 struct ViewDesc
@@ -76,6 +118,12 @@ struct ViewDesc
     float vertical_fov = 60.0f;
     float near_plane = 0.1f;
     float far_plane = 1000.0f;
+};
+
+struct RenderResourcePayloads
+{
+    ResourcePayloadPtr mesh{};
+    ResourcePayloadPtr material{};
 };
 } // namespace epidemic::runtime::renderer
 

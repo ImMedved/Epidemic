@@ -1,0 +1,125 @@
+#include "simulation_runtime_impl.h"
+
+#include <iostream>
+#include <string_view>
+
+using epidemic::runtime::GameDuration;
+using epidemic::runtime::GameTime;
+using epidemic::runtime::RegionId;
+using epidemic::runtime::RuntimeObjectId;
+using epidemic::runtime::SimulationZoneId;
+using epidemic::runtime::simulation::AttentionScore;
+using epidemic::runtime::simulation::SimulationBudget;
+using epidemic::runtime::simulation::SimulationEffect;
+using epidemic::runtime::simulation::SimulationJobDesc;
+using epidemic::runtime::simulation::SimulationJobState;
+using epidemic::runtime::simulation::SimulationRuntime;
+using epidemic::runtime::simulation::WorldMemoryEvent;
+using epidemic::runtime::simulation::WorldMemoryEventState;
+using epidemic::runtime::simulation::WorldMemoryQuery;
+
+namespace
+{
+bool Expect(bool condition, std::string_view message)
+{
+    if (!condition)
+    {
+        std::cerr << message << '\n';
+    }
+
+    return condition;
+}
+
+SimulationJobDesc MakeJob(std::uint32_t work_units = 1)
+{
+    return SimulationJobDesc{SimulationZoneId{5}, RuntimeObjectId{77}, work_units, false};
+}
+
+bool TestSubmitJobAndCompletion()
+{
+    SimulationRuntime runtime{{}};
+    runtime.SetBudget(SimulationBudget{1, 2});
+    const auto job = runtime.SubmitJob(MakeJob(2));
+    bool ok = Expect(job.HasValue(), "valid job should submit");
+    ok &= Expect(runtime.GetJobState(job.Value()) == SimulationJobState::Pending, "new job should be pending");
+    ok &= Expect(runtime.Tick() == 1, "tick should advance one job");
+    ok &= Expect(runtime.GetJobState(job.Value()) == SimulationJobState::Completed, "job should complete within budget");
+    return ok;
+}
+
+bool TestPartialCompletionByBudget()
+{
+    SimulationRuntime runtime{{}};
+    runtime.SetBudget(SimulationBudget{1, 1});
+    const auto job = runtime.SubmitJob(MakeJob(3));
+    bool ok = Expect(job.HasValue(), "valid job should submit");
+    ok &= Expect(runtime.Tick() == 1, "first tick should do partial work");
+    ok &= Expect(runtime.GetJobState(job.Value()) == SimulationJobState::PartiallyComplete, "job should be partial when budget ends");
+    ok &= Expect(runtime.Tick() == 1, "second tick should do more partial work");
+    ok &= Expect(runtime.GetJobState(job.Value()) == SimulationJobState::PartiallyComplete, "job should remain partial until final work unit");
+    ok &= Expect(runtime.Tick() == 1, "third tick should finish remaining work");
+    ok &= Expect(runtime.GetJobState(job.Value()) == SimulationJobState::Completed, "job should complete after enough budget");
+    return ok;
+}
+
+bool TestCancellation()
+{
+    SimulationRuntime runtime{{}};
+    const auto job = runtime.SubmitJob(MakeJob(2));
+    bool ok = Expect(job.HasValue(), "valid job should submit");
+    ok &= Expect(runtime.CancelJob(job.Value()).HasValue(), "pending job should cancel");
+    ok &= Expect(runtime.GetJobState(job.Value()) == SimulationJobState::Cancelled, "cancelled job should report cancelled");
+    ok &= Expect(runtime.Tick() == 0, "cancelled job should not consume work");
+    return ok;
+}
+
+bool TestWorldMemoryTtlAndStates()
+{
+    SimulationRuntime runtime{{}};
+    const auto observed = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, GameTime{10}, GameDuration{5}, WorldMemoryEventState::Observed});
+    const auto marked = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, GameTime{11}, GameDuration{0}, WorldMemoryEventState::PlayerAffected});
+    bool ok = Expect(observed.HasValue() && marked.HasValue(), "memory events should record");
+    ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).size() == 2, "query should return active events");
+    runtime.ExpireOldEvents(GameTime{16});
+    ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).size() == 1, "expired TTL event should be hidden by default");
+    ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, true}).size() == 2, "include expired should return both events");
+    return ok;
+}
+
+bool TestEffectBufferOrderAndClear()
+{
+    SimulationRuntime runtime{{}};
+    bool ok = Expect(runtime.Submit(SimulationEffect{RuntimeObjectId{1}, SimulationZoneId{1}, 100}).HasValue(), "first effect should submit");
+    ok &= Expect(runtime.Submit(SimulationEffect{RuntimeObjectId{2}, SimulationZoneId{1}, 200}).HasValue(), "second effect should submit");
+    ok &= Expect(runtime.Effects().size() == 2, "effects should keep order");
+    ok &= Expect(runtime.Effects()[0].effect_type == 100 && runtime.Effects()[1].effect_type == 200, "effect order should match submission order");
+    runtime.Clear();
+    ok &= Expect(runtime.Effects().empty(), "effects should clear");
+    return ok;
+}
+
+bool TestAttentionAndValidationFailures()
+{
+    SimulationRuntime runtime{{}};
+    bool ok = Expect(runtime.SetAttention(RuntimeObjectId{7}, AttentionScore{0.75f}).HasValue(), "object attention should set");
+    ok &= Expect(runtime.GetAttention(RuntimeObjectId{7}).value == 0.75f, "object attention should read");
+    ok &= Expect(runtime.SetRegionAttention(RegionId{3}, AttentionScore{0.25f}).HasValue(), "region attention should set");
+    ok &= Expect(runtime.GetRegionAttention(RegionId{3}).value == 0.25f, "region attention should read");
+    ok &= Expect(!runtime.SubmitJob(SimulationJobDesc{}).HasValue(), "invalid job should fail");
+    ok &= Expect(!runtime.RecordEvent(WorldMemoryEvent{}).HasValue(), "invalid memory event should fail");
+    ok &= Expect(!runtime.Submit(SimulationEffect{}).HasValue(), "invalid effect should fail");
+    return ok;
+}
+} // namespace
+
+int main()
+{
+    bool ok = true;
+    ok &= TestSubmitJobAndCompletion();
+    ok &= TestPartialCompletionByBudget();
+    ok &= TestCancellation();
+    ok &= TestWorldMemoryTtlAndStates();
+    ok &= TestEffectBufferOrderAndClear();
+    ok &= TestAttentionAndValidationFailures();
+    return ok ? 0 : 1;
+}

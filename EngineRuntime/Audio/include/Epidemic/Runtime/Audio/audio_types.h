@@ -1,0 +1,147 @@
+#pragma once
+
+#include "Epidemic/Runtime/Foundation/runtime_ids.h"
+#include "Epidemic/Runtime/Scene/scene_node.h"
+#include "Epidemic/Runtime/Scene/transform.h"
+
+#include <cstdint>
+#include <functional>
+#include <string>
+
+namespace epidemic::runtime::audio
+{
+// File note:
+// Public value types for the Audio major. These records describe sound resources, emitters, listeners,
+// mixer state and queued one-shot events without binding to a concrete audio backend.
+
+struct SoundId
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const SoundId&) const noexcept = default;
+};
+
+struct AudioEmitterId
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const AudioEmitterId&) const noexcept = default;
+};
+
+struct AudioListenerId
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const AudioListenerId&) const noexcept = default;
+};
+
+struct MixerGroupId
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const MixerGroupId&) const noexcept = default;
+};
+
+enum class SoundState
+{
+    Missing,
+    Loading,
+    Ready,
+    Failed
+};
+
+enum class EmitterState
+{
+    Stopped,
+    Playing,
+    Paused,
+    FadingIn,
+    FadingOut,
+    Virtualized,
+    Destroyed
+};
+
+enum class MixerFadeState
+{
+    Stable,
+    FadingIn,
+    FadingOut
+};
+
+struct SoundDesc
+{
+    SoundId id{};
+    SoundState state = SoundState::Ready;
+};
+
+struct AudioEmitterDesc
+{
+    RuntimeObjectId owner{};
+    SoundId sound{};
+    SceneNodeId transform{};
+    bool loop = false;
+};
+
+struct AudioListenerDesc
+{
+    SceneNodeId transform{};
+};
+
+struct AudioEvent
+{
+    SoundId sound{};
+    Vec3 position{};
+    float volume = 1.0f;
+};
+
+struct MixerGroupState
+{
+    MixerGroupId id{};
+    float volume = 1.0f;
+    MixerFadeState fade_state = MixerFadeState::Stable;
+};
+
+struct AudioOptions
+{
+    bool enable_mock_backend = true;
+};
+} // namespace epidemic::runtime::audio
+
+namespace std
+{
+template <> struct hash<epidemic::runtime::audio::SoundId>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::audio::SoundId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.value);
+    }
+};
+
+template <> struct hash<epidemic::runtime::audio::AudioEmitterId>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::audio::AudioEmitterId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.value);
+    }
+};
+
+template <> struct hash<epidemic::runtime::audio::AudioListenerId>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::audio::AudioListenerId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.value);
+    }
+};
+
+template <> struct hash<epidemic::runtime::audio::MixerGroupId>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::audio::MixerGroupId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.value);
+    }
+};
+} // namespace std

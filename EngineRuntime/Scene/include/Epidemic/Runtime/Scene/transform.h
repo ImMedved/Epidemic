@@ -1,9 +1,7 @@
-#pragma once
+﻿#pragma once
 
+#include <cmath>
 
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
 namespace epidemic::runtime
 {
 struct Vec3
@@ -33,4 +31,35 @@ struct Transform
 
     [[nodiscard]] constexpr bool operator==(const Transform&) const noexcept = default;
 };
-} 
+
+[[nodiscard]] constexpr Vec3 operator+(Vec3 left, Vec3 right) noexcept
+{
+    return Vec3{left.x + right.x, left.y + right.y, left.z + right.z};
+}
+
+[[nodiscard]] constexpr Vec3 Multiply(Vec3 left, Vec3 right) noexcept
+{
+    return Vec3{left.x * right.x, left.y * right.y, left.z * right.z};
+}
+
+[[nodiscard]] constexpr Transform ComposeTransform(const Transform& parent, const Transform& local) noexcept
+{
+    return Transform{parent.position + local.position, local.rotation, Multiply(parent.scale, local.scale)};
+}
+
+[[nodiscard]] inline bool IsFinite(Vec3 value) noexcept
+{
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+}
+
+[[nodiscard]] inline bool IsFinite(Quat value) noexcept
+{
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) && std::isfinite(value.w);
+}
+
+[[nodiscard]] inline bool IsValidTransform(const Transform& transform) noexcept
+{
+    return IsFinite(transform.position) && IsFinite(transform.rotation) && IsFinite(transform.scale) &&
+           transform.scale.x != 0.0f && transform.scale.y != 0.0f && transform.scale.z != 0.0f;
+}
+} // namespace epidemic::runtime

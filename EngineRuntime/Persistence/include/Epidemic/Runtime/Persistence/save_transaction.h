@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Epidemic/Foundation/result.h"
-
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
+#include "Epidemic/Runtime/Persistence/lazy_rule_record.h"
+#include "Epidemic/Runtime/Persistence/persistent_record.h"
+#include "Epidemic/Runtime/Persistence/tombstone_store.h"
+#include "Epidemic/Runtime/Persistence/zone_override_store.h"
 
 namespace epidemic::runtime
 {
@@ -18,33 +18,21 @@ enum class SaveTransactionState
     Failed,
 };
 
+// Threading: mutation must occur on the runtime thread.
+// Concurrent reads/writes are not supported unless explicitly documented.
 class ISaveTransaction
 {
   public:
-    // Function note: Handles ~isave transaction.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     virtual ~ISaveTransaction() = default;
 
-    // Function note: Gets state.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] virtual SaveTransactionState GetState() const = 0;
-    // Function note: Handles commit.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
+    [[nodiscard]] virtual foundation::Result<void> UpsertObject(PersistentObjectRecord record) = 0;
+    [[nodiscard]] virtual foundation::Result<void> RemoveObject(PersistentObjectId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> UpsertLazyRule(LazyRuleRecord record) = 0;
+    [[nodiscard]] virtual foundation::Result<void> AddTombstone(TombstoneRecord tombstone) = 0;
+    [[nodiscard]] virtual foundation::Result<void> UpsertZoneOverride(ZoneOverrideSnapshot snapshot) = 0;
+    [[nodiscard]] virtual foundation::Result<void> RemoveZoneOverride(const PersistenceLocation& location) = 0;
     [[nodiscard]] virtual foundation::Result<void> Commit() = 0;
-    // Function note: Handles rollback.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     virtual void Rollback() = 0;
 };
-} 
+} // namespace epidemic::runtime

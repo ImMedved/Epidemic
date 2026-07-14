@@ -9,20 +9,24 @@
 - `Persistence`: persistent object records, dirty tracking, tombstones, lazy rules and save transactions.
 - `Time`: authoritative game time runtime with snapshot and event output.
 - `Environment`: region and surface environment state with projections and deterministic external update input.
-- `Scene`: scene node registry, transform registry, bounds storage and naive spatial queries.
+- `Scene`: scene node registry, transform registry, bounds storage and spatial queries.
 - `World`: region/chunk registry, object placement and materialization boundary.
+- `Streaming`: deterministic in-memory streaming scheduler and residency state transitions.
+- `Renderer`: render scene proxies, view system and mock frame lifecycle.
+- `Physics`: shape/body registry, fake deterministic queries and contact event buffer.
+- `Navigation`: tile registry, budgeted path queries, cost providers and obstacle projections.
+- `Animation`: skeleton/clip registries, animator lifecycle, pose state and event buffer.
+- `Audio`: sound registry, emitter/listener systems, event queue and mixer placeholders.
+- `Simulation`: budgeted scheduler, attention maps, world-memory TTL and effect buffer.
+- `Support`: individual RegisterXxx helpers, default composition preset and dependency validation.
 
 ## Status
 
-All first-group majors build and have dedicated tests.
+All EngineRuntime majors build as standalone CMake targets and have dedicated tests. Support is implemented after the majors and contains composition/validation only.
 
-## Not Included Yet
+## Not In Runtime
 
-- `Streaming`
-- `Renderer`
-- `Physics`
-- `Navigation`
-- `Animation`
-- `Audio`
-- `Simulation`
-- `Support`
+- Concrete game rules or content behavior.
+- Direct hidden calls between majors.
+- A global monolithic world runtime.
+- Backend-specific renderer, physics or audio SDK ownership in these foundation passes.

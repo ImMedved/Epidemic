@@ -14,7 +14,7 @@ enum class ObjectPlacementKind
     WorldSurface,
     Container,
     Equipped,
-    Inventory,
+    Carried,
     Hidden,
     Destroyed,
 };
@@ -30,3 +30,4 @@ struct ObjectPlacement
     [[nodiscard]] constexpr bool operator==(const ObjectPlacement&) const noexcept = default;
 };
 } 
+

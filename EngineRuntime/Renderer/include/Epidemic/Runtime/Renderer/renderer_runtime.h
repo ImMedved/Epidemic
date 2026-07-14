@@ -5,9 +5,8 @@
 
 namespace epidemic::runtime::renderer
 {
-// File note:
-// Minimal renderer runtime contract for the early frame lifecycle. At this stage it only
-// validates inputs and produces deterministic state transitions for tests and integration.
+// Threading: mutation must occur on the runtime thread.
+// Concurrent reads/writes are not supported unless explicitly documented.
 class IRendererRuntime
 {
   public:

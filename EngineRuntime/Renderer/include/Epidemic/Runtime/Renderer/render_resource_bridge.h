@@ -1,19 +1,24 @@
-#pragma once
+﻿#pragma once
 
+#include "Epidemic/Foundation/result.h"
 #include "Epidemic/Runtime/Renderer/render_types.h"
-#include "Epidemic/Runtime/Scene/scene_node.h"
+#include "Epidemic/Runtime/Scene/transform.h"
 
 namespace epidemic::runtime::renderer
 {
-// File note:
-// Adapter contracts used by Renderer to query resource readiness and scene-node presence
-// without owning resource loading or transform storage.
+struct RenderTransformSnapshot
+{
+    SceneNodeId node{};
+    Transform world_transform{};
+    std::uint64_t revision = 0;
+};
+
 class IRenderResourceBridge
 {
   public:
     virtual ~IRenderResourceBridge() = default;
 
-    [[nodiscard]] virtual ResourceState GetResourceState(ResourceId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<RenderResourcePayloads> GetPayloads(ResourceId mesh, ResourceId material) const = 0;
 };
 
 class IRenderSceneSource
@@ -21,6 +26,6 @@ class IRenderSceneSource
   public:
     virtual ~IRenderSceneSource() = default;
 
-    [[nodiscard]] virtual bool HasNode(SceneNodeId node) const = 0;
+    [[nodiscard]] virtual foundation::Result<RenderTransformSnapshot> GetTransformSnapshot(SceneNodeId node) const = 0;
 };
 } // namespace epidemic::runtime::renderer

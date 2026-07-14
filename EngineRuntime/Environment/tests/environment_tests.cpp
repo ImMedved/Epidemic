@@ -1,27 +1,31 @@
-#include "environment_runtime_impl.h"
+﻿#include "environment_runtime_impl.h"
 
-// File note:
-// Focused module-level tests for the surrounding runtime component. Each helper builds
-// a narrow fixture, and each Test* function verifies one public contract or regression.
 #include "Epidemic/Runtime/Environment/climate_profile.h"
 #include "Epidemic/Runtime/Environment/environment_projection.h"
 #include "Epidemic/Runtime/Environment/environment_runtime.h"
+#include "Epidemic/Runtime/Environment/environment_services.h"
 #include "Epidemic/Runtime/Environment/environment_snapshot.h"
 #include "Epidemic/Runtime/Environment/environment_update.h"
 #include "Epidemic/Runtime/Environment/season_state.h"
 #include "Epidemic/Runtime/Environment/surface_state.h"
 #include "Epidemic/Runtime/Environment/weather_state.h"
 
+#include <iostream>
 #include <type_traits>
 
 namespace
 {
+using epidemic::foundation::Result;
 using epidemic::runtime::ClimateProfile;
+using epidemic::runtime::CreateEnvironmentServices;
 using epidemic::runtime::EnvironmentProjection;
 using epidemic::runtime::EnvironmentRuntime;
 using epidemic::runtime::EnvironmentSnapshot;
 using epidemic::runtime::EnvironmentUpdateInput;
+using epidemic::runtime::IEnvironmentQuery;
 using epidemic::runtime::IEnvironmentRuntime;
+using epidemic::runtime::IEnvironmentUpdatePolicy;
+using epidemic::runtime::IEnvironmentWriter;
 using epidemic::runtime::RegionId;
 using epidemic::runtime::SeasonKind;
 using epidemic::runtime::SeasonState;
@@ -31,173 +35,215 @@ using epidemic::runtime::SurfaceState;
 using epidemic::runtime::WeatherKind;
 using epidemic::runtime::WeatherState;
 
-// Verifies default weather is clear.
-bool TestDefaultWeatherIsClear()
+[[nodiscard]] bool SeedRegion(EnvironmentRuntime& runtime, RegionId region)
 {
-    EnvironmentRuntime runtime;
-    const WeatherState weather = runtime.GetWeather(RegionId{77});
-    return weather.kind == WeatherKind::Clear && weather.intensity == 0.0f;
+    return runtime.SetWeather(region, WeatherState{WeatherKind::Rain, 0.7f, 0.8f, 0.6f, 4.0f, 180.0f}) &&
+           runtime.SetSeason(region, SeasonState{SeasonKind::Autumn, 0.5f}) &&
+           runtime.SetClimateProfile(region, ClimateProfile{9.0f, 0.75f, 3.0f, 900.0f});
 }
 
-// Verifies set get weather by region.
-bool TestSetGetWeatherByRegion()
+[[nodiscard]] SurfaceState MakeSurface(SurfaceId surface, RegionId region)
+{
+    SurfaceState state{};
+    state.surface_id = surface;
+    state.region_id = region;
+    state.condition = SurfaceConditionKind::Muddy;
+    state.wetness = 0.6f;
+    state.snow_depth = 0.2f;
+    state.mud_depth = 0.4f;
+    state.ice_thickness = 0.1f;
+    state.temperature = 1.5f;
+    return state;
+}
+
+class WetnessPolicy final : public IEnvironmentUpdatePolicy
+{
+  public:
+    [[nodiscard]] Result<void> Apply(const EnvironmentUpdateInput& input, IEnvironmentQuery& query, IEnvironmentWriter& writer) override
+    {
+        const auto surface = query.GetSurfaceState(SurfaceId{10});
+        if (!surface)
+        {
+            return Result<void>::Failure(surface.GetError());
+        }
+
+        SurfaceState updated = surface.Value();
+        updated.wetness = 0.25f;
+        updated.mud_depth = 0.7f;
+        updated.condition = SurfaceConditionKind::Muddy;
+        updated.temperature = static_cast<float>(input.game_delta_ticks) * 0.01f;
+        return writer.SetSurfaceState(updated);
+    }
+};
+
+[[nodiscard]] bool TestUnknownRegionAndSurfaceFail()
+{
+    EnvironmentRuntime runtime;
+    const auto weather = runtime.GetWeather(RegionId{77});
+    const auto surface = runtime.GetSurfaceState(SurfaceId{88});
+    const auto snapshot = runtime.BuildSnapshot(RegionId{77});
+    return !weather && weather.GetError().HasCode("environment.region_unknown") && !surface &&
+           surface.GetError().HasCode("environment.surface_unknown") && !snapshot && snapshot.GetError().HasCode("environment.region_unknown");
+}
+
+[[nodiscard]] bool TestSetGetWeatherSeasonClimateByRegion()
 {
     EnvironmentRuntime runtime;
     const RegionId region{10};
-    runtime.SetWeather(region, WeatherState{WeatherKind::Storm, 1.0f, 1.0f, 0.9f, 12.0f, 270.0f});
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
 
-    const WeatherState weather = runtime.GetWeather(region);
-    return weather.kind == WeatherKind::Storm && weather.wind_speed == 12.0f && weather.precipitation == 0.9f;
+    const auto weather = runtime.GetWeather(region);
+    const auto season = runtime.GetSeason(region);
+    const auto climate = runtime.GetClimateProfile(region);
+    return weather && weather.Value().kind == WeatherKind::Rain && season && season.Value().kind == SeasonKind::Autumn && climate &&
+           climate.Value().average_humidity == 0.75f && runtime.GetRevision() == 3u;
 }
 
-// Verifies set get season by region.
-bool TestSetGetSeasonByRegion()
+[[nodiscard]] bool TestSurfaceStateStoresRegionAndMixedConditions()
 {
     EnvironmentRuntime runtime;
-    const RegionId region{11};
-    runtime.SetSeason(region, SeasonState{SeasonKind::Winter, 0.4f});
+    const RegionId region{5};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
 
-    const SeasonState season = runtime.GetSeason(region);
-    return season.kind == SeasonKind::Winter && season.progress == 0.4f;
-}
-
-// Verifies set get surface state.
-bool TestSetGetSurfaceState()
-{
-    EnvironmentRuntime runtime;
-    runtime.SetSurfaceState(SurfaceState{SurfaceId{12}, SurfaceConditionKind::Muddy, 0.2f, 0.0f, 0.4f, 0.0f, 8.0f});
-
+    const auto set = runtime.SetSurfaceState(MakeSurface(SurfaceId{12}, region));
     const auto surface = runtime.GetSurfaceState(SurfaceId{12});
-    return surface.has_value() && surface->condition == SurfaceConditionKind::Muddy && surface->mud_depth == 0.4f;
+    return set && surface && surface.Value().region_id == region && surface.Value().wetness == 0.6f &&
+           surface.Value().snow_depth == 0.2f && surface.Value().mud_depth == 0.4f && surface.Value().ice_thickness == 0.1f &&
+           surface.Value().revision == runtime.GetRevision();
 }
 
-// Verifies snapshot stores climate and region.
-bool TestSnapshotStoresClimateAndRegion()
+[[nodiscard]] bool TestValidationRejectsInvalidValues()
 {
     EnvironmentRuntime runtime;
-    runtime.SetClimateProfile(RegionId{5}, ClimateProfile{7.0f, 0.65f, 3.5f, 1100.0f});
-    const EnvironmentSnapshot snapshot = runtime.BuildSnapshot(RegionId{5});
-
-    return snapshot.region_id.IsValid() && snapshot.temperature == 7.0f && snapshot.humidity == 0.65f &&
-           snapshot.climate.average_wind_speed == 3.5f;
+    const auto invalid_weather = runtime.SetWeather(RegionId{1}, WeatherState{WeatherKind::Storm, 1.5f, 0.0f, 0.0f, 1.0f, 0.0f});
+    const auto invalid_surface = runtime.SetSurfaceState(SurfaceState{SurfaceId{2}, RegionId{}, SurfaceConditionKind::Wet, 0.5f, 0.0f, 0.0f, 0.0f, 2.0f});
+    const auto invalid_update = runtime.Update(EnvironmentUpdateInput{100, -1, RegionId{1}});
+    return !invalid_weather && invalid_weather.GetError().HasCode("environment.invalid_weather") && !invalid_surface &&
+           invalid_surface.GetError().HasCode("environment.invalid_region") && !invalid_update &&
+           invalid_update.GetError().HasCode("environment.invalid_delta");
 }
 
-// Verifies projection is snapshot copy.
-bool TestProjectionIsSnapshotCopy()
+[[nodiscard]] bool TestSnapshotAndProjectionAreRevisionedCopies()
 {
     EnvironmentRuntime runtime;
     const RegionId region{8};
-    runtime.SetWeather(region, WeatherState{WeatherKind::Rain, 0.8f, 0.9f, 0.7f, 4.0f, 180.0f});
-    runtime.SetSeason(region, SeasonState{SeasonKind::Autumn, 0.6f});
-    runtime.SetClimateProfile(region, ClimateProfile{9.5f, 0.8f, 5.0f, 1300.0f});
+    if (!SeedRegion(runtime, region) || !runtime.SetSurfaceState(MakeSurface(SurfaceId{20}, region)) ||
+        !runtime.SetSurfaceState(MakeSurface(SurfaceId{10}, region)))
+    {
+        return false;
+    }
 
-    const EnvironmentProjection projection = runtime.BuildProjection(region);
-    runtime.SetWeather(region, WeatherState{WeatherKind::Clear, 0.0f, 0.1f, 0.0f, 1.0f, 0.0f});
+    const auto snapshot = runtime.BuildSnapshot(region);
+    const auto projection = runtime.BuildProjection(region);
+    if (!snapshot || !projection)
+    {
+        return false;
+    }
 
-    return projection.region_id == region && projection.weather.kind == WeatherKind::Rain &&
-           projection.season.kind == SeasonKind::Autumn && projection.temperature == 9.5f && projection.humidity == 0.8f;
+    const auto changed_weather = runtime.SetWeather(region, WeatherState{WeatherKind::Clear, 0.0f, 0.1f, 0.0f, 1.0f, 0.0f});
+    return changed_weather && snapshot.Value().region_id == region && snapshot.Value().revision < runtime.GetRevision() && snapshot.Value().surfaces.size() == 2u &&
+           snapshot.Value().surfaces[0].surface_id == SurfaceId{10} && projection.Value().revision == snapshot.Value().revision &&
+           projection.Value().weather.kind == WeatherKind::Rain;
 }
 
-// Verifies update can dry wet surface.
-bool TestUpdateCanDryWetSurface()
+[[nodiscard]] bool TestUpdateWithoutPolicyDoesNotMutateSurface()
 {
     EnvironmentRuntime runtime;
-    runtime.SetSurfaceState(SurfaceState{SurfaceId{11}, SurfaceConditionKind::Wet, 0.6f, 0.0f, 0.0f, 0.0f, 12.0f});
+    const RegionId region{3};
+    if (!SeedRegion(runtime, region) || !runtime.SetSurfaceState(MakeSurface(SurfaceId{10}, region)))
+    {
+        return false;
+    }
 
-    const auto result = runtime.Update(EnvironmentUpdateInput{1000u, 1000, RegionId{3}});
-    const auto surface = runtime.GetSurfaceState(SurfaceId{11});
+    const auto before = runtime.GetSurfaceState(SurfaceId{10});
+    const auto update = runtime.Update(EnvironmentUpdateInput{1000, 100, region});
+    const auto after = runtime.GetSurfaceState(SurfaceId{10});
+    return before && update && after && before.Value() == after.Value();
+}
 
-    return result.HasValue() && surface.has_value() && surface->wetness < 0.6f &&
-           surface->condition == SurfaceConditionKind::Drying;
+[[nodiscard]] bool TestOptionalPolicyCanMutateSurface()
+{
+    EnvironmentRuntime runtime;
+    WetnessPolicy policy;
+    runtime.SetUpdatePolicy(&policy);
+    const RegionId region{3};
+    if (!SeedRegion(runtime, region) || !runtime.SetSurfaceState(MakeSurface(SurfaceId{10}, region)))
+    {
+        return false;
+    }
+
+    const auto update = runtime.Update(EnvironmentUpdateInput{1000, 100, region});
+    const auto surface = runtime.GetSurfaceState(SurfaceId{10});
+    return update && surface && surface.Value().wetness == 0.25f && surface.Value().mud_depth == 0.7f && surface.Value().temperature == 1.0f;
+}
+
+[[nodiscard]] bool TestFactoryCreatesSplitServices()
+{
+    WetnessPolicy policy;
+    const auto services = CreateEnvironmentServices({&policy});
+    if (!services || !services.Value().runtime || !services.Value().query || !services.Value().writer)
+    {
+        return false;
+    }
+
+    const RegionId region{22};
+    if (!services.Value().writer->SetWeather(region, WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f}) ||
+        !services.Value().writer->SetSeason(region, SeasonState{SeasonKind::Summer, 0.2f}) ||
+        !services.Value().writer->SetClimateProfile(region, ClimateProfile{20.0f, 0.4f, 2.0f, 400.0f}))
+    {
+        return false;
+    }
+
+    const auto weather = services.Value().query->GetWeather(region);
+    return weather && weather.Value().kind == WeatherKind::Clear;
 }
 } // namespace
 
-// Runs the local test suite and maps failures to stable exit codes.
 int main()
 {
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<WeatherState>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<SeasonState>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<ClimateProfile>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<SurfaceState>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    static_assert(std::is_trivially_copyable_v<EnvironmentSnapshot>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
+    static_assert(!std::is_trivially_copyable_v<EnvironmentSnapshot>);
     static_assert(std::is_trivially_copyable_v<EnvironmentProjection>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<EnvironmentUpdateInput>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<IEnvironmentRuntime>);
+    static_assert(std::has_virtual_destructor_v<IEnvironmentQuery>);
+    static_assert(std::has_virtual_destructor_v<IEnvironmentWriter>);
 
-    if (!TestDefaultWeatherIsClear())
+    struct NamedTest
     {
-        return 1;
-    }
+        const char* name;
+        bool (*run)();
+    };
 
-    if (!TestSetGetWeatherByRegion())
-    {
-        return 2;
-    }
+    const NamedTest tests[] = {
+        {"UnknownRegionAndSurfaceFail", TestUnknownRegionAndSurfaceFail},
+        {"SetGetWeatherSeasonClimateByRegion", TestSetGetWeatherSeasonClimateByRegion},
+        {"SurfaceStateStoresRegionAndMixedConditions", TestSurfaceStateStoresRegionAndMixedConditions},
+        {"ValidationRejectsInvalidValues", TestValidationRejectsInvalidValues},
+        {"SnapshotAndProjectionAreRevisionedCopies", TestSnapshotAndProjectionAreRevisionedCopies},
+        {"UpdateWithoutPolicyDoesNotMutateSurface", TestUpdateWithoutPolicyDoesNotMutateSurface},
+        {"OptionalPolicyCanMutateSurface", TestOptionalPolicyCanMutateSurface},
+        {"FactoryCreatesSplitServices", TestFactoryCreatesSplitServices},
+    };
 
-    if (!TestSetGetSeasonByRegion())
+    for (const NamedTest& test : tests)
     {
-        return 3;
-    }
-
-    if (!TestSetGetSurfaceState())
-    {
-        return 4;
-    }
-
-    if (!TestSnapshotStoresClimateAndRegion())
-    {
-        return 5;
-    }
-
-    if (!TestProjectionIsSnapshotCopy())
-    {
-        return 6;
-    }
-
-    if (!TestUpdateCanDryWetSurface())
-    {
-        return 7;
+        if (!test.run())
+        {
+            std::cerr << "Environment test failed: " << test.name << "\n";
+            return 1;
+        }
     }
 
     return 0;
 }
+

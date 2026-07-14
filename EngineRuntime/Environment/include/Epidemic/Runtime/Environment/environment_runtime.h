@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Epidemic/Foundation/result.h"
+#include "Epidemic/Runtime/Environment/climate_profile.h"
 #include "Epidemic/Runtime/Environment/environment_projection.h"
 #include "Epidemic/Runtime/Environment/environment_snapshot.h"
 #include "Epidemic/Runtime/Environment/environment_update.h"
@@ -8,60 +9,54 @@
 #include "Epidemic/Runtime/Environment/surface_state.h"
 #include "Epidemic/Runtime/Environment/weather_state.h"
 
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
-
-#include <optional>
+#include <cstdint>
 
 namespace epidemic::runtime
 {
-class IEnvironmentRuntime
+class IEnvironmentQuery
 {
   public:
-    // Function note: Handles ~ienvironment runtime.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    virtual ~IEnvironmentRuntime() = default;
+    virtual ~IEnvironmentQuery() = default;
 
-    // Function note: Gets weather.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    [[nodiscard]] virtual WeatherState GetWeather(RegionId region) const = 0;
-    // Function note: Gets season.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    [[nodiscard]] virtual SeasonState GetSeason(RegionId region) const = 0;
-    // Function note: Gets surface state.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    [[nodiscard]] virtual std::optional<SurfaceState> GetSurfaceState(SurfaceId surface) const = 0;
+    [[nodiscard]] virtual foundation::Result<WeatherState> GetWeather(RegionId region) const = 0;
+    [[nodiscard]] virtual foundation::Result<SeasonState> GetSeason(RegionId region) const = 0;
+    [[nodiscard]] virtual foundation::Result<ClimateProfile> GetClimateProfile(RegionId region) const = 0;
+    [[nodiscard]] virtual foundation::Result<SurfaceState> GetSurfaceState(SurfaceId surface) const = 0;
+    [[nodiscard]] virtual foundation::Result<EnvironmentSnapshot> BuildSnapshot(RegionId region) const = 0;
+    [[nodiscard]] virtual foundation::Result<EnvironmentProjection> BuildProjection(RegionId region) const = 0;
+    [[nodiscard]] virtual std::uint64_t GetRevision() const = 0;
+};
 
-    // Function note: Builds snapshot.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    [[nodiscard]] virtual EnvironmentSnapshot BuildSnapshot(RegionId region) const = 0;
-    // Function note: Builds projection.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    [[nodiscard]] virtual EnvironmentProjection BuildProjection(RegionId region) const = 0;
-    // Function note: Updates the associated runtime state.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
+// Threading: mutation must occur on the runtime thread.
+// Concurrent reads/writes are not supported unless explicitly documented.
+class IEnvironmentWriter
+{
+  public:
+    virtual ~IEnvironmentWriter() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> SetWeather(RegionId region, WeatherState weather) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetSeason(RegionId region, SeasonState season) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetClimateProfile(RegionId region, ClimateProfile climate) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetSurfaceState(SurfaceState state) = 0;
     [[nodiscard]] virtual foundation::Result<void> Update(const EnvironmentUpdateInput& input) = 0;
 };
-} 
+
+class IEnvironmentUpdatePolicy
+{
+  public:
+    virtual ~IEnvironmentUpdatePolicy() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> Apply(
+        const EnvironmentUpdateInput& input,
+        IEnvironmentQuery& query,
+        IEnvironmentWriter& writer) = 0;
+};
+
+class IEnvironmentRuntime : public IEnvironmentQuery, public IEnvironmentWriter
+{
+  public:
+    ~IEnvironmentRuntime() override = default;
+
+    virtual void SetUpdatePolicy(IEnvironmentUpdatePolicy* policy) = 0;
+};
+} // namespace epidemic::runtime

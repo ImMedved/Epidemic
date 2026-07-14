@@ -1,11 +1,18 @@
-// File note:
-// Umbrella translation unit that anchors the public headers of this module in the build.
+﻿#include "Epidemic/Runtime/Environment/environment_services.h"
 
-#include "Epidemic/Runtime/Environment/climate_profile.h"
-#include "Epidemic/Runtime/Environment/environment_projection.h"
-#include "Epidemic/Runtime/Environment/environment_runtime.h"
-#include "Epidemic/Runtime/Environment/environment_snapshot.h"
-#include "Epidemic/Runtime/Environment/environment_update.h"
-#include "Epidemic/Runtime/Environment/season_state.h"
-#include "Epidemic/Runtime/Environment/surface_state.h"
-#include "Epidemic/Runtime/Environment/weather_state.h"
+#include "environment_runtime_impl.h"
+
+namespace epidemic::runtime
+{
+foundation::Result<EnvironmentServices> CreateEnvironmentServices(const EnvironmentOptions& options)
+{
+    auto runtime = std::make_shared<EnvironmentRuntime>();
+    runtime->SetUpdatePolicy(options.update_policy);
+
+    EnvironmentServices services{};
+    services.runtime = runtime;
+    services.query = runtime;
+    services.writer = runtime;
+    return foundation::Result<EnvironmentServices>::Success(std::move(services));
+}
+} // namespace epidemic::runtime

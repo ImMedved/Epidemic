@@ -1,342 +1,260 @@
-#include "scene_runtime_impl.h"
+﻿#include "scene_runtime_impl.h"
 
-// File note:
-// Focused module-level tests for the surrounding runtime component. Each helper builds
-// a narrow fixture, and each Test* function verifies one public contract or regression.
 #include "Epidemic/Runtime/Scene/bounds.h"
 #include "Epidemic/Runtime/Scene/scene_node.h"
 #include "Epidemic/Runtime/Scene/scene_node_registry.h"
 #include "Epidemic/Runtime/Scene/scene_query.h"
+#include "Epidemic/Runtime/Scene/scene_services.h"
 #include "Epidemic/Runtime/Scene/scene_state.h"
 #include "Epidemic/Runtime/Scene/spatial_index.h"
 #include "Epidemic/Runtime/Scene/transform.h"
 #include "Epidemic/Runtime/Scene/transform_registry.h"
 
+#include <iostream>
 #include <type_traits>
+#include <vector>
 
 namespace
 {
 using epidemic::runtime::Aabb;
-using epidemic::runtime::ITransformRegistry;
+using epidemic::runtime::ClearSceneDirtyFlag;
+using epidemic::runtime::CreateSceneServices;
+using epidemic::runtime::HasSceneDirtyFlag;
 using epidemic::runtime::ISceneNodeRegistry;
 using epidemic::runtime::ISceneQuery;
+using epidemic::runtime::ISceneSnapshotProvider;
 using epidemic::runtime::ISpatialIndex;
+using epidemic::runtime::ITransformRegistry;
 using epidemic::runtime::Quat;
+using epidemic::runtime::SceneAttachmentState;
+using epidemic::runtime::SceneDirtyFlags;
+using epidemic::runtime::SceneMobility;
 using epidemic::runtime::SceneNode;
 using epidemic::runtime::SceneNodeId;
-using epidemic::runtime::SceneNodeState;
 using epidemic::runtime::SceneRuntime;
+using epidemic::runtime::SceneVisibilityState;
 using epidemic::runtime::Transform;
 using epidemic::runtime::Vec3;
 
-// Helper used by the tests to evaluate contains node.
-bool ContainsNode(const std::vector<SceneNodeId>& nodes, SceneNodeId target)
+[[nodiscard]] bool ContainsNode(const std::vector<SceneNodeId>& nodes, SceneNodeId target)
 {
-    for (const SceneNodeId node : nodes)
+    for (SceneNodeId node : nodes)
     {
         if (node == target)
         {
             return true;
         }
     }
-
     return false;
 }
 
-// Verifies default transform has identity rotation and unit scale.
-bool TestDefaultTransformHasIdentityRotationAndUnitScale()
-{
-    const Transform transform{};
-    return transform.position == Vec3{} && transform.rotation == Quat{} && transform.scale == Vec3{1.0f, 1.0f, 1.0f};
-}
-
-// Verifies default bounds are zeroed.
-bool TestDefaultBoundsAreZeroed()
-{
-    const Aabb bounds{};
-    return bounds.min == Vec3{} && bounds.max == Vec3{};
-}
-
-// Verifies scene node id starts invalid.
-bool TestSceneNodeIdStartsInvalid()
-{
-    const SceneNodeId id{};
-    return !id.IsValid();
-}
-
-// Verifies scene node defaults to detached.
-bool TestSceneNodeDefaultsToDetached()
+[[nodiscard]] bool TestSplitStateDefaults()
 {
     const SceneNode node{};
-    return !node.id.IsValid() && node.state == SceneNodeState::Detached;
+    return !node.id.IsValid() && node.attachment_state == SceneAttachmentState::Detached && node.mobility == SceneMobility::Dynamic &&
+           node.visibility == SceneVisibilityState::Visible && node.dirty_flags == 0u && !HasSceneDirtyFlag(node.dirty_flags, SceneDirtyFlags::Transform) &&
+           ClearSceneDirtyFlag(0u, SceneDirtyFlags::Bounds) == 0u;
 }
 
-// Verifies create node returns valid id.
-bool TestCreateNodeReturnsValidId()
-{
-    SceneRuntime runtime;
-    const auto result = runtime.CreateNode();
-    return result.HasValue() && result.Value().IsValid() && runtime.Exists(result.Value());
-}
-
-// Verifies destroy node removes node.
-bool TestDestroyNodeRemovesNode()
+[[nodiscard]] bool TestCreateDestroyAndRevision()
 {
     SceneRuntime runtime;
     const auto created = runtime.CreateNode();
-    if (!created.HasValue())
+    if (!created)
     {
         return false;
     }
 
-    const SceneNodeId node = created.Value();
-    const auto destroyed = runtime.DestroyNode(node);
-    return destroyed.HasValue() && !runtime.Exists(node);
+    const std::uint64_t created_revision = runtime.GetRevision();
+    const auto destroyed = runtime.DestroyNode(created.Value());
+    return created.Value().IsValid() && created_revision > 0u && destroyed && !runtime.Exists(created.Value()) &&
+           runtime.GetRevision() > created_revision;
 }
 
-// Verifies set get transform.
-bool TestSetGetTransform()
+[[nodiscard]] bool TestHierarchyAttachDetachAndCycleReject()
 {
     SceneRuntime runtime;
-    const auto created = runtime.CreateNode();
-    if (!created.HasValue())
+    const auto root = runtime.CreateNode();
+    const auto child = runtime.CreateNode();
+    const auto grandchild = runtime.CreateNode();
+    if (!root || !child || !grandchild)
     {
         return false;
     }
 
-    const Transform expected{Vec3{1.0f, 2.0f, 3.0f}, Quat{0.0f, 0.0f, 0.0f, 1.0f}, Vec3{2.0f, 2.0f, 2.0f}};
-    const auto set_result = runtime.SetTransform(created.Value(), expected);
-    const auto transform = runtime.GetTransform(created.Value());
+    const auto attach_child = runtime.AttachNode(child.Value(), root.Value());
+    const auto attach_grandchild = runtime.AttachNode(grandchild.Value(), child.Value());
+    const auto cycle = runtime.AttachNode(root.Value(), grandchild.Value());
+    const auto children = runtime.GetChildren(root.Value());
+    const auto parent = runtime.GetParent(child.Value());
+    const auto detach = runtime.DetachNode(child.Value());
 
-    return set_result.HasValue() && transform.has_value() && transform.value() == expected;
+    return attach_child && attach_grandchild && !cycle && cycle.GetError().HasCode("scene.hierarchy_cycle") && parent &&
+           *parent == root.Value() && children.size() == 1u && children.front() == child.Value() && detach &&
+           !runtime.GetParent(child.Value()) && runtime.GetNode(child.Value())->attachment_state == SceneAttachmentState::Detached;
 }
 
-// Verifies transform dirty flag set and clear.
-bool TestTransformDirtyFlagSetAndClear()
+[[nodiscard]] bool TestLocalAndWorldTransforms()
 {
     SceneRuntime runtime;
-    const auto created = runtime.CreateNode();
-    if (!created.HasValue())
+    const auto parent = runtime.CreateNode();
+    const auto child = runtime.CreateNode();
+    if (!parent || !child || !runtime.AttachNode(child.Value(), parent.Value()))
     {
         return false;
     }
 
-    const SceneNodeId node = created.Value();
-    const auto set_result = runtime.SetTransform(node, Transform{});
-    if (!set_result.HasValue() || !runtime.IsTransformDirty(node))
+    const Transform parent_transform{Vec3{10.0f, 0.0f, 0.0f}, Quat{}, Vec3{2.0f, 2.0f, 2.0f}};
+    const Transform child_transform{Vec3{1.0f, 2.0f, 3.0f}, Quat{}, Vec3{0.5f, 1.0f, 1.0f}};
+    if (!runtime.SetLocalTransform(parent.Value(), parent_transform) || !runtime.SetLocalTransform(child.Value(), child_transform))
     {
         return false;
     }
 
-    runtime.MarkClean(node);
-    return !runtime.IsTransformDirty(node);
+    const auto local = runtime.GetLocalTransform(child.Value());
+    const auto world = runtime.GetWorldTransform(child.Value());
+    return local && *local == child_transform && world && world->position == Vec3{11.0f, 2.0f, 3.0f} &&
+           world->scale == Vec3{1.0f, 2.0f, 2.0f};
 }
 
-// Verifies set get bounds.
-bool TestSetGetBounds()
+[[nodiscard]] bool TestWorldBoundsAndValidation()
 {
     SceneRuntime runtime;
-    const auto created = runtime.CreateNode();
-    if (!created.HasValue())
+    const auto node = runtime.CreateNode();
+    if (!node)
     {
         return false;
     }
 
-    const Aabb expected{Vec3{-1.0f, -1.0f, -1.0f}, Vec3{1.0f, 1.0f, 1.0f}};
-    const auto set_result = runtime.SetBounds(created.Value(), expected);
-    const auto bounds = runtime.GetBounds(created.Value());
+    const auto invalid_bounds = runtime.SetLocalBounds(node.Value(), Aabb{Vec3{2.0f, 0.0f, 0.0f}, Vec3{1.0f, 0.0f, 0.0f}});
+    const auto invalid_transform = runtime.SetLocalTransform(node.Value(), Transform{Vec3{}, Quat{}, Vec3{0.0f, 1.0f, 1.0f}});
+    const auto set_transform = runtime.SetLocalTransform(node.Value(), Transform{Vec3{5.0f, 0.0f, 0.0f}, Quat{}, Vec3{1.0f, 1.0f, 1.0f}});
+    const auto set_bounds = runtime.SetLocalBounds(node.Value(), Aabb{Vec3{-1.0f, -1.0f, -1.0f}, Vec3{1.0f, 1.0f, 1.0f}});
+    const auto world_bounds = runtime.GetWorldBounds(node.Value());
 
-    return set_result.HasValue() && bounds.has_value() && bounds.value() == expected;
+    return !invalid_bounds && invalid_bounds.GetError().HasCode("scene.invalid_bounds") && !invalid_transform &&
+           invalid_transform.GetError().HasCode("scene.invalid_transform") && set_transform && set_bounds && world_bounds &&
+           world_bounds->min == Vec3{4.0f, -1.0f, -1.0f} && world_bounds->max == Vec3{6.0f, 1.0f, 1.0f};
 }
 
-// Verifies bounds dirty flag set and clear.
-bool TestBoundsDirtyFlagSetAndClear()
+[[nodiscard]] bool TestDirtyFlagsSetAndClear()
 {
     SceneRuntime runtime;
-    const auto created = runtime.CreateNode();
-    if (!created.HasValue())
+    const auto node = runtime.CreateNode();
+    if (!node || !runtime.SetLocalTransform(node.Value(), Transform{}) || !runtime.SetLocalBounds(node.Value(), Aabb{Vec3{-1.0f, -1.0f, -1.0f}, Vec3{1.0f, 1.0f, 1.0f}}))
     {
         return false;
     }
 
-    const SceneNodeId node = created.Value();
-    const auto set_result = runtime.SetBounds(node, Aabb{Vec3{-1.0f, -1.0f, -1.0f}, Vec3{1.0f, 1.0f, 1.0f}});
-    if (!set_result.HasValue() || !runtime.IsBoundsDirty(node))
+    if (!runtime.IsTransformDirty(node.Value()) || !runtime.IsBoundsDirty(node.Value()))
     {
         return false;
     }
 
-    runtime.MarkBoundsClean(node);
-    return !runtime.IsBoundsDirty(node);
+    runtime.MarkTransformClean(node.Value());
+    runtime.MarkBoundsClean(node.Value());
+    return !runtime.IsTransformDirty(node.Value()) && !runtime.IsBoundsDirty(node.Value());
 }
 
-// Verifies query aabb returns expected nodes.
-bool TestQueryAabbReturnsExpectedNodes()
+[[nodiscard]] bool TestQueriesAreVisibleAndDeterministic()
 {
     SceneRuntime runtime;
     const auto first = runtime.CreateNode();
     const auto second = runtime.CreateNode();
-    if (!first.HasValue() || !second.HasValue())
+    const auto third = runtime.CreateNode();
+    if (!first || !second || !third)
     {
         return false;
     }
 
-    const auto first_bounds = runtime.SetBounds(first.Value(), Aabb{Vec3{0.0f, 0.0f, 0.0f}, Vec3{2.0f, 2.0f, 2.0f}});
-    const auto second_bounds = runtime.SetBounds(second.Value(), Aabb{Vec3{10.0f, 10.0f, 10.0f}, Vec3{12.0f, 12.0f, 12.0f}});
-    if (!first_bounds.HasValue() || !second_bounds.HasValue())
+    const Aabb bounds{Vec3{0.0f, 0.0f, 0.0f}, Vec3{2.0f, 2.0f, 2.0f}};
+    if (!runtime.SetLocalBounds(third.Value(), bounds) || !runtime.SetLocalBounds(first.Value(), bounds) ||
+        !runtime.SetLocalBounds(second.Value(), bounds) || !runtime.SetVisibility(second.Value(), SceneVisibilityState::Hidden))
     {
         return false;
     }
 
-    const auto result = runtime.QueryAabb(Aabb{Vec3{1.0f, 1.0f, 1.0f}, Vec3{3.0f, 3.0f, 3.0f}});
-    return ContainsNode(result, first.Value()) && !ContainsNode(result, second.Value());
+    const auto result = runtime.QueryAabb(Aabb{Vec3{-1.0f, -1.0f, -1.0f}, Vec3{3.0f, 3.0f, 3.0f}});
+    const auto sphere = runtime.QuerySphere(Vec3{1.0f, 1.0f, 1.0f}, 2.0f);
+    return result.size() == 2u && result[0] == first.Value() && result[1] == third.Value() && !ContainsNode(result, second.Value()) &&
+           sphere == result;
 }
 
-// Verifies query sphere returns expected nodes.
-bool TestQuerySphereReturnsExpectedNodes()
+[[nodiscard]] bool TestSnapshotCapturesRevisionAndSortedNodes()
 {
     SceneRuntime runtime;
     const auto first = runtime.CreateNode();
     const auto second = runtime.CreateNode();
-    if (!first.HasValue() || !second.HasValue())
+    if (!first || !second || !runtime.SetLocalTransform(second.Value(), Transform{Vec3{2.0f, 0.0f, 0.0f}, Quat{}, Vec3{1.0f, 1.0f, 1.0f}}))
     {
         return false;
     }
 
-    const auto first_bounds = runtime.SetBounds(first.Value(), Aabb{Vec3{-1.0f, -1.0f, -1.0f}, Vec3{1.0f, 1.0f, 1.0f}});
-    const auto second_bounds = runtime.SetBounds(second.Value(), Aabb{Vec3{8.0f, 8.0f, 8.0f}, Vec3{10.0f, 10.0f, 10.0f}});
-    if (!first_bounds.HasValue() || !second_bounds.HasValue())
+    const auto snapshot = runtime.CaptureSnapshot();
+    return snapshot.revision == runtime.GetRevision() && snapshot.nodes.size() == 2u && snapshot.nodes[0].node.id == first.Value() &&
+           snapshot.nodes[1].node.id == second.Value() && snapshot.nodes[1].world_transform.position == Vec3{2.0f, 0.0f, 0.0f};
+}
+
+[[nodiscard]] bool TestFactoryCreatesSharedRuntimeServices()
+{
+    const auto services = CreateSceneServices();
+    if (!services || !services.Value().nodes || !services.Value().transforms || !services.Value().spatial || !services.Value().queries || !services.Value().snapshots)
     {
         return false;
     }
 
-    const auto result = runtime.QuerySphere(Vec3{0.0f, 0.0f, 0.0f}, 2.5f);
-    return ContainsNode(result, first.Value()) && !ContainsNode(result, second.Value());
+    const auto node = services.Value().nodes->CreateNode();
+    if (!node || !services.Value().transforms->SetLocalTransform(node.Value(), Transform{Vec3{3.0f, 0.0f, 0.0f}, Quat{}, Vec3{1.0f, 1.0f, 1.0f}}) ||
+        !services.Value().spatial->SetLocalBounds(node.Value(), Aabb{Vec3{-1.0f, -1.0f, -1.0f}, Vec3{1.0f, 1.0f, 1.0f}}))
+    {
+        return false;
+    }
+
+    const auto query = services.Value().queries->QueryAabb(Aabb{Vec3{2.0f, -1.0f, -1.0f}, Vec3{4.0f, 1.0f, 1.0f}});
+    const auto snapshot = services.Value().snapshots->CaptureSnapshot();
+    return query.size() == 1u && query.front() == node.Value() && snapshot.nodes.size() == 1u;
 }
 } // namespace
 
-// Runs the local test suite and maps failures to stable exit codes.
 int main()
 {
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<Vec3>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<Quat>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<Transform>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<Aabb>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<SceneNodeId>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::is_trivially_copyable_v<SceneNode>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ITransformRegistry>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ISceneNodeRegistry>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ISpatialIndex>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     static_assert(std::has_virtual_destructor_v<ISceneQuery>);
+    static_assert(std::has_virtual_destructor_v<ISceneSnapshotProvider>);
 
-    if (!TestDefaultTransformHasIdentityRotationAndUnitScale())
+    struct NamedTest
     {
-        return 1;
-    }
+        const char* name;
+        bool (*run)();
+    };
 
-    if (!TestDefaultBoundsAreZeroed())
-    {
-        return 2;
-    }
+    const NamedTest tests[] = {
+        {"SplitStateDefaults", TestSplitStateDefaults},
+        {"CreateDestroyAndRevision", TestCreateDestroyAndRevision},
+        {"HierarchyAttachDetachAndCycleReject", TestHierarchyAttachDetachAndCycleReject},
+        {"LocalAndWorldTransforms", TestLocalAndWorldTransforms},
+        {"WorldBoundsAndValidation", TestWorldBoundsAndValidation},
+        {"DirtyFlagsSetAndClear", TestDirtyFlagsSetAndClear},
+        {"QueriesAreVisibleAndDeterministic", TestQueriesAreVisibleAndDeterministic},
+        {"SnapshotCapturesRevisionAndSortedNodes", TestSnapshotCapturesRevisionAndSortedNodes},
+        {"FactoryCreatesSharedRuntimeServices", TestFactoryCreatesSharedRuntimeServices},
+    };
 
-    if (!TestSceneNodeIdStartsInvalid())
+    for (const NamedTest& test : tests)
     {
-        return 3;
-    }
-
-    if (!TestSceneNodeDefaultsToDetached())
-    {
-        return 4;
-    }
-
-    if (!TestCreateNodeReturnsValidId())
-    {
-        return 5;
-    }
-
-    if (!TestDestroyNodeRemovesNode())
-    {
-        return 6;
-    }
-
-    if (!TestSetGetTransform())
-    {
-        return 7;
-    }
-
-    if (!TestTransformDirtyFlagSetAndClear())
-    {
-        return 8;
-    }
-
-    if (!TestSetGetBounds())
-    {
-        return 9;
-    }
-
-    if (!TestBoundsDirtyFlagSetAndClear())
-    {
-        return 10;
-    }
-
-    if (!TestQueryAabbReturnsExpectedNodes())
-    {
-        return 11;
-    }
-
-    if (!TestQuerySphereReturnsExpectedNodes())
-    {
-        return 12;
+        if (!test.run())
+        {
+            std::cerr << "Scene test failed: " << test.name << "\n";
+            return 1;
+        }
     }
 
     return 0;

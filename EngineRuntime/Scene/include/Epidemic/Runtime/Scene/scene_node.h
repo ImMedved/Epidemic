@@ -1,10 +1,6 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Runtime/Scene/scene_state.h"
-
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
 
 #include <cstdint>
 #include <functional>
@@ -37,11 +33,15 @@ struct SceneNode
 {
     SceneNodeId id{};
     SceneNodeId parent_id{};
-    SceneNodeState state = SceneNodeState::Detached;
+    SceneAttachmentState attachment_state = SceneAttachmentState::Detached;
+    SceneMobility mobility = SceneMobility::Dynamic;
+    SceneVisibilityState visibility = SceneVisibilityState::Visible;
+    SceneDirtyMask dirty_flags = 0;
+    std::uint64_t revision = 0;
 
     [[nodiscard]] constexpr bool operator==(const SceneNode&) const noexcept = default;
 };
-} 
+} // namespace epidemic::runtime
 
 namespace std
 {

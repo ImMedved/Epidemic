@@ -1,11 +1,20 @@
-// File note:
-// Umbrella translation unit that anchors the public headers of this module in the build.
+﻿#include "Epidemic/Runtime/Scene/scene_services.h"
 
-#include "Epidemic/Runtime/Scene/bounds.h"
-#include "Epidemic/Runtime/Scene/scene_node.h"
-#include "Epidemic/Runtime/Scene/scene_node_registry.h"
-#include "Epidemic/Runtime/Scene/scene_query.h"
-#include "Epidemic/Runtime/Scene/scene_state.h"
-#include "Epidemic/Runtime/Scene/spatial_index.h"
-#include "Epidemic/Runtime/Scene/transform.h"
-#include "Epidemic/Runtime/Scene/transform_registry.h"
+#include "scene_runtime_impl.h"
+
+namespace epidemic::runtime
+{
+foundation::Result<SceneServices> CreateSceneServices(const SceneOptions& options)
+{
+    (void)options;
+
+    auto runtime = std::make_shared<SceneRuntime>();
+    SceneServices services{};
+    services.nodes = runtime;
+    services.transforms = runtime;
+    services.spatial = runtime;
+    services.queries = runtime;
+    services.snapshots = runtime;
+    return foundation::Result<SceneServices>::Success(std::move(services));
+}
+} // namespace epidemic::runtime

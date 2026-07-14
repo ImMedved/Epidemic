@@ -1,9 +1,5 @@
 #pragma once
 
-
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
 namespace epidemic::runtime
 {
 enum class ResidencyState
@@ -15,6 +11,32 @@ enum class ResidencyState
     Sleeping,
     Unloading,
 };
+
+[[nodiscard]] constexpr bool CanTransition(ResidencyState from, ResidencyState to) noexcept
+{
+    if (from == to)
+    {
+        return true;
+    }
+
+    switch (from)
+    {
+    case ResidencyState::Unloaded:
+        return to == ResidencyState::Loading || to == ResidencyState::Resident;
+    case ResidencyState::Loading:
+        return to == ResidencyState::Resident || to == ResidencyState::Unloaded;
+    case ResidencyState::Resident:
+        return to == ResidencyState::Active || to == ResidencyState::Sleeping || to == ResidencyState::Unloading;
+    case ResidencyState::Active:
+        return to == ResidencyState::Resident || to == ResidencyState::Sleeping || to == ResidencyState::Unloading;
+    case ResidencyState::Sleeping:
+        return to == ResidencyState::Resident || to == ResidencyState::Active || to == ResidencyState::Unloading;
+    case ResidencyState::Unloading:
+        return to == ResidencyState::Unloaded;
+    }
+
+    return false;
+}
 
 enum class ObjectRealityLevel
 {
@@ -57,6 +79,25 @@ enum class PersistenceTier
     QuestCritical,
 };
 
+[[nodiscard]] constexpr int PersistenceTierRank(PersistenceTier tier) noexcept
+{
+    switch (tier)
+    {
+    case PersistenceTier::Disposable:
+        return 0;
+    case PersistenceTier::TemporaryObserved:
+        return 1;
+    case PersistenceTier::PlayerTouched:
+        return 2;
+    case PersistenceTier::Protected:
+        return 3;
+    case PersistenceTier::QuestCritical:
+        return 4;
+    }
+
+    return 0;
+}
+
 enum class SimulationLod
 {
     Dormant,
@@ -66,4 +107,25 @@ enum class SimulationLod
     Observed,
     Active,
 };
-} 
+
+[[nodiscard]] constexpr int SimulationLodRank(SimulationLod lod) noexcept
+{
+    switch (lod)
+    {
+    case SimulationLod::Dormant:
+        return 0;
+    case SimulationLod::Abstract:
+        return 1;
+    case SimulationLod::Scheduled:
+        return 2;
+    case SimulationLod::Relevant:
+        return 3;
+    case SimulationLod::Observed:
+        return 4;
+    case SimulationLod::Active:
+        return 5;
+    }
+
+    return 0;
+}
+} // namespace epidemic::runtime

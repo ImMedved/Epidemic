@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Foundation/string_id.h"
 
@@ -26,6 +26,9 @@ struct RuntimeObjectIdTag
 struct PersistentObjectIdTag
 {
 };
+struct LazyRuleIdTag
+{
+};
 struct RegionIdTag
 {
 };
@@ -41,11 +44,6 @@ struct SimulationZoneIdTag
 
 template <typename Tag> struct NumericRuntimeId
 {
-    // Function note: Handles numeric runtime id.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     constexpr NumericRuntimeId() noexcept = default;
     constexpr explicit NumericRuntimeId(std::uint64_t raw_value) noexcept : value(raw_value)
     {
@@ -74,11 +72,6 @@ template <typename Tag> struct NumericRuntimeId
 
 struct AssetId
 {
-    // Function note: Handles asset id.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     constexpr AssetId() noexcept = default;
     constexpr explicit AssetId(foundation::StringId raw_value) noexcept : value(raw_value)
     {
@@ -111,11 +104,6 @@ struct AssetId
 
 struct ResourceId
 {
-    // Function note: Handles resource id.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     constexpr ResourceId() noexcept = default;
     constexpr explicit ResourceId(foundation::StringId raw_value) noexcept : value(raw_value)
     {
@@ -154,6 +142,11 @@ struct RuntimeObjectId : detail::NumericRuntimeId<detail::RuntimeObjectIdTag>
 struct PersistentObjectId : detail::NumericRuntimeId<detail::PersistentObjectIdTag>
 {
     using detail::NumericRuntimeId<detail::PersistentObjectIdTag>::NumericRuntimeId;
+};
+
+struct LazyRuleId : detail::NumericRuntimeId<detail::LazyRuleIdTag>
+{
+    using detail::NumericRuntimeId<detail::LazyRuleIdTag>::NumericRuntimeId;
 };
 
 struct RegionId : detail::NumericRuntimeId<detail::RegionIdTag>
@@ -219,6 +212,14 @@ template <> struct hash<epidemic::runtime::PersistentObjectId>
     }
 };
 
+template <> struct hash<epidemic::runtime::LazyRuleId>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::LazyRuleId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.Raw());
+    }
+};
+
 template <> struct hash<epidemic::runtime::RegionId>
 {
     [[nodiscard]] size_t operator()(epidemic::runtime::RegionId value) const noexcept
@@ -251,3 +252,7 @@ template <> struct hash<epidemic::runtime::SimulationZoneId>
     }
 };
 } // namespace std
+
+
+
+

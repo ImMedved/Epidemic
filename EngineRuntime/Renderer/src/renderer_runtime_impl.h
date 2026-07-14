@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Runtime/Renderer/render_resource_bridge.h"
 #include "Epidemic/Runtime/Renderer/render_scene.h"
@@ -9,25 +9,27 @@
 
 namespace epidemic::runtime::renderer
 {
-// File note:
-// In-memory Renderer foundation used for deterministic tests and early module integration.
-// It stores proxies and views, validates Scene/Resources references and runs a mock frame flow.
 class RendererRuntime final : public IRenderScene, public IViewSystem, public IRendererRuntime
 {
   public:
-    explicit RendererRuntime(
-        IRenderResourceBridge* resource_bridge = nullptr,
-        IRenderSceneSource* scene_source = nullptr);
+    explicit RendererRuntime(IRenderResourceBridge* resource_bridge, IRenderSceneSource* scene_source);
 
     [[nodiscard]] foundation::Result<RenderProxyId> RegisterProxy(const RenderProxyDesc& desc) override;
-    [[nodiscard]] foundation::Result<void> UnregisterProxy(RenderProxyId id) override;
+    [[nodiscard]] foundation::Result<void> DestroyProxy(RenderProxyId id) override;
+    [[nodiscard]] foundation::Result<void> FlushDeferredDestroys() override;
     [[nodiscard]] foundation::Result<void> MarkTransformDirty(RenderProxyId id) override;
     [[nodiscard]] foundation::Result<void> MarkMaterialDirty(RenderProxyId id) override;
-    [[nodiscard]] RenderProxyState GetProxyState(RenderProxyId id) const override;
+    [[nodiscard]] foundation::Result<void> SetProxyVisibility(RenderProxyId id, RenderProxyVisibility visibility) override;
+    [[nodiscard]] RenderProxyLifecycle GetProxyLifecycle(RenderProxyId id) const override;
+    [[nodiscard]] RenderProxyReadiness GetProxyReadiness(RenderProxyId id) const override;
+    [[nodiscard]] RenderProxyVisibility GetProxyVisibility(RenderProxyId id) const override;
+    [[nodiscard]] RenderProxyDirtyMask GetProxyDirtyFlags(RenderProxyId id) const override;
 
     [[nodiscard]] foundation::Result<ViewId> CreateView(const ViewDesc& desc) override;
+    [[nodiscard]] foundation::Result<void> DestroyView(ViewId view) override;
     [[nodiscard]] foundation::Result<void> SetMainView(ViewId view) override;
     [[nodiscard]] ViewId GetMainView() const override;
+    [[nodiscard]] ViewLifecycle GetViewLifecycle(ViewId view) const override;
 
     [[nodiscard]] foundation::Result<void> PrepareFrame() override;
     [[nodiscard]] foundation::Result<void> RenderFrame() override;
@@ -37,19 +39,21 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
     struct ProxyRecord
     {
         RenderProxyDesc desc{};
-        RenderProxyState state = RenderProxyState::Unregistered;
-        bool transform_dirty = false;
-        bool material_dirty = false;
+        RenderProxyLifecycle lifecycle = RenderProxyLifecycle::Unregistered;
+        RenderProxyReadiness readiness = RenderProxyReadiness::MissingResources;
+        RenderProxyVisibility visibility = RenderProxyVisibility::Visible;
+        RenderProxyDirtyMask dirty_flags = 0;
+        RenderResourcePayloads payloads{};
     };
 
     struct ViewRecord
     {
         ViewDesc desc{};
+        ViewLifecycle lifecycle = ViewLifecycle::Active;
     };
 
-    [[nodiscard]] bool HasValidTransform(SceneNodeId node) const;
-    [[nodiscard]] bool IsResourceReady(ResourceId id) const;
-    void RefreshProxyState(ProxyRecord& record);
+    [[nodiscard]] foundation::Result<RenderTransformSnapshot> GetTransform(SceneNodeId node) const;
+    [[nodiscard]] foundation::Result<void> RefreshProxyReadiness(ProxyRecord& record);
     [[nodiscard]] ProxyRecord* FindProxy(RenderProxyId id);
     [[nodiscard]] const ProxyRecord* FindProxy(RenderProxyId id) const;
     [[nodiscard]] ViewRecord* FindView(ViewId id);

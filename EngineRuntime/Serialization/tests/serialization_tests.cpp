@@ -1,355 +1,387 @@
-#include "Epidemic/Runtime/Serialization/archive_reader.h"
+﻿#include "Epidemic/Runtime/Serialization/archive_reader.h"
 #include "Epidemic/Runtime/Serialization/archive_writer.h"
 #include "Epidemic/Runtime/Serialization/migration.h"
 #include "Epidemic/Runtime/Serialization/migration_registry.h"
 #include "Epidemic/Runtime/Serialization/schema_version.h"
+#include "Epidemic/Runtime/Serialization/serialization_error.h"
+#include "Epidemic/Runtime/Serialization/serialization_services.h"
 #include "Epidemic/Runtime/Serialization/serializer.h"
 #include "Epidemic/Runtime/Serialization/serializer_registry.h"
 #include "in_memory_archive.h"
 #include "migration_registry.h"
 #include "serializer_registry.h"
 
-// File note:
-// Focused module-level tests for the surrounding runtime component. Each helper builds
-// a narrow fixture, and each Test* function verifies one public contract or regression.
-#include <type_traits>
+#include <cstddef>
+#include <iostream>
+#include <memory>
+#include <string>
+#include <vector>
 
 namespace
 {
+using epidemic::foundation::Result;
+using epidemic::foundation::StringId;
+using epidemic::runtime::CreateSerializationError;
+using epidemic::runtime::CreateSerializationServices;
 using epidemic::runtime::IArchiveReader;
 using epidemic::runtime::IArchiveWriter;
 using epidemic::runtime::IMigration;
-using epidemic::runtime::IMigrationRegistry;
-using epidemic::runtime::ISerializer;
-using epidemic::runtime::ISerializerRegistry;
 using epidemic::runtime::InMemoryArchiveReader;
 using epidemic::runtime::InMemoryArchiveWriter;
 using epidemic::runtime::MigrationKey;
 using epidemic::runtime::MigrationRegistry;
 using epidemic::runtime::SchemaVersion;
-using epidemic::runtime::SerializationState;
+using epidemic::runtime::SerializedDocument;
 using epidemic::runtime::SerializerRegistry;
 
-class ProbeSerializer final : public ISerializer
+[[nodiscard]] StringId Id(std::string_view value)
+{
+    return StringId::FromString(value);
+}
+
+struct ProbeData
+{
+    std::string name;
+    std::uint64_t count = 0;
+};
+
+class ProbeSerializer final : public epidemic::runtime::ISerializer
 {
   public:
-    ProbeSerializer(const char* type_name, SchemaVersion version)
-        // Function note: Handles type id .
-        // Inputs/outputs: see the signature; the method consumes caller-provided values and
-        // returns either a value, status flag or Result according to the surrounding API.
-        // Relations: this member is part of the local runtime workflow and pairs with
-        // neighboring query/update helpers defined in the same class or file.
-        : type_id_(epidemic::foundation::StringId::FromString(type_name)), version_(version)
+    [[nodiscard]] StringId GetTypeId() const override
     {
+        return Id("serialization.probe");
     }
 
-    // Function note: Gets type id.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    [[nodiscard]] epidemic::foundation::StringId GetTypeId() const override
-    {
-        return type_id_;
-    }
-
-    // Function note: Gets schema version.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] SchemaVersion GetSchemaVersion() const override
     {
-        return version_;
+        return {1u, 0u, 0u};
     }
 
-  private:
-    epidemic::foundation::StringId type_id_{};
-    SchemaVersion version_{};
+    [[nodiscard]] Result<void> Serialize(const void* object, IArchiveWriter& writer) const override
+    {
+        if (object == nullptr)
+        {
+            return Result<void>::Failure(CreateSerializationError("serialization.object_null", "object pointer must not be null"));
+        }
+
+        const auto& probe = *static_cast<const ProbeData*>(object);
+        const auto name = writer.WriteString("name", probe.name);
+        if (!name)
+        {
+            return name;
+        }
+        return writer.WriteUInt64("count", probe.count);
+    }
+
+    [[nodiscard]] Result<void> Deserialize(IArchiveReader& reader, void* object) const override
+    {
+        if (object == nullptr)
+        {
+            return Result<void>::Failure(CreateSerializationError("serialization.object_null", "object pointer must not be null"));
+        }
+        if (reader.GetTypeId() != GetTypeId())
+        {
+            return Result<void>::Failure(CreateSerializationError("serialization.type_mismatch", "document type does not match serializer"));
+        }
+
+        auto& probe = *static_cast<ProbeData*>(object);
+        const auto name = reader.ReadString("name");
+        if (!name)
+        {
+            return Result<void>::Failure(name.GetError());
+        }
+        const auto count = reader.ReadUInt64("count");
+        if (!count)
+        {
+            return Result<void>::Failure(count.GetError());
+        }
+
+        probe.name = name.Value();
+        probe.count = count.Value();
+        return Result<void>::Success();
+    }
 };
 
 class ProbeMigration final : public IMigration
 {
   public:
-    // Function note: Handles probe migration.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     explicit ProbeMigration(MigrationKey key) : key_(key)
     {
     }
 
-    // Function note: Gets key.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
     [[nodiscard]] MigrationKey GetKey() const override
     {
         return key_;
     }
 
-    // Function note: Handles apply.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    [[nodiscard]] epidemic::foundation::Result<void> Apply(IArchiveReader& input, IArchiveWriter& output) override
+    [[nodiscard]] Result<void> Apply(IArchiveReader& input, IArchiveWriter& output) const override
     {
         (void)input;
-        (void)output;
-        return epidemic::foundation::Result<void>::Success();
+        return output.WriteString("migration", "applied");
     }
 
   private:
     MigrationKey key_{};
 };
 
-// Verifies primitive round trip.
-bool TestPrimitiveRoundTrip()
+[[nodiscard]] bool TestPrimitiveDocumentRoundTrip()
 {
     InMemoryArchiveWriter writer;
+    const std::vector<std::byte> bytes{std::byte{0x01}, std::byte{0x7f}, std::byte{0xff}};
     if (!writer.WriteString("name", "potato") || !writer.WriteUInt64("count", 7u) || !writer.WriteInt64("delta", -4) ||
-        !writer.WriteDouble("weight", 1.5) || !writer.WriteBool("fresh", true))
+        !writer.WriteDouble("weight", 1.5) || !writer.WriteBool("fresh", true) || !writer.WriteBytes("blob", bytes) ||
+        !writer.WriteNull("empty"))
     {
         return false;
     }
 
-    // Function note: Handles reader.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    InMemoryArchiveReader reader(writer.Snapshot());
-    return reader.ReadString("name").Value() == "potato" && reader.ReadUInt64("count").Value() == 7u &&
-           reader.ReadInt64("delta").Value() == -4 && reader.ReadDouble("weight").Value() == 1.5 &&
-           reader.ReadBool("fresh").Value();
+    const auto document = writer.Finalize(Id("serialization.primitive"), {1u, 2u, 3u});
+    if (!document)
+    {
+        return false;
+    }
+
+    InMemoryArchiveReader reader(document.Value());
+    const auto read_bytes = reader.ReadBytes("blob");
+    return reader.GetTypeId() == Id("serialization.primitive") && reader.GetSchemaVersion() == SchemaVersion{1u, 2u, 3u} &&
+           reader.GetFormatVersion() == 1u && reader.ReadString("name").Value() == "potato" &&
+           reader.ReadUInt64("count").Value() == 7u && reader.ReadInt64("delta").Value() == -4 &&
+           reader.ReadDouble("weight").Value() == 1.5 && reader.ReadBool("fresh").Value() && read_bytes &&
+           read_bytes.Value() == bytes && reader.IsNull("empty").Value();
 }
 
-// Verifies nested object round trip.
-bool TestNestedObjectRoundTrip()
+[[nodiscard]] bool TestNestedObjectAndArrayRoundTrip()
 {
     InMemoryArchiveWriter writer;
     if (!writer.BeginObject("item") || !writer.WriteString("id", "items/potato") || !writer.EndObject())
     {
         return false;
     }
-
-    // Function note: Handles reader.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    InMemoryArchiveReader reader(writer.Snapshot());
-    return reader.BeginObject("item") && reader.ReadString("id").Value() == "items/potato" && reader.EndObject();
-}
-
-// Verifies object nesting validation.
-bool TestObjectNestingValidation()
-{
-    InMemoryArchiveWriter writer;
-    if (writer.EndObject() || !writer.BeginObject("item") || !writer.WriteString("name", "potato") || !writer.EndObject())
+    if (!writer.BeginArray("children", 2) || !writer.BeginArrayElement(0) || !writer.WriteString("name", "leaf") ||
+        !writer.EndArrayElement() || !writer.BeginArrayElement(1) || !writer.WriteString("name", "root") ||
+        !writer.EndArrayElement() || !writer.EndArray())
     {
         return false;
     }
 
-    // Function note: Handles reader.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    InMemoryArchiveReader reader(writer.Snapshot());
-    return !reader.EndObject() && reader.BeginObject("item") && !reader.BeginObject("name") && reader.EndObject();
-}
-
-// Verifies missing field returns error.
-bool TestMissingFieldReturnsError()
-{
-    InMemoryArchiveWriter writer;
-    if (!writer.WriteString("name", "potato"))
+    const auto document = writer.Finalize(Id("serialization.nested"), {1u, 0u, 0u});
+    if (!document)
     {
         return false;
     }
 
-    // Function note: Handles reader.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    InMemoryArchiveReader reader(writer.Snapshot());
-    const auto missing = reader.ReadString("missing");
-    return !missing && missing.GetError().HasCode("serialization.field_missing");
+    InMemoryArchiveReader reader(document.Value());
+    if (!reader.BeginObject("item") || reader.ReadString("id").Value() != "items/potato" || !reader.EndObject())
+    {
+        return false;
+    }
+
+    const auto children_count = reader.BeginArray("children");
+    return children_count && children_count.Value() == 2u && reader.BeginArrayElement(1) &&
+           reader.ReadString("name").Value() == "root" && reader.EndArrayElement() && reader.EndArray();
 }
 
-// Verifies schema version comparison works.
-bool TestSchemaVersionComparisonWorks()
+[[nodiscard]] bool TestMalformedArchiveOperationsReturnResults()
 {
-    const SchemaVersion old_version{1u, 2u, 0u};
-    const SchemaVersion new_version{1u, 3u, 0u};
-    const SchemaVersion same_version{1u, 3u, 0u};
-
-    return old_version < new_version && new_version == same_version && !(new_version < same_version);
+    InMemoryArchiveWriter writer;
+    const auto unmatched_end = writer.EndObject();
+    const auto array = writer.BeginArray("items", 1);
+    const auto bad_index = writer.BeginArrayElement(3);
+    const auto unclosed_finalize = writer.Finalize(Id("serialization.bad"), {1u, 0u, 0u});
+    return !unmatched_end && unmatched_end.GetError().HasCode("serialization.malformed") && array && !bad_index &&
+           bad_index.GetError().HasCode("serialization.invalid_array_index") && !unclosed_finalize &&
+           unclosed_finalize.GetError().HasCode("serialization.malformed");
 }
 
-// Verifies serializer registry rejects duplicate type.
-bool TestSerializerRegistryRejectsDuplicateType()
+[[nodiscard]] bool TestFinalizeMakesWriterImmutable()
+{
+    InMemoryArchiveWriter writer;
+    if (!writer.WriteString("name", "sealed"))
+    {
+        return false;
+    }
+
+    const auto document = writer.Finalize(Id("serialization.sealed"), {1u, 0u, 0u});
+    const auto late_write = writer.WriteString("name", "mutated");
+    const auto second_finalize = writer.Finalize(Id("serialization.sealed"), {1u, 0u, 0u});
+    return document && !late_write && late_write.GetError().HasCode("serialization.finalized") && !second_finalize &&
+           second_finalize.GetError().HasCode("serialization.finalized");
+}
+
+[[nodiscard]] bool TestSerializerExecutesRoundTrip()
+{
+    ProbeSerializer serializer;
+    ProbeData source{"runtime", 42u};
+    InMemoryArchiveWriter writer;
+    if (!serializer.Serialize(&source, writer))
+    {
+        return false;
+    }
+
+    const auto document = writer.Finalize(serializer.GetTypeId(), serializer.GetSchemaVersion());
+    if (!document)
+    {
+        return false;
+    }
+
+    ProbeData target{};
+    InMemoryArchiveReader reader(document.Value());
+    const auto deserialize = serializer.Deserialize(reader, &target);
+    return deserialize && target.name == source.name && target.count == source.count;
+}
+
+[[nodiscard]] bool TestSerializerRejectsWrongTypeAndMissingFields()
+{
+    ProbeSerializer serializer;
+    InMemoryArchiveWriter wrong_type_writer;
+    if (!wrong_type_writer.WriteString("name", "runtime") || !wrong_type_writer.WriteUInt64("count", 42u))
+    {
+        return false;
+    }
+    const auto wrong_type_doc = wrong_type_writer.Finalize(Id("serialization.other"), serializer.GetSchemaVersion());
+    if (!wrong_type_doc)
+    {
+        return false;
+    }
+
+    ProbeData target{};
+    InMemoryArchiveReader wrong_type_reader(wrong_type_doc.Value());
+    const auto wrong_type = serializer.Deserialize(wrong_type_reader, &target);
+
+    InMemoryArchiveWriter missing_field_writer;
+    if (!missing_field_writer.WriteString("name", "runtime"))
+    {
+        return false;
+    }
+    const auto missing_field_doc = missing_field_writer.Finalize(serializer.GetTypeId(), serializer.GetSchemaVersion());
+    if (!missing_field_doc)
+    {
+        return false;
+    }
+
+    InMemoryArchiveReader missing_field_reader(missing_field_doc.Value());
+    const auto missing_field = serializer.Deserialize(missing_field_reader, &target);
+    return !wrong_type && wrong_type.GetError().HasCode("serialization.type_mismatch") && !missing_field &&
+           missing_field.GetError().HasCode("serialization.field_missing");
+}
+
+[[nodiscard]] bool TestSerializerRegistryOwnsSharedSerializers()
 {
     SerializerRegistry registry;
-    // Function note: Handles first.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    ProbeSerializer first("item.record", {1u, 0u, 0u});
-    // Function note: Handles second.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    ProbeSerializer second("item.record", {2u, 0u, 0u});
+    auto serializer = std::make_shared<ProbeSerializer>();
+    const auto type_id = serializer->GetTypeId();
+    const auto registered = registry.RegisterSerializer(serializer);
+    serializer.reset();
 
-    const auto first_result = registry.RegisterSerializer(first);
-    const auto second_result = registry.RegisterSerializer(second);
-    return first_result && !second_result && second_result.GetError().HasCode("serialization.serializer.duplicate_type") &&
-           registry.FindSerializer(first.GetTypeId()) == &first;
+    const auto found = registry.FindSerializer(type_id);
+    const auto duplicate = registry.RegisterSerializer(std::make_shared<ProbeSerializer>());
+    return registered && found && found->GetTypeId() == type_id && registry.HasSerializer(type_id) && !duplicate &&
+           duplicate.GetError().HasCode("serialization.serializer.duplicate_type");
 }
 
-// Verifies migration registry stores migration key.
-bool TestMigrationRegistryStoresMigrationKey()
+[[nodiscard]] bool TestMigrationRegistryFindsExactAndChainedPaths()
 {
     MigrationRegistry registry;
-    // Function note: Handles from string.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    const MigrationKey key{epidemic::foundation::StringId::FromString("item.record"), {1u, 0u, 0u}, {2u, 0u, 0u}};
-    // Function note: Handles migration.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    ProbeMigration migration(key);
+    const auto type = Id("serialization.migrated");
+    const auto one_to_two = std::make_shared<ProbeMigration>(MigrationKey{type, {1u, 0u, 0u}, {2u, 0u, 0u}});
+    const auto two_to_three = std::make_shared<ProbeMigration>(MigrationKey{type, {2u, 0u, 0u}, {3u, 0u, 0u}});
+    if (!registry.RegisterMigration(one_to_two) || !registry.RegisterMigration(two_to_three))
+    {
+        return false;
+    }
 
-    const auto register_result = registry.RegisterMigration(migration);
-    return register_result && registry.HasMigration(key) && registry.FindMigration(key) == &migration;
+    const auto exact = registry.FindMigration(one_to_two->GetKey());
+    const auto path = registry.FindMigrationPath(type, {1u, 0u, 0u}, {3u, 0u, 0u});
+    const auto same = registry.FindMigrationPath(type, {3u, 0u, 0u}, {3u, 0u, 0u});
+    return exact == one_to_two && path && path.Value().size() == 2u && same && same.Value().empty();
 }
 
-// Verifies migration registry rejects duplicate key.
-bool TestMigrationRegistryRejectsDuplicateKey()
+[[nodiscard]] bool TestMigrationRegistryRejectsMissingCycleAndAmbiguousPaths()
 {
-    MigrationRegistry registry;
-    // Function note: Handles from string.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    const MigrationKey key{epidemic::foundation::StringId::FromString("item.record"), {1u, 0u, 0u}, {2u, 0u, 0u}};
-    // Function note: Handles first.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    ProbeMigration first(key);
-    // Function note: Handles second.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    ProbeMigration second(key);
+    const auto type = Id("serialization.migrated");
 
-    const auto first_result = registry.RegisterMigration(first);
-    const auto second_result = registry.RegisterMigration(second);
-    return first_result && !second_result && second_result.GetError().HasCode("serialization.migration.duplicate_key");
+    MigrationRegistry missing_registry;
+    const auto missing = missing_registry.FindMigrationPath(type, {1u, 0u, 0u}, {2u, 0u, 0u});
+
+    MigrationRegistry cycle_registry;
+    if (!cycle_registry.RegisterMigration(std::make_shared<ProbeMigration>(MigrationKey{type, {1u, 0u, 0u}, {2u, 0u, 0u}})) ||
+        !cycle_registry.RegisterMigration(std::make_shared<ProbeMigration>(MigrationKey{type, {2u, 0u, 0u}, {1u, 0u, 0u}})))
+    {
+        return false;
+    }
+    const auto cycle = cycle_registry.FindMigrationPath(type, {1u, 0u, 0u}, {3u, 0u, 0u});
+
+    MigrationRegistry ambiguous_registry;
+    if (!ambiguous_registry.RegisterMigration(std::make_shared<ProbeMigration>(MigrationKey{type, {1u, 0u, 0u}, {2u, 0u, 0u}})) ||
+        !ambiguous_registry.RegisterMigration(std::make_shared<ProbeMigration>(MigrationKey{type, {2u, 0u, 0u}, {3u, 0u, 0u}})) ||
+        !ambiguous_registry.RegisterMigration(std::make_shared<ProbeMigration>(MigrationKey{type, {1u, 0u, 0u}, {4u, 0u, 0u}})) ||
+        !ambiguous_registry.RegisterMigration(std::make_shared<ProbeMigration>(MigrationKey{type, {4u, 0u, 0u}, {3u, 0u, 0u}})))
+    {
+        return false;
+    }
+    const auto ambiguous = ambiguous_registry.FindMigrationPath(type, {1u, 0u, 0u}, {3u, 0u, 0u});
+
+    return !missing && missing.GetError().HasCode("serialization.migration.path_missing") && !cycle &&
+           cycle.GetError().HasCode("serialization.migration.cycle") && !ambiguous &&
+           ambiguous.GetError().HasCode("serialization.migration.ambiguous_path");
+}
+
+[[nodiscard]] bool TestSerializationServicesFactoryCreatesUsableServices()
+{
+    const auto services = CreateSerializationServices();
+    if (!services || !services.Value().serializers || !services.Value().migrations || !services.Value().archives)
+    {
+        return false;
+    }
+
+    auto writer = services.Value().archives->CreateWriter();
+    if (!writer || !writer->WriteString("name", "factory"))
+    {
+        return false;
+    }
+    const auto document = writer->Finalize(Id("serialization.factory"), {1u, 0u, 0u});
+    if (!document)
+    {
+        return false;
+    }
+
+    const auto reader = services.Value().archives->CreateReader(document.Value());
+    return reader && reader.Value()->ReadString("name").Value() == "factory";
 }
 } // namespace
 
-// Runs the local test suite and maps failures to stable exit codes.
 int main()
 {
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    static_assert(std::is_abstract_v<IArchiveReader>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    static_assert(std::is_abstract_v<IArchiveWriter>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    static_assert(std::is_abstract_v<IMigration>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    static_assert(std::is_abstract_v<IMigrationRegistry>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    static_assert(std::is_abstract_v<ISerializer>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    static_assert(std::is_abstract_v<ISerializerRegistry>);
-    // Function note: Handles static assert.
-    // Inputs/outputs: see the signature; the method consumes caller-provided values and
-    // returns either a value, status flag or Result according to the surrounding API.
-    // Relations: this member is part of the local runtime workflow and pairs with
-    // neighboring query/update helpers defined in the same class or file.
-    static_assert(static_cast<int>(SerializationState::SchemaUnknown) != static_cast<int>(SerializationState::Failed));
-
-    if (!TestPrimitiveRoundTrip())
+    struct NamedTest
     {
-        return 1;
-    }
+        const char* name;
+        bool (*run)();
+    };
 
-    if (!TestNestedObjectRoundTrip())
-    {
-        return 2;
-    }
+    const NamedTest tests[] = {
+        {"PrimitiveDocumentRoundTrip", TestPrimitiveDocumentRoundTrip},
+        {"NestedObjectAndArrayRoundTrip", TestNestedObjectAndArrayRoundTrip},
+        {"MalformedArchiveOperationsReturnResults", TestMalformedArchiveOperationsReturnResults},
+        {"FinalizeMakesWriterImmutable", TestFinalizeMakesWriterImmutable},
+        {"SerializerExecutesRoundTrip", TestSerializerExecutesRoundTrip},
+        {"SerializerRejectsWrongTypeAndMissingFields", TestSerializerRejectsWrongTypeAndMissingFields},
+        {"SerializerRegistryOwnsSharedSerializers", TestSerializerRegistryOwnsSharedSerializers},
+        {"MigrationRegistryFindsExactAndChainedPaths", TestMigrationRegistryFindsExactAndChainedPaths},
+        {"MigrationRegistryRejectsMissingCycleAndAmbiguousPaths", TestMigrationRegistryRejectsMissingCycleAndAmbiguousPaths},
+        {"SerializationServicesFactoryCreatesUsableServices", TestSerializationServicesFactoryCreatesUsableServices},
+    };
 
-    if (!TestObjectNestingValidation())
+    for (const NamedTest& test : tests)
     {
-        return 3;
-    }
-
-    if (!TestMissingFieldReturnsError())
-    {
-        return 4;
-    }
-
-    if (!TestSchemaVersionComparisonWorks())
-    {
-        return 5;
-    }
-
-    if (!TestSerializerRegistryRejectsDuplicateType())
-    {
-        return 6;
-    }
-
-    if (!TestMigrationRegistryStoresMigrationKey())
-    {
-        return 7;
-    }
-
-    if (!TestMigrationRegistryRejectsDuplicateKey())
-    {
-        return 8;
+        if (!test.run())
+        {
+            std::cerr << "Serialization test failed: " << test.name << "\n";
+            return 1;
+        }
     }
 
     return 0;
 }
+
+

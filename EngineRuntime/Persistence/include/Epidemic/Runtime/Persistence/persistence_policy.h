@@ -1,10 +1,6 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
-
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
 
 namespace epidemic::runtime
 {
@@ -18,18 +14,25 @@ enum class ObjectProtectionFlags : std::uint32_t
     PreserveCondition = 1u << 4,
 };
 
+struct ObjectProtectionMask
+{
+    std::uint32_t value = 0;
+
+    [[nodiscard]] constexpr bool operator==(const ObjectProtectionMask&) const noexcept = default;
+};
+
 [[nodiscard]] constexpr std::uint32_t ToProtectionMask(ObjectProtectionFlags flags) noexcept
 {
     return static_cast<std::uint32_t>(flags);
 }
 
-[[nodiscard]] constexpr bool HasProtectionFlag(std::uint32_t mask, ObjectProtectionFlags flag) noexcept
+[[nodiscard]] constexpr bool HasProtectionFlag(ObjectProtectionMask mask, ObjectProtectionFlags flag) noexcept
 {
-    return (mask & ToProtectionMask(flag)) != 0u;
+    return (mask.value & ToProtectionMask(flag)) != 0u;
 }
 
-[[nodiscard]] constexpr std::uint32_t AddProtectionFlag(std::uint32_t mask, ObjectProtectionFlags flag) noexcept
+[[nodiscard]] constexpr ObjectProtectionMask AddProtectionFlag(ObjectProtectionMask mask, ObjectProtectionFlags flag) noexcept
 {
-    return mask | ToProtectionMask(flag);
+    return ObjectProtectionMask{mask.value | ToProtectionMask(flag)};
 }
-} 
+} // namespace epidemic::runtime

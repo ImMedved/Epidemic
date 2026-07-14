@@ -5,48 +5,34 @@
 #include "Epidemic/Runtime/Assets/asset_location_resolver.h"
 
 #include <unordered_map>
+#include <unordered_set>
 
 namespace epidemic::runtime
 {
-// File note:
-// In-memory reference implementation of the asset contracts. It is intentionally
-// simple and primarily exists to support runtime tests and early integration.
+// In-memory bootstrap/runtime catalog. It becomes read-only after Seal().
 class InMemoryAssetCatalog final : public IAssetCatalog, public IAssetCatalogWriter, public IAssetLocationResolver
 {
   public:
-    // Stores a new metadata snapshot under metadata.id.
-    // Input: asset metadata value object.
-    // Output: success on insertion, failure on invalid or duplicate ids.
-    // Relation: feeds every read path in this class.
-    [[nodiscard]] foundation::Result<void> RegisterAsset(AssetMetadata metadata) override;
+    [[nodiscard]] foundation::Result<void> RegisterAsset(const AssetMetadata& metadata) override;
+    [[nodiscard]] foundation::Result<void> Seal() override;
 
-    // Reads one metadata snapshot by id.
-    // Input: asset id key.
-    // Output: copied metadata or nullopt.
     [[nodiscard]] std::optional<AssetMetadata> FindById(AssetId id) const override;
-
-    // Reads all metadata snapshots that share the same asset type.
-    // Input: asset type filter.
-    // Output: vector of copied metadata values.
     [[nodiscard]] std::vector<AssetMetadata> FindByType(AssetType type) const override;
-
-    // Reads all metadata snapshots that contain the requested tag.
-    // Input: tag identifier.
-    // Output: vector of copied metadata values.
     [[nodiscard]] std::vector<AssetMetadata> FindByTag(foundation::StringId tag) const override;
-
-    // Checks whether the catalog already has an entry for the id.
-    // Input: asset id key.
-    // Output: boolean presence flag.
     [[nodiscard]] bool Contains(AssetId id) const override;
-
-    // Resolves only the location portion of a stored metadata record.
-    // Input: asset id key.
-    // Output: success with location or failure when the record is absent.
-    // Relation: implemented in terms of FindById.
+    [[nodiscard]] bool IsSealed() const override;
+    [[nodiscard]] foundation::Result<AssetDependencyManifest> BuildDependencyManifest(AssetId root) const override;
     [[nodiscard]] foundation::Result<AssetLocation> Resolve(AssetId id) const override;
 
   private:
+    [[nodiscard]] foundation::Result<AssetMetadata> ValidateAndNormalize(const AssetMetadata& metadata) const;
+    [[nodiscard]] bool BuildDependencyManifestDepthFirst(
+        AssetId current,
+        AssetDependencyManifest& manifest,
+        std::unordered_set<AssetId>& visiting,
+        std::unordered_set<AssetId>& visited) const;
+
     std::unordered_map<AssetId, AssetMetadata> assets_;
+    bool sealed_ = false;
 };
-} 
+} // namespace epidemic::runtime

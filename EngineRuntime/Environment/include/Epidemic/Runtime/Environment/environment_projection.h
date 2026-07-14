@@ -1,18 +1,17 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Runtime/Environment/season_state.h"
 #include "Epidemic/Runtime/Environment/weather_state.h"
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
 
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
+#include <cstdint>
 
 namespace epidemic::runtime
 {
 struct EnvironmentProjection
 {
     RegionId region_id{};
+    std::uint64_t revision = 0;
     WeatherState weather{};
     SeasonState season{};
     float temperature = 0.0f;
@@ -20,4 +19,4 @@ struct EnvironmentProjection
 
     [[nodiscard]] constexpr bool operator==(const EnvironmentProjection&) const noexcept = default;
 };
-} 
+} // namespace epidemic::runtime
