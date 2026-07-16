@@ -2,6 +2,8 @@
 
 #include "Epidemic/Foundation/error.h"
 
+#include <algorithm>
+
 namespace epidemic::runtime::animation
 {
 AnimationRuntime::AnimationRuntime(AnimationOptions options) : options_(options)
@@ -79,6 +81,7 @@ foundation::Result<AnimatorInstanceId> AnimationRuntime::CreateAnimator(const An
     record.desc = desc;
     record.state = AnimatorState::Ready;
     record.pose_state = PoseState::Clean;
+    record.revision = 1;
     animators_.emplace(id, record);
     return foundation::Result<AnimatorInstanceId>::Success(id);
 }
@@ -109,6 +112,7 @@ foundation::Result<void> AnimationRuntime::Play(AnimatorInstanceId id, Animation
     if (clip_it == clips_.end())
     {
         animator->state = AnimatorState::ResourceMissing;
+        ++animator->revision;
         return foundation::Result<void>::Failure(
             foundation::Error::Create("animation.clip_not_found", "animation clip was not registered"));
     }
@@ -123,6 +127,7 @@ foundation::Result<void> AnimationRuntime::Play(AnimatorInstanceId id, Animation
     animator->local_time = 0.0f;
     animator->state = AnimatorState::Playing;
     animator->pose_state = options_.enable_mock_pose_evaluation ? PoseState::Evaluating : PoseState::Dirty;
+    ++animator->revision;
     QueueEvent(id, "animation.started", 0.0f);
     return foundation::Result<void>::Success();
 }
@@ -132,13 +137,14 @@ std::size_t AnimationRuntime::Tick(std::size_t max_animators)
     const std::size_t limit = max_animators == 0 ? animators_.size() : max_animators;
     std::size_t transitioned = 0;
 
-    for (auto& [id, animator] : animators_)
+    for (const AnimatorInstanceId id : BuildAnimatorWorkList())
     {
         if (transitioned >= limit)
         {
             break;
         }
 
+        AnimatorRecord& animator = animators_[id];
         if (animator.state == AnimatorState::Playing || animator.state == AnimatorState::Blending)
         {
             animator.local_time += 1.0f;
@@ -149,6 +155,7 @@ std::size_t AnimationRuntime::Tick(std::size_t max_animators)
                 animator.state = AnimatorState::Finished;
                 QueueEvent(id, "animation.finished", animator.local_time);
             }
+            ++animator.revision;
             ++transitioned;
         }
     }
@@ -178,6 +185,7 @@ foundation::Result<void> AnimationRuntime::SetLod(AnimatorInstanceId id, Animati
 
     animator->desc.lod = lod;
     animator->pose_state = lod == AnimationLodLevel::Frozen ? PoseState::Clean : PoseState::Dirty;
+    ++animator->revision;
     return foundation::Result<void>::Success();
 }
 
@@ -190,6 +198,17 @@ PoseState AnimationRuntime::GetPoseState(AnimatorInstanceId id) const
     }
 
     return animator->pose_state;
+}
+
+PoseSnapshot AnimationRuntime::GetPoseSnapshot(AnimatorInstanceId id) const
+{
+    const AnimatorRecord* animator = FindAnimator(id);
+    if (animator == nullptr)
+    {
+        return PoseSnapshot{id, PoseState::Clean, AnimationLodLevel::Frozen, 0};
+    }
+
+    return PoseSnapshot{id, animator->pose_state, animator->desc.lod, animator->revision};
 }
 
 std::span<const AnimationEvent> AnimationRuntime::Events() const
@@ -222,6 +241,24 @@ const AnimationRuntime::AnimatorRecord* AnimationRuntime::FindAnimator(AnimatorI
     }
 
     return &iterator->second;
+}
+
+std::vector<AnimatorInstanceId> AnimationRuntime::BuildAnimatorWorkList() const
+{
+    std::vector<AnimatorInstanceId> work_list;
+    work_list.reserve(animators_.size());
+    for (const auto& [id, animator] : animators_)
+    {
+        if (animator.state == AnimatorState::Playing || animator.state == AnimatorState::Blending)
+        {
+            work_list.push_back(id);
+        }
+    }
+
+    std::sort(work_list.begin(), work_list.end(), [](AnimatorInstanceId left, AnimatorInstanceId right) {
+        return left.value < right.value;
+    });
+    return work_list;
 }
 
 void AnimationRuntime::QueueEvent(AnimatorInstanceId animator, std::string name, float time)

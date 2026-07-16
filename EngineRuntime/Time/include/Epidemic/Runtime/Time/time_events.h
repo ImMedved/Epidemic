@@ -2,10 +2,6 @@
 
 #include "Epidemic/Runtime/Time/time_snapshot.h"
 
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
-
 namespace epidemic::runtime
 {
 enum class TimeEventKind
@@ -14,7 +10,7 @@ enum class TimeEventKind
     TimeScaleChanged,
     Paused,
     Resumed,
-    TimeSkipped,
+    TimeJumped,
     DayChanged,
     DayPhaseChanged,
 };
@@ -26,4 +22,4 @@ struct TimeEvent
 
     [[nodiscard]] constexpr bool operator==(const TimeEvent&) const noexcept = default;
 };
-} 
+} // namespace epidemic::runtime

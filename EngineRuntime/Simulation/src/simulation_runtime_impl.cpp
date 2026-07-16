@@ -79,14 +79,14 @@ std::size_t SimulationRuntime::Tick()
     std::uint32_t work_budget = budget_.max_work_units == 0 ? UINT32_MAX : budget_.max_work_units;
     std::size_t transitioned = 0;
 
-    for (auto& [id, job] : jobs_)
+    for (const SimulationJobId id : BuildJobWorkList())
     {
-        (void)id;
         if (transitioned >= job_limit || work_budget == 0)
         {
             break;
         }
 
+        JobRecord& job = jobs_[id];
         if (IsTerminal(job.state) || job.state == SimulationJobState::WaitingForMainThread)
         {
             continue;
@@ -175,9 +175,9 @@ foundation::Result<WorldMemoryEventId> SimulationRuntime::RecordEvent(const Worl
 std::vector<WorldMemoryEvent> SimulationRuntime::QueryEvents(const WorldMemoryQuery& query) const
 {
     std::vector<WorldMemoryEvent> matches;
-    for (const auto& [id, event] : memory_events_)
+    for (const WorldMemoryEventId id : BuildMemoryWorkList())
     {
-        (void)id;
+        const auto& event = memory_events_.at(id);
         if (query.region.IsValid() && event.region != query.region)
         {
             continue;
@@ -194,11 +194,24 @@ std::vector<WorldMemoryEvent> SimulationRuntime::QueryEvents(const WorldMemoryQu
     return matches;
 }
 
-void SimulationRuntime::ExpireOldEvents(GameTime now)
+void SimulationRuntime::ExpireOldEvents(SimulationTime now)
 {
-    for (auto& [id, event] : memory_events_)
+    (void)ExpireOldEvents(now, 0);
+}
+
+std::size_t SimulationRuntime::ExpireOldEvents(SimulationTime now, std::uint32_t max_events)
+{
+    const std::uint32_t limit = max_events == 0 ? UINT32_MAX : max_events;
+    std::size_t expired = 0;
+
+    for (const WorldMemoryEventId id : BuildMemoryWorkList())
     {
-        (void)id;
+        if (expired >= limit)
+        {
+            break;
+        }
+
+        auto& event = memory_events_[id];
         if (event.state == WorldMemoryEventState::Persistent || event.state == WorldMemoryEventState::Expired || event.ttl.IsZero())
         {
             continue;
@@ -207,8 +220,11 @@ void SimulationRuntime::ExpireOldEvents(GameTime now)
         if ((event.happened_at + event.ttl).ticks <= now.ticks)
         {
             event.state = WorldMemoryEventState::Expired;
+            ++expired;
         }
     }
+
+    return expired;
 }
 
 foundation::Result<void> SimulationRuntime::Submit(const SimulationEffect& effect)
@@ -259,6 +275,40 @@ const SimulationRuntime::JobRecord* SimulationRuntime::FindJob(SimulationJobId i
     }
 
     return &iterator->second;
+}
+
+std::vector<SimulationJobId> SimulationRuntime::BuildJobWorkList() const
+{
+    std::vector<SimulationJobId> work_list;
+    work_list.reserve(jobs_.size());
+    for (const auto& [id, job] : jobs_)
+    {
+        if (!IsTerminal(job.state) && job.state != SimulationJobState::WaitingForMainThread)
+        {
+            work_list.push_back(id);
+        }
+    }
+
+    std::sort(work_list.begin(), work_list.end(), [](SimulationJobId left, SimulationJobId right) {
+        return left.value < right.value;
+    });
+    return work_list;
+}
+
+std::vector<WorldMemoryEventId> SimulationRuntime::BuildMemoryWorkList() const
+{
+    std::vector<WorldMemoryEventId> work_list;
+    work_list.reserve(memory_events_.size());
+    for (const auto& [id, event] : memory_events_)
+    {
+        (void)event;
+        work_list.push_back(id);
+    }
+
+    std::sort(work_list.begin(), work_list.end(), [](WorldMemoryEventId left, WorldMemoryEventId right) {
+        return left.value < right.value;
+    });
+    return work_list;
 }
 
 bool SimulationRuntime::IsTerminal(SimulationJobState state) const noexcept

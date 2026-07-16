@@ -9,11 +9,11 @@ target_include_directories(EpidemicRuntimeSimulation PUBLIC
 
 target_link_libraries(EpidemicRuntimeSimulation
     PUBLIC EpidemicRuntimeFoundation
-    PUBLIC EpidemicRuntimeTime
     PRIVATE EpidemicFoundation
 )
 
 set(_epidemic_runtime_simulation_forbidden_targets
+    EpidemicRuntimeTime
     EpidemicRuntimeRenderer
     EpidemicRuntimePhysics
     EpidemicRuntimeNavigation

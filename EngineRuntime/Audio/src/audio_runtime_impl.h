@@ -29,6 +29,7 @@ public:
     [[nodiscard]] foundation::Result<void> FadeOut(AudioEmitterId id) override;
     [[nodiscard]] foundation::Result<void> Virtualize(AudioEmitterId id) override;
     [[nodiscard]] EmitterState GetEmitterState(AudioEmitterId id) const override;
+    [[nodiscard]] AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterId id) const override;
 
     [[nodiscard]] foundation::Result<AudioListenerId> CreateListener(const AudioListenerDesc& desc) override;
     [[nodiscard]] foundation::Result<void> SetMainListener(AudioListenerId id) override;
@@ -46,6 +47,7 @@ private:
     {
         AudioEmitterDesc desc{};
         EmitterState state = EmitterState::Stopped;
+        std::uint64_t revision = 0;
     };
 
     struct ListenerRecord

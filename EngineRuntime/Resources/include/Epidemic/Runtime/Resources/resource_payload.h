@@ -36,6 +36,6 @@ class ByteResourcePayload final : public IResourcePayload
     std::vector<std::byte> bytes_;
 };
 
-using ResourcePayloadPtr = std::shared_ptr<IResourcePayload>;
+using ResourcePayloadPtr = std::shared_ptr<const IResourcePayload>;
 } // namespace epidemic::runtime
 

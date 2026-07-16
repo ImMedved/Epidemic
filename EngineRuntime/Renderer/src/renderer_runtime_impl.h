@@ -13,6 +13,7 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
 {
   public:
     explicit RendererRuntime(IRenderResourceBridge* resource_bridge, IRenderSceneSource* scene_source);
+    ~RendererRuntime() override;
 
     [[nodiscard]] foundation::Result<RenderProxyId> RegisterProxy(const RenderProxyDesc& desc) override;
     [[nodiscard]] foundation::Result<void> DestroyProxy(RenderProxyId id) override;
@@ -44,6 +45,7 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
         RenderProxyVisibility visibility = RenderProxyVisibility::Visible;
         RenderProxyDirtyMask dirty_flags = 0;
         RenderResourcePayloads payloads{};
+        bool resources_acquired = false;
     };
 
     struct ViewRecord
@@ -52,7 +54,9 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
         ViewLifecycle lifecycle = ViewLifecycle::Active;
     };
 
-    [[nodiscard]] foundation::Result<RenderTransformSnapshot> GetTransform(SceneNodeId node) const;
+    [[nodiscard]] foundation::Result<RenderTransformSnapshot> GetTransform(RenderTransformId node) const;
+    [[nodiscard]] foundation::Result<void> AcquireProxyResources(ProxyRecord& record);
+    void ReleaseProxyResources(ProxyRecord& record);
     [[nodiscard]] foundation::Result<void> RefreshProxyReadiness(ProxyRecord& record);
     [[nodiscard]] ProxyRecord* FindProxy(RenderProxyId id);
     [[nodiscard]] const ProxyRecord* FindProxy(RenderProxyId id) const;

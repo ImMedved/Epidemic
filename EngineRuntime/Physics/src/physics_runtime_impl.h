@@ -12,7 +12,7 @@ namespace epidemic::runtime::physics
 // File note:
 // In-memory Physics foundation used for deterministic tests and early integration.
 // It stores collision shapes and body proxies, provides fake-but-stable queries and publishes contact events.
-class PhysicsRuntime final : public ICollisionShapeRegistry, public IPhysicsScene, public IPhysicsQuery, public IPhysicsEventBuffer
+class PhysicsRuntime final : public ICollisionShapeRegistry, public IPhysicsScene, public IPhysicsStepper, public IPhysicsQuery, public IPhysicsEventBuffer
 {
   public:
     [[nodiscard]] foundation::Result<void> RegisterShape(const CollisionShapeDesc& desc) override;
@@ -22,6 +22,7 @@ class PhysicsRuntime final : public ICollisionShapeRegistry, public IPhysicsScen
     [[nodiscard]] foundation::Result<void> DestroyBody(PhysicsBodyId id) override;
     [[nodiscard]] foundation::Result<void> ApplyImpulse(PhysicsBodyId id, Vec3 impulse) override;
     [[nodiscard]] PhysicsBodyState GetBodyState(PhysicsBodyId id) const override;
+    [[nodiscard]] foundation::Result<PhysicsStepResult> StepFixed(GameDuration fixed_delta) override;
 
     [[nodiscard]] foundation::Result<RaycastHit> Raycast(const RaycastQuery& query) const override;
     [[nodiscard]] foundation::Result<OverlapResult> Overlap(const OverlapQuery& query) const override;
@@ -51,5 +52,7 @@ class PhysicsRuntime final : public ICollisionShapeRegistry, public IPhysicsScen
     std::unordered_map<PhysicsBodyId, BodyRecord> bodies_;
     std::vector<ContactEvent> contacts_;
     std::uint64_t next_body_value_ = 1;
+    std::uint64_t fixed_step_count_ = 0;
+    std::uint64_t revision_ = 0;
 };
 } // namespace epidemic::runtime::physics

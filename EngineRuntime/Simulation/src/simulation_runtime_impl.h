@@ -31,7 +31,8 @@ public:
 
     [[nodiscard]] foundation::Result<WorldMemoryEventId> RecordEvent(const WorldMemoryEvent& event) override;
     [[nodiscard]] std::vector<WorldMemoryEvent> QueryEvents(const WorldMemoryQuery& query) const override;
-    void ExpireOldEvents(GameTime now) override;
+    void ExpireOldEvents(SimulationTime now) override;
+    [[nodiscard]] std::size_t ExpireOldEvents(SimulationTime now, std::uint32_t max_events) override;
 
     [[nodiscard]] foundation::Result<void> Submit(const SimulationEffect& effect) override;
     [[nodiscard]] std::span<const SimulationEffect> Effects() const override;
@@ -47,6 +48,8 @@ private:
 
     [[nodiscard]] JobRecord* FindJob(SimulationJobId id);
     [[nodiscard]] const JobRecord* FindJob(SimulationJobId id) const;
+    [[nodiscard]] std::vector<SimulationJobId> BuildJobWorkList() const;
+    [[nodiscard]] std::vector<WorldMemoryEventId> BuildMemoryWorkList() const;
     [[nodiscard]] bool IsTerminal(SimulationJobState state) const noexcept;
 
     SimulationOptions options_{};

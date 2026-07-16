@@ -23,9 +23,11 @@ bool TestIndividualRegistrationCreatesRealServices()
     bool ok = Expect(RegisterRuntimeFoundation(app).HasValue(), "foundation should register");
     ok &= Expect(RegisterAssets(app).HasValue(), "assets should register after foundation");
     ok &= Expect(RegisterSerialization(app).HasValue(), "serialization should register after foundation");
+    ok &= Expect(RegisterTime(app).HasValue(), "time should register after foundation");
     ok &= Expect(app.Services().Contains<RuntimeFoundationRegistration>(), "foundation marker should exist");
     ok &= Expect(app.Services().Contains<AssetServices>(), "asset services should exist");
     ok &= Expect(app.Services().Contains<SerializationServices>(), "serialization services should exist");
+    ok &= Expect(app.Services().Contains<TimeServices>(), "time services should exist");
     ok &= Expect(app.Services().Get<AssetServices>()->catalog != nullptr, "asset catalog should be real");
     ok &= Expect(app.Services().Get<SerializationServices>()->archives != nullptr, "archive factory should be real");
     return ok;
@@ -58,12 +60,13 @@ bool TestDefaultRegistrationOrder()
     Application app{};
     const auto result = RegisterDefaultEngineRuntime(app);
     bool ok = Expect(result.HasValue(), "default runtime should register");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors.size() == 8, "default runtime should register current freeze majors");
+    ok &= Expect(result.HasValue() && result.Value().registered_majors.size() == 9, "default runtime should register current freeze majors");
     ok &= Expect(result.HasValue() && result.Value().registered_majors[0] == "RuntimeFoundation", "foundation should be first");
     ok &= Expect(result.HasValue() && result.Value().registered_majors[1] == "Assets", "assets should follow foundation");
     ok &= Expect(result.HasValue() && result.Value().registered_majors[2] == "Serialization", "serialization should follow assets");
     ok &= Expect(result.HasValue() && result.Value().registered_majors[3] == "Resources", "resources should follow serialization");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[7] == "Renderer", "renderer should be last");
+    ok &= Expect(result.HasValue() && result.Value().registered_majors[5] == "Time", "time should follow persistence");
+    ok &= Expect(result.HasValue() && result.Value().registered_majors[8] == "Renderer", "renderer should be last");
     ok &= Expect(app.Services().Contains<PersistenceServices>(), "persistence services should exist");
     ok &= Expect(app.Services().Contains<EnvironmentServices>(), "environment services should exist");
     ok &= Expect(app.Services().Contains<SceneServices>(), "scene services should exist");

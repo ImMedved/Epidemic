@@ -5,6 +5,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string_view>
+#include <unordered_map>
 
 namespace epidemic::runtime
 {
@@ -63,23 +64,47 @@ class RuntimeRenderResourceBridge final : public renderer::IRenderResourceBridge
     {
     }
 
-    [[nodiscard]] foundation::Result<renderer::RenderResourcePayloads> GetPayloads(ResourceId mesh, ResourceId material) const override
+    ~RuntimeRenderResourceBridge() override
     {
-        const auto mesh_handle = manager_->Request(ResourceRequest{mesh, MeshType(), {}});
-        if (!mesh_handle)
+        for (auto& [key, lease] : leases_)
         {
-            return foundation::Result<renderer::RenderResourcePayloads>::Failure(mesh_handle.GetError());
+            (void)key;
+            if (lease.handle.IsValid())
+            {
+                (void)manager_->Release(lease.handle);
+            }
         }
-        const auto material_handle = manager_->Request(ResourceRequest{material, MaterialType(), {}});
-        if (!material_handle)
+    }
+
+    [[nodiscard]] foundation::Result<void> AcquirePayloads(ResourceId mesh, ResourceId material) override
+    {
+        const auto mesh_result = AcquireResource(mesh, MeshType());
+        if (!mesh_result)
         {
-            return foundation::Result<renderer::RenderResourcePayloads>::Failure(material_handle.GetError());
+            return foundation::Result<void>::Failure(mesh_result.GetError());
         }
 
-        (void)manager_->ProcessPendingLoads();
+        const auto material_result = AcquireResource(material, MaterialType());
+        if (!material_result)
+        {
+            ReleaseResource(mesh, MeshType());
+            return foundation::Result<void>::Failure(material_result.GetError());
+        }
+
+        return foundation::Result<void>::Success();
+    }
+
+    void ReleasePayloads(ResourceId mesh, ResourceId material) override
+    {
+        ReleaseResource(mesh, MeshType());
+        ReleaseResource(material, MaterialType());
+    }
+
+    [[nodiscard]] foundation::Result<renderer::RenderResourcePayloads> GetPayloads(ResourceId mesh, ResourceId material) const override
+    {
         renderer::RenderResourcePayloads payloads{};
-        payloads.mesh = manager_->GetPayload(mesh_handle.Value());
-        payloads.material = manager_->GetPayload(material_handle.Value());
+        payloads.mesh = GetPayload(mesh, MeshType());
+        payloads.material = GetPayload(material, MaterialType());
         if (!payloads.mesh || !payloads.material)
         {
             return foundation::Result<renderer::RenderResourcePayloads>::Failure(
@@ -89,7 +114,77 @@ class RuntimeRenderResourceBridge final : public renderer::IRenderResourceBridge
     }
 
   private:
+    struct ResourceLeaseKey
+    {
+        ResourceId id{};
+        ResourceType type{};
+
+        [[nodiscard]] bool operator==(const ResourceLeaseKey&) const noexcept = default;
+    };
+
+    struct ResourceLeaseKeyHash
+    {
+        [[nodiscard]] std::size_t operator()(const ResourceLeaseKey& key) const noexcept
+        {
+            return std::hash<std::uint64_t>{}(key.id.Raw()) ^ (std::hash<std::uint64_t>{}(key.type.value.Raw()) << 1u);
+        }
+    };
+
+    struct ResourceLease
+    {
+        ResourceHandle handle{};
+        std::size_t references = 0;
+    };
+
+    [[nodiscard]] foundation::Result<void> AcquireResource(ResourceId id, ResourceType type)
+    {
+        const ResourceLeaseKey key{id, type};
+        auto iterator = leases_.find(key);
+        if (iterator != leases_.end())
+        {
+            ++iterator->second.references;
+            return foundation::Result<void>::Success();
+        }
+
+        const auto handle = manager_->Request(ResourceRequest{id, type, {}});
+        if (!handle)
+        {
+            return foundation::Result<void>::Failure(handle.GetError());
+        }
+
+        leases_.emplace(key, ResourceLease{handle.Value(), 1});
+        return foundation::Result<void>::Success();
+    }
+
+    void ReleaseResource(ResourceId id, ResourceType type)
+    {
+        const ResourceLeaseKey key{id, type};
+        auto iterator = leases_.find(key);
+        if (iterator == leases_.end())
+        {
+            return;
+        }
+        if (iterator->second.references > 1)
+        {
+            --iterator->second.references;
+            return;
+        }
+        (void)manager_->Release(iterator->second.handle);
+        leases_.erase(iterator);
+    }
+
+    [[nodiscard]] ResourcePayloadPtr GetPayload(ResourceId id, ResourceType type) const
+    {
+        const auto iterator = leases_.find(ResourceLeaseKey{id, type});
+        if (iterator == leases_.end())
+        {
+            return {};
+        }
+        return manager_->GetPayload(iterator->second.handle);
+    }
+
     std::shared_ptr<IResourceManager> manager_;
+    std::unordered_map<ResourceLeaseKey, ResourceLease, ResourceLeaseKeyHash> leases_;
 };
 
 class RuntimeRenderSceneSource final : public renderer::IRenderSceneSource
@@ -100,22 +195,23 @@ class RuntimeRenderSceneSource final : public renderer::IRenderSceneSource
     {
     }
 
-    [[nodiscard]] foundation::Result<renderer::RenderTransformSnapshot> GetTransformSnapshot(SceneNodeId node) const override
+    [[nodiscard]] foundation::Result<renderer::RenderTransformSnapshot> GetTransformSnapshot(renderer::RenderTransformId node) const override
     {
-        if (!nodes_->Exists(node))
+        const SceneNodeId scene_node{node.Raw()};
+        if (!nodes_->Exists(scene_node))
         {
             return foundation::Result<renderer::RenderTransformSnapshot>::Failure(
                 foundation::Error::Create("renderer.transform_missing", "scene node is not registered"));
         }
-        const auto transform = transforms_->GetWorldTransform(node);
+        const auto transform = transforms_->GetWorldTransform(scene_node);
         if (!transform)
         {
             return foundation::Result<renderer::RenderTransformSnapshot>::Failure(
                 foundation::Error::Create("renderer.transform_missing", "scene node has no world transform"));
         }
-        const auto scene_node = nodes_->GetNode(node);
+        const auto node_record = nodes_->GetNode(scene_node);
         return foundation::Result<renderer::RenderTransformSnapshot>::Success(
-            renderer::RenderTransformSnapshot{node, *transform, scene_node ? scene_node->revision : 0u});
+            renderer::RenderTransformSnapshot{node, *transform, node_record ? node_record->revision : 0u});
     }
 
   private:
@@ -196,6 +292,21 @@ foundation::Result<void> RegisterPersistence(core::Application& app, const Persi
         return foundation::Result<void>::Failure(services.GetError());
     }
     return RegisterShared(app, std::make_shared<PersistenceServices>(services.Value()), "Persistence");
+}
+
+foundation::Result<void> RegisterTime(core::Application& app, const TimeOptions& options)
+{
+    const auto dependency = Require<RuntimeFoundationRegistration>(app, "RuntimeFoundation");
+    if (!dependency)
+    {
+        return dependency;
+    }
+    const auto services = CreateTimeServices(options);
+    if (!services)
+    {
+        return foundation::Result<void>::Failure(services.GetError());
+    }
+    return RegisterShared(app, std::make_shared<TimeServices>(services.Value()), "Time");
 }
 
 foundation::Result<void> RegisterEnvironment(core::Application& app, const EnvironmentOptions& options)
@@ -290,6 +401,7 @@ foundation::Result<EngineRuntimeServices> RegisterDefaultEngineRuntime(core::App
     if (options.enable_serialization) { EPIDEMIC_RUNTIME_TRY(RegisterSerialization(app, options.serialization)); }
     if (options.enable_resources) { EPIDEMIC_RUNTIME_TRY(RegisterResources(app, options.resources)); }
     if (options.enable_persistence) { EPIDEMIC_RUNTIME_TRY(RegisterPersistence(app, options.persistence)); }
+    if (options.enable_time) { EPIDEMIC_RUNTIME_TRY(RegisterTime(app, options.time)); }
     if (options.enable_environment) { EPIDEMIC_RUNTIME_TRY(RegisterEnvironment(app, options.environment)); }
     if (options.enable_scene) { EPIDEMIC_RUNTIME_TRY(RegisterScene(app, options.scene)); }
     if (options.enable_renderer) { EPIDEMIC_RUNTIME_TRY(RegisterRenderer(app, options.renderer)); }
@@ -302,6 +414,7 @@ foundation::Result<EngineRuntimeServices> RegisterDefaultEngineRuntime(core::App
     AppendIfPresent<SerializationServices>(app, services, "Serialization");
     AppendIfPresent<ResourceServices>(app, services, "Resources");
     AppendIfPresent<PersistenceServices>(app, services, "Persistence");
+    AppendIfPresent<TimeServices>(app, services, "Time");
     AppendIfPresent<EnvironmentServices>(app, services, "Environment");
     AppendIfPresent<SceneServices>(app, services, "Scene");
     AppendIfPresent<renderer::RendererServices>(app, services, "Renderer");

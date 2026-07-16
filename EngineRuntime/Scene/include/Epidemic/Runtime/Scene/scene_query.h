@@ -11,11 +11,17 @@ namespace epidemic::runtime
 {
 struct SceneNodeSnapshot
 {
-    SceneNode node{};
+    SceneNodeId id{};
+    SceneNodeId parent{};
     Transform local_transform{};
     Transform world_transform{};
     std::optional<Aabb> local_bounds{};
     std::optional<Aabb> world_bounds{};
+    SceneAttachmentState attachment = SceneAttachmentState::Detached;
+    SceneMobility mobility = SceneMobility::Dynamic;
+    SceneVisibilityState visibility = SceneVisibilityState::Visible;
+    SceneDirtyMask dirty = 0;
+    std::uint64_t revision = 0;
 };
 
 struct SceneSnapshot

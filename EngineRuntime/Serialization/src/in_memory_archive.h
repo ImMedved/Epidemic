@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "archive_tree.h"
 #include "Epidemic/Runtime/Serialization/archive_reader.h"
 #include "Epidemic/Runtime/Serialization/archive_writer.h"
 #include "Epidemic/Runtime/Serialization/serialization_error.h"

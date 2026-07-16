@@ -1,6 +1,7 @@
 add_library(EpidemicRuntimeSerialization STATIC
     src/serialization.cpp
     src/in_memory_archive.cpp
+    src/migration_executor.cpp
     src/serializer_registry.cpp
     src/migration_registry.cpp
 )

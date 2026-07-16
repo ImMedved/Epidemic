@@ -31,6 +31,7 @@ public:
     [[nodiscard]] AnimatorState GetState(AnimatorInstanceId id) const override;
     [[nodiscard]] foundation::Result<void> SetLod(AnimatorInstanceId id, AnimationLodLevel lod) override;
     [[nodiscard]] PoseState GetPoseState(AnimatorInstanceId id) const override;
+    [[nodiscard]] PoseSnapshot GetPoseSnapshot(AnimatorInstanceId id) const override;
     [[nodiscard]] std::span<const AnimationEvent> Events() const override;
     void Clear() override;
 
@@ -42,10 +43,12 @@ private:
         PoseState pose_state = PoseState::Clean;
         AnimationClipId playing_clip{};
         float local_time = 0.0f;
+        std::uint64_t revision = 0;
     };
 
     [[nodiscard]] AnimatorRecord* FindAnimator(AnimatorInstanceId id);
     [[nodiscard]] const AnimatorRecord* FindAnimator(AnimatorInstanceId id) const;
+    [[nodiscard]] std::vector<AnimatorInstanceId> BuildAnimatorWorkList() const;
     void QueueEvent(AnimatorInstanceId animator, std::string name, float time);
 
     AnimationOptions options_{};

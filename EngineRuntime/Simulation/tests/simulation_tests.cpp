@@ -4,7 +4,6 @@
 #include <string_view>
 
 using epidemic::runtime::GameDuration;
-using epidemic::runtime::GameTime;
 using epidemic::runtime::RegionId;
 using epidemic::runtime::RuntimeObjectId;
 using epidemic::runtime::SimulationZoneId;
@@ -14,6 +13,7 @@ using epidemic::runtime::simulation::SimulationEffect;
 using epidemic::runtime::simulation::SimulationJobDesc;
 using epidemic::runtime::simulation::SimulationJobState;
 using epidemic::runtime::simulation::SimulationRuntime;
+using epidemic::runtime::simulation::SimulationTime;
 using epidemic::runtime::simulation::WorldMemoryEvent;
 using epidemic::runtime::simulation::WorldMemoryEventState;
 using epidemic::runtime::simulation::WorldMemoryQuery;
@@ -62,6 +62,19 @@ bool TestPartialCompletionByBudget()
     return ok;
 }
 
+bool TestJobBudgetOrderIsDeterministic()
+{
+    SimulationRuntime runtime{{}};
+    runtime.SetBudget(SimulationBudget{1, 1});
+    const auto first = runtime.SubmitJob(MakeJob(2));
+    const auto second = runtime.SubmitJob(MakeJob(1));
+    bool ok = Expect(first.HasValue() && second.HasValue(), "jobs should submit");
+    ok &= Expect(runtime.Tick() == 1, "budget should advance one job");
+    ok &= Expect(runtime.GetJobState(first.Value()) == SimulationJobState::PartiallyComplete, "first job should advance first");
+    ok &= Expect(runtime.GetJobState(second.Value()) == SimulationJobState::Pending, "second job should wait");
+    return ok;
+}
+
 bool TestCancellation()
 {
     SimulationRuntime runtime{{}};
@@ -76,13 +89,26 @@ bool TestCancellation()
 bool TestWorldMemoryTtlAndStates()
 {
     SimulationRuntime runtime{{}};
-    const auto observed = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, GameTime{10}, GameDuration{5}, WorldMemoryEventState::Observed});
-    const auto marked = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, GameTime{11}, GameDuration{0}, WorldMemoryEventState::PlayerAffected});
+    const auto observed = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{10}, GameDuration{5}, WorldMemoryEventState::Observed});
+    const auto marked = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{11}, GameDuration{0}, WorldMemoryEventState::PlayerAffected});
     bool ok = Expect(observed.HasValue() && marked.HasValue(), "memory events should record");
     ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).size() == 2, "query should return active events");
-    runtime.ExpireOldEvents(GameTime{16});
+    runtime.ExpireOldEvents(SimulationTime{16});
     ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).size() == 1, "expired TTL event should be hidden by default");
     ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, true}).size() == 2, "include expired should return both events");
+    return ok;
+}
+
+bool TestWorldMemoryExpirationBudget()
+{
+    SimulationRuntime runtime{{}};
+    const auto first = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{10}, GameDuration{1}, WorldMemoryEventState::Temporary});
+    const auto second = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{11}, GameDuration{1}, WorldMemoryEventState::Temporary});
+    bool ok = Expect(first.HasValue() && second.HasValue(), "memory events should record");
+    ok &= Expect(runtime.ExpireOldEvents(SimulationTime{20}, 1) == 1, "expiration budget should expire one event");
+    ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).size() == 1, "one event should remain active");
+    ok &= Expect(runtime.ExpireOldEvents(SimulationTime{20}, 1) == 1, "second budgeted pass should expire next event");
+    ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).empty(), "no active events should remain");
     return ok;
 }
 
@@ -117,8 +143,10 @@ int main()
     bool ok = true;
     ok &= TestSubmitJobAndCompletion();
     ok &= TestPartialCompletionByBudget();
+    ok &= TestJobBudgetOrderIsDeterministic();
     ok &= TestCancellation();
     ok &= TestWorldMemoryTtlAndStates();
+    ok &= TestWorldMemoryExpirationBudget();
     ok &= TestEffectBufferOrderAndClear();
     ok &= TestAttentionAndValidationFailures();
     return ok ? 0 : 1;

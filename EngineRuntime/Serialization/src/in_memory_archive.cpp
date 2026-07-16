@@ -146,7 +146,12 @@ foundation::Result<SerializedDocument> InMemoryArchiveWriter::Finalize(foundatio
     }
 
     finalized_ = true;
-    return foundation::Result<SerializedDocument>::Success(SerializedDocument{type_id, schema_version, 1u, Snapshot()});
+    auto impl = std::make_shared<SerializedDocument::Impl>();
+    impl->type_id = type_id;
+    impl->schema_version = schema_version;
+    impl->format_version = 1u;
+    impl->root = Snapshot();
+    return foundation::Result<SerializedDocument>::Success(SerializedDocument{std::move(impl)});
 }
 
 ArchiveObjectPtr InMemoryArchiveWriter::Snapshot() const
@@ -178,23 +183,32 @@ foundation::Result<void> InMemoryArchiveWriter::WriteValue(std::string_view name
     {
         return Invalid("serialization.malformed", "current archive context is not an object");
     }
-    stack_.back().object->fields[std::string(name)] = std::move(value);
+    auto [iterator, inserted] = stack_.back().object->fields.emplace(std::string(name), std::move(value));
+    (void)iterator;
+    if (!inserted)
+    {
+        return Invalid("serialization.duplicate_field", "archive field is already written", name);
+    }
     return foundation::Result<void>::Success();
 }
 
 InMemoryArchiveReader::InMemoryArchiveReader(SerializedDocument document) : document_(std::move(document))
 {
-    stack_.push_back(Context{ContextKind::Object, document_.root.get(), nullptr});
+    stack_.push_back(Context{ContextKind::Object, document_.impl_ ? document_.impl_->root.get() : nullptr, nullptr});
 }
 
-InMemoryArchiveReader::InMemoryArchiveReader(ArchiveObjectPtr root) : document_{{}, {}, 1u, std::move(root)}
+InMemoryArchiveReader::InMemoryArchiveReader(ArchiveObjectPtr root)
 {
-    stack_.push_back(Context{ContextKind::Object, document_.root.get(), nullptr});
+    auto impl = std::make_shared<SerializedDocument::Impl>();
+    impl->format_version = 1u;
+    impl->root = std::move(root);
+    document_ = SerializedDocument{std::move(impl)};
+    stack_.push_back(Context{ContextKind::Object, document_.impl_->root.get(), nullptr});
 }
 
-foundation::StringId InMemoryArchiveReader::GetTypeId() const { return document_.type_id; }
-SchemaVersion InMemoryArchiveReader::GetSchemaVersion() const { return document_.schema_version; }
-std::uint32_t InMemoryArchiveReader::GetFormatVersion() const { return document_.format_version; }
+foundation::StringId InMemoryArchiveReader::GetTypeId() const { return document_.GetTypeId(); }
+SchemaVersion InMemoryArchiveReader::GetSchemaVersion() const { return document_.GetSchemaVersion(); }
+std::uint32_t InMemoryArchiveReader::GetFormatVersion() const { return document_.GetFormatVersion(); }
 
 foundation::Result<void> InMemoryArchiveReader::BeginObject(std::string_view name)
 {
@@ -315,6 +329,10 @@ foundation::Result<const ArchiveValue*> InMemoryArchiveReader::FindValue(std::st
         return InvalidValue<const ArchiveValue*>("serialization.malformed", "current archive context is not an object");
     }
     const ArchiveObject* current = CurrentObject();
+    if (current == nullptr)
+    {
+        return InvalidValue<const ArchiveValue*>("serialization.invalid_document", "serialized document has no root");
+    }
     const auto iterator = current->fields.find(std::string(name));
     if (iterator == current->fields.end())
     {
@@ -330,7 +348,7 @@ std::unique_ptr<IArchiveWriter> InMemoryArchiveFactory::CreateWriter() const
 
 foundation::Result<std::unique_ptr<IArchiveReader>> InMemoryArchiveFactory::CreateReader(const SerializedDocument& document) const
 {
-    if (!document.root)
+    if (!document.IsValid() || !document.impl_->root)
     {
         return InvalidValue<std::unique_ptr<IArchiveReader>>("serialization.invalid_document", "serialized document has no root");
     }

@@ -8,8 +8,8 @@
 namespace
 {
 using epidemic::runtime::Aabb;
+using epidemic::runtime::GameDuration;
 using epidemic::runtime::RuntimeObjectId;
-using epidemic::runtime::SceneNodeId;
 using epidemic::runtime::Vec3;
 using epidemic::runtime::physics::CollisionShapeId;
 using epidemic::runtime::physics::ContactEvent;
@@ -17,12 +17,14 @@ using epidemic::runtime::physics::ICollisionShapeRegistry;
 using epidemic::runtime::physics::IPhysicsEventBuffer;
 using epidemic::runtime::physics::IPhysicsQuery;
 using epidemic::runtime::physics::IPhysicsScene;
+using epidemic::runtime::physics::IPhysicsStepper;
 using epidemic::runtime::physics::OverlapQuery;
 using epidemic::runtime::physics::PhysicsBodyDesc;
 using epidemic::runtime::physics::PhysicsBodyId;
 using epidemic::runtime::physics::PhysicsBodyState;
 using epidemic::runtime::physics::PhysicsBodyType;
 using epidemic::runtime::physics::PhysicsRuntime;
+using epidemic::runtime::physics::PhysicsTransformId;
 using epidemic::runtime::physics::RaycastQuery;
 
 bool RegisterDefaultShape(PhysicsRuntime& runtime, CollisionShapeId id, float max_extent = 1.0f)
@@ -35,7 +37,7 @@ PhysicsBodyDesc MakeBodyDesc(CollisionShapeId shape, PhysicsBodyType type)
 {
     PhysicsBodyDesc desc{};
     desc.owner = RuntimeObjectId{42};
-    desc.transform_node = SceneNodeId{7};
+    desc.transform_node = PhysicsTransformId{7};
     desc.shape = shape;
     desc.type = type;
     desc.mass = type == PhysicsBodyType::Static ? 0.0f : 5.0f;
@@ -87,6 +89,18 @@ bool TestStateTransitionsOnImpulse()
     return impulse && runtime.GetBodyState(body.Value()) == PhysicsBodyState::Active;
 }
 
+bool TestFixedStepProducesVersionedResult()
+{
+    PhysicsRuntime runtime;
+    const auto first = runtime.StepFixed(GameDuration{1});
+    const auto second = runtime.StepFixed(GameDuration{1});
+    const auto invalid = runtime.StepFixed(GameDuration{0});
+
+    return first && second && first.Value().step_index == 1 && first.Value().revision == 1 &&
+           second.Value().step_index == 2 && second.Value().revision == 2 && !invalid &&
+           invalid.GetError().HasCode("physics.invalid_step");
+}
+
 bool TestQueriesReturnDeterministicResults()
 {
     PhysicsRuntime runtime;
@@ -126,6 +140,7 @@ int main()
 {
     static_assert(std::is_abstract_v<ICollisionShapeRegistry>);
     static_assert(std::is_abstract_v<IPhysicsScene>);
+    static_assert(std::is_abstract_v<IPhysicsStepper>);
     static_assert(std::is_abstract_v<IPhysicsQuery>);
     static_assert(std::is_abstract_v<IPhysicsEventBuffer>);
 
@@ -144,14 +159,19 @@ int main()
         return 3;
     }
 
-    if (!TestQueriesReturnDeterministicResults())
+    if (!TestFixedStepProducesVersionedResult())
     {
         return 4;
     }
 
-    if (!TestEventBufferStoresAndClearsContacts())
+    if (!TestQueriesReturnDeterministicResults())
     {
         return 5;
+    }
+
+    if (!TestEventBufferStoresAndClearsContacts())
+    {
+        return 6;
     }
 
     return 0;

@@ -8,6 +8,7 @@
 #include "Epidemic/Runtime/Resources/resource_services.h"
 #include "Epidemic/Runtime/Scene/scene_services.h"
 #include "Epidemic/Runtime/Serialization/serialization_services.h"
+#include "Epidemic/Runtime/Time/time_runtime.h"
 
 #include <Epidemic/Core/application.h>
 
@@ -27,6 +28,7 @@ struct EngineRuntimeOptions
     bool enable_serialization = true;
     bool enable_resources = true;
     bool enable_persistence = true;
+    bool enable_time = true;
     bool enable_environment = true;
     bool enable_scene = true;
     bool enable_renderer = true;
@@ -35,6 +37,7 @@ struct EngineRuntimeOptions
     SerializationOptions serialization{};
     ResourceOptions resources{};
     PersistenceOptions persistence{};
+    TimeOptions time{};
     EnvironmentOptions environment{};
     SceneOptions scene{};
     renderer::RendererOptions renderer{};
@@ -50,6 +53,7 @@ struct EngineRuntimeServices
 [[nodiscard]] foundation::Result<void> RegisterSerialization(core::Application& app, const SerializationOptions& options = {});
 [[nodiscard]] foundation::Result<void> RegisterResources(core::Application& app, const ResourceOptions& options = {});
 [[nodiscard]] foundation::Result<void> RegisterPersistence(core::Application& app, const PersistenceOptions& options = {});
+[[nodiscard]] foundation::Result<void> RegisterTime(core::Application& app, const TimeOptions& options = {});
 [[nodiscard]] foundation::Result<void> RegisterEnvironment(core::Application& app, const EnvironmentOptions& options = {});
 [[nodiscard]] foundation::Result<void> RegisterScene(core::Application& app, const SceneOptions& options = {});
 [[nodiscard]] foundation::Result<void> RegisterRenderer(core::Application& app, const renderer::RendererOptions& options = {});

@@ -247,8 +247,9 @@ class CountingLoader final : public IResourceLoader
         return false;
     }
 
-    manager.Release(root.Value());
-    if (manager.GetState(root.Value()) != ResourceState::Ready || root_slot->reference_count != 0u || dependency_slot->reference_count != 1u)
+    const auto release_root = manager.Release(root.Value());
+    if (!release_root || manager.GetState(root.Value()) != ResourceState::Ready || root_slot->reference_count != 0u ||
+        dependency_slot->reference_count != 1u)
     {
         return false;
     }
@@ -283,16 +284,35 @@ class CountingLoader final : public IResourceLoader
         return false;
     }
 
-    manager.Release(first.Value());
+    const auto release_first = manager.Release(first.Value());
     const auto first_evict = manager.Evict(ResourceId::FromString("resources/tree.mesh"));
-    if (!first_evict || shared->reference_count != 1u)
+    if (!release_first || !first_evict || shared->reference_count != 1u)
     {
         return false;
     }
 
-    manager.Release(second.Value());
+    const auto release_second = manager.Release(second.Value());
     const auto second_evict = manager.Evict(ResourceId::FromString("resources/tree.mat"));
-    return second_evict && shared->reference_count == 0u && shared->state == ResourceState::Ready;
+    return release_second && second_evict && shared->reference_count == 0u && shared->state == ResourceState::Ready;
+}
+
+[[nodiscard]] bool TestDependencyCycleAcrossChainFails()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(Type("mesh"), 4, false, {MakeDependency("resources/b.material", "material")});
+    CountingLoader material_loader(Type("material"), 4, false, {MakeDependency("resources/c.texture", "texture")});
+    CountingLoader texture_loader(Type("texture"), 4, false, {MakeDependency("resources/a.mesh", "mesh")});
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(material_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto root = manager.Request(MakeRequest("resources/a.mesh", "mesh"));
+    const auto processed = manager.ProcessPendingLoads(RuntimeBudget{});
+    const ResourceSlot* texture = Slot(manager, "resources/c.texture");
+    return root && processed && processed.Value().failed_resources >= 1u && texture &&
+           texture->state == ResourceState::Failed;
 }
 
 [[nodiscard]] bool TestMemoryBudgetFailureRollsBackPayload()
@@ -310,8 +330,47 @@ class CountingLoader final : public IResourceLoader
     const auto processed = manager.ProcessPendingLoads();
     const ResourceSlot* slot = Slot(manager, "resources/heavy.mesh");
     const auto stats = manager.GetMemoryStats();
-    return handle && !processed && processed.GetError().HasCode("resource.memory_budget_exceeded") && slot &&
-           slot->state == ResourceState::Failed && !slot->payload && stats.resident_bytes == 0u;
+    return handle && processed && processed.Value().failed_resources == 1u && slot && slot->state == ResourceState::Failed &&
+           !slot->payload && stats.resident_bytes == 0u;
+}
+
+[[nodiscard]] bool TestQueueContinuesAfterIndependentFailure()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader failing_loader(Type("mesh"), 8, true);
+    CountingLoader texture_loader(Type("texture"), 6);
+    if (!registry.RegisterLoader(failing_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto failed = manager.Request(MakeRequest("resources/bad.mesh", "mesh"));
+    const auto good = manager.Request(MakeRequest("resources/good.tex", "texture"));
+    const auto processed = manager.ProcessPendingLoads();
+    return failed && good && processed && processed.Value().processed_jobs == 2u &&
+           processed.Value().failed_resources == 1u && processed.Value().loaded_resources == 1u &&
+           manager.GetState(failed.Value()) == ResourceState::Failed && manager.GetState(good.Value()) == ResourceState::Ready;
+}
+
+[[nodiscard]] bool TestByteBudgetStopsFurtherJobs()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"), 8);
+    if (!registry.RegisterLoader(loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto first = manager.Request(MakeRequest("resources/byte-a.mesh", "mesh"));
+    const auto second = manager.Request(MakeRequest("resources/byte-b.mesh", "mesh"));
+    RuntimeBudget budget{};
+    budget.max_bytes = 8;
+    const auto processed = manager.ProcessPendingLoads(budget);
+    return first && second && processed && processed.Value().loaded_resources == 1u &&
+           processed.Value().bytes_loaded == 8u && manager.GetState(first.Value()) == ResourceState::Ready &&
+           manager.GetState(second.Value()) == ResourceState::Queued;
 }
 
 [[nodiscard]] bool TestUnknownAndStaleHandles()
@@ -329,12 +388,43 @@ class CountingLoader final : public IResourceLoader
     {
         return false;
     }
-    manager.Release(handle.Value());
+    const auto released = manager.Release(handle.Value());
+    const auto double_release = manager.Release(handle.Value());
     const auto evicted = manager.Evict(ResourceId::FromString("resources/stale.mesh"));
     const auto invalid = manager.ValidateHandle(ResourceHandle{});
     const auto stale = manager.ValidateHandle(handle.Value());
-    return evicted && manager.GetState(ResourceHandle{}) == ResourceState::Unknown && manager.GetState(handle.Value()) == ResourceState::Unknown &&
-           !invalid && invalid.GetError().HasCode("resource.invalid_handle") && !stale && stale.GetError().HasCode("resource.handle_stale");
+    const auto stale_release = manager.Release(handle.Value());
+    return released && !double_release && double_release.GetError().HasCode("resource.release_underflow") && evicted &&
+           manager.GetState(ResourceHandle{}) == ResourceState::Unknown && manager.GetState(handle.Value()) == ResourceState::Unknown &&
+           !invalid && invalid.GetError().HasCode("resource.invalid_handle") && !stale &&
+           stale.GetError().HasCode("resource.handle_stale") && !stale_release &&
+           stale_release.GetError().HasCode("resource.handle_stale");
+}
+
+[[nodiscard]] bool TestMemoryStatisticsTrackUnreferencedCache()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"), 20);
+    if (!registry.RegisterLoader(loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto handle = manager.Request(MakeRequest("resources/cache.mesh", "mesh"));
+    if (!handle || !manager.ProcessPendingLoads())
+    {
+        return false;
+    }
+
+    const auto ready = manager.GetMemoryStatistics();
+    const auto released = manager.Release(handle.Value());
+    const auto cached = manager.GetMemoryStatistics();
+    const auto evicted = manager.Evict(ResourceId::FromString("resources/cache.mesh"));
+    const auto empty = manager.GetMemoryStatistics();
+    return ready.ready_bytes == 20u && ready.cached_unreferenced_bytes == 0u && ready.resource_count == 1u &&
+           released && cached.ready_bytes == 20u && cached.cached_unreferenced_bytes == 20u &&
+           evicted && empty.ready_bytes == 0u && empty.cached_unreferenced_bytes == 0u && empty.resource_count == 1u;
 }
 
 [[nodiscard]] bool TestFactoryCreatesUsableServices()
@@ -380,8 +470,12 @@ int main()
         {"TypeMismatchRejectsConflictingRequest", TestTypeMismatchRejectsConflictingRequest},
         {"DependenciesLoadAndReleaseOnlyOnEvict", TestDependenciesLoadAndReleaseOnlyOnEvict},
         {"SharedDependencySurvivesUntilBothRootsEvict", TestSharedDependencySurvivesUntilBothRootsEvict},
+        {"DependencyCycleAcrossChainFails", TestDependencyCycleAcrossChainFails},
         {"MemoryBudgetFailureRollsBackPayload", TestMemoryBudgetFailureRollsBackPayload},
+        {"QueueContinuesAfterIndependentFailure", TestQueueContinuesAfterIndependentFailure},
+        {"ByteBudgetStopsFurtherJobs", TestByteBudgetStopsFurtherJobs},
         {"UnknownAndStaleHandles", TestUnknownAndStaleHandles},
+        {"MemoryStatisticsTrackUnreferencedCache", TestMemoryStatisticsTrackUnreferencedCache},
         {"FactoryCreatesUsableServices", TestFactoryCreatesUsableServices},
     };
 

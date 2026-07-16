@@ -25,7 +25,7 @@ struct ResourceSlot
     ResourceGeneration generation = 1;
     ResourceState state = ResourceState::Unknown;
     std::uint32_t reference_count = 0;
-    std::shared_ptr<IResourcePayload> payload{};
+    ResourcePayloadPtr payload{};
     std::size_t memory_bytes = 0;
     std::vector<ResourceHandle> dependency_handles;
     std::optional<ResourceLoadArtifact> pending_artifact{};
@@ -70,7 +70,7 @@ class ResourceManager final : public IResourceManager
 
     [[nodiscard]] foundation::Result<ResourceHandle> Request(ResourceRequest request) override;
     [[nodiscard]] foundation::Result<ResourceProcessingStats> ProcessPendingLoads(RuntimeBudget budget = {}) override;
-    void Release(ResourceHandle handle) override;
+    [[nodiscard]] foundation::Result<void> Release(ResourceHandle handle) override;
     [[nodiscard]] foundation::Result<void> Evict(ResourceId id) override;
     [[nodiscard]] std::size_t EvictUnreferenced() override;
 
@@ -78,10 +78,11 @@ class ResourceManager final : public IResourceManager
     [[nodiscard]] ResourceState GetState(ResourceHandle handle) const override;
     [[nodiscard]] bool IsReady(ResourceHandle handle) const override;
     [[nodiscard]] std::optional<ResourceId> GetResourceId(ResourceHandle handle) const override;
-    [[nodiscard]] std::shared_ptr<IResourcePayload> GetPayload(ResourceHandle handle) const override;
+    [[nodiscard]] ResourcePayloadPtr GetPayload(ResourceHandle handle) const override;
 
     void SetMemoryBudgetBytes(std::size_t bytes) override;
     [[nodiscard]] ResourceMemoryStats GetMemoryStats() const override;
+    [[nodiscard]] ResourceMemoryStatistics GetMemoryStatistics() const override;
 
     [[nodiscard]] const ResourceSlot* InspectSlot(ResourceId id) const;
 
@@ -96,6 +97,7 @@ class ResourceManager final : public IResourceManager
     [[nodiscard]] foundation::Result<void> LoadSlot(ResourceSlot& slot, const ResourceRequest& request, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<void> FinishLoadedArtifact(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<bool> ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact);
+    [[nodiscard]] bool HasDependencyPath(ResourceId from, ResourceId to, std::unordered_set<ResourceId>& visited) const;
     [[nodiscard]] foundation::Result<void> CommitReadyPayload(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
     [[nodiscard]] bool CanFit(std::size_t bytes) const noexcept;
     void RemovePayload(ResourceSlot& slot);

@@ -3,7 +3,6 @@
 #include "renderer_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
-#include "Epidemic/Runtime/Resources/resource_payload.h"
 
 #include <memory>
 #include <unordered_map>
@@ -17,6 +16,22 @@ namespace
 class MockRenderResourceBridge final : public IRenderResourceBridge
 {
   public:
+    [[nodiscard]] foundation::Result<void> AcquirePayloads(ResourceId mesh, ResourceId material) override
+    {
+        if (!mesh.IsValid() || !material.IsValid())
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("renderer.invalid_resource", "mock renderer payload acquire requires valid resources"));
+        }
+        return foundation::Result<void>::Success();
+    }
+
+    void ReleasePayloads(ResourceId mesh, ResourceId material) override
+    {
+        (void)mesh;
+        (void)material;
+    }
+
     [[nodiscard]] foundation::Result<RenderResourcePayloads> GetPayloads(ResourceId mesh, ResourceId material) const override
     {
         if (!mesh.IsValid() || !material.IsValid())
@@ -25,15 +40,15 @@ class MockRenderResourceBridge final : public IRenderResourceBridge
                 foundation::Error::Create("renderer.invalid_resource", "mock renderer payload request requires valid resources"));
         }
         return foundation::Result<RenderResourcePayloads>::Success(RenderResourcePayloads{
-            std::make_shared<ByteResourcePayload>(std::vector<std::byte>{std::byte{0x01}}),
-            std::make_shared<ByteResourcePayload>(std::vector<std::byte>{std::byte{0x02}})});
+            std::make_shared<int>(1),
+            std::make_shared<int>(2)});
     }
 };
 
 class MockRenderSceneSource final : public IRenderSceneSource
 {
   public:
-    [[nodiscard]] foundation::Result<RenderTransformSnapshot> GetTransformSnapshot(SceneNodeId node) const override
+    [[nodiscard]] foundation::Result<RenderTransformSnapshot> GetTransformSnapshot(RenderTransformId node) const override
     {
         if (!node.IsValid())
         {

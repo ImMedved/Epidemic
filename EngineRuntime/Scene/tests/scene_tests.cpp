@@ -11,6 +11,7 @@
 #include "Epidemic/Runtime/Scene/transform_registry.h"
 
 #include <iostream>
+#include <cmath>
 #include <type_traits>
 #include <vector>
 
@@ -35,6 +36,16 @@ using epidemic::runtime::SceneRuntime;
 using epidemic::runtime::SceneVisibilityState;
 using epidemic::runtime::Transform;
 using epidemic::runtime::Vec3;
+
+[[nodiscard]] bool Near(float left, float right)
+{
+    return std::abs(left - right) <= 0.001f;
+}
+
+[[nodiscard]] bool Near(Vec3 left, Vec3 right)
+{
+    return Near(left.x, right.x) && Near(left.y, right.y) && Near(left.z, right.z);
+}
 
 [[nodiscard]] bool ContainsNode(const std::vector<SceneNodeId>& nodes, SceneNodeId target)
 {
@@ -113,7 +124,7 @@ using epidemic::runtime::Vec3;
 
     const auto local = runtime.GetLocalTransform(child.Value());
     const auto world = runtime.GetWorldTransform(child.Value());
-    return local && *local == child_transform && world && world->position == Vec3{11.0f, 2.0f, 3.0f} &&
+    return local && *local == child_transform && world && world->position == Vec3{12.0f, 4.0f, 6.0f} &&
            world->scale == Vec3{1.0f, 2.0f, 2.0f};
 }
 
@@ -135,6 +146,28 @@ using epidemic::runtime::Vec3;
     return !invalid_bounds && invalid_bounds.GetError().HasCode("scene.invalid_bounds") && !invalid_transform &&
            invalid_transform.GetError().HasCode("scene.invalid_transform") && set_transform && set_bounds && world_bounds &&
            world_bounds->min == Vec3{4.0f, -1.0f, -1.0f} && world_bounds->max == Vec3{6.0f, 1.0f, 1.0f};
+}
+
+[[nodiscard]] bool TestRotatedScaledWorldBounds()
+{
+    SceneRuntime runtime;
+    const auto node = runtime.CreateNode();
+    if (!node)
+    {
+        return false;
+    }
+
+    const float half_turn = 0.70710677f;
+    const Transform transform{Vec3{1.0f, 2.0f, 0.0f}, Quat{0.0f, 0.0f, half_turn, half_turn}, Vec3{2.0f, 1.0f, 1.0f}};
+    if (!runtime.SetLocalTransform(node.Value(), transform) ||
+        !runtime.SetLocalBounds(node.Value(), Aabb{Vec3{-1.0f, -1.0f, 0.0f}, Vec3{1.0f, 1.0f, 0.0f}}))
+    {
+        return false;
+    }
+
+    const auto world_bounds = runtime.GetWorldBounds(node.Value());
+    return world_bounds && Near(world_bounds->min, Vec3{0.0f, 0.0f, 0.0f}) &&
+           Near(world_bounds->max, Vec3{2.0f, 4.0f, 0.0f});
 }
 
 [[nodiscard]] bool TestDirtyFlagsSetAndClear()
@@ -191,8 +224,9 @@ using epidemic::runtime::Vec3;
     }
 
     const auto snapshot = runtime.CaptureSnapshot();
-    return snapshot.revision == runtime.GetRevision() && snapshot.nodes.size() == 2u && snapshot.nodes[0].node.id == first.Value() &&
-           snapshot.nodes[1].node.id == second.Value() && snapshot.nodes[1].world_transform.position == Vec3{2.0f, 0.0f, 0.0f};
+    return snapshot.revision == runtime.GetRevision() && snapshot.nodes.size() == 2u && snapshot.nodes[0].id == first.Value() &&
+           snapshot.nodes[1].id == second.Value() && snapshot.nodes[1].world_transform.position == Vec3{2.0f, 0.0f, 0.0f} &&
+           snapshot.nodes[1].revision > 0u && snapshot.nodes[1].visibility == SceneVisibilityState::Visible;
 }
 
 [[nodiscard]] bool TestFactoryCreatesSharedRuntimeServices()
@@ -242,6 +276,7 @@ int main()
         {"HierarchyAttachDetachAndCycleReject", TestHierarchyAttachDetachAndCycleReject},
         {"LocalAndWorldTransforms", TestLocalAndWorldTransforms},
         {"WorldBoundsAndValidation", TestWorldBoundsAndValidation},
+        {"RotatedScaledWorldBounds", TestRotatedScaledWorldBounds},
         {"DirtyFlagsSetAndClear", TestDirtyFlagsSetAndClear},
         {"QueriesAreVisibleAndDeterministic", TestQueriesAreVisibleAndDeterministic},
         {"SnapshotCapturesRevisionAndSortedNodes", TestSnapshotCapturesRevisionAndSortedNodes},

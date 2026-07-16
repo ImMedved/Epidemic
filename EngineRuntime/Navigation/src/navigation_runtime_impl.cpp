@@ -2,6 +2,8 @@
 
 #include "Epidemic/Foundation/error.h"
 
+#include <algorithm>
+
 namespace epidemic::runtime::navigation
 {
 NavigationRuntime::NavigationRuntime(NavigationOptions options) : options_(options)
@@ -55,14 +57,14 @@ std::size_t NavigationRuntime::RebuildDirtyTiles(RuntimeBudget budget)
     const std::size_t limit = BudgetLimit(budget, tiles_.size());
     std::size_t transitioned = 0;
 
-    for (auto& [tile, state] : tiles_)
+    for (const NavTileId tile : BuildTileWorkList())
     {
-        (void)tile;
         if (transitioned >= limit)
         {
             break;
         }
 
+        auto& state = tiles_[tile];
         if (state == NavTileState::Dirty)
         {
             state = NavTileState::Rebuilding;
@@ -96,6 +98,7 @@ foundation::Result<PathQueryId> NavigationRuntime::RequestPath(const PathRequest
     QueryRecord record{};
     record.request = request;
     record.result.state = PathQueryState::Pending;
+    record.result.revision = 1;
     queries_.emplace(id, record);
     return foundation::Result<PathQueryId>::Success(id);
 }
@@ -115,8 +118,14 @@ foundation::Result<void> NavigationRuntime::CancelPath(PathQueryId id)
             foundation::Error::Create("navigation.query_terminal", "terminal path queries cannot be cancelled"));
     }
 
+    if (query->result.state == PathQueryState::Cancelled)
+    {
+        return foundation::Result<void>::Success();
+    }
+
     query->result.state = PathQueryState::Cancelled;
     query->result.points.clear();
+    ++query->result.revision;
     return foundation::Result<void>::Success();
 }
 
@@ -125,17 +134,18 @@ std::size_t NavigationRuntime::Tick(RuntimeBudget budget)
     const std::size_t limit = BudgetLimit(budget, queries_.size());
     std::size_t transitioned = 0;
 
-    for (auto& [id, query] : queries_)
+    for (const PathQueryId id : BuildQueryWorkList())
     {
-        (void)id;
         if (transitioned >= limit)
         {
             break;
         }
 
+        QueryRecord& query = queries_[id];
         if (query.result.state == PathQueryState::Pending)
         {
             query.result.state = PathQueryState::Running;
+            ++query.result.revision;
             ++transitioned;
         }
         else if (query.result.state == PathQueryState::Running)
@@ -215,6 +225,42 @@ const NavigationRuntime::QueryRecord* NavigationRuntime::FindQuery(PathQueryId i
     return &iterator->second;
 }
 
+std::vector<NavTileId> NavigationRuntime::BuildTileWorkList() const
+{
+    std::vector<NavTileId> work_list;
+    work_list.reserve(tiles_.size());
+    for (const auto& [tile, state] : tiles_)
+    {
+        if (state == NavTileState::Dirty || state == NavTileState::Rebuilding)
+        {
+            work_list.push_back(tile);
+        }
+    }
+
+    std::sort(work_list.begin(), work_list.end(), [](NavTileId left, NavTileId right) {
+        return left.value < right.value;
+    });
+    return work_list;
+}
+
+std::vector<PathQueryId> NavigationRuntime::BuildQueryWorkList() const
+{
+    std::vector<PathQueryId> work_list;
+    work_list.reserve(queries_.size());
+    for (const auto& [id, query] : queries_)
+    {
+        if (query.result.state == PathQueryState::Pending || query.result.state == PathQueryState::Running)
+        {
+            work_list.push_back(id);
+        }
+    }
+
+    std::sort(work_list.begin(), work_list.end(), [](PathQueryId left, PathQueryId right) {
+        return left.value < right.value;
+    });
+    return work_list;
+}
+
 void NavigationRuntime::CompleteQuery(QueryRecord& query)
 {
     if (obstacles_ != nullptr)
@@ -227,6 +273,7 @@ void NavigationRuntime::CompleteQuery(QueryRecord& query)
                 query.result.points.push_back(Vec3{obstacle.bounds.max.x, query.request.start.y, obstacle.bounds.max.z});
                 query.result.points.push_back(query.request.target);
                 query.result.state = PathQueryState::Completed;
+                ++query.result.revision;
                 return;
             }
         }
@@ -243,5 +290,6 @@ void NavigationRuntime::CompleteQuery(QueryRecord& query)
     }
     query.result.points.push_back(query.request.target);
     query.result.state = PathQueryState::Completed;
+    ++query.result.revision;
 }
 } // namespace epidemic::runtime::navigation

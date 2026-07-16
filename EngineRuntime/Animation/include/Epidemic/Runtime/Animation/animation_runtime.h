@@ -89,6 +89,11 @@ public:
     // Inputs: animator id; outputs: pose state for renderer-facing adapters.
     // Relations: Renderer may consume pose state through a public adapter, but does not own Animation runtime.
     [[nodiscard]] virtual PoseState GetPoseState(AnimatorInstanceId id) const = 0;
+
+    // Function note: Reads an immutable pose snapshot with revision.
+    // Inputs: animator id; outputs: pose snapshot for renderer-facing adapters.
+    // Relations: avoids exposing mutable animator internals to Renderer or gameplay systems.
+    [[nodiscard]] virtual PoseSnapshot GetPoseSnapshot(AnimatorInstanceId id) const = 0;
 };
 
 class IAnimationEventBuffer

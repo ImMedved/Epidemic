@@ -137,6 +137,7 @@ foundation::Result<StreamingRequestId> StreamingRuntime::RequestChunk(
     record.request = request;
     record.state = StreamingState::Requested;
     record.progress = kRequestedProgress;
+    record.revision = 1;
 
     requests_.emplace(request_id, record);
     chunk_to_request_[chunk] = request_id;
@@ -222,7 +223,7 @@ std::optional<StreamingProgress> StreamingRuntime::GetProgress(StreamingRequestI
         return std::nullopt;
     }
 
-    return StreamingProgress{record->request.id, record->state, record->progress};
+    return StreamingProgress{record->request.id, record->state, record->progress, record->revision};
 }
 
 bool StreamingRuntime::IsTerminal(StreamingState state)
@@ -252,8 +253,14 @@ int StreamingRuntime::PriorityRank(StreamingPriorityClass priority)
 
 void StreamingRuntime::SetState(RequestRecord& record, StreamingState state, float progress)
 {
+    if (record.state == state && record.progress == progress)
+    {
+        return;
+    }
+
     record.state = state;
     record.progress = progress;
+    ++record.revision;
 }
 
 StreamingRuntime::RequestRecord* StreamingRuntime::FindRequest(StreamingRequestId id)

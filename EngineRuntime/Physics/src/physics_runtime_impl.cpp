@@ -99,6 +99,20 @@ PhysicsBodyState PhysicsRuntime::GetBodyState(PhysicsBodyId id) const
     return body->state;
 }
 
+foundation::Result<PhysicsStepResult> PhysicsRuntime::StepFixed(GameDuration fixed_delta)
+{
+    if (fixed_delta.ticks <= 0)
+    {
+        return foundation::Result<PhysicsStepResult>::Failure(
+            foundation::Error::Create("physics.invalid_step", "fixed physics step must be positive"));
+    }
+
+    ++fixed_step_count_;
+    ++revision_;
+    return foundation::Result<PhysicsStepResult>::Success(
+        PhysicsStepResult{fixed_delta, fixed_step_count_, revision_});
+}
+
 foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query) const
 {
     if (query.max_distance < 0.0f)

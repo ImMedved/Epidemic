@@ -91,6 +91,14 @@ struct AnimationEvent
     float time = 0.0f;
 };
 
+struct PoseSnapshot
+{
+    AnimatorInstanceId animator{};
+    PoseState state = PoseState::Clean;
+    AnimationLodLevel lod = AnimationLodLevel::Full;
+    std::uint64_t revision = 0;
+};
+
 struct AnimationOptions
 {
     bool enable_mock_pose_evaluation = true;

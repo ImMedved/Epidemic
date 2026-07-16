@@ -4,12 +4,12 @@
 #include <string_view>
 
 using epidemic::runtime::RuntimeObjectId;
-using epidemic::runtime::SceneNodeId;
 using epidemic::runtime::Vec3;
 using epidemic::runtime::audio::AudioEmitterDesc;
 using epidemic::runtime::audio::AudioEvent;
 using epidemic::runtime::audio::AudioListenerDesc;
 using epidemic::runtime::audio::AudioRuntime;
+using epidemic::runtime::audio::AudioTransformId;
 using epidemic::runtime::audio::EmitterState;
 using epidemic::runtime::audio::MixerFadeState;
 using epidemic::runtime::audio::MixerGroupId;
@@ -37,7 +37,7 @@ bool SeedSound(AudioRuntime& runtime, SoundState state = SoundState::Ready)
 
 AudioEmitterDesc MakeEmitterDesc()
 {
-    return AudioEmitterDesc{RuntimeObjectId{88}, SoundId{1}, SceneNodeId{9}, false};
+    return AudioEmitterDesc{RuntimeObjectId{88}, SoundId{1}, AudioTransformId{9}, false};
 }
 
 bool TestCreatePlayStopDestroyEmitter()
@@ -47,19 +47,25 @@ bool TestCreatePlayStopDestroyEmitter()
     const auto emitter = runtime.CreateEmitter(MakeEmitterDesc());
     ok &= Expect(emitter.HasValue(), "valid emitter should be created");
     ok &= Expect(runtime.GetEmitterState(emitter.Value()) == EmitterState::Stopped, "new emitter should be stopped");
+    ok &= Expect(runtime.GetEmitterSnapshot(emitter.Value()).revision == 1, "new emitter snapshot should start at revision one");
     ok &= Expect(runtime.Play(emitter.Value()).HasValue(), "ready sound should play");
     ok &= Expect(runtime.GetEmitterState(emitter.Value()) == EmitterState::Playing, "emitter should be playing");
+    ok &= Expect(runtime.GetEmitterSnapshot(emitter.Value()).revision == 2, "play should increment emitter revision");
     ok &= Expect(runtime.Stop(emitter.Value()).HasValue(), "playing emitter should stop");
     ok &= Expect(runtime.GetEmitterState(emitter.Value()) == EmitterState::Stopped, "emitter should return stopped");
+    ok &= Expect(runtime.GetEmitterSnapshot(emitter.Value()).revision == 3, "stop should increment emitter revision");
+    ok &= Expect(runtime.Stop(emitter.Value()).HasValue(), "idempotent stop should succeed");
+    ok &= Expect(runtime.GetEmitterSnapshot(emitter.Value()).revision == 3, "idempotent stop should not increment revision");
     ok &= Expect(runtime.DestroyEmitter(emitter.Value()).HasValue(), "emitter should destroy");
     ok &= Expect(runtime.GetEmitterState(emitter.Value()) == EmitterState::Destroyed, "destroyed emitter should read destroyed");
+    ok &= Expect(runtime.GetEmitterSnapshot(emitter.Value()).revision == 0, "destroyed emitter snapshot should be revision zero");
     return ok;
 }
 
 bool TestListenerCreationAndMainListener()
 {
     AudioRuntime runtime{{}};
-    const auto listener = runtime.CreateListener(AudioListenerDesc{SceneNodeId{12}});
+    const auto listener = runtime.CreateListener(AudioListenerDesc{AudioTransformId{12}});
     bool ok = Expect(listener.HasValue(), "valid listener should be created");
     ok &= Expect(runtime.SetMainListener(listener.Value()).HasValue(), "main listener should be set");
     ok &= Expect(runtime.GetMainListener().has_value(), "main listener should be readable");

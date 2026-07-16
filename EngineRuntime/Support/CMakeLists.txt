@@ -13,6 +13,7 @@ target_link_libraries(EpidemicRuntimeSupport
     PUBLIC EpidemicRuntimeSerialization
     PUBLIC EpidemicRuntimeResources
     PUBLIC EpidemicRuntimePersistence
+    PUBLIC EpidemicRuntimeTime
     PUBLIC EpidemicRuntimeEnvironment
     PUBLIC EpidemicRuntimeScene
     PUBLIC EpidemicRuntimeRenderer

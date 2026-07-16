@@ -2,32 +2,88 @@
 
 #include "Epidemic/Foundation/string_id.h"
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
+#include "Epidemic/Runtime/Foundation/runtime_time.h"
+#include "Epidemic/Runtime/Foundation/spatial.h"
 
-// File note:
-// Header for runtime contracts or module-local helpers. Comments document how each
-// function participates in the module API and what state it observes or mutates.
+#include <optional>
+#include <variant>
 
 namespace epidemic::runtime
 {
-enum class ObjectPlacementKind
+struct WorldSurfacePlacement
 {
-    WorldSurface,
-    Container,
-    Equipped,
-    Carried,
-    Hidden,
-    Destroyed,
+    RegionId region{};
+    ChunkId chunk{};
+    Transform transform{};
+
+    [[nodiscard]] constexpr bool operator==(const WorldSurfacePlacement&) const noexcept = default;
 };
 
-struct ObjectPlacement
+struct ContainerPlacement
 {
-    ObjectPlacementKind kind = ObjectPlacementKind::Hidden;
-    RegionId region_id{};
-    ChunkId chunk_id{};
-    PersistentObjectId container_id{};
-    foundation::StringId slot_tag{};
+    RuntimeObjectId container{};
+    foundation::StringId slot{};
 
-    [[nodiscard]] constexpr bool operator==(const ObjectPlacement&) const noexcept = default;
+    [[nodiscard]] constexpr bool operator==(const ContainerPlacement&) const noexcept = default;
 };
-} 
 
+struct InventoryPlacement
+{
+    RuntimeObjectId owner{};
+
+    [[nodiscard]] constexpr bool operator==(const InventoryPlacement&) const noexcept = default;
+};
+
+struct EquippedPlacement
+{
+    RuntimeObjectId owner{};
+    foundation::StringId slot{};
+
+    [[nodiscard]] constexpr bool operator==(const EquippedPlacement&) const noexcept = default;
+};
+
+struct HiddenPlacement
+{
+    RegionId region{};
+
+    [[nodiscard]] constexpr bool operator==(const HiddenPlacement&) const noexcept = default;
+};
+
+struct DestroyedPlacement
+{
+    GameTimePoint destroyed_at{};
+    foundation::StringId reason{};
+
+    [[nodiscard]] constexpr bool operator==(const DestroyedPlacement&) const noexcept = default;
+};
+
+using ObjectPlacement = std::variant<
+    WorldSurfacePlacement,
+    ContainerPlacement,
+    InventoryPlacement,
+    EquippedPlacement,
+    HiddenPlacement,
+    DestroyedPlacement>;
+
+[[nodiscard]] inline std::optional<RegionId> GetPlacementRegion(const ObjectPlacement& placement)
+{
+    if (const auto* world = std::get_if<WorldSurfacePlacement>(&placement))
+    {
+        return world->region;
+    }
+    if (const auto* hidden = std::get_if<HiddenPlacement>(&placement))
+    {
+        return hidden->region;
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] inline std::optional<ChunkId> GetPlacementChunk(const ObjectPlacement& placement)
+{
+    if (const auto* world = std::get_if<WorldSurfacePlacement>(&placement))
+    {
+        return world->chunk;
+    }
+    return std::nullopt;
+}
+} // namespace epidemic::runtime

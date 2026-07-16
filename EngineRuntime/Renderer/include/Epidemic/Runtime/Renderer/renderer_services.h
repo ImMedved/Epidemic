@@ -18,11 +18,11 @@ struct RendererOptions
 
 struct RendererServices
 {
+    std::shared_ptr<IRenderResourceBridge> resource_bridge;
+    std::shared_ptr<IRenderSceneSource> scene_source;
     std::shared_ptr<IRenderScene> scene;
     std::shared_ptr<IViewSystem> views;
     std::shared_ptr<IRendererRuntime> runtime;
-    std::shared_ptr<IRenderResourceBridge> resource_bridge;
-    std::shared_ptr<IRenderSceneSource> scene_source;
 };
 
 [[nodiscard]] foundation::Result<RendererServices> CreateRendererServices(const RendererOptions& options);

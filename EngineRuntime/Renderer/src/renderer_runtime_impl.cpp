@@ -27,6 +27,15 @@ RendererRuntime::RendererRuntime(IRenderResourceBridge* resource_bridge, IRender
 {
 }
 
+RendererRuntime::~RendererRuntime()
+{
+    for (auto& [id, record] : proxies_)
+    {
+        (void)id;
+        ReleaseProxyResources(record);
+    }
+}
+
 foundation::Result<RenderProxyId> RendererRuntime::RegisterProxy(const RenderProxyDesc& desc)
 {
     if (!desc.owner.IsValid())
@@ -49,9 +58,15 @@ foundation::Result<RenderProxyId> RendererRuntime::RegisterProxy(const RenderPro
     record.lifecycle = RenderProxyLifecycle::Registered;
     record.visibility = desc.visibility;
     record.dirty_flags = ToRenderDirtyMask(RenderProxyDirtyFlags::Transform) | ToRenderDirtyMask(RenderProxyDirtyFlags::Material);
+    const auto acquired = AcquireProxyResources(record);
+    if (!acquired)
+    {
+        return foundation::Result<RenderProxyId>::Failure(acquired.GetError());
+    }
     const auto readiness = RefreshProxyReadiness(record);
     if (!readiness)
     {
+        ReleaseProxyResources(record);
         return foundation::Result<RenderProxyId>::Failure(readiness.GetError());
     }
     proxies_.emplace(proxy_id, std::move(record));
@@ -81,6 +96,7 @@ foundation::Result<void> RendererRuntime::FlushDeferredDestroys()
     }
     for (RenderProxyId id : proxies_to_remove)
     {
+        ReleaseProxyResources(proxies_.at(id));
         proxies_.erase(id);
     }
 
@@ -265,7 +281,7 @@ RenderFrameState RendererRuntime::GetFrameState() const
     return frame_state_;
 }
 
-foundation::Result<RenderTransformSnapshot> RendererRuntime::GetTransform(SceneNodeId node) const
+foundation::Result<RenderTransformSnapshot> RendererRuntime::GetTransform(RenderTransformId node) const
 {
     if (!node.IsValid())
     {
@@ -276,6 +292,36 @@ foundation::Result<RenderTransformSnapshot> RendererRuntime::GetTransform(SceneN
         return RendererFailureValue<RenderTransformSnapshot>("renderer.scene_source_missing", "renderer requires a scene source");
     }
     return scene_source_->GetTransformSnapshot(node);
+}
+
+foundation::Result<void> RendererRuntime::AcquireProxyResources(ProxyRecord& record)
+{
+    if (resource_bridge_ == nullptr)
+    {
+        return RendererFailure("renderer.resource_bridge_missing", "renderer requires a resource bridge");
+    }
+    if (record.resources_acquired)
+    {
+        return foundation::Result<void>::Success();
+    }
+    const auto acquired = resource_bridge_->AcquirePayloads(record.desc.mesh, record.desc.material);
+    if (!acquired)
+    {
+        return foundation::Result<void>::Failure(acquired.GetError());
+    }
+    record.resources_acquired = true;
+    return foundation::Result<void>::Success();
+}
+
+void RendererRuntime::ReleaseProxyResources(ProxyRecord& record)
+{
+    if (resource_bridge_ == nullptr || !record.resources_acquired)
+    {
+        return;
+    }
+    resource_bridge_->ReleasePayloads(record.desc.mesh, record.desc.material);
+    record.resources_acquired = false;
+    record.payloads = {};
 }
 
 foundation::Result<void> RendererRuntime::RefreshProxyReadiness(ProxyRecord& record)

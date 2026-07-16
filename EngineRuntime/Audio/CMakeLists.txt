@@ -9,11 +9,11 @@ target_include_directories(EpidemicRuntimeAudio PUBLIC
 
 target_link_libraries(EpidemicRuntimeAudio
     PUBLIC EpidemicRuntimeFoundation
-    PUBLIC EpidemicRuntimeScene
     PRIVATE EpidemicFoundation
 )
 
 set(_epidemic_runtime_audio_forbidden_targets
+    EpidemicRuntimeScene
     EpidemicRuntimeRenderer
     EpidemicRuntimeWorld
     EpidemicRuntimeSimulation

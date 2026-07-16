@@ -12,6 +12,7 @@ class ResourceDependencyGraph
 {
   public:
     void SetDependencies(ResourceId root, std::vector<ResourceDependency> dependencies);
+    void RemoveDependencies(ResourceId root);
     [[nodiscard]] std::optional<ResourceDependencySet> FindDependencies(ResourceId root) const;
     [[nodiscard]] bool HasDependencies(ResourceId root) const;
 

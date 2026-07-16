@@ -70,6 +70,16 @@ enum class ObjectRealityLevel
     return RealityRank(left) < RealityRank(right);
 }
 
+[[nodiscard]] constexpr bool CanPromoteReality(ObjectRealityLevel from, ObjectRealityLevel to) noexcept
+{
+    return RealityRank(to) >= RealityRank(from);
+}
+
+[[nodiscard]] constexpr bool CanDemoteReality(ObjectRealityLevel from, ObjectRealityLevel to) noexcept
+{
+    return RealityRank(to) <= RealityRank(from);
+}
+
 enum class PersistenceTier
 {
     Disposable,
@@ -96,6 +106,11 @@ enum class PersistenceTier
     }
 
     return 0;
+}
+
+[[nodiscard]] constexpr bool CanPromotePersistenceTier(PersistenceTier from, PersistenceTier to) noexcept
+{
+    return PersistenceTierRank(to) >= PersistenceTierRank(from);
 }
 
 enum class SimulationLod

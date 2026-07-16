@@ -1,39 +1,103 @@
 #include "world_runtime_impl.h"
-
-// File note:
-// Implementation file for the surrounding runtime type or test fixture. The comments
-// below describe responsibilities, data flow and relationships between local helpers.
 #include "Epidemic/Foundation/error.h"
+
+#include <algorithm>
+#include <string_view>
+#include <utility>
 
 namespace epidemic::runtime
 {
-// Function note: Registers region.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
+namespace
+{
+[[nodiscard]] foundation::Error MakeWorldError(std::string_view code, std::string_view message)
+{
+    return foundation::Error::Create(code, message);
+}
+
+void SortByRuntimeId(std::vector<WorldObjectRecord>& records)
+{
+    std::sort(records.begin(), records.end(), [](const WorldObjectRecord& left, const WorldObjectRecord& right) {
+        return left.runtime_id.Raw() < right.runtime_id.Raw();
+    });
+}
+
+[[nodiscard]] foundation::Result<void> ValidatePlacement(const ObjectPlacement& placement)
+{
+    if (const auto* world = std::get_if<WorldSurfacePlacement>(&placement))
+    {
+        if (!world->region.IsValid() || !world->chunk.IsValid() || !IsValidTransform(world->transform))
+        {
+            return foundation::Result<void>::Failure(
+                MakeWorldError("world.invalid_placement", "world surface placement requires region, chunk and valid transform"));
+        }
+    }
+    else if (const auto* container = std::get_if<ContainerPlacement>(&placement))
+    {
+        if (!container->container.IsValid())
+        {
+            return foundation::Result<void>::Failure(
+                MakeWorldError("world.invalid_placement", "container placement requires a container id"));
+        }
+    }
+    else if (const auto* inventory = std::get_if<InventoryPlacement>(&placement))
+    {
+        if (!inventory->owner.IsValid())
+        {
+            return foundation::Result<void>::Failure(
+                MakeWorldError("world.invalid_placement", "inventory placement requires an owner id"));
+        }
+    }
+    else if (const auto* equipped = std::get_if<EquippedPlacement>(&placement))
+    {
+        if (!equipped->owner.IsValid())
+        {
+            return foundation::Result<void>::Failure(
+                MakeWorldError("world.invalid_placement", "equipped placement requires an owner id"));
+        }
+    }
+    return foundation::Result<void>::Success();
+}
+
+template <typename TValue>
+[[nodiscard]] foundation::Result<TValue> WorldFailureValue(std::string_view code, std::string_view message)
+{
+    return foundation::Result<TValue>::Failure(MakeWorldError(code, message));
+}
+
+[[nodiscard]] foundation::Result<void> CheckExpectedRevision(const WorldObjectRecord& object, std::uint64_t expected_revision)
+{
+    if (expected_revision != 0 && object.revision != expected_revision)
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.revision_conflict", "world object revision does not match command expectation"));
+    }
+    return foundation::Result<void>::Success();
+}
+
+[[nodiscard]] ResidencyState ResidencyForReality(ObjectRealityLevel reality) noexcept
+{
+    return reality == ObjectRealityLevel::Physical ? ResidencyState::Active : ResidencyState::Resident;
+}
+} // namespace
+
 foundation::Result<void> WorldRuntime::RegisterRegion(RegionDescriptor region)
 {
     if (!region.id.IsValid())
     {
         return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.invalid_region", "region id must be valid before registration"));
+            MakeWorldError("world.invalid_region", "region id must be valid before registration"));
+    }
+
+    if (regions_.contains(region.id))
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.duplicate_region", "region id is already registered"));
     }
 
     regions_[region.id] = region;
     return foundation::Result<void>::Success();
 }
 
-// Function note: Finds region.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 std::optional<RegionDescriptor> WorldRuntime::FindRegion(RegionId id) const
 {
     const auto iterator = regions_.find(id);
@@ -45,44 +109,36 @@ std::optional<RegionDescriptor> WorldRuntime::FindRegion(RegionId id) const
     return iterator->second;
 }
 
-// Function note: Registers chunk.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 foundation::Result<void> WorldRuntime::RegisterChunk(ChunkDescriptor chunk)
 {
     if (!chunk.id.IsValid())
     {
         return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.invalid_chunk", "chunk id must be valid before registration"));
+            MakeWorldError("world.invalid_chunk", "chunk id must be valid before registration"));
     }
 
     if (!chunk.region_id.IsValid())
     {
         return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.invalid_region", "chunk region id must be valid before registration"));
+            MakeWorldError("world.invalid_region", "chunk region id must be valid before registration"));
+    }
+
+    if (!regions_.contains(chunk.region_id))
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.region_not_found", "chunk must reference an existing region"));
+    }
+
+    if (chunks_.contains(chunk.id))
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.duplicate_chunk", "chunk id is already registered"));
     }
 
     chunks_[chunk.id] = ChunkRecord{chunk, ChunkState::Unloaded};
     return foundation::Result<void>::Success();
 }
 
-// Function note: Finds chunk.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 std::optional<ChunkDescriptor> WorldRuntime::FindChunk(ChunkId id) const
 {
     const auto iterator = chunks_.find(id);
@@ -94,11 +150,6 @@ std::optional<ChunkDescriptor> WorldRuntime::FindChunk(ChunkId id) const
     return iterator->second.descriptor;
 }
 
-// Function note: Gets chunk state.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 ChunkState WorldRuntime::GetChunkState(ChunkId id) const
 {
     const auto iterator = chunks_.find(id);
@@ -110,57 +161,226 @@ ChunkState WorldRuntime::GetChunkState(ChunkId id) const
     return iterator->second.state;
 }
 
-// Function note: Creates object.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
-foundation::Result<RuntimeObjectId> WorldRuntime::CreateObject(WorldObjectRecord record)
+foundation::Result<WorldCommandResult> WorldRuntime::Apply(const CreateObjectCommand& command)
 {
+    WorldObjectRecord record = command.record;
+    const auto placement = ValidatePlacement(record.placement);
+    if (!placement)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(placement.GetError());
+    }
+    if (record.persistent_id.IsValid() && persistent_to_runtime_.contains(record.persistent_id))
+    {
+        return foundation::Result<WorldCommandResult>::Failure(
+            MakeWorldError("world.duplicate_persistent_object", "persistent object id is already registered"));
+    }
+
     const RuntimeObjectId runtime_id{next_runtime_object_value_++};
     record.runtime_id = runtime_id;
+    record.revision = 1;
     world_objects_[runtime_id] = record;
-    return foundation::Result<RuntimeObjectId>::Success(runtime_id);
+    if (record.persistent_id.IsValid())
+    {
+        persistent_to_runtime_[record.persistent_id] = runtime_id;
+    }
+    return foundation::Result<WorldCommandResult>::Success(WorldCommandResult{runtime_id, std::nullopt, record});
 }
 
-// Function note: Destroys object.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
+foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangePlacementCommand& command)
+{
+    auto iterator = world_objects_.find(command.runtime_id);
+    if (iterator == world_objects_.end())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.object_not_found", "world object was not found for placement update");
+    }
+
+    const auto revision = CheckExpectedRevision(iterator->second, command.expected_revision);
+    if (!revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
+    }
+
+    const auto valid = ValidatePlacement(command.placement);
+    if (!valid)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(valid.GetError());
+    }
+
+    WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
+    iterator->second.placement = command.placement;
+    ++iterator->second.revision;
+    result.after = iterator->second;
+    return foundation::Result<WorldCommandResult>::Success(std::move(result));
+}
+
+foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangeResidencyCommand& command)
+{
+    auto iterator = world_objects_.find(command.runtime_id);
+    if (iterator == world_objects_.end())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.object_not_found", "world object was not found for residency update");
+    }
+
+    const auto revision = CheckExpectedRevision(iterator->second, command.expected_revision);
+    if (!revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
+    }
+    if (!CanTransition(iterator->second.residency, command.residency))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_residency_transition",
+                                                     "requested residency transition is not allowed");
+    }
+
+    WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
+    iterator->second.residency = command.residency;
+    ++iterator->second.revision;
+    result.after = iterator->second;
+    return foundation::Result<WorldCommandResult>::Success(std::move(result));
+}
+
+foundation::Result<WorldCommandResult> WorldRuntime::Apply(const PromotePersistenceTierCommand& command)
+{
+    auto iterator = world_objects_.find(command.runtime_id);
+    if (iterator == world_objects_.end())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.object_not_found", "world object was not found for persistence update");
+    }
+
+    const auto revision = CheckExpectedRevision(iterator->second, command.expected_revision);
+    if (!revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
+    }
+    if (!CanPromotePersistenceTier(iterator->second.persistence_tier, command.tier))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.forbidden_persistence_downgrade",
+                                                     "persistence tier cannot be downgraded by promotion command");
+    }
+
+    WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
+    iterator->second.persistence_tier = command.tier;
+    ++iterator->second.revision;
+    result.after = iterator->second;
+    return foundation::Result<WorldCommandResult>::Success(std::move(result));
+}
+
+foundation::Result<WorldCommandResult> WorldRuntime::Apply(const MaterializeObjectCommand& command)
+{
+    if (!command.request.persistent_id.IsValid())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_persistent_object",
+                                                     "persistent object id must be valid before materialization");
+    }
+
+    const auto index = persistent_to_runtime_.find(command.request.persistent_id);
+    if (index == persistent_to_runtime_.end())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.object_not_found",
+                                                     "world object with the requested persistent id was not found");
+    }
+
+    WorldObjectRecord& object = world_objects_.at(index->second);
+    const auto revision = CheckExpectedRevision(object, command.expected_revision);
+    if (!revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
+    }
+    if (!CanPromoteReality(object.reality, command.request.target_reality))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_reality_promotion",
+                                                     "materialization cannot target a less concrete reality level");
+    }
+
+    WorldCommandResult result{index->second, object, std::nullopt};
+    object.reality = command.request.target_reality;
+    object.residency = ResidencyForReality(command.request.target_reality);
+    ++object.revision;
+    result.after = object;
+    return foundation::Result<WorldCommandResult>::Success(std::move(result));
+}
+
+foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DemoteObjectCommand& command)
+{
+    auto iterator = world_objects_.find(command.request.runtime_id);
+    if (iterator == world_objects_.end())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.object_not_found", "world object was not found for demotion");
+    }
+
+    const auto revision = CheckExpectedRevision(iterator->second, command.expected_revision);
+    if (!revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
+    }
+    if (!CanDemoteReality(iterator->second.reality, command.request.target_reality))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_reality_demotion",
+                                                     "demotion cannot target a more concrete reality level");
+    }
+
+    WorldCommandResult result{command.request.runtime_id, iterator->second, std::nullopt};
+    iterator->second.reality = command.request.target_reality;
+    iterator->second.residency = ResidencyForReality(command.request.target_reality);
+    ++iterator->second.revision;
+    result.after = iterator->second;
+    return foundation::Result<WorldCommandResult>::Success(std::move(result));
+}
+
+foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DestroyObjectCommand& command)
+{
+    if (!command.runtime_id.IsValid())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_object", "runtime object id must be valid before destruction");
+    }
+
+    auto iterator = world_objects_.find(command.runtime_id);
+    if (iterator == world_objects_.end())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.object_not_found", "world object was not found for destruction");
+    }
+
+    const auto revision = CheckExpectedRevision(iterator->second, command.expected_revision);
+    if (!revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
+    }
+
+    WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
+    WorldObjectRecord& object = iterator->second;
+    if (!object.persistent_id.IsValid() && object.persistence_tier == PersistenceTier::Disposable)
+    {
+        world_objects_.erase(iterator);
+        return foundation::Result<WorldCommandResult>::Success(std::move(result));
+    }
+
+    object.placement = DestroyedPlacement{command.destroyed_at, command.reason};
+    object.residency = ResidencyState::Unloaded;
+    ++object.revision;
+    result.after = object;
+    return foundation::Result<WorldCommandResult>::Success(std::move(result));
+}
+
+foundation::Result<RuntimeObjectId> WorldRuntime::CreateObject(WorldObjectRecord record)
+{
+    const auto result = Apply(CreateObjectCommand{std::move(record)});
+    if (!result)
+    {
+        return foundation::Result<RuntimeObjectId>::Failure(result.GetError());
+    }
+    return foundation::Result<RuntimeObjectId>::Success(result.Value().runtime_id);
+}
+
 foundation::Result<void> WorldRuntime::DestroyObject(RuntimeObjectId id)
 {
-    if (!id.IsValid())
+    const auto result = Apply(DestroyObjectCommand{id});
+    if (!result)
     {
-        return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.invalid_object", "runtime object id must be valid before destruction"));
+        return foundation::Result<void>::Failure(result.GetError());
     }
-
-    const auto erased = world_objects_.erase(id);
-    if (erased == 0)
-    {
-        return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.object_not_found", "world object was not found for destruction"));
-    }
-
     return foundation::Result<void>::Success();
 }
 
-// Function note: Finds object.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 std::optional<WorldObjectRecord> WorldRuntime::FindObject(RuntimeObjectId id) const
 {
     const auto iterator = world_objects_.find(id);
@@ -172,51 +392,40 @@ std::optional<WorldObjectRecord> WorldRuntime::FindObject(RuntimeObjectId id) co
     return iterator->second;
 }
 
-// Function note: Finds objects in region.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 std::vector<WorldObjectRecord> WorldRuntime::FindObjectsInRegion(RegionId region) const
 {
     std::vector<WorldObjectRecord> matches;
     for (const auto& [runtime_id, object] : world_objects_)
     {
         (void)runtime_id;
-        if (object.placement.region_id == region)
+        const auto placement_region = GetPlacementRegion(object.placement);
+        if (placement_region && *placement_region == region)
         {
             matches.push_back(object);
         }
     }
 
+    SortByRuntimeId(matches);
     return matches;
 }
 
-// Function note: Finds objects in chunk.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 std::vector<WorldObjectRecord> WorldRuntime::FindObjectsInChunk(ChunkId chunk) const
 {
     std::vector<WorldObjectRecord> matches;
     for (const auto& [runtime_id, object] : world_objects_)
     {
         (void)runtime_id;
-        if (object.placement.chunk_id == chunk)
+        const auto placement_chunk = GetPlacementChunk(object.placement);
+        if (placement_chunk && *placement_chunk == chunk)
         {
             matches.push_back(object);
         }
     }
 
+    SortByRuntimeId(matches);
     return matches;
 }
 
-// Function note: Finds objects by reality.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 std::vector<WorldObjectRecord> WorldRuntime::FindObjectsByReality(ObjectRealityLevel reality) const
 {
     std::vector<WorldObjectRecord> matches;
@@ -229,135 +438,57 @@ std::vector<WorldObjectRecord> WorldRuntime::FindObjectsByReality(ObjectRealityL
         }
     }
 
+    SortByRuntimeId(matches);
     return matches;
 }
 
-// Function note: Sets placement.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 foundation::Result<void> WorldRuntime::SetPlacement(RuntimeObjectId id, ObjectPlacement placement)
 {
-    auto iterator = world_objects_.find(id);
-    if (iterator == world_objects_.end())
+    const auto result = Apply(ChangePlacementCommand{id, 0, std::move(placement)});
+    if (!result)
     {
-        return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.object_not_found", "world object was not found for placement update"));
+        return foundation::Result<void>::Failure(result.GetError());
     }
-
-    iterator->second.placement = placement;
     return foundation::Result<void>::Success();
 }
 
-// Function note: Sets residency.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 foundation::Result<void> WorldRuntime::SetResidency(RuntimeObjectId id, ResidencyState state)
 {
-    auto iterator = world_objects_.find(id);
-    if (iterator == world_objects_.end())
+    const auto result = Apply(ChangeResidencyCommand{id, 0, state});
+    if (!result)
     {
-        return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.object_not_found", "world object was not found for residency update"));
+        return foundation::Result<void>::Failure(result.GetError());
     }
-
-    iterator->second.residency = state;
     return foundation::Result<void>::Success();
 }
 
-// Function note: Handles materialize.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 foundation::Result<RuntimeObjectId> WorldRuntime::Materialize(const MaterializationRequest& request)
 {
-    if (!request.persistent_id.IsValid())
+    const auto result = Apply(MaterializeObjectCommand{request});
+    if (!result)
     {
-        return foundation::Result<RuntimeObjectId>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.invalid_persistent_object", "persistent object id must be valid before materialization"));
+        return foundation::Result<RuntimeObjectId>::Failure(result.GetError());
     }
-
-    for (auto& [runtime_id, object] : world_objects_)
-    {
-        if (object.persistent_id != request.persistent_id)
-        {
-            continue;
-        }
-
-        object.reality = request.target_reality;
-        object.residency = request.target_reality == ObjectRealityLevel::Physical ? ResidencyState::Active : ResidencyState::Resident;
-        return foundation::Result<RuntimeObjectId>::Success(runtime_id);
-    }
-
-    return foundation::Result<RuntimeObjectId>::Failure(
-        // Function note: Creates the associated runtime state.
-        // Inputs/outputs: see the signature; the method consumes caller-provided values and
-        // returns either a value, status flag or Result according to the surrounding API.
-        // Relations: this member is part of the local runtime workflow and pairs with
-        // neighboring query/update helpers defined in the same class or file.
-        foundation::Error::Create("world.object_not_found", "world object with the requested persistent id was not found"));
+    return foundation::Result<RuntimeObjectId>::Success(result.Value().runtime_id);
 }
 
-// Function note: Handles demote.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 foundation::Result<void> WorldRuntime::Demote(const DemotionRequest& request)
 {
-    auto iterator = world_objects_.find(request.runtime_id);
-    if (iterator == world_objects_.end())
+    const auto result = Apply(DemoteObjectCommand{request});
+    if (!result)
     {
-        return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.object_not_found", "world object was not found for demotion"));
+        return foundation::Result<void>::Failure(result.GetError());
     }
-
-    iterator->second.reality = request.target_reality;
-    iterator->second.residency = request.target_reality == ObjectRealityLevel::Physical ? ResidencyState::Active : ResidencyState::Resident;
     return foundation::Result<void>::Success();
 }
 
-// Function note: Sets chunk state.
-// Inputs/outputs: see the signature; the method consumes caller-provided values and
-// returns either a value, status flag or Result according to the surrounding API.
-// Relations: this member is part of the local runtime workflow and pairs with
-// neighboring query/update helpers defined in the same class or file.
 foundation::Result<void> WorldRuntime::SetChunkState(ChunkId id, ChunkState state)
 {
     auto iterator = chunks_.find(id);
     if (iterator == chunks_.end())
     {
         return foundation::Result<void>::Failure(
-            // Function note: Creates the associated runtime state.
-            // Inputs/outputs: see the signature; the method consumes caller-provided values and
-            // returns either a value, status flag or Result according to the surrounding API.
-            // Relations: this member is part of the local runtime workflow and pairs with
-            // neighboring query/update helpers defined in the same class or file.
-            foundation::Error::Create("world.chunk_not_found", "chunk was not found for state update"));
+            MakeWorldError("world.chunk_not_found", "chunk was not found for state update"));
     }
 
     iterator->second.state = state;

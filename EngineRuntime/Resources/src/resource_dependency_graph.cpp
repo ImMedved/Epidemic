@@ -7,6 +7,11 @@ void ResourceDependencyGraph::SetDependencies(ResourceId root, std::vector<Resou
     dependencies_[root] = ResourceDependencySet{root, std::move(dependencies)};
 }
 
+void ResourceDependencyGraph::RemoveDependencies(ResourceId root)
+{
+    dependencies_.erase(root);
+}
+
 std::optional<ResourceDependencySet> ResourceDependencyGraph::FindDependencies(ResourceId root) const
 {
     const auto iterator = dependencies_.find(root);

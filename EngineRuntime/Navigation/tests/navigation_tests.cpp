@@ -78,6 +78,26 @@ bool TestRequestPathCompletesThroughBudgetedStates()
     const auto result = runtime.GetPathResult(id);
     ok &= Expect(result.HasValue(), "completed query should have result");
     ok &= Expect(result.HasValue() && result.Value().points.size() == 2, "default mock path should contain start and target");
+    ok &= Expect(result.HasValue() && result.Value().revision == 3, "completed query should have three revisions");
+    return ok;
+}
+
+bool TestPathBudgetOrderIsDeterministic()
+{
+    NavigationRuntime runtime{NavigationOptions{}};
+    const auto first = runtime.RequestPath(MakeRequest());
+    const auto second = runtime.RequestPath(MakeRequest());
+    if (!Expect(first.HasValue() && second.HasValue(), "path requests should succeed"))
+    {
+        return false;
+    }
+
+    bool ok = Expect(runtime.Tick(RuntimeBudget{.max_items = 1}) == 1, "budget should advance one query");
+    ok &= Expect(runtime.GetPathState(first.Value()) == PathQueryState::Running, "first query should advance first");
+    ok &= Expect(runtime.GetPathState(second.Value()) == PathQueryState::Pending, "second query should wait");
+    ok &= Expect(runtime.Tick(RuntimeBudget{.max_items = 1}) == 1, "budget should advance next query");
+    ok &= Expect(runtime.GetPathState(first.Value()) == PathQueryState::Completed, "first query should complete before second starts");
+    ok &= Expect(runtime.GetPathState(second.Value()) == PathQueryState::Pending, "second query should still wait");
     return ok;
 }
 
@@ -149,6 +169,7 @@ int main()
 {
     bool ok = true;
     ok &= TestRequestPathCompletesThroughBudgetedStates();
+    ok &= TestPathBudgetOrderIsDeterministic();
     ok &= TestCancelledQueryDoesNotProducePath();
     ok &= TestTileDirtyRebuildStates();
     ok &= TestCostAndObstacleProjectionsStayExternal();

@@ -28,6 +28,13 @@ struct ResourceMemoryStats
     std::size_t ready_count = 0;
 };
 
+struct ResourceMemoryStatistics
+{
+    std::size_t ready_bytes = 0;
+    std::size_t cached_unreferenced_bytes = 0;
+    std::size_t resource_count = 0;
+};
+
 // Threading: mutation must occur on the runtime thread.
 // Concurrent reads/writes are not supported unless explicitly documented.
 class IResourceManager
@@ -37,7 +44,7 @@ class IResourceManager
 
     [[nodiscard]] virtual foundation::Result<ResourceHandle> Request(ResourceRequest request) = 0;
     [[nodiscard]] virtual foundation::Result<ResourceProcessingStats> ProcessPendingLoads(RuntimeBudget budget = {}) = 0;
-    virtual void Release(ResourceHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Release(ResourceHandle handle) = 0;
     [[nodiscard]] virtual foundation::Result<void> Evict(ResourceId id) = 0;
     [[nodiscard]] virtual std::size_t EvictUnreferenced() = 0;
 
@@ -45,9 +52,10 @@ class IResourceManager
     [[nodiscard]] virtual ResourceState GetState(ResourceHandle handle) const = 0;
     [[nodiscard]] virtual bool IsReady(ResourceHandle handle) const = 0;
     [[nodiscard]] virtual std::optional<ResourceId> GetResourceId(ResourceHandle handle) const = 0;
-    [[nodiscard]] virtual std::shared_ptr<IResourcePayload> GetPayload(ResourceHandle handle) const = 0;
+    [[nodiscard]] virtual ResourcePayloadPtr GetPayload(ResourceHandle handle) const = 0;
 
     virtual void SetMemoryBudgetBytes(std::size_t bytes) = 0;
     [[nodiscard]] virtual ResourceMemoryStats GetMemoryStats() const = 0;
+    [[nodiscard]] virtual ResourceMemoryStatistics GetMemoryStatistics() const = 0;
 };
 } // namespace epidemic::runtime

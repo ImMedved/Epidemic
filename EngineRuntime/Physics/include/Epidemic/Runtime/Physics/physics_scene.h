@@ -26,4 +26,12 @@ class IPhysicsScene
     [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(PhysicsBodyId id, Vec3 impulse) = 0;
     [[nodiscard]] virtual PhysicsBodyState GetBodyState(PhysicsBodyId id) const = 0;
 };
+
+class IPhysicsStepper
+{
+  public:
+    virtual ~IPhysicsStepper() = default;
+
+    [[nodiscard]] virtual foundation::Result<PhysicsStepResult> StepFixed(GameDuration fixed_delta) = 0;
+};
 } // namespace epidemic::runtime::physics

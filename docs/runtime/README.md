@@ -6,15 +6,15 @@ EngineRuntime provides runtime systems and shared runtime state. GameFramework p
 
 ## Majors
 
-- `RuntimeFoundation`: runtime ids, states, budgets and shared vocabulary.
+- `RuntimeFoundation`: runtime ids, states, typed time, budgets and shared spatial vocabulary.
 - `Assets`: asset metadata catalog and lookup contracts.
-- `Resources`: resource handles, loader registry, dependency tracking and lifetime management.
+- `Resources`: immutable resource payloads, handles, loader registry, dependency tracking, budgets and cache lifetime management.
 - `Serialization`: archive contracts, serializer registry and migrations.
 - `Persistence`: persistent records, dirty tracking, tombstones, zone overrides and save transactions.
 - `Time`: game time, calendar, pause, scale, skip, snapshots and time events.
 - `Environment`: weather, season, climate, surface snapshots and deterministic update input.
 - `Scene`: transforms, bounds, scene nodes and spatial queries.
-- `World`: regions, chunks, object placement, residency and materialization boundaries.
+- `World`: regions, chunks, variant object placement, command-based object mutation, residency and materialization boundaries.
 - `Streaming`: budgeted chunk residency requests and streaming state transitions.
 - `Renderer`: render proxies, views and minimal frame flow contracts.
 - `Physics`: bodies, shapes, queries and event/effect boundaries.
@@ -35,5 +35,10 @@ EngineRuntime must not contain concrete game rules, content-specific behavior or
 3. [modules.md](modules.md)
 4. [dependencies.md](dependencies.md)
 5. [threading.md](threading.md)
-6. [using_runtime.md](using_runtime.md)
-7. [architecture_philosophy.md](architecture_philosophy.md)
+6. [update_order.md](update_order.md)
+7. [ownership.md](ownership.md)
+8. [error_model.md](error_model.md)
+9. [api_stability.md](api_stability.md)
+10. [using_runtime.md](using_runtime.md)
+11. [architecture_philosophy.md](architecture_philosophy.md)
+12. [renderer.md](renderer.md)

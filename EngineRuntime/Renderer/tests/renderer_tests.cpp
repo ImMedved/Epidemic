@@ -13,10 +13,8 @@
 namespace
 {
 using epidemic::foundation::Result;
-using epidemic::runtime::ByteResourcePayload;
 using epidemic::runtime::ResourceId;
 using epidemic::runtime::RuntimeObjectId;
-using epidemic::runtime::SceneNodeId;
 using epidemic::runtime::Transform;
 using epidemic::runtime::renderer::CreateMockRendererServices;
 using epidemic::runtime::renderer::CreateRendererServices;
@@ -34,6 +32,7 @@ using epidemic::runtime::renderer::RenderProxyLifecycle;
 using epidemic::runtime::renderer::RenderProxyReadiness;
 using epidemic::runtime::renderer::RenderProxyVisibility;
 using epidemic::runtime::renderer::RenderResourcePayloads;
+using epidemic::runtime::renderer::RenderTransformId;
 using epidemic::runtime::renderer::RenderTransformSnapshot;
 using epidemic::runtime::renderer::RendererRuntime;
 using epidemic::runtime::renderer::ViewDesc;
@@ -43,6 +42,26 @@ class TestResourceBridge final : public IRenderResourceBridge
 {
   public:
     bool ready = true;
+    int acquire_count = 0;
+    int release_count = 0;
+
+    [[nodiscard]] Result<void> AcquirePayloads(ResourceId mesh, ResourceId material) override
+    {
+        if (!mesh.IsValid() || !material.IsValid())
+        {
+            return Result<void>::Failure(
+                epidemic::foundation::Error::Create("renderer.invalid_resource", "test resource acquire requires valid resources"));
+        }
+        ++acquire_count;
+        return Result<void>::Success();
+    }
+
+    void ReleasePayloads(ResourceId mesh, ResourceId material) override
+    {
+        (void)mesh;
+        (void)material;
+        ++release_count;
+    }
 
     [[nodiscard]] Result<RenderResourcePayloads> GetPayloads(ResourceId mesh, ResourceId material) const override
     {
@@ -52,20 +71,20 @@ class TestResourceBridge final : public IRenderResourceBridge
                 epidemic::foundation::Error::Create("renderer.resource_missing", "test resources are missing"));
         }
         return Result<RenderResourcePayloads>::Success(RenderResourcePayloads{
-            std::make_shared<ByteResourcePayload>(std::vector<std::byte>{std::byte{0x01}}),
-            std::make_shared<ByteResourcePayload>(std::vector<std::byte>{std::byte{0x02}})});
+            std::make_shared<int>(1),
+            std::make_shared<int>(2)});
     }
 };
 
 class TestSceneSource final : public IRenderSceneSource
 {
   public:
-    void AddNode(SceneNodeId id)
+    void AddNode(RenderTransformId id)
     {
         nodes.insert(id);
     }
 
-    [[nodiscard]] Result<RenderTransformSnapshot> GetTransformSnapshot(SceneNodeId node) const override
+    [[nodiscard]] Result<RenderTransformSnapshot> GetTransformSnapshot(RenderTransformId node) const override
     {
         if (!nodes.contains(node))
         {
@@ -75,10 +94,10 @@ class TestSceneSource final : public IRenderSceneSource
         return Result<RenderTransformSnapshot>::Success(RenderTransformSnapshot{node, Transform{}, 7u});
     }
 
-    std::unordered_set<SceneNodeId> nodes;
+    std::unordered_set<RenderTransformId> nodes;
 };
 
-[[nodiscard]] RenderProxyDesc MakeProxyDesc(SceneNodeId node, ResourceId mesh, ResourceId material)
+[[nodiscard]] RenderProxyDesc MakeProxyDesc(RenderTransformId node, ResourceId mesh, ResourceId material)
 {
     RenderProxyDesc desc{};
     desc.owner = RuntimeObjectId{11};
@@ -94,10 +113,10 @@ class TestSceneSource final : public IRenderSceneSource
 {
     TestResourceBridge bridge;
     TestSceneSource scene;
-    scene.AddNode(SceneNodeId{1});
+    scene.AddNode(RenderTransformId{1});
 
     RendererRuntime runtime(&bridge, &scene);
-    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(SceneNodeId{1}, ResourceId::FromString("mesh/a"), ResourceId::FromString("mat/a")));
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{1}, ResourceId::FromString("mesh/a"), ResourceId::FromString("mat/a")));
     return proxy && runtime.GetProxyLifecycle(proxy.Value()) == RenderProxyLifecycle::Registered &&
            runtime.GetProxyReadiness(proxy.Value()) == RenderProxyReadiness::Ready &&
            runtime.GetProxyVisibility(proxy.Value()) == RenderProxyVisibility::Visible &&
@@ -110,10 +129,10 @@ class TestSceneSource final : public IRenderSceneSource
     TestResourceBridge bridge;
     bridge.ready = false;
     TestSceneSource scene;
-    scene.AddNode(SceneNodeId{2});
+    scene.AddNode(RenderTransformId{2});
 
     RendererRuntime runtime(&bridge, &scene);
-    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(SceneNodeId{2}, ResourceId::FromString("mesh/a"), ResourceId::FromString("mat/a")));
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{2}, ResourceId::FromString("mesh/a"), ResourceId::FromString("mat/a")));
     return !proxy && proxy.GetError().HasCode("renderer.resource_missing");
 }
 
@@ -121,10 +140,10 @@ class TestSceneSource final : public IRenderSceneSource
 {
     TestResourceBridge bridge;
     TestSceneSource scene;
-    scene.AddNode(SceneNodeId{3});
+    scene.AddNode(RenderTransformId{3});
 
     RendererRuntime runtime(&bridge, &scene);
-    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(SceneNodeId{3}, ResourceId::FromString("mesh/dirty"), ResourceId::FromString("mat/dirty")));
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{3}, ResourceId::FromString("mesh/dirty"), ResourceId::FromString("mat/dirty")));
     if (!proxy || !runtime.MarkTransformDirty(proxy.Value()) || !runtime.MarkMaterialDirty(proxy.Value()) ||
         !runtime.SetProxyVisibility(proxy.Value(), RenderProxyVisibility::Hidden))
     {
@@ -141,10 +160,10 @@ class TestSceneSource final : public IRenderSceneSource
 {
     TestResourceBridge bridge;
     TestSceneSource scene;
-    scene.AddNode(SceneNodeId{4});
+    scene.AddNode(RenderTransformId{4});
 
     RendererRuntime runtime(&bridge, &scene);
-    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(SceneNodeId{4}, ResourceId::FromString("mesh/d"), ResourceId::FromString("mat/d")));
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{4}, ResourceId::FromString("mesh/d"), ResourceId::FromString("mat/d")));
     if (!proxy || !runtime.DestroyProxy(proxy.Value()))
     {
         return false;
@@ -152,17 +171,18 @@ class TestSceneSource final : public IRenderSceneSource
 
     const bool pending = runtime.GetProxyLifecycle(proxy.Value()) == RenderProxyLifecycle::DestroyPending;
     const auto flush = runtime.FlushDeferredDestroys();
-    return pending && flush && runtime.GetProxyLifecycle(proxy.Value()) == RenderProxyLifecycle::Unregistered;
+    return pending && flush && runtime.GetProxyLifecycle(proxy.Value()) == RenderProxyLifecycle::Unregistered &&
+           bridge.acquire_count == 1 && bridge.release_count == 1;
 }
 
 [[nodiscard]] bool TestViewLifecycleAndMainView()
 {
     TestResourceBridge bridge;
     TestSceneSource scene;
-    scene.AddNode(SceneNodeId{5});
+    scene.AddNode(RenderTransformId{5});
 
     RendererRuntime runtime(&bridge, &scene);
-    const auto view = runtime.CreateView(ViewDesc{SceneNodeId{5}, 70.0f, 0.1f, 1500.0f});
+    const auto view = runtime.CreateView(ViewDesc{RenderTransformId{5}, 70.0f, 0.1f, 1500.0f});
     if (!view || !runtime.SetMainView(view.Value()) || runtime.GetMainView() != view.Value())
     {
         return false;
@@ -177,11 +197,11 @@ class TestSceneSource final : public IRenderSceneSource
 {
     TestResourceBridge bridge;
     TestSceneSource scene;
-    scene.AddNode(SceneNodeId{6});
+    scene.AddNode(RenderTransformId{6});
 
     RendererRuntime runtime(&bridge, &scene);
-    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(SceneNodeId{6}, ResourceId::FromString("mesh/frame"), ResourceId::FromString("mat/frame")));
-    const auto view = runtime.CreateView(ViewDesc{SceneNodeId{6}, 75.0f, 0.1f, 2000.0f});
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{6}, ResourceId::FromString("mesh/frame"), ResourceId::FromString("mat/frame")));
+    const auto view = runtime.CreateView(ViewDesc{RenderTransformId{6}, 75.0f, 0.1f, 2000.0f});
     if (!proxy || !view || !runtime.SetMainView(view.Value()) || !runtime.PrepareFrame())
     {
         return false;
@@ -208,7 +228,7 @@ class TestSceneSource final : public IRenderSceneSource
         return false;
     }
 
-    const auto proxy = mock.Value().scene->RegisterProxy(MakeProxyDesc(SceneNodeId{9}, ResourceId::FromString("mesh/m"), ResourceId::FromString("mat/m")));
+    const auto proxy = mock.Value().scene->RegisterProxy(MakeProxyDesc(RenderTransformId{9}, ResourceId::FromString("mesh/m"), ResourceId::FromString("mat/m")));
     return proxy && mock.Value().scene->GetProxyReadiness(proxy.Value()) == RenderProxyReadiness::Ready;
 }
 } // namespace

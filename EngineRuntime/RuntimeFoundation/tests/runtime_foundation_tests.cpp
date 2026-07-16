@@ -1,10 +1,9 @@
 #include "Epidemic/Runtime/Foundation/runtime_foundation.h"
 
-// File note:
-// Focused module-level tests for the surrounding runtime component. Each helper builds
-// a narrow fixture, and each Test* function verifies one public contract or regression.
 #include <chrono>
+#include <cmath>
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 #include <unordered_map>
 
@@ -13,13 +12,28 @@ namespace
 using epidemic::runtime::AssetId;
 using epidemic::runtime::AsyncOperationStatus;
 using epidemic::runtime::ChunkId;
+using epidemic::runtime::GameDuration;
+using epidemic::runtime::GameTimePoint;
 using epidemic::runtime::ObjectRealityLevel;
 using epidemic::runtime::PersistenceTier;
+using epidemic::runtime::Quat;
 using epidemic::runtime::ResidencyState;
 using epidemic::runtime::ResourceId;
 using epidemic::runtime::RuntimeBudget;
 using epidemic::runtime::RuntimeObjectId;
 using epidemic::runtime::SimulationLod;
+using epidemic::runtime::Transform;
+using epidemic::runtime::Vec3;
+
+bool Near(float left, float right)
+{
+    return std::abs(left - right) <= 0.001f;
+}
+
+bool Near(Vec3 left, Vec3 right)
+{
+    return Near(left.x, right.x) && Near(left.y, right.y) && Near(left.z, right.z);
+}
 
 // Verifies default invalid ids.
 bool TestDefaultInvalidIds()
@@ -73,6 +87,58 @@ bool TestRuntimeBudgetTracksLimits()
 {
     const RuntimeBudget budget{std::chrono::microseconds{250}, 8u, 4096u};
     return budget.HasTimeLimit() && budget.HasItemLimit() && budget.HasByteLimit() && !budget.IsUnlimited();
+}
+
+// Verifies typed game time operations stay deterministic and raw-integer free.
+bool TestGameTimeOperations()
+{
+    const GameTimePoint start{100};
+    const GameDuration delta{25};
+    const GameTimePoint end = start + delta;
+
+    return !delta.IsZero() && end.ticks == 125 && (end - delta).ticks == 100 && (end - start).ticks == 25;
+}
+
+bool TestGameTimeOverflowHelpers()
+{
+    const auto overflow = epidemic::runtime::CheckedAdd(
+        GameTimePoint{std::numeric_limits<std::int64_t>::max()},
+        GameDuration{1});
+    const auto underflow = epidemic::runtime::CheckedSubtract(
+        GameTimePoint{std::numeric_limits<std::int64_t>::min()},
+        GameDuration{1});
+    const auto valid = epidemic::runtime::CheckedAdd(GameTimePoint{10}, GameDuration{5});
+
+    return !overflow.has_value() && !underflow.has_value() && valid.has_value() && valid->ticks == 15;
+}
+
+bool TestQuaternionAndTransformMath()
+{
+    const float half_turn = 0.70710677f;
+    const Quat rotate_z_90{0.0f, 0.0f, half_turn, half_turn};
+
+    const Vec3 rotated = epidemic::runtime::RotateVector(rotate_z_90, Vec3{1.0f, 0.0f, 0.0f});
+    if (!Near(rotated, Vec3{0.0f, 1.0f, 0.0f}))
+    {
+        return false;
+    }
+
+    const Transform parent{Vec3{10.0f, 0.0f, 0.0f}, rotate_z_90, Vec3{2.0f, 3.0f, 1.0f}};
+    const Transform local{Vec3{1.0f, 0.0f, 0.0f}, {}, Vec3{1.0f, 2.0f, 1.0f}};
+    const Transform composed = epidemic::runtime::ComposeTransform(parent, local);
+
+    return Near(composed.position, Vec3{10.0f, 2.0f, 0.0f}) &&
+           Near(composed.scale, Vec3{2.0f, 6.0f, 1.0f}) &&
+           epidemic::runtime::IsNormalized(composed.rotation);
+}
+
+bool TestTransformAabb()
+{
+    const float half_turn = 0.70710677f;
+    const Transform transform{Vec3{1.0f, 2.0f, 0.0f}, Quat{0.0f, 0.0f, half_turn, half_turn}, Vec3{2.0f, 1.0f, 1.0f}};
+    const auto bounds = epidemic::runtime::TransformAabb(transform, epidemic::runtime::Aabb{Vec3{-1.0f, -1.0f, 0.0f}, Vec3{1.0f, 1.0f, 0.0f}});
+
+    return Near(bounds.min, Vec3{0.0f, 0.0f, 0.0f}) && Near(bounds.max, Vec3{2.0f, 4.0f, 0.0f});
 }
 
 // Verifies operation helpers.
@@ -152,19 +218,39 @@ int main()
         return 7;
     }
 
-    if (!TestOperationHelpers())
+    if (!TestGameTimeOperations())
     {
         return 8;
     }
 
-    if (!TestExplicitStateHelpers())
+    if (!TestGameTimeOverflowHelpers())
     {
         return 9;
     }
 
-    if (!TestObjectRealityHelpersAreExplicit())
+    if (!TestQuaternionAndTransformMath())
     {
         return 10;
+    }
+
+    if (!TestTransformAabb())
+    {
+        return 11;
+    }
+
+    if (!TestOperationHelpers())
+    {
+        return 12;
+    }
+
+    if (!TestExplicitStateHelpers())
+    {
+        return 13;
+    }
+
+    if (!TestObjectRealityHelpersAreExplicit())
+    {
+        return 14;
     }
 
     return 0;

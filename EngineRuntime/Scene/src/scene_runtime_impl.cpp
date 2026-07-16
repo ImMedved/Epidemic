@@ -333,9 +333,18 @@ SceneSnapshot SceneRuntime::CaptureSnapshot() const
     for (SceneNodeId node_id : SortedNodeIds())
     {
         const SceneNodeRecord& record = nodes_.at(node_id);
-        snapshot.nodes.push_back(SceneNodeSnapshot{record.node, record.local_transform, ComputeWorldTransform(node_id),
-                                                   record.has_bounds ? std::optional<Aabb>{record.local_bounds} : std::nullopt,
-                                                   ComputeWorldBounds(node_id)});
+        snapshot.nodes.push_back(SceneNodeSnapshot{
+            record.node.id,
+            record.node.parent_id,
+            record.local_transform,
+            ComputeWorldTransform(node_id),
+            record.has_bounds ? std::optional<Aabb>{record.local_bounds} : std::nullopt,
+            ComputeWorldBounds(node_id),
+            record.node.attachment_state,
+            record.node.mobility,
+            record.node.visibility,
+            record.node.dirty_flags,
+            record.node.revision});
     }
     return snapshot;
 }
@@ -434,8 +443,7 @@ std::optional<Aabb> SceneRuntime::ComputeWorldBounds(SceneNodeId node) const
     {
         return std::nullopt;
     }
-    const Transform world_transform = ComputeWorldTransform(node);
-    return TranslateBounds(record->local_bounds, world_transform.position);
+    return TransformAabb(ComputeWorldTransform(node), record->local_bounds);
 }
 
 void SceneRuntime::MarkSubtreeDirty(SceneNodeId node, SceneDirtyMask flags)

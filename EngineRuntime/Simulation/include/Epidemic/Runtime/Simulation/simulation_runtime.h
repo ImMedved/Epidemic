@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <span>
+#include <cstdint>
 #include <vector>
 
 namespace epidemic::runtime::simulation
@@ -88,7 +89,12 @@ public:
     // Function note: Expires events whose TTL elapsed.
     // Inputs: current game time; outputs: none.
     // Relations: mutates event state to Expired but keeps records inspectable.
-    virtual void ExpireOldEvents(GameTime now) = 0;
+    virtual void ExpireOldEvents(SimulationTime now) = 0;
+
+    // Function note: Expires at most max_events matching memory records.
+    // Inputs: current game time and item budget; outputs: number of records expired.
+    // Relations: keeps memory expiration budgeted for frame orchestration.
+    [[nodiscard]] virtual std::size_t ExpireOldEvents(SimulationTime now, std::uint32_t max_events) = 0;
 };
 
 class IEffectBuffer

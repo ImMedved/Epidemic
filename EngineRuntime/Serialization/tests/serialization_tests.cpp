@@ -1,6 +1,7 @@
 ﻿#include "Epidemic/Runtime/Serialization/archive_reader.h"
 #include "Epidemic/Runtime/Serialization/archive_writer.h"
 #include "Epidemic/Runtime/Serialization/migration.h"
+#include "Epidemic/Runtime/Serialization/migration_executor.h"
 #include "Epidemic/Runtime/Serialization/migration_registry.h"
 #include "Epidemic/Runtime/Serialization/schema_version.h"
 #include "Epidemic/Runtime/Serialization/serialization_error.h"
@@ -32,6 +33,9 @@ using epidemic::runtime::MigrationKey;
 using epidemic::runtime::MigrationRegistry;
 using epidemic::runtime::SchemaVersion;
 using epidemic::runtime::SerializedDocument;
+using epidemic::runtime::ApplyMigrations;
+using epidemic::runtime::DeserializeObject;
+using epidemic::runtime::SerializeObject;
 using epidemic::runtime::SerializerRegistry;
 
 [[nodiscard]] StringId Id(std::string_view value)
@@ -56,6 +60,11 @@ class ProbeSerializer final : public epidemic::runtime::ISerializer
     [[nodiscard]] SchemaVersion GetSchemaVersion() const override
     {
         return {1u, 0u, 0u};
+    }
+
+    [[nodiscard]] std::type_index GetCppType() const override
+    {
+        return typeid(ProbeData);
     }
 
     [[nodiscard]] Result<void> Serialize(const void* object, IArchiveWriter& writer) const override
@@ -144,11 +153,22 @@ class ProbeMigration final : public IMigration
 
     InMemoryArchiveReader reader(document.Value());
     const auto read_bytes = reader.ReadBytes("blob");
-    return reader.GetTypeId() == Id("serialization.primitive") && reader.GetSchemaVersion() == SchemaVersion{1u, 2u, 3u} &&
+    return document.Value().IsValid() && document.Value().GetTypeId() == Id("serialization.primitive") &&
+           document.Value().GetSchemaVersion() == SchemaVersion{1u, 2u, 3u} &&
+           document.Value().GetFormatVersion() == 1u && reader.GetTypeId() == Id("serialization.primitive") &&
+           reader.GetSchemaVersion() == SchemaVersion{1u, 2u, 3u} &&
            reader.GetFormatVersion() == 1u && reader.ReadString("name").Value() == "potato" &&
            reader.ReadUInt64("count").Value() == 7u && reader.ReadInt64("delta").Value() == -4 &&
            reader.ReadDouble("weight").Value() == 1.5 && reader.ReadBool("fresh").Value() && read_bytes &&
            read_bytes.Value() == bytes && reader.IsNull("empty").Value();
+}
+
+[[nodiscard]] bool TestDuplicateFieldsAreRejected()
+{
+    InMemoryArchiveWriter writer;
+    const auto first = writer.WriteString("name", "first");
+    const auto duplicate = writer.WriteString("name", "second");
+    return first && !duplicate && duplicate.GetError().HasCode("serialization.duplicate_field");
 }
 
 [[nodiscard]] bool TestNestedObjectAndArrayRoundTrip()
@@ -214,7 +234,7 @@ class ProbeMigration final : public IMigration
     ProbeSerializer serializer;
     ProbeData source{"runtime", 42u};
     InMemoryArchiveWriter writer;
-    if (!serializer.Serialize(&source, writer))
+    if (!SerializeObject(serializer, source, writer))
     {
         return false;
     }
@@ -227,8 +247,22 @@ class ProbeMigration final : public IMigration
 
     ProbeData target{};
     InMemoryArchiveReader reader(document.Value());
-    const auto deserialize = serializer.Deserialize(reader, &target);
+    const auto deserialize = DeserializeObject(serializer, reader, target);
     return deserialize && target.name == source.name && target.count == source.count;
+}
+
+[[nodiscard]] bool TestTypedSerializerRejectsWrongCppType()
+{
+    struct OtherData
+    {
+        int value = 0;
+    };
+
+    ProbeSerializer serializer;
+    OtherData other{};
+    InMemoryArchiveWriter writer;
+    const auto serialize = SerializeObject(serializer, other, writer);
+    return !serialize && serialize.GetError().HasCode("serialization.cpp_type_mismatch");
 }
 
 [[nodiscard]] bool TestSerializerRejectsWrongTypeAndMissingFields()
@@ -247,7 +281,7 @@ class ProbeMigration final : public IMigration
 
     ProbeData target{};
     InMemoryArchiveReader wrong_type_reader(wrong_type_doc.Value());
-    const auto wrong_type = serializer.Deserialize(wrong_type_reader, &target);
+    const auto wrong_type = DeserializeObject(serializer, wrong_type_reader, target);
 
     InMemoryArchiveWriter missing_field_writer;
     if (!missing_field_writer.WriteString("name", "runtime"))
@@ -261,7 +295,7 @@ class ProbeMigration final : public IMigration
     }
 
     InMemoryArchiveReader missing_field_reader(missing_field_doc.Value());
-    const auto missing_field = serializer.Deserialize(missing_field_reader, &target);
+    const auto missing_field = DeserializeObject(serializer, missing_field_reader, target);
     return !wrong_type && wrong_type.GetError().HasCode("serialization.type_mismatch") && !missing_field &&
            missing_field.GetError().HasCode("serialization.field_missing");
 }
@@ -327,6 +361,47 @@ class ProbeMigration final : public IMigration
            ambiguous.GetError().HasCode("serialization.migration.ambiguous_path");
 }
 
+[[nodiscard]] bool TestApplyMigrationsBuildsNewDocument()
+{
+    const auto services = CreateSerializationServices();
+    if (!services || !services.Value().migrations || !services.Value().archives)
+    {
+        return false;
+    }
+
+    const auto type = Id("serialization.migrated");
+    if (!services.Value().migrations->RegisterMigration(
+            std::make_shared<ProbeMigration>(MigrationKey{type, {1u, 0u, 0u}, {2u, 0u, 0u}})) ||
+        !services.Value().migrations->RegisterMigration(
+            std::make_shared<ProbeMigration>(MigrationKey{type, {2u, 0u, 0u}, {3u, 0u, 0u}})))
+    {
+        return false;
+    }
+
+    auto writer = services.Value().archives->CreateWriter();
+    if (!writer || !writer->WriteString("name", "original"))
+    {
+        return false;
+    }
+    const auto original = writer->Finalize(type, {1u, 0u, 0u});
+    if (!original)
+    {
+        return false;
+    }
+
+    const auto migrated = ApplyMigrations(original.Value(), {3u, 0u, 0u}, *services.Value().migrations, *services.Value().archives);
+    if (!migrated || original.Value().GetSchemaVersion() != SchemaVersion{1u, 0u, 0u} ||
+        migrated.Value().GetSchemaVersion() != SchemaVersion{3u, 0u, 0u} || migrated.Value().GetTypeId() != type)
+    {
+        return false;
+    }
+
+    const auto original_reader = services.Value().archives->CreateReader(original.Value());
+    const auto migrated_reader = services.Value().archives->CreateReader(migrated.Value());
+    return original_reader && migrated_reader && original_reader.Value()->ReadString("name").Value() == "original" &&
+           migrated_reader.Value()->ReadString("migration").Value() == "applied";
+}
+
 [[nodiscard]] bool TestSerializationServicesFactoryCreatesUsableServices()
 {
     const auto services = CreateSerializationServices();
@@ -361,14 +436,17 @@ int main()
 
     const NamedTest tests[] = {
         {"PrimitiveDocumentRoundTrip", TestPrimitiveDocumentRoundTrip},
+        {"DuplicateFieldsAreRejected", TestDuplicateFieldsAreRejected},
         {"NestedObjectAndArrayRoundTrip", TestNestedObjectAndArrayRoundTrip},
         {"MalformedArchiveOperationsReturnResults", TestMalformedArchiveOperationsReturnResults},
         {"FinalizeMakesWriterImmutable", TestFinalizeMakesWriterImmutable},
         {"SerializerExecutesRoundTrip", TestSerializerExecutesRoundTrip},
+        {"TypedSerializerRejectsWrongCppType", TestTypedSerializerRejectsWrongCppType},
         {"SerializerRejectsWrongTypeAndMissingFields", TestSerializerRejectsWrongTypeAndMissingFields},
         {"SerializerRegistryOwnsSharedSerializers", TestSerializerRegistryOwnsSharedSerializers},
         {"MigrationRegistryFindsExactAndChainedPaths", TestMigrationRegistryFindsExactAndChainedPaths},
         {"MigrationRegistryRejectsMissingCycleAndAmbiguousPaths", TestMigrationRegistryRejectsMissingCycleAndAmbiguousPaths},
+        {"ApplyMigrationsBuildsNewDocument", TestApplyMigrationsBuildsNewDocument},
         {"SerializationServicesFactoryCreatesUsableServices", TestSerializationServicesFactoryCreatesUsableServices},
     };
 

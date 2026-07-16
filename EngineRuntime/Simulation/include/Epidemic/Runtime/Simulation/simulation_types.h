@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
-#include "Epidemic/Runtime/Time/game_time.h"
+#include "Epidemic/Runtime/Foundation/runtime_time.h"
 
 #include <cstdint>
 #include <functional>
@@ -28,6 +28,8 @@ struct WorldMemoryEventId
     [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
     [[nodiscard]] constexpr bool operator==(const WorldMemoryEventId&) const noexcept = default;
 };
+
+using SimulationTime = GameTimePoint;
 
 enum class SimulationZoneState
 {
@@ -83,7 +85,7 @@ struct WorldMemoryEvent
 {
     WorldMemoryEventId id{};
     RegionId region{};
-    GameTime happened_at{};
+    SimulationTime happened_at{};
     GameDuration ttl{};
     WorldMemoryEventState state = WorldMemoryEventState::Temporary;
 };

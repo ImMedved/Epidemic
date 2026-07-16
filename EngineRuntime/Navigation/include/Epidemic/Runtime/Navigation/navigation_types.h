@@ -2,8 +2,7 @@
 
 #include "Epidemic/Runtime/Foundation/runtime_budget.h"
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
-#include "Epidemic/Runtime/Scene/bounds.h"
-#include "Epidemic/Runtime/Scene/transform.h"
+#include "Epidemic/Runtime/Foundation/spatial.h"
 
 #include <cstdint>
 #include <functional>
@@ -72,6 +71,7 @@ struct PathResult
 {
     PathQueryState state = PathQueryState::Pending;
     std::vector<Vec3> points;
+    std::uint64_t revision = 0;
 };
 
 struct NavCostQuery

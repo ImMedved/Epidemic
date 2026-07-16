@@ -3,6 +3,7 @@
 #include "Epidemic/Runtime/Navigation/navigation_runtime.h"
 
 #include <unordered_map>
+#include <vector>
 
 namespace epidemic::runtime::navigation
 {
@@ -37,6 +38,8 @@ private:
     [[nodiscard]] std::size_t BudgetLimit(RuntimeBudget budget, std::size_t fallback) const noexcept;
     [[nodiscard]] QueryRecord* FindQuery(PathQueryId id);
     [[nodiscard]] const QueryRecord* FindQuery(PathQueryId id) const;
+    [[nodiscard]] std::vector<NavTileId> BuildTileWorkList() const;
+    [[nodiscard]] std::vector<PathQueryId> BuildQueryWorkList() const;
     void CompleteQuery(QueryRecord& query);
 
     NavigationOptions options_{};

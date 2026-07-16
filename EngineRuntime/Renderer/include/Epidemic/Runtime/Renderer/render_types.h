@@ -1,11 +1,10 @@
 ﻿#pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
-#include "Epidemic/Runtime/Resources/resource_payload.h"
-#include "Epidemic/Runtime/Scene/scene_node.h"
 
 #include <cstdint>
 #include <functional>
+#include <memory>
 
 namespace epidemic::runtime::renderer
 {
@@ -24,6 +23,9 @@ struct ViewId
     [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
     [[nodiscard]] constexpr bool operator==(const ViewId&) const noexcept = default;
 };
+
+using RenderTransformId = RuntimeObjectId;
+using RenderResourcePayloadPtr = std::shared_ptr<const void>;
 
 enum class RenderProxyLifecycle
 {
@@ -107,14 +109,14 @@ struct RenderProxyDesc
     RuntimeObjectId owner{};
     ResourceId mesh{};
     ResourceId material{};
-    SceneNodeId transform_node{};
+    RenderTransformId transform_node{};
     RenderLayer layer = RenderLayer::Opaque;
     RenderProxyVisibility visibility = RenderProxyVisibility::Visible;
 };
 
 struct ViewDesc
 {
-    SceneNodeId transform_node{};
+    RenderTransformId transform_node{};
     float vertical_fov = 60.0f;
     float near_plane = 0.1f;
     float far_plane = 1000.0f;
@@ -122,8 +124,8 @@ struct ViewDesc
 
 struct RenderResourcePayloads
 {
-    ResourcePayloadPtr mesh{};
-    ResourcePayloadPtr material{};
+    RenderResourcePayloadPtr mesh{};
+    RenderResourcePayloadPtr material{};
 };
 } // namespace epidemic::runtime::renderer
 

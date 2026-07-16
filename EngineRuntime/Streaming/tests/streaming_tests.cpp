@@ -177,6 +177,31 @@ bool TestRequestAndCancelFlow()
            !resources.released_chunks().empty();
 }
 
+bool TestProgressRevisionChangesOnlyOnTransitions()
+{
+    StreamingRuntime runtime;
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 0});
+
+    const auto request = runtime.RequestChunk(ChunkId{111}, StreamingPriorityClass::Normal);
+    if (!request)
+    {
+        return false;
+    }
+
+    const auto initial = runtime.GetProgress(request.Value());
+    runtime.Tick();
+    const auto queued = runtime.GetProgress(request.Value());
+    const auto cancelled = runtime.CancelRequest(request.Value());
+    const auto deactivating = runtime.GetProgress(request.Value());
+    const auto duplicate_cancel = runtime.CancelRequest(request.Value());
+    const auto still_deactivating = runtime.GetProgress(request.Value());
+
+    return initial.has_value() && queued.has_value() && deactivating.has_value() &&
+           still_deactivating.has_value() && cancelled && duplicate_cancel && initial->revision == 1 &&
+           queued->revision == 2 && deactivating->revision == 3 &&
+           still_deactivating->revision == deactivating->revision;
+}
+
 bool TestPriorityOrderingUsesResolvedPriority()
 {
     FixedPriorityResolver resolver;
@@ -287,19 +312,24 @@ int main()
         return 2;
     }
 
-    if (!TestBudgetLimitsProcessing())
+    if (!TestProgressRevisionChangesOnlyOnTransitions())
     {
         return 3;
     }
 
-    if (!TestFailedRequestIsReported())
+    if (!TestBudgetLimitsProcessing())
     {
         return 4;
     }
 
-    if (!TestMockModeCanReachActiveWithoutExternalMajors())
+    if (!TestFailedRequestIsReported())
     {
         return 5;
+    }
+
+    if (!TestMockModeCanReachActiveWithoutExternalMajors())
+    {
+        return 6;
     }
 
     return 0;

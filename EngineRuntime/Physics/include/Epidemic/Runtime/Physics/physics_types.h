@@ -1,8 +1,8 @@
 #pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
-#include "Epidemic/Runtime/Scene/bounds.h"
-#include "Epidemic/Runtime/Scene/scene_node.h"
+#include "Epidemic/Runtime/Foundation/spatial.h"
+#include "Epidemic/Runtime/Foundation/runtime_time.h"
 
 #include <cstdint>
 #include <functional>
@@ -64,10 +64,12 @@ enum class PhysicsEventState
     Expired
 };
 
+using PhysicsTransformId = RuntimeObjectId;
+
 struct PhysicsBodyDesc
 {
     RuntimeObjectId owner{};
-    SceneNodeId transform_node{};
+    PhysicsTransformId transform_node{};
     CollisionShapeId shape{};
     PhysicsBodyType type = PhysicsBodyType::Static;
     float mass = 0.0f;
@@ -119,6 +121,13 @@ struct OverlapQuery
 struct OverlapResult
 {
     std::vector<PhysicsBodyId> bodies;
+};
+
+struct PhysicsStepResult
+{
+    GameDuration fixed_delta{};
+    std::uint64_t step_index = 0;
+    std::uint64_t revision = 0;
 };
 } // namespace epidemic::runtime::physics
 

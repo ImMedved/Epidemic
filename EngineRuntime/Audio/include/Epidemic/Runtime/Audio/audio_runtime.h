@@ -68,6 +68,11 @@ public:
     // Inputs: emitter id; outputs: Destroyed for unknown ids.
     // Relations: status query for frame orchestration and tests.
     [[nodiscard]] virtual EmitterState GetEmitterState(AudioEmitterId id) const = 0;
+
+    // Function note: Reads immutable emitter playback state with revision.
+    // Inputs: emitter id; outputs: emitter snapshot, or Destroyed revision 0 for unknown ids.
+    // Relations: adapters can observe Audio without receiving mutable emitter storage.
+    [[nodiscard]] virtual AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterId id) const = 0;
 };
 
 class IListenerSystem

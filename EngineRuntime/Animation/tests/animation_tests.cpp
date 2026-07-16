@@ -64,13 +64,30 @@ bool TestStateTransitionsAndEvents()
     ok &= Expect(created.HasValue(), "valid animator should be created");
     ok &= Expect(runtime.Play(created.Value(), AnimationClipId{10}).HasValue(), "registered clip should play");
     ok &= Expect(runtime.GetState(created.Value()) == AnimatorState::Playing, "animator should be playing");
+    ok &= Expect(runtime.GetPoseSnapshot(created.Value()).revision == 2, "play should revise pose snapshot");
     ok &= Expect(runtime.Events().size() == 1, "play should queue started event");
     ok &= Expect(runtime.Tick(1) == 1, "tick should advance playing animator");
     ok &= Expect(runtime.GetState(created.Value()) == AnimatorState::Finished, "non-looping mock clip should finish after tick");
     ok &= Expect(runtime.GetPoseState(created.Value()) == PoseState::Ready, "pose should become ready after mock evaluation");
+    ok &= Expect(runtime.GetPoseSnapshot(created.Value()).revision == 3, "tick should revise pose snapshot");
     ok &= Expect(runtime.Events().size() == 2, "finish should queue second event");
     runtime.Clear();
     ok &= Expect(runtime.Events().empty(), "event buffer should clear");
+    return ok;
+}
+
+bool TestTickOrderIsDeterministic()
+{
+    AnimationRuntime runtime{{}};
+    bool ok = Expect(SeedResources(runtime), "resources should seed");
+    const auto first = runtime.CreateAnimator(AnimatorDesc{RuntimeObjectId{77}, SkeletonId{1}, AnimationLodLevel::Full});
+    const auto second = runtime.CreateAnimator(AnimatorDesc{RuntimeObjectId{78}, SkeletonId{1}, AnimationLodLevel::Full});
+    ok &= Expect(first.HasValue() && second.HasValue(), "animators should be created");
+    ok &= Expect(runtime.Play(first.Value(), AnimationClipId{10}).HasValue(), "first should play");
+    ok &= Expect(runtime.Play(second.Value(), AnimationClipId{10}).HasValue(), "second should play");
+    ok &= Expect(runtime.Tick(1) == 1, "budget should advance one animator");
+    ok &= Expect(runtime.GetState(first.Value()) == AnimatorState::Finished, "first id should advance first");
+    ok &= Expect(runtime.GetState(second.Value()) == AnimatorState::Playing, "second id should wait");
     return ok;
 }
 
@@ -102,6 +119,7 @@ int main()
     ok &= TestCreateDestroyAnimator();
     ok &= TestPlayInvalidClipReturnsError();
     ok &= TestStateTransitionsAndEvents();
+    ok &= TestTickOrderIsDeterministic();
     ok &= TestLodPlaceholderChangesPoseState();
     ok &= TestValidationFailures();
     return ok ? 0 : 1;

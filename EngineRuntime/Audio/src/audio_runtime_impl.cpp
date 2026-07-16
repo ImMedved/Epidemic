@@ -52,7 +52,7 @@ foundation::Result<AudioEmitterId> AudioRuntime::CreateEmitter(const AudioEmitte
     }
 
     const AudioEmitterId id{next_emitter_value_++};
-    emitters_.emplace(id, EmitterRecord{desc, EmitterState::Stopped});
+    emitters_.emplace(id, EmitterRecord{desc, EmitterState::Stopped, 1});
     return foundation::Result<AudioEmitterId>::Success(id);
 }
 
@@ -80,7 +80,11 @@ foundation::Result<void> AudioRuntime::Play(AudioEmitterId id)
 
     if (GetSoundState(emitter->desc.sound) != SoundState::Ready)
     {
-        emitter->state = EmitterState::Stopped;
+        if (emitter->state != EmitterState::Stopped)
+        {
+            emitter->state = EmitterState::Stopped;
+            ++emitter->revision;
+        }
         return foundation::Result<void>::Failure(
             foundation::Error::Create("audio.sound_not_ready", "audio emitter sound is not ready"));
     }
@@ -91,7 +95,11 @@ foundation::Result<void> AudioRuntime::Play(AudioEmitterId id)
             foundation::Error::Create("audio.backend_disabled", "mock audio backend is disabled"));
     }
 
-    emitter->state = EmitterState::Playing;
+    if (emitter->state != EmitterState::Playing)
+    {
+        emitter->state = EmitterState::Playing;
+        ++emitter->revision;
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -104,7 +112,11 @@ foundation::Result<void> AudioRuntime::Stop(AudioEmitterId id)
             foundation::Error::Create("audio.emitter_not_found", "audio emitter was not found for stop"));
     }
 
-    emitter->state = EmitterState::Stopped;
+    if (emitter->state != EmitterState::Stopped)
+    {
+        emitter->state = EmitterState::Stopped;
+        ++emitter->revision;
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -117,7 +129,11 @@ foundation::Result<void> AudioRuntime::FadeOut(AudioEmitterId id)
             foundation::Error::Create("audio.emitter_not_found", "audio emitter was not found for fade"));
     }
 
-    emitter->state = EmitterState::FadingOut;
+    if (emitter->state != EmitterState::FadingOut)
+    {
+        emitter->state = EmitterState::FadingOut;
+        ++emitter->revision;
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -130,7 +146,11 @@ foundation::Result<void> AudioRuntime::Virtualize(AudioEmitterId id)
             foundation::Error::Create("audio.emitter_not_found", "audio emitter was not found for virtualization"));
     }
 
-    emitter->state = EmitterState::Virtualized;
+    if (emitter->state != EmitterState::Virtualized)
+    {
+        emitter->state = EmitterState::Virtualized;
+        ++emitter->revision;
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -143,6 +163,17 @@ EmitterState AudioRuntime::GetEmitterState(AudioEmitterId id) const
     }
 
     return emitter->state;
+}
+
+AudioEmitterSnapshot AudioRuntime::GetEmitterSnapshot(AudioEmitterId id) const
+{
+    const EmitterRecord* emitter = FindEmitter(id);
+    if (emitter == nullptr)
+    {
+        return AudioEmitterSnapshot{id, {}, {}, EmitterState::Destroyed, 0};
+    }
+
+    return AudioEmitterSnapshot{id, emitter->desc.sound, emitter->desc.transform, emitter->state, emitter->revision};
 }
 
 foundation::Result<AudioListenerId> AudioRuntime::CreateListener(const AudioListenerDesc& desc)

@@ -77,6 +77,7 @@ struct StreamingProgress
     StreamingRequestId id{};
     StreamingState state = StreamingState::NotRequested;
     float progress = 0.0f;
+    std::uint64_t revision = 0;
 };
 } // namespace epidemic::runtime::streaming
 

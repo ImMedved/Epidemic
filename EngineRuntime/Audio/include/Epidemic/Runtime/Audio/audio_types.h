@@ -1,8 +1,7 @@
 #pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
-#include "Epidemic/Runtime/Scene/scene_node.h"
-#include "Epidemic/Runtime/Scene/transform.h"
+#include "Epidemic/Runtime/Foundation/spatial.h"
 
 #include <cstdint>
 #include <functional>
@@ -46,6 +45,8 @@ struct MixerGroupId
     [[nodiscard]] constexpr bool operator==(const MixerGroupId&) const noexcept = default;
 };
 
+using AudioTransformId = RuntimeObjectId;
+
 enum class SoundState
 {
     Missing,
@@ -82,13 +83,22 @@ struct AudioEmitterDesc
 {
     RuntimeObjectId owner{};
     SoundId sound{};
-    SceneNodeId transform{};
+    AudioTransformId transform{};
     bool loop = false;
+};
+
+struct AudioEmitterSnapshot
+{
+    AudioEmitterId id{};
+    SoundId sound{};
+    AudioTransformId transform{};
+    EmitterState state = EmitterState::Destroyed;
+    std::uint64_t revision = 0;
 };
 
 struct AudioListenerDesc
 {
-    SceneNodeId transform{};
+    AudioTransformId transform{};
 };
 
 struct AudioEvent

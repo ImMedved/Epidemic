@@ -20,7 +20,6 @@ enum class SceneVisibilityState
 {
     Visible,
     Hidden,
-    Culled,
 };
 
 enum class SceneDirtyFlags : std::uint32_t
