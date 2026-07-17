@@ -48,16 +48,22 @@ No dependency on `Assets`.
 
 - `Request()`/`Acquire` increments the slot reference count.
 - `Release()` decrements the reference count and returns a `Result<void>`.
-- Releasing a stale handle or releasing a handle twice is an error.
+- Releasing an invalid handle returns `resource.invalid_handle`.
+- Releasing a stale handle returns `resource.stale_handle`.
+- Releasing a handle twice returns `resource.reference_underflow`.
 - A released ready resource stays cached until explicit eviction or budget pressure evicts unreferenced cache.
 - `Evict()` is only valid when the reference count is zero; it releases payload and dependency handles, moves through `Evicting`, then lands in `Evicted` with a new generation.
-- `EvictUnreferenced()` must not touch queued, loading, waiting, reloading or already evicting slots.
+- `EvictUnreferenced()` and budget eviction must not touch queued, loading, waiting, reloading or already evicting slots.
 
 ## Budgets And Failures
 
 `ProcessPendingLoads()` honors item, byte and time budgets. A failed resource increments diagnostics/statistics and does not stop independent queued requests.
 
-Dependency cycles are detected before committing dependency graph edges, including indirect chains such as `A -> B -> C -> A`. Failed loads roll back acquired dependency handles, pending artifacts, graph edges and memory accounting.
+Dependency cycles are detected through blocking dependency graph edges, including indirect required chains such as `A -> B -> C -> A`. Failed loads use one rollback path that releases acquired dependency handles, clears pending artifacts, removes graph edges and restores memory accounting.
+
+Required dependencies keep a root resource in `WaitingForDependencies` until they become ready. If a required dependency fails, is evicted or becomes unknown, the root load fails and rolls back.
+
+Optional dependencies do not block root readiness in the baseline policy. If an optional dependency is unavailable, failed, evicted or still loading when the root is ready to commit, the optional handle is released and the root continues.
 
 ## How To Use
 
@@ -74,4 +80,4 @@ auto release = resource_manager.Release(handle.Value());
 
 ## Testing Strategy
 
-Validate type mismatch rejection, dependency lifetime, explicit eviction behavior, stale/double release failures, dependency cycles, rollback on memory-budget failure, budgeted queue processing, immutable payload access and memory statistics for unreferenced cache.
+Validate type mismatch rejection, dependency lifetime, explicit eviction behavior, stale/double release failures, required dependency cycles, optional dependency non-blocking behavior, rollback after dependency failure, rollback on memory-budget failure, budgeted queue processing, in-flight eviction protection, immutable payload access and memory statistics for unreferenced cache.

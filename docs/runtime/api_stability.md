@@ -35,6 +35,7 @@ Stable public types include:
 - generation-validated handles and documented never-reuse ids;
 - immutable snapshots with revision fields for externally visible state;
 - command, event, proposal and effect records used at module boundaries;
+- world invariant helpers, placement variants and demotion confirmation tokens;
 - `XxxServices` bundles returned by public factories;
 - `RuntimeSupportOptions`, `RuntimeSupportRegistration` and Support validation results.
 
@@ -71,9 +72,10 @@ Backend and integration extension points are public contracts, not private side 
 
 - Serialization archives, serializer registry and migration registry.
 - Persistence storage, save transactions, conflict detection and tombstone handling.
+- Persistence durability policy, backend save/flush ports and atomic candidate-snapshot commit semantics.
 - Streaming data source, priority policy, residency proposals and commit sink.
 - Renderer resource bridge, render-scene projections, view data and frame lifecycle.
-- Physics backend, body/shape registry, event buffer, scene/source projections and effect sink.
+- Physics generation handles, body snapshots, backend body/shape ports, event buffer, transform source/sink projections and effect sink.
 - Navigation tile source, cost provider, obstacle projections and budgeted query flow.
 - Animation resource source, animator registry, pose snapshots and pose/event sinks.
 - Audio backend, resource source, listener/emitter transforms and one-shot event queue.
@@ -104,6 +106,8 @@ Save-facing public contracts are versioned at the schema boundary. Serialization
 - explicit rejection with a stable error code when old data cannot be loaded.
 
 Persistence transactions remain atomic from the public caller's point of view: a failed save transaction must not publish partial state as a successful save. Conflict and tombstone semantics are part of the public persistence contract.
+
+When `PersistenceDurability` requires backend writes, `Save()` and optional `Flush()` complete before the candidate snapshot is published in memory. Backend failure leaves the previous in-memory snapshot and revision unchanged.
 
 ## Change Rules After Freeze
 

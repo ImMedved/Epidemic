@@ -12,6 +12,8 @@ Query APIs return values such as `TimeSnapshot`, `WorldObjectRecord`, `Streaming
 
 Runtime handles that can become stale carry a generation or document a never-reuse policy. Callers must validate handles through the owning major instead of assuming that a raw index remains valid after release/recreate cycles.
 
+Resource dependencies acquired by `Resources` are owned handles, not borrowed references. Root load rollback, explicit eviction and budget eviction release those owned dependency handles through the same `Release()` contract used by external callers.
+
 ## Borrowed Dependencies
 
 Projection/source interfaces are borrowed for call duration or registered as non-owning pointers when explicitly documented. Owners must outlive the runtime that uses them.
