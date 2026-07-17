@@ -16,3 +16,5 @@ Examples:
 - `runtime_support.missing_dependency`
 
 Human-readable messages may change. Tests and callers should branch on error codes, not message text.
+
+Codes are stable once they are part of a public runtime contract. New failures should add a new code rather than repurpose an existing one, and removals or semantic changes require migration notes in `api_stability.md`.

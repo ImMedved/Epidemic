@@ -2,12 +2,19 @@
 
 #include <iostream>
 #include <string_view>
+#include <type_traits>
 
+using epidemic::runtime::GameDuration;
 using epidemic::runtime::RuntimeObjectId;
 using epidemic::runtime::Vec3;
+using epidemic::runtime::audio::CreateMockAudioServices;
+using epidemic::runtime::audio::IAudioBackend;
+using epidemic::runtime::audio::IAudioResourceSource;
+using epidemic::runtime::audio::IAudioTransformSource;
 using epidemic::runtime::audio::AudioEmitterDesc;
 using epidemic::runtime::audio::AudioEvent;
 using epidemic::runtime::audio::AudioListenerDesc;
+using epidemic::runtime::audio::AudioOptions;
 using epidemic::runtime::audio::AudioRuntime;
 using epidemic::runtime::audio::AudioTransformId;
 using epidemic::runtime::audio::EmitterState;
@@ -115,15 +122,54 @@ bool TestValidationFailures()
     ok &= Expect(!runtime.SetMixerGroup(MixerGroupState{MixerGroupId{}, 1.0f, MixerFadeState::Stable}).HasValue(), "invalid mixer group should fail");
     return ok;
 }
+
+bool TestBackendContractsHandlesBoundsAndHierarchy()
+{
+    AudioRuntime runtime{AudioOptions{true, 1}};
+    bool ok = Expect(runtime.IsEnabled(), "mock backend should be enabled");
+    ok &= Expect(SeedSound(runtime), "sound should seed");
+    const auto handle = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    ok &= Expect(handle.HasValue(), "emitter handle should be created");
+    ok &= Expect(runtime.FadeOut(handle.Value(), GameDuration{5}).HasValue(), "handle fade should succeed");
+    const auto snapshot = runtime.GetEmitterSnapshot(handle.Value());
+    ok &= Expect(snapshot.handle == handle.Value(), "snapshot should preserve emitter handle");
+    ok &= Expect(snapshot.fade_duration.ticks == 5, "snapshot should expose fade duration");
+
+    ok &= Expect(runtime.SubmitOneShot(AudioEvent{SoundId{1}, Vec3{}, 1.0f}).HasValue(), "first event should queue");
+    ok &= Expect(!runtime.SubmitOneShot(AudioEvent{SoundId{1}, Vec3{}, 1.0f}).HasValue(), "bounded queue should reject overflow");
+
+    const auto listener = runtime.CreateListener(AudioListenerDesc{AudioTransformId{44}});
+    ok &= Expect(listener.HasValue(), "listener should be created");
+    ok &= Expect(runtime.SetMainListener(listener.Value()).HasValue(), "listener should become main");
+    ok &= Expect(runtime.DestroyListener(listener.Value()).HasValue(), "listener should destroy");
+    ok &= Expect(!runtime.GetMainListener().has_value(), "destroyed main listener should clear selection");
+
+    ok &= Expect(runtime.SetMixerGroup(MixerGroupState{MixerGroupId{4}, 1.0f, MixerFadeState::FadingIn, MixerGroupId{3}, GameDuration{2}, 0.5f}).HasValue(),
+                 "hierarchical mixer group should update");
+    const auto mixer = runtime.GetMixerGroup(MixerGroupId{4});
+    ok &= Expect(mixer.has_value() && mixer->parent == MixerGroupId{3} && mixer->fade_progress == 0.5f,
+                 "mixer hierarchy and fade progress should persist");
+
+    const auto services = CreateMockAudioServices();
+    ok &= Expect(services.sounds != nullptr && services.runtime != nullptr && services.listeners != nullptr &&
+                     services.events != nullptr && services.mixer != nullptr && services.backend != nullptr,
+                 "audio services should be populated");
+    return ok;
+}
 } // namespace
 
 int main()
 {
+    static_assert(std::is_abstract_v<IAudioBackend>);
+    static_assert(std::is_abstract_v<IAudioResourceSource>);
+    static_assert(std::is_abstract_v<IAudioTransformSource>);
+
     bool ok = true;
     ok &= TestCreatePlayStopDestroyEmitter();
     ok &= TestListenerCreationAndMainListener();
     ok &= TestInvalidSoundBehavior();
     ok &= TestFadeVirtualizedMixerAndEvents();
     ok &= TestValidationFailures();
+    ok &= TestBackendContractsHandlesBoundsAndHierarchy();
     return ok ? 0 : 1;
 }

@@ -22,9 +22,11 @@ class IPersistenceStore : public IPersistentObjectStore, public IDirtyTracker, p
 
     [[nodiscard]] virtual std::optional<LazyRuleRecord> FindLazyRule(LazyRuleId id) const = 0;
     [[nodiscard]] virtual std::vector<LazyRuleRecord> FindLazyRules(PersistentObjectId target_id) const = 0;
+    [[nodiscard]] virtual std::vector<LazyRuleRecord> QueryDueLazyRules(GameTimePoint now) const = 0;
     [[nodiscard]] virtual std::vector<LazyRuleRecord> ListLazyRules() const = 0;
-    [[nodiscard]] virtual std::uint64_t GetRevision() const = 0;
+    [[nodiscard]] virtual PersistenceRevision GetRevision() const = 0;
     [[nodiscard]] virtual std::unique_ptr<ISaveTransaction> OpenTransaction() = 0;
+    [[nodiscard]] virtual std::unique_ptr<ISaveTransaction> OpenTransaction(PersistenceRevision base_revision) = 0;
 };
 } // namespace epidemic::runtime
 

@@ -12,25 +12,38 @@ SimulationRuntime::SimulationRuntime(SimulationOptions options) : options_(optio
 
 foundation::Result<SimulationJobId> SimulationRuntime::SubmitJob(const SimulationJobDesc& desc)
 {
+    const auto handle = SubmitJobHandle(desc);
+    if (!handle)
+    {
+        return foundation::Result<SimulationJobId>::Failure(handle.GetError());
+    }
+
+    return foundation::Result<SimulationJobId>::Success(handle.Value().id);
+}
+
+foundation::Result<SimulationJobHandle> SimulationRuntime::SubmitJobHandle(const SimulationJobDesc& desc)
+{
     if (!desc.zone.IsValid())
     {
-        return foundation::Result<SimulationJobId>::Failure(
+        return foundation::Result<SimulationJobHandle>::Failure(
             foundation::Error::Create("simulation.invalid_zone", "simulation job must reference a valid zone"));
     }
 
     if (desc.work_units == 0)
     {
-        return foundation::Result<SimulationJobId>::Failure(
+        return foundation::Result<SimulationJobHandle>::Failure(
             foundation::Error::Create("simulation.empty_job", "simulation job must contain work units"));
     }
 
     const SimulationJobId id{next_job_value_++};
+    const SimulationJobHandle handle{id, next_job_generation_++};
     JobRecord record{};
     record.desc = desc;
+    record.handle = handle;
     record.state = SimulationJobState::Pending;
     record.remaining_work_units = desc.work_units;
     jobs_.emplace(id, record);
-    return foundation::Result<SimulationJobId>::Success(id);
+    return foundation::Result<SimulationJobHandle>::Success(handle);
 }
 
 foundation::Result<void> SimulationRuntime::CancelJob(SimulationJobId id)
@@ -50,6 +63,18 @@ foundation::Result<void> SimulationRuntime::CancelJob(SimulationJobId id)
 
     job->state = SimulationJobState::Cancelled;
     return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> SimulationRuntime::CancelJob(SimulationJobHandle handle)
+{
+    JobRecord* job = FindJob(handle.id);
+    if (job == nullptr || job->handle.generation != handle.generation)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.stale_handle", "simulation job handle generation is stale"));
+    }
+
+    return CancelJob(handle.id);
 }
 
 SimulationJobState SimulationRuntime::GetJobState(SimulationJobId id) const
@@ -212,7 +237,8 @@ std::size_t SimulationRuntime::ExpireOldEvents(SimulationTime now, std::uint32_t
         }
 
         auto& event = memory_events_[id];
-        if (event.state == WorldMemoryEventState::Persistent || event.state == WorldMemoryEventState::Expired || event.ttl.IsZero())
+        if (event.state == WorldMemoryEventState::Persistent || event.state == WorldMemoryEventState::Expired ||
+            event.lifetime == MemoryLifetime::Persistent || event.ttl.IsZero())
         {
             continue;
         }

@@ -6,4 +6,16 @@ std::unique_ptr<SimulationRuntime> CreateSimulationRuntime(SimulationOptions opt
 {
     return std::make_unique<SimulationRuntime>(options);
 }
+
+SimulationServices CreateSimulationServices(SimulationOptions options)
+{
+    auto runtime = std::make_shared<SimulationRuntime>(options);
+
+    SimulationServices services{};
+    services.runtime = runtime;
+    services.attention = runtime;
+    services.memory = runtime;
+    services.effects = runtime;
+    return services;
+}
 } // namespace epidemic::runtime::simulation

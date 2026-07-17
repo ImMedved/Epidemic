@@ -1,8 +1,9 @@
 ﻿#include "in_memory_persistence_support.h"
 
 #include <algorithm>
-#include <utility>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 
 namespace epidemic::runtime
 {
@@ -75,13 +76,40 @@ size_t PersistenceLocationHash::operator()(const PersistenceLocation& location) 
     return seed;
 }
 
-InMemorySaveTransaction::InMemorySaveTransaction(InMemoryPersistenceStore& store) : store_(store)
+InMemoryPersistenceStore::InMemoryPersistenceStore(PersistenceSnapshot snapshot)
+{
+    revision_ = snapshot.current_revision;
+    for (PersistentObjectRecord record : snapshot.objects)
+    {
+        objects_[record.persistent_id] = std::move(record);
+    }
+    for (TombstoneRecord tombstone : snapshot.tombstones)
+    {
+        tombstones_[tombstone.persistent_id] = std::move(tombstone);
+    }
+    for (LazyRuleRecord rule : snapshot.lazy_rules)
+    {
+        lazy_rules_[rule.rule_id] = std::move(rule);
+    }
+    for (ZoneOverrideSnapshot zone : snapshot.zone_overrides)
+    {
+        zone_overrides_[zone.location] = std::move(zone);
+    }
+}
+
+InMemorySaveTransaction::InMemorySaveTransaction(InMemoryPersistenceStore& store, PersistenceRevision base_revision)
+    : store_(store), base_revision_(base_revision)
 {
 }
 
 SaveTransactionState InMemorySaveTransaction::GetState() const
 {
     return state_;
+}
+
+PersistenceRevision InMemorySaveTransaction::GetBaseRevision() const
+{
+    return base_revision_;
 }
 
 foundation::Result<void> InMemorySaveTransaction::EnsureOpen() const
@@ -105,7 +133,7 @@ foundation::Result<void> InMemorySaveTransaction::UpsertObject(PersistentObjectR
     {
         return valid;
     }
-    upsert_objects_.push_back(std::move(record));
+    operations_.push_back(UpsertObjectOperation{std::move(record)});
     return foundation::Result<void>::Success();
 }
 
@@ -120,7 +148,23 @@ foundation::Result<void> InMemorySaveTransaction::RemoveObject(PersistentObjectI
     {
         return PersistenceFailure("persistence.invalid_id", "persistent object id must be valid before removal");
     }
-    remove_objects_.push_back(id);
+    operations_.push_back(RemoveObjectOperation{id});
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> InMemorySaveTransaction::DeleteObject(TombstoneRecord tombstone)
+{
+    const auto open = EnsureOpen();
+    if (!open)
+    {
+        return open;
+    }
+    const auto valid = ValidateTombstone(tombstone);
+    if (!valid)
+    {
+        return valid;
+    }
+    operations_.push_back(DeleteObjectOperation{std::move(tombstone)});
     return foundation::Result<void>::Success();
 }
 
@@ -136,7 +180,27 @@ foundation::Result<void> InMemorySaveTransaction::UpsertLazyRule(LazyRuleRecord 
     {
         return valid;
     }
-    upsert_lazy_rules_.push_back(std::move(record));
+    operations_.push_back(UpsertLazyRuleOperation{std::move(record)});
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> InMemorySaveTransaction::UpdateLazyRule(LazyRuleRecord record)
+{
+    return UpsertLazyRule(std::move(record));
+}
+
+foundation::Result<void> InMemorySaveTransaction::RemoveLazyRule(LazyRuleId id)
+{
+    const auto open = EnsureOpen();
+    if (!open)
+    {
+        return open;
+    }
+    if (!id.IsValid())
+    {
+        return PersistenceFailure("persistence.invalid_lazy_rule_id", "lazy rule id must be valid before removal");
+    }
+    operations_.push_back(RemoveLazyRuleOperation{id});
     return foundation::Result<void>::Success();
 }
 
@@ -152,7 +216,7 @@ foundation::Result<void> InMemorySaveTransaction::AddTombstone(TombstoneRecord t
     {
         return valid;
     }
-    tombstones_.push_back(std::move(tombstone));
+    operations_.push_back(AddTombstoneOperation{std::move(tombstone)});
     return foundation::Result<void>::Success();
 }
 
@@ -168,7 +232,7 @@ foundation::Result<void> InMemorySaveTransaction::UpsertZoneOverride(ZoneOverrid
     {
         return valid;
     }
-    upsert_zone_overrides_.push_back(std::move(snapshot));
+    operations_.push_back(UpsertZoneOverrideOperation{std::move(snapshot)});
     return foundation::Result<void>::Success();
 }
 
@@ -183,7 +247,7 @@ foundation::Result<void> InMemorySaveTransaction::RemoveZoneOverride(const Persi
     {
         return PersistenceFailure("persistence.invalid_location", "zone override removal location must contain at least one valid component");
     }
-    remove_zone_overrides_.push_back(location);
+    operations_.push_back(RemoveZoneOverrideOperation{location});
     return foundation::Result<void>::Success();
 }
 
@@ -212,12 +276,7 @@ void InMemorySaveTransaction::Rollback()
 {
     if (state_ == SaveTransactionState::Open || state_ == SaveTransactionState::Failed)
     {
-        upsert_objects_.clear();
-        remove_objects_.clear();
-        upsert_lazy_rules_.clear();
-        tombstones_.clear();
-        upsert_zone_overrides_.clear();
-        remove_zone_overrides_.clear();
+        operations_.clear();
         state_ = SaveTransactionState::RolledBack;
     }
 }
@@ -350,6 +409,27 @@ std::vector<LazyRuleRecord> InMemoryPersistenceStore::FindLazyRules(PersistentOb
     return matches;
 }
 
+std::vector<LazyRuleRecord> InMemoryPersistenceStore::QueryDueLazyRules(GameTimePoint now) const
+{
+    std::vector<LazyRuleRecord> matches;
+    for (const auto& [id, rule] : lazy_rules_)
+    {
+        (void)id;
+        if (rule.state == LazyRuleState::Pending && rule.evaluate_after_game_time <= now)
+        {
+            matches.push_back(rule);
+        }
+    }
+    std::sort(matches.begin(), matches.end(), [](const auto& left, const auto& right) {
+        if (left.evaluate_after_game_time == right.evaluate_after_game_time)
+        {
+            return left.rule_id.Raw() < right.rule_id.Raw();
+        }
+        return left.evaluate_after_game_time < right.evaluate_after_game_time;
+    });
+    return matches;
+}
+
 std::vector<LazyRuleRecord> InMemoryPersistenceStore::ListLazyRules() const
 {
     std::vector<LazyRuleRecord> records;
@@ -363,62 +443,131 @@ std::vector<LazyRuleRecord> InMemoryPersistenceStore::ListLazyRules() const
     return records;
 }
 
-std::uint64_t InMemoryPersistenceStore::GetRevision() const
+PersistenceRevision InMemoryPersistenceStore::GetRevision() const
 {
     return revision_;
 }
 
 std::unique_ptr<ISaveTransaction> InMemoryPersistenceStore::OpenTransaction()
 {
-    return std::make_unique<InMemorySaveTransaction>(*this);
+    return OpenTransaction(revision_);
+}
+
+std::unique_ptr<ISaveTransaction> InMemoryPersistenceStore::OpenTransaction(PersistenceRevision base_revision)
+{
+    return std::make_unique<InMemorySaveTransaction>(*this, base_revision);
+}
+
+PersistenceSnapshot InMemoryPersistenceStore::CreateSnapshot() const
+{
+    PersistenceSnapshot snapshot{};
+    snapshot.current_revision = revision_;
+    snapshot.objects = ListObjects();
+    snapshot.tombstones = ListTombstones();
+    snapshot.lazy_rules = ListLazyRules();
+    snapshot.zone_overrides = ListZoneOverrides();
+    return snapshot;
 }
 
 foundation::Result<void> InMemoryPersistenceStore::Validate(const InMemorySaveTransaction& transaction) const
 {
-    for (const PersistentObjectRecord& record : transaction.upsert_objects_)
+    if (transaction.base_revision_ != revision_)
     {
-        const auto valid = ValidateObject(record);
+        return PersistenceFailure("persistence.conflict", "transaction base revision does not match current store revision");
+    }
+
+    std::unordered_set<PersistentObjectId> available_objects;
+    available_objects.reserve(objects_.size());
+    for (const auto& [id, record] : objects_)
+    {
+        (void)record;
+        available_objects.insert(id);
+    }
+
+    std::unordered_set<PersistenceLocation, PersistenceLocationHash> available_overrides;
+    available_overrides.reserve(zone_overrides_.size());
+    for (const auto& [location, snapshot] : zone_overrides_)
+    {
+        (void)snapshot;
+        available_overrides.insert(location);
+    }
+
+    for (const PersistenceOperation& operation : transaction.operations_)
+    {
+        const auto valid = std::visit(
+            [&](const auto& typed_operation) -> foundation::Result<void> {
+                using Operation = std::decay_t<decltype(typed_operation)>;
+                if constexpr (std::is_same_v<Operation, UpsertObjectOperation>)
+                {
+                    const auto record_valid = ValidateObject(typed_operation.record);
+                    if (record_valid)
+                    {
+                        available_objects.insert(typed_operation.record.persistent_id);
+                    }
+                    return record_valid;
+                }
+                else if constexpr (std::is_same_v<Operation, RemoveObjectOperation>)
+                {
+                    if (!available_objects.contains(typed_operation.id))
+                    {
+                        return PersistenceFailure("persistence.record_not_found", "persistent object record was not found for removal");
+                    }
+                    available_objects.erase(typed_operation.id);
+                    return foundation::Result<void>::Success();
+                }
+                else if constexpr (std::is_same_v<Operation, DeleteObjectOperation>)
+                {
+                    const auto tombstone_valid = ValidateTombstone(typed_operation.tombstone);
+                    if (!tombstone_valid)
+                    {
+                        return tombstone_valid;
+                    }
+                    if (!available_objects.contains(typed_operation.tombstone.persistent_id))
+                    {
+                        return PersistenceFailure("persistence.record_not_found", "persistent object record was not found for deletion");
+                    }
+                    available_objects.erase(typed_operation.tombstone.persistent_id);
+                    return foundation::Result<void>::Success();
+                }
+                else if constexpr (std::is_same_v<Operation, AddTombstoneOperation>)
+                {
+                    return ValidateTombstone(typed_operation.tombstone);
+                }
+                else if constexpr (std::is_same_v<Operation, UpsertLazyRuleOperation>)
+                {
+                    return ValidateLazyRule(typed_operation.record);
+                }
+                else if constexpr (std::is_same_v<Operation, RemoveLazyRuleOperation>)
+                {
+                    if (!lazy_rules_.contains(typed_operation.id))
+                    {
+                        return PersistenceFailure("persistence.lazy_rule_not_found", "lazy rule was not found for removal");
+                    }
+                    return foundation::Result<void>::Success();
+                }
+                else if constexpr (std::is_same_v<Operation, UpsertZoneOverrideOperation>)
+                {
+                    const auto snapshot_valid = ValidateZoneOverride(typed_operation.snapshot);
+                    if (snapshot_valid)
+                    {
+                        available_overrides.insert(typed_operation.snapshot.location);
+                    }
+                    return snapshot_valid;
+                }
+                else
+                {
+                    if (!available_overrides.contains(typed_operation.location))
+                    {
+                        return PersistenceFailure("persistence.override_not_found", "zone override was not found for removal");
+                    }
+                    available_overrides.erase(typed_operation.location);
+                    return foundation::Result<void>::Success();
+                }
+            },
+            operation);
         if (!valid)
         {
             return valid;
-        }
-    }
-    for (const LazyRuleRecord& rule : transaction.upsert_lazy_rules_)
-    {
-        const auto valid = ValidateLazyRule(rule);
-        if (!valid)
-        {
-            return valid;
-        }
-    }
-    for (const TombstoneRecord& tombstone : transaction.tombstones_)
-    {
-        const auto valid = ValidateTombstone(tombstone);
-        if (!valid)
-        {
-            return valid;
-        }
-    }
-    for (const ZoneOverrideSnapshot& snapshot : transaction.upsert_zone_overrides_)
-    {
-        const auto valid = ValidateZoneOverride(snapshot);
-        if (!valid)
-        {
-            return valid;
-        }
-    }
-    for (PersistentObjectId id : transaction.remove_objects_)
-    {
-        if (!objects_.contains(id))
-        {
-            return PersistenceFailure("persistence.record_not_found", "persistent object record was not found for removal");
-        }
-    }
-    for (const PersistenceLocation& location : transaction.remove_zone_overrides_)
-    {
-        if (!zone_overrides_.contains(location))
-        {
-            return PersistenceFailure("persistence.override_not_found", "zone override was not found for removal");
         }
     }
     return foundation::Result<void>::Success();
@@ -433,36 +582,76 @@ foundation::Result<void> InMemoryPersistenceStore::Apply(InMemorySaveTransaction
     }
 
     ++revision_;
-    for (PersistentObjectRecord record : transaction.upsert_objects_)
+    for (const PersistenceOperation& operation : transaction.operations_)
     {
-        record.revision = revision_;
-        dirty_ids_.insert(record.persistent_id);
-        objects_[record.persistent_id] = std::move(record);
+        std::visit(
+            [&](const auto& typed_operation) {
+                using Operation = std::decay_t<decltype(typed_operation)>;
+                if constexpr (std::is_same_v<Operation, UpsertObjectOperation>)
+                {
+                    PersistentObjectRecord record = typed_operation.record;
+                    record.revision = revision_;
+                    dirty_ids_.insert(record.persistent_id);
+                    objects_[record.persistent_id] = std::move(record);
+                }
+                else if constexpr (std::is_same_v<Operation, RemoveObjectOperation>)
+                {
+                    objects_.erase(typed_operation.id);
+                    dirty_ids_.insert(typed_operation.id);
+                }
+                else if constexpr (std::is_same_v<Operation, DeleteObjectOperation>)
+                {
+                    TombstoneRecord tombstone = typed_operation.tombstone;
+                    tombstone.revision = revision_;
+                    objects_.erase(tombstone.persistent_id);
+                    dirty_ids_.insert(tombstone.persistent_id);
+                    tombstones_[tombstone.persistent_id] = std::move(tombstone);
+                }
+                else if constexpr (std::is_same_v<Operation, AddTombstoneOperation>)
+                {
+                    TombstoneRecord tombstone = typed_operation.tombstone;
+                    tombstone.revision = revision_;
+                    tombstones_[tombstone.persistent_id] = std::move(tombstone);
+                }
+                else if constexpr (std::is_same_v<Operation, UpsertLazyRuleOperation>)
+                {
+                    LazyRuleRecord rule = typed_operation.record;
+                    rule.revision = revision_;
+                    lazy_rules_[rule.rule_id] = std::move(rule);
+                }
+                else if constexpr (std::is_same_v<Operation, RemoveLazyRuleOperation>)
+                {
+                    lazy_rules_.erase(typed_operation.id);
+                }
+                else if constexpr (std::is_same_v<Operation, UpsertZoneOverrideOperation>)
+                {
+                    ZoneOverrideSnapshot snapshot = typed_operation.snapshot;
+                    snapshot.revision = revision_;
+                    zone_overrides_[snapshot.location] = std::move(snapshot);
+                }
+                else
+                {
+                    zone_overrides_.erase(typed_operation.location);
+                }
+            },
+            operation);
     }
-    for (PersistentObjectId id : transaction.remove_objects_)
-    {
-        objects_.erase(id);
-        dirty_ids_.insert(id);
-    }
-    for (LazyRuleRecord rule : transaction.upsert_lazy_rules_)
-    {
-        rule.revision = revision_;
-        lazy_rules_[rule.rule_id] = std::move(rule);
-    }
-    for (TombstoneRecord tombstone : transaction.tombstones_)
-    {
-        tombstone.revision = revision_;
-        tombstones_[tombstone.persistent_id] = std::move(tombstone);
-    }
-    for (ZoneOverrideSnapshot snapshot : transaction.upsert_zone_overrides_)
-    {
-        snapshot.revision = revision_;
-        zone_overrides_[snapshot.location] = std::move(snapshot);
-    }
-    for (const PersistenceLocation& location : transaction.remove_zone_overrides_)
-    {
-        zone_overrides_.erase(location);
-    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<PersistenceSnapshot> InMemoryPersistenceBackend::Load()
+{
+    return foundation::Result<PersistenceSnapshot>::Success(snapshot_);
+}
+
+foundation::Result<void> InMemoryPersistenceBackend::Save(const PersistenceSnapshot& snapshot)
+{
+    snapshot_ = snapshot;
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> InMemoryPersistenceBackend::Flush()
+{
     return foundation::Result<void>::Success();
 }
 } // namespace epidemic::runtime

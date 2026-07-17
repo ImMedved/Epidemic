@@ -6,8 +6,8 @@
 
 ## Public Contracts
 
-- `audio_types.h`: sound, emitter, listener and mixer ids; sound/emitter states; events; `AudioEmitterSnapshot`.
-- `audio_runtime.h`: sound registry, audio runtime, listener system, event queue and mixer contracts.
+- `audio_types.h`: sound, emitter generation handle, listener and mixer ids; sound/emitter states; fade duration/progress; mixer hierarchy; events; `AudioEmitterSnapshot`.
+- `audio_runtime.h`: sound registry, audio runtime, backend/resource/transform source contracts, listener system, bounded event queue, mixer contracts and `CreateMockAudioServices()`.
 
 ## Rules
 
@@ -15,9 +15,11 @@
 - Playback requires a ready sound and enabled backend contract.
 - `AudioEmitterSnapshot::revision` starts at `1` and increments only on observable emitter state changes.
 - Repeating an idempotent state command does not churn emitter revision.
-- One-shot events are queued through the event queue and cleared by frame orchestration.
+- One-shot events are queued through a bounded event queue and cleared by frame orchestration.
+- Listener lifecycle includes destruction; destroying the main listener clears selection.
+- Mixer groups may reference parent groups and preserve fade progress metadata.
 - Environment ambience and Scene transform data must arrive through adapters; Audio does not call those majors directly.
 
 ## Testing Strategy
 
-The `Audio` tests cover emitter lifecycle, versioned emitter snapshots, listener selection, not-ready sound behavior, one-shot queueing, mixer state and validation failures.
+The `Audio` tests cover emitter lifecycle, generation handles, versioned emitter snapshots, listener lifecycle, backend/resource/transform contracts, not-ready sound behavior, bounded one-shot queueing, mixer hierarchy/fade state, service factory shape and validation failures.

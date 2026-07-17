@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <string_view>
+#include <utility>
 
 namespace epidemic::runtime
 {
@@ -76,6 +77,16 @@ template <typename TValue>
         return EnvironmentFailure("environment.invalid_surface_state", "surface wet/snow/mud/ice values must be finite and valid");
     }
     return foundation::Result<void>::Success();
+}
+
+[[nodiscard]] float NormalizeWindDirection(float degrees) noexcept
+{
+    float normalized = std::fmod(degrees, 360.0f);
+    if (normalized < 0.0f)
+    {
+        normalized += 360.0f;
+    }
+    return normalized;
 }
 } // namespace
 
@@ -203,6 +214,7 @@ foundation::Result<void> EnvironmentRuntime::SetWeather(RegionId region, Weather
     {
         return valid;
     }
+    weather.wind_direction_degrees = NormalizeWindDirection(weather.wind_direction_degrees);
     weather_by_region_[region] = weather;
     BumpRevision();
     return foundation::Result<void>::Success();
@@ -248,8 +260,87 @@ foundation::Result<void> EnvironmentRuntime::SetSurfaceState(SurfaceState state)
         return valid;
     }
     BumpRevision();
+    state.condition = DeriveSurfaceCondition(state);
     state.revision = revision_;
     surface_states_[state.surface_id] = state;
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> EnvironmentRuntime::ApplyUpdate(const EnvironmentStateUpdate& update)
+{
+    if (!update.region.IsValid())
+    {
+        return EnvironmentFailure("environment.invalid_region", "environment update batch requires a valid region id");
+    }
+    if (update.source_revision != revision_)
+    {
+        return EnvironmentFailure("environment.revision_conflict", "environment update source revision does not match current revision");
+    }
+    if (weather_by_region_.find(update.region) == weather_by_region_.end() &&
+        season_by_region_.find(update.region) == season_by_region_.end() && climate_by_region_.find(update.region) == climate_by_region_.end())
+    {
+        return EnvironmentFailure("environment.region_unknown", "environment update region is unknown");
+    }
+
+    WeatherState weather{};
+    if (update.weather)
+    {
+        weather = *update.weather;
+        const auto valid = ValidateWeather(weather);
+        if (!valid)
+        {
+            return valid;
+        }
+        weather.wind_direction_degrees = NormalizeWindDirection(weather.wind_direction_degrees);
+    }
+    if (update.season)
+    {
+        const auto valid = ValidateSeason(*update.season);
+        if (!valid)
+        {
+            return valid;
+        }
+    }
+    if (update.climate)
+    {
+        const auto valid = ValidateClimate(*update.climate);
+        if (!valid)
+        {
+            return valid;
+        }
+    }
+    for (const SurfaceState& surface : update.surfaces)
+    {
+        const auto valid = ValidateSurface(surface);
+        if (!valid)
+        {
+            return valid;
+        }
+        if (surface.region_id != update.region)
+        {
+            return EnvironmentFailure("environment.invalid_region", "surface update must target the batch region");
+        }
+    }
+
+    BumpRevision();
+    if (update.weather)
+    {
+        weather_by_region_[update.region] = weather;
+    }
+    if (update.season)
+    {
+        season_by_region_[update.region] = *update.season;
+    }
+    if (update.climate)
+    {
+        climate_by_region_[update.region] = *update.climate;
+    }
+    for (SurfaceState surface : update.surfaces)
+    {
+        surface.condition = DeriveSurfaceCondition(surface);
+        surface.revision = revision_;
+        surface_states_[surface.surface_id] = surface;
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -259,7 +350,7 @@ foundation::Result<void> EnvironmentRuntime::Update(const EnvironmentUpdateInput
     {
         return EnvironmentFailure("environment.invalid_region", "environment update requires a valid region id");
     }
-    if (input.game_delta_ticks < 0)
+    if (input.game_delta.ticks < 0)
     {
         return EnvironmentFailure("environment.invalid_delta", "environment update delta must not be negative");
     }
@@ -268,16 +359,26 @@ foundation::Result<void> EnvironmentRuntime::Update(const EnvironmentUpdateInput
     {
         return EnvironmentFailure("environment.region_unknown", "environment update region is unknown");
     }
-    if (update_policy_ == nullptr || input.game_delta_ticks == 0)
+    if (input.game_delta.ticks == 0)
     {
         return foundation::Result<void>::Success();
     }
-    return update_policy_->Apply(input, *this, *this);
+    if (update_policy_ == nullptr)
+    {
+        return foundation::Result<void>::Success();
+    }
+
+    const auto update = update_policy_->BuildUpdate(input, *this);
+    if (!update)
+    {
+        return foundation::Result<void>::Failure(update.GetError());
+    }
+    return ApplyUpdate(update.Value());
 }
 
-void EnvironmentRuntime::SetUpdatePolicy(IEnvironmentUpdatePolicy* policy)
+void EnvironmentRuntime::SetUpdatePolicy(std::shared_ptr<const IEnvironmentUpdatePolicy> policy)
 {
-    update_policy_ = policy;
+    update_policy_ = std::move(policy);
 }
 
 void EnvironmentRuntime::BumpRevision()

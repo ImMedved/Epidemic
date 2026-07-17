@@ -16,6 +16,7 @@ using epidemic::runtime::CreatePersistenceServices;
 using epidemic::runtime::GameTimePoint;
 using epidemic::runtime::HasProtectionFlag;
 using epidemic::runtime::InMemoryPersistenceStore;
+using epidemic::runtime::InMemoryPersistenceBackend;
 using epidemic::runtime::LazyRuleId;
 using epidemic::runtime::LazyRuleKind;
 using epidemic::runtime::LazyRuleRecord;
@@ -24,6 +25,8 @@ using epidemic::runtime::ObjectProtectionFlags;
 using epidemic::runtime::ObjectProtectionMask;
 using epidemic::runtime::PersistenceLocation;
 using epidemic::runtime::PersistencePayload;
+using epidemic::runtime::PersistenceOptions;
+using epidemic::runtime::PersistenceSnapshot;
 using epidemic::runtime::PersistenceState;
 using epidemic::runtime::PersistentObjectId;
 using epidemic::runtime::PersistentObjectKind;
@@ -127,6 +130,28 @@ using epidemic::runtime::ZoneOverrideSnapshot;
            late_mutation.GetError().HasCode("persistence.transaction_invalid_state");
 }
 
+[[nodiscard]] bool TestConcurrentTransactionConflict()
+{
+    InMemoryPersistenceStore store;
+    auto first = store.OpenTransaction();
+    auto second = store.OpenTransaction();
+    if (!first || !second || first->GetBaseRevision() != 0u || second->GetBaseRevision() != 0u)
+    {
+        return false;
+    }
+
+    const auto first_upsert = first->UpsertObject(MakeRecord(1001));
+    const auto first_commit = first->Commit();
+    const auto second_upsert = second->UpsertObject(MakeRecord(1002));
+    const auto second_commit = second->Commit();
+
+    return first_upsert && first_commit && second_upsert && !second_commit &&
+           second_commit.GetError().HasCode("persistence.conflict") &&
+           second->GetState() == SaveTransactionState::Failed && store.GetRevision() == 1u &&
+           store.FindObject(PersistentObjectId{1001}).has_value() &&
+           !store.FindObject(PersistentObjectId{1002}).has_value();
+}
+
 [[nodiscard]] bool TestFailedCommitIsAtomic()
 {
     InMemoryPersistenceStore store;
@@ -157,6 +182,35 @@ using epidemic::runtime::ZoneOverrideSnapshot;
            by_target[0].rule_id == LazyRuleId{5001} && by_target[1].rule_id == LazyRuleId{5002};
 }
 
+[[nodiscard]] bool TestLazyRuleUpdateRemoveAndDueQuery()
+{
+    InMemoryPersistenceStore store;
+    auto create = store.OpenTransaction();
+    auto early = MakeLazyRule(5001, 1001);
+    early.evaluate_after_game_time = GameTimePoint{110};
+    auto late = MakeLazyRule(5002, 1001);
+    late.evaluate_after_game_time = GameTimePoint{200};
+    if (!create || !create->UpsertLazyRule(late) || !create->UpsertLazyRule(early) || !create->Commit())
+    {
+        return false;
+    }
+
+    const auto due_before_update = store.QueryDueLazyRules(GameTimePoint{150});
+    late.state = LazyRuleState::Cancelled;
+    auto update = store.OpenTransaction();
+    if (!update || !update->UpdateLazyRule(late) || !update->RemoveLazyRule(LazyRuleId{5001}) || !update->Commit())
+    {
+        return false;
+    }
+
+    const auto removed = store.FindLazyRule(LazyRuleId{5001});
+    const auto updated = store.FindLazyRule(LazyRuleId{5002});
+    const auto due_after_update = store.QueryDueLazyRules(GameTimePoint{250});
+    return due_before_update.size() == 1u && due_before_update.front().rule_id == LazyRuleId{5001} &&
+           !removed && updated && updated->state == LazyRuleState::Cancelled && updated->revision == 2u &&
+           due_after_update.empty();
+}
+
 [[nodiscard]] bool TestRichTombstonesAndZoneOverrides()
 {
     InMemoryPersistenceStore store;
@@ -183,6 +237,32 @@ using epidemic::runtime::ZoneOverrideSnapshot;
            found_tombstone->revision == 1u && found_zone && found_zone->record_ids.size() == 1u && found_zone->revision == 1u;
 }
 
+[[nodiscard]] bool TestDeleteObjectIsAtomicTombstoneOperation()
+{
+    InMemoryPersistenceStore store;
+    auto create = store.OpenTransaction();
+    if (!create || !create->UpsertObject(MakeRecord(2001)) || !create->Commit())
+    {
+        return false;
+    }
+
+    TombstoneRecord tombstone{};
+    tombstone.persistent_id = PersistentObjectId{2001};
+    tombstone.deleted_game_time = GameTimePoint{300};
+    tombstone.reason = Id("delete.atomic");
+
+    auto remove = store.OpenTransaction();
+    const auto deleted = remove->DeleteObject(tombstone);
+    const auto committed = remove->Commit();
+    const auto found_object = store.FindObject(PersistentObjectId{2001});
+    const auto found_tombstone = store.FindTombstone(PersistentObjectId{2001});
+    const auto dirty = store.CollectDirty();
+
+    return deleted && committed && !found_object && found_tombstone &&
+           found_tombstone->reason == Id("delete.atomic") && found_tombstone->revision == 2u &&
+           store.GetRevision() == 2u && dirty.size() == 1u && dirty.front() == PersistentObjectId{2001};
+}
+
 [[nodiscard]] bool TestValidationRejectsInvalidRecords()
 {
     InMemoryPersistenceStore store;
@@ -201,7 +281,7 @@ using epidemic::runtime::ZoneOverrideSnapshot;
 [[nodiscard]] bool TestFactoryCreatesUsableStore()
 {
     const auto services = CreatePersistenceServices();
-    if (!services || !services.Value().store)
+    if (!services || !services.Value().store || !services.Value().query)
     {
         return false;
     }
@@ -212,6 +292,32 @@ using epidemic::runtime::ZoneOverrideSnapshot;
         return false;
     }
     return services.Value().store->FindObject(PersistentObjectId{77}).has_value();
+}
+
+[[nodiscard]] bool TestBackendLoadsFactoryStore()
+{
+    auto backend = std::make_shared<InMemoryPersistenceBackend>();
+    PersistenceSnapshot snapshot{};
+    snapshot.current_revision = 4u;
+    auto record = MakeRecord(99);
+    record.revision = 4u;
+    snapshot.objects.push_back(record);
+    if (!backend->Save(snapshot) || !backend->Flush())
+    {
+        return false;
+    }
+
+    PersistenceOptions options{};
+    options.backend = backend;
+    const auto services = CreatePersistenceServices(options);
+    if (!services || !services.Value().store || services.Value().store->GetRevision() != 4u)
+    {
+        return false;
+    }
+
+    const auto loaded = services.Value().query->FindObject(PersistentObjectId{99});
+    const auto exported = static_cast<InMemoryPersistenceStore*>(services.Value().store.get())->CreateSnapshot();
+    return loaded && loaded->revision == 4u && exported.current_revision == 4u && exported.objects.size() == 1u;
 }
 } // namespace
 
@@ -227,11 +333,15 @@ int main()
         {"PayloadAndTypedProtectionContracts", TestPayloadAndTypedProtectionContracts},
         {"TransactionCommitPersistsObjectsAndRevision", TestTransactionCommitPersistsObjectsAndRevision},
         {"RollbackDiscardsStagedMutations", TestRollbackDiscardsStagedMutations},
+        {"ConcurrentTransactionConflict", TestConcurrentTransactionConflict},
         {"FailedCommitIsAtomic", TestFailedCommitIsAtomic},
         {"LazyRuleIdQueries", TestLazyRuleIdQueries},
+        {"LazyRuleUpdateRemoveAndDueQuery", TestLazyRuleUpdateRemoveAndDueQuery},
         {"RichTombstonesAndZoneOverrides", TestRichTombstonesAndZoneOverrides},
+        {"DeleteObjectIsAtomicTombstoneOperation", TestDeleteObjectIsAtomicTombstoneOperation},
         {"ValidationRejectsInvalidRecords", TestValidationRejectsInvalidRecords},
         {"FactoryCreatesUsableStore", TestFactoryCreatesUsableStore},
+        {"BackendLoadsFactoryStore", TestBackendLoadsFactoryStore},
     };
 
     for (const NamedTest& test : tests)

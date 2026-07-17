@@ -17,6 +17,7 @@ set(_epidemic_runtime_time_forbidden_targets
     EpidemicRuntimeSimulation
     EpidemicRuntimePersistence
     EpidemicRuntimeWorld
+    EpidemicRuntimeSupport
 )
 
 get_target_property(_epidemic_runtime_time_links EpidemicRuntimeTime LINK_LIBRARIES)

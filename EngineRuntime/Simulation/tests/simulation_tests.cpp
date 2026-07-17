@@ -2,17 +2,32 @@
 
 #include <iostream>
 #include <string_view>
+#include <type_traits>
 
 using epidemic::runtime::GameDuration;
 using epidemic::runtime::RegionId;
 using epidemic::runtime::RuntimeObjectId;
 using epidemic::runtime::SimulationZoneId;
 using epidemic::runtime::simulation::AttentionScore;
+using epidemic::runtime::simulation::AbstractFact;
+using epidemic::runtime::simulation::CreateSimulationServices;
+using epidemic::runtime::simulation::IAbstractFactStore;
+using epidemic::runtime::simulation::IRelevancePolicy;
+using epidemic::runtime::simulation::ISimulationCommitTarget;
+using epidemic::runtime::simulation::ISimulationJob;
+using epidemic::runtime::simulation::MemoryLifetime;
+using epidemic::runtime::simulation::ObservationState;
+using epidemic::runtime::simulation::ScheduledSimulationTask;
 using epidemic::runtime::simulation::SimulationBudget;
 using epidemic::runtime::simulation::SimulationEffect;
 using epidemic::runtime::simulation::SimulationJobDesc;
+using epidemic::runtime::simulation::SimulationJobHandle;
 using epidemic::runtime::simulation::SimulationJobState;
+using epidemic::runtime::simulation::SimulationLane;
+using epidemic::runtime::simulation::SimulationProposal;
+using epidemic::runtime::simulation::SimulationProposalBatch;
 using epidemic::runtime::simulation::SimulationRuntime;
+using epidemic::runtime::simulation::SimulationStepInput;
 using epidemic::runtime::simulation::SimulationTime;
 using epidemic::runtime::simulation::WorldMemoryEvent;
 using epidemic::runtime::simulation::WorldMemoryEventState;
@@ -136,10 +151,52 @@ bool TestAttentionAndValidationFailures()
     ok &= Expect(!runtime.Submit(SimulationEffect{}).HasValue(), "invalid effect should fail");
     return ok;
 }
+
+bool TestBackendOrientedContractsAndServices()
+{
+    SimulationRuntime runtime{{}};
+    const auto handle = runtime.SubmitJobHandle(SimulationJobDesc{SimulationZoneId{5}, RuntimeObjectId{77}, 2, false, SimulationLane::Object, 12});
+    bool ok = Expect(handle.HasValue(), "job handle should submit");
+    ok &= Expect(handle.HasValue() && handle.Value().generation != 0, "job handle should carry generation");
+
+    SimulationJobHandle stale = handle.Value();
+    ++stale.generation;
+    ok &= Expect(!runtime.CancelJob(stale).HasValue(), "stale job handle should fail cancellation");
+    ok &= Expect(runtime.CancelJob(handle.Value()).HasValue(), "fresh job handle should cancel");
+
+    const auto persistent = runtime.RecordEvent(WorldMemoryEvent{
+        {},
+        RegionId{2},
+        SimulationTime{1},
+        GameDuration{1},
+        WorldMemoryEventState::Temporary,
+        MemoryLifetime::Persistent,
+        ObservationState::Observed});
+    ok &= Expect(persistent.HasValue(), "persistent memory event should record");
+    ok &= Expect(runtime.ExpireOldEvents(SimulationTime{10}, 1) == 0, "persistent lifetime should not expire");
+
+    SimulationStepInput input{handle.Value(), SimulationZoneId{5}, RuntimeObjectId{77}, SimulationLane::Object, 1, 12};
+    SimulationProposalBatch batch{input.job, input.source_revision, {SimulationProposal{input.subject, input.zone, 42}}};
+    ScheduledSimulationTask task{handle.Value(), SimulationTime{25}, SimulationLane::Background};
+    AbstractFact fact{1, RuntimeObjectId{77}, SimulationZoneId{5}, SimulationTime{25}};
+    ok &= Expect(batch.proposals.size() == 1 && task.job == handle.Value() && fact.subject == RuntimeObjectId{77},
+                 "proposal, task and fact contracts should be value-stable");
+
+    const auto services = CreateSimulationServices();
+    ok &= Expect(services.runtime != nullptr && services.attention != nullptr && services.memory != nullptr &&
+                     services.effects != nullptr,
+                 "simulation services should be populated");
+    return ok;
+}
 } // namespace
 
 int main()
 {
+    static_assert(std::is_abstract_v<IRelevancePolicy>);
+    static_assert(std::is_abstract_v<ISimulationJob>);
+    static_assert(std::is_abstract_v<ISimulationCommitTarget>);
+    static_assert(std::is_abstract_v<IAbstractFactStore>);
+
     bool ok = true;
     ok &= TestSubmitJobAndCompletion();
     ok &= TestPartialCompletionByBudget();
@@ -149,5 +206,6 @@ int main()
     ok &= TestWorldMemoryExpirationBudget();
     ok &= TestEffectBufferOrderAndClear();
     ok &= TestAttentionAndValidationFailures();
+    ok &= TestBackendOrientedContractsAndServices();
     return ok ? 0 : 1;
 }

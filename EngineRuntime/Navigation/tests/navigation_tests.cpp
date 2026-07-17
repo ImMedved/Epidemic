@@ -11,12 +11,17 @@ using epidemic::runtime::Vec3;
 using epidemic::runtime::navigation::DynamicObstacle;
 using epidemic::runtime::navigation::DynamicObstacleId;
 using epidemic::runtime::navigation::IDynamicObstacleProjection;
+using epidemic::runtime::navigation::INavigationBackend;
+using epidemic::runtime::navigation::INavigationDataSource;
 using epidemic::runtime::navigation::INavCostProvider;
+using epidemic::runtime::navigation::CreateMockNavigationServices;
 using epidemic::runtime::navigation::NavCostQuery;
 using epidemic::runtime::navigation::NavTileId;
 using epidemic::runtime::navigation::NavTileState;
+using epidemic::runtime::navigation::NavigationRevision;
 using epidemic::runtime::navigation::NavigationOptions;
 using epidemic::runtime::navigation::NavigationRuntime;
+using epidemic::runtime::navigation::PathResult;
 using epidemic::runtime::navigation::PathQueryState;
 using epidemic::runtime::navigation::PathRequest;
 
@@ -42,6 +47,29 @@ struct FixedObstacleProjection final : IDynamicObstacleProjection
         }
 
         return obstacles;
+    }
+};
+
+struct FixedNavigationBackend final : INavigationBackend
+{
+    epidemic::foundation::Result<PathResult> BuildPath(const PathRequest& request, NavigationRevision revision) const override
+    {
+        PathResult result{};
+        result.state = PathQueryState::Completed;
+        result.points = {request.start, request.target};
+        result.nav_revision = revision.value;
+        result.revision = 1;
+        return epidemic::foundation::Result<PathResult>::Success(result);
+    }
+};
+
+struct FixedNavigationDataSource final : INavigationDataSource
+{
+    NavigationRevision revision{99};
+
+    NavigationRevision CurrentRevision(RegionId) const override
+    {
+        return revision;
     }
 };
 
@@ -163,6 +191,35 @@ bool TestInvalidInputsReturnFailures()
     ok &= Expect(!runtime.MarkTileDirty(NavTileId{99}).HasValue(), "unknown tile should fail dirty mark");
     return ok;
 }
+
+bool TestHandleReleaseStaleAndFactoryContracts()
+{
+    NavigationRuntime runtime{NavigationOptions{}};
+    FixedNavigationBackend backend{};
+    FixedNavigationDataSource data_source{};
+    runtime.SetBackendSources(&backend, &data_source);
+
+    auto request = MakeRequest();
+    request.source_revision = 1;
+    const auto handle = runtime.RequestPathHandle(request);
+    if (!Expect(handle.HasValue(), "path handle request should succeed"))
+    {
+        return false;
+    }
+
+    bool ok = Expect(runtime.Tick(RuntimeBudget{.max_items = 1}) == 1, "handle query should enter running");
+    ok &= Expect(runtime.Tick(RuntimeBudget{.max_items = 1}) == 1, "handle query should complete");
+    const auto result = runtime.GetPathResult(handle.Value());
+    ok &= Expect(result.HasValue(), "handle query should expose completed result");
+    ok &= Expect(result.HasValue() && result.Value().stale, "source revision mismatch should mark result stale");
+    ok &= Expect(result.HasValue() && result.Value().nav_revision == 99, "data source revision should be captured");
+    ok &= Expect(runtime.ReleasePathResult(handle.Value()).HasValue(), "result release should succeed");
+    ok &= Expect(!runtime.GetPathResult(handle.Value()).HasValue(), "released result should be unavailable");
+
+    const auto services = CreateMockNavigationServices();
+    ok &= Expect(services.runtime != nullptr && services.tiles != nullptr, "mock navigation services should be populated");
+    return ok;
+}
 } // namespace
 
 int main()
@@ -174,6 +231,7 @@ int main()
     ok &= TestTileDirtyRebuildStates();
     ok &= TestCostAndObstacleProjectionsStayExternal();
     ok &= TestInvalidInputsReturnFailures();
+    ok &= TestHandleReleaseStaleAndFactoryContracts();
     return ok ? 0 : 1;
 }
 

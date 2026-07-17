@@ -37,6 +37,22 @@ enum class PhysicsBodyType
     Kinematic
 };
 
+enum class PhysicsBodyLifecycle
+{
+    Creating,
+    Alive,
+    Destroying,
+    Destroyed
+};
+
+enum class PhysicsActivityState
+{
+    Static,
+    Awake,
+    Sleeping,
+    Disabled
+};
+
 enum class PhysicsBodyState
 {
     PendingCreate,
@@ -63,6 +79,26 @@ enum class PhysicsEventState
     Consumed,
     Expired
 };
+
+enum class PhysicsDirtyFlags : std::uint32_t
+{
+    None = 0,
+    Transform = 1 << 0,
+    Shape = 1 << 1,
+    Material = 1 << 2,
+    Activity = 1 << 3
+};
+
+[[nodiscard]] constexpr PhysicsDirtyFlags operator|(PhysicsDirtyFlags left, PhysicsDirtyFlags right) noexcept
+{
+    return static_cast<PhysicsDirtyFlags>(
+        static_cast<std::uint32_t>(left) | static_cast<std::uint32_t>(right));
+}
+
+[[nodiscard]] constexpr bool HasFlag(PhysicsDirtyFlags value, PhysicsDirtyFlags flag) noexcept
+{
+    return (static_cast<std::uint32_t>(value) & static_cast<std::uint32_t>(flag)) != 0;
+}
 
 using PhysicsTransformId = RuntimeObjectId;
 
@@ -127,6 +163,18 @@ struct PhysicsStepResult
 {
     GameDuration fixed_delta{};
     std::uint64_t step_index = 0;
+    std::uint64_t revision = 0;
+};
+
+struct PhysicsBodySnapshot
+{
+    PhysicsBodyId id{};
+    RuntimeObjectId owner{};
+    PhysicsTransformId transform_node{};
+    PhysicsBodyType type = PhysicsBodyType::Static;
+    PhysicsBodyLifecycle lifecycle = PhysicsBodyLifecycle::Destroyed;
+    PhysicsActivityState activity = PhysicsActivityState::Disabled;
+    PhysicsDirtyFlags dirty = PhysicsDirtyFlags::None;
     std::uint64_t revision = 0;
 };
 } // namespace epidemic::runtime::physics

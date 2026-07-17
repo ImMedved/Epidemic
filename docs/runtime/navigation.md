@@ -6,8 +6,8 @@
 
 ## Public Contracts
 
-- `navigation_types.h`: tile ids, query ids, tile/query states, path requests/results, cost queries and obstacle snapshots.
-- `navigation_runtime.h`: tile registry, path runtime, cost provider and obstacle projection contracts.
+- `navigation_types.h`: tile ids, query ids, generation handles, tile/query states, path requests/results, nav revision, stale result metadata, cost queries and obstacle snapshots.
+- `navigation_runtime.h`: tile registry, path runtime, backend/data source, cost provider, obstacle projection contracts and `CreateMockNavigationServices()`.
 
 ## Rules
 
@@ -17,8 +17,10 @@
 - `RebuildDirtyTiles(RuntimeBudget)` advances dirty/rebuilding tiles in deterministic tile-id order.
 - `PathResult::revision` starts at `1` and increments on query state transitions.
 - Cancelled queries remain observable as cancelled but do not expose path results.
+- Released or generation-stale path results fail with stale-result/handle errors.
+- Mock path generation is available only through `CreateMockNavigationServices()` or direct test construction of the reference runtime.
 - Cost and obstacle data arrive through projection contracts; Navigation does not depend on Environment, Physics, Simulation or gameplay implementations.
 
 ## Testing Strategy
 
-The `Navigation` tests cover budgeted query states, deterministic query ordering, cancellation, tile rebuild lifecycle, external cost/obstacle projections and invalid input errors.
+The `Navigation` tests cover budgeted query states, deterministic query ordering, cancellation, tile rebuild lifecycle, external backend/cost/obstacle projections, handle release/stale behavior, service factory shape and invalid input errors.

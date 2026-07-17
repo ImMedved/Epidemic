@@ -113,6 +113,11 @@ foundation::Result<PhysicsStepResult> PhysicsRuntime::StepFixed(GameDuration fix
         PhysicsStepResult{fixed_delta, fixed_step_count_, revision_});
 }
 
+foundation::Result<PhysicsStepResult> PhysicsRuntime::SimulateFixed(GameDuration fixed_delta)
+{
+    return StepFixed(fixed_delta);
+}
+
 foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query) const
 {
     if (query.max_distance < 0.0f)

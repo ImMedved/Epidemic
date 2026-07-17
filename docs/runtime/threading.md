@@ -20,3 +20,7 @@ Mutable public registries and runtime managers repeat the short contract in thei
 ```
 
 The policy intentionally does not add mutexes to every class. Synchronization belongs to orchestration, commit phases or a module-specific implementation when that module has a real concurrency requirement.
+
+## Frame Commit Rules
+
+Support owns the default update order and shutdown order. Background work may prepare proposals from immutable snapshots, but authoritative mutation returns through the runtime thread, an explicit commit phase or a module-owned synchronization point. Generation-validated handles and revisioned snapshots are the expected way to detect stale work at commit time.

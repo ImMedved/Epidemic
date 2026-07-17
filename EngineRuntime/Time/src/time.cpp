@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <cmath>
+#include <limits>
 #include <memory>
 #include <string_view>
 #include <utility>
@@ -21,6 +21,11 @@ namespace
 {
     return foundation::Error::Create(code, message);
 }
+
+[[nodiscard]] bool IsValidTimeScale(TimeScale scale)
+{
+    return scale.numerator > 0 && scale.denominator > 0;
+}
 } // namespace
 
 foundation::Result<void> ValidateTimeOptions(const TimeOptions& options)
@@ -31,10 +36,10 @@ foundation::Result<void> ValidateTimeOptions(const TimeOptions& options)
             MakeTimeError("time.invalid_options", "game ticks per real second must be positive"));
     }
 
-    if (!std::isfinite(options.initial_time_scale) || options.initial_time_scale <= 0.0)
+    if (!IsValidTimeScale(options.initial_time_scale))
     {
         return foundation::Result<void>::Failure(
-            MakeTimeError("time.invalid_scale", "initial time scale must be finite and greater than zero"));
+            MakeTimeError("time.invalid_scale", "initial time scale numerator and denominator must be positive"));
     }
 
     if (options.calendar.hours_per_day == 0 || options.calendar.days_per_month == 0 ||
@@ -42,6 +47,18 @@ foundation::Result<void> ValidateTimeOptions(const TimeOptions& options)
     {
         return foundation::Result<void>::Failure(
             MakeTimeError("time.invalid_calendar", "calendar units must be positive"));
+    }
+
+    if (options.calendar.hours_per_day > (std::numeric_limits<std::uint32_t>::max() / 60))
+    {
+        return foundation::Result<void>::Failure(
+            MakeTimeError("time.overflow", "calendar day length overflows phase boundary validation"));
+    }
+    if (options.calendar.days_per_month >
+        (std::numeric_limits<std::int64_t>::max() / options.calendar.months_per_year))
+    {
+        return foundation::Result<void>::Failure(
+            MakeTimeError("time.overflow", "calendar year length overflows time conversion"));
     }
 
     const std::uint32_t minutes_per_day = options.calendar.hours_per_day * 60;

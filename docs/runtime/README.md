@@ -22,11 +22,13 @@ EngineRuntime provides runtime systems and shared runtime state. GameFramework p
 - `Animation`: skeletons, clips, animator instances, pose state and animation events.
 - `Audio`: sound resources, emitters, listeners, mixer placeholders and one-shot events.
 - `Simulation`: budgets, scheduled jobs, attention, world memory and effect buffering.
-- `Support`: final composition helpers and dependency validation.
+- `Support`: bundle registration, preflight dependency validation, allowed adapters, update order and shutdown order.
 
 ## Boundaries
 
 EngineRuntime must not contain concrete game rules, content-specific behavior or final product composition. Runtime majors communicate through ids, snapshots, projections, events, command/effect queues or the Support composition layer.
+
+Public runtime headers under `EngineRuntime/*/include/Epidemic/Runtime/**` are the source-level API surface. Private `src` headers must not be included across major boundaries, and runtime majors must not depend on `Support`.
 
 ## Reading Order
 

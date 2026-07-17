@@ -19,7 +19,9 @@ public:
     explicit SimulationRuntime(SimulationOptions options);
 
     [[nodiscard]] foundation::Result<SimulationJobId> SubmitJob(const SimulationJobDesc& desc) override;
+    [[nodiscard]] foundation::Result<SimulationJobHandle> SubmitJobHandle(const SimulationJobDesc& desc) override;
     [[nodiscard]] foundation::Result<void> CancelJob(SimulationJobId id) override;
+    [[nodiscard]] foundation::Result<void> CancelJob(SimulationJobHandle handle) override;
     [[nodiscard]] SimulationJobState GetJobState(SimulationJobId id) const override;
     void SetBudget(const SimulationBudget& budget) override;
     [[nodiscard]] std::size_t Tick() override;
@@ -42,6 +44,7 @@ private:
     struct JobRecord
     {
         SimulationJobDesc desc{};
+        SimulationJobHandle handle{};
         SimulationJobState state = SimulationJobState::Pending;
         std::uint32_t remaining_work_units = 0;
     };
@@ -55,6 +58,7 @@ private:
     SimulationOptions options_{};
     SimulationBudget budget_{1, 1};
     std::uint64_t next_job_value_ = 1;
+    std::uint32_t next_job_generation_ = 1;
     std::uint64_t next_memory_value_ = 1;
     std::unordered_map<SimulationJobId, JobRecord> jobs_;
     std::unordered_map<RuntimeObjectId, AttentionScore> object_attention_;

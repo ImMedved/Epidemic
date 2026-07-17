@@ -1,7 +1,11 @@
 #pragma once
 
 #include "Epidemic/Foundation/result.h"
+#include "Epidemic/Runtime/Physics/physics_event_buffer.h"
+#include "Epidemic/Runtime/Physics/physics_query.h"
 #include "Epidemic/Runtime/Physics/physics_types.h"
+
+#include <memory>
 
 namespace epidemic::runtime::physics
 {
@@ -34,4 +38,40 @@ class IPhysicsStepper
 
     [[nodiscard]] virtual foundation::Result<PhysicsStepResult> StepFixed(GameDuration fixed_delta) = 0;
 };
+
+class IPhysicsBackend
+{
+  public:
+    virtual ~IPhysicsBackend() = default;
+
+    [[nodiscard]] virtual foundation::Result<PhysicsStepResult> SimulateFixed(GameDuration fixed_delta) = 0;
+};
+
+class IPhysicsTransformSource
+{
+  public:
+    virtual ~IPhysicsTransformSource() = default;
+
+    [[nodiscard]] virtual foundation::Result<Transform> ReadTransform(PhysicsTransformId id) const = 0;
+};
+
+class IPhysicsTransformSink
+{
+  public:
+    virtual ~IPhysicsTransformSink() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> WriteTransform(PhysicsTransformId id, const Transform& transform) = 0;
+};
+
+struct PhysicsServices
+{
+    std::shared_ptr<ICollisionShapeRegistry> shapes;
+    std::shared_ptr<IPhysicsScene> scene;
+    std::shared_ptr<IPhysicsStepper> stepper;
+    std::shared_ptr<IPhysicsQuery> query;
+    std::shared_ptr<IPhysicsEventBuffer> events;
+    std::shared_ptr<IPhysicsBackend> backend;
+};
+
+[[nodiscard]] PhysicsServices CreatePhysicsServices();
 } // namespace epidemic::runtime::physics

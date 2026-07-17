@@ -17,6 +17,7 @@ set(_epidemic_runtime_world_forbidden_targets
     EpidemicRuntimeScene
     EpidemicRuntimeEnvironment
     EpidemicRuntimeResources
+    EpidemicRuntimeSupport
 )
 
 get_target_property(_epidemic_runtime_world_links EpidemicRuntimeWorld LINK_LIBRARIES)

@@ -10,6 +10,7 @@
 #include "Epidemic/Runtime/Environment/weather_state.h"
 
 #include <cstdint>
+#include <memory>
 
 namespace epidemic::runtime
 {
@@ -38,6 +39,7 @@ class IEnvironmentWriter
     [[nodiscard]] virtual foundation::Result<void> SetSeason(RegionId region, SeasonState season) = 0;
     [[nodiscard]] virtual foundation::Result<void> SetClimateProfile(RegionId region, ClimateProfile climate) = 0;
     [[nodiscard]] virtual foundation::Result<void> SetSurfaceState(SurfaceState state) = 0;
+    [[nodiscard]] virtual foundation::Result<void> ApplyUpdate(const EnvironmentStateUpdate& update) = 0;
     [[nodiscard]] virtual foundation::Result<void> Update(const EnvironmentUpdateInput& input) = 0;
 };
 
@@ -46,10 +48,9 @@ class IEnvironmentUpdatePolicy
   public:
     virtual ~IEnvironmentUpdatePolicy() = default;
 
-    [[nodiscard]] virtual foundation::Result<void> Apply(
+    [[nodiscard]] virtual foundation::Result<EnvironmentStateUpdate> BuildUpdate(
         const EnvironmentUpdateInput& input,
-        IEnvironmentQuery& query,
-        IEnvironmentWriter& writer) = 0;
+        const IEnvironmentQuery& query) const = 0;
 };
 
 class IEnvironmentRuntime : public IEnvironmentQuery, public IEnvironmentWriter
@@ -57,6 +58,6 @@ class IEnvironmentRuntime : public IEnvironmentQuery, public IEnvironmentWriter
   public:
     ~IEnvironmentRuntime() override = default;
 
-    virtual void SetUpdatePolicy(IEnvironmentUpdatePolicy* policy) = 0;
+    virtual void SetUpdatePolicy(std::shared_ptr<const IEnvironmentUpdatePolicy> policy) = 0;
 };
 } // namespace epidemic::runtime

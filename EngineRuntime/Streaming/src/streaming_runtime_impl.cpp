@@ -86,10 +86,37 @@ foundation::Result<StreamingRequestId> StreamingRuntime::RequestChunk(
     ChunkId chunk,
     StreamingPriorityClass priority)
 {
+    const auto request = RequestTarget(ChunkStreamingTarget{chunk}, priority, 1);
+    if (!request)
+    {
+        return foundation::Result<StreamingRequestId>::Failure(request.GetError());
+    }
+
+    return foundation::Result<StreamingRequestId>::Success(request.Value().id);
+}
+
+foundation::Result<StreamingRequestHandle> StreamingRuntime::RequestTarget(
+    const StreamingTarget& target,
+    StreamingPriorityClass priority,
+    std::uint32_t demand_count)
+{
+    const auto chunk_target = GetChunkTarget(target);
+    if (!chunk_target)
+    {
+        return foundation::Result<StreamingRequestHandle>::Failure(
+            foundation::Error::Create("streaming.unsupported_target", "reference streaming runtime only executes chunk targets"));
+    }
+
+    const ChunkId chunk = *chunk_target;
     if (!chunk.IsValid())
     {
-        return foundation::Result<StreamingRequestId>::Failure(
+        return foundation::Result<StreamingRequestHandle>::Failure(
             foundation::Error::Create("streaming.invalid_chunk", "chunk id must be valid before requesting streaming"));
+    }
+    if (demand_count == 0)
+    {
+        return foundation::Result<StreamingRequestHandle>::Failure(
+            foundation::Error::Create("streaming.invalid_demand", "streaming demand count must be positive"));
     }
 
     const auto existing_request = chunk_to_request_.find(chunk);
@@ -102,12 +129,14 @@ foundation::Result<StreamingRequestId> StreamingRuntime::RequestChunk(
             {
                 current->request.priority = priority;
             }
+            current->request.demand_count += demand_count;
 
-            return foundation::Result<StreamingRequestId>::Success(current->request.id);
+            return foundation::Result<StreamingRequestHandle>::Success(current->request.handle);
         }
     }
 
     const StreamingRequestId request_id{next_request_value_++};
+    const StreamingRequestHandle request_handle{request_id, next_generation_++};
     StreamingPriorityClass resolved_priority = priority;
     if (resolved_priority == StreamingPriorityClass::Normal && priority_resolver_ != nullptr)
     {
@@ -121,8 +150,20 @@ foundation::Result<StreamingRequestId> StreamingRuntime::RequestChunk(
 
     StreamingRequest request{};
     request.id = request_id;
+    request.handle = request_handle;
+    request.target = target;
     request.chunk = chunk;
     request.priority = resolved_priority;
+    request.demand_count = demand_count;
+    request.cancellation.generation = request_handle.generation;
+    request.load_plan.steps = {
+        StreamingPlanStep::ResolveTarget,
+        StreamingPlanStep::PrepareData,
+        StreamingPlanStep::PrepareResources,
+        StreamingPlanStep::Commit,
+        StreamingPlanStep::Rollback,
+        StreamingPlanStep::Release,
+    };
     request.budget_hint = request_budget;
     if (world_source_ != nullptr)
     {
@@ -142,7 +183,8 @@ foundation::Result<StreamingRequestId> StreamingRuntime::RequestChunk(
     requests_.emplace(request_id, record);
     chunk_to_request_[chunk] = request_id;
     chunk_states_[chunk] = StreamingState::Requested;
-    return foundation::Result<StreamingRequestId>::Success(request_id);
+    ++statistics_.requested;
+    return foundation::Result<StreamingRequestHandle>::Success(request_handle);
 }
 
 foundation::Result<void> StreamingRuntime::CancelRequest(StreamingRequestId request)
@@ -165,8 +207,28 @@ foundation::Result<void> StreamingRuntime::CancelRequest(StreamingRequestId requ
     }
 
     SetState(*record, StreamingState::Deactivating, kDeactivatingProgress);
+    record->request.cancellation.requested = true;
     chunk_states_[record->request.chunk] = record->state;
+    ++statistics_.cancelled;
     return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> StreamingRuntime::CancelRequest(StreamingRequestHandle request)
+{
+    if (!request.IsValid())
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("streaming.invalid_handle", "streaming request handle must be valid"));
+    }
+
+    RequestRecord* record = FindRequest(request.id);
+    if (record == nullptr || record->request.handle.generation != request.generation)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("streaming.stale_handle", "streaming request handle generation is stale"));
+    }
+
+    return CancelRequest(request.id);
 }
 
 StreamingState StreamingRuntime::GetChunkState(ChunkId chunk) const
@@ -209,6 +271,7 @@ void StreamingRuntime::Tick()
         {
             SetState(*record, StreamingState::Failed, kFailedProgress);
             chunk_states_[record->request.chunk] = record->state;
+            ++statistics_.failed;
         }
 
         ++processed;
@@ -223,7 +286,37 @@ std::optional<StreamingProgress> StreamingRuntime::GetProgress(StreamingRequestI
         return std::nullopt;
     }
 
-    return StreamingProgress{record->request.id, record->state, record->progress, record->revision};
+    return StreamingProgress{
+        record->request.id,
+        record->request.handle,
+        record->request.target,
+        record->state,
+        record->progress,
+        record->revision,
+    };
+}
+
+std::optional<StreamingProgress> StreamingRuntime::GetProgress(StreamingRequestHandle request) const
+{
+    const RequestRecord* record = FindRequest(request.id);
+    if (record == nullptr || record->request.handle.generation != request.generation)
+    {
+        return std::nullopt;
+    }
+
+    return StreamingProgress{
+        record->request.id,
+        record->request.handle,
+        record->request.target,
+        record->state,
+        record->progress,
+        record->revision,
+    };
+}
+
+StreamingStatistics StreamingRuntime::GetStatistics() const
+{
+    return statistics_;
 }
 
 bool StreamingRuntime::IsTerminal(StreamingState state)
@@ -261,6 +354,16 @@ void StreamingRuntime::SetState(RequestRecord& record, StreamingState state, flo
     record.state = state;
     record.progress = progress;
     ++record.revision;
+}
+
+std::optional<ChunkId> StreamingRuntime::GetChunkTarget(const StreamingTarget& target)
+{
+    if (const auto* chunk = std::get_if<ChunkStreamingTarget>(&target))
+    {
+        return chunk->chunk;
+    }
+
+    return std::nullopt;
 }
 
 StreamingRuntime::RequestRecord* StreamingRuntime::FindRequest(StreamingRequestId id)
@@ -394,6 +497,7 @@ foundation::Result<void> StreamingRuntime::AdvanceActivation(RequestRecord& reco
 
     SetState(record, StreamingState::Active, kActiveProgress);
     chunk_states_[record.request.chunk] = record.state;
+    ++statistics_.committed;
     return foundation::Result<void>::Success();
 }
 
@@ -419,6 +523,7 @@ foundation::Result<void> StreamingRuntime::AdvanceUnload(RequestRecord& record)
 
     SetState(record, StreamingState::Unloaded, kUnloadedProgress);
     chunk_states_[record.request.chunk] = record.state;
+    ++statistics_.rolled_back;
     return foundation::Result<void>::Success();
 }
 } // namespace epidemic::runtime::streaming

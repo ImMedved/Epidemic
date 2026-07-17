@@ -2,6 +2,7 @@
 
 #include "Epidemic/Runtime/Time/game_calendar.h"
 #include "Epidemic/Runtime/Time/game_time.h"
+#include "Epidemic/Runtime/Time/time_scale.h"
 #include "Epidemic/Runtime/Time/time_state.h"
 
 #include <cstdint>
@@ -12,7 +13,7 @@ struct TimeSnapshot
 {
     GameTimePoint now{};
     GameDuration last_delta{};
-    double time_scale = 1.0;
+    TimeScale time_scale{};
     bool paused = false;
     CalendarDate calendar{};
     DayPhase day_phase = DayPhase::Night;

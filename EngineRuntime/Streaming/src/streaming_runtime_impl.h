@@ -29,7 +29,7 @@ class InMemoryResidencyController final : public IResidencyController
     std::unordered_map<ChunkId, StreamingState> chunk_states_;
 };
 
-class StreamingRuntime final : public IStreamingRuntime
+class StreamingRuntime final : public IStreamingRuntime, public IStreamingQuery
 {
   public:
     explicit StreamingRuntime(
@@ -42,11 +42,18 @@ class StreamingRuntime final : public IStreamingRuntime
     [[nodiscard]] foundation::Result<StreamingRequestId> RequestChunk(
         ChunkId chunk,
         StreamingPriorityClass priority) override;
+    [[nodiscard]] foundation::Result<StreamingRequestHandle> RequestTarget(
+        const StreamingTarget& target,
+        StreamingPriorityClass priority,
+        std::uint32_t demand_count) override;
     [[nodiscard]] foundation::Result<void> CancelRequest(StreamingRequestId request) override;
+    [[nodiscard]] foundation::Result<void> CancelRequest(StreamingRequestHandle request) override;
     [[nodiscard]] StreamingState GetChunkState(ChunkId chunk) const override;
     void SetBudget(const StreamingBudget& budget) override;
     void Tick() override;
     [[nodiscard]] std::optional<StreamingProgress> GetProgress(StreamingRequestId request) const override;
+    [[nodiscard]] std::optional<StreamingProgress> GetProgress(StreamingRequestHandle request) const override;
+    [[nodiscard]] StreamingStatistics GetStatistics() const override;
 
   private:
     struct RequestRecord
@@ -59,6 +66,7 @@ class StreamingRuntime final : public IStreamingRuntime
 
     [[nodiscard]] static bool IsTerminal(StreamingState state);
     [[nodiscard]] static int PriorityRank(StreamingPriorityClass priority);
+    [[nodiscard]] static std::optional<ChunkId> GetChunkTarget(const StreamingTarget& target);
     static void SetState(RequestRecord& record, StreamingState state, float progress);
 
     [[nodiscard]] RequestRecord* FindRequest(StreamingRequestId id);
@@ -79,5 +87,7 @@ class StreamingRuntime final : public IStreamingRuntime
     std::unordered_map<ChunkId, StreamingRequestId> chunk_to_request_;
     std::unordered_map<ChunkId, StreamingState> chunk_states_;
     std::uint64_t next_request_value_ = 1;
+    std::uint32_t next_generation_ = 1;
+    StreamingStatistics statistics_{};
 };
 } // namespace epidemic::runtime::streaming

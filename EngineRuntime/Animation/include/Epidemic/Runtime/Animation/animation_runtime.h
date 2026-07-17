@@ -53,6 +53,7 @@ public:
     // Inputs: owner/skeleton/lod descriptor; outputs: animator id or validation error.
     // Relations: Play, DestroyAnimator and pose queries operate on returned ids.
     [[nodiscard]] virtual foundation::Result<AnimatorInstanceId> CreateAnimator(const AnimatorDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<AnimatorHandle> CreateAnimatorHandle(const AnimatorDesc& desc) = 0;
 
     // Function note: Destroys an animator instance.
     // Inputs: animator id; outputs: success/failure Result.
@@ -63,11 +64,16 @@ public:
     // Inputs: animator id and clip id; outputs: success/failure Result.
     // Relations: transitions state to Playing and queues a generic animation event.
     [[nodiscard]] virtual foundation::Result<void> Play(AnimatorInstanceId id, AnimationClipId clip) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Play(const AnimationPlaybackCommand& command) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Pause(AnimatorHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Stop(AnimatorHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Crossfade(AnimatorHandle handle, AnimationClipId clip, GameDuration duration) = 0;
 
     // Function note: Advances animator playback and mock pose evaluation by budgeted items.
     // Inputs: maximum number of animators to advance; outputs: number of transitioned animators.
     // Relations: emits finish events for non-looping mock clips.
     [[nodiscard]] virtual std::size_t Tick(std::size_t max_animators) = 0;
+    [[nodiscard]] virtual std::size_t Tick(GameDuration delta, std::size_t max_animators) = 0;
 
     // Function note: Reads animator lifecycle state.
     // Inputs: animator id; outputs: state, Disabled for unknown ids.
@@ -94,6 +100,24 @@ public:
     // Inputs: animator id; outputs: pose snapshot for renderer-facing adapters.
     // Relations: avoids exposing mutable animator internals to Renderer or gameplay systems.
     [[nodiscard]] virtual PoseSnapshot GetPoseSnapshot(AnimatorInstanceId id) const = 0;
+    [[nodiscard]] virtual PoseBuffer GetPoseBuffer(AnimatorHandle handle) const = 0;
+};
+
+class IAnimationResourceSource
+{
+public:
+    virtual ~IAnimationResourceSource() = default;
+
+    [[nodiscard]] virtual foundation::Result<SkeletonDesc> LoadSkeleton(SkeletonId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<AnimationClipDesc> LoadClip(AnimationClipId id) const = 0;
+};
+
+class IAnimationPoseSink
+{
+public:
+    virtual ~IAnimationPoseSink() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> SubmitPose(const PoseBuffer& pose) = 0;
 };
 
 class IAnimationEventBuffer
@@ -113,5 +137,16 @@ public:
 };
 
 [[nodiscard]] std::unique_ptr<class AnimationRuntime> CreateAnimationRuntime(AnimationOptions options = {});
+
+struct AnimationServices
+{
+    std::shared_ptr<ISkeletonRegistry> skeletons;
+    std::shared_ptr<IAnimationClipRegistry> clips;
+    std::shared_ptr<IAnimationRuntime> runtime;
+    std::shared_ptr<IPoseProvider> poses;
+    std::shared_ptr<IAnimationEventBuffer> events;
+};
+
+[[nodiscard]] AnimationServices CreateAnimationServices(AnimationOptions options = {});
 } // namespace epidemic::runtime::animation
 

@@ -11,6 +11,7 @@
 #include "Epidemic/Runtime/Environment/weather_state.h"
 
 #include <iostream>
+#include <memory>
 #include <type_traits>
 
 namespace
@@ -21,7 +22,10 @@ using epidemic::runtime::CreateEnvironmentServices;
 using epidemic::runtime::EnvironmentProjection;
 using epidemic::runtime::EnvironmentRuntime;
 using epidemic::runtime::EnvironmentSnapshot;
+using epidemic::runtime::EnvironmentStateUpdate;
 using epidemic::runtime::EnvironmentUpdateInput;
+using epidemic::runtime::GameDuration;
+using epidemic::runtime::GameTimePoint;
 using epidemic::runtime::IEnvironmentQuery;
 using epidemic::runtime::IEnvironmentRuntime;
 using epidemic::runtime::IEnvironmentUpdatePolicy;
@@ -59,20 +63,25 @@ using epidemic::runtime::WeatherState;
 class WetnessPolicy final : public IEnvironmentUpdatePolicy
 {
   public:
-    [[nodiscard]] Result<void> Apply(const EnvironmentUpdateInput& input, IEnvironmentQuery& query, IEnvironmentWriter& writer) override
+    [[nodiscard]] Result<EnvironmentStateUpdate> BuildUpdate(const EnvironmentUpdateInput& input, const IEnvironmentQuery& query) const override
     {
         const auto surface = query.GetSurfaceState(SurfaceId{10});
         if (!surface)
         {
-            return Result<void>::Failure(surface.GetError());
+            return Result<EnvironmentStateUpdate>::Failure(surface.GetError());
         }
 
         SurfaceState updated = surface.Value();
         updated.wetness = 0.25f;
         updated.mud_depth = 0.7f;
         updated.condition = SurfaceConditionKind::Muddy;
-        updated.temperature = static_cast<float>(input.game_delta_ticks) * 0.01f;
-        return writer.SetSurfaceState(updated);
+        updated.temperature = static_cast<float>(input.game_delta.ticks) * 0.01f;
+
+        EnvironmentStateUpdate update{};
+        update.region = input.region_id;
+        update.source_revision = query.GetRevision();
+        update.surfaces.push_back(updated);
+        return Result<EnvironmentStateUpdate>::Success(std::move(update));
     }
 };
 
@@ -113,7 +122,8 @@ class WetnessPolicy final : public IEnvironmentUpdatePolicy
 
     const auto set = runtime.SetSurfaceState(MakeSurface(SurfaceId{12}, region));
     const auto surface = runtime.GetSurfaceState(SurfaceId{12});
-    return set && surface && surface.Value().region_id == region && surface.Value().wetness == 0.6f &&
+    return set && surface && surface.Value().region_id == region && surface.Value().condition == SurfaceConditionKind::Icy &&
+           surface.Value().wetness == 0.6f &&
            surface.Value().snow_depth == 0.2f && surface.Value().mud_depth == 0.4f && surface.Value().ice_thickness == 0.1f &&
            surface.Value().revision == runtime.GetRevision();
 }
@@ -123,7 +133,7 @@ class WetnessPolicy final : public IEnvironmentUpdatePolicy
     EnvironmentRuntime runtime;
     const auto invalid_weather = runtime.SetWeather(RegionId{1}, WeatherState{WeatherKind::Storm, 1.5f, 0.0f, 0.0f, 1.0f, 0.0f});
     const auto invalid_surface = runtime.SetSurfaceState(SurfaceState{SurfaceId{2}, RegionId{}, SurfaceConditionKind::Wet, 0.5f, 0.0f, 0.0f, 0.0f, 2.0f});
-    const auto invalid_update = runtime.Update(EnvironmentUpdateInput{100, -1, RegionId{1}});
+    const auto invalid_update = runtime.Update(EnvironmentUpdateInput{GameTimePoint{100}, GameDuration{-1}, RegionId{1}});
     return !invalid_weather && invalid_weather.GetError().HasCode("environment.invalid_weather") && !invalid_surface &&
            invalid_surface.GetError().HasCode("environment.invalid_region") && !invalid_update &&
            invalid_update.GetError().HasCode("environment.invalid_delta");
@@ -162,7 +172,7 @@ class WetnessPolicy final : public IEnvironmentUpdatePolicy
     }
 
     const auto before = runtime.GetSurfaceState(SurfaceId{10});
-    const auto update = runtime.Update(EnvironmentUpdateInput{1000, 100, region});
+    const auto update = runtime.Update(EnvironmentUpdateInput{GameTimePoint{1000}, GameDuration{100}, region});
     const auto after = runtime.GetSurfaceState(SurfaceId{10});
     return before && update && after && before.Value() == after.Value();
 }
@@ -170,23 +180,85 @@ class WetnessPolicy final : public IEnvironmentUpdatePolicy
 [[nodiscard]] bool TestOptionalPolicyCanMutateSurface()
 {
     EnvironmentRuntime runtime;
-    WetnessPolicy policy;
-    runtime.SetUpdatePolicy(&policy);
+    auto policy = std::make_shared<WetnessPolicy>();
+    runtime.SetUpdatePolicy(policy);
     const RegionId region{3};
     if (!SeedRegion(runtime, region) || !runtime.SetSurfaceState(MakeSurface(SurfaceId{10}, region)))
     {
         return false;
     }
 
-    const auto update = runtime.Update(EnvironmentUpdateInput{1000, 100, region});
+    const auto update = runtime.Update(EnvironmentUpdateInput{GameTimePoint{1000}, GameDuration{100}, region});
     const auto surface = runtime.GetSurfaceState(SurfaceId{10});
     return update && surface && surface.Value().wetness == 0.25f && surface.Value().mud_depth == 0.7f && surface.Value().temperature == 1.0f;
 }
 
+[[nodiscard]] bool TestApplyUpdateRejectsRevisionConflict()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{44};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate update{};
+    update.region = region;
+    update.source_revision = runtime.GetRevision() + 1u;
+    update.weather = WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 1.0f, 720.0f};
+
+    const auto rejected = runtime.ApplyUpdate(update);
+    const auto weather = runtime.GetWeather(region);
+    return !rejected && rejected.GetError().HasCode("environment.revision_conflict") &&
+           weather && weather.Value().kind == WeatherKind::Rain;
+}
+
+[[nodiscard]] bool TestBatchNormalizesWindDirection()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{46};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate update{};
+    update.region = region;
+    update.source_revision = runtime.GetRevision();
+    update.weather = WeatherState{WeatherKind::Cloudy, 0.2f, 0.5f, 0.0f, 3.0f, 725.0f};
+    const auto applied = runtime.ApplyUpdate(update);
+    const auto weather = runtime.GetWeather(region);
+    return applied && weather && weather.Value().wind_direction_degrees == 5.0f;
+}
+
+[[nodiscard]] bool TestInvalidBatchLeavesStateUnchanged()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{45};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+
+    const auto before_weather = runtime.GetWeather(region);
+    const auto before_revision = runtime.GetRevision();
+
+    EnvironmentStateUpdate update{};
+    update.region = region;
+    update.source_revision = before_revision;
+    update.weather = WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 2.0f, 90.0f};
+    update.surfaces.push_back(SurfaceState{SurfaceId{99}, RegionId{}, SurfaceConditionKind::Wet, 0.5f, 0.0f, 0.0f, 0.0f, 2.0f});
+
+    const auto rejected = runtime.ApplyUpdate(update);
+    const auto after_weather = runtime.GetWeather(region);
+    return before_weather && !rejected && rejected.GetError().HasCode("environment.invalid_region") &&
+           after_weather && after_weather.Value() == before_weather.Value() && runtime.GetRevision() == before_revision;
+}
+
 [[nodiscard]] bool TestFactoryCreatesSplitServices()
 {
-    WetnessPolicy policy;
-    const auto services = CreateEnvironmentServices({&policy});
+    auto policy = std::make_shared<WetnessPolicy>();
+    const auto services = CreateEnvironmentServices({policy});
     if (!services || !services.Value().runtime || !services.Value().query || !services.Value().writer)
     {
         return false;
@@ -232,6 +304,9 @@ int main()
         {"SnapshotAndProjectionAreRevisionedCopies", TestSnapshotAndProjectionAreRevisionedCopies},
         {"UpdateWithoutPolicyDoesNotMutateSurface", TestUpdateWithoutPolicyDoesNotMutateSurface},
         {"OptionalPolicyCanMutateSurface", TestOptionalPolicyCanMutateSurface},
+        {"ApplyUpdateRejectsRevisionConflict", TestApplyUpdateRejectsRevisionConflict},
+        {"BatchNormalizesWindDirection", TestBatchNormalizesWindDirection},
+        {"InvalidBatchLeavesStateUnchanged", TestInvalidBatchLeavesStateUnchanged},
         {"FactoryCreatesSplitServices", TestFactoryCreatesSplitServices},
     };
 

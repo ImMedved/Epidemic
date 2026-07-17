@@ -17,6 +17,7 @@ using epidemic::runtime::IGameClock;
 using epidemic::runtime::ITimeRuntime;
 using epidemic::runtime::IsZero;
 using epidemic::runtime::PhaseBoundary;
+using epidemic::runtime::TimeScale;
 using epidemic::runtime::TimeEventKind;
 using epidemic::runtime::TimeOptions;
 using epidemic::runtime::TimeRuntime;
@@ -87,23 +88,32 @@ bool TestPauseResume()
 bool TestInvalidTimeScaleIsRejected()
 {
     TimeRuntime runtime;
-    const auto negative = runtime.SetTimeScale(-1.0);
-    const auto infinity = runtime.SetTimeScale(std::numeric_limits<double>::infinity());
-    const auto zero = runtime.SetTimeScale(0.0);
+    const auto negative = runtime.SetTimeScale(TimeScale{-1, 1});
+    const auto zero_numerator = runtime.SetTimeScale(TimeScale{0, 1});
+    const auto zero_denominator = runtime.SetTimeScale(TimeScale{1, 0});
 
-    return !negative && negative.GetError().HasCode("time.invalid_scale") && !infinity && !zero &&
-           runtime.GetSnapshot().time_scale == 1.0;
+    return !negative && negative.GetError().HasCode("time.invalid_scale") && !zero_numerator &&
+           !zero_denominator && runtime.GetSnapshot().time_scale == TimeScale{};
 }
 
 bool TestTimeScaleChangesDeltaMultiplier()
 {
     TimeRuntime runtime;
-    const auto scale = runtime.SetTimeScale(2.5);
+    const auto scale = runtime.SetTimeScale(TimeScale{5, 2});
     const auto advanced = runtime.Advance(std::chrono::seconds(2));
 
     const auto& events = runtime.GetEvents();
     return scale && advanced && runtime.LastDelta().ticks == 5 && runtime.Now().ticks == 5 &&
-           !events.empty() && events.front().kind == TimeEventKind::TimeAdvanced;
+           runtime.GetSnapshot().time_scale == TimeScale{5, 2} && !events.empty() &&
+           events.front().kind == TimeEventKind::TimeAdvanced;
+}
+
+bool TestTimeScaleIsNormalized()
+{
+    TimeRuntime runtime;
+    const auto scale = runtime.SetTimeScale(TimeScale{10, 4});
+
+    return scale && runtime.GetSnapshot().time_scale == TimeScale{5, 2};
 }
 
 bool TestTimeSkipProducesJumpEvent()
@@ -114,6 +124,24 @@ bool TestTimeSkipProducesJumpEvent()
     const auto& events = runtime.GetEvents();
     return result && runtime.Now().ticks == 90 && runtime.LastDelta().ticks == 90 && !events.empty() &&
            events.front().kind == TimeEventKind::TimeJumped;
+}
+
+bool TestNegativeSkipIsRejected()
+{
+    TimeRuntime runtime;
+    const auto result = runtime.Skip(GameDuration{-1});
+
+    return !result && result.GetError().HasCode("time.invalid_skip") && runtime.Now().ticks == 0;
+}
+
+bool TestSkipOverflowIsRejected()
+{
+    TimeRuntime runtime;
+    const auto to_max = runtime.Skip(GameDuration{std::numeric_limits<std::int64_t>::max()});
+    const auto overflow = runtime.Skip(GameDuration{1});
+
+    return to_max && !overflow && overflow.GetError().HasCode("time.overflow") &&
+           runtime.Now().ticks == std::numeric_limits<std::int64_t>::max();
 }
 
 bool TestCalendarConversion()
@@ -127,17 +155,70 @@ bool TestCalendarConversion()
 
     const auto date = runtime.GetSnapshot().calendar;
     const auto point = runtime.ToGameTimePoint(date);
-    return date.year == 1 && date.month == 1 && date.day == 2 && date.hour == 1 && date.minute == 1 && point &&
+    return date.year == 1 && date.month == 1 && date.day == 2 && date.hour == 1 && date.minute == 1 &&
+           date.second == 0 && point &&
            point.Value().ticks == runtime.Now().ticks;
+}
+
+bool TestCalendarSecondsRoundTrip()
+{
+    TimeRuntime runtime;
+    const auto skip_result = runtime.Skip(GameDuration{(24 * 60 * 60) + (61 * 60) + 42});
+    if (!skip_result)
+    {
+        return false;
+    }
+
+    const auto date = runtime.GetSnapshot().calendar;
+    const auto point = runtime.ToGameTimePoint(date);
+    return date.year == 1 && date.month == 1 && date.day == 2 && date.hour == 1 && date.minute == 1 &&
+           date.second == 42 && point && point.Value().ticks == runtime.Now().ticks;
 }
 
 bool TestDateValidation()
 {
     TimeRuntime runtime;
-    const auto invalid_month = runtime.ToGameTimePoint(CalendarDate{1, 13, 1, 0, 0});
-    const auto invalid_minute = runtime.ToGameTimePoint(CalendarDate{1, 1, 1, 0, 60});
+    const auto invalid_month = runtime.ToGameTimePoint(CalendarDate{1, 13, 1, 0, 0, 0});
+    const auto invalid_minute = runtime.ToGameTimePoint(CalendarDate{1, 1, 1, 0, 60, 0});
+    const auto invalid_second = runtime.ToGameTimePoint(CalendarDate{1, 1, 1, 0, 0, 60});
 
-    return !invalid_month && invalid_month.GetError().HasCode("time.invalid_date") && !invalid_minute;
+    return !invalid_month && invalid_month.GetError().HasCode("time.invalid_date") && !invalid_minute && !invalid_second;
+}
+
+bool TestCalendarDateOverflowIsRejected()
+{
+    TimeRuntime runtime;
+    const auto result = runtime.ToGameTimePoint(
+        CalendarDate{std::numeric_limits<std::int64_t>::max(), 1, 1, 0, 0, 0});
+
+    return !result && result.GetError().HasCode("time.overflow");
+}
+
+bool TestAdvanceOverflowIsRejected()
+{
+    TimeOptions options{};
+    options.game_ticks_per_real_second = std::numeric_limits<std::int64_t>::max();
+    options.initial_time_scale = TimeScale{std::numeric_limits<std::int64_t>::max(), 1};
+    TimeRuntime runtime(options);
+
+    const auto result = runtime.Advance(std::chrono::seconds(1));
+
+    return !result && result.GetError().HasCode("time.overflow") && runtime.Now().ticks == 0;
+}
+
+bool TestLongRunStaysDeterministic()
+{
+    TimeOptions options{};
+    options.game_ticks_per_real_second = 120;
+    TimeRuntime runtime(options);
+
+    bool ok = true;
+    for (int index = 0; index < 1000; ++index)
+    {
+        ok = runtime.Advance(std::chrono::seconds(1)) && ok;
+    }
+
+    return ok && runtime.Now().ticks == 120000 && runtime.LastDelta().ticks == 120;
 }
 
 bool TestDayAndPhaseTransitions()
@@ -261,17 +342,45 @@ int main()
     {
         return 7;
     }
+    if (!TestTimeScaleIsNormalized())
+    {
+        return 17;
+    }
     if (!TestTimeSkipProducesJumpEvent())
     {
         return 8;
+    }
+    if (!TestNegativeSkipIsRejected())
+    {
+        return 18;
+    }
+    if (!TestSkipOverflowIsRejected())
+    {
+        return 19;
     }
     if (!TestCalendarConversion())
     {
         return 9;
     }
-    if (!TestDateValidation())
+    if (!TestCalendarSecondsRoundTrip())
     {
         return 10;
+    }
+    if (!TestDateValidation())
+    {
+        return 16;
+    }
+    if (!TestCalendarDateOverflowIsRejected())
+    {
+        return 20;
+    }
+    if (!TestAdvanceOverflowIsRejected())
+    {
+        return 21;
+    }
+    if (!TestLongRunStaysDeterministic())
+    {
+        return 22;
     }
     if (!TestDayAndPhaseTransitions())
     {

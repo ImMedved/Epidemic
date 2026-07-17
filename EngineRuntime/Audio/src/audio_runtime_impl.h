@@ -14,24 +14,30 @@ class AudioRuntime final : public ISoundRegistry,
                            public IAudioRuntime,
                            public IListenerSystem,
                            public IAudioEventQueue,
-                           public IMixerSystem
+                           public IMixerSystem,
+                           public IAudioBackend
 {
 public:
     explicit AudioRuntime(AudioOptions options);
 
     [[nodiscard]] foundation::Result<void> RegisterSound(SoundDesc desc) override;
     [[nodiscard]] SoundState GetSoundState(SoundId id) const override;
+    [[nodiscard]] bool IsEnabled() const override;
 
     [[nodiscard]] foundation::Result<AudioEmitterId> CreateEmitter(const AudioEmitterDesc& desc) override;
+    [[nodiscard]] foundation::Result<AudioEmitterHandle> CreateEmitterHandle(const AudioEmitterDesc& desc) override;
     [[nodiscard]] foundation::Result<void> DestroyEmitter(AudioEmitterId id) override;
     [[nodiscard]] foundation::Result<void> Play(AudioEmitterId id) override;
     [[nodiscard]] foundation::Result<void> Stop(AudioEmitterId id) override;
     [[nodiscard]] foundation::Result<void> FadeOut(AudioEmitterId id) override;
+    [[nodiscard]] foundation::Result<void> FadeOut(AudioEmitterHandle handle, GameDuration duration) override;
     [[nodiscard]] foundation::Result<void> Virtualize(AudioEmitterId id) override;
     [[nodiscard]] EmitterState GetEmitterState(AudioEmitterId id) const override;
     [[nodiscard]] AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterId id) const override;
+    [[nodiscard]] AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterHandle handle) const override;
 
     [[nodiscard]] foundation::Result<AudioListenerId> CreateListener(const AudioListenerDesc& desc) override;
+    [[nodiscard]] foundation::Result<void> DestroyListener(AudioListenerId id) override;
     [[nodiscard]] foundation::Result<void> SetMainListener(AudioListenerId id) override;
     [[nodiscard]] std::optional<AudioListenerId> GetMainListener() const override;
 
@@ -46,7 +52,10 @@ private:
     struct EmitterRecord
     {
         AudioEmitterDesc desc{};
+        AudioEmitterHandle handle{};
         EmitterState state = EmitterState::Stopped;
+        GameDuration fade_duration{};
+        float fade_progress = 0.0f;
         std::uint64_t revision = 0;
     };
 
@@ -57,10 +66,13 @@ private:
 
     [[nodiscard]] EmitterRecord* FindEmitter(AudioEmitterId id);
     [[nodiscard]] const EmitterRecord* FindEmitter(AudioEmitterId id) const;
+    [[nodiscard]] EmitterRecord* FindEmitter(AudioEmitterHandle handle);
+    [[nodiscard]] const EmitterRecord* FindEmitter(AudioEmitterHandle handle) const;
     [[nodiscard]] bool HasListener(AudioListenerId id) const;
 
     AudioOptions options_{};
     std::uint64_t next_emitter_value_ = 1;
+    std::uint32_t next_emitter_generation_ = 1;
     std::uint64_t next_listener_value_ = 1;
     std::unordered_map<SoundId, SoundDesc> sounds_;
     std::unordered_map<AudioEmitterId, EmitterRecord> emitters_;

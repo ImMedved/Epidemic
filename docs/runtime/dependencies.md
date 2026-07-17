@@ -53,3 +53,7 @@ When one major needs information from another, prefer public contracts, immutabl
 Consumer majors use their own projection ids for external state. For example, Renderer exposes `RenderTransformId`; Support may adapt that id to Scene's `SceneNodeId` when composing a full runtime.
 
 Resource payloads cross module boundaries as immutable payload pointers. Support-owned bridges may hold resource leases and adapt those payloads to renderer-facing projections, but renderer code must not drive resource loading or release policy directly.
+
+## CMake Boundary
+
+Every runtime major records `EpidemicRuntimeSupport` as a forbidden dependency in its local CMake file. `Support` is the only runtime target that may link the complete set of majors. Architecture tests scan this rule so future dependency changes fail fast instead of silently creating cycles.

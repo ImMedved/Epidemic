@@ -16,6 +16,13 @@ target_link_libraries(EpidemicRuntimeSupport
     PUBLIC EpidemicRuntimeTime
     PUBLIC EpidemicRuntimeEnvironment
     PUBLIC EpidemicRuntimeScene
+    PUBLIC EpidemicRuntimeWorld
+    PUBLIC EpidemicRuntimeStreaming
+    PUBLIC EpidemicRuntimeSimulation
+    PUBLIC EpidemicRuntimeNavigation
+    PUBLIC EpidemicRuntimeAnimation
+    PUBLIC EpidemicRuntimePhysics
+    PUBLIC EpidemicRuntimeAudio
     PUBLIC EpidemicRuntimeRenderer
     PRIVATE EpidemicFoundation
 )

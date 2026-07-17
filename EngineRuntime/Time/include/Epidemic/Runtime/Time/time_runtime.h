@@ -4,6 +4,7 @@
 #include "Epidemic/Runtime/Time/game_calendar.h"
 #include "Epidemic/Runtime/Time/game_time.h"
 #include "Epidemic/Runtime/Time/time_events.h"
+#include "Epidemic/Runtime/Time/time_scale.h"
 #include "Epidemic/Runtime/Time/time_snapshot.h"
 
 #include <chrono>
@@ -29,7 +30,7 @@ struct TimeOptions
 {
     CalendarDefinition calendar{};
     std::int64_t game_ticks_per_real_second = 1;
-    double initial_time_scale = 1.0;
+    TimeScale initial_time_scale{};
     std::vector<PhaseBoundary> phase_boundaries{};
 };
 
@@ -51,7 +52,7 @@ class ITimeRuntime
     [[nodiscard]] virtual foundation::Result<TimeAdvanceResult> Advance(std::chrono::microseconds real_delta) = 0;
     [[nodiscard]] virtual foundation::Result<void> Pause() = 0;
     [[nodiscard]] virtual foundation::Result<void> Resume() = 0;
-    [[nodiscard]] virtual foundation::Result<void> SetTimeScale(double scale) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetTimeScale(TimeScale scale) = 0;
     [[nodiscard]] virtual foundation::Result<void> Skip(GameDuration duration) = 0;
 };
 

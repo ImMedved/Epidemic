@@ -6,8 +6,8 @@
 
 ## Public Contracts
 
-- `physics_types.h`: body ids, shape ids, body states, queries, contacts and `PhysicsStepResult`.
-- `physics_scene.h`: shape registry, body scene and fixed-step contracts.
+- `physics_types.h`: body ids, shape ids, body type/lifecycle/activity/dirty flags, queries, contacts, body snapshots and `PhysicsStepResult`.
+- `physics_scene.h`: shape registry, body scene, backend, transform source/sink, fixed-step contracts and `PhysicsServices`.
 - `physics_query.h`: raycast and overlap query contract.
 - `physics_event_buffer.h`: contact event publication boundary.
 
@@ -18,6 +18,8 @@
 - `StepFixed(GameDuration)` accepts only positive fixed deltas and returns a versioned step result.
 - Contact events are published through the event buffer; Physics does not call World mutation APIs.
 - Query results must remain deterministic for equivalent body/query inputs.
+- `IPhysicsBackend` is a backend boundary; the reference backend remains a deterministic fake.
+- Transform source/sink contracts keep Physics decoupled from Scene/World ownership.
 
 ## Forbidden Dependencies
 
@@ -25,4 +27,4 @@
 
 ## Testing Strategy
 
-The `Physics` tests cover body lifecycle, invalid body errors, impulse state transitions, fixed-step revision, deterministic queries and event buffer clearing.
+The `Physics` tests cover body lifecycle, invalid body errors, impulse state transitions, fixed-step revision, deterministic queries, dirty flags, service factory shape and event buffer clearing.

@@ -2,11 +2,17 @@
 
 #include <iostream>
 #include <string_view>
+#include <type_traits>
 
+using epidemic::runtime::GameDuration;
 using epidemic::runtime::RuntimeObjectId;
 using epidemic::runtime::animation::AnimationClipDesc;
 using epidemic::runtime::animation::AnimationClipId;
 using epidemic::runtime::animation::AnimationLodLevel;
+using epidemic::runtime::animation::AnimationPlaybackCommand;
+using epidemic::runtime::animation::CreateAnimationServices;
+using epidemic::runtime::animation::IAnimationPoseSink;
+using epidemic::runtime::animation::IAnimationResourceSource;
 using epidemic::runtime::animation::AnimationRuntime;
 using epidemic::runtime::animation::AnimatorDesc;
 using epidemic::runtime::animation::AnimatorState;
@@ -111,10 +117,38 @@ bool TestValidationFailures()
     ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{99}, 1.0f, false}).HasValue(), "clip with missing skeleton should fail");
     return ok;
 }
+
+bool TestHandlePlaybackPoseBufferAndFactory()
+{
+    AnimationRuntime runtime{{}};
+    bool ok = Expect(SeedResources(runtime), "resources should seed");
+    const auto handle = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{77}, SkeletonId{1}, AnimationLodLevel::Full});
+    ok &= Expect(handle.HasValue(), "handle animator should be created");
+    ok &= Expect(runtime.Play(AnimationPlaybackCommand{handle.Value(), AnimationClipId{10}, false, GameDuration{0}}).HasValue(), "handle play should succeed");
+    ok &= Expect(runtime.Pause(handle.Value()).HasValue(), "pause should succeed");
+    ok &= Expect(runtime.GetState(handle.Value().id) == AnimatorState::Paused, "pause should update state");
+    ok &= Expect(runtime.Crossfade(handle.Value(), AnimationClipId{10}, GameDuration{1}).HasValue(), "crossfade should succeed");
+    ok &= Expect(runtime.GetState(handle.Value().id) == AnimatorState::Blending, "crossfade should blend");
+    ok &= Expect(runtime.Tick(GameDuration{1}, 1) == 1, "delta tick should advance one animator");
+
+    const auto pose = runtime.GetPoseBuffer(handle.Value());
+    ok &= Expect(pose.animator == handle.Value(), "pose buffer should preserve handle");
+    ok &= Expect(pose.bone_transforms.size() == 32, "pose buffer should contain skeleton bone transforms");
+    ok &= Expect(runtime.Stop(handle.Value()).HasValue(), "stop should succeed");
+
+    const auto services = CreateAnimationServices();
+    ok &= Expect(services.skeletons != nullptr && services.clips != nullptr && services.runtime != nullptr &&
+                     services.poses != nullptr && services.events != nullptr,
+                 "animation services should be populated");
+    return ok;
+}
 } // namespace
 
 int main()
 {
+    static_assert(std::is_abstract_v<IAnimationResourceSource>);
+    static_assert(std::is_abstract_v<IAnimationPoseSink>);
+
     bool ok = true;
     ok &= TestCreateDestroyAnimator();
     ok &= TestPlayInvalidClipReturnsError();
@@ -122,5 +156,6 @@ int main()
     ok &= TestTickOrderIsDeterministic();
     ok &= TestLodPlaceholderChangesPoseState();
     ok &= TestValidationFailures();
+    ok &= TestHandlePlaybackPoseBufferAndFactory();
     return ok ? 0 : 1;
 }

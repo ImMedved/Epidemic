@@ -77,13 +77,27 @@ foundation::Result<AnimatorInstanceId> AnimationRuntime::CreateAnimator(const An
     }
 
     const AnimatorInstanceId id{next_animator_value_++};
+    const AnimatorHandle handle{id, next_generation_++};
     AnimatorRecord record{};
     record.desc = desc;
+    record.handle = handle;
     record.state = AnimatorState::Ready;
     record.pose_state = PoseState::Clean;
     record.revision = 1;
     animators_.emplace(id, record);
     return foundation::Result<AnimatorInstanceId>::Success(id);
+}
+
+foundation::Result<AnimatorHandle> AnimationRuntime::CreateAnimatorHandle(const AnimatorDesc& desc)
+{
+    const auto id = CreateAnimator(desc);
+    if (!id)
+    {
+        return foundation::Result<AnimatorHandle>::Failure(id.GetError());
+    }
+
+    const AnimatorRecord* animator = FindAnimator(id.Value());
+    return foundation::Result<AnimatorHandle>::Success(animator->handle);
 }
 
 foundation::Result<void> AnimationRuntime::DestroyAnimator(AnimatorInstanceId id)
@@ -132,10 +146,94 @@ foundation::Result<void> AnimationRuntime::Play(AnimatorInstanceId id, Animation
     return foundation::Result<void>::Success();
 }
 
+foundation::Result<void> AnimationRuntime::Play(const AnimationPlaybackCommand& command)
+{
+    AnimatorRecord* animator = FindAnimator(command.animator);
+    if (animator == nullptr)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("animation.animator_not_found", "animator handle was not found for playback"));
+    }
+
+    auto result = Play(command.animator.id, command.clip);
+    if (result && command.loop)
+    {
+        auto clip = clips_.find(command.clip);
+        if (clip != clips_.end())
+        {
+            clip->second.loop = true;
+        }
+    }
+    return result;
+}
+
+foundation::Result<void> AnimationRuntime::Pause(AnimatorHandle handle)
+{
+    AnimatorRecord* animator = FindAnimator(handle);
+    if (animator == nullptr)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("animation.animator_not_found", "animator handle was not found for pause"));
+    }
+
+    if (animator->state != AnimatorState::Paused)
+    {
+        animator->state = AnimatorState::Paused;
+        ++animator->revision;
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> AnimationRuntime::Stop(AnimatorHandle handle)
+{
+    AnimatorRecord* animator = FindAnimator(handle);
+    if (animator == nullptr)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("animation.animator_not_found", "animator handle was not found for stop"));
+    }
+
+    if (animator->state != AnimatorState::Finished)
+    {
+        animator->state = AnimatorState::Finished;
+        animator->local_time = 0.0f;
+        animator->pose_state = PoseState::Clean;
+        ++animator->revision;
+        QueueEvent(handle.id, "animation.stopped", 0.0f);
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> AnimationRuntime::Crossfade(AnimatorHandle handle, AnimationClipId clip, GameDuration duration)
+{
+    if (duration.ticks < 0)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("animation.invalid_fade", "crossfade duration must not be negative"));
+    }
+
+    const auto play = Play(AnimationPlaybackCommand{handle, clip, false, duration});
+    if (!play)
+    {
+        return play;
+    }
+
+    AnimatorRecord* animator = FindAnimator(handle);
+    animator->state = AnimatorState::Blending;
+    QueueEvent(handle.id, "animation.crossfade", static_cast<float>(duration.ticks));
+    return foundation::Result<void>::Success();
+}
+
 std::size_t AnimationRuntime::Tick(std::size_t max_animators)
+{
+    return Tick(GameDuration{1}, max_animators);
+}
+
+std::size_t AnimationRuntime::Tick(GameDuration delta, std::size_t max_animators)
 {
     const std::size_t limit = max_animators == 0 ? animators_.size() : max_animators;
     std::size_t transitioned = 0;
+    const float delta_seconds = static_cast<float>(std::max<std::int64_t>(0, delta.ticks));
 
     for (const AnimatorInstanceId id : BuildAnimatorWorkList())
     {
@@ -147,7 +245,7 @@ std::size_t AnimationRuntime::Tick(std::size_t max_animators)
         AnimatorRecord& animator = animators_[id];
         if (animator.state == AnimatorState::Playing || animator.state == AnimatorState::Blending)
         {
-            animator.local_time += 1.0f;
+            animator.local_time += delta_seconds;
             animator.pose_state = animator.desc.lod == AnimationLodLevel::Frozen ? PoseState::Clean : PoseState::Ready;
             const auto clip_it = clips_.find(animator.playing_clip);
             if (clip_it != clips_.end() && !clip_it->second.loop && animator.local_time >= clip_it->second.duration_seconds)
@@ -205,10 +303,23 @@ PoseSnapshot AnimationRuntime::GetPoseSnapshot(AnimatorInstanceId id) const
     const AnimatorRecord* animator = FindAnimator(id);
     if (animator == nullptr)
     {
-        return PoseSnapshot{id, PoseState::Clean, AnimationLodLevel::Frozen, 0};
+        return PoseSnapshot{id, {}, PoseState::Clean, AnimationLodLevel::Frozen, 0};
     }
 
-    return PoseSnapshot{id, animator->pose_state, animator->desc.lod, animator->revision};
+    return PoseSnapshot{id, animator->handle, animator->pose_state, animator->desc.lod, animator->revision};
+}
+
+PoseBuffer AnimationRuntime::GetPoseBuffer(AnimatorHandle handle) const
+{
+    const AnimatorRecord* animator = FindAnimator(handle);
+    if (animator == nullptr)
+    {
+        return PoseBuffer{handle, {}, 0};
+    }
+
+    const auto skeleton = skeletons_.find(animator->desc.skeleton);
+    const std::uint32_t bone_count = skeleton == skeletons_.end() ? 0 : skeleton->second.joint_count;
+    return PoseBuffer{handle, std::vector<Transform>(bone_count), animator->revision};
 }
 
 std::span<const AnimationEvent> AnimationRuntime::Events() const
@@ -241,6 +352,28 @@ const AnimationRuntime::AnimatorRecord* AnimationRuntime::FindAnimator(AnimatorI
     }
 
     return &iterator->second;
+}
+
+AnimationRuntime::AnimatorRecord* AnimationRuntime::FindAnimator(AnimatorHandle handle)
+{
+    AnimatorRecord* animator = FindAnimator(handle.id);
+    if (animator == nullptr || animator->handle.generation != handle.generation)
+    {
+        return nullptr;
+    }
+
+    return animator;
+}
+
+const AnimationRuntime::AnimatorRecord* AnimationRuntime::FindAnimator(AnimatorHandle handle) const
+{
+    const AnimatorRecord* animator = FindAnimator(handle.id);
+    if (animator == nullptr || animator->handle.generation != handle.generation)
+    {
+        return nullptr;
+    }
+
+    return animator;
 }
 
 std::vector<AnimatorInstanceId> AnimationRuntime::BuildAnimatorWorkList() const

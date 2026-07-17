@@ -31,6 +31,11 @@ SoundState AudioRuntime::GetSoundState(SoundId id) const
     return iterator->second.state;
 }
 
+bool AudioRuntime::IsEnabled() const
+{
+    return options_.enable_mock_backend;
+}
+
 foundation::Result<AudioEmitterId> AudioRuntime::CreateEmitter(const AudioEmitterDesc& desc)
 {
     if (!desc.owner.IsValid())
@@ -52,8 +57,21 @@ foundation::Result<AudioEmitterId> AudioRuntime::CreateEmitter(const AudioEmitte
     }
 
     const AudioEmitterId id{next_emitter_value_++};
-    emitters_.emplace(id, EmitterRecord{desc, EmitterState::Stopped, 1});
+    const AudioEmitterHandle handle{id, next_emitter_generation_++};
+    emitters_.emplace(id, EmitterRecord{desc, handle, EmitterState::Stopped, {}, 0.0f, 1});
     return foundation::Result<AudioEmitterId>::Success(id);
+}
+
+foundation::Result<AudioEmitterHandle> AudioRuntime::CreateEmitterHandle(const AudioEmitterDesc& desc)
+{
+    const auto id = CreateEmitter(desc);
+    if (!id)
+    {
+        return foundation::Result<AudioEmitterHandle>::Failure(id.GetError());
+    }
+
+    const EmitterRecord* emitter = FindEmitter(id.Value());
+    return foundation::Result<AudioEmitterHandle>::Success(emitter->handle);
 }
 
 foundation::Result<void> AudioRuntime::DestroyEmitter(AudioEmitterId id)
@@ -132,8 +150,32 @@ foundation::Result<void> AudioRuntime::FadeOut(AudioEmitterId id)
     if (emitter->state != EmitterState::FadingOut)
     {
         emitter->state = EmitterState::FadingOut;
+        emitter->fade_duration = GameDuration{};
+        emitter->fade_progress = 0.0f;
         ++emitter->revision;
     }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> AudioRuntime::FadeOut(AudioEmitterHandle handle, GameDuration duration)
+{
+    if (duration.ticks < 0)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("audio.invalid_fade", "fade duration must not be negative"));
+    }
+
+    EmitterRecord* emitter = FindEmitter(handle);
+    if (emitter == nullptr)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("audio.stale_emitter", "audio emitter handle is stale"));
+    }
+
+    emitter->state = EmitterState::FadingOut;
+    emitter->fade_duration = duration;
+    emitter->fade_progress = duration.ticks == 0 ? 1.0f : 0.0f;
+    ++emitter->revision;
     return foundation::Result<void>::Success();
 }
 
@@ -170,10 +212,30 @@ AudioEmitterSnapshot AudioRuntime::GetEmitterSnapshot(AudioEmitterId id) const
     const EmitterRecord* emitter = FindEmitter(id);
     if (emitter == nullptr)
     {
-        return AudioEmitterSnapshot{id, {}, {}, EmitterState::Destroyed, 0};
+        return AudioEmitterSnapshot{id, {}, {}, {}, EmitterState::Destroyed, {}, 0.0f, 0};
     }
 
-    return AudioEmitterSnapshot{id, emitter->desc.sound, emitter->desc.transform, emitter->state, emitter->revision};
+    return AudioEmitterSnapshot{
+        id,
+        emitter->handle,
+        emitter->desc.sound,
+        emitter->desc.transform,
+        emitter->state,
+        emitter->fade_duration,
+        emitter->fade_progress,
+        emitter->revision,
+    };
+}
+
+AudioEmitterSnapshot AudioRuntime::GetEmitterSnapshot(AudioEmitterHandle handle) const
+{
+    const EmitterRecord* emitter = FindEmitter(handle);
+    if (emitter == nullptr)
+    {
+        return AudioEmitterSnapshot{handle.id, handle, {}, {}, EmitterState::Destroyed, {}, 0.0f, 0};
+    }
+
+    return GetEmitterSnapshot(handle.id);
 }
 
 foundation::Result<AudioListenerId> AudioRuntime::CreateListener(const AudioListenerDesc& desc)
@@ -201,6 +263,22 @@ foundation::Result<void> AudioRuntime::SetMainListener(AudioListenerId id)
     return foundation::Result<void>::Success();
 }
 
+foundation::Result<void> AudioRuntime::DestroyListener(AudioListenerId id)
+{
+    const auto erased = listeners_.erase(id);
+    if (erased == 0)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("audio.listener_not_found", "audio listener was not found for destruction"));
+    }
+
+    if (main_listener_ == id)
+    {
+        main_listener_.reset();
+    }
+    return foundation::Result<void>::Success();
+}
+
 std::optional<AudioListenerId> AudioRuntime::GetMainListener() const
 {
     return main_listener_;
@@ -218,6 +296,11 @@ foundation::Result<void> AudioRuntime::SubmitOneShot(const AudioEvent& event)
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("audio.invalid_volume", "one-shot volume must not be negative"));
+    }
+    if (options_.max_queued_events != 0 && events_.size() >= options_.max_queued_events)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("audio.event_queue_full", "audio event queue is full"));
     }
 
     events_.push_back(event);
@@ -283,6 +366,28 @@ const AudioRuntime::EmitterRecord* AudioRuntime::FindEmitter(AudioEmitterId id) 
     }
 
     return &iterator->second;
+}
+
+AudioRuntime::EmitterRecord* AudioRuntime::FindEmitter(AudioEmitterHandle handle)
+{
+    EmitterRecord* emitter = FindEmitter(handle.id);
+    if (emitter == nullptr || emitter->handle.generation != handle.generation)
+    {
+        return nullptr;
+    }
+
+    return emitter;
+}
+
+const AudioRuntime::EmitterRecord* AudioRuntime::FindEmitter(AudioEmitterHandle handle) const
+{
+    const EmitterRecord* emitter = FindEmitter(handle.id);
+    if (emitter == nullptr || emitter->handle.generation != handle.generation)
+    {
+        return nullptr;
+    }
+
+    return emitter;
 }
 
 bool AudioRuntime::HasListener(AudioListenerId id) const

@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <chrono>
 #include <vector>
 
 namespace epidemic::runtime::navigation
@@ -28,6 +29,15 @@ struct PathQueryId
 
     [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
     [[nodiscard]] constexpr bool operator==(const PathQueryId&) const noexcept = default;
+};
+
+struct PathQueryHandle
+{
+    PathQueryId id{};
+    std::uint32_t generation = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return id.IsValid() && generation != 0; }
+    [[nodiscard]] constexpr bool operator==(const PathQueryHandle&) const noexcept = default;
 };
 
 struct DynamicObstacleId
@@ -65,13 +75,23 @@ struct PathRequest
     Vec3 target{};
     RegionId region{};
     RuntimeBudget budget_hint{};
+    std::uint64_t source_revision = 0;
+    std::chrono::microseconds result_ttl{};
 };
 
 struct PathResult
 {
+    PathQueryHandle handle{};
     PathQueryState state = PathQueryState::Pending;
     std::vector<Vec3> points;
+    std::uint64_t nav_revision = 0;
+    bool stale = false;
     std::uint64_t revision = 0;
+};
+
+struct NavigationRevision
+{
+    std::uint64_t value = 0;
 };
 
 struct NavCostQuery

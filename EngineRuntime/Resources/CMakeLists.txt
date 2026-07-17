@@ -18,6 +18,7 @@ set(_epidemic_runtime_resources_forbidden_targets
     EpidemicRuntimeSerialization
     EpidemicRuntimeWorld
     EpidemicRuntimeRenderer
+    EpidemicRuntimeSupport
 )
 
 get_target_property(_epidemic_runtime_resources_links EpidemicRuntimeResources LINK_LIBRARIES)

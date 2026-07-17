@@ -8,8 +8,20 @@ foundation::Result<PersistenceServices> CreatePersistenceServices(const Persiste
 {
     (void)options;
 
+    PersistenceSnapshot snapshot{};
+    if (options.backend)
+    {
+        const auto loaded = options.backend->Load();
+        if (!loaded)
+        {
+            return foundation::Result<PersistenceServices>::Failure(loaded.GetError());
+        }
+        snapshot = loaded.Value();
+    }
+
     PersistenceServices services{};
-    services.store = std::make_shared<InMemoryPersistenceStore>();
+    services.store = std::make_shared<InMemoryPersistenceStore>(std::move(snapshot));
+    services.query = services.store;
     return foundation::Result<PersistenceServices>::Success(std::move(services));
 }
 } // namespace epidemic::runtime

@@ -18,6 +18,7 @@ struct CalendarDate
     std::uint32_t day = 1;
     std::uint32_t hour = 0;
     std::uint32_t minute = 0;
+    std::uint32_t second = 0;
 
     [[nodiscard]] constexpr bool operator==(const CalendarDate&) const noexcept = default;
 };

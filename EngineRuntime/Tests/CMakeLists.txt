@@ -1,1 +1,3 @@
 add_subdirectory(Architecture)
+add_subdirectory(Integration)
+add_subdirectory(Regression)

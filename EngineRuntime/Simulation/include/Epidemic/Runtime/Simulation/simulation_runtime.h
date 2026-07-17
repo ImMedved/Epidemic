@@ -23,11 +23,13 @@ public:
     // Inputs: zone/subject/work descriptor; outputs: job id or validation error.
     // Relations: Tick advances job state under SimulationBudget.
     [[nodiscard]] virtual foundation::Result<SimulationJobId> SubmitJob(const SimulationJobDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<SimulationJobHandle> SubmitJobHandle(const SimulationJobDesc& desc) = 0;
 
     // Function note: Cancels a non-terminal job.
     // Inputs: job id; outputs: success/failure Result.
     // Relations: cancelled jobs remain queryable through GetJobState.
     [[nodiscard]] virtual foundation::Result<void> CancelJob(SimulationJobId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> CancelJob(SimulationJobHandle handle) = 0;
 
     // Function note: Reads the lifecycle state of a simulation job.
     // Inputs: job id; outputs: Failed for unknown ids.
@@ -97,6 +99,39 @@ public:
     [[nodiscard]] virtual std::size_t ExpireOldEvents(SimulationTime now, std::uint32_t max_events) = 0;
 };
 
+class IRelevancePolicy
+{
+public:
+    virtual ~IRelevancePolicy() = default;
+
+    [[nodiscard]] virtual SimulationZoneState ClassifyZone(RegionId region, AttentionScore attention) const = 0;
+};
+
+class ISimulationJob
+{
+public:
+    virtual ~ISimulationJob() = default;
+
+    [[nodiscard]] virtual foundation::Result<SimulationProposalBatch> ExecuteStep(const SimulationStepInput& input) = 0;
+};
+
+class ISimulationCommitTarget
+{
+public:
+    virtual ~ISimulationCommitTarget() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> Commit(const SimulationProposalBatch& batch) = 0;
+};
+
+class IAbstractFactStore
+{
+public:
+    virtual ~IAbstractFactStore() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> RecordFact(const AbstractFact& fact) = 0;
+    [[nodiscard]] virtual std::vector<AbstractFact> QueryFacts(SimulationZoneId zone) const = 0;
+};
+
 class IEffectBuffer
 {
 public:
@@ -119,4 +154,14 @@ public:
 };
 
 [[nodiscard]] std::unique_ptr<class SimulationRuntime> CreateSimulationRuntime(SimulationOptions options = {});
+
+struct SimulationServices
+{
+    std::shared_ptr<ISimulationRuntime> runtime;
+    std::shared_ptr<IAttentionSystem> attention;
+    std::shared_ptr<IWorldMemory> memory;
+    std::shared_ptr<IEffectBuffer> effects;
+};
+
+[[nodiscard]] SimulationServices CreateSimulationServices(SimulationOptions options = {});
 } // namespace epidemic::runtime::simulation

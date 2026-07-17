@@ -18,12 +18,20 @@ namespace
 using epidemic::runtime::ChunkId;
 using epidemic::runtime::RegionId;
 using epidemic::runtime::streaming::IResidencyController;
+using epidemic::runtime::streaming::IStreamingCommitTarget;
+using epidemic::runtime::streaming::IStreamingDataSource;
 using epidemic::runtime::streaming::IStreamingPersistenceSource;
+using epidemic::runtime::streaming::IStreamingPriorityProvider;
+using epidemic::runtime::streaming::IStreamingQuery;
 using epidemic::runtime::streaming::IStreamingPriorityResolver;
 using epidemic::runtime::streaming::IStreamingResourceSource;
 using epidemic::runtime::streaming::IStreamingRuntime;
 using epidemic::runtime::streaming::IStreamingWorldSource;
 using epidemic::runtime::streaming::InMemoryResidencyController;
+using epidemic::runtime::streaming::ChunkStreamingTarget;
+using epidemic::runtime::streaming::CreateStreamingServices;
+using epidemic::runtime::streaming::StreamingRequestHandle;
+using epidemic::runtime::streaming::StreamingTarget;
 using epidemic::runtime::streaming::StreamingBudget;
 using epidemic::runtime::streaming::StreamingPriorityClass;
 using epidemic::runtime::streaming::StreamingRequest;
@@ -290,14 +298,76 @@ bool TestMockModeCanReachActiveWithoutExternalMajors()
     return runtime.GetChunkState(ChunkId{501}) == StreamingState::Active &&
            progress.has_value() && progress->progress == 1.0f;
 }
+
+bool TestTargetHandleDemandAndStatistics()
+{
+    StreamingRuntime runtime;
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 8, 0});
+
+    const auto first = runtime.RequestTarget(StreamingTarget{ChunkStreamingTarget{ChunkId{601}}},
+                                             StreamingPriorityClass::Normal,
+                                             2);
+    const auto duplicate = runtime.RequestTarget(StreamingTarget{ChunkStreamingTarget{ChunkId{601}}},
+                                                 StreamingPriorityClass::High,
+                                                 3);
+    if (!first || !duplicate || first.Value() != duplicate.Value())
+    {
+        return false;
+    }
+
+    const auto progress = runtime.GetProgress(first.Value());
+    const auto stats = runtime.GetStatistics();
+    if (!progress || progress->handle != first.Value() || stats.requested != 1)
+    {
+        return false;
+    }
+
+    runtime.Tick();
+    runtime.Tick();
+    runtime.Tick();
+    runtime.Tick();
+    runtime.Tick();
+
+    return runtime.GetStatistics().committed == 1 &&
+           runtime.GetChunkState(ChunkId{601}) == StreamingState::Active;
+}
+
+bool TestStaleHandleCancellationIsRejected()
+{
+    StreamingRuntime runtime;
+    const auto handle = runtime.RequestTarget(StreamingTarget{ChunkStreamingTarget{ChunkId{701}}},
+                                             StreamingPriorityClass::Normal,
+                                             1);
+    if (!handle)
+    {
+        return false;
+    }
+
+    StreamingRequestHandle stale = handle.Value();
+    ++stale.generation;
+    const auto cancelled = runtime.CancelRequest(stale);
+
+    return !cancelled && cancelled.GetError().HasCode("streaming.stale_handle") &&
+           runtime.GetProgress(stale) == std::nullopt;
+}
+
+bool TestStreamingServicesFactory()
+{
+    const auto services = CreateStreamingServices();
+    return services.runtime != nullptr && services.query != nullptr;
+}
 } // namespace
 
 int main()
 {
     static_assert(std::is_same_v<decltype(StreamingBudget{}.max_requests), std::size_t>);
     static_assert(std::is_abstract_v<IStreamingRuntime>);
+    static_assert(std::is_abstract_v<IStreamingQuery>);
     static_assert(std::is_abstract_v<IResidencyController>);
     static_assert(std::is_abstract_v<IStreamingPriorityResolver>);
+    static_assert(std::is_abstract_v<IStreamingDataSource>);
+    static_assert(std::is_abstract_v<IStreamingCommitTarget>);
+    static_assert(std::is_abstract_v<IStreamingPriorityProvider>);
     static_assert(std::is_abstract_v<IStreamingWorldSource>);
     static_assert(std::is_abstract_v<IStreamingPersistenceSource>);
     static_assert(std::is_abstract_v<IStreamingResourceSource>);
@@ -330,6 +400,18 @@ int main()
     if (!TestMockModeCanReachActiveWithoutExternalMajors())
     {
         return 6;
+    }
+    if (!TestTargetHandleDemandAndStatistics())
+    {
+        return 7;
+    }
+    if (!TestStaleHandleCancellationIsRejected())
+    {
+        return 8;
+    }
+    if (!TestStreamingServicesFactory())
+    {
+        return 9;
     }
 
     return 0;

@@ -18,7 +18,7 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     [[nodiscard]] foundation::Result<TimeAdvanceResult> Advance(std::chrono::microseconds real_delta) override;
     [[nodiscard]] foundation::Result<void> Pause() override;
     [[nodiscard]] foundation::Result<void> Resume() override;
-    [[nodiscard]] foundation::Result<void> SetTimeScale(double scale) override;
+    [[nodiscard]] foundation::Result<void> SetTimeScale(TimeScale scale) override;
     [[nodiscard]] foundation::Result<void> Skip(GameDuration duration) override;
 
     [[nodiscard]] const std::vector<TimeEvent>& GetEvents() const;
@@ -39,7 +39,7 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     TimeOptions options_{};
     GameTimePoint now_{};
     GameDuration last_delta_{};
-    double time_scale_ = 1.0;
+    TimeScale time_scale_{};
     bool paused_ = false;
     TimeRuntimeState state_ = TimeRuntimeState::Running;
     TimeSnapshot snapshot_{};

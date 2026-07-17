@@ -34,4 +34,29 @@ class IStreamingResourceSource
     [[nodiscard]] virtual foundation::Result<void> PrepareChunkResources(const StreamingRequest& request) = 0;
     [[nodiscard]] virtual foundation::Result<void> ReleaseChunkResources(ChunkId chunk) = 0;
 };
+
+class IStreamingDataSource
+{
+  public:
+    virtual ~IStreamingDataSource() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> Prepare(const StreamingRequest& request) = 0;
+};
+
+class IStreamingCommitTarget
+{
+  public:
+    virtual ~IStreamingCommitTarget() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> Commit(const StreamingRequest& request) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Rollback(const StreamingRequest& request) = 0;
+};
+
+class IStreamingPriorityProvider
+{
+  public:
+    virtual ~IStreamingPriorityProvider() = default;
+
+    [[nodiscard]] virtual StreamingPriorityClass GetPriority(const StreamingTarget& target) const = 0;
+};
 } // namespace epidemic::runtime::streaming

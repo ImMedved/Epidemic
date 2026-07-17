@@ -1,10 +1,13 @@
 #pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
+#include "Epidemic/Runtime/Foundation/runtime_time.h"
+#include "Epidemic/Runtime/Foundation/spatial.h"
 
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace epidemic::runtime::animation
 {
@@ -91,12 +94,37 @@ struct AnimationEvent
     float time = 0.0f;
 };
 
+struct AnimatorHandle
+{
+    AnimatorInstanceId id{};
+    std::uint32_t generation = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return id.IsValid() && generation != 0; }
+    [[nodiscard]] constexpr bool operator==(const AnimatorHandle&) const noexcept = default;
+};
+
 struct PoseSnapshot
 {
     AnimatorInstanceId animator{};
+    AnimatorHandle handle{};
     PoseState state = PoseState::Clean;
     AnimationLodLevel lod = AnimationLodLevel::Full;
     std::uint64_t revision = 0;
+};
+
+struct PoseBuffer
+{
+    AnimatorHandle animator{};
+    std::vector<Transform> bone_transforms{};
+    std::uint64_t revision = 0;
+};
+
+struct AnimationPlaybackCommand
+{
+    AnimatorHandle animator{};
+    AnimationClipId clip{};
+    bool loop = false;
+    GameDuration fade_duration{};
 };
 
 struct AnimationOptions

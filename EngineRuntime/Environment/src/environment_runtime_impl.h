@@ -22,8 +22,9 @@ class EnvironmentRuntime final : public IEnvironmentRuntime
     [[nodiscard]] foundation::Result<void> SetSeason(RegionId region, SeasonState season) override;
     [[nodiscard]] foundation::Result<void> SetClimateProfile(RegionId region, ClimateProfile climate) override;
     [[nodiscard]] foundation::Result<void> SetSurfaceState(SurfaceState state) override;
+    [[nodiscard]] foundation::Result<void> ApplyUpdate(const EnvironmentStateUpdate& update) override;
     [[nodiscard]] foundation::Result<void> Update(const EnvironmentUpdateInput& input) override;
-    void SetUpdatePolicy(IEnvironmentUpdatePolicy* policy) override;
+    void SetUpdatePolicy(std::shared_ptr<const IEnvironmentUpdatePolicy> policy) override;
 
   private:
     void BumpRevision();
@@ -32,7 +33,7 @@ class EnvironmentRuntime final : public IEnvironmentRuntime
     std::unordered_map<RegionId, SeasonState> season_by_region_;
     std::unordered_map<RegionId, ClimateProfile> climate_by_region_;
     std::unordered_map<SurfaceId, SurfaceState> surface_states_;
-    IEnvironmentUpdatePolicy* update_policy_ = nullptr;
+    std::shared_ptr<const IEnvironmentUpdatePolicy> update_policy_;
     std::uint64_t revision_ = 0;
 };
 } // namespace epidemic::runtime

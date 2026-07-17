@@ -9,7 +9,7 @@ namespace epidemic::runtime
 {
 struct EnvironmentOptions
 {
-    IEnvironmentUpdatePolicy* update_policy = nullptr;
+    std::shared_ptr<const IEnvironmentUpdatePolicy> update_policy;
 };
 
 struct EnvironmentServices

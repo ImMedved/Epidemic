@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
+#include "Epidemic/Runtime/Foundation/runtime_time.h"
 #include "Epidemic/Runtime/Foundation/spatial.h"
 
 #include <cstdint>
@@ -43,6 +44,15 @@ struct MixerGroupId
 
     [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
     [[nodiscard]] constexpr bool operator==(const MixerGroupId&) const noexcept = default;
+};
+
+struct AudioEmitterHandle
+{
+    AudioEmitterId id{};
+    std::uint32_t generation = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return id.IsValid() && generation != 0; }
+    [[nodiscard]] constexpr bool operator==(const AudioEmitterHandle&) const noexcept = default;
 };
 
 using AudioTransformId = RuntimeObjectId;
@@ -90,9 +100,12 @@ struct AudioEmitterDesc
 struct AudioEmitterSnapshot
 {
     AudioEmitterId id{};
+    AudioEmitterHandle handle{};
     SoundId sound{};
     AudioTransformId transform{};
     EmitterState state = EmitterState::Destroyed;
+    GameDuration fade_duration{};
+    float fade_progress = 0.0f;
     std::uint64_t revision = 0;
 };
 
@@ -113,11 +126,15 @@ struct MixerGroupState
     MixerGroupId id{};
     float volume = 1.0f;
     MixerFadeState fade_state = MixerFadeState::Stable;
+    MixerGroupId parent{};
+    GameDuration fade_duration{};
+    float fade_progress = 0.0f;
 };
 
 struct AudioOptions
 {
     bool enable_mock_backend = true;
+    std::uint32_t max_queued_events = 64;
 };
 } // namespace epidemic::runtime::audio
 

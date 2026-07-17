@@ -6,7 +6,11 @@ Factories return owned service objects. Support registers shared service bundles
 
 ## Snapshots
 
-Query APIs return values such as `TimeSnapshot`, `WorldObjectRecord`, `StreamingProgress`, `PhysicsStepResult`, `PathResult`, `PoseSnapshot` and `AudioEmitterSnapshot`. These are immutable snapshots from the caller's point of view.
+Query APIs return values such as `TimeSnapshot`, `WorldObjectRecord`, `StreamingProgress`, `PhysicsStepResult`, `PathResult`, `PoseSnapshot`, `AudioEmitterSnapshot`, persistence snapshots, environment snapshots and scene snapshots. These are immutable snapshots from the caller's point of view and externally visible state snapshots carry revisions.
+
+## Handles
+
+Runtime handles that can become stale carry a generation or document a never-reuse policy. Callers must validate handles through the owning major instead of assuming that a raw index remains valid after release/recreate cycles.
 
 ## Borrowed Dependencies
 

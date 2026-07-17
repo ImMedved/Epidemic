@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 namespace epidemic::runtime::simulation
 {
@@ -27,6 +28,23 @@ struct WorldMemoryEventId
 
     [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
     [[nodiscard]] constexpr bool operator==(const WorldMemoryEventId&) const noexcept = default;
+};
+
+struct SimulationJobHandle
+{
+    SimulationJobId id{};
+    std::uint32_t generation = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return id.IsValid() && generation != 0; }
+    [[nodiscard]] constexpr bool operator==(const SimulationJobHandle&) const noexcept = default;
+};
+
+enum class SimulationLane
+{
+    Background,
+    Zone,
+    Object,
+    MainThread
 };
 
 using SimulationTime = GameTimePoint;
@@ -62,6 +80,20 @@ enum class WorldMemoryEventState
     Expired
 };
 
+enum class MemoryLifetime
+{
+    Disposable,
+    Temporary,
+    Persistent
+};
+
+enum class ObservationState
+{
+    Unobserved,
+    Observed,
+    PlayerAffected
+};
+
 struct AttentionScore
 {
     float value = 0.0f;
@@ -79,6 +111,32 @@ struct SimulationJobDesc
     RuntimeObjectId subject{};
     std::uint32_t work_units = 1;
     bool wait_for_main_thread = false;
+    SimulationLane lane = SimulationLane::Zone;
+    std::uint64_t source_revision = 0;
+};
+
+struct SimulationStepInput
+{
+    SimulationJobHandle job{};
+    SimulationZoneId zone{};
+    RuntimeObjectId subject{};
+    SimulationLane lane = SimulationLane::Zone;
+    std::uint32_t work_units = 0;
+    std::uint64_t source_revision = 0;
+};
+
+struct SimulationProposal
+{
+    RuntimeObjectId target{};
+    SimulationZoneId zone{};
+    std::uint64_t proposal_type = 0;
+};
+
+struct SimulationProposalBatch
+{
+    SimulationJobHandle source_job{};
+    std::uint64_t source_revision = 0;
+    std::vector<SimulationProposal> proposals{};
 };
 
 struct WorldMemoryEvent
@@ -88,6 +146,23 @@ struct WorldMemoryEvent
     SimulationTime happened_at{};
     GameDuration ttl{};
     WorldMemoryEventState state = WorldMemoryEventState::Temporary;
+    MemoryLifetime lifetime = MemoryLifetime::Temporary;
+    ObservationState observation = ObservationState::Unobserved;
+};
+
+struct AbstractFact
+{
+    std::uint64_t fact_type = 0;
+    RuntimeObjectId subject{};
+    SimulationZoneId zone{};
+    SimulationTime observed_at{};
+};
+
+struct ScheduledSimulationTask
+{
+    SimulationJobHandle job{};
+    SimulationTime due_at{};
+    SimulationLane lane = SimulationLane::Background;
 };
 
 struct WorldMemoryQuery

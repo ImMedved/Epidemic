@@ -12,7 +12,12 @@ namespace epidemic::runtime::physics
 // File note:
 // In-memory Physics foundation used for deterministic tests and early integration.
 // It stores collision shapes and body proxies, provides fake-but-stable queries and publishes contact events.
-class PhysicsRuntime final : public ICollisionShapeRegistry, public IPhysicsScene, public IPhysicsStepper, public IPhysicsQuery, public IPhysicsEventBuffer
+class PhysicsRuntime final : public ICollisionShapeRegistry,
+                             public IPhysicsScene,
+                             public IPhysicsStepper,
+                             public IPhysicsQuery,
+                             public IPhysicsEventBuffer,
+                             public IPhysicsBackend
 {
   public:
     [[nodiscard]] foundation::Result<void> RegisterShape(const CollisionShapeDesc& desc) override;
@@ -23,6 +28,7 @@ class PhysicsRuntime final : public ICollisionShapeRegistry, public IPhysicsScen
     [[nodiscard]] foundation::Result<void> ApplyImpulse(PhysicsBodyId id, Vec3 impulse) override;
     [[nodiscard]] PhysicsBodyState GetBodyState(PhysicsBodyId id) const override;
     [[nodiscard]] foundation::Result<PhysicsStepResult> StepFixed(GameDuration fixed_delta) override;
+    [[nodiscard]] foundation::Result<PhysicsStepResult> SimulateFixed(GameDuration fixed_delta) override;
 
     [[nodiscard]] foundation::Result<RaycastHit> Raycast(const RaycastQuery& query) const override;
     [[nodiscard]] foundation::Result<OverlapResult> Overlap(const OverlapQuery& query) const override;

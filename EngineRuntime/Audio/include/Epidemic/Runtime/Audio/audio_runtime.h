@@ -29,6 +29,30 @@ public:
     [[nodiscard]] virtual SoundState GetSoundState(SoundId id) const = 0;
 };
 
+class IAudioBackend
+{
+public:
+    virtual ~IAudioBackend() = default;
+
+    [[nodiscard]] virtual bool IsEnabled() const = 0;
+};
+
+class IAudioResourceSource
+{
+public:
+    virtual ~IAudioResourceSource() = default;
+
+    [[nodiscard]] virtual SoundState GetSoundState(SoundId id) const = 0;
+};
+
+class IAudioTransformSource
+{
+public:
+    virtual ~IAudioTransformSource() = default;
+
+    [[nodiscard]] virtual foundation::Result<Transform> ReadTransform(AudioTransformId id) const = 0;
+};
+
 class IAudioRuntime
 {
 public:
@@ -38,6 +62,7 @@ public:
     // Inputs: emitter descriptor; outputs: emitter id or validation error.
     // Relations: Play/Stop/DestroyEmitter operate on returned ids.
     [[nodiscard]] virtual foundation::Result<AudioEmitterId> CreateEmitter(const AudioEmitterDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<AudioEmitterHandle> CreateEmitterHandle(const AudioEmitterDesc& desc) = 0;
 
     // Function note: Destroys an emitter and marks its lifecycle terminal.
     // Inputs: emitter id; outputs: success/failure Result.
@@ -58,6 +83,7 @@ public:
     // Inputs: emitter id; outputs: success/failure Result.
     // Relations: models mixer/backend transition without time-based backend work.
     [[nodiscard]] virtual foundation::Result<void> FadeOut(AudioEmitterId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> FadeOut(AudioEmitterHandle handle, GameDuration duration) = 0;
 
     // Function note: Marks an emitter as virtualized.
     // Inputs: emitter id; outputs: success/failure Result.
@@ -73,6 +99,7 @@ public:
     // Inputs: emitter id; outputs: emitter snapshot, or Destroyed revision 0 for unknown ids.
     // Relations: adapters can observe Audio without receiving mutable emitter storage.
     [[nodiscard]] virtual AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterId id) const = 0;
+    [[nodiscard]] virtual AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterHandle handle) const = 0;
 };
 
 class IListenerSystem
@@ -84,6 +111,7 @@ public:
     // Inputs: listener descriptor; outputs: listener id or validation error.
     // Relations: main-listener selection uses ids returned here.
     [[nodiscard]] virtual foundation::Result<AudioListenerId> CreateListener(const AudioListenerDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyListener(AudioListenerId id) = 0;
 
     // Function note: Selects the main listener.
     // Inputs: listener id; outputs: success/failure Result.
@@ -134,4 +162,16 @@ public:
 };
 
 [[nodiscard]] std::unique_ptr<class AudioRuntime> CreateAudioRuntime(AudioOptions options = {});
+
+struct AudioServices
+{
+    std::shared_ptr<ISoundRegistry> sounds;
+    std::shared_ptr<IAudioRuntime> runtime;
+    std::shared_ptr<IListenerSystem> listeners;
+    std::shared_ptr<IAudioEventQueue> events;
+    std::shared_ptr<IMixerSystem> mixer;
+    std::shared_ptr<IAudioBackend> backend;
+};
+
+[[nodiscard]] AudioServices CreateMockAudioServices(AudioOptions options = {});
 } // namespace epidemic::runtime::audio

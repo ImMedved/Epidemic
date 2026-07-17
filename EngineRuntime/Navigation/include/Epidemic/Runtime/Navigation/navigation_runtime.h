@@ -24,6 +24,22 @@ public:
     [[nodiscard]] virtual float GetTraversalCost(const NavCostQuery& query) const = 0;
 };
 
+class INavigationBackend
+{
+public:
+    virtual ~INavigationBackend() = default;
+
+    [[nodiscard]] virtual foundation::Result<PathResult> BuildPath(const PathRequest& request, NavigationRevision revision) const = 0;
+};
+
+class INavigationDataSource
+{
+public:
+    virtual ~INavigationDataSource() = default;
+
+    [[nodiscard]] virtual NavigationRevision CurrentRevision(RegionId region) const = 0;
+};
+
 class IDynamicObstacleProjection
 {
 public:
@@ -70,11 +86,13 @@ public:
     // Inputs: start/target/region/budget hint; outputs: query id or validation error.
     // Relations: Tick advances query state; GetPathResult reads completed output.
     [[nodiscard]] virtual foundation::Result<PathQueryId> RequestPath(const PathRequest& request) = 0;
+    [[nodiscard]] virtual foundation::Result<PathQueryHandle> RequestPathHandle(const PathRequest& request) = 0;
 
     // Function note: Cancels a pending or running query.
     // Inputs: path query id; outputs: success/failure Result.
     // Relations: cancelled queries remain observable through GetPathState but do not produce paths.
     [[nodiscard]] virtual foundation::Result<void> CancelPath(PathQueryId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> CancelPath(PathQueryHandle handle) = 0;
 
     // Function note: Advances query execution by a caller-provided budget.
     // Inputs: runtime budget; outputs: number of query transitions performed.
@@ -90,12 +108,22 @@ public:
     // Inputs: query id; outputs: PathResult for completed queries, otherwise a Result failure.
     // Relations: depends on Tick-created path data and does not mutate query state.
     [[nodiscard]] virtual foundation::Result<PathResult> GetPathResult(PathQueryId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<PathResult> GetPathResult(PathQueryHandle handle) const = 0;
+    [[nodiscard]] virtual foundation::Result<void> ReleasePathResult(PathQueryHandle handle) = 0;
 
     // Function note: Installs non-owning projection adapters used during path generation.
     // Inputs: nullable pointers that must outlive the runtime while registered; output: none.
     // Relations: keeps Navigation decoupled from Environment/Physics implementations.
     virtual void SetProjectionSources(const INavCostProvider* costs, const IDynamicObstacleProjection* obstacles) = 0;
+    virtual void SetBackendSources(const INavigationBackend* backend, const INavigationDataSource* data_source) = 0;
+};
+
+struct NavigationServices
+{
+    std::shared_ptr<INavigationRuntime> runtime;
+    std::shared_ptr<INavTileRegistry> tiles;
 };
 
 [[nodiscard]] std::unique_ptr<class NavigationRuntime> CreateNavigationRuntime(NavigationOptions options = {});
+[[nodiscard]] NavigationServices CreateMockNavigationServices(NavigationOptions options = {});
 } // namespace epidemic::runtime::navigation

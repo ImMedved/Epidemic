@@ -7,6 +7,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <variant>
+#include <vector>
 
 namespace epidemic::runtime::streaming
 {
@@ -51,12 +53,68 @@ struct StreamingRequestId
     [[nodiscard]] friend constexpr bool operator==(StreamingRequestId, StreamingRequestId) noexcept = default;
 };
 
+struct StreamingRequestHandle
+{
+    StreamingRequestId id{};
+    std::uint32_t generation = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return id.IsValid() && generation != 0;
+    }
+
+    [[nodiscard]] friend constexpr bool operator==(StreamingRequestHandle, StreamingRequestHandle) noexcept = default;
+};
+
+struct ChunkStreamingTarget
+{
+    ChunkId chunk{};
+};
+
+struct RegionStreamingTarget
+{
+    RegionId region{};
+};
+
+struct AssetStreamingTarget
+{
+    AssetId asset{};
+};
+
+using StreamingTarget = std::variant<ChunkStreamingTarget, RegionStreamingTarget, AssetStreamingTarget>;
+
+enum class StreamingPlanStep
+{
+    ResolveTarget,
+    PrepareData,
+    PrepareResources,
+    Commit,
+    Rollback,
+    Release
+};
+
+struct ProgressiveLoadPlan
+{
+    std::vector<StreamingPlanStep> steps{};
+};
+
+struct StreamingCancellationToken
+{
+    bool requested = false;
+    std::uint32_t generation = 0;
+};
+
 struct StreamingRequest
 {
     StreamingRequestId id{};
+    StreamingRequestHandle handle{};
+    StreamingTarget target{ChunkStreamingTarget{}};
     RegionId region{};
     ChunkId chunk{};
     StreamingPriorityClass priority = StreamingPriorityClass::Normal;
+    std::uint32_t demand_count = 1;
+    StreamingCancellationToken cancellation{};
+    ProgressiveLoadPlan load_plan{};
     RuntimeBudget budget_hint{};
 };
 
@@ -75,9 +133,20 @@ struct StreamingBudget
 struct StreamingProgress
 {
     StreamingRequestId id{};
+    StreamingRequestHandle handle{};
+    StreamingTarget target{ChunkStreamingTarget{}};
     StreamingState state = StreamingState::NotRequested;
     float progress = 0.0f;
     std::uint64_t revision = 0;
+};
+
+struct StreamingStatistics
+{
+    std::uint64_t requested = 0;
+    std::uint64_t cancelled = 0;
+    std::uint64_t committed = 0;
+    std::uint64_t rolled_back = 0;
+    std::uint64_t failed = 0;
 };
 } // namespace epidemic::runtime::streaming
 

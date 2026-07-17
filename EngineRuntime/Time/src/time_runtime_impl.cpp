@@ -6,6 +6,8 @@
 #include <cstddef>
 #include <cmath>
 #include <limits>
+#include <numeric>
+#include <optional>
 #include <string_view>
 #include <utility>
 
@@ -36,6 +38,43 @@ constexpr std::int64_t kSecondsPerHour = 60 * kSecondsPerMinute;
     return MinutesPerDay(calendar) * kSecondsPerMinute;
 }
 
+[[nodiscard]] TimeScale NormalizeTimeScale(TimeScale scale)
+{
+    const auto divisor = std::gcd(scale.numerator, scale.denominator);
+    return TimeScale{scale.numerator / divisor, scale.denominator / divisor};
+}
+
+[[nodiscard]] bool IsValidTimeScale(TimeScale scale)
+{
+    return scale.numerator > 0 && scale.denominator > 0;
+}
+
+[[nodiscard]] std::optional<std::int64_t> CheckedAddInt(std::int64_t left, std::int64_t right)
+{
+    if (right > 0 && left > std::numeric_limits<std::int64_t>::max() - right)
+    {
+        return std::nullopt;
+    }
+    if (right < 0 && left < std::numeric_limits<std::int64_t>::min() - right)
+    {
+        return std::nullopt;
+    }
+    return left + right;
+}
+
+[[nodiscard]] std::optional<std::int64_t> CheckedMultiplyNonNegative(std::int64_t left, std::int64_t right)
+{
+    if (left < 0 || right < 0)
+    {
+        return std::nullopt;
+    }
+    if (left != 0 && right > std::numeric_limits<std::int64_t>::max() / left)
+    {
+        return std::nullopt;
+    }
+    return left * right;
+}
+
 [[nodiscard]] std::vector<PhaseBoundary> DefaultPhaseBoundaries()
 {
     return {
@@ -48,8 +87,17 @@ constexpr std::int64_t kSecondsPerHour = 60 * kSecondsPerMinute;
 }
 } // namespace
 
-TimeRuntime::TimeRuntime(TimeOptions options) : options_(std::move(options)), time_scale_(options_.initial_time_scale)
+TimeRuntime::TimeRuntime(TimeOptions options) : options_(std::move(options))
 {
+    if (IsValidTimeScale(options_.initial_time_scale))
+    {
+        time_scale_ = NormalizeTimeScale(options_.initial_time_scale);
+    }
+    else
+    {
+        time_scale_ = options_.initial_time_scale;
+    }
+
     if (options_.phase_boundaries.empty())
     {
         options_.phase_boundaries = DefaultPhaseBoundaries();
@@ -105,17 +153,38 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Advance(std::chrono::microsec
 
     const long double scaled_ticks =
         (static_cast<long double>(real_delta.count()) * static_cast<long double>(options_.game_ticks_per_real_second) *
-         static_cast<long double>(time_scale_)) /
-        1000000.0L;
-    tick_remainder_ += scaled_ticks;
+         static_cast<long double>(time_scale_.numerator)) /
+        (1000000.0L * static_cast<long double>(time_scale_.denominator));
+    if (!std::isfinite(scaled_ticks))
+    {
+        return foundation::Result<TimeAdvanceResult>::Failure(
+            MakeTimeError("time.overflow", "scaled time delta is not finite"));
+    }
 
-    const auto whole_ticks = static_cast<std::int64_t>(std::floor(tick_remainder_));
-    tick_remainder_ -= static_cast<long double>(whole_ticks);
+    const long double candidate_remainder = tick_remainder_ + scaled_ticks;
+    if (!std::isfinite(candidate_remainder) ||
+        candidate_remainder > static_cast<long double>(std::numeric_limits<std::int64_t>::max()))
+    {
+        return foundation::Result<TimeAdvanceResult>::Failure(
+            MakeTimeError("time.overflow", "scaled time delta overflows game duration"));
+    }
+
+    const auto whole_ticks = static_cast<std::int64_t>(std::floor(candidate_remainder));
+    const long double remaining_remainder = candidate_remainder - static_cast<long double>(whole_ticks);
 
     last_delta_ = GameDuration{whole_ticks};
     if (whole_ticks > 0)
     {
-        now_ = now_ + last_delta_;
+        const auto next = CheckedAdd(now_, last_delta_);
+        if (!next)
+        {
+            last_delta_ = GameDuration{};
+            return foundation::Result<TimeAdvanceResult>::Failure(
+                MakeTimeError("time.overflow", "advancing time overflows game time"));
+        }
+
+        now_ = *next;
+        tick_remainder_ = remaining_remainder;
         state_ = TimeRuntimeState::Running;
         RefreshSnapshot(true);
         PushEvent(TimeEventKind::TimeAdvanced);
@@ -123,6 +192,7 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Advance(std::chrono::microsec
     }
     else
     {
+        tick_remainder_ = remaining_remainder;
         RefreshSnapshot(false);
     }
 
@@ -160,14 +230,15 @@ foundation::Result<void> TimeRuntime::Resume()
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> TimeRuntime::SetTimeScale(double scale)
+foundation::Result<void> TimeRuntime::SetTimeScale(TimeScale scale)
 {
-    if (!std::isfinite(scale) || scale <= 0.0)
+    if (!IsValidTimeScale(scale))
     {
         return foundation::Result<void>::Failure(
-            MakeTimeError("time.invalid_scale", "time scale must be finite and greater than zero"));
+            MakeTimeError("time.invalid_scale", "time scale numerator and denominator must be positive"));
     }
 
+    scale = NormalizeTimeScale(scale);
     ClearEvents();
     if (time_scale_ == scale)
     {
@@ -198,7 +269,13 @@ foundation::Result<void> TimeRuntime::Skip(GameDuration duration)
         return foundation::Result<void>::Success();
     }
 
-    now_ = now_ + duration;
+    const auto next = CheckedAdd(now_, duration);
+    if (!next)
+    {
+        return foundation::Result<void>::Failure(MakeTimeError("time.overflow", "skipping time overflows game time"));
+    }
+
+    now_ = *next;
     last_delta_ = duration;
     state_ = TimeRuntimeState::TimeJumped;
     RefreshSnapshot(true);
@@ -223,12 +300,32 @@ foundation::Result<GameTimePoint> TimeRuntime::ToGameTimePoint(CalendarDate date
     const auto years = date.year - 1;
     const auto months = static_cast<std::int64_t>(date.month - 1);
     const auto days = static_cast<std::int64_t>(date.day - 1);
-    const auto total_days = (years * DaysPerYear(options_.calendar)) +
-                            (months * options_.calendar.days_per_month) + days;
-    const auto ticks = (total_days * SecondsPerDay(options_.calendar)) +
-                       (static_cast<std::int64_t>(date.hour) * kSecondsPerHour) +
-                       (static_cast<std::int64_t>(date.minute) * kSecondsPerMinute);
-    return foundation::Result<GameTimePoint>::Success(GameTimePoint{ticks});
+    const auto days_per_year = CheckedMultiplyNonNegative(
+        static_cast<std::int64_t>(options_.calendar.days_per_month),
+        static_cast<std::int64_t>(options_.calendar.months_per_year));
+    const auto seconds_per_day = CheckedMultiplyNonNegative(
+        static_cast<std::int64_t>(options_.calendar.hours_per_day), kSecondsPerHour);
+    const auto years_as_days = days_per_year ? CheckedMultiplyNonNegative(years, *days_per_year) : std::nullopt;
+    const auto months_as_days = CheckedMultiplyNonNegative(months,
+                                                           static_cast<std::int64_t>(options_.calendar.days_per_month));
+    const auto total_days = (years_as_days && months_as_days) ? CheckedAddInt(*years_as_days, *months_as_days)
+                                                              : std::nullopt;
+    const auto total_days_with_day = total_days ? CheckedAddInt(*total_days, days) : std::nullopt;
+    const auto day_ticks =
+        (total_days_with_day && seconds_per_day) ? CheckedMultiplyNonNegative(*total_days_with_day, *seconds_per_day)
+                                                 : std::nullopt;
+    const auto hour_ticks = CheckedMultiplyNonNegative(static_cast<std::int64_t>(date.hour), kSecondsPerHour);
+    const auto minute_ticks = CheckedMultiplyNonNegative(static_cast<std::int64_t>(date.minute), kSecondsPerMinute);
+    const auto with_hours = (day_ticks && hour_ticks) ? CheckedAddInt(*day_ticks, *hour_ticks) : std::nullopt;
+    const auto with_minutes = (with_hours && minute_ticks) ? CheckedAddInt(*with_hours, *minute_ticks) : std::nullopt;
+    const auto ticks = with_minutes ? CheckedAddInt(*with_minutes, static_cast<std::int64_t>(date.second))
+                                    : std::nullopt;
+    if (!ticks)
+    {
+        return foundation::Result<GameTimePoint>::Failure(
+            MakeTimeError("time.overflow", "calendar date overflows game time"));
+    }
+    return foundation::Result<GameTimePoint>::Success(GameTimePoint{*ticks});
 }
 
 CalendarDate TimeRuntime::ToCalendarDate(GameTimePoint time) const
@@ -246,6 +343,7 @@ CalendarDate TimeRuntime::ToCalendarDate(GameTimePoint time) const
     date.day = 1 + static_cast<std::uint32_t>(day_in_year % options_.calendar.days_per_month);
     date.hour = static_cast<std::uint32_t>(second_of_day / kSecondsPerHour);
     date.minute = static_cast<std::uint32_t>((second_of_day % kSecondsPerHour) / kSecondsPerMinute);
+    date.second = static_cast<std::uint32_t>(second_of_day % kSecondsPerMinute);
     return date;
 }
 
@@ -257,10 +355,10 @@ foundation::Result<void> TimeRuntime::ValidateOptions() const
             MakeTimeError("time.invalid_options", "game ticks per real second must be positive"));
     }
 
-    if (!std::isfinite(time_scale_) || time_scale_ <= 0.0)
+    if (!IsValidTimeScale(time_scale_))
     {
         return foundation::Result<void>::Failure(
-            MakeTimeError("time.invalid_scale", "initial time scale must be finite and greater than zero"));
+            MakeTimeError("time.invalid_scale", "initial time scale numerator and denominator must be positive"));
     }
 
     if (options_.calendar.hours_per_day == 0 || options_.calendar.days_per_month == 0 ||
@@ -268,6 +366,23 @@ foundation::Result<void> TimeRuntime::ValidateOptions() const
     {
         return foundation::Result<void>::Failure(
             MakeTimeError("time.invalid_calendar", "calendar units must be positive"));
+    }
+
+    if (options_.calendar.hours_per_day > (std::numeric_limits<std::uint32_t>::max() / 60))
+    {
+        return foundation::Result<void>::Failure(
+            MakeTimeError("time.overflow", "calendar day length overflows phase boundary validation"));
+    }
+
+    const auto seconds_per_day =
+        CheckedMultiplyNonNegative(static_cast<std::int64_t>(options_.calendar.hours_per_day), kSecondsPerHour);
+    const auto days_per_year = CheckedMultiplyNonNegative(
+        static_cast<std::int64_t>(options_.calendar.days_per_month),
+        static_cast<std::int64_t>(options_.calendar.months_per_year));
+    if (!seconds_per_day || !days_per_year)
+    {
+        return foundation::Result<void>::Failure(
+            MakeTimeError("time.overflow", "calendar definition overflows time conversion"));
     }
 
     const std::uint32_t minutes_per_day = options_.calendar.hours_per_day * 60;
@@ -300,7 +415,7 @@ foundation::Result<void> TimeRuntime::ValidateDate(CalendarDate date) const
 
     if (date.year < 1 || date.month == 0 || date.month > options_.calendar.months_per_year || date.day == 0 ||
         date.day > options_.calendar.days_per_month || date.hour >= options_.calendar.hours_per_day ||
-        date.minute >= 60)
+        date.minute >= 60 || date.second >= 60)
     {
         return foundation::Result<void>::Failure(
             MakeTimeError("time.invalid_date", "calendar date is outside the configured calendar"));

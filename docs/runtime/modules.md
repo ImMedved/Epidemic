@@ -24,6 +24,8 @@
 
 All EngineRuntime majors build as standalone CMake targets and have dedicated tests. Support is implemented after the majors and contains composition/validation only.
 
+Architecture tests enforce the frozen shape: public headers compile through the architecture target, majors do not depend on `Support`, private `src` headers do not leak through public includes, service factories exist for composed majors, handle-like ids validate generations and externally visible snapshots carry revisions.
+
 ## Not In Runtime
 
 - Concrete game rules or content behavior.
