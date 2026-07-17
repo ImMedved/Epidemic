@@ -8,9 +8,17 @@
 
 namespace epidemic::runtime
 {
+enum class PersistenceDurability
+{
+    MemoryOnly,
+    SaveRequired,
+    SaveAndFlushRequired,
+};
+
 struct PersistenceOptions
 {
     std::shared_ptr<IPersistenceBackend> backend;
+    PersistenceDurability durability = PersistenceDurability::MemoryOnly;
 };
 
 struct PersistenceServices

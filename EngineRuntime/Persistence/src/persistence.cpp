@@ -16,11 +16,16 @@ foundation::Result<PersistenceServices> CreatePersistenceServices(const Persiste
         {
             return foundation::Result<PersistenceServices>::Failure(loaded.GetError());
         }
+        const auto valid = ValidatePersistenceSnapshot(loaded.Value());
+        if (!valid)
+        {
+            return foundation::Result<PersistenceServices>::Failure(valid.GetError());
+        }
         snapshot = loaded.Value();
     }
 
     PersistenceServices services{};
-    services.store = std::make_shared<InMemoryPersistenceStore>(std::move(snapshot));
+    services.store = std::make_shared<InMemoryPersistenceStore>(std::move(snapshot), options.backend, options.durability);
     services.query = services.store;
     return foundation::Result<PersistenceServices>::Success(std::move(services));
 }

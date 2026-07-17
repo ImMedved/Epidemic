@@ -30,14 +30,14 @@ class ISaveTransaction
     [[nodiscard]] virtual SaveTransactionState GetState() const = 0;
     [[nodiscard]] virtual PersistenceRevision GetBaseRevision() const = 0;
     [[nodiscard]] virtual foundation::Result<void> UpsertObject(PersistentObjectRecord record) = 0;
-    [[nodiscard]] virtual foundation::Result<void> RemoveObject(PersistentObjectId id) = 0;
     [[nodiscard]] virtual foundation::Result<void> DeleteObject(TombstoneRecord tombstone) = 0;
     [[nodiscard]] virtual foundation::Result<void> UpsertLazyRule(LazyRuleRecord record) = 0;
     [[nodiscard]] virtual foundation::Result<void> UpdateLazyRule(LazyRuleRecord record) = 0;
     [[nodiscard]] virtual foundation::Result<void> RemoveLazyRule(LazyRuleId id) = 0;
-    [[nodiscard]] virtual foundation::Result<void> AddTombstone(TombstoneRecord tombstone) = 0;
     [[nodiscard]] virtual foundation::Result<void> UpsertZoneOverride(ZoneOverrideSnapshot snapshot) = 0;
     [[nodiscard]] virtual foundation::Result<void> RemoveZoneOverride(const PersistenceLocation& location) = 0;
+    [[nodiscard]] virtual foundation::Result<void> AdminRemoveObject(PersistentObjectId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> AdminAddTombstone(TombstoneRecord tombstone) = 0;
     [[nodiscard]] virtual foundation::Result<void> Commit() = 0;
     virtual void Rollback() = 0;
 };

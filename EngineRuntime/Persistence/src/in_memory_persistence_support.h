@@ -1,7 +1,8 @@
 ﻿#pragma once
 
-#include "Epidemic/Runtime/Persistence/persistence_operation.h"
 #include "Epidemic/Runtime/Persistence/persistence_backend.h"
+#include "Epidemic/Runtime/Persistence/persistence_operation.h"
+#include "Epidemic/Runtime/Persistence/persistence_services.h"
 #include "Epidemic/Runtime/Persistence/persistence_store.h"
 
 #include <cstddef>
@@ -18,6 +19,12 @@ struct PersistenceLocationHash
 
 class InMemoryPersistenceStore;
 
+struct PersistenceCandidateState
+{
+    PersistenceSnapshot snapshot{};
+    std::unordered_set<PersistentObjectId> dirty_ids{};
+};
+
 class InMemorySaveTransaction final : public ISaveTransaction
 {
   public:
@@ -26,14 +33,14 @@ class InMemorySaveTransaction final : public ISaveTransaction
     [[nodiscard]] SaveTransactionState GetState() const override;
     [[nodiscard]] PersistenceRevision GetBaseRevision() const override;
     [[nodiscard]] foundation::Result<void> UpsertObject(PersistentObjectRecord record) override;
-    [[nodiscard]] foundation::Result<void> RemoveObject(PersistentObjectId id) override;
     [[nodiscard]] foundation::Result<void> DeleteObject(TombstoneRecord tombstone) override;
     [[nodiscard]] foundation::Result<void> UpsertLazyRule(LazyRuleRecord record) override;
     [[nodiscard]] foundation::Result<void> UpdateLazyRule(LazyRuleRecord record) override;
     [[nodiscard]] foundation::Result<void> RemoveLazyRule(LazyRuleId id) override;
-    [[nodiscard]] foundation::Result<void> AddTombstone(TombstoneRecord tombstone) override;
     [[nodiscard]] foundation::Result<void> UpsertZoneOverride(ZoneOverrideSnapshot snapshot) override;
     [[nodiscard]] foundation::Result<void> RemoveZoneOverride(const PersistenceLocation& location) override;
+    [[nodiscard]] foundation::Result<void> AdminRemoveObject(PersistentObjectId id) override;
+    [[nodiscard]] foundation::Result<void> AdminAddTombstone(TombstoneRecord tombstone) override;
     [[nodiscard]] foundation::Result<void> Commit() override;
     void Rollback() override;
 
@@ -53,6 +60,7 @@ class InMemoryPersistenceStore final : public IPersistenceStore
   public:
     InMemoryPersistenceStore() = default;
     explicit InMemoryPersistenceStore(PersistenceSnapshot snapshot);
+    InMemoryPersistenceStore(PersistenceSnapshot snapshot, std::shared_ptr<IPersistenceBackend> backend, PersistenceDurability durability);
 
     [[nodiscard]] std::optional<PersistentObjectRecord> FindObject(PersistentObjectId id) const override;
     [[nodiscard]] std::vector<PersistentObjectRecord> FindByLocation(const PersistenceLocation& location) const override;
@@ -80,8 +88,8 @@ class InMemoryPersistenceStore final : public IPersistenceStore
   private:
     friend class InMemorySaveTransaction;
 
-    [[nodiscard]] foundation::Result<void> Validate(const InMemorySaveTransaction& transaction) const;
-    [[nodiscard]] foundation::Result<void> Apply(InMemorySaveTransaction& transaction);
+    [[nodiscard]] foundation::Result<PersistenceCandidateState> BuildCandidateSnapshot(const InMemorySaveTransaction& transaction) const;
+    [[nodiscard]] foundation::Result<void> PublishSnapshot(PersistenceCandidateState candidate);
 
     std::unordered_map<PersistentObjectId, PersistentObjectRecord> objects_;
     std::unordered_map<LazyRuleId, LazyRuleRecord> lazy_rules_;
@@ -89,7 +97,11 @@ class InMemoryPersistenceStore final : public IPersistenceStore
     std::unordered_map<PersistenceLocation, ZoneOverrideSnapshot, PersistenceLocationHash> zone_overrides_;
     std::unordered_set<PersistentObjectId> dirty_ids_;
     PersistenceRevision revision_ = 0;
+    std::shared_ptr<IPersistenceBackend> backend_;
+    PersistenceDurability durability_ = PersistenceDurability::MemoryOnly;
 };
+
+[[nodiscard]] foundation::Result<void> ValidatePersistenceSnapshot(const PersistenceSnapshot& snapshot);
 
 class InMemoryPersistenceBackend final : public IPersistenceBackend
 {

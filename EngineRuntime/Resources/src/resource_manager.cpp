@@ -159,7 +159,7 @@ foundation::Result<ResourceProcessingStats> ResourceManager::ProcessPendingLoads
         if (slot->reference_count == 0)
         {
             slot->state = ResourceState::Unloaded;
-            slot->pending_artifact.reset();
+            RollbackLoadAttempt(*slot);
             continue;
         }
 
@@ -186,11 +186,11 @@ foundation::Result<void> ResourceManager::Release(ResourceHandle handle)
     ResourceSlot* slot = cache_.Find(handle.id);
     if (slot == nullptr || !IsHandleCurrent(*slot, handle))
     {
-        return ResourceFailure("resource.handle_stale", "resource handle is unknown or stale");
+        return ResourceFailure("resource.stale_handle", "resource handle is unknown or stale");
     }
     if (slot->reference_count == 0)
     {
-        return ResourceFailure("resource.release_underflow", "resource handle has already been released");
+        return ResourceFailure("resource.reference_underflow", "resource handle has already been released");
     }
     --slot->reference_count;
     return foundation::Result<void>::Success();
@@ -215,6 +215,7 @@ foundation::Result<void> ResourceManager::Evict(ResourceId id)
 
     slot->state = ResourceState::Evicting;
     ReleaseDependencyHandles(*slot);
+    dependency_graph_.RemoveDependencies(slot->id);
     RemovePayload(*slot);
     slot->pending_artifact.reset();
     slot->generation = NextGeneration(slot->generation);
@@ -228,11 +229,11 @@ std::size_t ResourceManager::EvictUnreferenced()
     for (auto& [resource_id, slot] : cache_.Entries())
     {
         (void)resource_id;
-        if (slot.reference_count == 0 &&
-            (slot.state == ResourceState::Ready || slot.state == ResourceState::Failed || slot.state == ResourceState::Unloaded))
+        if (slot.reference_count == 0 && (slot.state == ResourceState::Ready || slot.state == ResourceState::Failed))
         {
             slot.state = ResourceState::Evicting;
             ReleaseDependencyHandles(slot);
+            dependency_graph_.RemoveDependencies(slot.id);
             RemovePayload(slot);
             slot.pending_artifact.reset();
             slot.generation = NextGeneration(slot.generation);
@@ -252,7 +253,7 @@ foundation::Result<void> ResourceManager::ValidateHandle(ResourceHandle handle) 
     const ResourceSlot* slot = cache_.Find(handle.id);
     if (slot == nullptr || !IsHandleCurrent(*slot, handle))
     {
-        return ResourceFailure("resource.handle_stale", "resource handle is unknown or stale");
+        return ResourceFailure("resource.stale_handle", "resource handle is unknown or stale");
     }
     return foundation::Result<void>::Success();
 }
@@ -377,13 +378,21 @@ void ResourceManager::ReleaseDependencyHandles(ResourceSlot& slot)
     ReleaseDependencyHandles(slot.dependency_handles);
 }
 
-void ResourceManager::ReleaseDependencyHandles(std::vector<ResourceHandle>& handles)
+void ResourceManager::ReleaseDependencyHandles(std::vector<OwnedResourceDependency>& handles)
 {
-    for (ResourceHandle handle : handles)
+    for (const OwnedResourceDependency& dependency : handles)
     {
-        (void)Release(handle);
+        (void)Release(dependency.handle);
     }
     handles.clear();
+}
+
+void ResourceManager::RollbackLoadAttempt(ResourceSlot& slot)
+{
+    ReleaseDependencyHandles(slot);
+    dependency_graph_.RemoveDependencies(slot.id);
+    RemovePayload(slot);
+    slot.pending_artifact.reset();
 }
 
 foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, const ResourceRequest& request, ResourceProcessingStats& stats)
@@ -391,11 +400,13 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, const Res
     if (loading_resources_.contains(slot.id))
     {
         slot.state = ResourceState::Failed;
+        RollbackLoadAttempt(slot);
         return ResourceFailure("resource.dependency_cycle", "resource dependency cycle detected during load");
     }
     if (loader_registry_ == nullptr)
     {
         slot.state = ResourceState::Failed;
+        RollbackLoadAttempt(slot);
         return ResourceFailure("resource.loader_registry_missing", "resource loader registry is required while processing resource loads");
     }
 
@@ -403,6 +414,7 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, const Res
     if (loader == nullptr)
     {
         slot.state = ResourceState::Failed;
+        RollbackLoadAttempt(slot);
         return ResourceFailure("resource.loader_not_found", "resource loader is not registered for the requested type");
     }
 
@@ -413,7 +425,7 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, const Res
     if (!load_result)
     {
         slot.state = ResourceState::Failed;
-        slot.pending_artifact.reset();
+        RollbackLoadAttempt(slot);
         return foundation::Result<void>::Failure(load_result.GetError());
     }
 
@@ -425,37 +437,49 @@ foundation::Result<void> ResourceManager::FinishLoadedArtifact(ResourceSlot& slo
     if (artifact.resource_id != slot.id)
     {
         slot.state = ResourceState::Failed;
+        RollbackLoadAttempt(slot);
         return ResourceFailure("resource.loader_mismatched_id", "resource loader returned an artifact for a different resource id");
     }
     if (artifact.type != slot.type)
     {
         slot.state = ResourceState::Failed;
+        RollbackLoadAttempt(slot);
         return ResourceFailure("resource.loader_mismatched_type", "resource loader returned an artifact for a different resource type");
     }
     if (!artifact.payload)
     {
         slot.state = ResourceState::Failed;
+        RollbackLoadAttempt(slot);
         return ResourceFailure("resource.invalid_payload", "resource loader returned an empty payload");
     }
 
+    std::vector<ResourceDependency> blocking_dependencies;
     for (const ResourceDependency& dependency : artifact.dependencies)
     {
+        if (!dependency.required)
+        {
+            continue;
+        }
         std::unordered_set<ResourceId> visited;
         if (dependency.resource_id == slot.id || HasDependencyPath(dependency.resource_id, slot.id, visited))
         {
             slot.state = ResourceState::Failed;
-            slot.pending_artifact.reset();
+            RollbackLoadAttempt(slot);
             return ResourceFailure("resource.dependency_cycle", "resource dependency cycle detected during load");
         }
+        blocking_dependencies.push_back(dependency);
     }
 
-    dependency_graph_.SetDependencies(slot.id, artifact.dependencies);
+    dependency_graph_.RemoveDependencies(slot.id);
+    if (!blocking_dependencies.empty())
+    {
+        dependency_graph_.SetDependencies(slot.id, std::move(blocking_dependencies));
+    }
     const auto dependencies_ready = ResolveDependencies(slot, artifact);
     if (!dependencies_ready)
     {
         slot.state = ResourceState::Failed;
-        slot.pending_artifact.reset();
-        dependency_graph_.RemoveDependencies(slot.id);
+        RollbackLoadAttempt(slot);
         return foundation::Result<void>::Failure(dependencies_ready.GetError());
     }
     if (!dependencies_ready.Value())
@@ -478,7 +502,7 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
 
     if (slot.dependency_handles.empty())
     {
-        std::vector<ResourceHandle> acquired_handles;
+        std::vector<OwnedResourceDependency> acquired_handles;
         for (const ResourceDependency& dependency : artifact.dependencies)
         {
             if (!dependency.resource_id.IsValid())
@@ -518,25 +542,43 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
             const auto dependency_result = Request(ResourceRequest{dependency.resource_id, dependency.type, {}});
             if (!dependency_result)
             {
+                if (!dependency.required)
+                {
+                    continue;
+                }
                 ReleaseDependencyHandles(acquired_handles);
                 return foundation::Result<bool>::Failure(dependency_result.GetError());
             }
-            acquired_handles.push_back(dependency_result.Value());
+            acquired_handles.push_back(OwnedResourceDependency{dependency_result.Value(), dependency.resource_id, dependency.required});
         }
         slot.dependency_handles = std::move(acquired_handles);
     }
 
-    for (ResourceHandle dependency_handle : slot.dependency_handles)
+    for (auto iterator = slot.dependency_handles.begin(); iterator != slot.dependency_handles.end();)
     {
+        ResourceHandle dependency_handle = iterator->handle;
         const ResourceState state = GetState(dependency_handle);
         if (state == ResourceState::Failed || state == ResourceState::Unknown || state == ResourceState::Evicted)
         {
-            return ResourceFailureValue<bool>("resource.dependency_failed", "resource dependency failed before root became ready");
+            if (iterator->required)
+            {
+                return ResourceFailureValue<bool>("resource.dependency_failed", "resource dependency failed before root became ready");
+            }
+            (void)Release(dependency_handle);
+            iterator = slot.dependency_handles.erase(iterator);
+            continue;
         }
         if (state != ResourceState::Ready)
         {
-            return foundation::Result<bool>::Success(false);
+            if (iterator->required)
+            {
+                return foundation::Result<bool>::Success(false);
+            }
+            (void)Release(dependency_handle);
+            iterator = slot.dependency_handles.erase(iterator);
+            continue;
         }
+        ++iterator;
     }
     return foundation::Result<bool>::Success(true);
 }
@@ -576,8 +618,7 @@ foundation::Result<void> ResourceManager::CommitReadyPayload(ResourceSlot& slot,
         if (!CanFit(bytes))
         {
             slot.state = ResourceState::Failed;
-            slot.pending_artifact.reset();
-            dependency_graph_.RemoveDependencies(slot.id);
+            RollbackLoadAttempt(slot);
             return ResourceFailure("resource.memory_budget_exceeded", "resource payload would exceed resource memory budget");
         }
     }

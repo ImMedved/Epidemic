@@ -1,5 +1,6 @@
 #include "world_runtime_impl.h"
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/World/world_invariants.h"
 
 #include <algorithm>
 #include <string_view>
@@ -19,43 +20,6 @@ void SortByRuntimeId(std::vector<WorldObjectRecord>& records)
     std::sort(records.begin(), records.end(), [](const WorldObjectRecord& left, const WorldObjectRecord& right) {
         return left.runtime_id.Raw() < right.runtime_id.Raw();
     });
-}
-
-[[nodiscard]] foundation::Result<void> ValidatePlacement(const ObjectPlacement& placement)
-{
-    if (const auto* world = std::get_if<WorldSurfacePlacement>(&placement))
-    {
-        if (!world->region.IsValid() || !world->chunk.IsValid() || !IsValidTransform(world->transform))
-        {
-            return foundation::Result<void>::Failure(
-                MakeWorldError("world.invalid_placement", "world surface placement requires region, chunk and valid transform"));
-        }
-    }
-    else if (const auto* container = std::get_if<ContainerPlacement>(&placement))
-    {
-        if (!container->container.IsValid())
-        {
-            return foundation::Result<void>::Failure(
-                MakeWorldError("world.invalid_placement", "container placement requires a container id"));
-        }
-    }
-    else if (const auto* inventory = std::get_if<InventoryPlacement>(&placement))
-    {
-        if (!inventory->owner.IsValid())
-        {
-            return foundation::Result<void>::Failure(
-                MakeWorldError("world.invalid_placement", "inventory placement requires an owner id"));
-        }
-    }
-    else if (const auto* equipped = std::get_if<EquippedPlacement>(&placement))
-    {
-        if (!equipped->owner.IsValid())
-        {
-            return foundation::Result<void>::Failure(
-                MakeWorldError("world.invalid_placement", "equipped placement requires an owner id"));
-        }
-    }
-    return foundation::Result<void>::Success();
 }
 
 template <typename TValue>
@@ -164,11 +128,6 @@ ChunkState WorldRuntime::GetChunkState(ChunkId id) const
 foundation::Result<WorldCommandResult> WorldRuntime::Apply(const CreateObjectCommand& command)
 {
     WorldObjectRecord record = command.record;
-    const auto placement = ValidatePlacement(record.placement);
-    if (!placement)
-    {
-        return foundation::Result<WorldCommandResult>::Failure(placement.GetError());
-    }
     if (record.persistent_id.IsValid() && persistent_to_runtime_.contains(record.persistent_id))
     {
         return foundation::Result<WorldCommandResult>::Failure(
@@ -178,6 +137,12 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const CreateObjectCom
     const RuntimeObjectId runtime_id{next_runtime_object_value_++};
     record.runtime_id = runtime_id;
     record.revision = 1;
+    const auto invariant = ValidateWorldObjectInvariant(record, *this, *this, *this);
+    if (!invariant)
+    {
+        --next_runtime_object_value_;
+        return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
+    }
     world_objects_[runtime_id] = record;
     if (record.persistent_id.IsValid())
     {
@@ -200,16 +165,17 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangePlacement
         return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
     }
 
-    const auto valid = ValidatePlacement(command.placement);
-    if (!valid)
-    {
-        return foundation::Result<WorldCommandResult>::Failure(valid.GetError());
-    }
-
     WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
-    iterator->second.placement = command.placement;
-    ++iterator->second.revision;
-    result.after = iterator->second;
+    WorldObjectRecord candidate = iterator->second;
+    candidate.placement = command.placement;
+    ++candidate.revision;
+    const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
+    if (!invariant)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
+    }
+    iterator->second = candidate;
+    result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
 }
 
@@ -233,9 +199,16 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangeResidency
     }
 
     WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
-    iterator->second.residency = command.residency;
-    ++iterator->second.revision;
-    result.after = iterator->second;
+    WorldObjectRecord candidate = iterator->second;
+    candidate.residency = command.residency;
+    ++candidate.revision;
+    const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
+    if (!invariant)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
+    }
+    iterator->second = candidate;
+    result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
 }
 
@@ -259,9 +232,16 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const PromotePersiste
     }
 
     WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
-    iterator->second.persistence_tier = command.tier;
-    ++iterator->second.revision;
-    result.after = iterator->second;
+    WorldObjectRecord candidate = iterator->second;
+    candidate.persistence_tier = command.tier;
+    ++candidate.revision;
+    const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
+    if (!invariant)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
+    }
+    iterator->second = candidate;
+    result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
 }
 
@@ -293,10 +273,17 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const MaterializeObje
     }
 
     WorldCommandResult result{index->second, object, std::nullopt};
-    object.reality = command.request.target_reality;
-    object.residency = ResidencyForReality(command.request.target_reality);
-    ++object.revision;
-    result.after = object;
+    WorldObjectRecord candidate = object;
+    candidate.reality = command.request.target_reality;
+    candidate.residency = ResidencyForReality(command.request.target_reality);
+    ++candidate.revision;
+    const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
+    if (!invariant)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
+    }
+    object = candidate;
+    result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
 }
 
@@ -318,12 +305,27 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DemoteObjectCom
         return WorldFailureValue<WorldCommandResult>("world.invalid_reality_demotion",
                                                      "demotion cannot target a more concrete reality level");
     }
+    if (!command.request.commit_token.IsValid() || command.request.commit_token.object != command.request.runtime_id ||
+        command.request.commit_token.target_reality != command.request.target_reality ||
+        command.request.commit_token.source_revision != iterator->second.revision)
+    {
+        return WorldFailureValue<WorldCommandResult>("world.demotion_not_confirmed",
+                                                     "demotion requires a matching collapse commit token");
+    }
 
     WorldCommandResult result{command.request.runtime_id, iterator->second, std::nullopt};
-    iterator->second.reality = command.request.target_reality;
-    iterator->second.residency = ResidencyForReality(command.request.target_reality);
-    ++iterator->second.revision;
-    result.after = iterator->second;
+    WorldObjectRecord candidate = iterator->second;
+    candidate.reality = command.request.target_reality;
+    candidate.residency = ResidencyForReality(command.request.target_reality);
+    candidate.placement = command.request.commit_token.collapsed_placement;
+    ++candidate.revision;
+    const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
+    if (!invariant)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
+    }
+    iterator->second = candidate;
+    result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
 }
 
@@ -354,10 +356,18 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DestroyObjectCo
         return foundation::Result<WorldCommandResult>::Success(std::move(result));
     }
 
-    object.placement = DestroyedPlacement{command.destroyed_at, command.reason};
-    object.residency = ResidencyState::Unloaded;
-    ++object.revision;
-    result.after = object;
+    WorldObjectRecord candidate = object;
+    candidate.placement = DestroyedPlacement{command.destroyed_at, command.reason};
+    candidate.reality = ObjectRealityLevel::Logical;
+    candidate.residency = ResidencyState::Unloaded;
+    ++candidate.revision;
+    const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
+    if (!invariant)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
+    }
+    object = candidate;
+    result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
 }
 

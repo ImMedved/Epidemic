@@ -18,6 +18,13 @@ namespace epidemic::runtime
 {
 using ResourceGeneration = std::uint32_t;
 
+struct OwnedResourceDependency
+{
+    ResourceHandle handle{};
+    ResourceId id{};
+    bool required = true;
+};
+
 struct ResourceSlot
 {
     ResourceId id{};
@@ -27,7 +34,7 @@ struct ResourceSlot
     std::uint32_t reference_count = 0;
     ResourcePayloadPtr payload{};
     std::size_t memory_bytes = 0;
-    std::vector<ResourceHandle> dependency_handles;
+    std::vector<OwnedResourceDependency> dependency_handles;
     std::optional<ResourceLoadArtifact> pending_artifact{};
 };
 
@@ -93,7 +100,8 @@ class ResourceManager final : public IResourceManager
     static void QueueSlot(ResourceLoadQueue& queue, ResourceSlot& slot, ResourceRequest request);
 
     void ReleaseDependencyHandles(ResourceSlot& slot);
-    void ReleaseDependencyHandles(std::vector<ResourceHandle>& handles);
+    void ReleaseDependencyHandles(std::vector<OwnedResourceDependency>& handles);
+    void RollbackLoadAttempt(ResourceSlot& slot);
     [[nodiscard]] foundation::Result<void> LoadSlot(ResourceSlot& slot, const ResourceRequest& request, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<void> FinishLoadedArtifact(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<bool> ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact);

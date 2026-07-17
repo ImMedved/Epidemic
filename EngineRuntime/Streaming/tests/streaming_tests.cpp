@@ -7,7 +7,6 @@
 
 #include <chrono>
 #include <cstddef>
-#include <optional>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -15,28 +14,36 @@
 
 namespace
 {
+using epidemic::foundation::Result;
 using epidemic::runtime::ChunkId;
 using epidemic::runtime::RegionId;
+using epidemic::runtime::RuntimeObjectId;
+using epidemic::foundation::StringId;
+using epidemic::runtime::streaming::ChunkStreamingTarget;
+using epidemic::runtime::streaming::CreateStreamingServices;
 using epidemic::runtime::streaming::IResidencyController;
 using epidemic::runtime::streaming::IStreamingCommitTarget;
 using epidemic::runtime::streaming::IStreamingDataSource;
-using epidemic::runtime::streaming::IStreamingPersistenceSource;
 using epidemic::runtime::streaming::IStreamingPriorityProvider;
-using epidemic::runtime::streaming::IStreamingQuery;
 using epidemic::runtime::streaming::IStreamingPriorityResolver;
-using epidemic::runtime::streaming::IStreamingResourceSource;
+using epidemic::runtime::streaming::IStreamingQuery;
 using epidemic::runtime::streaming::IStreamingRuntime;
 using epidemic::runtime::streaming::IStreamingWorldSource;
 using epidemic::runtime::streaming::InMemoryResidencyController;
-using epidemic::runtime::streaming::ChunkStreamingTarget;
-using epidemic::runtime::streaming::CreateStreamingServices;
-using epidemic::runtime::streaming::StreamingRequestHandle;
-using epidemic::runtime::streaming::StreamingTarget;
+using epidemic::runtime::streaming::ObjectStreamingTarget;
+using epidemic::runtime::streaming::ProgressiveLoadPlan;
+using epidemic::runtime::streaming::RegionStreamingTarget;
+using epidemic::runtime::streaming::ResourceGroupStreamingTarget;
 using epidemic::runtime::streaming::StreamingBudget;
+using epidemic::runtime::streaming::StreamingDemandHandle;
+using epidemic::runtime::streaming::StreamingDependencies;
+using epidemic::runtime::streaming::StreamingPlanStep;
 using epidemic::runtime::streaming::StreamingPriorityClass;
 using epidemic::runtime::streaming::StreamingRequest;
+using epidemic::runtime::streaming::StreamingRequestHandle;
 using epidemic::runtime::streaming::StreamingRuntime;
 using epidemic::runtime::streaming::StreamingState;
+using epidemic::runtime::streaming::StreamingTarget;
 
 class FixedPriorityResolver final : public IStreamingPriorityResolver
 {
@@ -49,312 +56,257 @@ class FixedPriorityResolver final : public IStreamingPriorityResolver
     [[nodiscard]] StreamingPriorityClass ResolvePriority(ChunkId chunk) const override
     {
         const auto iterator = priorities_.find(chunk);
-        if (iterator == priorities_.end())
-        {
-            return StreamingPriorityClass::Normal;
-        }
-
-        return iterator->second;
+        return iterator == priorities_.end() ? StreamingPriorityClass::Normal : iterator->second;
     }
 
   private:
     std::unordered_map<ChunkId, StreamingPriorityClass> priorities_;
 };
 
-class MockWorldSource final : public IStreamingWorldSource
+class PlanSource final : public IStreamingDataSource
 {
   public:
-    void MapChunk(ChunkId chunk, RegionId region)
+    Result<ProgressiveLoadPlan> BuildLoadPlan(const StreamingRequest&) override
     {
-        regions_[chunk] = region;
+        ++build_count;
+        return Result<ProgressiveLoadPlan>::Success(plan);
     }
 
-    [[nodiscard]] std::optional<RegionId> ResolveRegion(ChunkId chunk) const override
+    Result<void> ExecuteStep(const StreamingRequest&, StreamingPlanStep step) override
     {
-        const auto iterator = regions_.find(chunk);
-        if (iterator == regions_.end())
+        executed.push_back(step);
+        if (fail_step && step == *fail_step)
         {
-            return std::nullopt;
+            return Result<void>::Failure(epidemic::foundation::Error::Create("streaming.step_failed", "step failed for test"));
         }
-
-        return iterator->second;
+        return Result<void>::Success();
     }
 
-  private:
-    std::unordered_map<ChunkId, RegionId> regions_;
+    ProgressiveLoadPlan plan{{StreamingPlanStep::ResolveTarget, StreamingPlanStep::PrepareData, StreamingPlanStep::PrepareResources, StreamingPlanStep::Commit}};
+    std::optional<StreamingPlanStep> fail_step;
+    int build_count = 0;
+    std::vector<StreamingPlanStep> executed;
 };
 
-class MockPersistenceSource final : public IStreamingPersistenceSource
+class CommitTarget final : public IStreamingCommitTarget
 {
   public:
-    void FailChunk(ChunkId chunk)
+    Result<void> Commit(const StreamingRequest&) override
     {
-        failing_chunks_.insert(chunk);
+        ++commits;
+        return Result<void>::Success();
     }
 
-    [[nodiscard]] epidemic::foundation::Result<void> PrepareChunkData(const StreamingRequest& request) override
+    Result<void> Rollback(const StreamingRequest&) override
     {
-        prepared_chunks_.push_back(request.chunk);
-        if (failing_chunks_.contains(request.chunk))
-        {
-            return epidemic::foundation::Result<void>::Failure(
-                epidemic::foundation::Error::Create("streaming.persistence_failed", "test persistence failure"));
-        }
-
-        return epidemic::foundation::Result<void>::Success();
+        ++rollbacks;
+        return Result<void>::Success();
     }
 
-  private:
-    std::unordered_set<ChunkId> failing_chunks_;
-    std::vector<ChunkId> prepared_chunks_;
+    int commits = 0;
+    int rollbacks = 0;
 };
 
-class MockResourceSource final : public IStreamingResourceSource
+class PriorityProvider final : public IStreamingPriorityProvider
 {
   public:
-    void FailChunk(ChunkId chunk)
+    StreamingPriorityClass GetPriority(const StreamingTarget&) const override
     {
-        failing_chunks_.insert(chunk);
+        return priority;
     }
 
-    [[nodiscard]] epidemic::foundation::Result<void> PrepareChunkResources(const StreamingRequest& request) override
-    {
-        prepared_chunks_.push_back(request.chunk);
-        if (failing_chunks_.contains(request.chunk))
-        {
-            return epidemic::foundation::Result<void>::Failure(
-                epidemic::foundation::Error::Create("streaming.resource_failed", "test resource failure"));
-        }
-
-        return epidemic::foundation::Result<void>::Success();
-    }
-
-    [[nodiscard]] epidemic::foundation::Result<void> ReleaseChunkResources(ChunkId chunk) override
-    {
-        released_chunks_.push_back(chunk);
-        return epidemic::foundation::Result<void>::Success();
-    }
-
-    [[nodiscard]] const std::vector<ChunkId>& released_chunks() const
-    {
-        return released_chunks_;
-    }
-
-  private:
-    std::unordered_set<ChunkId> failing_chunks_;
-    std::vector<ChunkId> prepared_chunks_;
-    std::vector<ChunkId> released_chunks_;
+    StreamingPriorityClass priority = StreamingPriorityClass::High;
 };
 
-bool TestRequestAndCancelFlow()
+bool AdvanceTo(StreamingRuntime& runtime, ChunkId chunk, StreamingState expected, int max_ticks = 16)
 {
-    InMemoryResidencyController controller;
-    MockPersistenceSource persistence;
-    MockResourceSource resources;
-    StreamingRuntime runtime(nullptr, &controller, nullptr, &persistence, &resources);
-
-    const ChunkId chunk{101};
-    const auto request = runtime.RequestChunk(chunk, StreamingPriorityClass::High);
-    if (!request || runtime.GetChunkState(chunk) != StreamingState::Requested)
+    for (int i = 0; i < max_ticks; ++i)
     {
-        return false;
+        if (runtime.GetChunkState(chunk) == expected)
+        {
+            return true;
+        }
+        runtime.Tick();
     }
-
-    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 8, 0});
-    runtime.Tick();
-    if (runtime.GetChunkState(chunk) != StreamingState::Queued)
-    {
-        return false;
-    }
-
-    const auto cancel_result = runtime.CancelRequest(request.Value());
-    if (!cancel_result || runtime.GetChunkState(chunk) != StreamingState::Deactivating)
-    {
-        return false;
-    }
-
-    runtime.Tick();
-    if (runtime.GetChunkState(chunk) != StreamingState::Unloading)
-    {
-        return false;
-    }
-
-    runtime.Tick();
-    return runtime.GetChunkState(chunk) == StreamingState::Unloaded &&
-           controller.GetResidencyState(chunk) == StreamingState::Unloaded &&
-           !resources.released_chunks().empty();
+    return runtime.GetChunkState(chunk) == expected;
 }
 
-bool TestProgressRevisionChangesOnlyOnTransitions()
+bool TestTwoConsumersRequestOneTarget()
 {
     StreamingRuntime runtime;
-    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 0});
-
-    const auto request = runtime.RequestChunk(ChunkId{111}, StreamingPriorityClass::Normal);
-    if (!request)
+    const ChunkId chunk{101};
+    const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Low);
+    const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::High);
+    if (!first || !second || first.Value().request != second.Value().request || first.Value() == second.Value())
     {
         return false;
     }
-
-    const auto initial = runtime.GetProgress(request.Value());
-    runtime.Tick();
-    const auto queued = runtime.GetProgress(request.Value());
-    const auto cancelled = runtime.CancelRequest(request.Value());
-    const auto deactivating = runtime.GetProgress(request.Value());
-    const auto duplicate_cancel = runtime.CancelRequest(request.Value());
-    const auto still_deactivating = runtime.GetProgress(request.Value());
-
-    return initial.has_value() && queued.has_value() && deactivating.has_value() &&
-           still_deactivating.has_value() && cancelled && duplicate_cancel && initial->revision == 1 &&
-           queued->revision == 2 && deactivating->revision == 3 &&
-           still_deactivating->revision == deactivating->revision;
+    const auto progress = runtime.GetProgress(first.Value().request);
+    return progress && progress->demand_count == 2;
 }
 
-bool TestPriorityOrderingUsesResolvedPriority()
+bool TestOneConsumerReleaseKeepsLoad()
 {
-    FixedPriorityResolver resolver;
-    InMemoryResidencyController controller;
-    StreamingRuntime runtime(&resolver, &controller, nullptr, nullptr, nullptr);
-    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 0});
-
-    const ChunkId background_chunk{201};
-    const ChunkId critical_chunk{202};
-    resolver.SetPriority(critical_chunk, StreamingPriorityClass::Critical);
-
-    const auto first = runtime.RequestChunk(background_chunk, StreamingPriorityClass::Low);
-    const auto second = runtime.RequestChunk(critical_chunk, StreamingPriorityClass::Normal);
+    StreamingRuntime runtime;
+    const ChunkId chunk{102};
+    const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!first || !second)
     {
         return false;
     }
-
+    const auto release = runtime.ReleaseDemand(first.Value());
+    const auto progress = runtime.GetProgress(second.Value().request);
     runtime.Tick();
-    return runtime.GetChunkState(background_chunk) == StreamingState::Requested &&
-           runtime.GetChunkState(critical_chunk) == StreamingState::Queued;
+    return release && progress && progress->demand_count == 1 && runtime.GetChunkState(chunk) == StreamingState::Queued;
 }
 
-bool TestBudgetLimitsProcessing()
+bool TestLastConsumerReleaseCancelsBeforeLoad()
 {
     StreamingRuntime runtime;
-    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 2, 0});
-
-    if (!runtime.RequestChunk(ChunkId{301}, StreamingPriorityClass::Normal) ||
-        !runtime.RequestChunk(ChunkId{302}, StreamingPriorityClass::Normal) ||
-        !runtime.RequestChunk(ChunkId{303}, StreamingPriorityClass::Normal))
+    const ChunkId chunk{103};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand)
     {
         return false;
     }
-
-    runtime.Tick();
-    return runtime.GetChunkState(ChunkId{301}) == StreamingState::Queued &&
-           runtime.GetChunkState(ChunkId{302}) == StreamingState::Queued &&
-           runtime.GetChunkState(ChunkId{303}) == StreamingState::Requested;
+    const auto release = runtime.ReleaseDemand(demand.Value());
+    return release && runtime.GetChunkState(chunk) == StreamingState::Cancelled;
 }
 
-bool TestFailedRequestIsReported()
+bool TestLastConsumerReleaseUnloadsResident()
 {
-    MockPersistenceSource persistence;
-    persistence.FailChunk(ChunkId{401});
-
-    StreamingRuntime runtime(nullptr, nullptr, nullptr, &persistence, nullptr);
-    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 0});
-
-    const auto request = runtime.RequestChunk(ChunkId{401}, StreamingPriorityClass::High);
-    if (!request)
+    InMemoryResidencyController controller;
+    StreamingRuntime runtime({}, nullptr, &controller);
+    const ChunkId chunk{104};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand || !AdvanceTo(runtime, chunk, StreamingState::Active))
     {
         return false;
     }
-
+    const auto release = runtime.ReleaseDemand(demand.Value());
     runtime.Tick();
-    if (runtime.GetChunkState(ChunkId{401}) != StreamingState::Queued)
-    {
-        return false;
-    }
-
     runtime.Tick();
-    const auto progress = runtime.GetProgress(request.Value());
-    return runtime.GetChunkState(ChunkId{401}) == StreamingState::Failed &&
-           progress.has_value() && progress->state == StreamingState::Failed;
+    return release && runtime.GetChunkState(chunk) == StreamingState::Unloaded &&
+           controller.GetResidencyState(chunk) == StreamingState::Unloaded;
 }
 
-bool TestMockModeCanReachActiveWithoutExternalMajors()
+bool TestCancelDuringPartialLoadRollsBack()
 {
-    StreamingRuntime runtime;
-    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 4, 0});
-
-    const auto request = runtime.RequestChunk(ChunkId{501}, StreamingPriorityClass::Normal);
-    if (!request)
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    StreamingDependencies dependencies{source, commit, nullptr};
+    StreamingRuntime runtime(dependencies);
+    const ChunkId chunk{105};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand)
     {
         return false;
     }
-
     runtime.Tick();
     runtime.Tick();
     runtime.Tick();
-    runtime.Tick();
-    runtime.Tick();
-
-    const auto progress = runtime.GetProgress(request.Value());
-    return runtime.GetChunkState(ChunkId{501}) == StreamingState::Active &&
-           progress.has_value() && progress->progress == 1.0f;
+    const auto cancelled = runtime.CancelRequest(demand.Value().request);
+    return cancelled && runtime.GetChunkState(chunk) == StreamingState::Cancelled && commit->rollbacks == 1;
 }
 
-bool TestTargetHandleDemandAndStatistics()
+bool TestRollbackOnFailedStep()
 {
-    StreamingRuntime runtime;
-    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 8, 0});
-
-    const auto first = runtime.RequestTarget(StreamingTarget{ChunkStreamingTarget{ChunkId{601}}},
-                                             StreamingPriorityClass::Normal,
-                                             2);
-    const auto duplicate = runtime.RequestTarget(StreamingTarget{ChunkStreamingTarget{ChunkId{601}}},
-                                                 StreamingPriorityClass::High,
-                                                 3);
-    if (!first || !duplicate || first.Value() != duplicate.Value())
+    auto source = std::make_shared<PlanSource>();
+    source->fail_step = StreamingPlanStep::PrepareResources;
+    auto commit = std::make_shared<CommitTarget>();
+    StreamingRuntime runtime(StreamingDependencies{source, commit, nullptr});
+    const ChunkId chunk{106};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand)
     {
         return false;
     }
-
-    const auto progress = runtime.GetProgress(first.Value());
-    const auto stats = runtime.GetStatistics();
-    if (!progress || progress->handle != first.Value() || stats.requested != 1)
-    {
-        return false;
-    }
-
     runtime.Tick();
     runtime.Tick();
     runtime.Tick();
     runtime.Tick();
     runtime.Tick();
-
-    return runtime.GetStatistics().committed == 1 &&
-           runtime.GetChunkState(ChunkId{601}) == StreamingState::Active;
+    return runtime.GetChunkState(chunk) == StreamingState::Failed && commit->rollbacks == 1 &&
+           runtime.GetStatistics().failed == 1;
 }
 
-bool TestStaleHandleCancellationIsRejected()
+bool TestBudgetsLimitItemsAndBytes()
+{
+    auto source = std::make_shared<PlanSource>();
+    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 1});
+    const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{201}}}, StreamingPriorityClass::Normal);
+    const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{202}}}, StreamingPriorityClass::Normal);
+    if (!first || !second)
+    {
+        return false;
+    }
+    runtime.Tick();
+    if (runtime.GetChunkState(ChunkId{201}) != StreamingState::Queued || runtime.GetChunkState(ChunkId{202}) != StreamingState::Requested)
+    {
+        return false;
+    }
+    runtime.Tick();
+    return runtime.GetChunkState(ChunkId{201}) == StreamingState::Loading && runtime.GetChunkState(ChunkId{202}) == StreamingState::Requested;
+}
+
+bool TestTargetVariantsRejectUnsupportedInReference()
 {
     StreamingRuntime runtime;
-    const auto handle = runtime.RequestTarget(StreamingTarget{ChunkStreamingTarget{ChunkId{701}}},
-                                             StreamingPriorityClass::Normal,
-                                             1);
-    if (!handle)
+    const auto region = runtime.Request(StreamingTarget{RegionStreamingTarget{RegionId{1}}}, StreamingPriorityClass::Normal);
+    const auto object = runtime.Request(StreamingTarget{ObjectStreamingTarget{RuntimeObjectId{1}}}, StreamingPriorityClass::Normal);
+    const auto group = runtime.Request(StreamingTarget{ResourceGroupStreamingTarget{StringId::FromString("group/a")}}, StreamingPriorityClass::Normal);
+    return !region && region.GetError().HasCode("streaming.unsupported_target") &&
+           !object && object.GetError().HasCode("streaming.unsupported_target") &&
+           !group && group.GetError().HasCode("streaming.unsupported_target");
+}
+
+bool TestRequestGenerationAndStaleDemand()
+{
+    StreamingRuntime runtime;
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{301}}}, StreamingPriorityClass::Normal);
+    if (!demand)
     {
         return false;
     }
-
-    StreamingRequestHandle stale = handle.Value();
+    StreamingDemandHandle stale = demand.Value();
     ++stale.generation;
-    const auto cancelled = runtime.CancelRequest(stale);
-
-    return !cancelled && cancelled.GetError().HasCode("streaming.stale_handle") &&
-           runtime.GetProgress(stale) == std::nullopt;
+    const auto released = runtime.ReleaseDemand(stale);
+    StreamingRequestHandle request{demand.Value().request, 999};
+    const auto cancelled = runtime.CancelRequest(request);
+    return !released && released.GetError().HasCode("streaming.stale_handle") &&
+           !cancelled && cancelled.GetError().HasCode("streaming.stale_handle");
 }
 
-bool TestStreamingServicesFactory()
+bool TestRecordCleanup()
 {
-    const auto services = CreateStreamingServices();
-    return services.runtime != nullptr && services.query != nullptr;
+    StreamingRuntime runtime;
+    runtime.CleanupCompletedRecords(1);
+    const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{401}}}, StreamingPriorityClass::Normal);
+    const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{402}}}, StreamingPriorityClass::Normal);
+    if (!first || !second)
+    {
+        return false;
+    }
+    (void)runtime.ReleaseDemand(first.Value());
+    (void)runtime.ReleaseDemand(second.Value());
+    runtime.Tick();
+    return runtime.RecordCount() == 1;
+}
+
+bool TestServicesFactoryUsesDependencies()
+{
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    auto priority = std::make_shared<PriorityProvider>();
+    const auto services = CreateStreamingServices(StreamingDependencies{source, commit, priority});
+    if (!services || !services.Value().runtime || !services.Value().query)
+    {
+        return false;
+    }
+    const auto demand = services.Value().runtime->Request(StreamingTarget{ChunkStreamingTarget{ChunkId{501}}}, StreamingPriorityClass::Normal);
+    return demand && source->build_count == 1;
 }
 } // namespace
 
@@ -368,52 +320,17 @@ int main()
     static_assert(std::is_abstract_v<IStreamingDataSource>);
     static_assert(std::is_abstract_v<IStreamingCommitTarget>);
     static_assert(std::is_abstract_v<IStreamingPriorityProvider>);
-    static_assert(std::is_abstract_v<IStreamingWorldSource>);
-    static_assert(std::is_abstract_v<IStreamingPersistenceSource>);
-    static_assert(std::is_abstract_v<IStreamingResourceSource>);
 
-    if (!TestRequestAndCancelFlow())
-    {
-        return 1;
-    }
-
-    if (!TestPriorityOrderingUsesResolvedPriority())
-    {
-        return 2;
-    }
-
-    if (!TestProgressRevisionChangesOnlyOnTransitions())
-    {
-        return 3;
-    }
-
-    if (!TestBudgetLimitsProcessing())
-    {
-        return 4;
-    }
-
-    if (!TestFailedRequestIsReported())
-    {
-        return 5;
-    }
-
-    if (!TestMockModeCanReachActiveWithoutExternalMajors())
-    {
-        return 6;
-    }
-    if (!TestTargetHandleDemandAndStatistics())
-    {
-        return 7;
-    }
-    if (!TestStaleHandleCancellationIsRejected())
-    {
-        return 8;
-    }
-    if (!TestStreamingServicesFactory())
-    {
-        return 9;
-    }
-
+    if (!TestTwoConsumersRequestOneTarget()) return 1;
+    if (!TestOneConsumerReleaseKeepsLoad()) return 2;
+    if (!TestLastConsumerReleaseCancelsBeforeLoad()) return 3;
+    if (!TestLastConsumerReleaseUnloadsResident()) return 4;
+    if (!TestCancelDuringPartialLoadRollsBack()) return 5;
+    if (!TestRollbackOnFailedStep()) return 6;
+    if (!TestBudgetsLimitItemsAndBytes()) return 7;
+    if (!TestTargetVariantsRejectUnsupportedInReference()) return 8;
+    if (!TestRequestGenerationAndStaleDemand()) return 9;
+    if (!TestRecordCleanup()) return 10;
+    if (!TestServicesFactoryUsesDependencies()) return 11;
     return 0;
 }
-

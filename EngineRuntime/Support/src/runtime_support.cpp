@@ -448,7 +448,12 @@ foundation::Result<void> RegisterStreaming(core::Application& app)
     {
         return dependency;
     }
-    return RegisterShared(app, std::make_shared<streaming::StreamingServices>(streaming::CreateStreamingServices()), "Streaming");
+    const auto services = streaming::CreateStreamingServices();
+    if (!services)
+    {
+        return foundation::Result<void>::Failure(services.GetError());
+    }
+    return RegisterShared(app, std::make_shared<streaming::StreamingServices>(services.Value()), "Streaming");
 }
 
 foundation::Result<void> RegisterSimulation(core::Application& app, const simulation::SimulationOptions& options)

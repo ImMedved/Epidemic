@@ -8,6 +8,7 @@
 #include "Epidemic/Runtime/World/region.h"
 #include "Epidemic/Runtime/World/world_location.h"
 #include "Epidemic/Runtime/World/world_object.h"
+#include "Epidemic/Runtime/World/world_invariants.h"
 #include "Epidemic/Runtime/World/world_query.h"
 #include "Epidemic/Runtime/World/world_services.h"
 #include "Epidemic/Runtime/World/world_state.h"
@@ -22,6 +23,10 @@ using epidemic::runtime::ChunkDescriptor;
 using epidemic::runtime::ChunkId;
 using epidemic::runtime::ChunkState;
 using epidemic::runtime::DemotionRequest;
+using epidemic::runtime::DemotionCommitToken;
+using epidemic::runtime::EquippedPlacement;
+using epidemic::runtime::GameTimePoint;
+using epidemic::runtime::InventoryPlacement;
 using epidemic::runtime::MaterializationRequest;
 using epidemic::runtime::ObjectPlacement;
 using epidemic::runtime::ObjectRealityLevel;
@@ -30,7 +35,6 @@ using epidemic::runtime::PersistentObjectId;
 using epidemic::runtime::RegionDescriptor;
 using epidemic::runtime::RegionId;
 using epidemic::runtime::ResidencyState;
-using epidemic::runtime::RuntimeBudget;
 using epidemic::runtime::RuntimeObjectId;
 using epidemic::runtime::WorldSurfacePlacement;
 using epidemic::runtime::ContainerPlacement;
@@ -44,6 +48,13 @@ using epidemic::runtime::WorldRuntime;
 using epidemic::runtime::ChangePlacementCommand;
 using epidemic::runtime::ChangeResidencyCommand;
 using epidemic::runtime::PromotePersistenceTierCommand;
+using epidemic::runtime::ValidateRealityResidencyCombination;
+
+bool RegisterRegionAndChunk(WorldRuntime& runtime, RegionId region, ChunkId chunk)
+{
+    return runtime.RegisterRegion(RegionDescriptor{region, StringId::FromString("test-region")}).HasValue() &&
+           runtime.RegisterChunk(ChunkDescriptor{chunk, region, 0, 0, 0}).HasValue();
+}
 
 // Verifies register and find region.
 bool TestRegisterAndFindRegion()
@@ -146,6 +157,10 @@ bool TestFindObjectReturnsSnapshot()
 bool TestSetPlacementUpdatesPlacement()
 {
     WorldRuntime runtime;
+    if (!RegisterRegionAndChunk(runtime, RegionId{4}, ChunkId{9}))
+    {
+        return false;
+    }
     const auto created = runtime.CreateObject(WorldObjectRecord{});
     if (!created.HasValue())
     {
@@ -183,8 +198,10 @@ bool TestDuplicatePersistentIdIsRejected()
     WorldRuntime runtime;
     WorldObjectRecord first{};
     first.persistent_id = PersistentObjectId{44};
+    first.persistence_tier = PersistenceTier::TemporaryObserved;
     WorldObjectRecord second{};
     second.persistent_id = PersistentObjectId{44};
+    second.persistence_tier = PersistenceTier::TemporaryObserved;
 
     const auto created = runtime.CreateObject(first);
     const auto duplicate = runtime.CreateObject(second);
@@ -242,6 +259,10 @@ bool TestCommandRevisionConflictIsRejected()
 bool TestCommandReturnsBeforeAndAfterSnapshots()
 {
     WorldRuntime runtime;
+    if (!RegisterRegionAndChunk(runtime, RegionId{8}, ChunkId{16}))
+    {
+        return false;
+    }
     const auto created = runtime.CreateObject(WorldObjectRecord{});
     if (!created.HasValue())
     {
@@ -274,10 +295,149 @@ bool TestPersistencePromotionForbidsDowngrade()
            stored->revision == 2;
 }
 
+bool TestSurfacePlacementRequiresRegisteredRegionAndChunk()
+{
+    WorldRuntime runtime;
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto unknown_region = runtime.SetPlacement(
+        created.Value(), ObjectPlacement{WorldSurfacePlacement{RegionId{100}, ChunkId{200}, Transform{}}});
+    if (unknown_region.HasValue() || !unknown_region.GetError().HasCode("world.region_not_found"))
+    {
+        return false;
+    }
+
+    if (!runtime.RegisterRegion(RegionDescriptor{RegionId{100}, StringId::FromString("region")}).HasValue())
+    {
+        return false;
+    }
+    const auto unknown_chunk = runtime.SetPlacement(
+        created.Value(), ObjectPlacement{WorldSurfacePlacement{RegionId{100}, ChunkId{200}, Transform{}}});
+    return !unknown_chunk.HasValue() && unknown_chunk.GetError().HasCode("world.chunk_not_found");
+}
+
+bool TestChunkFromAnotherRegionRejected()
+{
+    WorldRuntime runtime;
+    if (!RegisterRegionAndChunk(runtime, RegionId{1}, ChunkId{10}) ||
+        !runtime.RegisterRegion(RegionDescriptor{RegionId{2}, StringId::FromString("region-2")}).HasValue())
+    {
+        return false;
+    }
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto changed = runtime.SetPlacement(
+        created.Value(), ObjectPlacement{WorldSurfacePlacement{RegionId{2}, ChunkId{10}, Transform{}}});
+    return !changed.HasValue() && changed.GetError().HasCode("world.chunk_region_mismatch");
+}
+
+bool TestSelfContainerRejected()
+{
+    WorldRuntime runtime;
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto changed = runtime.SetPlacement(
+        created.Value(), ObjectPlacement{ContainerPlacement{created.Value(), StringId::FromString("bag/main")}});
+    return !changed.HasValue() && changed.GetError().HasCode("world.invalid_placement");
+}
+
+bool TestContainmentCycleRejected()
+{
+    WorldRuntime runtime;
+    const auto parent = runtime.CreateObject(WorldObjectRecord{});
+    const auto child = runtime.CreateObject(WorldObjectRecord{});
+    if (!parent.HasValue() || !child.HasValue())
+    {
+        return false;
+    }
+
+    const auto child_inside_parent = runtime.SetPlacement(
+        child.Value(), ObjectPlacement{ContainerPlacement{parent.Value(), StringId::FromString("slot/child")}});
+    const auto parent_inside_child = runtime.SetPlacement(
+        parent.Value(), ObjectPlacement{ContainerPlacement{child.Value(), StringId::FromString("slot/parent")}});
+    return child_inside_parent.HasValue() && !parent_inside_child.HasValue() &&
+           parent_inside_child.GetError().HasCode("world.containment_cycle");
+}
+
+bool TestOwnerMissingRejected()
+{
+    WorldRuntime runtime;
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto inventory = runtime.SetPlacement(created.Value(), ObjectPlacement{InventoryPlacement{RuntimeObjectId{999}}});
+    const auto equipped = runtime.SetPlacement(
+        created.Value(), ObjectPlacement{EquippedPlacement{RuntimeObjectId{999}, StringId::FromString("slot/hand")}});
+    return !inventory.HasValue() && inventory.GetError().HasCode("world.owner_not_found") &&
+           !equipped.HasValue() && equipped.GetError().HasCode("world.owner_not_found");
+}
+
+bool TestInvalidRealityResidencyCombinationsRejected()
+{
+    const auto logical_active = ValidateRealityResidencyCombination(ObjectRealityLevel::Logical, ResidencyState::Active);
+    const auto physical_unloaded = ValidateRealityResidencyCombination(ObjectRealityLevel::Physical, ResidencyState::Unloaded);
+    if (logical_active.HasValue() || physical_unloaded.HasValue())
+    {
+        return false;
+    }
+
+    WorldRuntime runtime;
+    WorldObjectRecord destroyed{};
+    destroyed.placement = DestroyedPlacement{GameTimePoint{10}, StringId::FromString("test.destroyed")};
+    destroyed.residency = ResidencyState::Active;
+    const auto destroyed_create = runtime.CreateObject(destroyed);
+
+    WorldObjectRecord physical{};
+    physical.reality = ObjectRealityLevel::Physical;
+    physical.residency = ResidencyState::Unloaded;
+    const auto physical_create = runtime.CreateObject(physical);
+    return !destroyed_create.HasValue() && !physical_create.HasValue();
+}
+
+bool TestDemotionWithoutCollapseConfirmationRejected()
+{
+    WorldRuntime runtime;
+    WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{700};
+    record.persistence_tier = PersistenceTier::TemporaryObserved;
+    record.reality = ObjectRealityLevel::Physical;
+    record.residency = ResidencyState::Active;
+    const auto created = runtime.CreateObject(record);
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto demoted = runtime.Demote(DemotionRequest{created.Value(), ObjectRealityLevel::Logical});
+    const auto stored = runtime.FindObject(created.Value());
+    return !demoted.HasValue() && demoted.GetError().HasCode("world.demotion_not_confirmed") &&
+           stored.has_value() && stored->reality == ObjectRealityLevel::Physical && stored->revision == 1;
+}
+
 // Verifies find objects in chunk works.
 bool TestFindObjectsInChunkWorks()
 {
     WorldRuntime runtime;
+    if (!RegisterRegionAndChunk(runtime, RegionId{5}, ChunkId{20}) ||
+        !runtime.RegisterChunk(ChunkDescriptor{ChunkId{21}, RegionId{5}, 1, 0, 0}).HasValue())
+    {
+        return false;
+    }
     auto first = WorldObjectRecord{};
     first.placement = ObjectPlacement{WorldSurfacePlacement{RegionId{5}, ChunkId{20}, Transform{}}};
     auto second = WorldObjectRecord{};
@@ -297,6 +457,10 @@ bool TestFindObjectsInChunkWorks()
 bool TestQueryOrderIsDeterministic()
 {
     WorldRuntime runtime;
+    if (!RegisterRegionAndChunk(runtime, RegionId{5}, ChunkId{20}))
+    {
+        return false;
+    }
     auto first = WorldObjectRecord{};
     first.placement = ObjectPlacement{WorldSurfacePlacement{RegionId{5}, ChunkId{20}, Transform{}}};
     auto second = first;
@@ -319,6 +483,12 @@ bool TestQueryOrderIsDeterministic()
 bool TestFindObjectsInRegionWorks()
 {
     WorldRuntime runtime;
+    if (!RegisterRegionAndChunk(runtime, RegionId{6}, ChunkId{30}) ||
+        !runtime.RegisterRegion(RegionDescriptor{RegionId{7}, StringId::FromString("other-region")}).HasValue() ||
+        !runtime.RegisterChunk(ChunkDescriptor{ChunkId{31}, RegionId{7}, 0, 0, 0}).HasValue())
+    {
+        return false;
+    }
     auto first = WorldObjectRecord{};
     first.placement = ObjectPlacement{WorldSurfacePlacement{RegionId{6}, ChunkId{30}, Transform{}}};
     auto second = WorldObjectRecord{};
@@ -342,6 +512,7 @@ bool TestFindObjectsByRealityWorks()
     logical.reality = ObjectRealityLevel::Logical;
     auto physical = WorldObjectRecord{};
     physical.reality = ObjectRealityLevel::Physical;
+    physical.residency = ResidencyState::Active;
     const auto logical_created = runtime.CreateObject(logical);
     const auto physical_created = runtime.CreateObject(physical);
     if (!logical_created.HasValue() || !physical_created.HasValue())
@@ -359,6 +530,7 @@ bool TestMaterializeChangesLogicalToPhysical()
     WorldRuntime runtime;
     WorldObjectRecord record{};
     record.persistent_id = epidemic::runtime::PersistentObjectId{77};
+    record.persistence_tier = PersistenceTier::TemporaryObserved;
     record.reality = ObjectRealityLevel::Logical;
     record.residency = ResidencyState::Unloaded;
     const auto created = runtime.CreateObject(record);
@@ -367,7 +539,7 @@ bool TestMaterializeChangesLogicalToPhysical()
         return false;
     }
 
-    const auto materialized = runtime.Materialize(MaterializationRequest{record.persistent_id, ObjectRealityLevel::Physical, RuntimeBudget{}});
+    const auto materialized = runtime.Materialize(MaterializationRequest{record.persistent_id, ObjectRealityLevel::Physical});
     const auto stored = runtime.FindObject(created.Value());
     return materialized.HasValue() && stored.has_value() && stored->reality == ObjectRealityLevel::Physical &&
            stored->residency == ResidencyState::Active;
@@ -379,6 +551,7 @@ bool TestDemoteChangesPhysicalToLogical()
     WorldRuntime runtime;
     WorldObjectRecord record{};
     record.persistent_id = epidemic::runtime::PersistentObjectId{88};
+    record.persistence_tier = PersistenceTier::TemporaryObserved;
     record.reality = ObjectRealityLevel::Physical;
     record.residency = ResidencyState::Active;
     const auto created = runtime.CreateObject(record);
@@ -387,7 +560,13 @@ bool TestDemoteChangesPhysicalToLogical()
         return false;
     }
 
-    const auto demoted = runtime.Demote(DemotionRequest{created.Value(), ObjectRealityLevel::Logical});
+    DemotionCommitToken token{};
+    token.object = created.Value();
+    token.target_reality = ObjectRealityLevel::Logical;
+    token.collapsed_placement = HiddenPlacement{};
+    token.collapse_record_id = StringId::FromString("collapse/88");
+    token.source_revision = 1;
+    const auto demoted = runtime.Demote(DemotionRequest{created.Value(), ObjectRealityLevel::Logical, token});
     const auto stored = runtime.FindObject(created.Value());
     return demoted.HasValue() && stored.has_value() && stored->reality == ObjectRealityLevel::Logical &&
            stored->residency == ResidencyState::Resident;
@@ -447,7 +626,7 @@ int main()
     static_assert(std::is_trivially_copyable_v<RegionDescriptor>);
     static_assert(std::is_trivially_copyable_v<WorldLocation>);
     static_assert(std::is_trivially_copyable_v<MaterializationRequest>);
-    static_assert(std::is_trivially_copyable_v<DemotionRequest>);
+    static_assert(std::is_copy_constructible_v<DemotionRequest>);
 
     if (!TestRegisterAndFindRegion())
     {
@@ -524,49 +703,84 @@ int main()
         return 15;
     }
 
-    if (!TestFindObjectsInChunkWorks())
+    if (!TestSurfacePlacementRequiresRegisteredRegionAndChunk())
     {
         return 16;
     }
 
-    if (!TestQueryOrderIsDeterministic())
+    if (!TestChunkFromAnotherRegionRejected())
     {
         return 17;
     }
 
-    if (!TestFindObjectsInRegionWorks())
+    if (!TestSelfContainerRejected())
     {
         return 18;
     }
 
-    if (!TestFindObjectsByRealityWorks())
+    if (!TestContainmentCycleRejected())
     {
         return 19;
     }
 
-    if (!TestMaterializeChangesLogicalToPhysical())
+    if (!TestOwnerMissingRejected())
     {
         return 20;
     }
 
-    if (!TestDemoteChangesPhysicalToLogical())
+    if (!TestInvalidRealityResidencyCombinationsRejected())
     {
         return 21;
     }
 
-    if (!TestDestroyPersistentObjectLeavesTombstone())
+    if (!TestDemotionWithoutCollapseConfirmationRejected())
     {
         return 22;
     }
 
-    if (!TestWorldLocationStoresRegionAndChunk())
+    if (!TestFindObjectsInChunkWorks())
     {
         return 23;
     }
 
-    if (!TestFactoryCreatesSharedWorldServices())
+    if (!TestQueryOrderIsDeterministic())
     {
         return 24;
+    }
+
+    if (!TestFindObjectsInRegionWorks())
+    {
+        return 25;
+    }
+
+    if (!TestFindObjectsByRealityWorks())
+    {
+        return 26;
+    }
+
+    if (!TestMaterializeChangesLogicalToPhysical())
+    {
+        return 27;
+    }
+
+    if (!TestDemoteChangesPhysicalToLogical())
+    {
+        return 28;
+    }
+
+    if (!TestDestroyPersistentObjectLeavesTombstone())
+    {
+        return 29;
+    }
+
+    if (!TestWorldLocationStoresRegionAndChunk())
+    {
+        return 30;
+    }
+
+    if (!TestFactoryCreatesSharedWorldServices())
+    {
+        return 31;
     }
 
     return 0;

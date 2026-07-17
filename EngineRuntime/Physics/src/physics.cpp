@@ -5,6 +5,8 @@
 
 #include "physics_runtime_impl.h"
 
+#include <utility>
+
 // File note:
 // Umbrella translation unit that anchors the public Physics contracts in the build.
 
@@ -12,7 +14,12 @@ namespace epidemic::runtime::physics
 {
 PhysicsServices CreatePhysicsServices()
 {
-    auto runtime = std::make_shared<PhysicsRuntime>();
+    return CreatePhysicsServices(nullptr);
+}
+
+PhysicsServices CreatePhysicsServices(std::shared_ptr<IPhysicsBackend> backend)
+{
+    auto runtime = std::make_shared<PhysicsRuntime>(std::move(backend));
 
     PhysicsServices services{};
     services.shapes = runtime;

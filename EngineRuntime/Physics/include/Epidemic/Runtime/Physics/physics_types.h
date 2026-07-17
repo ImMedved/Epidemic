@@ -22,12 +22,37 @@ struct PhysicsBodyId
     [[nodiscard]] constexpr bool operator==(const PhysicsBodyId&) const noexcept = default;
 };
 
+struct PhysicsBodyHandle
+{
+    PhysicsBodyId id{};
+    std::uint32_t generation = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return id.IsValid() && generation != 0; }
+    [[nodiscard]] constexpr bool operator==(const PhysicsBodyHandle&) const noexcept = default;
+};
+
 struct CollisionShapeId
 {
     std::uint64_t value = 0;
 
     [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
     [[nodiscard]] constexpr bool operator==(const CollisionShapeId&) const noexcept = default;
+};
+
+struct BackendShapeHandle
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const BackendShapeHandle&) const noexcept = default;
+};
+
+struct BackendBodyHandle
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const BackendBodyHandle&) const noexcept = default;
 };
 
 enum class PhysicsBodyType
@@ -53,31 +78,11 @@ enum class PhysicsActivityState
     Disabled
 };
 
-enum class PhysicsBodyState
-{
-    PendingCreate,
-    Static,
-    Dynamic,
-    Kinematic,
-    Sleeping,
-    Active,
-    Disabled,
-    PendingDestroy
-};
-
-enum class PhysicsSyncState
-{
-    Clean,
-    TransformDirty,
-    ShapeDirty,
-    MaterialDirty
-};
-
 enum class PhysicsEventState
 {
-    Queued,
-    Consumed,
-    Expired
+    Begin,
+    Persist,
+    End
 };
 
 enum class PhysicsDirtyFlags : std::uint32_t
@@ -111,6 +116,11 @@ struct PhysicsBodyDesc
     float mass = 0.0f;
 };
 
+struct PhysicsBackendOptions
+{
+    foundation::StringId profile{};
+};
+
 struct CollisionShapeDesc
 {
     CollisionShapeId id{};
@@ -125,12 +135,12 @@ struct PhysicsMaterial
 
 struct ContactEvent
 {
-    PhysicsBodyId a{};
-    PhysicsBodyId b{};
+    PhysicsBodyHandle a{};
+    PhysicsBodyHandle b{};
     Vec3 point{};
     Vec3 normal{};
     float impulse = 0.0f;
-    PhysicsEventState state = PhysicsEventState::Queued;
+    PhysicsEventState state = PhysicsEventState::Begin;
 };
 
 struct RaycastQuery
@@ -143,7 +153,7 @@ struct RaycastQuery
 struct RaycastHit
 {
     bool hit = false;
-    PhysicsBodyId body{};
+    PhysicsBodyHandle body{};
     Vec3 point{};
     Vec3 normal{};
     float distance = 0.0f;
@@ -156,27 +166,36 @@ struct OverlapQuery
 
 struct OverlapResult
 {
-    std::vector<PhysicsBodyId> bodies;
+    std::vector<PhysicsBodyHandle> bodies;
 };
 
 struct PhysicsStepResult
 {
     GameDuration fixed_delta{};
     std::uint64_t step_index = 0;
+    std::uint32_t substeps = 0;
+    GameDuration accumulated_time{};
+    GameDuration dropped_time{};
     std::uint64_t revision = 0;
 };
 
 struct PhysicsBodySnapshot
 {
-    PhysicsBodyId id{};
+    PhysicsBodyHandle handle{};
     RuntimeObjectId owner{};
     PhysicsTransformId transform_node{};
     PhysicsBodyType type = PhysicsBodyType::Static;
     PhysicsBodyLifecycle lifecycle = PhysicsBodyLifecycle::Destroyed;
     PhysicsActivityState activity = PhysicsActivityState::Disabled;
     PhysicsDirtyFlags dirty = PhysicsDirtyFlags::None;
+    Transform world_transform{};
+    Vec3 linear_velocity{};
+    Vec3 angular_velocity{};
+    float mass = 0.0f;
     std::uint64_t revision = 0;
 };
+
+using BackendBodySnapshot = PhysicsBodySnapshot;
 } // namespace epidemic::runtime::physics
 
 namespace std
@@ -189,9 +208,25 @@ template <> struct hash<epidemic::runtime::physics::PhysicsBodyId>
     }
 };
 
+template <> struct hash<epidemic::runtime::physics::PhysicsBodyHandle>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::physics::PhysicsBodyHandle value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.id.value) ^ (hash<std::uint32_t>{}(value.generation) << 1);
+    }
+};
+
 template <> struct hash<epidemic::runtime::physics::CollisionShapeId>
 {
     [[nodiscard]] size_t operator()(epidemic::runtime::physics::CollisionShapeId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.value);
+    }
+};
+
+template <> struct hash<epidemic::runtime::physics::BackendBodyHandle>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::physics::BackendBodyHandle value) const noexcept
     {
         return hash<std::uint64_t>{}(value.value);
     }

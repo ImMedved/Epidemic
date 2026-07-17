@@ -2,6 +2,7 @@
 
 #include "Epidemic/Runtime/Foundation/runtime_budget.h"
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
+#include "Epidemic/Foundation/string_id.h"
 
 #include <chrono>
 #include <cstddef>
@@ -29,6 +30,7 @@ enum class StreamingState
     Deactivating,
     Unloading,
     Unloaded,
+    Cancelled,
     Failed
 };
 
@@ -66,6 +68,32 @@ struct StreamingRequestHandle
     [[nodiscard]] friend constexpr bool operator==(StreamingRequestHandle, StreamingRequestHandle) noexcept = default;
 };
 
+struct StreamingDemandId
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value != 0;
+    }
+
+    [[nodiscard]] friend constexpr bool operator==(StreamingDemandId, StreamingDemandId) noexcept = default;
+};
+
+struct StreamingDemandHandle
+{
+    StreamingDemandId id{};
+    StreamingRequestId request{};
+    std::uint32_t generation = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return id.IsValid() && request.IsValid() && generation != 0;
+    }
+
+    [[nodiscard]] friend constexpr bool operator==(StreamingDemandHandle, StreamingDemandHandle) noexcept = default;
+};
+
 struct ChunkStreamingTarget
 {
     ChunkId chunk{};
@@ -81,7 +109,22 @@ struct AssetStreamingTarget
     AssetId asset{};
 };
 
-using StreamingTarget = std::variant<ChunkStreamingTarget, RegionStreamingTarget, AssetStreamingTarget>;
+struct ObjectStreamingTarget
+{
+    RuntimeObjectId object{};
+};
+
+struct ResourceGroupStreamingTarget
+{
+    foundation::StringId group{};
+};
+
+using StreamingTarget = std::variant<
+    ChunkStreamingTarget,
+    RegionStreamingTarget,
+    ObjectStreamingTarget,
+    ResourceGroupStreamingTarget,
+    AssetStreamingTarget>;
 
 enum class StreamingPlanStep
 {
@@ -96,6 +139,7 @@ enum class StreamingPlanStep
 struct ProgressiveLoadPlan
 {
     std::vector<StreamingPlanStep> steps{};
+    std::size_t cursor = 0;
 };
 
 struct StreamingCancellationToken
@@ -108,6 +152,7 @@ struct StreamingRequest
 {
     StreamingRequestId id{};
     StreamingRequestHandle handle{};
+    StreamingDemandHandle demand_handle{};
     StreamingTarget target{ChunkStreamingTarget{}};
     RegionId region{};
     ChunkId chunk{};
@@ -137,6 +182,7 @@ struct StreamingProgress
     StreamingTarget target{ChunkStreamingTarget{}};
     StreamingState state = StreamingState::NotRequested;
     float progress = 0.0f;
+    std::uint32_t demand_count = 0;
     std::uint64_t revision = 0;
 };
 
@@ -154,6 +200,15 @@ template <>
 struct std::hash<epidemic::runtime::streaming::StreamingRequestId>
 {
     std::size_t operator()(epidemic::runtime::streaming::StreamingRequestId id) const noexcept
+    {
+        return std::hash<std::uint64_t>{}(id.value);
+    }
+};
+
+template <>
+struct std::hash<epidemic::runtime::streaming::StreamingDemandId>
+{
+    std::size_t operator()(epidemic::runtime::streaming::StreamingDemandId id) const noexcept
     {
         return std::hash<std::uint64_t>{}(id.value);
     }

@@ -20,10 +20,14 @@ class IStreamingRuntime
     [[nodiscard]] virtual foundation::Result<StreamingRequestId> RequestChunk(
         ChunkId chunk,
         StreamingPriorityClass priority) = 0;
+    [[nodiscard]] virtual foundation::Result<StreamingDemandHandle> Request(
+        const StreamingTarget& target,
+        StreamingPriorityClass priority) = 0;
     [[nodiscard]] virtual foundation::Result<StreamingRequestHandle> RequestTarget(
         const StreamingTarget& target,
         StreamingPriorityClass priority,
         std::uint32_t demand_count) = 0;
+    [[nodiscard]] virtual foundation::Result<void> ReleaseDemand(StreamingDemandHandle demand) = 0;
     [[nodiscard]] virtual foundation::Result<void> CancelRequest(StreamingRequestId request) = 0;
     [[nodiscard]] virtual foundation::Result<void> CancelRequest(StreamingRequestHandle request) = 0;
     [[nodiscard]] virtual StreamingState GetChunkState(ChunkId chunk) const = 0;
@@ -50,5 +54,12 @@ struct StreamingServices
     std::shared_ptr<IStreamingQuery> query;
 };
 
-[[nodiscard]] StreamingServices CreateStreamingServices();
+struct StreamingDependencies
+{
+    std::shared_ptr<IStreamingDataSource> data_source;
+    std::shared_ptr<IStreamingCommitTarget> commit_target;
+    std::shared_ptr<IStreamingPriorityProvider> priority_provider;
+};
+
+[[nodiscard]] foundation::Result<StreamingServices> CreateStreamingServices(const StreamingDependencies& dependencies = {});
 } // namespace epidemic::runtime::streaming

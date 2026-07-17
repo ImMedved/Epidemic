@@ -40,7 +40,8 @@ class IStreamingDataSource
   public:
     virtual ~IStreamingDataSource() = default;
 
-    [[nodiscard]] virtual foundation::Result<void> Prepare(const StreamingRequest& request) = 0;
+    [[nodiscard]] virtual foundation::Result<ProgressiveLoadPlan> BuildLoadPlan(const StreamingRequest& request) = 0;
+    [[nodiscard]] virtual foundation::Result<void> ExecuteStep(const StreamingRequest& request, StreamingPlanStep step) = 0;
 };
 
 class IStreamingCommitTarget

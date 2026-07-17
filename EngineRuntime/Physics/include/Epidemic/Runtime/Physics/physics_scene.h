@@ -25,10 +25,10 @@ class IPhysicsScene
   public:
     virtual ~IPhysicsScene() = default;
 
-    [[nodiscard]] virtual foundation::Result<PhysicsBodyId> CreateBody(const PhysicsBodyDesc& desc) = 0;
-    [[nodiscard]] virtual foundation::Result<void> DestroyBody(PhysicsBodyId id) = 0;
-    [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(PhysicsBodyId id, Vec3 impulse) = 0;
-    [[nodiscard]] virtual PhysicsBodyState GetBodyState(PhysicsBodyId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<PhysicsBodyHandle> CreateBody(const PhysicsBodyDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyBody(PhysicsBodyHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(PhysicsBodyHandle handle, Vec3 impulse) = 0;
+    [[nodiscard]] virtual foundation::Result<PhysicsBodySnapshot> GetBodySnapshot(PhysicsBodyHandle handle) const = 0;
 };
 
 class IPhysicsStepper
@@ -37,6 +37,7 @@ class IPhysicsStepper
     virtual ~IPhysicsStepper() = default;
 
     [[nodiscard]] virtual foundation::Result<PhysicsStepResult> StepFixed(GameDuration fixed_delta) = 0;
+    [[nodiscard]] virtual foundation::Result<PhysicsStepResult> Tick(GameDuration delta) = 0;
 };
 
 class IPhysicsBackend
@@ -44,7 +45,14 @@ class IPhysicsBackend
   public:
     virtual ~IPhysicsBackend() = default;
 
-    [[nodiscard]] virtual foundation::Result<PhysicsStepResult> SimulateFixed(GameDuration fixed_delta) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Initialize(const PhysicsBackendOptions& options) = 0;
+    [[nodiscard]] virtual foundation::Result<BackendShapeHandle> CreateShape(const CollisionShapeDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<BackendBodyHandle> CreateBody(const PhysicsBodyDesc& desc, BackendShapeHandle shape) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyBody(BackendBodyHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(BackendBodyHandle handle, const Vec3& impulse) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SimulateFixed(GameDuration fixed_delta) = 0;
+    [[nodiscard]] virtual foundation::Result<BackendBodySnapshot> GetBodySnapshot(BackendBodyHandle handle) const = 0;
+    [[nodiscard]] virtual foundation::Result<RaycastHit> Raycast(const RaycastQuery& query) const = 0;
 };
 
 class IPhysicsTransformSource
@@ -74,4 +82,5 @@ struct PhysicsServices
 };
 
 [[nodiscard]] PhysicsServices CreatePhysicsServices();
+[[nodiscard]] PhysicsServices CreatePhysicsServices(std::shared_ptr<IPhysicsBackend> backend);
 } // namespace epidemic::runtime::physics

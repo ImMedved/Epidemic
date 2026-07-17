@@ -14,7 +14,7 @@ struct UpsertObjectOperation
     PersistentObjectRecord record{};
 };
 
-struct RemoveObjectOperation
+struct AdminRemoveObjectOperation
 {
     PersistentObjectId id{};
 };
@@ -24,7 +24,7 @@ struct DeleteObjectOperation
     TombstoneRecord tombstone{};
 };
 
-struct AddTombstoneOperation
+struct AdminAddTombstoneOperation
 {
     TombstoneRecord tombstone{};
 };
@@ -51,9 +51,9 @@ struct RemoveZoneOverrideOperation
 
 using PersistenceOperation = std::variant<
     UpsertObjectOperation,
-    RemoveObjectOperation,
     DeleteObjectOperation,
-    AddTombstoneOperation,
+    AdminRemoveObjectOperation,
+    AdminAddTombstoneOperation,
     UpsertLazyRuleOperation,
     RemoveLazyRuleOperation,
     UpsertZoneOverrideOperation,

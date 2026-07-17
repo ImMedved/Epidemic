@@ -122,7 +122,7 @@ bool TestAllMajorsHaveFactoriesAndHandlesAreGenerationAware()
 {
     using namespace epidemic::runtime;
 
-    static_assert(std::is_same_v<decltype(streaming::CreateStreamingServices()), streaming::StreamingServices>);
+    static_assert(std::is_same_v<decltype(streaming::CreateStreamingServices()), epidemic::foundation::Result<streaming::StreamingServices>>);
     static_assert(std::is_same_v<decltype(physics::CreatePhysicsServices()), physics::PhysicsServices>);
     static_assert(std::is_same_v<decltype(navigation::CreateMockNavigationServices()), navigation::NavigationServices>);
     static_assert(std::is_same_v<decltype(animation::CreateAnimationServices()), animation::AnimationServices>);

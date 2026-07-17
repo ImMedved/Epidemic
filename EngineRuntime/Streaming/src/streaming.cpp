@@ -6,18 +6,20 @@
 
 #include "streaming_runtime_impl.h"
 
+#include <utility>
+
 // File note:
 // Umbrella translation unit that anchors the public Streaming contracts in the build.
 
 namespace epidemic::runtime::streaming
 {
-StreamingServices CreateStreamingServices()
+foundation::Result<StreamingServices> CreateStreamingServices(const StreamingDependencies& dependencies)
 {
-    auto runtime = std::make_shared<StreamingRuntime>();
+    auto runtime = std::make_shared<StreamingRuntime>(dependencies);
 
     StreamingServices services{};
     services.runtime = runtime;
     services.query = runtime;
-    return services;
+    return foundation::Result<StreamingServices>::Success(std::move(services));
 }
 } // namespace epidemic::runtime::streaming

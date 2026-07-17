@@ -17,6 +17,7 @@ using epidemic::runtime::GameTimePoint;
 using epidemic::runtime::HasProtectionFlag;
 using epidemic::runtime::InMemoryPersistenceStore;
 using epidemic::runtime::InMemoryPersistenceBackend;
+using epidemic::runtime::IPersistenceBackend;
 using epidemic::runtime::LazyRuleId;
 using epidemic::runtime::LazyRuleKind;
 using epidemic::runtime::LazyRuleRecord;
@@ -24,6 +25,7 @@ using epidemic::runtime::LazyRuleState;
 using epidemic::runtime::ObjectProtectionFlags;
 using epidemic::runtime::ObjectProtectionMask;
 using epidemic::runtime::PersistenceLocation;
+using epidemic::runtime::PersistenceDurability;
 using epidemic::runtime::PersistencePayload;
 using epidemic::runtime::PersistenceOptions;
 using epidemic::runtime::PersistenceSnapshot;
@@ -35,6 +37,46 @@ using epidemic::runtime::RegionId;
 using epidemic::runtime::SaveTransactionState;
 using epidemic::runtime::TombstoneRecord;
 using epidemic::runtime::ZoneOverrideSnapshot;
+
+class ControlledBackend final : public IPersistenceBackend
+{
+  public:
+    [[nodiscard]] epidemic::foundation::Result<PersistenceSnapshot> Load() override
+    {
+        ++load_count;
+        return epidemic::foundation::Result<PersistenceSnapshot>::Success(snapshot);
+    }
+
+    [[nodiscard]] epidemic::foundation::Result<void> Save(const PersistenceSnapshot& next_snapshot) override
+    {
+        ++save_count;
+        if (fail_save)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("persistence.save_failed", "save failed for test"));
+        }
+        snapshot = next_snapshot;
+        return epidemic::foundation::Result<void>::Success();
+    }
+
+    [[nodiscard]] epidemic::foundation::Result<void> Flush() override
+    {
+        ++flush_count;
+        if (fail_flush)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("persistence.flush_failed", "flush failed for test"));
+        }
+        return epidemic::foundation::Result<void>::Success();
+    }
+
+    PersistenceSnapshot snapshot{};
+    bool fail_save = false;
+    bool fail_flush = false;
+    int load_count = 0;
+    int save_count = 0;
+    int flush_count = 0;
+};
 
 [[nodiscard]] StringId Id(std::string_view value)
 {
@@ -156,7 +198,7 @@ using epidemic::runtime::ZoneOverrideSnapshot;
 {
     InMemoryPersistenceStore store;
     auto transaction = store.OpenTransaction();
-    if (!transaction || !transaction->UpsertObject(MakeRecord(1001)) || !transaction->RemoveObject(PersistentObjectId{9999}))
+    if (!transaction || !transaction->UpsertObject(MakeRecord(1001)) || !transaction->AdminRemoveObject(PersistentObjectId{9999}))
     {
         return false;
     }
@@ -226,7 +268,7 @@ using epidemic::runtime::ZoneOverrideSnapshot;
     snapshot.lazy_rules.push_back(MakeLazyRule(7001, 1001));
 
     auto transaction = store.OpenTransaction();
-    if (!transaction || !transaction->AddTombstone(tombstone) || !transaction->UpsertZoneOverride(snapshot) || !transaction->Commit())
+    if (!transaction || !transaction->AdminAddTombstone(tombstone) || !transaction->UpsertZoneOverride(snapshot) || !transaction->Commit())
     {
         return false;
     }
@@ -235,6 +277,129 @@ using epidemic::runtime::ZoneOverrideSnapshot;
     const auto found_zone = store.FindZoneOverride(snapshot.location);
     return store.IsTombstoned(PersistentObjectId{1001}) && found_tombstone && found_tombstone->reason == Id("cleanup.decay") &&
            found_tombstone->revision == 1u && found_zone && found_zone->record_ids.size() == 1u && found_zone->revision == 1u;
+}
+
+[[nodiscard]] bool TestBackendSaveFailureLeavesStoreUnchanged()
+{
+    auto backend = std::make_shared<ControlledBackend>();
+    backend->fail_save = true;
+    PersistenceOptions options{};
+    options.backend = backend;
+    options.durability = PersistenceDurability::SaveRequired;
+    const auto services = CreatePersistenceServices(options);
+    if (!services)
+    {
+        return false;
+    }
+
+    auto transaction = services.Value().store->OpenTransaction();
+    if (!transaction || !transaction->UpsertObject(MakeRecord(3001)))
+    {
+        return false;
+    }
+
+    const auto commit = transaction->Commit();
+    return !commit && commit.GetError().HasCode("persistence.save_failed") &&
+           transaction->GetState() == SaveTransactionState::Failed && services.Value().store->GetRevision() == 0u &&
+           !services.Value().store->FindObject(PersistentObjectId{3001}) && backend->save_count == 1 && backend->flush_count == 0;
+}
+
+[[nodiscard]] bool TestBackendFlushFailureLeavesStoreUnchanged()
+{
+    auto backend = std::make_shared<ControlledBackend>();
+    backend->fail_flush = true;
+    PersistenceOptions options{};
+    options.backend = backend;
+    options.durability = PersistenceDurability::SaveAndFlushRequired;
+    const auto services = CreatePersistenceServices(options);
+    if (!services)
+    {
+        return false;
+    }
+
+    auto transaction = services.Value().store->OpenTransaction();
+    if (!transaction || !transaction->UpsertObject(MakeRecord(3002)))
+    {
+        return false;
+    }
+
+    const auto commit = transaction->Commit();
+    return !commit && commit.GetError().HasCode("persistence.flush_failed") &&
+           transaction->GetState() == SaveTransactionState::Failed && services.Value().store->GetRevision() == 0u &&
+           !services.Value().store->FindObject(PersistentObjectId{3002}) && backend->save_count == 1 && backend->flush_count == 1;
+}
+
+[[nodiscard]] bool TestSaveRequiredCommitPublishesAfterBackendSave()
+{
+    auto backend = std::make_shared<ControlledBackend>();
+    PersistenceOptions options{};
+    options.backend = backend;
+    options.durability = PersistenceDurability::SaveRequired;
+    const auto services = CreatePersistenceServices(options);
+    if (!services)
+    {
+        return false;
+    }
+
+    auto transaction = services.Value().store->OpenTransaction();
+    if (!transaction || !transaction->UpsertObject(MakeRecord(3003)) || !transaction->Commit())
+    {
+        return false;
+    }
+    return services.Value().store->GetRevision() == 1u && services.Value().store->FindObject(PersistentObjectId{3003}) &&
+           backend->save_count == 1 && backend->flush_count == 0 && backend->snapshot.current_revision == 1u &&
+           backend->snapshot.objects.size() == 1u;
+}
+
+[[nodiscard]] bool TestSaveAndFlushRequiredCallsSaveThenFlush()
+{
+    auto backend = std::make_shared<ControlledBackend>();
+    PersistenceOptions options{};
+    options.backend = backend;
+    options.durability = PersistenceDurability::SaveAndFlushRequired;
+    const auto services = CreatePersistenceServices(options);
+    if (!services)
+    {
+        return false;
+    }
+
+    auto transaction = services.Value().store->OpenTransaction();
+    return transaction && transaction->UpsertObject(MakeRecord(3004)) && transaction->Commit() &&
+           backend->save_count == 1 && backend->flush_count == 1 &&
+           services.Value().store->FindObject(PersistentObjectId{3004}).has_value();
+}
+
+[[nodiscard]] bool TestUpsertThenRemoveLazyRuleInOneTransaction()
+{
+    InMemoryPersistenceStore store;
+    auto transaction = store.OpenTransaction();
+    if (!transaction || !transaction->UpsertLazyRule(MakeLazyRule(9001, 4001)) || !transaction->RemoveLazyRule(LazyRuleId{9001}))
+    {
+        return false;
+    }
+
+    const auto commit = transaction->Commit();
+    return commit && store.GetRevision() == 1u && store.ListLazyRules().empty();
+}
+
+[[nodiscard]] bool TestInvalidBackendSnapshotRejected()
+{
+    auto backend = std::make_shared<ControlledBackend>();
+    PersistentObjectRecord active = MakeRecord(5001);
+    active.revision = 1u;
+    TombstoneRecord tombstone{};
+    tombstone.persistent_id = PersistentObjectId{5001};
+    tombstone.deleted_game_time = GameTimePoint{500};
+    tombstone.reason = Id("invalid.duplicate");
+    tombstone.revision = 1u;
+    backend->snapshot.current_revision = 1u;
+    backend->snapshot.objects.push_back(active);
+    backend->snapshot.tombstones.push_back(tombstone);
+
+    PersistenceOptions options{};
+    options.backend = backend;
+    const auto services = CreatePersistenceServices(options);
+    return !services && services.GetError().HasCode("persistence.invalid_snapshot");
 }
 
 [[nodiscard]] bool TestDeleteObjectIsAtomicTombstoneOperation()
@@ -338,6 +503,12 @@ int main()
         {"LazyRuleIdQueries", TestLazyRuleIdQueries},
         {"LazyRuleUpdateRemoveAndDueQuery", TestLazyRuleUpdateRemoveAndDueQuery},
         {"RichTombstonesAndZoneOverrides", TestRichTombstonesAndZoneOverrides},
+        {"BackendSaveFailureLeavesStoreUnchanged", TestBackendSaveFailureLeavesStoreUnchanged},
+        {"BackendFlushFailureLeavesStoreUnchanged", TestBackendFlushFailureLeavesStoreUnchanged},
+        {"SaveRequiredCommitPublishesAfterBackendSave", TestSaveRequiredCommitPublishesAfterBackendSave},
+        {"SaveAndFlushRequiredCallsSaveThenFlush", TestSaveAndFlushRequiredCallsSaveThenFlush},
+        {"UpsertThenRemoveLazyRuleInOneTransaction", TestUpsertThenRemoveLazyRuleInOneTransaction},
+        {"InvalidBackendSnapshotRejected", TestInvalidBackendSnapshotRejected},
         {"DeleteObjectIsAtomicTombstoneOperation", TestDeleteObjectIsAtomicTombstoneOperation},
         {"ValidationRejectsInvalidRecords", TestValidationRejectsInvalidRecords},
         {"FactoryCreatesUsableStore", TestFactoryCreatesUsableStore},

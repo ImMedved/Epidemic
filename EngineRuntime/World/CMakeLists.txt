@@ -1,5 +1,6 @@
 add_library(EpidemicRuntimeWorld STATIC
     src/world.cpp
+    src/world_invariants.cpp
     src/world_runtime_impl.cpp
 )
 
