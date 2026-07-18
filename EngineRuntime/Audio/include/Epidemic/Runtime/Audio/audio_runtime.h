@@ -35,6 +35,15 @@ public:
     virtual ~IAudioBackend() = default;
 
     [[nodiscard]] virtual bool IsEnabled() const = 0;
+    [[nodiscard]] virtual foundation::Result<void> Initialize(const AudioBackendOptions& options) = 0;
+    [[nodiscard]] virtual foundation::Result<BackendVoiceHandle> CreateVoice(const AudioClipPayload& payload) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyVoice(BackendVoiceHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Play(BackendVoiceHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Pause(BackendVoiceHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Stop(BackendVoiceHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetGain(BackendVoiceHandle handle, float gain) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetSpatialState(BackendVoiceHandle handle, const AudioSpatialState& state) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Update(GameDuration delta) = 0;
 };
 
 class IAudioResourceSource
@@ -43,6 +52,7 @@ public:
     virtual ~IAudioResourceSource() = default;
 
     [[nodiscard]] virtual SoundState GetSoundState(SoundId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<AudioClipPayload> LoadClip(SoundId id) const = 0;
 };
 
 class IAudioTransformSource
@@ -100,6 +110,7 @@ public:
     // Relations: adapters can observe Audio without receiving mutable emitter storage.
     [[nodiscard]] virtual AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterId id) const = 0;
     [[nodiscard]] virtual AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterHandle handle) const = 0;
+    [[nodiscard]] virtual foundation::Result<void> Tick(GameDuration delta) = 0;
 };
 
 class IListenerSystem
@@ -111,12 +122,15 @@ public:
     // Inputs: listener descriptor; outputs: listener id or validation error.
     // Relations: main-listener selection uses ids returned here.
     [[nodiscard]] virtual foundation::Result<AudioListenerId> CreateListener(const AudioListenerDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<AudioListenerHandle> CreateListenerHandle(const AudioListenerDesc& desc) = 0;
     [[nodiscard]] virtual foundation::Result<void> DestroyListener(AudioListenerId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyListener(AudioListenerHandle handle) = 0;
 
     // Function note: Selects the main listener.
     // Inputs: listener id; outputs: success/failure Result.
     // Relations: spatial adapters can read this choice without mutating scene data.
     [[nodiscard]] virtual foundation::Result<void> SetMainListener(AudioListenerId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetMainListener(AudioListenerHandle handle) = 0;
 
     // Function note: Reads the main listener id if one exists.
     // Inputs: none; outputs: optional listener id.
@@ -161,7 +175,16 @@ public:
     [[nodiscard]] virtual std::optional<MixerGroupState> GetMixerGroup(MixerGroupId id) const = 0;
 };
 
-[[nodiscard]] std::unique_ptr<class AudioRuntime> CreateAudioRuntime(AudioOptions options = {});
+struct AudioDependencies
+{
+    std::shared_ptr<IAudioBackend> backend;
+    std::shared_ptr<IAudioResourceSource> resources;
+    std::shared_ptr<IAudioTransformSource> transforms;
+};
+
+[[nodiscard]] std::unique_ptr<class AudioRuntime> CreateAudioRuntime(
+    AudioOptions options = {},
+    AudioDependencies dependencies = {});
 
 struct AudioServices
 {
@@ -173,5 +196,8 @@ struct AudioServices
     std::shared_ptr<IAudioBackend> backend;
 };
 
-[[nodiscard]] AudioServices CreateMockAudioServices(AudioOptions options = {});
+[[nodiscard]] foundation::Result<AudioServices> CreateAudioServices(
+    AudioOptions options = {},
+    AudioDependencies dependencies = {});
+[[nodiscard]] foundation::Result<AudioServices> CreateMockAudioServices(AudioOptions options = {});
 } // namespace epidemic::runtime::audio

@@ -2,6 +2,7 @@
 
 #include "Epidemic/Runtime/Animation/animation_runtime.h"
 
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -17,7 +18,7 @@ class AnimationRuntime final : public ISkeletonRegistry,
                                public IAnimationEventBuffer
 {
 public:
-    explicit AnimationRuntime(AnimationOptions options);
+    explicit AnimationRuntime(AnimationOptions options, AnimationDependencies dependencies = {});
 
     [[nodiscard]] foundation::Result<void> RegisterSkeleton(SkeletonDesc desc) override;
     [[nodiscard]] bool HasSkeleton(SkeletonId id) const override;
@@ -47,21 +48,31 @@ private:
     {
         AnimatorDesc desc{};
         AnimatorHandle handle{};
-        AnimatorState state = AnimatorState::Ready;
+        AnimatorLifecycle lifecycle = AnimatorLifecycle::Ready;
+        AnimatorReadiness readiness = AnimatorReadiness::Ready;
+        AnimatorPlaybackState playback_state = AnimatorPlaybackState::Stopped;
         PoseState pose_state = PoseState::Clean;
-        AnimationClipId playing_clip{};
-        float local_time = 0.0f;
+        AnimatorPlayback playback{};
+        std::optional<CrossfadeState> crossfade{};
         std::uint64_t revision = 0;
     };
 
+    [[nodiscard]] foundation::Result<SkeletonDesc> ResolveSkeleton(SkeletonId id);
+    [[nodiscard]] foundation::Result<AnimationClipDesc> ResolveClip(AnimationClipId id);
+    [[nodiscard]] AnimatorState ToLegacyState(const AnimatorRecord& animator) const noexcept;
     [[nodiscard]] AnimatorRecord* FindAnimator(AnimatorInstanceId id);
     [[nodiscard]] const AnimatorRecord* FindAnimator(AnimatorInstanceId id) const;
     [[nodiscard]] AnimatorRecord* FindAnimator(AnimatorHandle handle);
     [[nodiscard]] const AnimatorRecord* FindAnimator(AnimatorHandle handle) const;
     [[nodiscard]] std::vector<AnimatorInstanceId> BuildAnimatorWorkList() const;
+    [[nodiscard]] PoseBuffer BuildPoseBuffer(const AnimatorRecord& animator) const;
+    [[nodiscard]] foundation::Result<void> PublishPose(const AnimatorRecord& animator);
+    void AdvancePlayback(AnimatorRecord& animator, GameDuration delta);
+    void AdvanceCrossfade(AnimatorRecord& animator, GameDuration delta);
     void QueueEvent(AnimatorInstanceId animator, std::string name, float time);
 
     AnimationOptions options_{};
+    AnimationDependencies dependencies_{};
     std::uint64_t next_animator_value_ = 1;
     std::uint32_t next_generation_ = 1;
     std::unordered_map<SkeletonId, SkeletonDesc> skeletons_;

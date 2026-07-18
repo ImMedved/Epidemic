@@ -117,7 +117,7 @@ class IAnimationPoseSink
 public:
     virtual ~IAnimationPoseSink() = default;
 
-    [[nodiscard]] virtual foundation::Result<void> SubmitPose(const PoseBuffer& pose) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Publish(std::shared_ptr<const PoseBuffer> pose) = 0;
 };
 
 class IAnimationEventBuffer
@@ -136,7 +136,15 @@ public:
     virtual void Clear() = 0;
 };
 
-[[nodiscard]] std::unique_ptr<class AnimationRuntime> CreateAnimationRuntime(AnimationOptions options = {});
+struct AnimationDependencies
+{
+    std::shared_ptr<IAnimationResourceSource> resources;
+    std::shared_ptr<IAnimationPoseSink> pose_sink;
+};
+
+[[nodiscard]] std::unique_ptr<class AnimationRuntime> CreateAnimationRuntime(
+    AnimationOptions options = {},
+    AnimationDependencies dependencies = {});
 
 struct AnimationServices
 {
@@ -147,6 +155,10 @@ struct AnimationServices
     std::shared_ptr<IAnimationEventBuffer> events;
 };
 
-[[nodiscard]] AnimationServices CreateAnimationServices(AnimationOptions options = {});
+[[nodiscard]] foundation::Result<AnimationServices> CreateAnimationServices(
+    AnimationOptions options = {},
+    AnimationDependencies dependencies = {});
+[[nodiscard]] AnimationServices CreateReferenceAnimationServices(AnimationOptions options = {});
+[[nodiscard]] AnimationServices CreateMockAnimationServices(AnimationOptions options = {});
 } // namespace epidemic::runtime::animation
 

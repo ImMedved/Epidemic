@@ -38,6 +38,14 @@ struct AudioListenerId
     [[nodiscard]] constexpr bool operator==(const AudioListenerId&) const noexcept = default;
 };
 
+struct BackendVoiceHandle
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const BackendVoiceHandle&) const noexcept = default;
+};
+
 struct MixerGroupId
 {
     std::uint64_t value = 0;
@@ -55,7 +63,29 @@ struct AudioEmitterHandle
     [[nodiscard]] constexpr bool operator==(const AudioEmitterHandle&) const noexcept = default;
 };
 
+struct AudioListenerHandle
+{
+    AudioListenerId id{};
+    std::uint32_t generation = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return id.IsValid() && generation != 0; }
+    [[nodiscard]] constexpr bool operator==(const AudioListenerHandle&) const noexcept = default;
+};
+
 using AudioTransformId = RuntimeObjectId;
+
+enum class AudioEventSpace
+{
+    NonSpatial,
+    WorldPosition
+};
+
+enum class AudioEventOverflowPolicy
+{
+    DropNewest,
+    DropOldest,
+    FailSubmit
+};
 
 enum class SoundState
 {
@@ -89,6 +119,23 @@ struct SoundDesc
     SoundState state = SoundState::Ready;
 };
 
+struct AudioClipPayload
+{
+    SoundId sound{};
+    SoundState state = SoundState::Ready;
+};
+
+struct AudioBackendOptions
+{
+    bool enabled = true;
+};
+
+struct AudioSpatialState
+{
+    Transform transform{};
+    bool spatial = true;
+};
+
 struct AudioEmitterDesc
 {
     RuntimeObjectId owner{};
@@ -119,6 +166,7 @@ struct AudioEvent
     SoundId sound{};
     Vec3 position{};
     float volume = 1.0f;
+    AudioEventSpace space = AudioEventSpace::WorldPosition;
 };
 
 struct MixerGroupState
@@ -135,6 +183,8 @@ struct AudioOptions
 {
     bool enable_mock_backend = true;
     std::uint32_t max_queued_events = 64;
+    AudioEventOverflowPolicy event_overflow_policy = AudioEventOverflowPolicy::FailSubmit;
+    bool allow_mixer_boost = false;
 };
 } // namespace epidemic::runtime::audio
 
@@ -159,6 +209,14 @@ template <> struct hash<epidemic::runtime::audio::AudioEmitterId>
 template <> struct hash<epidemic::runtime::audio::AudioListenerId>
 {
     [[nodiscard]] size_t operator()(epidemic::runtime::audio::AudioListenerId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.value);
+    }
+};
+
+template <> struct hash<epidemic::runtime::audio::BackendVoiceHandle>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::audio::BackendVoiceHandle value) const noexcept
     {
         return hash<std::uint64_t>{}(value.value);
     }

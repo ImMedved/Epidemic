@@ -57,8 +57,12 @@ Public factories are stable entry points for runtime composition:
 - `renderer::CreateRendererServices`
 - `renderer::CreateMockRendererServices`
 - `physics::CreatePhysicsServices`
+- `navigation::CreateNavigationServices`
 - `navigation::CreateMockNavigationServices`
 - `animation::CreateAnimationServices`
+- `animation::CreateReferenceAnimationServices`
+- `animation::CreateMockAnimationServices`
+- `audio::CreateAudioServices`
 - `audio::CreateMockAudioServices`
 - `simulation::CreateSimulationServices`
 - individual `RegisterXxx` helpers in Support
@@ -76,9 +80,9 @@ Backend and integration extension points are public contracts, not private side 
 - Streaming data source, priority policy, residency proposals and commit sink.
 - Renderer resource bridge, render-scene projections, view data and frame lifecycle.
 - Physics generation handles, body snapshots, backend body/shape ports, event buffer, transform source/sink projections and effect sink.
-- Navigation tile source, cost provider, obstacle projections and budgeted query flow.
-- Animation resource source, animator registry, pose snapshots and pose/event sinks.
-- Audio backend, resource source, listener/emitter transforms and one-shot event queue.
+- Navigation backend, data source, obstacle source, cost provider, obstacle projections and budgeted query flow.
+- Animation resource source, animator registry, decomposed playback state, crossfade state, pose snapshots and immutable pose/event sinks.
+- Audio backend voice lifecycle, resource source, listener/emitter transforms, mixer validation and bounded one-shot event queue.
 - Simulation deterministic jobs, attention/relevance inputs, world-memory store and effect buffer.
 - Environment deterministic external input, region/surface state and query projections.
 

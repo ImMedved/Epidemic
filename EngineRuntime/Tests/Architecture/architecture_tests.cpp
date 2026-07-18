@@ -124,9 +124,13 @@ bool TestAllMajorsHaveFactoriesAndHandlesAreGenerationAware()
 
     static_assert(std::is_same_v<decltype(streaming::CreateStreamingServices()), epidemic::foundation::Result<streaming::StreamingServices>>);
     static_assert(std::is_same_v<decltype(physics::CreatePhysicsServices()), physics::PhysicsServices>);
+    static_assert(std::is_same_v<decltype(navigation::CreateNavigationServices()), epidemic::foundation::Result<navigation::NavigationServices>>);
     static_assert(std::is_same_v<decltype(navigation::CreateMockNavigationServices()), navigation::NavigationServices>);
-    static_assert(std::is_same_v<decltype(animation::CreateAnimationServices()), animation::AnimationServices>);
-    static_assert(std::is_same_v<decltype(audio::CreateMockAudioServices()), audio::AudioServices>);
+    static_assert(std::is_same_v<decltype(animation::CreateAnimationServices()), epidemic::foundation::Result<animation::AnimationServices>>);
+    static_assert(std::is_same_v<decltype(animation::CreateReferenceAnimationServices()), animation::AnimationServices>);
+    static_assert(std::is_same_v<decltype(animation::CreateMockAnimationServices()), animation::AnimationServices>);
+    static_assert(std::is_same_v<decltype(audio::CreateAudioServices()), epidemic::foundation::Result<audio::AudioServices>>);
+    static_assert(std::is_same_v<decltype(audio::CreateMockAudioServices()), epidemic::foundation::Result<audio::AudioServices>>);
     static_assert(std::is_same_v<decltype(simulation::CreateSimulationServices()), simulation::SimulationServices>);
 
     streaming::StreamingRequestHandle streaming_handle{{1}, 1};

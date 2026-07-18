@@ -3,10 +3,14 @@
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
+#include <cmath>
+#include <memory>
+#include <utility>
 
 namespace epidemic::runtime::animation
 {
-AnimationRuntime::AnimationRuntime(AnimationOptions options) : options_(options)
+AnimationRuntime::AnimationRuntime(AnimationOptions options, AnimationDependencies dependencies)
+    : options_(options), dependencies_(std::move(dependencies))
 {
 }
 
@@ -30,7 +34,7 @@ foundation::Result<void> AnimationRuntime::RegisterSkeleton(SkeletonDesc desc)
 
 bool AnimationRuntime::HasSkeleton(SkeletonId id) const
 {
-    return skeletons_.contains(id);
+    return skeletons_.contains(id) || dependencies_.resources != nullptr;
 }
 
 foundation::Result<void> AnimationRuntime::RegisterClip(AnimationClipDesc desc)
@@ -59,7 +63,7 @@ foundation::Result<void> AnimationRuntime::RegisterClip(AnimationClipDesc desc)
 
 bool AnimationRuntime::HasClip(AnimationClipId id) const
 {
-    return clips_.contains(id);
+    return clips_.contains(id) || dependencies_.resources != nullptr;
 }
 
 foundation::Result<AnimatorInstanceId> AnimationRuntime::CreateAnimator(const AnimatorDesc& desc)
@@ -70,10 +74,11 @@ foundation::Result<AnimatorInstanceId> AnimationRuntime::CreateAnimator(const An
             foundation::Error::Create("animation.invalid_owner", "animator owner must be valid before creation"));
     }
 
-    if (!HasSkeleton(desc.skeleton))
+    const auto skeleton = ResolveSkeleton(desc.skeleton);
+    if (!skeleton)
     {
         return foundation::Result<AnimatorInstanceId>::Failure(
-            foundation::Error::Create("animation.skeleton_not_found", "animator must reference a registered skeleton"));
+            skeleton.GetError());
     }
 
     const AnimatorInstanceId id{next_animator_value_++};
@@ -81,7 +86,9 @@ foundation::Result<AnimatorInstanceId> AnimationRuntime::CreateAnimator(const An
     AnimatorRecord record{};
     record.desc = desc;
     record.handle = handle;
-    record.state = AnimatorState::Ready;
+    record.lifecycle = AnimatorLifecycle::Ready;
+    record.readiness = AnimatorReadiness::Ready;
+    record.playback_state = AnimatorPlaybackState::Stopped;
     record.pose_state = PoseState::Clean;
     record.revision = 1;
     animators_.emplace(id, record);
@@ -122,24 +129,25 @@ foundation::Result<void> AnimationRuntime::Play(AnimatorInstanceId id, Animation
             foundation::Error::Create("animation.animator_not_found", "animator was not found for playback"));
     }
 
-    const auto clip_it = clips_.find(clip);
-    if (clip_it == clips_.end())
+    const auto clip_result = ResolveClip(clip);
+    if (!clip_result)
     {
-        animator->state = AnimatorState::ResourceMissing;
+        animator->readiness = AnimatorReadiness::ResourceMissing;
         ++animator->revision;
         return foundation::Result<void>::Failure(
-            foundation::Error::Create("animation.clip_not_found", "animation clip was not registered"));
+            clip_result.GetError());
     }
 
-    if (clip_it->second.skeleton != animator->desc.skeleton)
+    if (clip_result.Value().skeleton != animator->desc.skeleton)
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("animation.skeleton_mismatch", "clip skeleton does not match animator skeleton"));
     }
 
-    animator->playing_clip = clip;
-    animator->local_time = 0.0f;
-    animator->state = AnimatorState::Playing;
+    animator->readiness = AnimatorReadiness::Ready;
+    animator->playback = AnimatorPlayback{clip, false, 1.0, GameDuration{}};
+    animator->crossfade.reset();
+    animator->playback_state = AnimatorPlaybackState::Playing;
     animator->pose_state = options_.enable_mock_pose_evaluation ? PoseState::Evaluating : PoseState::Dirty;
     ++animator->revision;
     QueueEvent(id, "animation.started", 0.0f);
@@ -155,13 +163,13 @@ foundation::Result<void> AnimationRuntime::Play(const AnimationPlaybackCommand& 
             foundation::Error::Create("animation.animator_not_found", "animator handle was not found for playback"));
     }
 
-    auto result = Play(command.animator.id, command.clip);
-    if (result && command.loop)
+    const auto result = Play(command.animator.id, command.clip);
+    if (result)
     {
-        auto clip = clips_.find(command.clip);
-        if (clip != clips_.end())
+        AnimatorRecord* refreshed = FindAnimator(command.animator);
+        if (refreshed != nullptr)
         {
-            clip->second.loop = true;
+            refreshed->playback.loop = command.loop;
         }
     }
     return result;
@@ -176,9 +184,9 @@ foundation::Result<void> AnimationRuntime::Pause(AnimatorHandle handle)
             foundation::Error::Create("animation.animator_not_found", "animator handle was not found for pause"));
     }
 
-    if (animator->state != AnimatorState::Paused)
+    if (animator->playback_state != AnimatorPlaybackState::Paused)
     {
-        animator->state = AnimatorState::Paused;
+        animator->playback_state = AnimatorPlaybackState::Paused;
         ++animator->revision;
     }
     return foundation::Result<void>::Success();
@@ -193,10 +201,11 @@ foundation::Result<void> AnimationRuntime::Stop(AnimatorHandle handle)
             foundation::Error::Create("animation.animator_not_found", "animator handle was not found for stop"));
     }
 
-    if (animator->state != AnimatorState::Finished)
+    if (animator->playback_state != AnimatorPlaybackState::Stopped)
     {
-        animator->state = AnimatorState::Finished;
-        animator->local_time = 0.0f;
+        animator->playback_state = AnimatorPlaybackState::Stopped;
+        animator->playback.local_time = GameDuration{};
+        animator->crossfade.reset();
         animator->pose_state = PoseState::Clean;
         ++animator->revision;
         QueueEvent(handle.id, "animation.stopped", 0.0f);
@@ -212,14 +221,50 @@ foundation::Result<void> AnimationRuntime::Crossfade(AnimatorHandle handle, Anim
             foundation::Error::Create("animation.invalid_fade", "crossfade duration must not be negative"));
     }
 
-    const auto play = Play(AnimationPlaybackCommand{handle, clip, false, duration});
-    if (!play)
+    AnimatorRecord* animator = FindAnimator(handle);
+    if (animator == nullptr)
     {
-        return play;
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("animation.animator_not_found", "animator handle was not found for crossfade"));
     }
 
-    AnimatorRecord* animator = FindAnimator(handle);
-    animator->state = AnimatorState::Blending;
+    const auto clip_result = ResolveClip(clip);
+    if (!clip_result)
+    {
+        animator->readiness = AnimatorReadiness::ResourceMissing;
+        ++animator->revision;
+        return foundation::Result<void>::Failure(clip_result.GetError());
+    }
+
+    if (clip_result.Value().skeleton != animator->desc.skeleton)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("animation.skeleton_mismatch", "clip skeleton does not match animator skeleton"));
+    }
+
+    if (!animator->playback.clip.IsValid())
+    {
+        const auto play = Play(AnimationPlaybackCommand{handle, clip, false, duration});
+        if (!play)
+        {
+            return play;
+        }
+        animator = FindAnimator(handle);
+    }
+
+    if (duration.ticks == 0)
+    {
+        animator->playback = AnimatorPlayback{clip, false, 1.0, GameDuration{}};
+        animator->playback_state = AnimatorPlaybackState::Playing;
+        animator->crossfade.reset();
+        ++animator->revision;
+        return foundation::Result<void>::Success();
+    }
+
+    animator->crossfade = CrossfadeState{animator->playback.clip, clip, GameDuration{}, duration, 1.0f, 0.0f};
+    animator->playback_state = AnimatorPlaybackState::Blending;
+    animator->pose_state = options_.enable_mock_pose_evaluation ? PoseState::Evaluating : PoseState::Dirty;
+    ++animator->revision;
     QueueEvent(handle.id, "animation.crossfade", static_cast<float>(duration.ticks));
     return foundation::Result<void>::Success();
 }
@@ -243,16 +288,22 @@ std::size_t AnimationRuntime::Tick(GameDuration delta, std::size_t max_animators
         }
 
         AnimatorRecord& animator = animators_[id];
-        if (animator.state == AnimatorState::Playing || animator.state == AnimatorState::Blending)
+        if (animator.playback_state == AnimatorPlaybackState::Playing || animator.playback_state == AnimatorPlaybackState::Blending)
         {
-            animator.local_time += delta_seconds;
-            animator.pose_state = animator.desc.lod == AnimationLodLevel::Frozen ? PoseState::Clean : PoseState::Ready;
-            const auto clip_it = clips_.find(animator.playing_clip);
-            if (clip_it != clips_.end() && !clip_it->second.loop && animator.local_time >= clip_it->second.duration_seconds)
+            AdvancePlayback(animator, GameDuration{static_cast<std::int64_t>(delta_seconds)});
+            if (animator.playback_state == AnimatorPlaybackState::Blending)
             {
-                animator.state = AnimatorState::Finished;
-                QueueEvent(id, "animation.finished", animator.local_time);
+                AdvanceCrossfade(animator, GameDuration{static_cast<std::int64_t>(delta_seconds)});
             }
+            animator.pose_state = animator.desc.lod == AnimationLodLevel::Frozen ? PoseState::Clean : PoseState::Ready;
+            const auto clip_result = ResolveClip(animator.playback.clip);
+            if (clip_result && animator.playback_state != AnimatorPlaybackState::Blending && !animator.playback.loop &&
+                static_cast<double>(animator.playback.local_time.ticks) >= static_cast<double>(clip_result.Value().duration_seconds))
+            {
+                animator.playback_state = AnimatorPlaybackState::Finished;
+                QueueEvent(id, "animation.finished", static_cast<float>(animator.playback.local_time.ticks));
+            }
+            (void)PublishPose(animator);
             ++animator.revision;
             ++transitioned;
         }
@@ -269,7 +320,7 @@ AnimatorState AnimationRuntime::GetState(AnimatorInstanceId id) const
         return AnimatorState::Disabled;
     }
 
-    return animator->state;
+    return ToLegacyState(*animator);
 }
 
 foundation::Result<void> AnimationRuntime::SetLod(AnimatorInstanceId id, AnimationLodLevel lod)
@@ -317,9 +368,7 @@ PoseBuffer AnimationRuntime::GetPoseBuffer(AnimatorHandle handle) const
         return PoseBuffer{handle, {}, 0};
     }
 
-    const auto skeleton = skeletons_.find(animator->desc.skeleton);
-    const std::uint32_t bone_count = skeleton == skeletons_.end() ? 0 : skeleton->second.joint_count;
-    return PoseBuffer{handle, std::vector<Transform>(bone_count), animator->revision};
+    return BuildPoseBuffer(*animator);
 }
 
 std::span<const AnimationEvent> AnimationRuntime::Events() const
@@ -330,6 +379,82 @@ std::span<const AnimationEvent> AnimationRuntime::Events() const
 void AnimationRuntime::Clear()
 {
     events_.clear();
+}
+
+foundation::Result<SkeletonDesc> AnimationRuntime::ResolveSkeleton(SkeletonId id)
+{
+    const auto iterator = skeletons_.find(id);
+    if (iterator != skeletons_.end())
+    {
+        return foundation::Result<SkeletonDesc>::Success(iterator->second);
+    }
+
+    if (dependencies_.resources == nullptr)
+    {
+        return foundation::Result<SkeletonDesc>::Failure(
+            foundation::Error::Create("animation.skeleton_not_found", "skeleton was not registered"));
+    }
+
+    const auto loaded = dependencies_.resources->LoadSkeleton(id);
+    if (!loaded)
+    {
+        return loaded;
+    }
+
+    skeletons_[id] = loaded.Value();
+    return foundation::Result<SkeletonDesc>::Success(loaded.Value());
+}
+
+foundation::Result<AnimationClipDesc> AnimationRuntime::ResolveClip(AnimationClipId id)
+{
+    const auto iterator = clips_.find(id);
+    if (iterator != clips_.end())
+    {
+        return foundation::Result<AnimationClipDesc>::Success(iterator->second);
+    }
+
+    if (dependencies_.resources == nullptr)
+    {
+        return foundation::Result<AnimationClipDesc>::Failure(
+            foundation::Error::Create("animation.clip_not_found", "animation clip was not registered"));
+    }
+
+    const auto loaded = dependencies_.resources->LoadClip(id);
+    if (!loaded)
+    {
+        return loaded;
+    }
+
+    clips_[id] = loaded.Value();
+    return foundation::Result<AnimationClipDesc>::Success(loaded.Value());
+}
+
+AnimatorState AnimationRuntime::ToLegacyState(const AnimatorRecord& animator) const noexcept
+{
+    if (animator.lifecycle == AnimatorLifecycle::Disabled)
+    {
+        return AnimatorState::Disabled;
+    }
+    if (animator.readiness == AnimatorReadiness::ResourceMissing)
+    {
+        return AnimatorState::ResourceMissing;
+    }
+
+    switch (animator.playback_state)
+    {
+    case AnimatorPlaybackState::Stopped:
+        return AnimatorState::Ready;
+    case AnimatorPlaybackState::Playing:
+        return AnimatorState::Playing;
+    case AnimatorPlaybackState::Paused:
+        return AnimatorState::Paused;
+    case AnimatorPlaybackState::Blending:
+        return AnimatorState::Blending;
+    case AnimatorPlaybackState::Finished:
+        return AnimatorState::Finished;
+    }
+
+    return AnimatorState::Uninitialized;
 }
 
 AnimationRuntime::AnimatorRecord* AnimationRuntime::FindAnimator(AnimatorInstanceId id)
@@ -382,7 +507,7 @@ std::vector<AnimatorInstanceId> AnimationRuntime::BuildAnimatorWorkList() const
     work_list.reserve(animators_.size());
     for (const auto& [id, animator] : animators_)
     {
-        if (animator.state == AnimatorState::Playing || animator.state == AnimatorState::Blending)
+        if (animator.playback_state == AnimatorPlaybackState::Playing || animator.playback_state == AnimatorPlaybackState::Blending)
         {
             work_list.push_back(id);
         }
@@ -392,6 +517,70 @@ std::vector<AnimatorInstanceId> AnimationRuntime::BuildAnimatorWorkList() const
         return left.value < right.value;
     });
     return work_list;
+}
+
+PoseBuffer AnimationRuntime::BuildPoseBuffer(const AnimatorRecord& animator) const
+{
+    auto skeleton = skeletons_.find(animator.desc.skeleton);
+    std::uint32_t bone_count = skeleton == skeletons_.end() ? 0 : skeleton->second.joint_count;
+    if (bone_count == 0 && dependencies_.resources != nullptr)
+    {
+        const auto loaded = dependencies_.resources->LoadSkeleton(animator.desc.skeleton);
+        if (loaded)
+        {
+            bone_count = loaded.Value().joint_count;
+        }
+    }
+
+    PoseBuffer pose{animator.handle, std::vector<Transform>(bone_count), animator.revision};
+    const float sample = static_cast<float>(animator.playback.local_time.ticks);
+    for (std::size_t index = 0; index < pose.bone_transforms.size(); ++index)
+    {
+        pose.bone_transforms[index].position.x = sample;
+        pose.bone_transforms[index].position.y = static_cast<float>(index);
+        if (animator.crossfade)
+        {
+            pose.bone_transforms[index].position.z = animator.crossfade->target_weight;
+        }
+    }
+    return pose;
+}
+
+foundation::Result<void> AnimationRuntime::PublishPose(const AnimatorRecord& animator)
+{
+    if (dependencies_.pose_sink == nullptr || !options_.enable_mock_pose_evaluation)
+    {
+        return foundation::Result<void>::Success();
+    }
+
+    return dependencies_.pose_sink->Publish(std::make_shared<const PoseBuffer>(BuildPoseBuffer(animator)));
+}
+
+void AnimationRuntime::AdvancePlayback(AnimatorRecord& animator, GameDuration delta)
+{
+    const double scaled = static_cast<double>(std::max<std::int64_t>(0, delta.ticks)) * animator.playback.playback_rate;
+    animator.playback.local_time.ticks += static_cast<std::int64_t>(scaled);
+}
+
+void AnimationRuntime::AdvanceCrossfade(AnimatorRecord& animator, GameDuration delta)
+{
+    if (!animator.crossfade)
+    {
+        return;
+    }
+
+    animator.crossfade->elapsed.ticks += std::max<std::int64_t>(0, delta.ticks);
+    const auto duration = std::max<std::int64_t>(1, animator.crossfade->duration.ticks);
+    const float t = std::clamp(static_cast<float>(animator.crossfade->elapsed.ticks) / static_cast<float>(duration), 0.0f, 1.0f);
+    animator.crossfade->source_weight = 1.0f - t;
+    animator.crossfade->target_weight = t;
+    if (t >= 1.0f)
+    {
+        animator.playback.clip = animator.crossfade->target_clip;
+        animator.playback.local_time = GameDuration{};
+        animator.playback_state = AnimatorPlaybackState::Playing;
+        animator.crossfade.reset();
+    }
 }
 
 void AnimationRuntime::QueueEvent(AnimatorInstanceId animator, std::string name, float time)

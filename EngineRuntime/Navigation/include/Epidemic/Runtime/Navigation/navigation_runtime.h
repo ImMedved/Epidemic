@@ -51,6 +51,14 @@ public:
     [[nodiscard]] virtual std::span<const DynamicObstacle> ObstaclesForRegion(RegionId region) const = 0;
 };
 
+class INavigationObstacleSource
+{
+public:
+    virtual ~INavigationObstacleSource() = default;
+
+    [[nodiscard]] virtual std::span<const DynamicObstacle> ObstaclesForRegion(RegionId region) const = 0;
+};
+
 class INavTileRegistry
 {
 public:
@@ -124,6 +132,18 @@ struct NavigationServices
     std::shared_ptr<INavTileRegistry> tiles;
 };
 
-[[nodiscard]] std::unique_ptr<class NavigationRuntime> CreateNavigationRuntime(NavigationOptions options = {});
+struct NavigationDependencies
+{
+    std::shared_ptr<INavigationBackend> backend;
+    std::shared_ptr<INavigationDataSource> data_source;
+    std::shared_ptr<INavigationObstacleSource> obstacle_source;
+};
+
+[[nodiscard]] std::unique_ptr<class NavigationRuntime> CreateNavigationRuntime(
+    NavigationOptions options = {},
+    NavigationDependencies dependencies = {});
+[[nodiscard]] foundation::Result<NavigationServices> CreateNavigationServices(
+    NavigationOptions options = {},
+    NavigationDependencies dependencies = {});
 [[nodiscard]] NavigationServices CreateMockNavigationServices(NavigationOptions options = {});
 } // namespace epidemic::runtime::navigation

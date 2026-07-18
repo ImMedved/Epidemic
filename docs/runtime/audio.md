@@ -6,20 +6,23 @@
 
 ## Public Contracts
 
-- `audio_types.h`: sound, emitter generation handle, listener and mixer ids; sound/emitter states; fade duration/progress; mixer hierarchy; events; `AudioEmitterSnapshot`.
-- `audio_runtime.h`: sound registry, audio runtime, backend/resource/transform source contracts, listener system, bounded event queue, mixer contracts and `CreateMockAudioServices()`.
+- `audio_types.h`: sound, emitter/listener generation handles, backend voice handles, listener and mixer ids; sound/emitter states; fade duration/progress; mixer hierarchy; spatial event source, overflow policy, events and `AudioEmitterSnapshot`.
+- `audio_runtime.h`: sound registry, audio runtime, full backend/resource/transform source contracts, listener system, bounded event queue, mixer contracts, production `CreateAudioServices()` and explicit `CreateMockAudioServices()`.
 
 ## Rules
 
 - Emitters require a valid owner, registered sound and valid transform node.
-- Playback requires a ready sound and enabled backend contract.
+- Playback requires a ready sound and a backend that can initialize, create a voice, play/stop, set gain and receive spatial state.
+- Production `CreateAudioServices()` requires an injected backend. Mock behavior is available only through `CreateMockAudioServices()`.
 - `AudioEmitterSnapshot::revision` starts at `1` and increments only on observable emitter state changes.
 - Repeating an idempotent state command does not churn emitter revision.
-- One-shot events are queued through a bounded event queue and cleared by frame orchestration.
-- Listener lifecycle includes destruction; destroying the main listener clears selection.
-- Mixer groups may reference parent groups and preserve fade progress metadata.
+- `AudioRuntime::Tick(delta)` advances fade elapsed/progress, updates backend gain and calls backend update.
+- One-shot events are queued through a bounded event queue with explicit `DropNewest`, `DropOldest` or `FailSubmit` overflow policy.
+- Listener lifecycle uses generation handles. Unknown or stale listener handles return errors; destroying the main listener clears selection.
+- Mixer groups validate parent existence, self-parenting, cycles, finite volume and baseline `[0,1]` volume unless boost is enabled.
+- Attached emitters use runtime object/transform source data. One-shot events are either world-positioned or non-spatial and must not carry contradictory source data.
 - Environment ambience and Scene transform data must arrive through adapters; Audio does not call those majors directly.
 
 ## Testing Strategy
 
-The `Audio` tests cover emitter lifecycle, generation handles, versioned emitter snapshots, listener lifecycle, backend/resource/transform contracts, not-ready sound behavior, bounded one-shot queueing, mixer hierarchy/fade state, service factory shape and validation failures.
+The `Audio` tests cover production backend requirement, explicit mock factory, backend failure propagation, emitter lifecycle, generation handles, versioned emitter snapshots, listener generation/stale errors, fade progression, attached transform updates, backend/resource/transform contracts, not-ready sound behavior, bounded one-shot overflow policies, mixer hierarchy/cycle validation, service factory shape and validation failures.

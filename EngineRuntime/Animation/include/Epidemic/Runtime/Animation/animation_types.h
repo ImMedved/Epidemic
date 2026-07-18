@@ -51,6 +51,28 @@ enum class AnimatorState
     Disabled
 };
 
+enum class AnimatorLifecycle
+{
+    Uninitialized,
+    Ready,
+    Disabled
+};
+
+enum class AnimatorReadiness
+{
+    Ready,
+    ResourceMissing
+};
+
+enum class AnimatorPlaybackState
+{
+    Stopped,
+    Playing,
+    Paused,
+    Blending,
+    Finished
+};
+
 enum class PoseState
 {
     Clean,
@@ -77,7 +99,24 @@ struct AnimationClipDesc
     AnimationClipId id{};
     SkeletonId skeleton{};
     float duration_seconds = 0.0f;
+};
+
+struct AnimatorPlayback
+{
+    AnimationClipId clip{};
     bool loop = false;
+    double playback_rate = 1.0;
+    GameDuration local_time{};
+};
+
+struct CrossfadeState
+{
+    AnimationClipId source_clip{};
+    AnimationClipId target_clip{};
+    GameDuration elapsed{};
+    GameDuration duration{};
+    float source_weight = 1.0f;
+    float target_weight = 0.0f;
 };
 
 struct AnimatorDesc
@@ -129,7 +168,7 @@ struct AnimationPlaybackCommand
 
 struct AnimationOptions
 {
-    bool enable_mock_pose_evaluation = true;
+    bool enable_mock_pose_evaluation = false;
 };
 } // namespace epidemic::runtime::animation
 

@@ -64,9 +64,11 @@ enum class PathQueryState
 {
     Pending,
     Running,
+    PartiallyComplete,
     Completed,
     Failed,
-    Cancelled
+    Cancelled,
+    Stale
 };
 
 struct PathRequest
@@ -85,7 +87,6 @@ struct PathResult
     PathQueryState state = PathQueryState::Pending;
     std::vector<Vec3> points;
     std::uint64_t nav_revision = 0;
-    bool stale = false;
     std::uint64_t revision = 0;
 };
 

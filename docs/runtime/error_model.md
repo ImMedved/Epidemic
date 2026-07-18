@@ -16,9 +16,17 @@ Examples:
 - `physics.unknown_handle`
 - `physics.stale_handle`
 - `physics.backend_failed`
+- `navigation.backend_missing`
 - `navigation.query_not_found`
+- `navigation.stale_handle`
+- `navigation.stale_result`
 - `animation.clip_not_found`
+- `audio.backend_missing`
+- `audio.backend_failed`
+- `audio.stale_listener`
 - `audio.listener_not_found`
+- `audio.event_queue_full`
+- `audio.mixer_cycle`
 - `simulation.invalid_effect_target`
 - `resource.invalid_handle`
 - `resource.stale_handle`

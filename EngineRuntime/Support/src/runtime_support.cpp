@@ -473,7 +473,12 @@ foundation::Result<void> RegisterNavigation(core::Application& app, navigation::
     {
         return dependency;
     }
-    return RegisterShared(app, std::make_shared<navigation::NavigationServices>(navigation::CreateMockNavigationServices(options)), "Navigation");
+    const auto services = navigation::CreateNavigationServices(options);
+    if (!services)
+    {
+        return foundation::Result<void>::Failure(services.GetError());
+    }
+    return RegisterShared(app, std::make_shared<navigation::NavigationServices>(services.Value()), "Navigation");
 }
 
 foundation::Result<void> RegisterAnimation(core::Application& app, animation::AnimationOptions options)
@@ -483,7 +488,12 @@ foundation::Result<void> RegisterAnimation(core::Application& app, animation::An
     {
         return dependency;
     }
-    return RegisterShared(app, std::make_shared<animation::AnimationServices>(animation::CreateAnimationServices(options)), "Animation");
+    const auto services = animation::CreateAnimationServices(options);
+    if (!services)
+    {
+        return foundation::Result<void>::Failure(services.GetError());
+    }
+    return RegisterShared(app, std::make_shared<animation::AnimationServices>(services.Value()), "Animation");
 }
 
 foundation::Result<void> RegisterPhysics(core::Application& app)
@@ -510,7 +520,12 @@ foundation::Result<void> RegisterAudio(core::Application& app, audio::AudioOptio
     {
         return dependency;
     }
-    return RegisterShared(app, std::make_shared<audio::AudioServices>(audio::CreateMockAudioServices(options)), "Audio");
+    const auto services = audio::CreateMockAudioServices(options);
+    if (!services)
+    {
+        return foundation::Result<void>::Failure(services.GetError());
+    }
+    return RegisterShared(app, std::make_shared<audio::AudioServices>(services.Value()), "Audio");
 }
 
 foundation::Result<void> RegisterRenderer(core::Application& app, const renderer::RendererOptions& options)
