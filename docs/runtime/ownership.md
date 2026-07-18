@@ -4,6 +4,8 @@
 
 Factories return owned service objects. Support registers shared service bundles in the application service container.
 
+`EngineRuntimeServices` owns the default composition aggregate returned by `RegisterDefaultEngineRuntime`: registered major names, `RuntimeIntegrationServices` and the `IEngineRuntimeCoordinator`. The application service container owns the registered `XxxServices` bundles.
+
 ## Snapshots
 
 Query APIs return values such as `TimeSnapshot`, `WorldObjectRecord`, `StreamingProgress`, `PhysicsStepResult`, `PathResult`, `PoseSnapshot`, `AudioEmitterSnapshot`, persistence snapshots, environment snapshots and scene snapshots. These are immutable snapshots from the caller's point of view and externally visible state snapshots carry revisions.
@@ -17,6 +19,8 @@ Resource dependencies acquired by `Resources` are owned handles, not borrowed re
 ## Borrowed Dependencies
 
 Projection/source interfaces are borrowed for call duration or registered as non-owning pointers when explicitly documented. Owners must outlive the runtime that uses them.
+
+Support-owned adapters are the long-lived owners for default cross-major projections. They hold shared service references or resource leases where needed, and they are destroyed after consumers during shutdown. Raw pointers in module options are non-owning adapter ports; the owner is either the caller or `RuntimeIntegrationServices`.
 
 ## Event Buffers
 

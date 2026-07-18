@@ -8,7 +8,6 @@
 
 namespace epidemic::runtime::audio
 {
-// File note:
 // Internal in-memory Audio runtime. It models service contracts and state transitions without opening an audio device.
 
 class AudioRuntime final : public ISoundRegistry,

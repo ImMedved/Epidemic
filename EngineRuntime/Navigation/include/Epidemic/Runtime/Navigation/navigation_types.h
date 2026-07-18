@@ -11,7 +11,6 @@
 
 namespace epidemic::runtime::navigation
 {
-// File note:
 // Public value types for the Navigation major. The types describe navigation tiles,
 // path query lifecycle, traversal costs and obstacle projections without encoding AI decisions or movement rules.
 

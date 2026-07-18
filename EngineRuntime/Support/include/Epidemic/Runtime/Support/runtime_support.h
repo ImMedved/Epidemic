@@ -19,6 +19,8 @@
 
 #include <Epidemic/Core/application.h>
 
+#include <chrono>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -29,8 +31,66 @@ struct RuntimeFoundationRegistration
     std::string name = "RuntimeFoundation";
 };
 
+enum class RuntimeProfile
+{
+    Production,
+    Reference,
+    Tests
+};
+
+enum class RuntimeAdapterKind
+{
+    SceneToRenderer,
+    ResourcesToRenderer,
+    SceneToPhysics,
+    ResourcesToAnimation,
+    AnimationToRenderer,
+    ResourcesToAudio,
+    SceneToAudio,
+    WorldResourcesPersistenceToStreaming,
+    StreamingToWorld,
+    TimeToSimulation,
+    SimulationToDomain,
+    EnvironmentToAudio,
+    EnvironmentToNavigation
+};
+
+enum class RuntimeUpdateStep
+{
+    Time,
+    MainThreadCommits,
+    Resources,
+    Streaming,
+    Simulation,
+    Navigation,
+    Animation,
+    Physics,
+    SceneProjectionCommit,
+    Audio,
+    Renderer,
+    DiagnosticsEvents
+};
+
+enum class RuntimeShutdownStep
+{
+    StopNewWork,
+    CancelWaitBackgroundJobs,
+    FlushDiscardProposals,
+    StopAudio,
+    StopPhysics,
+    ReleaseAnimationRendererResources,
+    ReleaseRendererLeases,
+    UnloadStreaming,
+    ClosePersistenceTransactions,
+    FlushPersistence,
+    DestroyAdapters,
+    DestroyServices
+};
+
 struct EngineRuntimeOptions
 {
+    RuntimeProfile profile = RuntimeProfile::Reference;
+
     bool enable_assets = true;
     bool enable_serialization = true;
     bool enable_resources = true;
@@ -62,55 +122,41 @@ struct EngineRuntimeOptions
     renderer::RendererOptions renderer{};
 };
 
+struct RuntimeFrameInput
+{
+    std::chrono::microseconds real_delta{0};
+    GameDuration game_delta{0};
+    RuntimeBudget resource_budget{};
+    RuntimeBudget navigation_budget{};
+    std::size_t max_animators = 0;
+};
+
+struct RuntimeIntegrationServices
+{
+    std::vector<RuntimeAdapterKind> owned_adapters;
+    std::vector<RuntimeUpdateStep> last_update_order;
+    std::vector<RuntimeShutdownStep> last_shutdown_order;
+};
+
+class IEngineRuntimeCoordinator
+{
+  public:
+    virtual ~IEngineRuntimeCoordinator() = default;
+
+    // `input` is an immutable call-duration borrow; the coordinator keeps no pointer to it.
+    [[nodiscard]] virtual foundation::Result<void> Tick(const RuntimeFrameInput& input) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Shutdown() = 0;
+};
+
 struct EngineRuntimeServices
 {
+    RuntimeProfile profile = RuntimeProfile::Reference;
     std::vector<std::string> registered_majors;
+    std::shared_ptr<RuntimeIntegrationServices> integrations;
+    std::shared_ptr<IEngineRuntimeCoordinator> coordinator;
 };
 
-enum class RuntimeAdapterKind
-{
-    SceneToRenderer,
-    ResourcesToRenderer,
-    SceneToPhysics,
-    ResourcesToAnimation,
-    AnimationToRenderer,
-    ResourcesToAudio,
-    SceneToAudio,
-    WorldResourcesPersistenceToStreaming,
-    TimeToSimulation,
-    EnvironmentToAudio,
-    EnvironmentToNavigation
-};
-
-enum class RuntimeUpdateStep
-{
-    Time,
-    MainThreadCommits,
-    Resources,
-    Streaming,
-    Simulation,
-    Navigation,
-    Animation,
-    Physics,
-    SceneProjectionCommit,
-    Audio,
-    Renderer,
-    DiagnosticsEvents
-};
-
-enum class RuntimeShutdownStep
-{
-    StopNewWork,
-    CancelWaitBackgroundJobs,
-    FlushDiscardProposals,
-    StopAudio,
-    StopPhysics,
-    ReleaseRenderer,
-    UnloadStreaming,
-    ClosePersistenceTransactions,
-    DestroyServices
-};
-
+// Registration functions borrow `app` for the call and store created services in its owned service container.
 [[nodiscard]] foundation::Result<void> RegisterRuntimeFoundation(core::Application& app);
 [[nodiscard]] foundation::Result<void> RegisterAssets(core::Application& app, const AssetsOptions& options = {});
 [[nodiscard]] foundation::Result<void> RegisterSerialization(core::Application& app, const SerializationOptions& options = {});

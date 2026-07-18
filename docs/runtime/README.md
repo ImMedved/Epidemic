@@ -22,7 +22,7 @@ EngineRuntime provides runtime systems and shared runtime state. GameFramework p
 - `Animation`: skeletons, clips, animator instances, pose state and animation events.
 - `Audio`: sound resources, emitters, listeners, mixer placeholders and one-shot events.
 - `Simulation`: budgets, scheduled jobs, attention, world memory and effect buffering.
-- `Support`: bundle registration, preflight dependency validation, allowed adapters, update order and shutdown order.
+- `Support`: bundle registration, runtime profiles, owned integration adapters, coordinator tick order and shutdown order.
 
 ## Boundaries
 
@@ -38,9 +38,10 @@ Public runtime headers under `EngineRuntime/*/include/Epidemic/Runtime/**` are t
 4. [dependencies.md](dependencies.md)
 5. [threading.md](threading.md)
 6. [update_order.md](update_order.md)
-7. [ownership.md](ownership.md)
-8. [error_model.md](error_model.md)
-9. [api_stability.md](api_stability.md)
-10. [using_runtime.md](using_runtime.md)
-11. [architecture_philosophy.md](architecture_philosophy.md)
-12. [renderer.md](renderer.md)
+7. [shutdown_order.md](shutdown_order.md)
+8. [ownership.md](ownership.md)
+9. [error_model.md](error_model.md)
+10. [api_stability.md](api_stability.md)
+11. [using_runtime.md](using_runtime.md)
+12. [architecture_philosophy.md](architecture_philosophy.md)
+13. [renderer.md](renderer.md)

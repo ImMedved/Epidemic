@@ -4,7 +4,6 @@
 
 namespace epidemic::runtime::streaming
 {
-// File note:
 // Optional policy interface that lets integrations derive request priority from external
 // context such as player position, camera focus or region importance.
 class IStreamingPriorityResolver

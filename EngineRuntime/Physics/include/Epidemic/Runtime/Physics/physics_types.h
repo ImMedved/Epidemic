@@ -10,7 +10,6 @@
 
 namespace epidemic::runtime::physics
 {
-// File note:
 // Shared public value types for the Physics major. These describe body identity,
 // shape data, query payloads and event snapshots without binding the module to a real physics SDK.
 

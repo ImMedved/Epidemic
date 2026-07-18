@@ -15,11 +15,6 @@ namespace
     return foundation::Result<void>::Failure(foundation::Error::Create(code, message));
 }
 
-[[nodiscard]] foundation::Result<SceneNodeId> SceneNodeFailure(std::string_view code, std::string_view message)
-{
-    return foundation::Result<SceneNodeId>::Failure(foundation::Error::Create(code, message));
-}
-
 [[nodiscard]] bool NodeLess(SceneNodeId left, SceneNodeId right) noexcept
 {
     return left.Raw() < right.Raw();

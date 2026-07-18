@@ -6,7 +6,6 @@
 
 namespace epidemic::runtime::physics
 {
-// File note:
 // Event boundary contract for publishing contacts out of Physics without mutating World directly.
 class IPhysicsEventBuffer
 {

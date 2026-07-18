@@ -9,7 +9,6 @@
 
 namespace epidemic::runtime::physics
 {
-// File note:
 // In-memory Physics foundation used for deterministic tests and early integration.
 // It stores collision shapes and body proxies, provides fake-but-stable queries and publishes contact events.
 class PhysicsRuntime final : public ICollisionShapeRegistry,

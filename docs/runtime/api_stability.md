@@ -37,7 +37,7 @@ Stable public types include:
 - command, event, proposal and effect records used at module boundaries;
 - world invariant helpers, placement variants and demotion confirmation tokens;
 - `XxxServices` bundles returned by public factories;
-- `RuntimeSupportOptions`, `RuntimeSupportRegistration` and Support validation results.
+- `RuntimeProfile`, `RuntimeFrameInput`, `RuntimeIntegrationServices`, `IEngineRuntimeCoordinator`, `EngineRuntimeOptions`, `EngineRuntimeServices` and Support validation results.
 
 Callers may rely on public field meaning and state-transition semantics. They must not rely on private container layout, concrete in-memory implementation classes or diagnostic wording.
 
@@ -68,7 +68,7 @@ Public factories are stable entry points for runtime composition:
 - individual `RegisterXxx` helpers in Support
 - `RegisterDefaultEngineRuntime`
 
-Production factories and explicit mock factories stay separated. `RegisterDefaultEngineRuntime` must not silently enable mock behavior outside its documented preset.
+Production factories and explicit mock factories stay separated. `RegisterDefaultEngineRuntime` must not silently enable mock behavior outside its documented `Reference` or `Tests` profiles. The `Production` profile rejects mock-only composition.
 
 ## Backend Extension Ports
 
@@ -83,10 +83,10 @@ Backend and integration extension points are public contracts, not private side 
 - Navigation backend, data source, obstacle source, cost provider, obstacle projections and budgeted query flow.
 - Animation resource source, animator registry, decomposed playback state, crossfade state, pose snapshots and immutable pose/event sinks.
 - Audio backend voice lifecycle, resource source, listener/emitter transforms, mixer validation and bounded one-shot event queue.
-- Simulation deterministic jobs, attention/relevance inputs, world-memory store and effect buffer.
+- Simulation executable jobs, attention/relevance inputs, proposal queue/commit target, scheduled tasks, abstract fact store, world-memory store and effect buffer.
 - Environment deterministic external input, region/surface state and query projections.
 
-Support may connect these ports through allowed adapters listed in `update_order.md`. Runtime majors must not include or call another major's private implementation to reach across a boundary.
+Support may connect these ports through allowed adapters listed in `update_order.md`. Runtime majors must not include or call another major's private implementation to reach across a boundary. `IEngineRuntimeCoordinator` is stable as orchestration API; it owns ordering, not domain behavior.
 
 ## Explicitly Unstable Details
 

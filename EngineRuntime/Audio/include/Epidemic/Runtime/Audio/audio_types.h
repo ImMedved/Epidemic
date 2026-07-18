@@ -10,7 +10,6 @@
 
 namespace epidemic::runtime::audio
 {
-// File note:
 // Public value types for the Audio major. These records describe sound resources, emitters, listeners,
 // mixer state and queued one-shot events without binding to a concrete audio backend.
 

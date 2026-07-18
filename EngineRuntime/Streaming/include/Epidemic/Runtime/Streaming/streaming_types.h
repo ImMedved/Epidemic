@@ -13,7 +13,6 @@
 
 namespace epidemic::runtime::streaming
 {
-// File note:
 // Shared value types for the Streaming major. These types describe request identity,
 // state, priority and budget without exposing any implementation details.
 

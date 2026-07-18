@@ -1,8 +1,11 @@
 #pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
+#include "Epidemic/Runtime/Foundation/runtime_budget.h"
 #include "Epidemic/Runtime/Foundation/runtime_time.h"
+#include "Epidemic/Foundation/string_id.h"
 
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <string>
@@ -10,7 +13,6 @@
 
 namespace epidemic::runtime::simulation
 {
-// File note:
 // Public value types for the Simulation major. They describe generic scheduling, relevance,
 // memory and effect infrastructure without owning authoritative world state.
 
@@ -28,6 +30,14 @@ struct WorldMemoryEventId
 
     [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
     [[nodiscard]] constexpr bool operator==(const WorldMemoryEventId&) const noexcept = default;
+};
+
+struct ScheduledSimulationTaskId
+{
+    std::uint64_t value = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const ScheduledSimulationTaskId&) const noexcept = default;
 };
 
 struct SimulationJobHandle
@@ -68,16 +78,6 @@ enum class SimulationJobState
     Completed,
     Failed,
     Cancelled
-};
-
-enum class WorldMemoryEventState
-{
-    Disposable,
-    Temporary,
-    Observed,
-    PlayerAffected,
-    Persistent,
-    Expired
 };
 
 enum class MemoryLifetime
@@ -127,16 +127,27 @@ struct SimulationStepInput
 
 struct SimulationProposal
 {
+    foundation::StringId domain{};
+    foundation::StringId kind{};
     RuntimeObjectId target{};
-    SimulationZoneId zone{};
-    std::uint64_t proposal_type = 0;
+    foundation::StringId schema_id{};
+    std::uint32_t schema_version = 0;
+    std::vector<std::byte> payload{};
 };
 
 struct SimulationProposalBatch
 {
-    SimulationJobHandle source_job{};
+    SimulationJobHandle job{};
+    SimulationZoneId zone{};
     std::uint64_t source_revision = 0;
     std::vector<SimulationProposal> proposals{};
+};
+
+struct SimulationStepResult
+{
+    SimulationJobState state = SimulationJobState::PartiallyComplete;
+    std::uint32_t consumed_work_units = 0;
+    SimulationProposalBatch proposals{};
 };
 
 struct WorldMemoryEvent
@@ -145,21 +156,25 @@ struct WorldMemoryEvent
     RegionId region{};
     SimulationTime happened_at{};
     GameDuration ttl{};
-    WorldMemoryEventState state = WorldMemoryEventState::Temporary;
     MemoryLifetime lifetime = MemoryLifetime::Temporary;
     ObservationState observation = ObservationState::Unobserved;
+    bool expired = false;
 };
 
 struct AbstractFact
 {
+    foundation::StringId domain{};
+    foundation::StringId kind{};
     std::uint64_t fact_type = 0;
     RuntimeObjectId subject{};
     SimulationZoneId zone{};
     SimulationTime observed_at{};
+    std::uint64_t revision = 0;
 };
 
 struct ScheduledSimulationTask
 {
+    ScheduledSimulationTaskId id{};
     SimulationJobHandle job{};
     SimulationTime due_at{};
     SimulationLane lane = SimulationLane::Background;
@@ -197,6 +212,14 @@ template <> struct hash<epidemic::runtime::simulation::SimulationJobId>
 template <> struct hash<epidemic::runtime::simulation::WorldMemoryEventId>
 {
     [[nodiscard]] size_t operator()(epidemic::runtime::simulation::WorldMemoryEventId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.value);
+    }
+};
+
+template <> struct hash<epidemic::runtime::simulation::ScheduledSimulationTaskId>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::simulation::ScheduledSimulationTaskId value) const noexcept
     {
         return hash<std::uint64_t>{}(value.value);
     }

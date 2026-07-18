@@ -9,7 +9,6 @@
 
 namespace epidemic::runtime::navigation
 {
-// File note:
 // Internal in-memory Navigation implementation used by the runtime foundation tests. It models lifecycle and budgets,
 // not production navmesh generation.
 

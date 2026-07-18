@@ -7,7 +7,6 @@
 
 #include <utility>
 
-// File note:
 // Umbrella translation unit that anchors the public Physics contracts in the build.
 
 namespace epidemic::runtime::physics

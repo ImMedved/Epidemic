@@ -131,7 +131,7 @@ bool TestAllMajorsHaveFactoriesAndHandlesAreGenerationAware()
     static_assert(std::is_same_v<decltype(animation::CreateMockAnimationServices()), animation::AnimationServices>);
     static_assert(std::is_same_v<decltype(audio::CreateAudioServices()), epidemic::foundation::Result<audio::AudioServices>>);
     static_assert(std::is_same_v<decltype(audio::CreateMockAudioServices()), epidemic::foundation::Result<audio::AudioServices>>);
-    static_assert(std::is_same_v<decltype(simulation::CreateSimulationServices()), simulation::SimulationServices>);
+    static_assert(std::is_same_v<decltype(simulation::CreateSimulationServices()), epidemic::foundation::Result<simulation::SimulationServices>>);
 
     streaming::StreamingRequestHandle streaming_handle{{1}, 1};
     navigation::PathQueryHandle path_handle{{1}, 1};
@@ -155,6 +155,86 @@ bool TestSnapshotsAreVersioned()
     static_assert(std::is_same_v<decltype(audio::AudioEmitterSnapshot{}.revision), std::uint64_t>);
     return true;
 }
+
+bool TestFreezeMarkersAreAbsent()
+{
+    const fs::path root = RepositoryRoot() / "EngineRuntime";
+    const std::vector<std::string> forbidden{
+        std::string{"Physics"} + "BodyState",
+        std::string{"Physics"} + "SyncState",
+        std::string{"WorldMemory"} + "EventState",
+        std::string{"SceneNode"} + "Failure",
+        std::string{"Function"} + " note",
+        std::string{"Inputs"} + "/outputs",
+        std::string{"File"} + " note",
+    };
+
+    bool ok = true;
+    for (const fs::directory_entry& entry : fs::recursive_directory_iterator(root))
+    {
+        if (!entry.is_regular_file())
+        {
+            continue;
+        }
+        if (entry.path().filename() == "architecture_tests.cpp")
+        {
+            continue;
+        }
+
+        const auto extension = entry.path().extension().string();
+        if (extension != ".h" && extension != ".cpp")
+        {
+            continue;
+        }
+
+        const std::string contents = ReadFile(entry.path());
+        for (const std::string& marker : forbidden)
+        {
+            ok &= Expect(!Contains(contents, marker), "frozen runtime source must not contain legacy/comment markers");
+        }
+    }
+    return ok;
+}
+
+bool TestSupportProfileContracts()
+{
+    const fs::path root = RepositoryRoot();
+    const std::string source = ReadFile(root / "EngineRuntime" / "Support" / "src" / "runtime_support.cpp");
+    bool ok = Expect(Contains(source, "runtime_support.mock_forbidden"), "production profile must guard mock-only backends");
+    ok &= Expect(Contains(source, "CreateMockAudioServices"), "tests/reference profiles must use explicit mock audio registration");
+
+    const auto adapters = epidemic::runtime::GetAllowedRuntimeAdapters();
+    const auto update = epidemic::runtime::GetRuntimeUpdateOrder();
+    const auto shutdown = epidemic::runtime::GetRuntimeShutdownOrder();
+    ok &= Expect(adapters.size() == 13, "support must expose all integration adapters");
+    ok &= Expect(update.size() == 12, "support must expose full update order");
+    ok &= Expect(shutdown.size() == 12, "support must expose full shutdown order");
+    return ok;
+}
+
+bool TestPublicHeadersDeclarePragmaOnce()
+{
+    const fs::path root = RepositoryRoot() / "EngineRuntime";
+    bool ok = true;
+    for (const fs::directory_entry& major : fs::directory_iterator(root))
+    {
+        const fs::path include_root = major.path() / "include";
+        if (!major.is_directory() || !fs::exists(include_root))
+        {
+            continue;
+        }
+
+        for (const fs::directory_entry& file : fs::recursive_directory_iterator(include_root))
+        {
+            if (!file.is_regular_file() || file.path().extension() != ".h")
+            {
+                continue;
+            }
+            ok &= Expect(Contains(ReadFile(file.path()), "#pragma once"), "public runtime header must be self-contained include guarded");
+        }
+    }
+    return ok;
+}
 } // namespace
 
 int main()
@@ -168,5 +248,8 @@ int main()
     ok &= TestNoMajorDependsOnSupport();
     ok &= TestAllMajorsHaveFactoriesAndHandlesAreGenerationAware();
     ok &= TestSnapshotsAreVersioned();
+    ok &= TestFreezeMarkersAreAbsent();
+    ok &= TestSupportProfileContracts();
+    ok &= TestPublicHeadersDeclarePragmaOnce();
     return ok ? 0 : 1;
 }

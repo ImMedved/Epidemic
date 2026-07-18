@@ -2,6 +2,7 @@
 
 #include "Epidemic/Foundation/error.h"
 
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <string_view>
@@ -230,6 +231,102 @@ class RuntimeRenderSceneSource final : public renderer::IRenderSceneSource
     std::shared_ptr<ITransformRegistry> transforms_;
 };
 
+class EngineRuntimeCoordinator final : public IEngineRuntimeCoordinator
+{
+  public:
+    EngineRuntimeCoordinator(core::Application& app, std::shared_ptr<RuntimeIntegrationServices> integrations)
+        : app_(app), integrations_(std::move(integrations))
+    {
+    }
+
+    [[nodiscard]] foundation::Result<void> Tick(const RuntimeFrameInput& input) override
+    {
+        if (shutdown_)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("runtime_support.coordinator_shutdown", "runtime coordinator is already shut down"));
+        }
+
+        integrations_->last_update_order = GetRuntimeUpdateOrder();
+
+        if (Contains<TimeServices>(app_))
+        {
+            if (const auto advanced = app_.Services().Get<TimeServices>()->runtime->Advance(input.real_delta); !advanced)
+            {
+                return foundation::Result<void>::Failure(advanced.GetError());
+            }
+        }
+        if (Contains<ResourceServices>(app_))
+        {
+            if (const auto processed = app_.Services().Get<ResourceServices>()->manager->ProcessPendingLoads(input.resource_budget); !processed)
+            {
+                return foundation::Result<void>::Failure(processed.GetError());
+            }
+        }
+        if (Contains<streaming::StreamingServices>(app_))
+        {
+            app_.Services().Get<streaming::StreamingServices>()->runtime->Tick();
+        }
+        if (Contains<simulation::SimulationServices>(app_))
+        {
+            (void)app_.Services().Get<simulation::SimulationServices>()->runtime->Tick();
+        }
+        if (Contains<navigation::NavigationServices>(app_))
+        {
+            (void)app_.Services().Get<navigation::NavigationServices>()->runtime->Tick(input.navigation_budget);
+        }
+        if (Contains<animation::AnimationServices>(app_))
+        {
+            (void)app_.Services().Get<animation::AnimationServices>()->runtime->Tick(input.game_delta, input.max_animators);
+        }
+        if (Contains<physics::PhysicsServices>(app_))
+        {
+            if (const auto stepped = app_.Services().Get<physics::PhysicsServices>()->stepper->Tick(input.game_delta); !stepped)
+            {
+                return foundation::Result<void>::Failure(stepped.GetError());
+            }
+        }
+        if (Contains<audio::AudioServices>(app_))
+        {
+            if (const auto updated = app_.Services().Get<audio::AudioServices>()->runtime->Tick(input.game_delta); !updated)
+            {
+                return foundation::Result<void>::Failure(updated.GetError());
+            }
+        }
+        if (Contains<renderer::RendererServices>(app_))
+        {
+            if (const auto prepared = app_.Services().Get<renderer::RendererServices>()->runtime->PrepareFrame(); !prepared)
+            {
+                return foundation::Result<void>::Failure(prepared.GetError());
+            }
+            if (const auto rendered = app_.Services().Get<renderer::RendererServices>()->runtime->RenderFrame(); !rendered)
+            {
+                return foundation::Result<void>::Failure(rendered.GetError());
+            }
+        }
+
+        return foundation::Result<void>::Success();
+    }
+
+    [[nodiscard]] foundation::Result<void> Shutdown() override
+    {
+        if (shutdown_)
+        {
+            return foundation::Result<void>::Success();
+        }
+
+        integrations_->last_shutdown_order = GetRuntimeShutdownOrder();
+        integrations_->owned_adapters.clear();
+        shutdown_ = true;
+        return foundation::Result<void>::Success();
+    }
+
+  private:
+    core::Application& app_;
+    std::shared_ptr<RuntimeIntegrationServices> integrations_;
+    bool shutdown_ = false;
+};
+
 template <typename TService>
 void AppendIfPresent(core::Application& app, EngineRuntimeServices& services, std::string_view name)
 {
@@ -304,8 +401,20 @@ void AppendIfPresent(core::Application& app, EngineRuntimeServices& services, st
         return foundation::Result<void>::Failure(
             foundation::Error::Create("runtime_support.missing_dependency", "Renderer requires Resources and Scene in the default runtime"));
     }
+    if (options.profile == RuntimeProfile::Production && options.enable_audio)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("runtime_support.mock_forbidden", "Production profile cannot register Audio through the mock backend adapter"));
+    }
 
     return foundation::Result<void>::Success();
+}
+
+[[nodiscard]] std::shared_ptr<RuntimeIntegrationServices> CreateRuntimeIntegrationServices()
+{
+    auto integrations = std::make_shared<RuntimeIntegrationServices>();
+    integrations->owned_adapters = GetAllowedRuntimeAdapters();
+    return integrations;
 }
 } // namespace
 
@@ -463,7 +572,12 @@ foundation::Result<void> RegisterSimulation(core::Application& app, const simula
     {
         return dependency;
     }
-    return RegisterShared(app, std::make_shared<simulation::SimulationServices>(simulation::CreateSimulationServices(options)), "Simulation");
+    const auto services = simulation::CreateSimulationServices(options);
+    if (!services)
+    {
+        return foundation::Result<void>::Failure(services.GetError());
+    }
+    return RegisterShared(app, std::make_shared<simulation::SimulationServices>(services.Value()), "Simulation");
 }
 
 foundation::Result<void> RegisterNavigation(core::Application& app, navigation::NavigationOptions options)
@@ -611,6 +725,7 @@ foundation::Result<EngineRuntimeServices> RegisterDefaultEngineRuntime(core::App
 #undef EPIDEMIC_RUNTIME_TRY
 
     EngineRuntimeServices services{};
+    services.profile = options.profile;
     AppendIfPresent<RuntimeFoundationRegistration>(app, services, "RuntimeFoundation");
     AppendIfPresent<AssetServices>(app, services, "Assets");
     AppendIfPresent<SerializationServices>(app, services, "Serialization");
@@ -627,6 +742,8 @@ foundation::Result<EngineRuntimeServices> RegisterDefaultEngineRuntime(core::App
     AppendIfPresent<physics::PhysicsServices>(app, services, "Physics");
     AppendIfPresent<audio::AudioServices>(app, services, "Audio");
     AppendIfPresent<renderer::RendererServices>(app, services, "Renderer");
+    services.integrations = CreateRuntimeIntegrationServices();
+    services.coordinator = std::make_shared<EngineRuntimeCoordinator>(app, services.integrations);
     return foundation::Result<EngineRuntimeServices>::Success(std::move(services));
 }
 
@@ -641,7 +758,9 @@ std::vector<RuntimeAdapterKind> GetAllowedRuntimeAdapters()
         RuntimeAdapterKind::ResourcesToAudio,
         RuntimeAdapterKind::SceneToAudio,
         RuntimeAdapterKind::WorldResourcesPersistenceToStreaming,
+        RuntimeAdapterKind::StreamingToWorld,
         RuntimeAdapterKind::TimeToSimulation,
+        RuntimeAdapterKind::SimulationToDomain,
         RuntimeAdapterKind::EnvironmentToAudio,
         RuntimeAdapterKind::EnvironmentToNavigation,
     };
@@ -673,9 +792,12 @@ std::vector<RuntimeShutdownStep> GetRuntimeShutdownOrder()
         RuntimeShutdownStep::FlushDiscardProposals,
         RuntimeShutdownStep::StopAudio,
         RuntimeShutdownStep::StopPhysics,
-        RuntimeShutdownStep::ReleaseRenderer,
+        RuntimeShutdownStep::ReleaseAnimationRendererResources,
+        RuntimeShutdownStep::ReleaseRendererLeases,
         RuntimeShutdownStep::UnloadStreaming,
         RuntimeShutdownStep::ClosePersistenceTransactions,
+        RuntimeShutdownStep::FlushPersistence,
+        RuntimeShutdownStep::DestroyAdapters,
         RuntimeShutdownStep::DestroyServices,
     };
 }

@@ -11,7 +11,6 @@
 
 namespace epidemic::runtime::animation
 {
-// File note:
 // Public value types for the Animation major. They model runtime animation data identities,
 // animator lifecycle states, generic events and LOD hints without defining higher-level actor behavior.
 

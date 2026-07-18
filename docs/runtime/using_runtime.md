@@ -22,7 +22,11 @@ int main()
 }
 ```
 
-`RegisterDefaultEngineRuntime` performs preflight validation, creates public service bundles, validates dependencies and then registers the bundles in dependency order. If preflight fails, registration does not start. It is intentionally thin and does not run streaming, rendering, physics, simulation or other module behavior.
+`RegisterDefaultEngineRuntime` performs preflight validation, creates public service bundles, validates dependencies, creates Support-owned adapters and creates an `IEngineRuntimeCoordinator`. If preflight fails, registration does not start.
+
+The default profile is `RuntimeProfile::Reference`: deterministic reference backends are allowed. `RuntimeProfile::Production` forbids mock-only factories; with the current public Support factory this means Audio must be provided by custom composition or disabled until a production backend adapter is supplied. `RuntimeProfile::Tests` allows explicit mocks and fault-injection test backends.
+
+Frame orchestration goes through `runtime.Value().coordinator->Tick(RuntimeFrameInput{...})`. Shutdown goes through `runtime.Value().coordinator->Shutdown()`, which is idempotent and follows `shutdown_order.md`.
 
 ## Individual Registration
 
@@ -41,7 +45,7 @@ Expected failures return `foundation::Result<T>`. Duplicate registration and mis
 
 Support registers `XxxServices` bundles, not every interface separately. Integration adapters are owned by Support/composition and may only connect public contracts listed in `update_order.md`; they must not contain gameplay logic.
 
-Production registration uses the normal service factories. Mock factories are explicit and must not be enabled by `RegisterDefaultEngineRuntime` unless the public default preset says so.
+Production registration uses normal service factories only. Reference and Tests profiles make deterministic reference/mock behavior explicit instead of hiding it behind production setup.
 
 ## Layer Split
 

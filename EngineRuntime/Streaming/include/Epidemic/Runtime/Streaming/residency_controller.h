@@ -5,7 +5,6 @@
 
 namespace epidemic::runtime::streaming
 {
-// File note:
 // Residency transition contract used by Streaming to ask an external controller to
 // activate, deactivate or unload chunk-owned runtime state.
 class IResidencyController

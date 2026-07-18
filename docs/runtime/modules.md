@@ -18,13 +18,13 @@
 - `Animation`: skeleton/clip registries, animator lifecycle, pose state and event buffer.
 - `Audio`: sound registry, emitter/listener systems, event queue and mixer placeholders.
 - `Simulation`: budgeted scheduler, attention maps, world-memory TTL and effect buffer.
-- `Support`: individual RegisterXxx helpers, default composition preset and dependency validation.
+- `Support`: individual RegisterXxx helpers, runtime profiles, default composition, owned adapters, coordinator, dependency validation and shutdown order.
 
 ## Status
 
 All EngineRuntime majors build as standalone CMake targets and have dedicated tests. Support is implemented after the majors and contains composition/validation only.
 
-Architecture tests enforce the frozen shape: public headers compile through the architecture target, majors do not depend on `Support`, private `src` headers do not leak through public includes, service factories exist for composed majors, handle-like ids validate generations and externally visible snapshots carry revisions.
+Architecture tests enforce the frozen shape: public headers compile through the architecture target, majors do not depend on `Support`, private `src` headers do not leak through public includes, service factories exist for composed majors, handle-like ids validate generations, externally visible snapshots carry revisions, legacy state models stay deleted and production profiles guard mock-only factories.
 
 ## Not In Runtime
 

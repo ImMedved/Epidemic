@@ -6,7 +6,6 @@
 
 namespace epidemic::runtime
 {
-// File note:
 // Small resolver interface that translates asset ids into concrete storage
 // locations without exposing the full asset catalog implementation.
 class IAssetLocationResolver

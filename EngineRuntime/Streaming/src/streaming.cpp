@@ -8,7 +8,6 @@
 
 #include <utility>
 
-// File note:
 // Umbrella translation unit that anchors the public Streaming contracts in the build.
 
 namespace epidemic::runtime::streaming

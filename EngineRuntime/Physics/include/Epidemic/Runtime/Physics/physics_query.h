@@ -5,7 +5,6 @@
 
 namespace epidemic::runtime::physics
 {
-// File note:
 // Public query contract for deterministic raycast and overlap requests.
 class IPhysicsQuery
 {

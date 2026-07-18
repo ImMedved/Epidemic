@@ -7,7 +7,6 @@
 
 namespace epidemic::runtime::streaming
 {
-// File note:
 // Adapter interfaces that let Streaming request chunk-related data from other majors
 // through stable contracts, while still being able to run in mock mode when absent.
 class IStreamingWorldSource

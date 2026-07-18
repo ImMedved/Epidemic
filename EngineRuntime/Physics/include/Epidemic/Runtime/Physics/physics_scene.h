@@ -9,7 +9,6 @@
 
 namespace epidemic::runtime::physics
 {
-// File note:
 // Public contracts for creating and managing physics bodies and collision shapes.
 class ICollisionShapeRegistry
 {

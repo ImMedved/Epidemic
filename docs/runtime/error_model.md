@@ -27,6 +27,8 @@ Examples:
 - `audio.listener_not_found`
 - `audio.event_queue_full`
 - `audio.mixer_cycle`
+- `simulation.stale_revision`
+- `simulation.commit_target_missing`
 - `simulation.invalid_effect_target`
 - `resource.invalid_handle`
 - `resource.stale_handle`

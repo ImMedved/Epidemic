@@ -8,7 +8,6 @@
 
 namespace epidemic::runtime::animation
 {
-// File note:
 // Internal in-memory Animation runtime. It verifies resource/instance lifecycle and event flow without evaluating real poses.
 
 class AnimationRuntime final : public ISkeletonRegistry,

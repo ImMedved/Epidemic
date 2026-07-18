@@ -12,10 +12,12 @@ Baseline frame order is owned by Support/composition code, not by direct calls b
 8. Step `Physics` fixed ticks.
 9. Commit Scene-facing projections.
 10. Update `Audio` emitters/listeners/events.
-11. Prepare `Renderer`.
+11. Prepare and submit `Renderer`.
 12. Publish diagnostics and event buffers.
 
 Majors exchange data through public contracts, immutable snapshots, event buffers and Support adapters. This order is not permission for one major to include or call another major's private implementation.
+
+`IEngineRuntimeCoordinator::Tick(const RuntimeFrameInput&)` owns this default orchestration. The coordinator contains no gameplay behavior; it only calls enabled majors through public runtime APIs and records the order for diagnostics/tests.
 
 ## Allowed Adapters
 
@@ -27,20 +29,14 @@ Majors exchange data through public contracts, immutable snapshots, event buffer
 - Resources -> Audio
 - Scene -> Audio
 - World/Resources/Persistence -> Streaming
+- Streaming -> World
 - Time -> Simulation
+- Simulation -> domain commit target
 - Environment -> Audio
 - Environment -> Navigation
 
-Adapters live in Support/composition and contain no gameplay rules.
+Adapters live in Support/composition, are owned by `RuntimeIntegrationServices`, use only public contracts and contain no gameplay rules.
 
 ## Shutdown Order
 
-1. Stop new work.
-2. Cancel/wait background jobs.
-3. Flush/discard proposals.
-4. Stop audio.
-5. Stop physics.
-6. Release renderer.
-7. Unload streaming.
-8. Close persistence transactions.
-9. Destroy services.
+See [shutdown_order.md](shutdown_order.md).

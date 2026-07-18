@@ -9,7 +9,6 @@
 
 namespace epidemic::runtime::streaming
 {
-// File note:
 // Public Streaming runtime contract. The implementation coordinates chunk residency
 // requests and budgeted state transitions without owning world or renderer data.
 class IStreamingRuntime
