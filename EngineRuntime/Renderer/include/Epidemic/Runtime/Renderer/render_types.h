@@ -25,7 +25,21 @@ struct ViewId
 };
 
 using RenderTransformId = RuntimeObjectId;
-using RenderResourcePayloadPtr = std::shared_ptr<const void>;
+
+class IRenderMeshResource
+{
+  public:
+    virtual ~IRenderMeshResource() = default;
+};
+
+class IRenderMaterialResource
+{
+  public:
+    virtual ~IRenderMaterialResource() = default;
+};
+
+using RenderMeshResourcePtr = std::shared_ptr<const IRenderMeshResource>;
+using RenderMaterialResourcePtr = std::shared_ptr<const IRenderMaterialResource>;
 
 enum class RenderProxyLifecycle
 {
@@ -38,6 +52,8 @@ enum class RenderProxyLifecycle
 enum class RenderProxyReadiness
 {
     MissingResources,
+    Loading,
+    Failed,
     Ready,
 };
 
@@ -124,8 +140,8 @@ struct ViewDesc
 
 struct RenderResourcePayloads
 {
-    RenderResourcePayloadPtr mesh{};
-    RenderResourcePayloadPtr material{};
+    RenderMeshResourcePtr mesh{};
+    RenderMaterialResourcePtr material{};
 };
 } // namespace epidemic::runtime::renderer
 

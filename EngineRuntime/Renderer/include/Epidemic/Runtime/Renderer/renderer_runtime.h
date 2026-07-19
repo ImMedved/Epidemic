@@ -14,6 +14,7 @@ class IRendererRuntime
 
     [[nodiscard]] virtual foundation::Result<void> PrepareFrame() = 0;
     [[nodiscard]] virtual foundation::Result<void> RenderFrame() = 0;
+    [[nodiscard]] virtual foundation::Result<void> Shutdown() = 0;
     [[nodiscard]] virtual RenderFrameState GetFrameState() const = 0;
 };
 } // namespace epidemic::runtime::renderer
