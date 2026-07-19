@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <utility>
 
 namespace epidemic::runtime::navigation
@@ -20,8 +21,18 @@ foundation::Result<void> NavigationRuntime::RegisterTile(NavTileId tile, NavTile
         return foundation::Result<void>::Failure(
             foundation::Error::Create("navigation.invalid_tile", "navigation tile id must be valid before registration"));
     }
+    if (!IsValidInitialTileState(state))
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("navigation.invalid_tile_state", "navigation tile initial state is not valid for registration"));
+    }
+    if (tiles_.contains(tile))
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("navigation.duplicate_tile", "navigation tile is already registered"));
+    }
 
-    tiles_[tile] = state;
+    tiles_.emplace(tile, state);
     ++nav_revision_;
     return foundation::Result<void>::Success();
 }
@@ -51,6 +62,11 @@ foundation::Result<void> NavigationRuntime::MarkTileDirty(NavTileId tile)
         return foundation::Result<void>::Failure(
             foundation::Error::Create("navigation.tile_not_found", "navigation tile was not registered"));
     }
+    if (!CanTransition(iterator->second, NavTileState::Dirty))
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("navigation.invalid_tile_transition", "navigation tile cannot be marked dirty from its current state"));
+    }
 
     iterator->second = NavTileState::Dirty;
     ++nav_revision_;
@@ -72,12 +88,20 @@ std::size_t NavigationRuntime::RebuildDirtyTiles(RuntimeBudget budget)
         auto& state = tiles_[tile];
         if (state == NavTileState::Dirty)
         {
+            if (!CanTransition(state, NavTileState::Rebuilding))
+            {
+                continue;
+            }
             state = NavTileState::Rebuilding;
             ++nav_revision_;
             ++transitioned;
         }
         else if (state == NavTileState::Rebuilding)
         {
+            if (!CanTransition(state, NavTileState::Ready))
+            {
+                continue;
+            }
             state = NavTileState::Ready;
             ++nav_revision_;
             ++transitioned;
@@ -85,17 +109,6 @@ std::size_t NavigationRuntime::RebuildDirtyTiles(RuntimeBudget budget)
     }
 
     return transitioned;
-}
-
-foundation::Result<PathQueryId> NavigationRuntime::RequestPath(const PathRequest& request)
-{
-    const auto handle = RequestPathHandle(request);
-    if (!handle)
-    {
-        return foundation::Result<PathQueryId>::Failure(handle.GetError());
-    }
-
-    return foundation::Result<PathQueryId>::Success(handle.Value().id);
 }
 
 foundation::Result<PathQueryHandle> NavigationRuntime::RequestPathHandle(const PathRequest& request)
@@ -129,17 +142,16 @@ foundation::Result<PathQueryHandle> NavigationRuntime::RequestPathHandle(const P
     return foundation::Result<PathQueryHandle>::Success(handle);
 }
 
-foundation::Result<void> NavigationRuntime::CancelPath(PathQueryId id)
+foundation::Result<void> NavigationRuntime::CancelPath(PathQueryHandle handle)
 {
-    QueryRecord* query = FindQuery(id);
-    if (query == nullptr)
+    QueryRecord* query = FindQuery(handle.id);
+    if (query == nullptr || query->handle.generation != handle.generation)
     {
         return foundation::Result<void>::Failure(
-            foundation::Error::Create("navigation.query_not_found", "path query was not found for cancellation"));
+            foundation::Error::Create("navigation.stale_handle", "path query handle generation is stale"));
     }
 
-    if (query->result.state == PathQueryState::Completed || query->result.state == PathQueryState::Failed ||
-        query->result.state == PathQueryState::Stale)
+    if (IsTerminal(query->result.state) && query->result.state != PathQueryState::Cancelled)
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("navigation.query_terminal", "terminal path queries cannot be cancelled"));
@@ -156,20 +168,9 @@ foundation::Result<void> NavigationRuntime::CancelPath(PathQueryId id)
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> NavigationRuntime::CancelPath(PathQueryHandle handle)
-{
-    const QueryRecord* query = FindQuery(handle.id);
-    if (query == nullptr || query->handle.generation != handle.generation)
-    {
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("navigation.stale_handle", "path query handle generation is stale"));
-    }
-
-    return CancelPath(handle.id);
-}
-
 std::size_t NavigationRuntime::Tick(RuntimeBudget budget)
 {
+    PurgeReleasedAndExpired();
     const auto started_at = std::chrono::steady_clock::now();
     const std::size_t limit = BudgetLimit(budget, queries_.size());
     std::size_t transitioned = 0;
@@ -212,34 +213,35 @@ std::size_t NavigationRuntime::Tick(RuntimeBudget budget)
     return transitioned;
 }
 
-PathQueryState NavigationRuntime::GetPathState(PathQueryId id) const
+foundation::Result<PathQueryState> NavigationRuntime::GetPathState(PathQueryHandle handle) const
 {
-    const QueryRecord* query = FindQuery(id);
-    if (query == nullptr)
+    const QueryRecord* query = FindQuery(handle.id);
+    if (query == nullptr || query->handle.generation != handle.generation)
     {
-        return PathQueryState::Failed;
+        return foundation::Result<PathQueryState>::Failure(
+            foundation::Error::Create("navigation.stale_handle", "path query handle generation is stale"));
     }
 
     if (HasExpired(*query))
     {
-        return PathQueryState::Stale;
+        return foundation::Result<PathQueryState>::Success(PathQueryState::Stale);
     }
 
     if (HasSourceRevisionChanged(*query))
     {
-        return PathQueryState::Stale;
+        return foundation::Result<PathQueryState>::Success(PathQueryState::Stale);
     }
 
-    return query->result.state;
+    return foundation::Result<PathQueryState>::Success(query->result.state);
 }
 
-foundation::Result<PathResult> NavigationRuntime::GetPathResult(PathQueryId id) const
+foundation::Result<PathResult> NavigationRuntime::GetPathResult(PathQueryHandle handle) const
 {
-    const QueryRecord* query = FindQuery(id);
-    if (query == nullptr)
+    const QueryRecord* query = FindQuery(handle.id);
+    if (query == nullptr || query->handle.generation != handle.generation)
     {
         return foundation::Result<PathResult>::Failure(
-            foundation::Error::Create("navigation.query_not_found", "path query was not found"));
+            foundation::Error::Create("navigation.stale_result", "path result is stale or released"));
     }
 
     if (query->released || HasExpired(*query) || HasSourceRevisionChanged(*query) || query->result.state == PathQueryState::Stale)
@@ -257,18 +259,6 @@ foundation::Result<PathResult> NavigationRuntime::GetPathResult(PathQueryId id) 
     return foundation::Result<PathResult>::Success(query->result);
 }
 
-foundation::Result<PathResult> NavigationRuntime::GetPathResult(PathQueryHandle handle) const
-{
-    const QueryRecord* query = FindQuery(handle.id);
-    if (query == nullptr || query->handle.generation != handle.generation)
-    {
-        return foundation::Result<PathResult>::Failure(
-            foundation::Error::Create("navigation.stale_result", "path result is stale or released"));
-    }
-
-    return GetPathResult(handle.id);
-}
-
 foundation::Result<void> NavigationRuntime::ReleasePathResult(PathQueryHandle handle)
 {
     QueryRecord* query = FindQuery(handle.id);
@@ -279,18 +269,9 @@ foundation::Result<void> NavigationRuntime::ReleasePathResult(PathQueryHandle ha
     }
 
     query->released = true;
-    if (query->result.state != PathQueryState::Stale)
-    {
-        query->result.state = PathQueryState::Stale;
-    }
     ++query->result.revision;
+    queries_.erase(handle.id);
     return foundation::Result<void>::Success();
-}
-
-void NavigationRuntime::SetProjectionSources(const INavCostProvider* costs, const IDynamicObstacleProjection* obstacles)
-{
-    costs_ = costs;
-    obstacles_ = obstacles;
 }
 
 std::size_t NavigationRuntime::BudgetLimit(RuntimeBudget budget, std::size_t fallback) const noexcept
@@ -315,17 +296,22 @@ bool NavigationRuntime::HasReferenceQueries() const noexcept
 
 const INavigationBackend* NavigationRuntime::Backend() const noexcept
 {
-    return dependencies_.backend != nullptr ? dependencies_.backend.get() : backend_;
+    return dependencies_.backend.get();
 }
 
 const INavigationDataSource* NavigationRuntime::DataSource() const noexcept
 {
-    return dependencies_.data_source != nullptr ? dependencies_.data_source.get() : data_source_;
+    return dependencies_.data_source.get();
 }
 
 const INavigationObstacleSource* NavigationRuntime::ObstacleSource() const noexcept
 {
     return dependencies_.obstacle_source.get();
+}
+
+const INavCostProvider* NavigationRuntime::CostProvider() const noexcept
+{
+    return dependencies_.cost_provider.get();
 }
 
 NavigationRuntime::QueryRecord* NavigationRuntime::FindQuery(PathQueryId id)
@@ -348,12 +334,6 @@ const NavigationRuntime::QueryRecord* NavigationRuntime::FindQuery(PathQueryId i
     }
 
     return &iterator->second;
-}
-
-void NavigationRuntime::SetBackendSources(const INavigationBackend* backend, const INavigationDataSource* data_source)
-{
-    backend_ = backend;
-    data_source_ = data_source;
 }
 
 std::vector<NavTileId> NavigationRuntime::BuildTileWorkList() const
@@ -429,18 +409,8 @@ std::size_t NavigationRuntime::EstimatedPathBytes(const QueryRecord& query) cons
             }
         }
     }
-    else if (obstacles_ != nullptr)
-    {
-        for (const DynamicObstacle& obstacle : obstacles_->ObstaclesForRegion(query.request.region))
-        {
-            if (obstacle.blocks_traversal)
-            {
-                points = 3;
-                break;
-            }
-        }
-    }
-    else if (costs_ != nullptr && costs_->GetTraversalCost(NavCostQuery{query.request.region, {}, query.request.start}) > 1.0f)
+    else if (const INavCostProvider* costs = CostProvider();
+             costs != nullptr && costs->GetTraversalCost(NavCostQuery{query.request.region, {}, query.request.start}) > 1.0f)
     {
         points = 3;
     }
@@ -453,6 +423,68 @@ bool NavigationRuntime::HasPathByteBudget(RuntimeBudget budget, const QueryRecor
     return !budget.HasByteBudget() || EstimatedPathBytes(query) <= budget.max_bytes;
 }
 
+bool NavigationRuntime::IsTerminal(PathQueryState state) noexcept
+{
+    return state == PathQueryState::Completed || state == PathQueryState::Failed ||
+           state == PathQueryState::Cancelled || state == PathQueryState::Stale;
+}
+
+bool NavigationRuntime::IsValidInitialTileState(NavTileState state) noexcept
+{
+    return state == NavTileState::Queued || state == NavTileState::Loading ||
+           state == NavTileState::Ready || state == NavTileState::Unloaded;
+}
+
+bool NavigationRuntime::CanTransition(NavTileState from, NavTileState to) noexcept
+{
+    if (from == to)
+    {
+        return true;
+    }
+
+    switch (from)
+    {
+    case NavTileState::Queued:
+        return to == NavTileState::Loading || to == NavTileState::Unloaded;
+    case NavTileState::Loading:
+        return to == NavTileState::Ready || to == NavTileState::Failed || to == NavTileState::Unloaded;
+    case NavTileState::Ready:
+        return to == NavTileState::Dirty || to == NavTileState::Unloaded;
+    case NavTileState::Dirty:
+        return to == NavTileState::Rebuilding || to == NavTileState::Unloaded;
+    case NavTileState::Rebuilding:
+        return to == NavTileState::Ready || to == NavTileState::Failed || to == NavTileState::Unloaded;
+    case NavTileState::Failed:
+        return to == NavTileState::Dirty || to == NavTileState::Unloaded;
+    case NavTileState::Unloaded:
+        return to == NavTileState::Queued || to == NavTileState::Loading;
+    case NavTileState::Missing:
+        return false;
+    }
+
+    return false;
+}
+
+bool NavigationRuntime::IsValidPathResult(const PathRequest& request, const PathResult& result, NavigationRevision expected_revision) noexcept
+{
+    if (result.state != PathQueryState::Completed || result.nav_revision != expected_revision.value)
+    {
+        return false;
+    }
+    if (result.points.size() < 2)
+    {
+        return false;
+    }
+    for (const Vec3& point : result.points)
+    {
+        if (!std::isfinite(point.x) || !std::isfinite(point.y) || !std::isfinite(point.z))
+        {
+            return false;
+        }
+    }
+    return result.points.front() == request.start && result.points.back() == request.target;
+}
+
 void NavigationRuntime::MarkStale(QueryRecord& query)
 {
     if (query.result.state != PathQueryState::Stale)
@@ -460,6 +492,26 @@ void NavigationRuntime::MarkStale(QueryRecord& query)
         query.result.state = PathQueryState::Stale;
         query.result.points.clear();
         ++query.result.revision;
+    }
+}
+
+void NavigationRuntime::PurgeReleasedAndExpired()
+{
+    std::vector<PathQueryId> removed;
+    removed.reserve(queries_.size());
+    for (const auto& [id, query] : queries_)
+    {
+        if (query.released || HasExpired(query))
+        {
+            removed.push_back(id);
+        }
+    }
+    std::sort(removed.begin(), removed.end(), [](PathQueryId left, PathQueryId right) {
+        return left.value < right.value;
+    });
+    for (PathQueryId id : removed)
+    {
+        queries_.erase(id);
     }
 }
 
@@ -475,6 +527,13 @@ bool NavigationRuntime::CompleteQuery(QueryRecord& query, RuntimeBudget budget)
         const auto result = backend->BuildPath(query.request, NavigationRevision{query.result.nav_revision});
         if (result)
         {
+            if (!IsValidPathResult(query.request, result.Value(), NavigationRevision{query.result.nav_revision}))
+            {
+                query.result.state = PathQueryState::Failed;
+                query.result.points.clear();
+                ++query.result.revision;
+                return true;
+            }
             CompleteWithResult(query, result.Value());
             return true;
         }
@@ -522,24 +581,8 @@ void NavigationRuntime::CompleteWithReference(QueryRecord& query)
         }
     }
 
-    if (obstacles_ != nullptr)
-    {
-        for (const DynamicObstacle& obstacle : obstacles_->ObstaclesForRegion(query.request.region))
-        {
-            if (obstacle.blocks_traversal)
-            {
-                query.result.points.push_back(query.request.start);
-                query.result.points.push_back(Vec3{obstacle.bounds.max.x, query.request.start.y, obstacle.bounds.max.z});
-                query.result.points.push_back(query.request.target);
-                query.result.state = PathQueryState::Completed;
-                ++query.result.revision;
-                query.completed_at = std::chrono::steady_clock::now();
-                return;
-            }
-        }
-    }
-
-    const float cost = costs_ != nullptr ? costs_->GetTraversalCost(NavCostQuery{query.request.region, {}, query.request.start}) : 1.0f;
+    const INavCostProvider* costs = CostProvider();
+    const float cost = costs != nullptr ? costs->GetTraversalCost(NavCostQuery{query.request.region, {}, query.request.start}) : 1.0f;
     query.result.points.push_back(query.request.start);
     if (cost > 1.0f)
     {

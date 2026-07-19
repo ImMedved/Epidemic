@@ -22,17 +22,12 @@ public:
     [[nodiscard]] foundation::Result<void> MarkTileDirty(NavTileId tile) override;
     [[nodiscard]] std::size_t RebuildDirtyTiles(RuntimeBudget budget) override;
 
-    [[nodiscard]] foundation::Result<PathQueryId> RequestPath(const PathRequest& request) override;
     [[nodiscard]] foundation::Result<PathQueryHandle> RequestPathHandle(const PathRequest& request) override;
-    [[nodiscard]] foundation::Result<void> CancelPath(PathQueryId id) override;
     [[nodiscard]] foundation::Result<void> CancelPath(PathQueryHandle handle) override;
     [[nodiscard]] std::size_t Tick(RuntimeBudget budget) override;
-    [[nodiscard]] PathQueryState GetPathState(PathQueryId id) const override;
-    [[nodiscard]] foundation::Result<PathResult> GetPathResult(PathQueryId id) const override;
+    [[nodiscard]] foundation::Result<PathQueryState> GetPathState(PathQueryHandle handle) const override;
     [[nodiscard]] foundation::Result<PathResult> GetPathResult(PathQueryHandle handle) const override;
     [[nodiscard]] foundation::Result<void> ReleasePathResult(PathQueryHandle handle) override;
-    void SetProjectionSources(const INavCostProvider* costs, const IDynamicObstacleProjection* obstacles) override;
-    void SetBackendSources(const INavigationBackend* backend, const INavigationDataSource* data_source) override;
 
 private:
     struct QueryRecord
@@ -49,6 +44,7 @@ private:
     [[nodiscard]] bool HasReferenceQueries() const noexcept;
     [[nodiscard]] const INavigationBackend* Backend() const noexcept;
     [[nodiscard]] const INavigationDataSource* DataSource() const noexcept;
+    [[nodiscard]] const INavCostProvider* CostProvider() const noexcept;
     [[nodiscard]] const INavigationObstacleSource* ObstacleSource() const noexcept;
     [[nodiscard]] QueryRecord* FindQuery(PathQueryId id);
     [[nodiscard]] const QueryRecord* FindQuery(PathQueryId id) const;
@@ -58,7 +54,12 @@ private:
     [[nodiscard]] bool HasSourceRevisionChanged(const QueryRecord& query) const;
     [[nodiscard]] std::size_t EstimatedPathBytes(const QueryRecord& query) const;
     [[nodiscard]] bool HasPathByteBudget(RuntimeBudget budget, const QueryRecord& query) const;
+    [[nodiscard]] static bool IsTerminal(PathQueryState state) noexcept;
+    [[nodiscard]] static bool IsValidInitialTileState(NavTileState state) noexcept;
+    [[nodiscard]] static bool CanTransition(NavTileState from, NavTileState to) noexcept;
+    [[nodiscard]] static bool IsValidPathResult(const PathRequest& request, const PathResult& result, NavigationRevision expected_revision) noexcept;
     void MarkStale(QueryRecord& query);
+    void PurgeReleasedAndExpired();
     bool CompleteQuery(QueryRecord& query, RuntimeBudget budget);
     void CompleteWithResult(QueryRecord& query, PathResult result);
     void CompleteWithReference(QueryRecord& query);
@@ -70,9 +71,5 @@ private:
     std::uint64_t nav_revision_ = 0;
     std::unordered_map<NavTileId, NavTileState> tiles_;
     std::unordered_map<PathQueryId, QueryRecord> queries_;
-    const INavCostProvider* costs_ = nullptr;
-    const IDynamicObstacleProjection* obstacles_ = nullptr;
-    const INavigationBackend* backend_ = nullptr;
-    const INavigationDataSource* data_source_ = nullptr;
 };
 } // namespace epidemic::runtime::navigation

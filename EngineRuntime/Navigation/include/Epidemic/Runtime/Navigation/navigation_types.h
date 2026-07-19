@@ -75,7 +75,6 @@ struct PathRequest
     Vec3 start{};
     Vec3 target{};
     RegionId region{};
-    RuntimeBudget budget_hint{};
     std::uint64_t source_revision = 0;
     std::chrono::microseconds result_ttl{};
 };

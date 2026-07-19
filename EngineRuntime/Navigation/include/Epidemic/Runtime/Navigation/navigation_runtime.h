@@ -36,14 +36,6 @@ public:
     [[nodiscard]] virtual NavigationRevision CurrentRevision(RegionId region) const = 0;
 };
 
-class IDynamicObstacleProjection
-{
-public:
-    virtual ~IDynamicObstacleProjection() = default;
-
-    [[nodiscard]] virtual std::span<const DynamicObstacle> ObstaclesForRegion(RegionId region) const = 0;
-};
-
 class INavigationObstacleSource
 {
 public:
@@ -71,22 +63,16 @@ class INavigationRuntime
 public:
     virtual ~INavigationRuntime() = default;
 
-    [[nodiscard]] virtual foundation::Result<PathQueryId> RequestPath(const PathRequest& request) = 0;
     [[nodiscard]] virtual foundation::Result<PathQueryHandle> RequestPathHandle(const PathRequest& request) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> CancelPath(PathQueryId id) = 0;
     [[nodiscard]] virtual foundation::Result<void> CancelPath(PathQueryHandle handle) = 0;
 
     [[nodiscard]] virtual std::size_t Tick(RuntimeBudget budget) = 0;
 
-    [[nodiscard]] virtual PathQueryState GetPathState(PathQueryId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<PathQueryState> GetPathState(PathQueryHandle handle) const = 0;
 
-    [[nodiscard]] virtual foundation::Result<PathResult> GetPathResult(PathQueryId id) const = 0;
     [[nodiscard]] virtual foundation::Result<PathResult> GetPathResult(PathQueryHandle handle) const = 0;
     [[nodiscard]] virtual foundation::Result<void> ReleasePathResult(PathQueryHandle handle) = 0;
-
-    virtual void SetProjectionSources(const INavCostProvider* costs, const IDynamicObstacleProjection* obstacles) = 0;
-    virtual void SetBackendSources(const INavigationBackend* backend, const INavigationDataSource* data_source) = 0;
 };
 
 struct NavigationServices
@@ -99,12 +85,10 @@ struct NavigationDependencies
 {
     std::shared_ptr<INavigationBackend> backend;
     std::shared_ptr<INavigationDataSource> data_source;
+    std::shared_ptr<INavCostProvider> cost_provider;
     std::shared_ptr<INavigationObstacleSource> obstacle_source;
 };
 
-[[nodiscard]] std::unique_ptr<class NavigationRuntime> CreateNavigationRuntime(
-    NavigationOptions options = {},
-    NavigationDependencies dependencies = {});
 [[nodiscard]] foundation::Result<NavigationServices> CreateNavigationServices(
     NavigationOptions options = {},
     NavigationDependencies dependencies = {});

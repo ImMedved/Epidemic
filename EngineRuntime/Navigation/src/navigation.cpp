@@ -6,11 +6,6 @@
 
 namespace epidemic::runtime::navigation
 {
-std::unique_ptr<NavigationRuntime> CreateNavigationRuntime(NavigationOptions options, NavigationDependencies dependencies)
-{
-    return std::make_unique<NavigationRuntime>(options, std::move(dependencies));
-}
-
 foundation::Result<NavigationServices> CreateNavigationServices(NavigationOptions options, NavigationDependencies dependencies)
 {
     if (dependencies.backend == nullptr && !options.enable_mock_queries)
