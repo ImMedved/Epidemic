@@ -3,7 +3,9 @@
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
+#include <cctype>
 #include <sstream>
+#include <string_view>
 #include <utility>
 
 namespace epidemic::runtime
@@ -13,6 +15,7 @@ namespace
 [[nodiscard]] std::string NormalizePath(std::string path)
 {
     std::replace(path.begin(), path.end(), '\\', '/');
+    const bool absolute = path.starts_with('/');
 
     std::vector<std::string> parts;
     std::stringstream stream(path);
@@ -47,7 +50,43 @@ namespace
         }
         normalized += element;
     }
-    return normalized;
+    return absolute ? "/" + normalized : normalized;
+}
+
+[[nodiscard]] bool IsAbsolutePath(std::string_view path) noexcept
+{
+    return path.starts_with('/') || (path.size() >= 3 && std::isalpha(static_cast<unsigned char>(path[0])) &&
+                                    path[1] == ':' && path[2] == '/');
+}
+
+[[nodiscard]] bool IsSafeRelativePath(std::string_view path) noexcept
+{
+    if (path.empty() || IsAbsolutePath(path))
+    {
+        return false;
+    }
+
+    std::stringstream stream{std::string{path}};
+    std::string part;
+    int depth = 0;
+    while (std::getline(stream, part, '/'))
+    {
+        if (part.empty() || part == ".")
+        {
+            continue;
+        }
+        if (part == "..")
+        {
+            --depth;
+            if (depth < 0)
+            {
+                return false;
+            }
+            continue;
+        }
+        ++depth;
+    }
+    return depth >= 0;
 }
 
 [[nodiscard]] bool HasDuplicateDependency(const std::vector<AssetDependency>& dependencies)
@@ -85,7 +124,13 @@ AssetLocation CanonicalizeAssetLocation(AssetLocation location)
 
 bool IsValidAssetLocation(const AssetLocation& location) noexcept
 {
-    if (location.path.empty())
+    if (!IsSafeRelativePath(location.path))
+    {
+        return false;
+    }
+
+    if ((location.kind == AssetLocationKind::PackageEntry || location.kind == AssetLocationKind::VirtualPath) &&
+        !location.mount_id.IsValid())
     {
         return false;
     }
@@ -151,6 +196,9 @@ std::vector<AssetMetadata> InMemoryAssetCatalog::FindByType(AssetType type) cons
         }
     }
 
+    std::sort(matches.begin(), matches.end(), [](const AssetMetadata& left, const AssetMetadata& right) {
+        return left.id.Raw() < right.id.Raw();
+    });
     return matches;
 }
 
@@ -170,6 +218,9 @@ std::vector<AssetMetadata> InMemoryAssetCatalog::FindByTag(foundation::StringId 
         }
     }
 
+    std::sort(matches.begin(), matches.end(), [](const AssetMetadata& left, const AssetMetadata& right) {
+        return left.id.Raw() < right.id.Raw();
+    });
     return matches;
 }
 
@@ -201,12 +252,21 @@ foundation::Result<AssetDependencyManifest> InMemoryAssetCatalog::BuildDependenc
     manifest.root = root;
     std::unordered_set<AssetId> visiting;
     std::unordered_set<AssetId> visited;
-    if (!BuildDependencyManifestDepthFirst(root, manifest, visiting, visited))
+    bool missing_required_dependency = false;
+    if (!BuildDependencyManifestDepthFirst(root, manifest, visiting, visited, missing_required_dependency))
     {
+        if (missing_required_dependency)
+        {
+            return foundation::Result<AssetDependencyManifest>::Failure(
+                foundation::Error::Create("asset.missing_dependency", "required asset dependency is not registered"));
+        }
         return foundation::Result<AssetDependencyManifest>::Failure(
             foundation::Error::Create("asset.dependency_cycle", "asset dependency graph contains a cycle"));
     }
 
+    std::sort(manifest.dependencies.begin(), manifest.dependencies.end(), [](const AssetDependency& left, const AssetDependency& right) {
+        return left.asset_id.Raw() < right.asset_id.Raw();
+    });
     return foundation::Result<AssetDependencyManifest>::Success(std::move(manifest));
 }
 
@@ -284,7 +344,8 @@ bool InMemoryAssetCatalog::BuildDependencyManifestDepthFirst(
     AssetId current,
     AssetDependencyManifest& manifest,
     std::unordered_set<AssetId>& visiting,
-    std::unordered_set<AssetId>& visited) const
+    std::unordered_set<AssetId>& visited,
+    bool& missing_required_dependency) const
 {
     if (visited.contains(current))
     {
@@ -301,9 +362,28 @@ bool InMemoryAssetCatalog::BuildDependencyManifestDepthFirst(
     {
         for (const AssetDependency& dependency : current_metadata->dependencies)
         {
-            manifest.dependencies.push_back(dependency);
-            if (Contains(dependency.asset_id) &&
-                !BuildDependencyManifestDepthFirst(dependency.asset_id, manifest, visiting, visited))
+            if (!Contains(dependency.asset_id))
+            {
+                if (dependency.required)
+                {
+                    missing_required_dependency = true;
+                    return false;
+                }
+                if (std::none_of(manifest.dependencies.begin(), manifest.dependencies.end(), [&](const AssetDependency& existing) {
+                        return existing.asset_id == dependency.asset_id;
+                    }))
+                {
+                    manifest.dependencies.push_back(dependency);
+                }
+                continue;
+            }
+            if (std::none_of(manifest.dependencies.begin(), manifest.dependencies.end(), [&](const AssetDependency& existing) {
+                    return existing.asset_id == dependency.asset_id;
+                }))
+            {
+                manifest.dependencies.push_back(dependency);
+            }
+            if (!BuildDependencyManifestDepthFirst(dependency.asset_id, manifest, visiting, visited, missing_required_dependency))
             {
                 return false;
             }

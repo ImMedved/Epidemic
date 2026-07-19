@@ -30,7 +30,8 @@ class InMemoryAssetCatalog final : public IAssetCatalog, public IAssetCatalogWri
         AssetId current,
         AssetDependencyManifest& manifest,
         std::unordered_set<AssetId>& visiting,
-        std::unordered_set<AssetId>& visited) const;
+        std::unordered_set<AssetId>& visited,
+        bool& missing_required_dependency) const;
 
     std::unordered_map<AssetId, AssetMetadata> assets_;
     bool sealed_ = false;
