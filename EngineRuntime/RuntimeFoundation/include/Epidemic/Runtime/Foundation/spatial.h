@@ -121,6 +121,9 @@ struct Sphere
 
 [[nodiscard]] inline Transform ComposeTransform(const Transform& parent, const Transform& local) noexcept
 {
+    // Contract: this runtime foundation stores spatial hierarchy as simplified TRS.
+    // Non-uniform parent scale combined with rotated children may produce shear in a full matrix model;
+    // ComposeTransform preserves a deterministic approximate TRS representation instead of shear.
     return Transform{
         TransformPoint(parent, local.position),
         Multiply(parent.rotation, local.rotation),

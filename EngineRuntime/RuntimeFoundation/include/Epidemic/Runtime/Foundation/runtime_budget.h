@@ -26,8 +26,6 @@ struct RuntimeBudget
     {
         return !HasTimeLimit() && !HasItemLimit() && !HasByteLimit();
     }
-
-    [[nodiscard]] constexpr bool IsEmpty() const noexcept { return IsUnlimited(); }
 };
 
 struct RuntimeBudgetConsumption

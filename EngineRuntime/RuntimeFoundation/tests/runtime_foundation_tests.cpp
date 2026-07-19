@@ -20,6 +20,7 @@ using epidemic::runtime::Quat;
 using epidemic::runtime::ResidencyState;
 using epidemic::runtime::ResourceId;
 using epidemic::runtime::RuntimeBudget;
+using epidemic::runtime::RuntimeFrameDuration;
 using epidemic::runtime::RuntimeObjectId;
 using epidemic::runtime::SimulationLod;
 using epidemic::runtime::Transform;
@@ -74,12 +75,10 @@ bool TestAssetAndResourceIdsUseStringBackedRuntimeIds()
     return asset_id.IsValid() && resource_id.IsValid() && asset_id.Raw() != resource_id.Raw();
 }
 
-// Verifies runtime foundation and resources headers can coexist.
-// Verifies runtime budget defaults to empty.
-bool TestRuntimeBudgetDefaultsToEmpty()
+bool TestRuntimeBudgetDefaultsToUnlimited()
 {
     const RuntimeBudget budget{};
-    return budget.IsUnlimited() && budget.IsEmpty() && !budget.HasTimeLimit() && !budget.HasItemLimit() && !budget.HasByteLimit();
+    return budget.IsUnlimited() && !budget.HasTimeLimit() && !budget.HasItemLimit() && !budget.HasByteLimit();
 }
 
 // Verifies runtime budget tracks limits.
@@ -87,6 +86,18 @@ bool TestRuntimeBudgetTracksLimits()
 {
     const RuntimeBudget budget{std::chrono::microseconds{250}, 8u, 4096u};
     return budget.HasTimeLimit() && budget.HasItemLimit() && budget.HasByteLimit() && !budget.IsUnlimited();
+}
+
+bool TestRuntimeFrameDurationUsesRealMicroseconds()
+{
+    const RuntimeFrameDuration zero{};
+    const RuntimeFrameDuration negative{std::chrono::microseconds{-1}};
+    const RuntimeFrameDuration positive{std::chrono::microseconds{16667}};
+
+    return zero.IsZero() && !zero.IsNegative() &&
+           negative.IsNegative() &&
+           positive.value.count() == 16667 &&
+           negative < positive;
 }
 
 // Verifies typed game time operations stay deterministic and raw-integer free.
@@ -101,15 +112,39 @@ bool TestGameTimeOperations()
 
 bool TestGameTimeOverflowHelpers()
 {
+    constexpr std::int64_t minimum = std::numeric_limits<std::int64_t>::min();
+    constexpr std::int64_t maximum = std::numeric_limits<std::int64_t>::max();
     const auto overflow = epidemic::runtime::CheckedAdd(
-        GameTimePoint{std::numeric_limits<std::int64_t>::max()},
+        GameTimePoint{maximum},
         GameDuration{1});
     const auto underflow = epidemic::runtime::CheckedSubtract(
-        GameTimePoint{std::numeric_limits<std::int64_t>::min()},
+        GameTimePoint{minimum},
         GameDuration{1});
+    const auto min_duration_valid_subtract = epidemic::runtime::CheckedSubtract(
+        GameTimePoint{-1},
+        GameDuration{minimum});
+    const auto difference_overflow = epidemic::runtime::CheckedDifference(GameTimePoint{maximum}, GameTimePoint{-1});
     const auto valid = epidemic::runtime::CheckedAdd(GameTimePoint{10}, GameDuration{5});
 
-    return !overflow.has_value() && !underflow.has_value() && valid.has_value() && valid->ticks == 15;
+    return !overflow.has_value() && !underflow.has_value() &&
+           min_duration_valid_subtract.has_value() && min_duration_valid_subtract->ticks == maximum &&
+           !difference_overflow.has_value() && valid.has_value() && valid->ticks == 15;
+}
+
+bool TestGameTimeOperatorsSaturateAtInt64Edges()
+{
+    constexpr std::int64_t minimum = std::numeric_limits<std::int64_t>::min();
+    constexpr std::int64_t maximum = std::numeric_limits<std::int64_t>::max();
+
+    const GameTimePoint add_overflow = GameTimePoint{maximum} + GameDuration{1};
+    const GameTimePoint subtract_underflow = GameTimePoint{minimum} - GameDuration{1};
+    const GameDuration difference_overflow = GameTimePoint{maximum} - GameTimePoint{-1};
+    const GameDuration difference_underflow = GameTimePoint{minimum} - GameTimePoint{1};
+
+    return add_overflow.ticks == maximum &&
+           subtract_underflow.ticks == minimum &&
+           difference_overflow.ticks == maximum &&
+           difference_underflow.ticks == minimum;
 }
 
 bool TestQuaternionAndTransformMath()
@@ -130,6 +165,37 @@ bool TestQuaternionAndTransformMath()
     return Near(composed.position, Vec3{10.0f, 2.0f, 0.0f}) &&
            Near(composed.scale, Vec3{2.0f, 6.0f, 1.0f}) &&
            epidemic::runtime::IsNormalized(composed.rotation);
+}
+
+bool TestNestedRotatedTransformCompositionAndNegativeScale()
+{
+    const float half_turn = 0.70710677f;
+    const Quat rotate_z_90{0.0f, 0.0f, half_turn, half_turn};
+    const Transform root{Vec3{2.0f, 0.0f, 0.0f}, rotate_z_90, Vec3{-1.0f, 1.0f, 1.0f}};
+    const Transform middle{Vec3{0.0f, 3.0f, 0.0f}, rotate_z_90, Vec3{1.0f, 2.0f, 1.0f}};
+    const Transform leaf{Vec3{1.0f, 0.0f, 0.0f}, {}, Vec3{1.0f, 1.0f, 1.0f}};
+
+    const Transform composed = epidemic::runtime::ComposeTransform(epidemic::runtime::ComposeTransform(root, middle), leaf);
+    const Vec3 transformed_origin = epidemic::runtime::TransformPoint(composed, Vec3{0.0f, 0.0f, 0.0f});
+
+    return epidemic::runtime::IsValidTransform(root) &&
+           epidemic::runtime::IsValidTransform(composed) &&
+           Near(transformed_origin, Vec3{0.0f, 0.0f, 0.0f});
+}
+
+bool TestInvalidAndZeroQuaternionValidation()
+{
+    const Quat zero{0.0f, 0.0f, 0.0f, 0.0f};
+    const Quat invalid{std::numeric_limits<float>::infinity(), 0.0f, 0.0f, 1.0f};
+    const Quat normalized_zero = epidemic::runtime::Normalize(zero);
+    const Transform zero_rotation_transform{{}, zero, Vec3{1.0f, 1.0f, 1.0f}};
+    const Transform invalid_rotation_transform{{}, invalid, Vec3{1.0f, 1.0f, 1.0f}};
+
+    return normalized_zero == Quat{} &&
+           !epidemic::runtime::IsNormalized(zero) &&
+           !epidemic::runtime::IsFinite(invalid) &&
+           !epidemic::runtime::IsValidTransform(zero_rotation_transform) &&
+           !epidemic::runtime::IsValidTransform(invalid_rotation_transform);
 }
 
 bool TestTransformAabb()
@@ -208,7 +274,7 @@ int main()
         return 4;
     }
 
-    if (!TestRuntimeBudgetDefaultsToEmpty())
+    if (!TestRuntimeBudgetDefaultsToUnlimited())
     {
         return 6;
     }
@@ -216,6 +282,11 @@ int main()
     if (!TestRuntimeBudgetTracksLimits())
     {
         return 7;
+    }
+
+    if (!TestRuntimeFrameDurationUsesRealMicroseconds())
+    {
+        return 18;
     }
 
     if (!TestGameTimeOperations())
@@ -228,29 +299,44 @@ int main()
         return 9;
     }
 
-    if (!TestQuaternionAndTransformMath())
+    if (!TestGameTimeOperatorsSaturateAtInt64Edges())
     {
         return 10;
     }
 
-    if (!TestTransformAabb())
+    if (!TestQuaternionAndTransformMath())
     {
         return 11;
     }
 
-    if (!TestOperationHelpers())
+    if (!TestNestedRotatedTransformCompositionAndNegativeScale())
     {
         return 12;
     }
 
-    if (!TestExplicitStateHelpers())
+    if (!TestInvalidAndZeroQuaternionValidation())
     {
         return 13;
     }
 
-    if (!TestObjectRealityHelpersAreExplicit())
+    if (!TestTransformAabb())
     {
         return 14;
+    }
+
+    if (!TestOperationHelpers())
+    {
+        return 15;
+    }
+
+    if (!TestExplicitStateHelpers())
+    {
+        return 16;
+    }
+
+    if (!TestObjectRealityHelpersAreExplicit())
+    {
+        return 17;
     }
 
     return 0;
