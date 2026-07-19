@@ -26,6 +26,7 @@ class IEnvironmentQuery
     [[nodiscard]] virtual foundation::Result<EnvironmentSnapshot> BuildSnapshot(RegionId region) const = 0;
     [[nodiscard]] virtual foundation::Result<EnvironmentProjection> BuildProjection(RegionId region) const = 0;
     [[nodiscard]] virtual std::uint64_t GetRevision() const = 0;
+    [[nodiscard]] virtual foundation::Result<std::uint64_t> GetRegionRevision(RegionId region) const = 0;
 };
 
 // Threading: mutation must occur on the runtime thread.
@@ -35,6 +36,11 @@ class IEnvironmentWriter
   public:
     virtual ~IEnvironmentWriter() = default;
 
+    [[nodiscard]] virtual foundation::Result<void> RegisterRegionEnvironment(
+        RegionId region,
+        WeatherState weather,
+        SeasonState season,
+        ClimateProfile climate) = 0;
     [[nodiscard]] virtual foundation::Result<void> SetWeather(RegionId region, WeatherState weather) = 0;
     [[nodiscard]] virtual foundation::Result<void> SetSeason(RegionId region, SeasonState season) = 0;
     [[nodiscard]] virtual foundation::Result<void> SetClimateProfile(RegionId region, ClimateProfile climate) = 0;

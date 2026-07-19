@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <string_view>
 #include <utility>
 
@@ -34,7 +35,8 @@ template <typename TValue>
 
 [[nodiscard]] foundation::Result<void> ValidateWeather(WeatherState weather)
 {
-    if (!Unit(weather.intensity) || !Unit(weather.cloudiness) || !Unit(weather.precipitation) || !NonNegative(weather.wind_speed) ||
+    if (!Unit(weather.intensity) || !Unit(weather.cloudiness) || !Unit(weather.precipitation) ||
+        !std::isfinite(weather.current_temperature) || !Unit(weather.current_humidity) || !NonNegative(weather.wind_speed) ||
         !std::isfinite(weather.wind_direction_degrees))
     {
         return EnvironmentFailure("environment.invalid_weather", "weather values must be finite and normalized where required");
@@ -87,6 +89,18 @@ template <typename TValue>
         normalized += 360.0f;
     }
     return normalized;
+}
+
+[[nodiscard]] bool SameSurfaceStateIgnoringRevision(const SurfaceState& left, const SurfaceState& right) noexcept
+{
+    return left.surface_id == right.surface_id &&
+           left.region_id == right.region_id &&
+           left.condition == right.condition &&
+           left.wetness == right.wetness &&
+           left.snow_depth == right.snow_depth &&
+           left.mud_depth == right.mud_depth &&
+           left.ice_thickness == right.ice_thickness &&
+           left.temperature == right.temperature;
 }
 } // namespace
 
@@ -166,12 +180,12 @@ foundation::Result<EnvironmentSnapshot> EnvironmentRuntime::BuildSnapshot(Region
 
     EnvironmentSnapshot snapshot{};
     snapshot.region_id = region;
-    snapshot.revision = revision_;
+    snapshot.revision = LookupRegionRevision(region);
     snapshot.weather = weather.Value();
     snapshot.season = season.Value();
     snapshot.climate = climate.Value();
-    snapshot.temperature = climate.Value().average_temperature;
-    snapshot.humidity = climate.Value().average_humidity;
+    snapshot.temperature = weather.Value().current_temperature;
+    snapshot.humidity = weather.Value().current_humidity;
     for (const auto& [surface_id, surface] : surface_states_)
     {
         (void)surface_id;
@@ -203,11 +217,65 @@ std::uint64_t EnvironmentRuntime::GetRevision() const
     return revision_;
 }
 
+foundation::Result<std::uint64_t> EnvironmentRuntime::GetRegionRevision(RegionId region) const
+{
+    const auto registered = EnsureRegisteredRegion(region);
+    if (!registered)
+    {
+        return foundation::Result<std::uint64_t>::Failure(registered.GetError());
+    }
+    return foundation::Result<std::uint64_t>::Success(LookupRegionRevision(region));
+}
+
+foundation::Result<void> EnvironmentRuntime::RegisterRegionEnvironment(RegionId region, WeatherState weather, SeasonState season, ClimateProfile climate)
+{
+    if (!region.IsValid())
+    {
+        return EnvironmentFailure("environment.invalid_region", "region registration requires a valid region id");
+    }
+    if (IsRegionRegistered(region))
+    {
+        return EnvironmentFailure("environment.region_already_registered", "region environment is already registered");
+    }
+    const auto valid_weather = ValidateWeather(weather);
+    if (!valid_weather)
+    {
+        return valid_weather;
+    }
+    const auto valid_season = ValidateSeason(season);
+    if (!valid_season)
+    {
+        return valid_season;
+    }
+    const auto valid_climate = ValidateClimate(climate);
+    if (!valid_climate)
+    {
+        return valid_climate;
+    }
+
+    weather.wind_direction_degrees = NormalizeWindDirection(weather.wind_direction_degrees);
+    const auto next_revision = AdvanceRevision();
+    if (!next_revision)
+    {
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    }
+    weather_by_region_[region] = weather;
+    season_by_region_[region] = season;
+    climate_by_region_[region] = climate;
+    revision_by_region_[region] = next_revision.Value();
+    return foundation::Result<void>::Success();
+}
+
 foundation::Result<void> EnvironmentRuntime::SetWeather(RegionId region, WeatherState weather)
 {
     if (!region.IsValid())
     {
         return EnvironmentFailure("environment.invalid_region", "weather update requires a valid region id");
+    }
+    const auto registered = EnsureRegisteredRegion(region);
+    if (!registered)
+    {
+        return registered;
     }
     const auto valid = ValidateWeather(weather);
     if (!valid)
@@ -215,8 +283,17 @@ foundation::Result<void> EnvironmentRuntime::SetWeather(RegionId region, Weather
         return valid;
     }
     weather.wind_direction_degrees = NormalizeWindDirection(weather.wind_direction_degrees);
+    if (weather_by_region_[region] == weather)
+    {
+        return foundation::Result<void>::Success();
+    }
+    const auto next_revision = AdvanceRevision();
+    if (!next_revision)
+    {
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    }
     weather_by_region_[region] = weather;
-    BumpRevision();
+    revision_by_region_[region] = next_revision.Value();
     return foundation::Result<void>::Success();
 }
 
@@ -226,13 +303,27 @@ foundation::Result<void> EnvironmentRuntime::SetSeason(RegionId region, SeasonSt
     {
         return EnvironmentFailure("environment.invalid_region", "season update requires a valid region id");
     }
+    const auto registered = EnsureRegisteredRegion(region);
+    if (!registered)
+    {
+        return registered;
+    }
     const auto valid = ValidateSeason(season);
     if (!valid)
     {
         return valid;
     }
+    if (season_by_region_[region] == season)
+    {
+        return foundation::Result<void>::Success();
+    }
+    const auto next_revision = AdvanceRevision();
+    if (!next_revision)
+    {
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    }
     season_by_region_[region] = season;
-    BumpRevision();
+    revision_by_region_[region] = next_revision.Value();
     return foundation::Result<void>::Success();
 }
 
@@ -242,13 +333,27 @@ foundation::Result<void> EnvironmentRuntime::SetClimateProfile(RegionId region, 
     {
         return EnvironmentFailure("environment.invalid_region", "climate update requires a valid region id");
     }
+    const auto registered = EnsureRegisteredRegion(region);
+    if (!registered)
+    {
+        return registered;
+    }
     const auto valid = ValidateClimate(climate);
     if (!valid)
     {
         return valid;
     }
+    if (climate_by_region_[region] == climate)
+    {
+        return foundation::Result<void>::Success();
+    }
+    const auto next_revision = AdvanceRevision();
+    if (!next_revision)
+    {
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    }
     climate_by_region_[region] = climate;
-    BumpRevision();
+    revision_by_region_[region] = next_revision.Value();
     return foundation::Result<void>::Success();
 }
 
@@ -259,9 +364,30 @@ foundation::Result<void> EnvironmentRuntime::SetSurfaceState(SurfaceState state)
     {
         return valid;
     }
-    BumpRevision();
+    const auto registered = EnsureRegisteredRegion(state.region_id);
+    if (!registered)
+    {
+        return registered;
+    }
     state.condition = DeriveSurfaceCondition(state);
-    state.revision = revision_;
+    if (const auto existing = surface_states_.find(state.surface_id); existing != surface_states_.end())
+    {
+        if (existing->second.region_id != state.region_id)
+        {
+            return EnvironmentFailure("environment.surface_region_mismatch", "surface ownership cannot change regions through SetSurfaceState");
+        }
+        if (SameSurfaceStateIgnoringRevision(existing->second, state))
+        {
+            return foundation::Result<void>::Success();
+        }
+    }
+    const auto next_revision = AdvanceRevision();
+    if (!next_revision)
+    {
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    }
+    state.revision = next_revision.Value();
+    revision_by_region_[state.region_id] = state.revision;
     surface_states_[state.surface_id] = state;
     return foundation::Result<void>::Success();
 }
@@ -272,17 +398,22 @@ foundation::Result<void> EnvironmentRuntime::ApplyUpdate(const EnvironmentStateU
     {
         return EnvironmentFailure("environment.invalid_region", "environment update batch requires a valid region id");
     }
-    if (update.source_revision != revision_)
+    const auto registered = EnsureRegisteredRegion(update.region);
+    if (!registered)
     {
-        return EnvironmentFailure("environment.revision_conflict", "environment update source revision does not match current revision");
+        return registered;
     }
-    if (weather_by_region_.find(update.region) == weather_by_region_.end() &&
-        season_by_region_.find(update.region) == season_by_region_.end() && climate_by_region_.find(update.region) == climate_by_region_.end())
+    if (update.source_revision != LookupRegionRevision(update.region))
     {
-        return EnvironmentFailure("environment.region_unknown", "environment update region is unknown");
+        return EnvironmentFailure("environment.revision_conflict", "environment update source revision does not match current region revision");
     }
 
     WeatherState weather{};
+    bool changed = update.weather.has_value() || update.season.has_value() || update.climate.has_value() || !update.surfaces.empty();
+    if (!changed)
+    {
+        return foundation::Result<void>::Success();
+    }
     if (update.weather)
     {
         weather = *update.weather;
@@ -322,7 +453,13 @@ foundation::Result<void> EnvironmentRuntime::ApplyUpdate(const EnvironmentStateU
         }
     }
 
-    BumpRevision();
+    const auto next_revision = AdvanceRevision();
+    if (!next_revision)
+    {
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    }
+    const std::uint64_t region_revision = next_revision.Value();
+    revision_by_region_[update.region] = region_revision;
     if (update.weather)
     {
         weather_by_region_[update.region] = weather;
@@ -338,7 +475,7 @@ foundation::Result<void> EnvironmentRuntime::ApplyUpdate(const EnvironmentStateU
     for (SurfaceState surface : update.surfaces)
     {
         surface.condition = DeriveSurfaceCondition(surface);
-        surface.revision = revision_;
+        surface.revision = region_revision;
         surface_states_[surface.surface_id] = surface;
     }
     return foundation::Result<void>::Success();
@@ -354,10 +491,10 @@ foundation::Result<void> EnvironmentRuntime::Update(const EnvironmentUpdateInput
     {
         return EnvironmentFailure("environment.invalid_delta", "environment update delta must not be negative");
     }
-    if (weather_by_region_.find(input.region_id) == weather_by_region_.end() &&
-        season_by_region_.find(input.region_id) == season_by_region_.end() && climate_by_region_.find(input.region_id) == climate_by_region_.end())
+    const auto registered = EnsureRegisteredRegion(input.region_id);
+    if (!registered)
     {
-        return EnvironmentFailure("environment.region_unknown", "environment update region is unknown");
+        return registered;
     }
     if (input.game_delta.ticks == 0)
     {
@@ -381,8 +518,38 @@ void EnvironmentRuntime::SetUpdatePolicy(std::shared_ptr<const IEnvironmentUpdat
     update_policy_ = std::move(policy);
 }
 
-void EnvironmentRuntime::BumpRevision()
+bool EnvironmentRuntime::IsRegionRegistered(RegionId region) const
 {
+    return weather_by_region_.contains(region) && season_by_region_.contains(region) && climate_by_region_.contains(region) &&
+           revision_by_region_.contains(region);
+}
+
+foundation::Result<void> EnvironmentRuntime::EnsureRegisteredRegion(RegionId region) const
+{
+    if (!region.IsValid())
+    {
+        return EnvironmentFailure("environment.invalid_region", "region id must be valid");
+    }
+    if (!IsRegionRegistered(region))
+    {
+        return EnvironmentFailure("environment.region_unknown", "region environment is not registered");
+    }
+    return foundation::Result<void>::Success();
+}
+
+std::uint64_t EnvironmentRuntime::LookupRegionRevision(RegionId region) const
+{
+    const auto iterator = revision_by_region_.find(region);
+    return iterator == revision_by_region_.end() ? 0u : iterator->second;
+}
+
+foundation::Result<std::uint64_t> EnvironmentRuntime::AdvanceRevision()
+{
+    if (revision_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return EnvironmentFailureValue<std::uint64_t>("environment.revision_overflow", "environment revision cannot advance beyond UINT64_MAX");
+    }
     ++revision_;
+    return foundation::Result<std::uint64_t>::Success(revision_);
 }
 } // namespace epidemic::runtime
