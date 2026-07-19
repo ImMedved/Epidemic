@@ -3,6 +3,7 @@
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <limits>
 #include <string_view>
@@ -100,7 +101,26 @@ ResourceManager::ResourceManager(IResourceLoaderRegistry* loader_registry) : loa
 {
 }
 
-foundation::Result<ResourceHandle> ResourceManager::Request(ResourceRequest request)
+foundation::Result<ResourceLease> ResourceManager::RequestLease(ResourceRequest request)
+{
+    const auto handle = Acquire(std::move(request));
+    if (!handle)
+    {
+        return foundation::Result<ResourceLease>::Failure(handle.GetError());
+    }
+
+    ResourceSlot* slot = cache_.Find(handle.Value().id);
+    if (slot == nullptr || !IsHandleCurrent(*slot, handle.Value()))
+    {
+        return ResourceFailureValue<ResourceLease>("resource.stale_handle", "resource lease target is unknown or stale");
+    }
+
+    const ResourceAcquisitionId acquisition = NextAcquisitionId();
+    slot->active_acquisitions.insert(acquisition);
+    return foundation::Result<ResourceLease>::Success(ResourceLease{handle.Value(), acquisition});
+}
+
+foundation::Result<ResourceHandle> ResourceManager::Acquire(ResourceRequest request)
 {
     const auto valid = ValidateRequest(request);
     if (!valid)
@@ -176,21 +196,25 @@ foundation::Result<ResourceProcessingStats> ResourceManager::ProcessPendingLoads
     return foundation::Result<ResourceProcessingStats>::Success(stats);
 }
 
-foundation::Result<void> ResourceManager::Release(ResourceHandle handle)
+foundation::Result<void> ResourceManager::Release(ResourceLease lease)
 {
-    if (!handle.IsValid())
+    if (!lease.IsValid())
     {
-        return ResourceFailure("resource.invalid_handle", "resource handle must be valid before release");
+        return ResourceFailure("resource.invalid_lease", "resource lease must be valid before release");
     }
 
-    ResourceSlot* slot = cache_.Find(handle.id);
-    if (slot == nullptr || !IsHandleCurrent(*slot, handle))
+    ResourceSlot* slot = cache_.Find(lease.resource.id);
+    if (slot == nullptr || !IsHandleCurrent(*slot, lease.resource))
     {
-        return ResourceFailure("resource.stale_handle", "resource handle is unknown or stale");
+        return ResourceFailure("resource.stale_handle", "resource lease target is unknown or stale");
+    }
+    if (slot->active_acquisitions.erase(lease.acquisition) == 0)
+    {
+        return ResourceFailure("resource.acquisition_underflow", "resource acquisition has already been released");
     }
     if (slot->reference_count == 0)
     {
-        return ResourceFailure("resource.reference_underflow", "resource handle has already been released");
+        return ResourceFailure("resource.reference_underflow", "resource reference count underflow while releasing acquisition");
     }
     --slot->reference_count;
     return foundation::Result<void>::Success();
@@ -298,32 +322,20 @@ void ResourceManager::SetMemoryBudgetBytes(std::size_t bytes)
     memory_budget_bytes_ = bytes;
 }
 
-ResourceMemoryStats ResourceManager::GetMemoryStats() const
+ResourceMemoryStats ResourceManager::GetMemoryStatistics() const
 {
     ResourceMemoryStats stats{};
     stats.resident_bytes = resident_bytes_;
     stats.budget_bytes = memory_budget_bytes_;
     stats.slot_count = cache_.Entries().size();
+    stats.resource_count = cache_.Entries().size();
+    stats.invariant_failure_count = invariant_failure_count_;
     for (const auto& [resource_id, slot] : cache_.Entries())
     {
         (void)resource_id;
         if (slot.state == ResourceState::Ready)
         {
             ++stats.ready_count;
-        }
-    }
-    return stats;
-}
-
-ResourceMemoryStatistics ResourceManager::GetMemoryStatistics() const
-{
-    ResourceMemoryStatistics stats{};
-    stats.resource_count = cache_.Entries().size();
-    for (const auto& [resource_id, slot] : cache_.Entries())
-    {
-        (void)resource_id;
-        if (slot.state == ResourceState::Ready)
-        {
             stats.ready_bytes += slot.memory_bytes;
             if (slot.reference_count == 0)
             {
@@ -342,6 +354,17 @@ const ResourceSlot* ResourceManager::InspectSlot(ResourceId id) const
 bool ResourceManager::IsHandleCurrent(const ResourceSlot& slot, ResourceHandle handle)
 {
     return slot.id == handle.id && slot.generation == handle.generation;
+}
+
+ResourceAcquisitionId ResourceManager::NextAcquisitionId() noexcept
+{
+    const ResourceAcquisitionId result = next_acquisition_id_;
+    ++next_acquisition_id_;
+    if (next_acquisition_id_ == 0)
+    {
+        next_acquisition_id_ = 1;
+    }
+    return result;
 }
 
 ResourceGeneration ResourceManager::NextGeneration(ResourceGeneration generation)
@@ -382,9 +405,19 @@ void ResourceManager::ReleaseDependencyHandles(std::vector<OwnedResourceDependen
 {
     for (const OwnedResourceDependency& dependency : handles)
     {
-        (void)Release(dependency.handle);
+        const auto released = Release(dependency.lease);
+        if (!released)
+        {
+            RecordInvariantFailure();
+        }
     }
     handles.clear();
+}
+
+void ResourceManager::RecordInvariantFailure() noexcept
+{
+    ++invariant_failure_count_;
+    assert(false && "resource manager invariant failure");
 }
 
 void ResourceManager::RollbackLoadAttempt(ResourceSlot& slot)
@@ -486,7 +519,7 @@ foundation::Result<void> ResourceManager::FinishLoadedArtifact(ResourceSlot& slo
     {
         slot.state = ResourceState::WaitingForDependencies;
         slot.pending_artifact = std::move(artifact);
-        load_queue_.Enqueue(ResourceLoadJob{ResourceRequest{slot.id, slot.type, {}}, slot.generation});
+        load_queue_.Enqueue(ResourceLoadJob{ResourceRequest{slot.id, slot.type}, slot.generation});
         return foundation::Result<void>::Success();
     }
 
@@ -539,7 +572,7 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
                 return ResourceFailureValue<bool>("resource.loader_not_found", "resource loader is not registered for a required dependency");
             }
 
-            const auto dependency_result = Request(ResourceRequest{dependency.resource_id, dependency.type, {}});
+            const auto dependency_result = RequestLease(ResourceRequest{dependency.resource_id, dependency.type});
             if (!dependency_result)
             {
                 if (!dependency.required)
@@ -556,7 +589,7 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
 
     for (auto iterator = slot.dependency_handles.begin(); iterator != slot.dependency_handles.end();)
     {
-        ResourceHandle dependency_handle = iterator->handle;
+        ResourceHandle dependency_handle = iterator->lease.resource;
         const ResourceState state = GetState(dependency_handle);
         if (state == ResourceState::Failed || state == ResourceState::Unknown || state == ResourceState::Evicted)
         {
@@ -564,7 +597,7 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
             {
                 return ResourceFailureValue<bool>("resource.dependency_failed", "resource dependency failed before root became ready");
             }
-            (void)Release(dependency_handle);
+            (void)Release(iterator->lease);
             iterator = slot.dependency_handles.erase(iterator);
             continue;
         }
@@ -574,7 +607,7 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
             {
                 return foundation::Result<bool>::Success(false);
             }
-            (void)Release(dependency_handle);
+            (void)Release(iterator->lease);
             iterator = slot.dependency_handles.erase(iterator);
             continue;
         }
@@ -636,7 +669,12 @@ foundation::Result<void> ResourceManager::CommitReadyPayload(ResourceSlot& slot,
 
 bool ResourceManager::CanFit(std::size_t bytes) const noexcept
 {
-    return memory_budget_bytes_ == 0 || resident_bytes_ + bytes <= memory_budget_bytes_;
+    if (memory_budget_bytes_ == 0)
+    {
+        return true;
+    }
+
+    return resident_bytes_ <= memory_budget_bytes_ && bytes <= memory_budget_bytes_ - resident_bytes_;
 }
 
 void ResourceManager::RemovePayload(ResourceSlot& slot)

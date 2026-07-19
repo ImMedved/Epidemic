@@ -9,6 +9,5 @@ struct ResourceRequest
 {
     ResourceId resource_id{};
     ResourceType type{};
-    RuntimeBudget budget_hint{};
 };
 } 

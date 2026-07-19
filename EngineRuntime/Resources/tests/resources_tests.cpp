@@ -1,4 +1,4 @@
-﻿#include "Epidemic/Runtime/Resources/resource_dependency_graph.h"
+#include "Epidemic/Runtime/Resources/resource_dependency_graph.h"
 #include "Epidemic/Runtime/Resources/resource_handle.h"
 #include "Epidemic/Runtime/Resources/resource_loader.h"
 #include "Epidemic/Runtime/Resources/resource_loader_registry.h"
@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <type_traits>
 #include <utility>
@@ -29,6 +30,8 @@ using epidemic::runtime::CreateResourceServices;
 using epidemic::runtime::IResourceLoader;
 using epidemic::runtime::IResourceLoaderRegistry;
 using epidemic::runtime::IResourceManager;
+using epidemic::runtime::IResourcePayload;
+using epidemic::runtime::ResourceLease;
 using epidemic::runtime::ResourceDependency;
 using epidemic::runtime::ResourceDependencyGraph;
 using epidemic::runtime::ResourceHandle;
@@ -51,7 +54,7 @@ using epidemic::runtime::RuntimeBudget;
 
 [[nodiscard]] ResourceRequest MakeRequest(std::string_view resource_id, std::string_view type)
 {
-    return ResourceRequest{ResourceId::FromString(resource_id), Type(type), {}};
+    return ResourceRequest{ResourceId::FromString(resource_id), Type(type)};
 }
 
 [[nodiscard]] ResourceDependency MakeDependency(std::string_view resource_id, std::string_view type, bool required = true)
@@ -107,6 +110,87 @@ class CountingLoader final : public IResourceLoader
     std::vector<ResourceDependency> dependencies_;
 };
 
+class SizedPayload final : public IResourcePayload
+{
+  public:
+    explicit SizedPayload(std::size_t size) : size_(size)
+    {
+    }
+
+    [[nodiscard]] std::size_t GetSizeBytes() const noexcept override
+    {
+        return size_;
+    }
+
+  private:
+    std::size_t size_ = 0;
+};
+
+class SizedPayloadLoader final : public IResourceLoader
+{
+  public:
+    SizedPayloadLoader(ResourceType type, std::size_t payload_size) : type_(type), payload_size_(payload_size)
+    {
+    }
+
+    [[nodiscard]] ResourceType GetResourceType() const override
+    {
+        return type_;
+    }
+
+    [[nodiscard]] epidemic::foundation::Result<ResourceLoadArtifact> Load(ResourceRequest request) override
+    {
+        return epidemic::foundation::Result<ResourceLoadArtifact>::Success(
+            ResourceLoadArtifact{request.resource_id, request.type, std::make_shared<SizedPayload>(payload_size_), {}});
+    }
+
+  private:
+    ResourceType type_{};
+    std::size_t payload_size_ = 0;
+};
+
+class ArtifactOverrideLoader final : public IResourceLoader
+{
+  public:
+    enum class Mode
+    {
+        MismatchedId,
+        MismatchedType,
+        NullPayload,
+    };
+
+    explicit ArtifactOverrideLoader(ResourceType type, Mode mode) : type_(type), mode_(mode)
+    {
+    }
+
+    [[nodiscard]] ResourceType GetResourceType() const override
+    {
+        return type_;
+    }
+
+    [[nodiscard]] epidemic::foundation::Result<ResourceLoadArtifact> Load(ResourceRequest request) override
+    {
+        ResourceLoadArtifact artifact{request.resource_id, request.type, std::make_shared<ByteResourcePayload>(std::vector<std::byte>{std::byte{0x2a}}), {}};
+        if (mode_ == Mode::MismatchedId)
+        {
+            artifact.resource_id = ResourceId::FromString("resources/wrong.mesh");
+        }
+        else if (mode_ == Mode::MismatchedType)
+        {
+            artifact.type = Type("texture");
+        }
+        else if (mode_ == Mode::NullPayload)
+        {
+            artifact.payload.reset();
+        }
+        return epidemic::foundation::Result<ResourceLoadArtifact>::Success(std::move(artifact));
+    }
+
+  private:
+    ResourceType type_{};
+    Mode mode_ = Mode::NullPayload;
+};
+
 [[nodiscard]] const ResourceSlot* Slot(const ResourceManager& manager, std::string_view resource_id)
 {
     return manager.InspectSlot(ResourceId::FromString(resource_id));
@@ -117,7 +201,7 @@ class CountingLoader final : public IResourceLoader
     const ResourceHandle handle{};
     const ResourceRequest request{};
     const auto result = ResourceResult<ResourceHandle>::Success(ResourceHandle{ResourceId::FromString("resources/a.mesh"), 2u});
-    return !handle.IsValid() && !request.resource_id.IsValid() && request.budget_hint.IsUnlimited() && result &&
+    return !handle.IsValid() && !request.resource_id.IsValid() && result &&
            result.Value().generation == 2u && CanTransition(ResourceState::Unloaded, ResourceState::Queued) &&
            !CanTransition(ResourceState::Ready, ResourceState::Queued);
 }
@@ -154,17 +238,17 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto handle = manager.Request(MakeRequest("resources/tree.mesh", "mesh"));
-    if (!handle || loader.load_count() != 0 || manager.GetState(handle.Value()) != ResourceState::Queued)
+    const auto handle = manager.RequestLease(MakeRequest("resources/tree.mesh", "mesh"));
+    if (!handle || loader.load_count() != 0 || manager.GetState(handle.Value().resource) != ResourceState::Queued)
     {
         return false;
     }
 
     const auto processed = manager.ProcessPendingLoads();
-    const auto payload = manager.GetPayload(handle.Value());
-    const auto stats = manager.GetMemoryStats();
+    const auto payload = manager.GetPayload(handle.Value().resource);
+    const auto stats = manager.GetMemoryStatistics();
     return processed && processed.Value().processed_jobs == 1u && processed.Value().loaded_resources == 1u && loader.load_count() == 1 &&
-           manager.IsReady(handle.Value()) && payload && payload->GetSizeBytes() == 16u && stats.resident_bytes == 16u && stats.ready_count == 1u;
+           manager.IsReady(handle.Value().resource) && payload && payload->GetSizeBytes() == 16u && stats.resident_bytes == 16u && stats.ready_count == 1u;
 }
 
 [[nodiscard]] bool TestProcessBudgetLimitsJobs()
@@ -177,13 +261,13 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto first = manager.Request(MakeRequest("resources/a.mesh", "mesh"));
-    const auto second = manager.Request(MakeRequest("resources/b.mesh", "mesh"));
+    const auto first = manager.RequestLease(MakeRequest("resources/a.mesh", "mesh"));
+    const auto second = manager.RequestLease(MakeRequest("resources/b.mesh", "mesh"));
     RuntimeBudget budget{};
     budget.max_items = 1;
     const auto processed = manager.ProcessPendingLoads(budget);
     return first && second && processed && processed.Value().processed_jobs == 1u && loader.load_count() == 1 &&
-           manager.GetState(first.Value()) == ResourceState::Ready && manager.GetState(second.Value()) == ResourceState::Queued;
+           manager.GetState(first.Value().resource) == ResourceState::Ready && manager.GetState(second.Value().resource) == ResourceState::Queued;
 }
 
 [[nodiscard]] bool TestRepeatedReadyRequestDoesNotReload()
@@ -196,14 +280,14 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto first = manager.Request(MakeRequest("resources/rock.mesh", "mesh"));
+    const auto first = manager.RequestLease(MakeRequest("resources/rock.mesh", "mesh"));
     if (!first || !manager.ProcessPendingLoads())
     {
         return false;
     }
-    const auto second = manager.Request(MakeRequest("resources/rock.mesh", "mesh"));
+    const auto second = manager.RequestLease(MakeRequest("resources/rock.mesh", "mesh"));
     const ResourceSlot* slot = Slot(manager, "resources/rock.mesh");
-    return second && first.Value() == second.Value() && loader.load_count() == 1 && slot != nullptr && slot->reference_count == 2u;
+    return second && first.Value().resource == second.Value().resource && loader.load_count() == 1 && slot != nullptr && slot->reference_count == 2u;
 }
 
 [[nodiscard]] bool TestTypeMismatchRejectsConflictingRequest()
@@ -217,9 +301,9 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto mesh = manager.Request(MakeRequest("resources/shared.asset", "mesh"));
-    const auto texture = manager.Request(MakeRequest("resources/shared.asset", "texture"));
-    return mesh && !texture && texture.GetError().HasCode("resource.type_mismatch") && manager.GetState(mesh.Value()) == ResourceState::Queued;
+    const auto mesh = manager.RequestLease(MakeRequest("resources/shared.asset", "mesh"));
+    const auto texture = manager.RequestLease(MakeRequest("resources/shared.asset", "texture"));
+    return mesh && !texture && texture.GetError().HasCode("resource.type_mismatch") && manager.GetState(mesh.Value().resource) == ResourceState::Queued;
 }
 
 [[nodiscard]] bool TestDependenciesLoadAndReleaseOnlyOnEvict()
@@ -233,7 +317,7 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto root = manager.Request(MakeRequest("resources/tree.mesh", "mesh"));
+    const auto root = manager.RequestLease(MakeRequest("resources/tree.mesh", "mesh"));
     if (!root)
     {
         return false;
@@ -248,14 +332,14 @@ class CountingLoader final : public IResourceLoader
     }
 
     const auto release_root = manager.Release(root.Value());
-    if (!release_root || manager.GetState(root.Value()) != ResourceState::Ready || root_slot->reference_count != 0u ||
+    if (!release_root || manager.GetState(root.Value().resource) != ResourceState::Ready || root_slot->reference_count != 0u ||
         dependency_slot->reference_count != 1u)
     {
         return false;
     }
 
     const auto evicted = manager.Evict(ResourceId::FromString("resources/tree.mesh"));
-    return evicted && manager.GetState(root.Value()) == ResourceState::Unknown && dependency_slot->reference_count == 0u &&
+    return evicted && manager.GetState(root.Value().resource) == ResourceState::Unknown && dependency_slot->reference_count == 0u &&
            dependency_slot->state == ResourceState::Ready;
 }
 
@@ -271,8 +355,8 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto first = manager.Request(MakeRequest("resources/tree.mesh", "mesh"));
-    const auto second = manager.Request(MakeRequest("resources/tree.mat", "material"));
+    const auto first = manager.RequestLease(MakeRequest("resources/tree.mesh", "mesh"));
+    const auto second = manager.RequestLease(MakeRequest("resources/tree.mat", "material"));
     if (!first || !second || !manager.ProcessPendingLoads())
     {
         return false;
@@ -308,7 +392,7 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto root = manager.Request(MakeRequest("resources/a.mesh", "mesh"));
+    const auto root = manager.RequestLease(MakeRequest("resources/a.mesh", "mesh"));
     const auto processed = manager.ProcessPendingLoads(RuntimeBudget{});
     const ResourceSlot* texture = Slot(manager, "resources/c.texture");
     return root && processed && processed.Value().failed_resources >= 1u && texture &&
@@ -326,12 +410,39 @@ class CountingLoader final : public IResourceLoader
 
     ResourceManager manager(&registry);
     manager.SetMemoryBudgetBytes(8);
-    const auto handle = manager.Request(MakeRequest("resources/heavy.mesh", "mesh"));
+    const auto handle = manager.RequestLease(MakeRequest("resources/heavy.mesh", "mesh"));
     const auto processed = manager.ProcessPendingLoads();
     const ResourceSlot* slot = Slot(manager, "resources/heavy.mesh");
-    const auto stats = manager.GetMemoryStats();
+    const auto stats = manager.GetMemoryStatistics();
     return handle && processed && processed.Value().failed_resources == 1u && slot && slot->state == ResourceState::Failed &&
            !slot->payload && stats.resident_bytes == 0u;
+}
+
+[[nodiscard]] bool TestMemoryBudgetOverflowCannotFit()
+{
+    ResourceLoaderRegistry registry;
+    SizedPayloadLoader huge_loader(Type("huge"), std::numeric_limits<std::size_t>::max() - 7u);
+    SizedPayloadLoader tiny_loader(Type("tiny"), 16u);
+    if (!registry.RegisterLoader(huge_loader) || !registry.RegisterLoader(tiny_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    manager.SetMemoryBudgetBytes(std::numeric_limits<std::size_t>::max());
+    const auto huge = manager.RequestLease(MakeRequest("resources/huge.bin", "huge"));
+    RuntimeBudget one_job{};
+    one_job.max_items = 1;
+    const auto first_tick = manager.ProcessPendingLoads(one_job);
+    const auto tiny = manager.RequestLease(MakeRequest("resources/tiny.bin", "tiny"));
+    const auto second_tick = manager.ProcessPendingLoads(one_job);
+    const ResourceSlot* huge_slot = Slot(manager, "resources/huge.bin");
+    const ResourceSlot* tiny_slot = Slot(manager, "resources/tiny.bin");
+    const auto stats = manager.GetMemoryStatistics();
+    return huge && tiny && first_tick && second_tick && second_tick.Value().failed_resources == 1u &&
+           huge_slot && huge_slot->state == ResourceState::Ready &&
+           tiny_slot && tiny_slot->state == ResourceState::Failed &&
+           stats.resident_bytes == huge_slot->memory_bytes;
 }
 
 [[nodiscard]] bool TestRequiredDependencyFailureReleasesAcquiredHandles()
@@ -345,7 +456,7 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto root = manager.Request(MakeRequest("resources/root.mesh", "mesh"));
+    const auto root = manager.RequestLease(MakeRequest("resources/root.mesh", "mesh"));
     const auto processed = manager.ProcessPendingLoads();
     const ResourceSlot* root_slot = Slot(manager, "resources/root.mesh");
     const ResourceSlot* dependency_slot = Slot(manager, "resources/missing.tex");
@@ -366,11 +477,11 @@ class CountingLoader final : public IResourceLoader
 
     ResourceManager manager(&registry);
     manager.SetMemoryBudgetBytes(16);
-    const auto root = manager.Request(MakeRequest("resources/heavy-root.mesh", "mesh"));
+    const auto root = manager.RequestLease(MakeRequest("resources/heavy-root.mesh", "mesh"));
     const auto processed = manager.ProcessPendingLoads();
     const ResourceSlot* root_slot = Slot(manager, "resources/heavy-root.mesh");
     const ResourceSlot* dependency_slot = Slot(manager, "resources/budget.tex");
-    const auto stats = manager.GetMemoryStats();
+    const auto stats = manager.GetMemoryStatistics();
     return root && processed && processed.Value().failed_resources == 1u && root_slot && dependency_slot &&
            root_slot->state == ResourceState::Failed && root_slot->dependency_handles.empty() &&
            dependency_slot->state == ResourceState::Ready && dependency_slot->reference_count == 0u &&
@@ -388,7 +499,7 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto root = manager.Request(MakeRequest("resources/optional-root.mesh", "mesh"));
+    const auto root = manager.RequestLease(MakeRequest("resources/optional-root.mesh", "mesh"));
     const auto processed = manager.ProcessPendingLoads();
     const ResourceSlot* root_slot = Slot(manager, "resources/optional-root.mesh");
     const ResourceSlot* dependency_slot = Slot(manager, "resources/optional.tex");
@@ -407,7 +518,7 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto root = manager.Request(MakeRequest("resources/nonblocking-root.mesh", "mesh"));
+    const auto root = manager.RequestLease(MakeRequest("resources/nonblocking-root.mesh", "mesh"));
     RuntimeBudget budget{};
     budget.max_items = 1;
     const auto processed = manager.ProcessPendingLoads(budget);
@@ -429,12 +540,65 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto failed = manager.Request(MakeRequest("resources/bad.mesh", "mesh"));
-    const auto good = manager.Request(MakeRequest("resources/good.tex", "texture"));
+    const auto failed = manager.RequestLease(MakeRequest("resources/bad.mesh", "mesh"));
+    const auto good = manager.RequestLease(MakeRequest("resources/good.tex", "texture"));
     const auto processed = manager.ProcessPendingLoads();
     return failed && good && processed && processed.Value().processed_jobs == 2u &&
            processed.Value().failed_resources == 1u && processed.Value().loaded_resources == 1u &&
-           manager.GetState(failed.Value()) == ResourceState::Failed && manager.GetState(good.Value()) == ResourceState::Ready;
+           manager.GetState(failed.Value().resource) == ResourceState::Failed && manager.GetState(good.Value().resource) == ResourceState::Ready;
+}
+
+[[nodiscard]] bool TestInvalidLoaderArtifactsFail()
+{
+    ResourceLoaderRegistry wrong_id_registry;
+    ResourceLoaderRegistry wrong_type_registry;
+    ResourceLoaderRegistry null_payload_registry;
+    ArtifactOverrideLoader wrong_id(Type("mesh"), ArtifactOverrideLoader::Mode::MismatchedId);
+    ArtifactOverrideLoader wrong_type(Type("mesh"), ArtifactOverrideLoader::Mode::MismatchedType);
+    ArtifactOverrideLoader null_payload(Type("mesh"), ArtifactOverrideLoader::Mode::NullPayload);
+    if (!wrong_id_registry.RegisterLoader(wrong_id) || !wrong_type_registry.RegisterLoader(wrong_type) ||
+        !null_payload_registry.RegisterLoader(null_payload))
+    {
+        return false;
+    }
+
+    ResourceManager wrong_id_manager(&wrong_id_registry);
+    ResourceManager wrong_type_manager(&wrong_type_registry);
+    ResourceManager null_payload_manager(&null_payload_registry);
+    const auto wrong_id_handle = wrong_id_manager.RequestLease(MakeRequest("resources/bad-id.mesh", "mesh"));
+    const auto wrong_type_handle = wrong_type_manager.RequestLease(MakeRequest("resources/bad-type.mesh", "mesh"));
+    const auto null_payload_handle = null_payload_manager.RequestLease(MakeRequest("resources/null.mesh", "mesh"));
+    const auto wrong_id_processed = wrong_id_manager.ProcessPendingLoads();
+    const auto wrong_type_processed = wrong_type_manager.ProcessPendingLoads();
+    const auto null_payload_processed = null_payload_manager.ProcessPendingLoads();
+
+    return wrong_id_handle && wrong_type_handle && null_payload_handle &&
+           wrong_id_processed && wrong_id_processed.Value().failed_resources == 1u &&
+           wrong_type_processed && wrong_type_processed.Value().failed_resources == 1u &&
+           null_payload_processed && null_payload_processed.Value().failed_resources == 1u &&
+           wrong_id_manager.GetState(wrong_id_handle.Value().resource) == ResourceState::Failed &&
+           wrong_type_manager.GetState(wrong_type_handle.Value().resource) == ResourceState::Failed &&
+           null_payload_manager.GetState(null_payload_handle.Value().resource) == ResourceState::Failed;
+}
+
+[[nodiscard]] bool TestRetryAfterFailedLoad()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader failing_loader(Type("mesh"), 8, true);
+    if (!registry.RegisterLoader(failing_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto first = manager.RequestLease(MakeRequest("resources/retry.mesh", "mesh"));
+    const auto failed = manager.ProcessPendingLoads();
+    const auto second = manager.RequestLease(MakeRequest("resources/retry.mesh", "mesh"));
+    const auto retried = manager.ProcessPendingLoads();
+    const ResourceSlot* slot = Slot(manager, "resources/retry.mesh");
+    return first && failed && failed.Value().failed_resources == 1u && second && first.Value().resource == second.Value().resource &&
+           retried && retried.Value().failed_resources == 1u && slot && slot->reference_count == 2u &&
+           failing_loader.load_count() == 2;
 }
 
 [[nodiscard]] bool TestByteBudgetStopsFurtherJobs()
@@ -447,14 +611,93 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto first = manager.Request(MakeRequest("resources/byte-a.mesh", "mesh"));
-    const auto second = manager.Request(MakeRequest("resources/byte-b.mesh", "mesh"));
+    const auto first = manager.RequestLease(MakeRequest("resources/byte-a.mesh", "mesh"));
+    const auto second = manager.RequestLease(MakeRequest("resources/byte-b.mesh", "mesh"));
     RuntimeBudget budget{};
     budget.max_bytes = 8;
     const auto processed = manager.ProcessPendingLoads(budget);
     return first && second && processed && processed.Value().loaded_resources == 1u &&
-           processed.Value().bytes_loaded == 8u && manager.GetState(first.Value()) == ResourceState::Ready &&
-           manager.GetState(second.Value()) == ResourceState::Queued;
+           processed.Value().bytes_loaded == 8u && manager.GetState(first.Value().resource) == ResourceState::Ready &&
+           manager.GetState(second.Value().resource) == ResourceState::Queued;
+}
+
+[[nodiscard]] bool TestByteBudgetIsSoftForCurrentPayload()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"), 8);
+    if (!registry.RegisterLoader(loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto first = manager.RequestLease(MakeRequest("resources/soft-byte.mesh", "mesh"));
+    const auto second = manager.RequestLease(MakeRequest("resources/soft-byte-b.mesh", "mesh"));
+    RuntimeBudget budget{};
+    budget.max_bytes = 4;
+    const auto processed = manager.ProcessPendingLoads(budget);
+    return first && second && processed && processed.Value().loaded_resources == 1u &&
+           processed.Value().bytes_loaded == 8u && manager.GetState(first.Value().resource) == ResourceState::Ready &&
+           manager.GetState(second.Value().resource) == ResourceState::Queued;
+}
+
+[[nodiscard]] bool TestCancellationAfterDependencyAcquisitionReleasesDependency()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(Type("mesh"), 8, false, {MakeDependency("resources/cancel.tex", "texture")});
+    CountingLoader texture_loader(Type("texture"), 4);
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto root = manager.RequestLease(MakeRequest("resources/cancel-root.mesh", "mesh"));
+    RuntimeBudget one_job{};
+    one_job.max_items = 1;
+    const auto first_tick = manager.ProcessPendingLoads(one_job);
+    const ResourceSlot* dependency_before = Slot(manager, "resources/cancel.tex");
+    if (!root || !first_tick || !dependency_before || dependency_before->reference_count != 1u)
+    {
+        return false;
+    }
+
+    const auto released_root = manager.Release(root.Value());
+    const auto second_tick = manager.ProcessPendingLoads(one_job);
+    const auto third_tick = manager.ProcessPendingLoads(one_job);
+    const ResourceSlot* dependency_after = Slot(manager, "resources/cancel.tex");
+    const ResourceSlot* root_after = Slot(manager, "resources/cancel-root.mesh");
+    return released_root && second_tick && third_tick && dependency_after && dependency_after->reference_count == 0u &&
+           root_after && root_after->dependency_handles.empty() && !root_after->payload;
+}
+
+[[nodiscard]] bool TestResourceLeasePreventsCrossConsumerDoubleRelease()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"), 8);
+    if (!registry.RegisterLoader(loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto first = manager.RequestLease(MakeRequest("resources/leased.mesh", "mesh"));
+    const auto second = manager.RequestLease(MakeRequest("resources/leased.mesh", "mesh"));
+    if (!first || !second || first.Value() == second.Value() || !manager.ProcessPendingLoads())
+    {
+        return false;
+    }
+
+    const auto release_first = manager.Release(first.Value());
+    const auto release_first_again = manager.Release(first.Value());
+    const ResourceSlot* slot_after_double = Slot(manager, "resources/leased.mesh");
+    const std::uint32_t count_after_double = slot_after_double != nullptr ? slot_after_double->reference_count : 0u;
+    const auto release_second = manager.Release(second.Value());
+    const ResourceSlot* slot_after_second = Slot(manager, "resources/leased.mesh");
+    return release_first && !release_first_again &&
+           release_first_again.GetError().HasCode("resource.acquisition_underflow") &&
+           slot_after_double && count_after_double == 1u &&
+           release_second && slot_after_second && slot_after_second->reference_count == 0u;
 }
 
 [[nodiscard]] bool TestInFlightResourcesAreNotEvicted()
@@ -467,7 +710,7 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto handle = manager.Request(MakeRequest("resources/inflight.mesh", "mesh"));
+    const auto handle = manager.RequestLease(MakeRequest("resources/inflight.mesh", "mesh"));
     if (!handle)
     {
         return false;
@@ -488,7 +731,7 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto handle = manager.Request(MakeRequest("resources/stale.mesh", "mesh"));
+    const auto handle = manager.RequestLease(MakeRequest("resources/stale.mesh", "mesh"));
     if (!handle || !manager.ProcessPendingLoads())
     {
         return false;
@@ -497,10 +740,10 @@ class CountingLoader final : public IResourceLoader
     const auto double_release = manager.Release(handle.Value());
     const auto evicted = manager.Evict(ResourceId::FromString("resources/stale.mesh"));
     const auto invalid = manager.ValidateHandle(ResourceHandle{});
-    const auto stale = manager.ValidateHandle(handle.Value());
+    const auto stale = manager.ValidateHandle(handle.Value().resource);
     const auto stale_release = manager.Release(handle.Value());
-    return released && !double_release && double_release.GetError().HasCode("resource.reference_underflow") && evicted &&
-           manager.GetState(ResourceHandle{}) == ResourceState::Unknown && manager.GetState(handle.Value()) == ResourceState::Unknown &&
+    return released && !double_release && double_release.GetError().HasCode("resource.acquisition_underflow") && evicted &&
+           manager.GetState(ResourceHandle{}) == ResourceState::Unknown && manager.GetState(handle.Value().resource) == ResourceState::Unknown &&
            !invalid && invalid.GetError().HasCode("resource.invalid_handle") && !stale &&
            stale.GetError().HasCode("resource.stale_handle") && !stale_release &&
            stale_release.GetError().HasCode("resource.stale_handle");
@@ -516,7 +759,7 @@ class CountingLoader final : public IResourceLoader
     }
 
     ResourceManager manager(&registry);
-    const auto handle = manager.Request(MakeRequest("resources/cache.mesh", "mesh"));
+    const auto handle = manager.RequestLease(MakeRequest("resources/cache.mesh", "mesh"));
     if (!handle || !manager.ProcessPendingLoads())
     {
         return false;
@@ -545,16 +788,16 @@ class CountingLoader final : public IResourceLoader
     {
         return false;
     }
-    const auto handle = services.Value().manager->Request(MakeRequest("resources/factory.mesh", "mesh"));
+    const auto handle = services.Value().manager->RequestLease(MakeRequest("resources/factory.mesh", "mesh"));
     const auto processed = services.Value().manager->ProcessPendingLoads();
-    return handle && processed && services.Value().manager->IsReady(handle.Value());
+    return handle && processed && services.Value().manager->IsReady(handle.Value().resource);
 }
 } // namespace
 
 int main()
 {
     static_assert(std::is_same_v<decltype(ResourceHandle{}.generation), std::uint32_t>);
-    static_assert(std::is_same_v<decltype(ResourceRequest{}.budget_hint), RuntimeBudget>);
+    static_assert(std::is_same_v<decltype(ResourceRequest{}.resource_id), ResourceId>);
     static_assert(std::is_abstract_v<IResourceManager>);
     static_assert(std::is_abstract_v<IResourceLoader>);
     static_assert(std::is_abstract_v<IResourceLoaderRegistry>);
@@ -577,12 +820,18 @@ int main()
         {"SharedDependencySurvivesUntilBothRootsEvict", TestSharedDependencySurvivesUntilBothRootsEvict},
         {"DependencyCycleAcrossChainFails", TestDependencyCycleAcrossChainFails},
         {"MemoryBudgetFailureRollsBackPayload", TestMemoryBudgetFailureRollsBackPayload},
+        {"MemoryBudgetOverflowCannotFit", TestMemoryBudgetOverflowCannotFit},
         {"RequiredDependencyFailureReleasesAcquiredHandles", TestRequiredDependencyFailureReleasesAcquiredHandles},
         {"MemoryBudgetFailureAfterDependencyAcquisitionReleasesHandles", TestMemoryBudgetFailureAfterDependencyAcquisitionReleasesHandles},
         {"OptionalDependencyFailureDoesNotFailRoot", TestOptionalDependencyFailureDoesNotFailRoot},
         {"OptionalDependencyDoesNotBlockRoot", TestOptionalDependencyDoesNotBlockRoot},
         {"QueueContinuesAfterIndependentFailure", TestQueueContinuesAfterIndependentFailure},
+        {"InvalidLoaderArtifactsFail", TestInvalidLoaderArtifactsFail},
+        {"RetryAfterFailedLoad", TestRetryAfterFailedLoad},
         {"ByteBudgetStopsFurtherJobs", TestByteBudgetStopsFurtherJobs},
+        {"ByteBudgetIsSoftForCurrentPayload", TestByteBudgetIsSoftForCurrentPayload},
+        {"CancellationAfterDependencyAcquisitionReleasesDependency", TestCancellationAfterDependencyAcquisitionReleasesDependency},
+        {"ResourceLeasePreventsCrossConsumerDoubleRelease", TestResourceLeasePreventsCrossConsumerDoubleRelease},
         {"InFlightResourcesAreNotEvicted", TestInFlightResourcesAreNotEvicted},
         {"UnknownAndStaleHandles", TestUnknownAndStaleHandles},
         {"MemoryStatisticsTrackUnreferencedCache", TestMemoryStatisticsTrackUnreferencedCache},

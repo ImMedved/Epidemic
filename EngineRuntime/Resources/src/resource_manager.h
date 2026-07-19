@@ -20,7 +20,7 @@ using ResourceGeneration = std::uint32_t;
 
 struct OwnedResourceDependency
 {
-    ResourceHandle handle{};
+    ResourceLease lease{};
     ResourceId id{};
     bool required = true;
 };
@@ -32,6 +32,7 @@ struct ResourceSlot
     ResourceGeneration generation = 1;
     ResourceState state = ResourceState::Unknown;
     std::uint32_t reference_count = 0;
+    std::unordered_set<ResourceAcquisitionId> active_acquisitions;
     ResourcePayloadPtr payload{};
     std::size_t memory_bytes = 0;
     std::vector<OwnedResourceDependency> dependency_handles;
@@ -75,9 +76,9 @@ class ResourceManager final : public IResourceManager
     ResourceManager() = default;
     explicit ResourceManager(IResourceLoaderRegistry* loader_registry);
 
-    [[nodiscard]] foundation::Result<ResourceHandle> Request(ResourceRequest request) override;
+    [[nodiscard]] foundation::Result<ResourceLease> RequestLease(ResourceRequest request) override;
     [[nodiscard]] foundation::Result<ResourceProcessingStats> ProcessPendingLoads(RuntimeBudget budget = {}) override;
-    [[nodiscard]] foundation::Result<void> Release(ResourceHandle handle) override;
+    [[nodiscard]] foundation::Result<void> Release(ResourceLease lease) override;
     [[nodiscard]] foundation::Result<void> Evict(ResourceId id) override;
     [[nodiscard]] std::size_t EvictUnreferenced() override;
 
@@ -88,12 +89,13 @@ class ResourceManager final : public IResourceManager
     [[nodiscard]] ResourcePayloadPtr GetPayload(ResourceHandle handle) const override;
 
     void SetMemoryBudgetBytes(std::size_t bytes) override;
-    [[nodiscard]] ResourceMemoryStats GetMemoryStats() const override;
-    [[nodiscard]] ResourceMemoryStatistics GetMemoryStatistics() const override;
+    [[nodiscard]] ResourceMemoryStats GetMemoryStatistics() const override;
 
     [[nodiscard]] const ResourceSlot* InspectSlot(ResourceId id) const;
 
   private:
+    [[nodiscard]] foundation::Result<ResourceHandle> Acquire(ResourceRequest request);
+    [[nodiscard]] ResourceAcquisitionId NextAcquisitionId() noexcept;
     [[nodiscard]] static bool IsHandleCurrent(const ResourceSlot& slot, ResourceHandle handle);
     [[nodiscard]] static ResourceGeneration NextGeneration(ResourceGeneration generation);
     [[nodiscard]] static foundation::Result<void> ValidateRequest(const ResourceRequest& request);
@@ -101,6 +103,7 @@ class ResourceManager final : public IResourceManager
 
     void ReleaseDependencyHandles(ResourceSlot& slot);
     void ReleaseDependencyHandles(std::vector<OwnedResourceDependency>& handles);
+    void RecordInvariantFailure() noexcept;
     void RollbackLoadAttempt(ResourceSlot& slot);
     [[nodiscard]] foundation::Result<void> LoadSlot(ResourceSlot& slot, const ResourceRequest& request, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<void> FinishLoadedArtifact(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
@@ -117,5 +120,7 @@ class ResourceManager final : public IResourceManager
     std::unordered_set<ResourceId> loading_resources_;
     std::size_t resident_bytes_ = 0;
     std::size_t memory_budget_bytes_ = 0;
+    std::size_t invariant_failure_count_ = 0;
+    ResourceAcquisitionId next_acquisition_id_ = 1;
 };
 } // namespace epidemic::runtime
