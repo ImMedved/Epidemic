@@ -20,18 +20,6 @@ template <typename TObject>
 template <typename TObject>
 [[nodiscard]] foundation::Result<void> DeserializeObject(const ISerializer& serializer, IArchiveReader& reader, TObject& object);
 
-enum class SerializationState
-{
-    SchemaUnknown,
-    SchemaKnown,
-    Reading,
-    Writing,
-    Migrating,
-    Valid,
-    Invalid,
-    Failed,
-};
-
 class ISerializer
 {
   public:

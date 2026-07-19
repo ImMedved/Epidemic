@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <cstddef>
-#include <cmath>
 #include <limits>
 #include <numeric>
 #include <optional>
@@ -73,6 +72,18 @@ constexpr std::int64_t kSecondsPerHour = 60 * kSecondsPerMinute;
         return std::nullopt;
     }
     return left * right;
+}
+
+[[nodiscard]] std::optional<std::int64_t> ScaledTickDenominator(TimeScale scale)
+{
+    return CheckedMultiplyNonNegative(1000000, scale.denominator);
+}
+
+[[nodiscard]] std::optional<std::int64_t> ScaledTickNumerator(std::int64_t real_microseconds, std::int64_t game_ticks_per_real_second,
+                                                             TimeScale scale)
+{
+    const auto real_ticks = CheckedMultiplyNonNegative(real_microseconds, game_ticks_per_real_second);
+    return real_ticks ? CheckedMultiplyNonNegative(*real_ticks, scale.numerator) : std::nullopt;
 }
 
 [[nodiscard]] std::vector<PhaseBoundary> DefaultPhaseBoundaries()
@@ -151,26 +162,18 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Advance(std::chrono::microsec
         return foundation::Result<TimeAdvanceResult>::Success(MakeResult(previous));
     }
 
-    const long double scaled_ticks =
-        (static_cast<long double>(real_delta.count()) * static_cast<long double>(options_.game_ticks_per_real_second) *
-         static_cast<long double>(time_scale_.numerator)) /
-        (1000000.0L * static_cast<long double>(time_scale_.denominator));
-    if (!std::isfinite(scaled_ticks))
-    {
-        return foundation::Result<TimeAdvanceResult>::Failure(
-            MakeTimeError("time.overflow", "scaled time delta is not finite"));
-    }
-
-    const long double candidate_remainder = tick_remainder_ + scaled_ticks;
-    if (!std::isfinite(candidate_remainder) ||
-        candidate_remainder > static_cast<long double>(std::numeric_limits<std::int64_t>::max()))
+    const auto denominator = ScaledTickDenominator(time_scale_);
+    const auto scaled_numerator = ScaledTickNumerator(real_delta.count(), options_.game_ticks_per_real_second, time_scale_);
+    const auto candidate_numerator =
+        (denominator && scaled_numerator) ? CheckedAddInt(*scaled_numerator, tick_remainder_numerator_) : std::nullopt;
+    if (!denominator || !scaled_numerator || !candidate_numerator)
     {
         return foundation::Result<TimeAdvanceResult>::Failure(
             MakeTimeError("time.overflow", "scaled time delta overflows game duration"));
     }
 
-    const auto whole_ticks = static_cast<std::int64_t>(std::floor(candidate_remainder));
-    const long double remaining_remainder = candidate_remainder - static_cast<long double>(whole_ticks);
+    const auto whole_ticks = *candidate_numerator / *denominator;
+    const auto remaining_remainder = *candidate_numerator % *denominator;
 
     last_delta_ = GameDuration{whole_ticks};
     if (whole_ticks > 0)
@@ -184,7 +187,7 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Advance(std::chrono::microsec
         }
 
         now_ = *next;
-        tick_remainder_ = remaining_remainder;
+        tick_remainder_numerator_ = remaining_remainder;
         state_ = TimeRuntimeState::Running;
         RefreshSnapshot(true);
         PushEvent(TimeEventKind::TimeAdvanced);
@@ -192,7 +195,7 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Advance(std::chrono::microsec
     }
     else
     {
-        tick_remainder_ = remaining_remainder;
+        tick_remainder_numerator_ = remaining_remainder;
         RefreshSnapshot(false);
     }
 
@@ -246,17 +249,18 @@ foundation::Result<void> TimeRuntime::SetTimeScale(TimeScale scale)
     }
 
     time_scale_ = scale;
+    tick_remainder_numerator_ = 0;
     state_ = TimeRuntimeState::TimeScaleChanged;
     RefreshSnapshot(true);
     PushEvent(TimeEventKind::TimeScaleChanged);
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> TimeRuntime::Skip(GameDuration duration)
+foundation::Result<TimeAdvanceResult> TimeRuntime::Skip(GameDuration duration)
 {
     if (duration.ticks < 0)
     {
-        return foundation::Result<void>::Failure(
+        return foundation::Result<TimeAdvanceResult>::Failure(
             MakeTimeError("time.invalid_skip", "time skip duration must not be negative"));
     }
 
@@ -266,22 +270,23 @@ foundation::Result<void> TimeRuntime::Skip(GameDuration duration)
     {
         last_delta_ = GameDuration{};
         RefreshSnapshot(false);
-        return foundation::Result<void>::Success();
+        return foundation::Result<TimeAdvanceResult>::Success(MakeResult(previous));
     }
 
     const auto next = CheckedAdd(now_, duration);
     if (!next)
     {
-        return foundation::Result<void>::Failure(MakeTimeError("time.overflow", "skipping time overflows game time"));
+        return foundation::Result<TimeAdvanceResult>::Failure(MakeTimeError("time.overflow", "skipping time overflows game time"));
     }
 
     now_ = *next;
     last_delta_ = duration;
+    tick_remainder_numerator_ = 0;
     state_ = TimeRuntimeState::TimeJumped;
     RefreshSnapshot(true);
     PushEvent(TimeEventKind::TimeJumped);
     AppendBoundaryEvents(previous);
-    return foundation::Result<void>::Success();
+    return foundation::Result<TimeAdvanceResult>::Success(MakeResult(previous));
 }
 
 const std::vector<TimeEvent>& TimeRuntime::GetEvents() const

@@ -12,6 +12,8 @@ namespace epidemic::runtime
 struct TimeSnapshot
 {
     GameTimePoint now{};
+    // Transient result of the latest runtime operation. Snapshot revision tracks
+    // authoritative clock state changes, not last_delta-only refreshes.
     GameDuration last_delta{};
     TimeScale time_scale{};
     bool paused = false;

@@ -19,7 +19,7 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     [[nodiscard]] foundation::Result<void> Pause() override;
     [[nodiscard]] foundation::Result<void> Resume() override;
     [[nodiscard]] foundation::Result<void> SetTimeScale(TimeScale scale) override;
-    [[nodiscard]] foundation::Result<void> Skip(GameDuration duration) override;
+    [[nodiscard]] foundation::Result<TimeAdvanceResult> Skip(GameDuration duration) override;
 
     [[nodiscard]] const std::vector<TimeEvent>& GetEvents() const;
     [[nodiscard]] foundation::Result<GameTimePoint> ToGameTimePoint(CalendarDate date) const;
@@ -44,7 +44,7 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     TimeRuntimeState state_ = TimeRuntimeState::Running;
     TimeSnapshot snapshot_{};
     std::vector<TimeEvent> events_;
-    long double tick_remainder_ = 0.0L;
+    std::int64_t tick_remainder_numerator_ = 0;
     std::uint64_t revision_ = 0;
 };
 } // namespace epidemic::runtime

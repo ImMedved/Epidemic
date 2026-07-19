@@ -53,7 +53,7 @@ class ITimeRuntime
     [[nodiscard]] virtual foundation::Result<void> Pause() = 0;
     [[nodiscard]] virtual foundation::Result<void> Resume() = 0;
     [[nodiscard]] virtual foundation::Result<void> SetTimeScale(TimeScale scale) = 0;
-    [[nodiscard]] virtual foundation::Result<void> Skip(GameDuration duration) = 0;
+    [[nodiscard]] virtual foundation::Result<TimeAdvanceResult> Skip(GameDuration duration) = 0;
 };
 
 struct TimeServices

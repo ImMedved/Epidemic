@@ -72,6 +72,21 @@ bool TestDifferentFrameSplitsProduceSameGameTime()
     return ok && single_step.Now().ticks == 20 && split_step.Now().ticks == single_step.Now().ticks;
 }
 
+bool TestRationalAccumulatorAvoidsFloatingDrift()
+{
+    TimeOptions options{};
+    options.initial_time_scale = TimeScale{1, 3};
+    TimeRuntime runtime(options);
+
+    const auto first = runtime.Advance(std::chrono::seconds(1));
+    const auto second = runtime.Advance(std::chrono::seconds(1));
+    const auto third = runtime.Advance(std::chrono::seconds(1));
+
+    return first && second && third && first.Value().current.now.ticks == 0 &&
+           second.Value().current.now.ticks == 0 && third.Value().current.now.ticks == 1 &&
+           runtime.Now().ticks == 1;
+}
+
 bool TestPauseResume()
 {
     TimeRuntime runtime;
@@ -116,6 +131,21 @@ bool TestTimeScaleIsNormalized()
     return scale && runtime.GetSnapshot().time_scale == TimeScale{5, 2};
 }
 
+bool TestTimeScaleChangeDropsFractionalRemainder()
+{
+    TimeOptions options{};
+    options.initial_time_scale = TimeScale{1, 3};
+    TimeRuntime runtime(options);
+
+    const auto fractional = runtime.Advance(std::chrono::seconds(1));
+    const auto scale = runtime.SetTimeScale(TimeScale{1, 2});
+    const auto advanced = runtime.Advance(std::chrono::seconds(1));
+
+    return fractional && fractional.Value().current.now.ticks == 0 &&
+           scale && advanced && advanced.Value().current.now.ticks == 0 &&
+           runtime.Now().ticks == 0;
+}
+
 bool TestTimeSkipProducesJumpEvent()
 {
     TimeRuntime runtime;
@@ -123,7 +153,9 @@ bool TestTimeSkipProducesJumpEvent()
 
     const auto& events = runtime.GetEvents();
     return result && runtime.Now().ticks == 90 && runtime.LastDelta().ticks == 90 && !events.empty() &&
-           events.front().kind == TimeEventKind::TimeJumped;
+           events.front().kind == TimeEventKind::TimeJumped && result.Value().previous.now.ticks == 0 &&
+           result.Value().current.now.ticks == 90 && !result.Value().events.empty() &&
+           result.Value().events.front().kind == TimeEventKind::TimeJumped;
 }
 
 bool TestNegativeSkipIsRejected()
@@ -265,6 +297,19 @@ bool TestRevisionIncrementsOnlyOnChanges()
            runtime.GetSnapshot().revision == initial + 1;
 }
 
+bool TestLastDeltaOnlyRefreshDoesNotIncrementRevision()
+{
+    TimeRuntime runtime;
+    const auto advanced = runtime.Advance(std::chrono::seconds(1));
+    const auto revision_after_advance = runtime.GetSnapshot().revision;
+    const auto fractional = runtime.Advance(std::chrono::microseconds(1));
+
+    return advanced && fractional && advanced.Value().current.last_delta.ticks == 1 &&
+           fractional.Value().current.last_delta.ticks == 0 &&
+           fractional.Value().current.revision == revision_after_advance &&
+           runtime.GetSnapshot().revision == revision_after_advance;
+}
+
 bool TestFactoryCreatesSplitServices()
 {
     const auto services = CreateTimeServices({});
@@ -330,6 +375,10 @@ int main()
     {
         return 4;
     }
+    if (!TestRationalAccumulatorAvoidsFloatingDrift())
+    {
+        return 29;
+    }
     if (!TestPauseResume())
     {
         return 5;
@@ -345,6 +394,10 @@ int main()
     if (!TestTimeScaleIsNormalized())
     {
         return 17;
+    }
+    if (!TestTimeScaleChangeDropsFractionalRemainder())
+    {
+        return 31;
     }
     if (!TestTimeSkipProducesJumpEvent())
     {
@@ -389,6 +442,10 @@ int main()
     if (!TestRevisionIncrementsOnlyOnChanges())
     {
         return 12;
+    }
+    if (!TestLastDeltaOnlyRefreshDoesNotIncrementRevision())
+    {
+        return 30;
     }
     if (!TestFactoryCreatesSplitServices())
     {
