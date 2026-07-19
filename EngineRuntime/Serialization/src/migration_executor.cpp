@@ -19,6 +19,31 @@ template <typename TValue>
 {
     return foundation::Result<TValue>::Failure(CreateSerializationError(code, message));
 }
+
+[[nodiscard]] foundation::Result<void> ValidateMigrationOutput(const SerializedDocument& document, const MigrationKey& key)
+{
+    if (!document.IsValid())
+    {
+        return foundation::Result<void>::Failure(
+            CreateSerializationError("serialization.migration.invalid_output", "migration produced an invalid document"));
+    }
+    if (document.GetTypeId() != key.type_id)
+    {
+        return foundation::Result<void>::Failure(
+            CreateSerializationError("serialization.migration.type_changed", "migration changed the document type id"));
+    }
+    if (!(document.GetSchemaVersion() == key.to))
+    {
+        return foundation::Result<void>::Failure(
+            CreateSerializationError("serialization.migration.version_mismatch", "migration produced an unexpected schema version"));
+    }
+    if (document.GetFormatVersion() != 1u)
+    {
+        return foundation::Result<void>::Failure(
+            CreateSerializationError("serialization.migration.invalid_format", "migration produced an unsupported archive format version"));
+    }
+    return foundation::Result<void>::Success();
+}
 } // namespace
 
 foundation::Result<SerializedDocument> ApplyMigrations(
@@ -83,6 +108,11 @@ foundation::Result<SerializedDocument> ApplyMigrations(
         if (!finalized)
         {
             return foundation::Result<SerializedDocument>::Failure(finalized.GetError());
+        }
+        const auto valid_output = ValidateMigrationOutput(finalized.Value(), key);
+        if (!valid_output)
+        {
+            return foundation::Result<SerializedDocument>::Failure(valid_output.GetError());
         }
 
         current = finalized.Value();

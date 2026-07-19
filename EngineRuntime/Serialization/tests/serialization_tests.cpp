@@ -24,6 +24,7 @@ using epidemic::foundation::Result;
 using epidemic::foundation::StringId;
 using epidemic::runtime::CreateSerializationError;
 using epidemic::runtime::CreateSerializationServices;
+using epidemic::runtime::IArchiveFactory;
 using epidemic::runtime::IArchiveReader;
 using epidemic::runtime::IArchiveWriter;
 using epidemic::runtime::IMigration;
@@ -132,6 +133,74 @@ class ProbeMigration final : public IMigration
 
   private:
     MigrationKey key_{};
+};
+
+class MetadataOverrideWriter final : public IArchiveWriter
+{
+  public:
+    enum class Mode
+    {
+        InvalidDocument,
+        WrongType,
+        WrongVersion,
+    };
+
+    explicit MetadataOverrideWriter(Mode mode) : mode_(mode)
+    {
+    }
+
+    [[nodiscard]] Result<void> BeginObject(std::string_view name) override { return writer_.BeginObject(name); }
+    [[nodiscard]] Result<void> EndObject() override { return writer_.EndObject(); }
+    [[nodiscard]] Result<void> BeginArray(std::string_view name, std::size_t size) override { return writer_.BeginArray(name, size); }
+    [[nodiscard]] Result<void> BeginArrayElement(std::size_t index) override { return writer_.BeginArrayElement(index); }
+    [[nodiscard]] Result<void> EndArrayElement() override { return writer_.EndArrayElement(); }
+    [[nodiscard]] Result<void> EndArray() override { return writer_.EndArray(); }
+    [[nodiscard]] Result<void> WriteString(std::string_view name, std::string_view value) override { return writer_.WriteString(name, value); }
+    [[nodiscard]] Result<void> WriteUInt64(std::string_view name, std::uint64_t value) override { return writer_.WriteUInt64(name, value); }
+    [[nodiscard]] Result<void> WriteInt64(std::string_view name, std::int64_t value) override { return writer_.WriteInt64(name, value); }
+    [[nodiscard]] Result<void> WriteDouble(std::string_view name, double value) override { return writer_.WriteDouble(name, value); }
+    [[nodiscard]] Result<void> WriteBool(std::string_view name, bool value) override { return writer_.WriteBool(name, value); }
+    [[nodiscard]] Result<void> WriteBytes(std::string_view name, std::span<const std::byte> value) override { return writer_.WriteBytes(name, value); }
+    [[nodiscard]] Result<void> WriteNull(std::string_view name) override { return writer_.WriteNull(name); }
+
+    [[nodiscard]] Result<SerializedDocument> Finalize(StringId type_id, SchemaVersion schema_version) override
+    {
+        if (mode_ == Mode::InvalidDocument)
+        {
+            return Result<SerializedDocument>::Success(SerializedDocument{});
+        }
+        if (mode_ == Mode::WrongType)
+        {
+            return writer_.Finalize(Id("serialization.wrong_type"), schema_version);
+        }
+        return writer_.Finalize(type_id, {schema_version.major + 1u, schema_version.minor, schema_version.patch});
+    }
+
+  private:
+    InMemoryArchiveWriter writer_{};
+    Mode mode_ = Mode::InvalidDocument;
+};
+
+class MetadataOverrideArchiveFactory final : public IArchiveFactory
+{
+  public:
+    explicit MetadataOverrideArchiveFactory(MetadataOverrideWriter::Mode mode) : mode_(mode)
+    {
+    }
+
+    [[nodiscard]] std::unique_ptr<IArchiveWriter> CreateWriter() const override
+    {
+        return std::make_unique<MetadataOverrideWriter>(mode_);
+    }
+
+    [[nodiscard]] Result<std::unique_ptr<IArchiveReader>> CreateReader(const SerializedDocument& document) const override
+    {
+        return in_memory_.CreateReader(document);
+    }
+
+  private:
+    MetadataOverrideWriter::Mode mode_ = MetadataOverrideWriter::Mode::InvalidDocument;
+    epidemic::runtime::InMemoryArchiveFactory in_memory_{};
 };
 
 [[nodiscard]] bool TestPrimitiveDocumentRoundTrip()
@@ -402,6 +471,45 @@ class ProbeMigration final : public IMigration
            migrated_reader.Value()->ReadString("migration").Value() == "applied";
 }
 
+[[nodiscard]] bool TestApplyMigrationsValidatesEachStepOutput()
+{
+    const auto services = CreateSerializationServices();
+    if (!services || !services.Value().migrations || !services.Value().archives)
+    {
+        return false;
+    }
+
+    const auto type = Id("serialization.validation");
+    if (!services.Value().migrations->RegisterMigration(
+            std::make_shared<ProbeMigration>(MigrationKey{type, {1u, 0u, 0u}, {2u, 0u, 0u}})))
+    {
+        return false;
+    }
+
+    auto writer = services.Value().archives->CreateWriter();
+    if (!writer || !writer->WriteString("name", "original"))
+    {
+        return false;
+    }
+    const auto original = writer->Finalize(type, {1u, 0u, 0u});
+    if (!original)
+    {
+        return false;
+    }
+
+    MetadataOverrideArchiveFactory invalid_factory{MetadataOverrideWriter::Mode::InvalidDocument};
+    MetadataOverrideArchiveFactory wrong_type_factory{MetadataOverrideWriter::Mode::WrongType};
+    MetadataOverrideArchiveFactory wrong_version_factory{MetadataOverrideWriter::Mode::WrongVersion};
+
+    const auto invalid = ApplyMigrations(original.Value(), {2u, 0u, 0u}, *services.Value().migrations, invalid_factory);
+    const auto wrong_type = ApplyMigrations(original.Value(), {2u, 0u, 0u}, *services.Value().migrations, wrong_type_factory);
+    const auto wrong_version = ApplyMigrations(original.Value(), {2u, 0u, 0u}, *services.Value().migrations, wrong_version_factory);
+
+    return !invalid && invalid.GetError().HasCode("serialization.migration.invalid_output") &&
+           !wrong_type && wrong_type.GetError().HasCode("serialization.migration.type_changed") &&
+           !wrong_version && wrong_version.GetError().HasCode("serialization.migration.version_mismatch");
+}
+
 [[nodiscard]] bool TestSerializationServicesFactoryCreatesUsableServices()
 {
     const auto services = CreateSerializationServices();
@@ -447,6 +555,7 @@ int main()
         {"MigrationRegistryFindsExactAndChainedPaths", TestMigrationRegistryFindsExactAndChainedPaths},
         {"MigrationRegistryRejectsMissingCycleAndAmbiguousPaths", TestMigrationRegistryRejectsMissingCycleAndAmbiguousPaths},
         {"ApplyMigrationsBuildsNewDocument", TestApplyMigrationsBuildsNewDocument},
+        {"ApplyMigrationsValidatesEachStepOutput", TestApplyMigrationsValidatesEachStepOutput},
         {"SerializationServicesFactoryCreatesUsableServices", TestSerializationServicesFactoryCreatesUsableServices},
     };
 
