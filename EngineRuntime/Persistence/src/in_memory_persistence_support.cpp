@@ -1,6 +1,7 @@
 ﻿#include "in_memory_persistence_support.h"
 
 #include <algorithm>
+#include <limits>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -19,6 +20,11 @@ namespace
     return location.region_id.IsValid() || location.chunk_id.IsValid() || location.location_tag.IsValid();
 }
 
+[[nodiscard]] bool IsValidGameTime(GameTimePoint time) noexcept
+{
+    return time.ticks >= 0;
+}
+
 [[nodiscard]] foundation::Result<void> ValidateObject(const PersistentObjectRecord& record)
 {
     if (!record.persistent_id.IsValid())
@@ -28,6 +34,10 @@ namespace
     if (!record.payload.IsValid())
     {
         return PersistenceFailure("persistence.invalid_payload", "persistent object payload must declare schema and bytes");
+    }
+    if (!IsValidGameTime(record.created_game_time) || !IsValidGameTime(record.last_observed_game_time))
+    {
+        return PersistenceFailure("persistence.invalid_game_time", "persistent object game time must be non-negative");
     }
     if (record.last_observed_game_time < record.created_game_time)
     {
@@ -46,6 +56,10 @@ namespace
     {
         return PersistenceFailure("persistence.invalid_id", "lazy rule target id must be valid");
     }
+    if (!IsValidGameTime(record.created_game_time) || !IsValidGameTime(record.evaluate_after_game_time))
+    {
+        return PersistenceFailure("persistence.invalid_lazy_rule_time", "lazy rule game time must be non-negative");
+    }
     if (record.evaluate_after_game_time < record.created_game_time)
     {
         return PersistenceFailure("persistence.invalid_lazy_rule_time", "lazy rule evaluation time must not precede creation time");
@@ -59,6 +73,10 @@ namespace
     {
         return PersistenceFailure("persistence.invalid_id", "tombstone object id must be valid");
     }
+    if (!IsValidGameTime(tombstone.deleted_game_time))
+    {
+        return PersistenceFailure("persistence.invalid_game_time", "tombstone deletion time must be non-negative");
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -69,6 +87,52 @@ namespace
         return PersistenceFailure("persistence.invalid_location", "zone override location must contain at least one valid component");
     }
     return foundation::Result<void>::Success();
+}
+
+[[nodiscard]] bool LocationLess(const PersistenceLocation& left, const PersistenceLocation& right) noexcept
+{
+    if (left.region_id.Raw() != right.region_id.Raw())
+    {
+        return left.region_id.Raw() < right.region_id.Raw();
+    }
+    if (left.chunk_id.Raw() != right.chunk_id.Raw())
+    {
+        return left.chunk_id.Raw() < right.chunk_id.Raw();
+    }
+    return left.location_tag.Raw() < right.location_tag.Raw();
+}
+
+void SortZoneOverrideSnapshot(ZoneOverrideSnapshot& snapshot)
+{
+    std::sort(snapshot.record_ids.begin(), snapshot.record_ids.end(), [](PersistentObjectId left, PersistentObjectId right) {
+        return left.Raw() < right.Raw();
+    });
+    std::sort(snapshot.tombstones.begin(), snapshot.tombstones.end(), [](const TombstoneRecord& left, const TombstoneRecord& right) {
+        return left.persistent_id.Raw() < right.persistent_id.Raw();
+    });
+    std::sort(snapshot.lazy_rules.begin(), snapshot.lazy_rules.end(), [](const LazyRuleRecord& left, const LazyRuleRecord& right) {
+        return left.rule_id.Raw() < right.rule_id.Raw();
+    });
+}
+
+void SortPersistenceSnapshot(PersistenceSnapshot& snapshot)
+{
+    std::sort(snapshot.objects.begin(), snapshot.objects.end(), [](const PersistentObjectRecord& left, const PersistentObjectRecord& right) {
+        return left.persistent_id.Raw() < right.persistent_id.Raw();
+    });
+    std::sort(snapshot.tombstones.begin(), snapshot.tombstones.end(), [](const TombstoneRecord& left, const TombstoneRecord& right) {
+        return left.persistent_id.Raw() < right.persistent_id.Raw();
+    });
+    std::sort(snapshot.lazy_rules.begin(), snapshot.lazy_rules.end(), [](const LazyRuleRecord& left, const LazyRuleRecord& right) {
+        return left.rule_id.Raw() < right.rule_id.Raw();
+    });
+    for (ZoneOverrideSnapshot& zone : snapshot.zone_overrides)
+    {
+        SortZoneOverrideSnapshot(zone);
+    }
+    std::sort(snapshot.zone_overrides.begin(), snapshot.zone_overrides.end(), [](const ZoneOverrideSnapshot& left, const ZoneOverrideSnapshot& right) {
+        return LocationLess(left.location, right.location);
+    });
 }
 
 } // namespace
@@ -204,7 +268,18 @@ foundation::Result<void> InMemorySaveTransaction::UpsertLazyRule(LazyRuleRecord 
 
 foundation::Result<void> InMemorySaveTransaction::UpdateLazyRule(LazyRuleRecord record)
 {
-    return UpsertLazyRule(std::move(record));
+    const auto open = EnsureOpen();
+    if (!open)
+    {
+        return open;
+    }
+    const auto valid = ValidateLazyRule(record);
+    if (!valid)
+    {
+        return valid;
+    }
+    operations_.push_back(UpdateLazyRuleOperation{std::move(record)});
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> InMemorySaveTransaction::RemoveLazyRule(LazyRuleId id)
@@ -404,7 +479,15 @@ std::vector<ZoneOverrideSnapshot> InMemoryPersistenceStore::ListZoneOverrides() 
         snapshots.push_back(snapshot);
     }
     std::sort(snapshots.begin(), snapshots.end(), [](const auto& left, const auto& right) {
-        return left.location.region_id.Raw() < right.location.region_id.Raw();
+        if (left.location.region_id != right.location.region_id)
+        {
+            return left.location.region_id.Raw() < right.location.region_id.Raw();
+        }
+        if (left.location.chunk_id != right.location.chunk_id)
+        {
+            return left.location.chunk_id.Raw() < right.location.chunk_id.Raw();
+        }
+        return left.location.location_tag.Raw() < right.location.location_tag.Raw();
     });
     return snapshots;
 }
@@ -554,6 +637,10 @@ foundation::Result<void> ValidatePersistenceSnapshot(const PersistenceSnapshot& 
         {
             return PersistenceFailure("persistence.invalid_snapshot", "snapshot contains duplicate lazy rule ids");
         }
+        if (!object_ids.contains(rule.target_id))
+        {
+            return PersistenceFailure("persistence.invalid_snapshot", "snapshot contains a dangling lazy rule target");
+        }
     }
 
     for (const ZoneOverrideSnapshot& zone : snapshot.zone_overrides)
@@ -570,6 +657,61 @@ foundation::Result<void> ValidatePersistenceSnapshot(const PersistenceSnapshot& 
         if (!override_locations.insert(zone.location).second)
         {
             return PersistenceFailure("persistence.invalid_snapshot", "snapshot contains duplicate zone overrides");
+        }
+
+        std::unordered_set<PersistentObjectId> zone_record_ids;
+        std::unordered_set<PersistentObjectId> zone_tombstone_ids;
+        std::unordered_set<LazyRuleId> zone_lazy_rule_ids;
+        for (const PersistentObjectId id : zone.record_ids)
+        {
+            if (!id.IsValid())
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override contains an invalid object id");
+            }
+            if (!zone_record_ids.insert(id).second)
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override contains duplicate object ids");
+            }
+        }
+        for (const TombstoneRecord& tombstone : zone.tombstones)
+        {
+            const auto tombstone_valid = ValidateTombstone(tombstone);
+            if (!tombstone_valid)
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override contains an invalid tombstone");
+            }
+            if (tombstone.revision > snapshot.current_revision)
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override tombstone revision exceeds snapshot revision");
+            }
+            if (!zone_tombstone_ids.insert(tombstone.persistent_id).second)
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override contains duplicate tombstones");
+            }
+            if (zone_record_ids.contains(tombstone.persistent_id))
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override contains an active and tombstoned object");
+            }
+        }
+        for (const LazyRuleRecord& rule : zone.lazy_rules)
+        {
+            const auto rule_valid = ValidateLazyRule(rule);
+            if (!rule_valid)
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override contains an invalid lazy rule");
+            }
+            if (rule.revision > snapshot.current_revision)
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override lazy rule revision exceeds snapshot revision");
+            }
+            if (!zone_lazy_rule_ids.insert(rule.rule_id).second)
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override contains duplicate lazy rule ids");
+            }
+            if (!zone_record_ids.contains(rule.target_id))
+            {
+                return PersistenceFailure("persistence.invalid_snapshot", "zone override contains a dangling lazy rule target");
+            }
         }
     }
 
@@ -589,6 +731,11 @@ foundation::Result<PersistenceCandidateState> InMemoryPersistenceStore::BuildCan
     std::unordered_map<PersistentObjectId, TombstoneRecord> candidate_tombstones = tombstones_;
     std::unordered_map<PersistenceLocation, ZoneOverrideSnapshot, PersistenceLocationHash> candidate_zone_overrides = zone_overrides_;
     std::unordered_set<PersistentObjectId> candidate_dirty = dirty_ids_;
+    if (revision_ == std::numeric_limits<PersistenceRevision>::max())
+    {
+        return foundation::Result<PersistenceCandidateState>::Failure(
+            foundation::Error::Create("persistence.revision_overflow", "persistence revision cannot advance beyond UINT64_MAX"));
+    }
     const PersistenceRevision candidate_revision = revision_ + 1;
 
     for (const PersistenceOperation& operation : transaction.operations_)
@@ -625,6 +772,7 @@ foundation::Result<PersistenceCandidateState> InMemoryPersistenceStore::BuildCan
                     tombstone.revision = candidate_revision;
                     candidate_objects.erase(tombstone.persistent_id);
                     candidate_tombstones[tombstone.persistent_id] = std::move(tombstone);
+                    std::erase_if(candidate_lazy_rules, [&](const auto& entry) { return entry.second.target_id == typed_operation.tombstone.persistent_id; });
                     candidate_dirty.insert(typed_operation.tombstone.persistent_id);
                     return foundation::Result<void>::Success();
                 }
@@ -656,6 +804,22 @@ foundation::Result<PersistenceCandidateState> InMemoryPersistenceStore::BuildCan
                     if (!rule_valid)
                     {
                         return rule_valid;
+                    }
+                    LazyRuleRecord rule = typed_operation.record;
+                    rule.revision = candidate_revision;
+                    candidate_lazy_rules[rule.rule_id] = std::move(rule);
+                    return foundation::Result<void>::Success();
+                }
+                else if constexpr (std::is_same_v<Operation, UpdateLazyRuleOperation>)
+                {
+                    const auto rule_valid = ValidateLazyRule(typed_operation.record);
+                    if (!rule_valid)
+                    {
+                        return rule_valid;
+                    }
+                    if (!candidate_lazy_rules.contains(typed_operation.record.rule_id))
+                    {
+                        return PersistenceFailure("persistence.lazy_rule_not_found", "lazy rule was not found for update");
                     }
                     LazyRuleRecord rule = typed_operation.record;
                     rule.revision = candidate_revision;
@@ -726,6 +890,7 @@ foundation::Result<PersistenceCandidateState> InMemoryPersistenceStore::BuildCan
         (void)location;
         candidate.zone_overrides.push_back(snapshot);
     }
+    SortPersistenceSnapshot(candidate);
 
     const auto valid_snapshot = ValidatePersistenceSnapshot(candidate);
     if (!valid_snapshot)
@@ -747,19 +912,12 @@ foundation::Result<void> InMemoryPersistenceStore::PublishSnapshot(PersistenceCa
         {
             return PersistenceFailure("persistence.backend_missing", "persistence backend is required by durability policy");
         }
-        const auto saved = backend_->Save(snapshot);
-        if (!saved)
+        const auto committed = backend_->CommitSnapshot(snapshot, durability_);
+        if (!committed)
         {
-            return saved;
+            return committed;
         }
-        if (durability_ == PersistenceDurability::SaveAndFlushRequired)
-        {
-            const auto flushed = backend_->Flush();
-            if (!flushed)
-            {
-                return flushed;
-            }
-        }
+        candidate.dirty_ids.clear();
     }
 
     objects_.clear();
@@ -792,14 +950,10 @@ foundation::Result<PersistenceSnapshot> InMemoryPersistenceBackend::Load()
     return foundation::Result<PersistenceSnapshot>::Success(snapshot_);
 }
 
-foundation::Result<void> InMemoryPersistenceBackend::Save(const PersistenceSnapshot& snapshot)
+foundation::Result<void> InMemoryPersistenceBackend::CommitSnapshot(const PersistenceSnapshot& snapshot, PersistenceDurability durability)
 {
+    (void)durability;
     snapshot_ = snapshot;
-    return foundation::Result<void>::Success();
-}
-
-foundation::Result<void> InMemoryPersistenceBackend::Flush()
-{
     return foundation::Result<void>::Success();
 }
 } // namespace epidemic::runtime

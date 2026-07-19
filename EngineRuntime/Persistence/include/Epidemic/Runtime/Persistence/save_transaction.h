@@ -36,9 +36,16 @@ class ISaveTransaction
     [[nodiscard]] virtual foundation::Result<void> RemoveLazyRule(LazyRuleId id) = 0;
     [[nodiscard]] virtual foundation::Result<void> UpsertZoneOverride(ZoneOverrideSnapshot snapshot) = 0;
     [[nodiscard]] virtual foundation::Result<void> RemoveZoneOverride(const PersistenceLocation& location) = 0;
-    [[nodiscard]] virtual foundation::Result<void> AdminRemoveObject(PersistentObjectId id) = 0;
-    [[nodiscard]] virtual foundation::Result<void> AdminAddTombstone(TombstoneRecord tombstone) = 0;
     [[nodiscard]] virtual foundation::Result<void> Commit() = 0;
     virtual void Rollback() = 0;
+};
+
+class IPersistenceAdministrativeTransaction
+{
+  public:
+    virtual ~IPersistenceAdministrativeTransaction() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> AdminRemoveObject(PersistentObjectId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> AdminAddTombstone(TombstoneRecord tombstone) = 0;
 };
 } // namespace epidemic::runtime

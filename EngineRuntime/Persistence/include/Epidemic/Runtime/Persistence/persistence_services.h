@@ -8,13 +8,6 @@
 
 namespace epidemic::runtime
 {
-enum class PersistenceDurability
-{
-    MemoryOnly,
-    SaveRequired,
-    SaveAndFlushRequired,
-};
-
 struct PersistenceOptions
 {
     std::shared_ptr<IPersistenceBackend> backend;
@@ -24,7 +17,7 @@ struct PersistenceOptions
 struct PersistenceServices
 {
     std::shared_ptr<IPersistenceStore> store;
-    std::shared_ptr<IPersistenceStore> query;
+    std::shared_ptr<IPersistenceQuery> query;
 };
 
 [[nodiscard]] foundation::Result<PersistenceServices> CreatePersistenceServices(const PersistenceOptions& options = {});

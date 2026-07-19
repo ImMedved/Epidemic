@@ -21,13 +21,20 @@ struct PersistenceSnapshot
     std::vector<ZoneOverrideSnapshot> zone_overrides;
 };
 
+enum class PersistenceDurability
+{
+    MemoryOnly,
+    SaveRequired,
+    SaveAndFlushRequired,
+};
+
 class IPersistenceBackend
 {
   public:
     virtual ~IPersistenceBackend() = default;
 
     [[nodiscard]] virtual foundation::Result<PersistenceSnapshot> Load() = 0;
-    [[nodiscard]] virtual foundation::Result<void> Save(const PersistenceSnapshot& snapshot) = 0;
-    [[nodiscard]] virtual foundation::Result<void> Flush() = 0;
+    // Contract: a failed commit must leave the previously committed durable snapshot authoritative.
+    [[nodiscard]] virtual foundation::Result<void> CommitSnapshot(const PersistenceSnapshot& snapshot, PersistenceDurability durability) = 0;
 };
 } // namespace epidemic::runtime

@@ -34,6 +34,11 @@ struct UpsertLazyRuleOperation
     LazyRuleRecord record{};
 };
 
+struct UpdateLazyRuleOperation
+{
+    LazyRuleRecord record{};
+};
+
 struct RemoveLazyRuleOperation
 {
     LazyRuleId id{};
@@ -55,6 +60,7 @@ using PersistenceOperation = std::variant<
     AdminRemoveObjectOperation,
     AdminAddTombstoneOperation,
     UpsertLazyRuleOperation,
+    UpdateLazyRuleOperation,
     RemoveLazyRuleOperation,
     UpsertZoneOverrideOperation,
     RemoveZoneOverrideOperation>;

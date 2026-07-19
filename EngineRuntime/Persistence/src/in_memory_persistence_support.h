@@ -25,7 +25,7 @@ struct PersistenceCandidateState
     std::unordered_set<PersistentObjectId> dirty_ids{};
 };
 
-class InMemorySaveTransaction final : public ISaveTransaction
+class InMemorySaveTransaction final : public ISaveTransaction, public IPersistenceAdministrativeTransaction
 {
   public:
     InMemorySaveTransaction(InMemoryPersistenceStore& store, PersistenceRevision base_revision);
@@ -39,10 +39,11 @@ class InMemorySaveTransaction final : public ISaveTransaction
     [[nodiscard]] foundation::Result<void> RemoveLazyRule(LazyRuleId id) override;
     [[nodiscard]] foundation::Result<void> UpsertZoneOverride(ZoneOverrideSnapshot snapshot) override;
     [[nodiscard]] foundation::Result<void> RemoveZoneOverride(const PersistenceLocation& location) override;
-    [[nodiscard]] foundation::Result<void> AdminRemoveObject(PersistentObjectId id) override;
-    [[nodiscard]] foundation::Result<void> AdminAddTombstone(TombstoneRecord tombstone) override;
     [[nodiscard]] foundation::Result<void> Commit() override;
     void Rollback() override;
+
+    [[nodiscard]] foundation::Result<void> AdminRemoveObject(PersistentObjectId id) override;
+    [[nodiscard]] foundation::Result<void> AdminAddTombstone(TombstoneRecord tombstone) override;
 
   private:
     friend class InMemoryPersistenceStore;
@@ -107,8 +108,7 @@ class InMemoryPersistenceBackend final : public IPersistenceBackend
 {
   public:
     [[nodiscard]] foundation::Result<PersistenceSnapshot> Load() override;
-    [[nodiscard]] foundation::Result<void> Save(const PersistenceSnapshot& snapshot) override;
-    [[nodiscard]] foundation::Result<void> Flush() override;
+    [[nodiscard]] foundation::Result<void> CommitSnapshot(const PersistenceSnapshot& snapshot, PersistenceDurability durability) override;
 
   private:
     PersistenceSnapshot snapshot_{};
