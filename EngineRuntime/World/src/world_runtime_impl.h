@@ -11,7 +11,7 @@
 
 namespace epidemic::runtime
 {
-class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorldObjectRegistry, public IObjectMaterializer, public IWorldQuery
+class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorldObjectRegistry, public IObjectMaterializer, public IDemotionCommitAuthority, public IWorldQuery
 {
   public:
     [[nodiscard]] foundation::Result<void> RegisterRegion(RegionDescriptor region) override;
@@ -19,7 +19,8 @@ class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorl
 
     [[nodiscard]] foundation::Result<void> RegisterChunk(ChunkDescriptor chunk) override;
     [[nodiscard]] std::optional<ChunkDescriptor> FindChunk(ChunkId id) const override;
-    [[nodiscard]] ChunkState GetChunkState(ChunkId id) const override;
+    [[nodiscard]] foundation::Result<ChunkSnapshot> GetChunkSnapshot(ChunkId id) const override;
+    [[nodiscard]] foundation::Result<void> SetChunkState(ChangeChunkStateCommand command) override;
 
     [[nodiscard]] foundation::Result<WorldCommandResult> Apply(const CreateObjectCommand& command) override;
     [[nodiscard]] foundation::Result<WorldCommandResult> Apply(const ChangePlacementCommand& command) override;
@@ -40,6 +41,8 @@ class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorl
 
     [[nodiscard]] foundation::Result<RuntimeObjectId> Materialize(const MaterializationRequest& request) override;
     [[nodiscard]] foundation::Result<void> Demote(const DemotionRequest& request) override;
+    [[nodiscard]] foundation::Result<DemotionCommitToken> IssueDemotionCommitToken(DemotionSnapshot snapshot) override;
+    [[nodiscard]] foundation::Result<void> RevokeDemotionCommitToken(std::uint64_t token_id) override;
 
     foundation::Result<void> SetChunkState(ChunkId id, ChunkState state);
 
@@ -48,12 +51,18 @@ class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorl
     {
         ChunkDescriptor descriptor{};
         ChunkState state = ChunkState::Unloaded;
+        std::uint64_t revision = 1;
     };
 
     std::unordered_map<RegionId, RegionDescriptor> regions_;
     std::unordered_map<ChunkId, ChunkRecord> chunks_;
     std::unordered_map<RuntimeObjectId, WorldObjectRecord> world_objects_;
     std::unordered_map<PersistentObjectId, RuntimeObjectId> persistent_to_runtime_;
+    std::unordered_map<std::uint64_t, DemotionCommitToken> issued_demotion_tokens_;
     std::uint64_t next_runtime_object_value_ = 1;
+    std::uint64_t next_demotion_token_value_ = 1;
+
+  private:
+    void InvalidateDemotionTokensForObject(RuntimeObjectId object);
 };
 } 

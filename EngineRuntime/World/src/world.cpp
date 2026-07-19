@@ -25,6 +25,7 @@ foundation::Result<WorldServices> CreateWorldServices(const WorldOptions& option
     services.query = runtime;
     services.writer = runtime;
     services.materialization = runtime;
+    services.demotion_authority = runtime;
     return foundation::Result<WorldServices>::Success(std::move(services));
 }
 } // namespace epidemic::runtime

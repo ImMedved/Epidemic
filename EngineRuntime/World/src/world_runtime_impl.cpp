@@ -3,6 +3,7 @@
 #include "Epidemic/Runtime/World/world_invariants.h"
 
 #include <algorithm>
+#include <limits>
 #include <string_view>
 #include <utility>
 
@@ -30,12 +31,49 @@ template <typename TValue>
 
 [[nodiscard]] foundation::Result<void> CheckExpectedRevision(const WorldObjectRecord& object, std::uint64_t expected_revision)
 {
+    if (expected_revision == 0)
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.expected_revision_required", "public world commands must declare an expected object revision"));
+    }
     if (expected_revision != 0 && object.revision != expected_revision)
     {
         return foundation::Result<void>::Failure(
             MakeWorldError("world.revision_conflict", "world object revision does not match command expectation"));
     }
     return foundation::Result<void>::Success();
+}
+
+[[nodiscard]] bool IsDestroyed(const WorldObjectRecord& object) noexcept
+{
+    return std::holds_alternative<DestroyedPlacement>(object.placement);
+}
+
+[[nodiscard]] bool IsDependentPlacement(const ObjectPlacement& placement, RuntimeObjectId owner) noexcept
+{
+    if (const auto* container = std::get_if<ContainerPlacement>(&placement))
+    {
+        return container->container == owner;
+    }
+    if (const auto* inventory = std::get_if<InventoryPlacement>(&placement))
+    {
+        return inventory->owner == owner;
+    }
+    if (const auto* equipped = std::get_if<EquippedPlacement>(&placement))
+    {
+        return equipped->owner == owner;
+    }
+    return false;
+}
+
+[[nodiscard]] bool RequiresPersistentId(PersistenceTier tier) noexcept
+{
+    return PersistenceTierRank(tier) >= PersistenceTierRank(PersistenceTier::PlayerTouched);
+}
+
+[[nodiscard]] bool SupportsPhysicalMaterialization(const ObjectPlacement& placement) noexcept
+{
+    return std::holds_alternative<WorldSurfacePlacement>(placement);
 }
 
 [[nodiscard]] ResidencyState ResidencyForReality(ObjectRealityLevel reality) noexcept
@@ -114,15 +152,53 @@ std::optional<ChunkDescriptor> WorldRuntime::FindChunk(ChunkId id) const
     return iterator->second.descriptor;
 }
 
-ChunkState WorldRuntime::GetChunkState(ChunkId id) const
+foundation::Result<ChunkSnapshot> WorldRuntime::GetChunkSnapshot(ChunkId id) const
 {
     const auto iterator = chunks_.find(id);
     if (iterator == chunks_.end())
     {
-        return ChunkState::Unloaded;
+        return WorldFailureValue<ChunkSnapshot>("world.chunk_not_found", "chunk was not found");
     }
 
-    return iterator->second.state;
+    return foundation::Result<ChunkSnapshot>::Success(ChunkSnapshot{iterator->second.descriptor, iterator->second.state, iterator->second.revision});
+}
+
+foundation::Result<void> WorldRuntime::SetChunkState(ChangeChunkStateCommand command)
+{
+    auto iterator = chunks_.find(command.chunk);
+    if (iterator == chunks_.end())
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.chunk_not_found", "chunk was not found for state update"));
+    }
+    if (command.expected_revision == 0)
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.expected_revision_required", "chunk state commands must declare an expected chunk revision"));
+    }
+    if (command.expected_revision != iterator->second.revision)
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.revision_conflict", "chunk revision does not match command expectation"));
+    }
+    if (!CanTransition(iterator->second.state, command.state))
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.invalid_chunk_transition", "chunk state transition is not allowed"));
+    }
+    if (iterator->second.state == command.state)
+    {
+        return foundation::Result<void>::Success();
+    }
+    if (iterator->second.revision == std::numeric_limits<std::uint64_t>::max())
+    {
+        return foundation::Result<void>::Failure(
+            MakeWorldError("world.revision_overflow", "chunk revision cannot advance beyond UINT64_MAX"));
+    }
+
+    iterator->second.state = command.state;
+    ++iterator->second.revision;
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<WorldCommandResult> WorldRuntime::Apply(const CreateObjectCommand& command)
@@ -166,6 +242,15 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangePlacement
     }
 
     WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
+    if (IsDestroyed(iterator->second))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.destroyed_terminal", "destroyed objects cannot be moved");
+    }
+    if (std::holds_alternative<DestroyedPlacement>(command.placement))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.destroyed_requires_destroy_command",
+                                                     "destroyed placement may only be created by destroy command");
+    }
     WorldObjectRecord candidate = iterator->second;
     candidate.placement = command.placement;
     ++candidate.revision;
@@ -174,6 +259,7 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangePlacement
     {
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
     }
+    InvalidateDemotionTokensForObject(command.runtime_id);
     iterator->second = candidate;
     result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
@@ -199,6 +285,10 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangeResidency
     }
 
     WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
+    if (IsDestroyed(iterator->second))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.destroyed_terminal", "destroyed objects cannot change residency");
+    }
     WorldObjectRecord candidate = iterator->second;
     candidate.residency = command.residency;
     ++candidate.revision;
@@ -207,6 +297,7 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangeResidency
     {
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
     }
+    InvalidateDemotionTokensForObject(command.runtime_id);
     iterator->second = candidate;
     result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
@@ -232,13 +323,39 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const PromotePersiste
     }
 
     WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
+    if (IsDestroyed(iterator->second))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.destroyed_terminal", "destroyed objects cannot change persistence tier");
+    }
     WorldObjectRecord candidate = iterator->second;
+    if (command.persistent_id)
+    {
+        if (!command.persistent_id->IsValid())
+        {
+            return WorldFailureValue<WorldCommandResult>("world.invalid_persistent_object", "persistent id must be valid for persistent tier promotion");
+        }
+        const auto existing = persistent_to_runtime_.find(*command.persistent_id);
+        if (existing != persistent_to_runtime_.end() && existing->second != command.runtime_id)
+        {
+            return WorldFailureValue<WorldCommandResult>("world.duplicate_persistent_object", "persistent object id is already registered");
+        }
+        candidate.persistent_id = *command.persistent_id;
+    }
+    if (RequiresPersistentId(command.tier) && !candidate.persistent_id.IsValid())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.persistent_id_required", "persistent tier promotion requires a persistent object id");
+    }
     candidate.persistence_tier = command.tier;
     ++candidate.revision;
     const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
     if (!invariant)
     {
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
+    }
+    InvalidateDemotionTokensForObject(command.runtime_id);
+    if (candidate.persistent_id.IsValid())
+    {
+        persistent_to_runtime_[candidate.persistent_id] = command.runtime_id;
     }
     iterator->second = candidate;
     result.after = candidate;
@@ -273,6 +390,15 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const MaterializeObje
     }
 
     WorldCommandResult result{index->second, object, std::nullopt};
+    if (IsDestroyed(object))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.destroyed_terminal", "destroyed objects cannot be materialized");
+    }
+    if (command.request.target_reality == ObjectRealityLevel::Physical && !SupportsPhysicalMaterialization(object.placement))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.materialization_placement_incompatible",
+                                                     "physical materialization requires a physical-compatible placement");
+    }
     WorldObjectRecord candidate = object;
     candidate.reality = command.request.target_reality;
     candidate.residency = ResidencyForReality(command.request.target_reality);
@@ -282,6 +408,7 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const MaterializeObje
     {
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
     }
+    InvalidateDemotionTokensForObject(index->second);
     object = candidate;
     result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
@@ -305,14 +432,19 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DemoteObjectCom
         return WorldFailureValue<WorldCommandResult>("world.invalid_reality_demotion",
                                                      "demotion cannot target a more concrete reality level");
     }
-    if (!command.request.commit_token.IsValid() || command.request.commit_token.object != command.request.runtime_id ||
+    const auto issued_token = issued_demotion_tokens_.find(command.request.commit_token.token_id);
+    if (IsDestroyed(iterator->second))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.destroyed_terminal", "destroyed objects cannot be demoted");
+    }
+    if (!command.request.commit_token.IsValid() || issued_token == issued_demotion_tokens_.end() ||
+        issued_token->second != command.request.commit_token || command.request.commit_token.object != command.request.runtime_id ||
         command.request.commit_token.target_reality != command.request.target_reality ||
         command.request.commit_token.source_revision != iterator->second.revision)
     {
         return WorldFailureValue<WorldCommandResult>("world.demotion_not_confirmed",
                                                      "demotion requires a matching collapse commit token");
     }
-
     WorldCommandResult result{command.request.runtime_id, iterator->second, std::nullopt};
     WorldObjectRecord candidate = iterator->second;
     candidate.reality = command.request.target_reality;
@@ -324,6 +456,8 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DemoteObjectCom
     {
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
     }
+    issued_demotion_tokens_.erase(issued_token);
+    InvalidateDemotionTokensForObject(command.request.runtime_id);
     iterator->second = candidate;
     result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
@@ -350,8 +484,25 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DestroyObjectCo
 
     WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
     WorldObjectRecord& object = iterator->second;
+    if (IsDestroyed(object))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.destroyed_terminal", "destroyed objects are terminal");
+    }
+    std::vector<RuntimeObjectId> dependents;
+    for (const auto& [runtime_id, candidate] : world_objects_)
+    {
+        if (runtime_id != command.runtime_id && IsDependentPlacement(candidate.placement, command.runtime_id))
+        {
+            dependents.push_back(runtime_id);
+        }
+    }
+    if (!dependents.empty())
+    {
+        return WorldFailureValue<WorldCommandResult>("world.dependent_objects_exist", "object cannot be destroyed while dependent placements exist");
+    }
     if (!object.persistent_id.IsValid() && object.persistence_tier == PersistenceTier::Disposable)
     {
+        InvalidateDemotionTokensForObject(command.runtime_id);
         world_objects_.erase(iterator);
         return foundation::Result<WorldCommandResult>::Success(std::move(result));
     }
@@ -366,6 +517,7 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DestroyObjectCo
     {
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
     }
+    InvalidateDemotionTokensForObject(command.runtime_id);
     object = candidate;
     result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
@@ -383,7 +535,12 @@ foundation::Result<RuntimeObjectId> WorldRuntime::CreateObject(WorldObjectRecord
 
 foundation::Result<void> WorldRuntime::DestroyObject(RuntimeObjectId id)
 {
-    const auto result = Apply(DestroyObjectCommand{id});
+    const auto object = FindObject(id);
+    if (!object)
+    {
+        return foundation::Result<void>::Failure(MakeWorldError("world.object_not_found", "world object was not found for destruction"));
+    }
+    const auto result = Apply(DestroyObjectCommand{id, object->revision});
     if (!result)
     {
         return foundation::Result<void>::Failure(result.GetError());
@@ -454,7 +611,12 @@ std::vector<WorldObjectRecord> WorldRuntime::FindObjectsByReality(ObjectRealityL
 
 foundation::Result<void> WorldRuntime::SetPlacement(RuntimeObjectId id, ObjectPlacement placement)
 {
-    const auto result = Apply(ChangePlacementCommand{id, 0, std::move(placement)});
+    const auto object = FindObject(id);
+    if (!object)
+    {
+        return foundation::Result<void>::Failure(MakeWorldError("world.object_not_found", "world object was not found for placement update"));
+    }
+    const auto result = Apply(ChangePlacementCommand{id, object->revision, std::move(placement)});
     if (!result)
     {
         return foundation::Result<void>::Failure(result.GetError());
@@ -464,7 +626,12 @@ foundation::Result<void> WorldRuntime::SetPlacement(RuntimeObjectId id, ObjectPl
 
 foundation::Result<void> WorldRuntime::SetResidency(RuntimeObjectId id, ResidencyState state)
 {
-    const auto result = Apply(ChangeResidencyCommand{id, 0, state});
+    const auto object = FindObject(id);
+    if (!object)
+    {
+        return foundation::Result<void>::Failure(MakeWorldError("world.object_not_found", "world object was not found for residency update"));
+    }
+    const auto result = Apply(ChangeResidencyCommand{id, object->revision, state});
     if (!result)
     {
         return foundation::Result<void>::Failure(result.GetError());
@@ -474,7 +641,17 @@ foundation::Result<void> WorldRuntime::SetResidency(RuntimeObjectId id, Residenc
 
 foundation::Result<RuntimeObjectId> WorldRuntime::Materialize(const MaterializationRequest& request)
 {
-    const auto result = Apply(MaterializeObjectCommand{request});
+    const auto index = persistent_to_runtime_.find(request.persistent_id);
+    if (index == persistent_to_runtime_.end())
+    {
+        return foundation::Result<RuntimeObjectId>::Failure(MakeWorldError("world.object_not_found", "world object with the requested persistent id was not found"));
+    }
+    const auto object = FindObject(index->second);
+    if (!object)
+    {
+        return foundation::Result<RuntimeObjectId>::Failure(MakeWorldError("world.object_not_found", "world object was not found for materialization"));
+    }
+    const auto result = Apply(MaterializeObjectCommand{request, object->revision});
     if (!result)
     {
         return foundation::Result<RuntimeObjectId>::Failure(result.GetError());
@@ -484,7 +661,12 @@ foundation::Result<RuntimeObjectId> WorldRuntime::Materialize(const Materializat
 
 foundation::Result<void> WorldRuntime::Demote(const DemotionRequest& request)
 {
-    const auto result = Apply(DemoteObjectCommand{request});
+    const auto object = FindObject(request.runtime_id);
+    if (!object)
+    {
+        return foundation::Result<void>::Failure(MakeWorldError("world.object_not_found", "world object was not found for demotion"));
+    }
+    const auto result = Apply(DemoteObjectCommand{request, object->revision});
     if (!result)
     {
         return foundation::Result<void>::Failure(result.GetError());
@@ -492,16 +674,78 @@ foundation::Result<void> WorldRuntime::Demote(const DemotionRequest& request)
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> WorldRuntime::SetChunkState(ChunkId id, ChunkState state)
+foundation::Result<DemotionCommitToken> WorldRuntime::IssueDemotionCommitToken(DemotionSnapshot snapshot)
 {
-    auto iterator = chunks_.find(id);
-    if (iterator == chunks_.end())
+    const auto object = FindObject(snapshot.object);
+    if (!object)
     {
-        return foundation::Result<void>::Failure(
-            MakeWorldError("world.chunk_not_found", "chunk was not found for state update"));
+        return foundation::Result<DemotionCommitToken>::Failure(MakeWorldError("world.object_not_found", "world object was not found for demotion token"));
+    }
+    if (snapshot.source_revision != object->revision || !snapshot.collapse_record_id.IsValid() ||
+        !CanDemoteReality(object->reality, snapshot.target_reality))
+    {
+        return foundation::Result<DemotionCommitToken>::Failure(MakeWorldError("world.invalid_demotion_snapshot", "demotion snapshot must match current object revision"));
+    }
+    WorldObjectRecord candidate = *object;
+    candidate.reality = snapshot.target_reality;
+    candidate.residency = ResidencyForReality(snapshot.target_reality);
+    candidate.placement = snapshot.collapsed_placement;
+    const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
+    if (!invariant)
+    {
+        return foundation::Result<DemotionCommitToken>::Failure(invariant.GetError());
+    }
+    if (next_demotion_token_value_ == 0 || next_demotion_token_value_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return foundation::Result<DemotionCommitToken>::Failure(MakeWorldError("world.demotion_token_overflow", "demotion token id cannot advance beyond UINT64_MAX"));
     }
 
-    iterator->second.state = state;
+    DemotionCommitToken token{};
+    token.token_id = next_demotion_token_value_++;
+    token.object = snapshot.object;
+    token.target_reality = snapshot.target_reality;
+    token.collapsed_placement = snapshot.collapsed_placement;
+    token.collapse_record_id = snapshot.collapse_record_id;
+    token.source_revision = snapshot.source_revision;
+    issued_demotion_tokens_[token.token_id] = token;
+    return foundation::Result<DemotionCommitToken>::Success(token);
+}
+
+foundation::Result<void> WorldRuntime::RevokeDemotionCommitToken(std::uint64_t token_id)
+{
+    if (token_id == 0)
+    {
+        return foundation::Result<void>::Failure(MakeWorldError("world.invalid_demotion_token", "demotion token id must be valid before revoke"));
+    }
+    if (issued_demotion_tokens_.erase(token_id) == 0)
+    {
+        return foundation::Result<void>::Failure(MakeWorldError("world.demotion_token_not_found", "demotion token was not found for revoke"));
+    }
     return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> WorldRuntime::SetChunkState(ChunkId id, ChunkState state)
+{
+    const auto snapshot = GetChunkSnapshot(id);
+    if (!snapshot)
+    {
+        return foundation::Result<void>::Failure(snapshot.GetError());
+    }
+    return SetChunkState(ChangeChunkStateCommand{id, snapshot.Value().revision, state});
+}
+
+void WorldRuntime::InvalidateDemotionTokensForObject(RuntimeObjectId object)
+{
+    for (auto iterator = issued_demotion_tokens_.begin(); iterator != issued_demotion_tokens_.end();)
+    {
+        if (iterator->second.object == object)
+        {
+            iterator = issued_demotion_tokens_.erase(iterator);
+        }
+        else
+        {
+            ++iterator;
+        }
+    }
 }
 } 

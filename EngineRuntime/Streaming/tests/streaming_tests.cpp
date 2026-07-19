@@ -38,11 +38,13 @@ using epidemic::runtime::streaming::StreamingBudget;
 using epidemic::runtime::streaming::StreamingDemandHandle;
 using epidemic::runtime::streaming::StreamingDependencies;
 using epidemic::runtime::streaming::StreamingPlanStep;
+using epidemic::runtime::streaming::StreamingPlanStepRecord;
 using epidemic::runtime::streaming::StreamingPriorityClass;
 using epidemic::runtime::streaming::StreamingRequest;
 using epidemic::runtime::streaming::StreamingRequestHandle;
 using epidemic::runtime::streaming::StreamingRuntime;
 using epidemic::runtime::streaming::StreamingState;
+using epidemic::runtime::streaming::StreamingStepResult;
 using epidemic::runtime::streaming::StreamingTarget;
 
 class FixedPriorityResolver final : public IStreamingPriorityResolver
@@ -72,18 +74,33 @@ class PlanSource final : public IStreamingDataSource
         return Result<ProgressiveLoadPlan>::Success(plan);
     }
 
-    Result<void> ExecuteStep(const StreamingRequest&, StreamingPlanStep step) override
+    Result<StreamingStepResult> ExecuteStep(const StreamingRequest&, StreamingPlanStepRecord step) override
     {
-        executed.push_back(step);
-        if (fail_step && step == *fail_step)
+        executed.push_back(step.step);
+        if (fail_step && step.step == *fail_step)
         {
-            return Result<void>::Failure(epidemic::foundation::Error::Create("streaming.step_failed", "step failed for test"));
+            return Result<StreamingStepResult>::Failure(epidemic::foundation::Error::Create("streaming.step_failed", "step failed for test"));
         }
-        return Result<void>::Success();
+        if (partial_step && step.step == *partial_step)
+        {
+            if (partial_remaining > 0)
+            {
+                --partial_remaining;
+                return Result<StreamingStepResult>::Success(StreamingStepResult{partial_processed_bytes, false});
+            }
+            return Result<StreamingStepResult>::Success(StreamingStepResult{partial_processed_bytes, true});
+        }
+        return Result<StreamingStepResult>::Success(StreamingStepResult{step.estimated_bytes, true});
     }
 
-    ProgressiveLoadPlan plan{{StreamingPlanStep::ResolveTarget, StreamingPlanStep::PrepareData, StreamingPlanStep::PrepareResources, StreamingPlanStep::Commit}};
+    ProgressiveLoadPlan plan{{StreamingPlanStepRecord{StreamingPlanStep::ResolveTarget, 10},
+                              StreamingPlanStepRecord{StreamingPlanStep::PrepareData, 20},
+                              StreamingPlanStepRecord{StreamingPlanStep::PrepareResources, 30},
+                              StreamingPlanStepRecord{StreamingPlanStep::Commit, 40}}};
     std::optional<StreamingPlanStep> fail_step;
+    std::optional<StreamingPlanStep> partial_step;
+    int partial_remaining = 0;
+    std::size_t partial_processed_bytes = 1;
     int build_count = 0;
     std::vector<StreamingPlanStep> executed;
 };
@@ -100,11 +117,16 @@ class CommitTarget final : public IStreamingCommitTarget
     Result<void> Rollback(const StreamingRequest&) override
     {
         ++rollbacks;
+        if (fail_rollback)
+        {
+            return Result<void>::Failure(epidemic::foundation::Error::Create("streaming.rollback_failed", "rollback failed for test"));
+        }
         return Result<void>::Success();
     }
 
     int commits = 0;
     int rollbacks = 0;
+    bool fail_rollback = false;
 };
 
 class PriorityProvider final : public IStreamingPriorityProvider
@@ -118,6 +140,16 @@ class PriorityProvider final : public IStreamingPriorityProvider
     StreamingPriorityClass priority = StreamingPriorityClass::High;
 };
 
+template <typename T>
+concept HasRawCancelRequest = requires(T& runtime, epidemic::runtime::streaming::StreamingRequestId id) {
+    runtime.CancelRequest(id);
+};
+
+template <typename T>
+concept HasRawGetProgress = requires(T& query, epidemic::runtime::streaming::StreamingRequestId id) {
+    query.GetProgress(id);
+};
+
 bool AdvanceTo(StreamingRuntime& runtime, ChunkId chunk, StreamingState expected, int max_ticks = 16)
 {
     for (int i = 0; i < max_ticks; ++i)
@@ -126,7 +158,7 @@ bool AdvanceTo(StreamingRuntime& runtime, ChunkId chunk, StreamingState expected
         {
             return true;
         }
-        runtime.Tick();
+        (void)runtime.Tick();
     }
     return runtime.GetChunkState(chunk) == expected;
 }
@@ -157,7 +189,7 @@ bool TestOneConsumerReleaseKeepsLoad()
     }
     const auto release = runtime.ReleaseDemand(first.Value());
     const auto progress = runtime.GetProgress(second.Value().request);
-    runtime.Tick();
+    (void)runtime.Tick();
     return release && progress && progress->demand_count == 1 && runtime.GetChunkState(chunk) == StreamingState::Queued;
 }
 
@@ -185,8 +217,8 @@ bool TestLastConsumerReleaseUnloadsResident()
         return false;
     }
     const auto release = runtime.ReleaseDemand(demand.Value());
-    runtime.Tick();
-    runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
     return release && runtime.GetChunkState(chunk) == StreamingState::Unloaded &&
            controller.GetResidencyState(chunk) == StreamingState::Unloaded;
 }
@@ -203,10 +235,10 @@ bool TestCancelDuringPartialLoadRollsBack()
     {
         return false;
     }
-    runtime.Tick();
-    runtime.Tick();
-    runtime.Tick();
-    const auto cancelled = runtime.CancelRequest(demand.Value().request);
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto cancelled = runtime.ReleaseDemand(demand.Value());
     return cancelled && runtime.GetChunkState(chunk) == StreamingState::Cancelled && commit->rollbacks == 1;
 }
 
@@ -222,11 +254,11 @@ bool TestRollbackOnFailedStep()
     {
         return false;
     }
-    runtime.Tick();
-    runtime.Tick();
-    runtime.Tick();
-    runtime.Tick();
-    runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
     return runtime.GetChunkState(chunk) == StreamingState::Failed && commit->rollbacks == 1 &&
            runtime.GetStatistics().failed == 1;
 }
@@ -242,13 +274,62 @@ bool TestBudgetsLimitItemsAndBytes()
     {
         return false;
     }
-    runtime.Tick();
+    (void)runtime.Tick();
     if (runtime.GetChunkState(ChunkId{201}) != StreamingState::Queued || runtime.GetChunkState(ChunkId{202}) != StreamingState::Requested)
     {
         return false;
     }
-    runtime.Tick();
+    (void)runtime.Tick();
     return runtime.GetChunkState(ChunkId{201}) == StreamingState::Loading && runtime.GetChunkState(ChunkId{202}) == StreamingState::Requested;
+}
+
+bool TestByteBudgetUsesEstimatedBytes()
+{
+    auto source = std::make_shared<PlanSource>();
+    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 15});
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{203}}}, StreamingPriorityClass::Normal);
+    if (!demand)
+    {
+        return false;
+    }
+
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto first_step = runtime.Tick();
+    const auto blocked = runtime.Tick();
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 20});
+    const auto progressed = runtime.Tick();
+    const auto progress = runtime.GetProgress(demand.Value().request);
+    return first_step.processed_bytes == 10 && blocked.processed_bytes == 0 && progressed.processed_bytes == 20 &&
+           progress && progress->processed_bytes == 30;
+}
+
+bool TestIncompleteStepDoesNotAdvanceCursor()
+{
+    auto source = std::make_shared<PlanSource>();
+    source->partial_step = StreamingPlanStep::PrepareData;
+    source->partial_remaining = 1;
+    source->partial_processed_bytes = 7;
+    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{204}}}, StreamingPriorityClass::Normal);
+    if (!demand)
+    {
+        return false;
+    }
+
+    (void)runtime.Tick(); // Requested -> Queued
+    (void)runtime.Tick(); // Queued -> Loading
+    const auto first_step = runtime.Tick(); // ResolveTarget completes.
+    const auto partial = runtime.Tick(); // PrepareData incomplete.
+    const auto completed = runtime.Tick(); // PrepareData completes.
+    const auto progress = runtime.GetProgress(demand.Value().request);
+    return first_step.processed_bytes == 10 && partial.processed_bytes == 7 && completed.processed_bytes == 7 &&
+           source->executed.size() == 3u &&
+           source->executed[0] == StreamingPlanStep::ResolveTarget &&
+           source->executed[1] == StreamingPlanStep::PrepareData &&
+           source->executed[2] == StreamingPlanStep::PrepareData &&
+           progress && progress->processed_bytes == 24;
 }
 
 bool TestTargetVariantsRejectUnsupportedInReference()
@@ -273,9 +354,11 @@ bool TestRequestGenerationAndStaleDemand()
     StreamingDemandHandle stale = demand.Value();
     ++stale.generation;
     const auto released = runtime.ReleaseDemand(stale);
-    StreamingRequestHandle request{demand.Value().request, 999};
+    StreamingRequestHandle request{demand.Value().request.id, 999};
     const auto cancelled = runtime.CancelRequest(request);
+    const auto active_cancel = runtime.CancelRequest(demand.Value().request);
     return !released && released.GetError().HasCode("streaming.stale_handle") &&
+           !active_cancel && active_cancel.GetError().HasCode("streaming.active_demands") &&
            !cancelled && cancelled.GetError().HasCode("streaming.stale_handle");
 }
 
@@ -291,8 +374,29 @@ bool TestRecordCleanup()
     }
     (void)runtime.ReleaseDemand(first.Value());
     (void)runtime.ReleaseDemand(second.Value());
-    runtime.Tick();
+    (void)runtime.Tick();
     return runtime.RecordCount() == 1;
+}
+
+bool TestRollbackFailureMarksRollbackFailed()
+{
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    commit->fail_rollback = true;
+    StreamingRuntime runtime(StreamingDependencies{source, commit, nullptr});
+    const ChunkId chunk{601};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand)
+    {
+        return false;
+    }
+
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto cancelled = runtime.ReleaseDemand(demand.Value());
+    return !cancelled && cancelled.GetError().HasCode("streaming.rollback_failed") &&
+           runtime.GetChunkState(chunk) == StreamingState::RollbackFailed;
 }
 
 bool TestServicesFactoryUsesDependencies()
@@ -313,11 +417,14 @@ bool TestServicesFactoryUsesDependencies()
 int main()
 {
     static_assert(std::is_same_v<decltype(StreamingBudget{}.max_requests), std::size_t>);
+    static_assert(StreamingBudget{}.IsUnlimited());
     static_assert(std::is_abstract_v<IStreamingRuntime>);
     static_assert(std::is_abstract_v<IStreamingQuery>);
     static_assert(std::is_abstract_v<IResidencyController>);
     static_assert(std::is_abstract_v<IStreamingPriorityResolver>);
     static_assert(std::is_abstract_v<IStreamingDataSource>);
+    static_assert(!HasRawCancelRequest<IStreamingRuntime>);
+    static_assert(!HasRawGetProgress<IStreamingQuery>);
     static_assert(std::is_abstract_v<IStreamingCommitTarget>);
     static_assert(std::is_abstract_v<IStreamingPriorityProvider>);
 
@@ -328,9 +435,12 @@ int main()
     if (!TestCancelDuringPartialLoadRollsBack()) return 5;
     if (!TestRollbackOnFailedStep()) return 6;
     if (!TestBudgetsLimitItemsAndBytes()) return 7;
+    if (!TestByteBudgetUsesEstimatedBytes()) return 13;
+    if (!TestIncompleteStepDoesNotAdvanceCursor()) return 15;
     if (!TestTargetVariantsRejectUnsupportedInReference()) return 8;
     if (!TestRequestGenerationAndStaleDemand()) return 9;
     if (!TestRecordCleanup()) return 10;
+    if (!TestRollbackFailureMarksRollbackFailed()) return 14;
     if (!TestServicesFactoryUsesDependencies()) return 11;
     return 0;
 }

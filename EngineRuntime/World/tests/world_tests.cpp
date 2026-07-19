@@ -24,6 +24,8 @@ using epidemic::runtime::ChunkId;
 using epidemic::runtime::ChunkState;
 using epidemic::runtime::DemotionRequest;
 using epidemic::runtime::DemotionCommitToken;
+using epidemic::runtime::DemotionSnapshot;
+using epidemic::runtime::DestroyObjectCommand;
 using epidemic::runtime::EquippedPlacement;
 using epidemic::runtime::GameTimePoint;
 using epidemic::runtime::InventoryPlacement;
@@ -46,7 +48,9 @@ using epidemic::runtime::WorldLocation;
 using epidemic::runtime::WorldObjectRecord;
 using epidemic::runtime::WorldRuntime;
 using epidemic::runtime::ChangePlacementCommand;
+using epidemic::runtime::ChangeChunkStateCommand;
 using epidemic::runtime::ChangeResidencyCommand;
+using epidemic::runtime::CreateObjectCommand;
 using epidemic::runtime::PromotePersistenceTierCommand;
 using epidemic::runtime::ValidateRealityResidencyCombination;
 
@@ -104,7 +108,7 @@ bool TestChunkRegistrationValidation()
            duplicate.GetError().HasCode("world.duplicate_chunk");
 }
 
-// Verifies chunk state defaults to unloaded and can change.
+// Verifies chunk state snapshots are revisioned and transitions are validated.
 bool TestChunkStateDefaultsToUnloadedAndCanChange()
 {
     WorldRuntime runtime;
@@ -115,13 +119,31 @@ bool TestChunkStateDefaultsToUnloadedAndCanChange()
         return false;
     }
 
-    if (runtime.GetChunkState(ChunkId{15}) != ChunkState::Unloaded)
+    const auto initial = runtime.GetChunkSnapshot(ChunkId{15});
+    const auto unknown = runtime.GetChunkSnapshot(ChunkId{999});
+    if (!initial || initial.Value().state != ChunkState::Unloaded || initial.Value().revision != 1u ||
+        unknown || !unknown.GetError().HasCode("world.chunk_not_found"))
     {
         return false;
     }
 
-    const auto set_state = runtime.SetChunkState(ChunkId{15}, ChunkState::Active);
-    return set_state.HasValue() && runtime.GetChunkState(ChunkId{15}) == ChunkState::Active;
+    const auto invalid_transition = runtime.SetChunkState(ChangeChunkStateCommand{ChunkId{15}, initial.Value().revision, ChunkState::Active});
+    const auto loading = runtime.SetChunkState(ChangeChunkStateCommand{ChunkId{15}, initial.Value().revision, ChunkState::Loading});
+    const auto stale = runtime.SetChunkState(ChangeChunkStateCommand{ChunkId{15}, initial.Value().revision, ChunkState::Resident});
+    const auto loaded = runtime.GetChunkSnapshot(ChunkId{15});
+    if (invalid_transition || !invalid_transition.GetError().HasCode("world.invalid_chunk_transition") ||
+        !loading || stale || !stale.GetError().HasCode("world.revision_conflict") ||
+        !loaded || loaded.Value().state != ChunkState::Loading)
+    {
+        return false;
+    }
+
+    const auto resident = runtime.SetChunkState(ChangeChunkStateCommand{ChunkId{15}, loaded.Value().revision, ChunkState::Resident});
+    const auto resident_snapshot = runtime.GetChunkSnapshot(ChunkId{15});
+    const auto active = resident_snapshot ? runtime.SetChunkState(ChangeChunkStateCommand{ChunkId{15}, resident_snapshot.Value().revision, ChunkState::Active})
+                                          : epidemic::foundation::Result<void>::Failure(epidemic::foundation::Error::Create("test.missing_snapshot", "missing"));
+    const auto active_snapshot = runtime.GetChunkSnapshot(ChunkId{15});
+    return resident && resident_snapshot && active && active_snapshot && active_snapshot.Value().state == ChunkState::Active;
 }
 
 // Verifies create object returns valid runtime id.
@@ -141,6 +163,7 @@ bool TestFindObjectReturnsSnapshot()
     WorldRuntime runtime;
     WorldObjectRecord record{};
     record.asset_id = AssetId::FromString("items/apple");
+    record.persistent_id = PersistentObjectId{140};
     record.persistence_tier = PersistenceTier::PlayerTouched;
     const auto created = runtime.CreateObject(record);
     if (!created.HasValue())
@@ -280,6 +303,7 @@ bool TestPersistencePromotionForbidsDowngrade()
 {
     WorldRuntime runtime;
     WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{900};
     record.persistence_tier = PersistenceTier::PlayerTouched;
     const auto created = runtime.CreateObject(record);
     if (!created.HasValue())
@@ -293,6 +317,42 @@ bool TestPersistencePromotionForbidsDowngrade()
     return !downgrade.HasValue() && downgrade.GetError().HasCode("world.forbidden_persistence_downgrade") &&
            upgrade.HasValue() && stored.has_value() && stored->persistence_tier == PersistenceTier::Protected &&
            stored->revision == 2;
+}
+
+bool TestPlayerTouchedPromotionRequiresPersistentId()
+{
+    WorldRuntime runtime;
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto missing_id = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::PlayerTouched});
+    const auto promoted = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::PlayerTouched, PersistentObjectId{901}});
+    const auto stored = runtime.FindObject(created.Value());
+    return !missing_id.HasValue() && missing_id.GetError().HasCode("world.persistent_id_required") &&
+           promoted.HasValue() && stored && stored->persistent_id == PersistentObjectId{901} &&
+           stored->persistence_tier == PersistenceTier::PlayerTouched;
+}
+
+bool TestPublicCommandsRequireExpectedRevision()
+{
+    WorldRuntime runtime;
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto placement = runtime.Apply(ChangePlacementCommand{created.Value(), 0, HiddenPlacement{}});
+    const auto residency = runtime.Apply(ChangeResidencyCommand{created.Value(), 0, ResidencyState::Resident});
+    const auto promotion = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 0, PersistenceTier::TemporaryObserved});
+    const auto destruction = runtime.Apply(DestroyObjectCommand{created.Value(), 0});
+    return !placement.HasValue() && placement.GetError().HasCode("world.expected_revision_required") &&
+           !residency.HasValue() && residency.GetError().HasCode("world.expected_revision_required") &&
+           !promotion.HasValue() && promotion.GetError().HasCode("world.expected_revision_required") &&
+           !destruction.HasValue() && destruction.GetError().HasCode("world.expected_revision_required");
 }
 
 bool TestSurfacePlacementRequiresRegisteredRegionAndChunk()
@@ -429,6 +489,51 @@ bool TestDemotionWithoutCollapseConfirmationRejected()
            stored.has_value() && stored->reality == ObjectRealityLevel::Physical && stored->revision == 1;
 }
 
+bool TestDestroyedPlacementRequiresDestroyCommandAndIsTerminal()
+{
+    WorldRuntime runtime;
+    WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{910};
+    record.persistence_tier = PersistenceTier::TemporaryObserved;
+    const auto created = runtime.CreateObject(record);
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto forged_destroyed = runtime.Apply(ChangePlacementCommand{
+        created.Value(),
+        1,
+        ObjectPlacement{DestroyedPlacement{GameTimePoint{1}, StringId::FromString("forged")}}});
+    const auto destroyed = runtime.Apply(DestroyObjectCommand{created.Value(), 1, GameTimePoint{2}, StringId::FromString("destroy")});
+    const auto move_after_destroy = runtime.Apply(ChangePlacementCommand{created.Value(), 2, ObjectPlacement{HiddenPlacement{}}});
+    const auto residency_after_destroy = runtime.Apply(ChangeResidencyCommand{created.Value(), 2, ResidencyState::Resident});
+    const auto materialize_after_destroy = runtime.Materialize(MaterializationRequest{record.persistent_id, ObjectRealityLevel::Physical});
+
+    return !forged_destroyed.HasValue() && forged_destroyed.GetError().HasCode("world.destroyed_requires_destroy_command") &&
+           destroyed.HasValue() && !move_after_destroy.HasValue() &&
+           move_after_destroy.GetError().HasCode("world.destroyed_terminal") &&
+           !residency_after_destroy.HasValue() && residency_after_destroy.GetError().HasCode("world.destroyed_terminal") &&
+           !materialize_after_destroy.HasValue() && materialize_after_destroy.GetError().HasCode("world.destroyed_terminal");
+}
+
+bool TestDestroyRejectsDependentObjects()
+{
+    WorldRuntime runtime;
+    const auto owner = runtime.CreateObject(WorldObjectRecord{});
+    const auto dependent = runtime.CreateObject(WorldObjectRecord{});
+    if (!owner.HasValue() || !dependent.HasValue() ||
+        !runtime.SetPlacement(dependent.Value(), ObjectPlacement{InventoryPlacement{owner.Value()}}).HasValue())
+    {
+        return false;
+    }
+
+    const auto destroyed = runtime.DestroyObject(owner.Value());
+    const auto owner_stored = runtime.FindObject(owner.Value());
+    return !destroyed.HasValue() && destroyed.GetError().HasCode("world.dependent_objects_exist") &&
+           owner_stored.has_value();
+}
+
 // Verifies find objects in chunk works.
 bool TestFindObjectsInChunkWorks()
 {
@@ -528,11 +633,16 @@ bool TestFindObjectsByRealityWorks()
 bool TestMaterializeChangesLogicalToPhysical()
 {
     WorldRuntime runtime;
+    if (!RegisterRegionAndChunk(runtime, RegionId{12}, ChunkId{24}))
+    {
+        return false;
+    }
     WorldObjectRecord record{};
     record.persistent_id = epidemic::runtime::PersistentObjectId{77};
     record.persistence_tier = PersistenceTier::TemporaryObserved;
     record.reality = ObjectRealityLevel::Logical;
     record.residency = ResidencyState::Unloaded;
+    record.placement = ObjectPlacement{WorldSurfacePlacement{RegionId{12}, ChunkId{24}, Transform{}}};
     const auto created = runtime.CreateObject(record);
     if (!created.HasValue())
     {
@@ -545,12 +655,63 @@ bool TestMaterializeChangesLogicalToPhysical()
            stored->residency == ResidencyState::Active;
 }
 
-// Verifies demote changes physical to logical.
-bool TestDemoteChangesPhysicalToLogical()
+bool TestMaterializePhysicalRequiresCompatiblePlacement()
 {
     WorldRuntime runtime;
     WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{78};
+    record.persistence_tier = PersistenceTier::TemporaryObserved;
+    record.reality = ObjectRealityLevel::Logical;
+    record.residency = ResidencyState::Unloaded;
+    record.placement = HiddenPlacement{};
+    const auto created = runtime.CreateObject(record);
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto materialized = runtime.Materialize(MaterializationRequest{record.persistent_id, ObjectRealityLevel::Physical});
+    const auto stored = runtime.FindObject(created.Value());
+    return !materialized.HasValue() && materialized.GetError().HasCode("world.materialization_placement_incompatible") &&
+           stored && stored->reality == ObjectRealityLevel::Logical;
+}
+
+// Verifies demote changes physical to logical.
+bool TestDemoteChangesPhysicalToLogical()
+{
+    const auto services = CreateWorldServices();
+    if (!services || !services.Value().writer || !services.Value().query || !services.Value().materialization || !services.Value().demotion_authority)
+    {
+        return false;
+    }
+    WorldObjectRecord record{};
     record.persistent_id = epidemic::runtime::PersistentObjectId{88};
+    record.persistence_tier = PersistenceTier::TemporaryObserved;
+    record.reality = ObjectRealityLevel::Physical;
+    record.residency = ResidencyState::Active;
+    const auto created = services.Value().writer->Apply(epidemic::runtime::CreateObjectCommand{record});
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto token = services.Value().demotion_authority->IssueDemotionCommitToken(
+        DemotionSnapshot{created.Value().runtime_id, ObjectRealityLevel::Logical, HiddenPlacement{}, StringId::FromString("collapse/88"), 1});
+    if (!token.HasValue())
+    {
+        return false;
+    }
+    const auto demoted = services.Value().materialization->Demote(DemotionRequest{created.Value().runtime_id, ObjectRealityLevel::Logical, token.Value()});
+    const auto stored = services.Value().query->FindObject(created.Value().runtime_id);
+    return demoted.HasValue() && stored.has_value() && stored->reality == ObjectRealityLevel::Logical &&
+           stored->residency == ResidencyState::Resident;
+}
+
+bool TestForgedDemotionTokenRejected()
+{
+    WorldRuntime runtime;
+    WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{89};
     record.persistence_tier = PersistenceTier::TemporaryObserved;
     record.reality = ObjectRealityLevel::Physical;
     record.residency = ResidencyState::Active;
@@ -560,16 +721,79 @@ bool TestDemoteChangesPhysicalToLogical()
         return false;
     }
 
-    DemotionCommitToken token{};
-    token.object = created.Value();
-    token.target_reality = ObjectRealityLevel::Logical;
-    token.collapsed_placement = HiddenPlacement{};
-    token.collapse_record_id = StringId::FromString("collapse/88");
-    token.source_revision = 1;
-    const auto demoted = runtime.Demote(DemotionRequest{created.Value(), ObjectRealityLevel::Logical, token});
+    DemotionCommitToken forged{};
+    forged.token_id = 1;
+    forged.object = created.Value();
+    forged.target_reality = ObjectRealityLevel::Logical;
+    forged.collapsed_placement = HiddenPlacement{};
+    forged.collapse_record_id = StringId::FromString("collapse/forged");
+    forged.source_revision = 1;
+    const auto demoted = runtime.Demote(DemotionRequest{created.Value(), ObjectRealityLevel::Logical, forged});
     const auto stored = runtime.FindObject(created.Value());
-    return demoted.HasValue() && stored.has_value() && stored->reality == ObjectRealityLevel::Logical &&
-           stored->residency == ResidencyState::Resident;
+    return !demoted.HasValue() && demoted.GetError().HasCode("world.demotion_not_confirmed") &&
+           stored && stored->reality == ObjectRealityLevel::Physical;
+}
+
+bool TestRevokedDemotionTokenRejected()
+{
+    const auto services = CreateWorldServices();
+    if (!services || !services.Value().writer || !services.Value().materialization || !services.Value().demotion_authority)
+    {
+        return false;
+    }
+
+    WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{90};
+    record.persistence_tier = PersistenceTier::TemporaryObserved;
+    record.reality = ObjectRealityLevel::Physical;
+    record.residency = ResidencyState::Active;
+    const auto created = services.Value().writer->Apply(CreateObjectCommand{record});
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto token = services.Value().demotion_authority->IssueDemotionCommitToken(
+        DemotionSnapshot{created.Value().runtime_id, ObjectRealityLevel::Logical, ObjectPlacement{HiddenPlacement{}}, StringId::FromString("collapse/90"), 1});
+    if (!token.HasValue())
+    {
+        return false;
+    }
+
+    const auto revoked = services.Value().demotion_authority->RevokeDemotionCommitToken(token.Value().token_id);
+    const auto demoted = services.Value().materialization->Demote(
+        DemotionRequest{created.Value().runtime_id, ObjectRealityLevel::Logical, token.Value()});
+    return revoked.HasValue() && !demoted.HasValue() && demoted.GetError().HasCode("world.demotion_not_confirmed");
+}
+
+bool TestDemotionTokenInvalidatedByObjectRevisionChange()
+{
+    WorldRuntime runtime;
+    WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{91};
+    record.persistence_tier = PersistenceTier::TemporaryObserved;
+    record.reality = ObjectRealityLevel::Physical;
+    record.residency = ResidencyState::Active;
+    const auto created = runtime.CreateObject(record);
+    if (!created.HasValue())
+    {
+        return false;
+    }
+
+    const auto token = runtime.IssueDemotionCommitToken(
+        DemotionSnapshot{created.Value(), ObjectRealityLevel::Logical, ObjectPlacement{HiddenPlacement{}}, StringId::FromString("collapse/91"), 1});
+    if (!token.HasValue())
+    {
+        return false;
+    }
+
+    const auto changed = runtime.SetResidency(created.Value(), ResidencyState::Sleeping);
+    const auto demoted = runtime.Demote(DemotionRequest{created.Value(), ObjectRealityLevel::Logical, token.Value()});
+    const auto revoked_after_invalidation = runtime.RevokeDemotionCommitToken(token.Value().token_id);
+    const auto stored = runtime.FindObject(created.Value());
+    return changed.HasValue() && !demoted.HasValue() && demoted.GetError().HasCode("world.demotion_not_confirmed") &&
+           !revoked_after_invalidation.HasValue() && revoked_after_invalidation.GetError().HasCode("world.demotion_token_not_found") &&
+           stored && stored->revision == 2;
 }
 
 // Verifies world location stores region and chunk.
@@ -583,7 +807,7 @@ bool TestFactoryCreatesSharedWorldServices()
 {
     const auto services = CreateWorldServices();
     if (!services.HasValue() || !services.Value().regions || !services.Value().chunks || !services.Value().query ||
-        !services.Value().writer || !services.Value().materialization)
+        !services.Value().writer || !services.Value().materialization || !services.Value().demotion_authority)
     {
         return false;
     }
@@ -703,6 +927,16 @@ int main()
         return 15;
     }
 
+    if (!TestPlayerTouchedPromotionRequiresPersistentId())
+    {
+        return 32;
+    }
+
+    if (!TestPublicCommandsRequireExpectedRevision())
+    {
+        return 33;
+    }
+
     if (!TestSurfacePlacementRequiresRegisteredRegionAndChunk())
     {
         return 16;
@@ -738,6 +972,16 @@ int main()
         return 22;
     }
 
+    if (!TestDestroyedPlacementRequiresDestroyCommandAndIsTerminal())
+    {
+        return 34;
+    }
+
+    if (!TestDestroyRejectsDependentObjects())
+    {
+        return 35;
+    }
+
     if (!TestFindObjectsInChunkWorks())
     {
         return 23;
@@ -763,9 +1007,29 @@ int main()
         return 27;
     }
 
+    if (!TestMaterializePhysicalRequiresCompatiblePlacement())
+    {
+        return 36;
+    }
+
     if (!TestDemoteChangesPhysicalToLogical())
     {
         return 28;
+    }
+
+    if (!TestForgedDemotionTokenRejected())
+    {
+        return 37;
+    }
+
+    if (!TestRevokedDemotionTokenRejected())
+    {
+        return 38;
+    }
+
+    if (!TestDemotionTokenInvalidatedByObjectRevisionChange())
+    {
+        return 39;
     }
 
     if (!TestDestroyPersistentObjectLeavesTombstone())

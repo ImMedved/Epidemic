@@ -41,7 +41,9 @@ struct PromotePersistenceTierCommand
     RuntimeObjectId runtime_id{};
     std::uint64_t expected_revision = 0;
     PersistenceTier tier = PersistenceTier::Disposable;
+    std::optional<PersistentObjectId> persistent_id;
 };
+
 
 struct MaterializeObjectCommand
 {

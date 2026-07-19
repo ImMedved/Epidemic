@@ -126,6 +126,11 @@ foundation::Result<void> ValidateWorldObjectInvariant(const WorldObjectSnapshot&
     {
         return WorldInvariantFailure("world.invalid_persistence_tier", "persistent objects must not use disposable persistence tier");
     }
+    if (PersistenceTierRank(object.persistence_tier) >= PersistenceTierRank(PersistenceTier::PlayerTouched) &&
+        !object.persistent_id.IsValid())
+    {
+        return WorldInvariantFailure("world.persistent_id_required", "persistent world objects require a persistent object id");
+    }
 
     const auto reality_residency = ValidateRealityResidencyCombination(object.reality, object.residency);
     if (!reality_residency)

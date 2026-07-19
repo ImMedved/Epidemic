@@ -35,18 +35,12 @@ class StreamingRuntime final : public IStreamingRuntime, public IStreamingQuery
                               IStreamingPersistenceSource* persistence_source = nullptr,
                               IStreamingResourceSource* resource_source = nullptr);
 
-    [[nodiscard]] foundation::Result<StreamingRequestId> RequestChunk(ChunkId chunk, StreamingPriorityClass priority) override;
     [[nodiscard]] foundation::Result<StreamingDemandHandle> Request(const StreamingTarget& target, StreamingPriorityClass priority) override;
-    [[nodiscard]] foundation::Result<StreamingRequestHandle> RequestTarget(const StreamingTarget& target,
-                                                                           StreamingPriorityClass priority,
-                                                                           std::uint32_t demand_count) override;
     [[nodiscard]] foundation::Result<void> ReleaseDemand(StreamingDemandHandle demand) override;
-    [[nodiscard]] foundation::Result<void> CancelRequest(StreamingRequestId request) override;
     [[nodiscard]] foundation::Result<void> CancelRequest(StreamingRequestHandle request) override;
     [[nodiscard]] StreamingState GetChunkState(ChunkId chunk) const override;
     void SetBudget(const StreamingBudget& budget) override;
-    void Tick() override;
-    [[nodiscard]] std::optional<StreamingProgress> GetProgress(StreamingRequestId request) const override;
+    [[nodiscard]] StreamingTickResult Tick() override;
     [[nodiscard]] std::optional<StreamingProgress> GetProgress(StreamingRequestHandle request) const override;
     [[nodiscard]] StreamingStatistics GetStatistics() const override;
 
@@ -70,6 +64,8 @@ class StreamingRuntime final : public IStreamingRuntime, public IStreamingQuery
         std::uint32_t active_demands = 0;
         StreamingPriorityClass max_priority = StreamingPriorityClass::Normal;
         bool commit_completed = false;
+        std::uint64_t completion_sequence = 0;
+        std::size_t processed_bytes = 0;
         std::unordered_map<StreamingDemandId, DemandRecord> demands;
     };
 
@@ -106,6 +102,7 @@ class StreamingRuntime final : public IStreamingRuntime, public IStreamingQuery
     std::uint64_t next_demand_value_ = 1;
     std::uint32_t next_request_generation_ = 1;
     std::uint32_t next_demand_generation_ = 1;
+    std::uint64_t next_completion_sequence_ = 1;
     std::size_t history_limit_ = 64;
     StreamingStatistics statistics_{};
 };

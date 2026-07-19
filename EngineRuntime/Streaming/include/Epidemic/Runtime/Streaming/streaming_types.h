@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Epidemic/Foundation/error.h"
 #include "Epidemic/Runtime/Foundation/runtime_budget.h"
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
 #include "Epidemic/Foundation/string_id.h"
@@ -30,7 +31,8 @@ enum class StreamingState
     Unloading,
     Unloaded,
     Cancelled,
-    Failed
+    Failed,
+    RollbackFailed
 };
 
 enum class StreamingPriorityClass
@@ -82,7 +84,7 @@ struct StreamingDemandId
 struct StreamingDemandHandle
 {
     StreamingDemandId id{};
-    StreamingRequestId request{};
+    StreamingRequestHandle request{};
     std::uint32_t generation = 0;
 
     [[nodiscard]] constexpr bool IsValid() const noexcept
@@ -135,9 +137,30 @@ enum class StreamingPlanStep
     Release
 };
 
+struct StreamingPlanStepRecord
+{
+    StreamingPlanStep step = StreamingPlanStep::ResolveTarget;
+    std::size_t estimated_bytes = 0;
+    std::size_t processed_bytes = 0;
+
+    constexpr StreamingPlanStepRecord() = default;
+    constexpr StreamingPlanStepRecord(StreamingPlanStep value) noexcept : step(value) {}
+    constexpr StreamingPlanStepRecord(StreamingPlanStep value, std::size_t estimated, std::size_t processed = 0) noexcept
+        : step(value), estimated_bytes(estimated), processed_bytes(processed)
+    {
+    }
+    constexpr operator StreamingPlanStep() const noexcept { return step; }
+};
+
+struct StreamingStepResult
+{
+    std::size_t processed_bytes = 0;
+    bool completed = true;
+};
+
 struct ProgressiveLoadPlan
 {
-    std::vector<StreamingPlanStep> steps{};
+    std::vector<StreamingPlanStepRecord> steps{};
     std::size_t cursor = 0;
 };
 
@@ -151,15 +174,11 @@ struct StreamingRequest
 {
     StreamingRequestId id{};
     StreamingRequestHandle handle{};
-    StreamingDemandHandle demand_handle{};
     StreamingTarget target{ChunkStreamingTarget{}};
-    RegionId region{};
-    ChunkId chunk{};
     StreamingPriorityClass priority = StreamingPriorityClass::Normal;
     std::uint32_t demand_count = 1;
     StreamingCancellationToken cancellation{};
     ProgressiveLoadPlan load_plan{};
-    RuntimeBudget budget_hint{};
 };
 
 struct StreamingBudget
@@ -168,7 +187,7 @@ struct StreamingBudget
     std::size_t max_requests = 0;
     std::size_t max_bytes = 0;
 
-    [[nodiscard]] constexpr bool IsEmpty() const noexcept
+    [[nodiscard]] constexpr bool IsUnlimited() const noexcept
     {
         return cpu_budget.count() == 0 && max_requests == 0 && max_bytes == 0;
     }
@@ -183,6 +202,21 @@ struct StreamingProgress
     float progress = 0.0f;
     std::uint32_t demand_count = 0;
     std::uint64_t revision = 0;
+    std::size_t processed_bytes = 0;
+};
+
+struct StreamingTickFailure
+{
+    StreamingRequestHandle handle{};
+    StreamingTarget target{ChunkStreamingTarget{}};
+    foundation::Error error{};
+};
+
+struct StreamingTickResult
+{
+    std::size_t processed_requests = 0;
+    std::size_t processed_bytes = 0;
+    std::vector<StreamingTickFailure> failures;
 };
 
 struct StreamingStatistics

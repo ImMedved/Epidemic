@@ -16,23 +16,14 @@ class IStreamingRuntime
   public:
     virtual ~IStreamingRuntime() = default;
 
-    [[nodiscard]] virtual foundation::Result<StreamingRequestId> RequestChunk(
-        ChunkId chunk,
-        StreamingPriorityClass priority) = 0;
     [[nodiscard]] virtual foundation::Result<StreamingDemandHandle> Request(
         const StreamingTarget& target,
         StreamingPriorityClass priority) = 0;
-    [[nodiscard]] virtual foundation::Result<StreamingRequestHandle> RequestTarget(
-        const StreamingTarget& target,
-        StreamingPriorityClass priority,
-        std::uint32_t demand_count) = 0;
     [[nodiscard]] virtual foundation::Result<void> ReleaseDemand(StreamingDemandHandle demand) = 0;
-    [[nodiscard]] virtual foundation::Result<void> CancelRequest(StreamingRequestId request) = 0;
     [[nodiscard]] virtual foundation::Result<void> CancelRequest(StreamingRequestHandle request) = 0;
     [[nodiscard]] virtual StreamingState GetChunkState(ChunkId chunk) const = 0;
     virtual void SetBudget(const StreamingBudget& budget) = 0;
-    virtual void Tick() = 0;
-    [[nodiscard]] virtual std::optional<StreamingProgress> GetProgress(StreamingRequestId request) const = 0;
+    [[nodiscard]] virtual StreamingTickResult Tick() = 0;
     [[nodiscard]] virtual std::optional<StreamingProgress> GetProgress(StreamingRequestHandle request) const = 0;
     [[nodiscard]] virtual StreamingStatistics GetStatistics() const = 0;
 };
