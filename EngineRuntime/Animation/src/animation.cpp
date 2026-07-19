@@ -1,17 +1,42 @@
 #include "animation_runtime_impl.h"
 
+#include "Epidemic/Foundation/error.h"
+
+#include <memory>
 #include <utility>
 
 namespace epidemic::runtime::animation
 {
-std::unique_ptr<AnimationRuntime> CreateAnimationRuntime(AnimationOptions options, AnimationDependencies dependencies)
+namespace
 {
-    return std::make_unique<AnimationRuntime>(options, std::move(dependencies));
-}
+class ReferenceAnimationEvaluator final : public IAnimationEvaluatorBackend
+{
+public:
+    [[nodiscard]] foundation::Result<PoseBuffer> EvaluatePose(const AnimationEvaluationRequest& request) const override
+    {
+        PoseBuffer pose{request.animator, std::vector<Transform>(request.skeleton.joint_count), request.revision};
+        const float source_sample = static_cast<float>(request.source_time.value.count()) / 1000000.0f;
+        const float target_sample = static_cast<float>(request.target_time.value.count()) / 1000000.0f;
+        const float blended_sample = source_sample * request.source_weight + target_sample * request.target_weight;
+        for (std::size_t index = 0; index < pose.bone_transforms.size(); ++index)
+        {
+            pose.bone_transforms[index].position.x = blended_sample;
+            pose.bone_transforms[index].position.y = static_cast<float>(index);
+            pose.bone_transforms[index].position.z = request.target_weight;
+        }
+        return foundation::Result<PoseBuffer>::Success(std::move(pose));
+    }
+};
+} // namespace
 
 foundation::Result<AnimationServices> CreateAnimationServices(AnimationOptions options, AnimationDependencies dependencies)
 {
     options.enable_mock_pose_evaluation = false;
+    if (dependencies.evaluator == nullptr)
+    {
+        return foundation::Result<AnimationServices>::Failure(
+            foundation::Error::Create("animation.evaluator_missing", "production animation services require an evaluator backend"));
+    }
     auto runtime = std::make_shared<AnimationRuntime>(options, std::move(dependencies));
 
     AnimationServices services{};
@@ -26,7 +51,9 @@ foundation::Result<AnimationServices> CreateAnimationServices(AnimationOptions o
 AnimationServices CreateReferenceAnimationServices(AnimationOptions options)
 {
     options.enable_mock_pose_evaluation = true;
-    auto runtime = std::make_shared<AnimationRuntime>(options);
+    AnimationDependencies dependencies{};
+    dependencies.evaluator = std::make_shared<ReferenceAnimationEvaluator>();
+    auto runtime = std::make_shared<AnimationRuntime>(options, std::move(dependencies));
 
     AnimationServices services{};
     services.skeletons = runtime;

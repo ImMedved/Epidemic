@@ -36,23 +36,20 @@ class IAnimationRuntime
 public:
     virtual ~IAnimationRuntime() = default;
 
-    [[nodiscard]] virtual foundation::Result<AnimatorInstanceId> CreateAnimator(const AnimatorDesc& desc) = 0;
     [[nodiscard]] virtual foundation::Result<AnimatorHandle> CreateAnimatorHandle(const AnimatorDesc& desc) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> DestroyAnimator(AnimatorInstanceId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyAnimator(AnimatorHandle handle) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> Play(AnimatorInstanceId id, AnimationClipId clip) = 0;
     [[nodiscard]] virtual foundation::Result<void> Play(const AnimationPlaybackCommand& command) = 0;
     [[nodiscard]] virtual foundation::Result<void> Pause(AnimatorHandle handle) = 0;
     [[nodiscard]] virtual foundation::Result<void> Stop(AnimatorHandle handle) = 0;
-    [[nodiscard]] virtual foundation::Result<void> Crossfade(AnimatorHandle handle, AnimationClipId clip, GameDuration duration) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Crossfade(AnimatorHandle handle, AnimationClipId clip, FrameDuration duration) = 0;
 
-    [[nodiscard]] virtual std::size_t Tick(std::size_t max_animators) = 0;
-    [[nodiscard]] virtual std::size_t Tick(GameDuration delta, std::size_t max_animators) = 0;
+    [[nodiscard]] virtual foundation::Result<std::size_t> Tick(FrameDuration delta, std::size_t max_animators) = 0;
 
-    [[nodiscard]] virtual AnimatorState GetState(AnimatorInstanceId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<AnimatorSnapshot> GetAnimatorSnapshot(AnimatorHandle handle) const = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> SetLod(AnimatorInstanceId id, AnimationLodLevel lod) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetLod(AnimatorHandle handle, AnimationLodLevel lod) = 0;
 };
 
 class IPoseProvider
@@ -60,10 +57,10 @@ class IPoseProvider
 public:
     virtual ~IPoseProvider() = default;
 
-    [[nodiscard]] virtual PoseState GetPoseState(AnimatorInstanceId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<PoseState> GetPoseState(AnimatorHandle handle) const = 0;
 
-    [[nodiscard]] virtual PoseSnapshot GetPoseSnapshot(AnimatorInstanceId id) const = 0;
-    [[nodiscard]] virtual PoseBuffer GetPoseBuffer(AnimatorHandle handle) const = 0;
+    [[nodiscard]] virtual foundation::Result<PoseSnapshot> GetPoseSnapshot(AnimatorHandle handle) const = 0;
+    [[nodiscard]] virtual foundation::Result<PoseBuffer> GetPoseBuffer(AnimatorHandle handle) const = 0;
 };
 
 class IAnimationResourceSource
@@ -83,6 +80,14 @@ public:
     [[nodiscard]] virtual foundation::Result<void> Publish(std::shared_ptr<const PoseBuffer> pose) = 0;
 };
 
+class IAnimationEvaluatorBackend
+{
+public:
+    virtual ~IAnimationEvaluatorBackend() = default;
+
+    [[nodiscard]] virtual foundation::Result<PoseBuffer> EvaluatePose(const AnimationEvaluationRequest& request) const = 0;
+};
+
 class IAnimationEventBuffer
 {
 public:
@@ -97,11 +102,8 @@ struct AnimationDependencies
 {
     std::shared_ptr<IAnimationResourceSource> resources;
     std::shared_ptr<IAnimationPoseSink> pose_sink;
+    std::shared_ptr<IAnimationEvaluatorBackend> evaluator;
 };
-
-[[nodiscard]] std::unique_ptr<class AnimationRuntime> CreateAnimationRuntime(
-    AnimationOptions options = {},
-    AnimationDependencies dependencies = {});
 
 struct AnimationServices
 {

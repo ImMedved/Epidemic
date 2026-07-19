@@ -24,21 +24,18 @@ public:
     [[nodiscard]] foundation::Result<void> RegisterClip(AnimationClipDesc desc) override;
     [[nodiscard]] bool HasClip(AnimationClipId id) const override;
 
-    [[nodiscard]] foundation::Result<AnimatorInstanceId> CreateAnimator(const AnimatorDesc& desc) override;
     [[nodiscard]] foundation::Result<AnimatorHandle> CreateAnimatorHandle(const AnimatorDesc& desc) override;
-    [[nodiscard]] foundation::Result<void> DestroyAnimator(AnimatorInstanceId id) override;
-    [[nodiscard]] foundation::Result<void> Play(AnimatorInstanceId id, AnimationClipId clip) override;
+    [[nodiscard]] foundation::Result<void> DestroyAnimator(AnimatorHandle handle) override;
     [[nodiscard]] foundation::Result<void> Play(const AnimationPlaybackCommand& command) override;
     [[nodiscard]] foundation::Result<void> Pause(AnimatorHandle handle) override;
     [[nodiscard]] foundation::Result<void> Stop(AnimatorHandle handle) override;
-    [[nodiscard]] foundation::Result<void> Crossfade(AnimatorHandle handle, AnimationClipId clip, GameDuration duration) override;
-    [[nodiscard]] std::size_t Tick(std::size_t max_animators) override;
-    [[nodiscard]] std::size_t Tick(GameDuration delta, std::size_t max_animators) override;
-    [[nodiscard]] AnimatorState GetState(AnimatorInstanceId id) const override;
-    [[nodiscard]] foundation::Result<void> SetLod(AnimatorInstanceId id, AnimationLodLevel lod) override;
-    [[nodiscard]] PoseState GetPoseState(AnimatorInstanceId id) const override;
-    [[nodiscard]] PoseSnapshot GetPoseSnapshot(AnimatorInstanceId id) const override;
-    [[nodiscard]] PoseBuffer GetPoseBuffer(AnimatorHandle handle) const override;
+    [[nodiscard]] foundation::Result<void> Crossfade(AnimatorHandle handle, AnimationClipId clip, FrameDuration duration) override;
+    [[nodiscard]] foundation::Result<std::size_t> Tick(FrameDuration delta, std::size_t max_animators) override;
+    [[nodiscard]] foundation::Result<AnimatorSnapshot> GetAnimatorSnapshot(AnimatorHandle handle) const override;
+    [[nodiscard]] foundation::Result<void> SetLod(AnimatorHandle handle, AnimationLodLevel lod) override;
+    [[nodiscard]] foundation::Result<PoseState> GetPoseState(AnimatorHandle handle) const override;
+    [[nodiscard]] foundation::Result<PoseSnapshot> GetPoseSnapshot(AnimatorHandle handle) const override;
+    [[nodiscard]] foundation::Result<PoseBuffer> GetPoseBuffer(AnimatorHandle handle) const override;
     [[nodiscard]] std::span<const AnimationEvent> Events() const override;
     void Clear() override;
 
@@ -53,21 +50,21 @@ private:
         PoseState pose_state = PoseState::Clean;
         AnimatorPlayback playback{};
         std::optional<CrossfadeState> crossfade{};
+        PoseBuffer cached_pose{};
         std::uint64_t revision = 0;
     };
 
     [[nodiscard]] foundation::Result<SkeletonDesc> ResolveSkeleton(SkeletonId id);
     [[nodiscard]] foundation::Result<AnimationClipDesc> ResolveClip(AnimationClipId id);
-    [[nodiscard]] AnimatorState ToLegacyState(const AnimatorRecord& animator) const noexcept;
-    [[nodiscard]] AnimatorRecord* FindAnimator(AnimatorInstanceId id);
-    [[nodiscard]] const AnimatorRecord* FindAnimator(AnimatorInstanceId id) const;
+    [[nodiscard]] static AnimatorSnapshot ToSnapshot(const AnimatorRecord& animator) noexcept;
     [[nodiscard]] AnimatorRecord* FindAnimator(AnimatorHandle handle);
     [[nodiscard]] const AnimatorRecord* FindAnimator(AnimatorHandle handle) const;
     [[nodiscard]] std::vector<AnimatorInstanceId> BuildAnimatorWorkList() const;
     [[nodiscard]] PoseBuffer BuildPoseBuffer(const AnimatorRecord& animator) const;
+    [[nodiscard]] foundation::Result<PoseBuffer> EvaluatePose(const AnimatorRecord& animator);
     [[nodiscard]] foundation::Result<void> PublishPose(const AnimatorRecord& animator);
-    void AdvancePlayback(AnimatorRecord& animator, GameDuration delta);
-    void AdvanceCrossfade(AnimatorRecord& animator, GameDuration delta);
+    void AdvancePlayback(AnimatorRecord& animator, FrameDuration delta);
+    void AdvanceCrossfade(AnimatorRecord& animator, FrameDuration delta);
     void QueueEvent(AnimatorInstanceId animator, std::string name, float time);
 
     AnimationOptions options_{};
