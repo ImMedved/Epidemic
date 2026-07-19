@@ -4,6 +4,7 @@
 #include "Epidemic/Runtime/Physics/physics_query.h"
 #include "Epidemic/Runtime/Physics/physics_scene.h"
 
+#include <chrono>
 #include <unordered_map>
 #include <vector>
 
@@ -20,23 +21,28 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
 {
   public:
     explicit PhysicsRuntime(std::shared_ptr<IPhysicsBackend> backend = {});
+    explicit PhysicsRuntime(PhysicsDependencies dependencies);
+    ~PhysicsRuntime() override;
+    [[nodiscard]] foundation::Result<void> Shutdown();
 
     [[nodiscard]] foundation::Result<void> RegisterShape(const CollisionShapeDesc& desc) override;
+    [[nodiscard]] foundation::Result<void> UnregisterShape(CollisionShapeId id) override;
     [[nodiscard]] bool HasShape(CollisionShapeId id) const override;
 
     [[nodiscard]] foundation::Result<PhysicsBodyHandle> CreateBody(const PhysicsBodyDesc& desc) override;
     [[nodiscard]] foundation::Result<void> DestroyBody(PhysicsBodyHandle handle) override;
     [[nodiscard]] foundation::Result<void> ApplyImpulse(PhysicsBodyHandle handle, Vec3 impulse) override;
     [[nodiscard]] foundation::Result<PhysicsBodySnapshot> GetBodySnapshot(PhysicsBodyHandle handle) const override;
-    [[nodiscard]] foundation::Result<PhysicsStepResult> StepFixed(GameDuration fixed_delta) override;
-    [[nodiscard]] foundation::Result<PhysicsStepResult> Tick(GameDuration delta) override;
+    [[nodiscard]] foundation::Result<PhysicsStepResult> StepFixed(RuntimeFrameDuration fixed_delta) override;
+    [[nodiscard]] foundation::Result<PhysicsStepResult> Tick(RuntimeFrameDuration delta) override;
 
     [[nodiscard]] foundation::Result<void> Initialize(const PhysicsBackendOptions& options) override;
     [[nodiscard]] foundation::Result<BackendShapeHandle> CreateShape(const CollisionShapeDesc& desc) override;
+    [[nodiscard]] foundation::Result<void> DestroyShape(BackendShapeHandle handle) override;
     [[nodiscard]] foundation::Result<BackendBodyHandle> CreateBody(const PhysicsBodyDesc& desc, BackendShapeHandle shape) override;
     [[nodiscard]] foundation::Result<void> DestroyBody(BackendBodyHandle handle) override;
     [[nodiscard]] foundation::Result<void> ApplyImpulse(BackendBodyHandle handle, const Vec3& impulse) override;
-    [[nodiscard]] foundation::Result<void> SimulateFixed(GameDuration fixed_delta) override;
+    [[nodiscard]] foundation::Result<void> SimulateFixed(RuntimeFrameDuration fixed_delta) override;
     [[nodiscard]] foundation::Result<BackendBodySnapshot> GetBodySnapshot(BackendBodyHandle handle) const override;
 
     [[nodiscard]] foundation::Result<RaycastHit> Raycast(const RaycastQuery& query) const override;
@@ -48,7 +54,7 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     void QueueContact(ContactEvent event);
     void SetTransformSource(IPhysicsTransformSource* source) noexcept;
     void SetTransformSink(IPhysicsTransformSink* sink) noexcept;
-    void SetFixedStep(GameDuration step) noexcept;
+    void SetFixedStep(RuntimeFrameDuration step) noexcept;
     void SetMaxSubsteps(std::uint32_t substeps) noexcept;
 
   private:
@@ -57,7 +63,7 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
         PhysicsBodyHandle handle{};
         BackendBodyHandle backend_handle{};
         PhysicsBodyDesc desc{};
-        PhysicsBodyLifecycle lifecycle = PhysicsBodyLifecycle::Creating;
+        PhysicsBodyLifecycle lifecycle = PhysicsBodyLifecycle::Alive;
         PhysicsActivityState activity = PhysicsActivityState::Disabled;
         PhysicsDirtyFlags dirty = PhysicsDirtyFlags::None;
         Vec3 last_impulse{};
@@ -68,23 +74,37 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
         std::uint64_t revision = 0;
     };
 
+    struct ShapeRecord
+    {
+        CollisionShapeDesc desc{};
+        BackendShapeHandle backend_handle{};
+    };
+
     [[nodiscard]] static PhysicsActivityState ActivityForType(PhysicsBodyType type);
     [[nodiscard]] static bool PointInsideAabb(const Vec3& point, const Aabb& bounds) noexcept;
     [[nodiscard]] static bool IntersectsAabb(const Aabb& left, const Aabb& right) noexcept;
     [[nodiscard]] static bool RayIntersectsAabb(const RaycastQuery& query, const Aabb& bounds, float& distance) noexcept;
+    [[nodiscard]] static bool IsFinite(Vec3 value) noexcept;
+    [[nodiscard]] static float Length(Vec3 value) noexcept;
+    [[nodiscard]] static Vec3 Normalize(Vec3 value) noexcept;
+    [[nodiscard]] static RaycastQuery NormalizeRaycastQuery(const RaycastQuery& query) noexcept;
     [[nodiscard]] BodyRecord* FindBody(PhysicsBodyHandle handle);
     [[nodiscard]] const BodyRecord* FindBody(PhysicsBodyHandle handle) const;
     [[nodiscard]] BodyRecord* FindBackendBody(BackendBodyHandle handle);
     [[nodiscard]] const BodyRecord* FindBackendBody(BackendBodyHandle handle) const;
     [[nodiscard]] PhysicsBodySnapshot BuildSnapshot(const BodyRecord& body) const;
+    [[nodiscard]] PhysicsBodySnapshot BuildSnapshotFromBackend(const BodyRecord& body, const BackendBodySnapshot& backend_snapshot) const;
     [[nodiscard]] foundation::Result<void> ValidateHandle(PhysicsBodyHandle handle) const;
-    [[nodiscard]] foundation::Result<PhysicsStepResult> CompleteFixedStep(GameDuration fixed_delta, std::uint32_t substeps);
+    [[nodiscard]] foundation::Result<PhysicsStepResult> CompleteFixedStep(RuntimeFrameDuration fixed_delta, std::uint32_t substeps);
+    [[nodiscard]] foundation::Result<void> SynchronizeBackendBody(BodyRecord& body);
 
-    std::unordered_map<CollisionShapeId, CollisionShapeDesc> shapes_;
+    std::unordered_map<CollisionShapeId, ShapeRecord> shapes_;
     std::unordered_map<PhysicsBodyId, BodyRecord> bodies_;
     std::unordered_map<BackendBodyHandle, PhysicsBodyId> backend_to_body_;
     std::vector<ContactEvent> contacts_;
     std::shared_ptr<IPhysicsBackend> backend_;
+    std::shared_ptr<IPhysicsTransformSource> owned_transform_source_;
+    std::shared_ptr<IPhysicsTransformSink> owned_transform_sink_;
     IPhysicsTransformSource* transform_source_ = nullptr;
     IPhysicsTransformSink* transform_sink_ = nullptr;
     std::uint64_t next_body_value_ = 1;
@@ -93,9 +113,9 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     std::uint32_t next_body_generation_ = 1;
     std::uint64_t fixed_step_count_ = 0;
     std::uint64_t revision_ = 0;
-    GameDuration fixed_step_{1};
-    GameDuration accumulator_{};
-    GameDuration dropped_time_{};
+    RuntimeFrameDuration fixed_step_{std::chrono::microseconds{16667}};
+    RuntimeFrameDuration accumulator_{};
+    RuntimeFrameDuration dropped_time_{};
     std::uint32_t max_substeps_ = 4;
 };
 } // namespace epidemic::runtime::physics

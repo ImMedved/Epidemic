@@ -11,14 +11,28 @@
 
 namespace epidemic::runtime::physics
 {
-PhysicsServices CreatePhysicsServices()
+foundation::Result<PhysicsServices> CreatePhysicsServices()
 {
-    return CreatePhysicsServices(nullptr);
+    return CreatePhysicsServices(PhysicsDependencies{});
 }
 
-PhysicsServices CreatePhysicsServices(std::shared_ptr<IPhysicsBackend> backend)
+foundation::Result<PhysicsServices> CreatePhysicsServices(std::shared_ptr<IPhysicsBackend> backend)
 {
-    auto runtime = std::make_shared<PhysicsRuntime>(std::move(backend));
+    return CreatePhysicsServices(PhysicsDependencies{std::move(backend), nullptr, nullptr});
+}
+
+foundation::Result<PhysicsServices> CreatePhysicsServices(PhysicsDependencies dependencies)
+{
+    if (dependencies.backend)
+    {
+        const auto initialized = dependencies.backend->Initialize(PhysicsBackendOptions{});
+        if (!initialized)
+        {
+            return foundation::Result<PhysicsServices>::Failure(initialized.GetError());
+        }
+    }
+    std::shared_ptr<IPhysicsBackend> external_backend = dependencies.backend;
+    auto runtime = std::make_shared<PhysicsRuntime>(std::move(dependencies));
 
     PhysicsServices services{};
     services.shapes = runtime;
@@ -26,7 +40,7 @@ PhysicsServices CreatePhysicsServices(std::shared_ptr<IPhysicsBackend> backend)
     services.stepper = runtime;
     services.query = runtime;
     services.events = runtime;
-    services.backend = runtime;
-    return services;
+    services.backend = external_backend ? external_backend : std::static_pointer_cast<IPhysicsBackend>(runtime);
+    return foundation::Result<PhysicsServices>::Success(std::move(services));
 }
 } // namespace epidemic::runtime::physics

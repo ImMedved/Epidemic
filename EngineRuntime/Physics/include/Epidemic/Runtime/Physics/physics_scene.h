@@ -16,6 +16,7 @@ class ICollisionShapeRegistry
     virtual ~ICollisionShapeRegistry() = default;
 
     [[nodiscard]] virtual foundation::Result<void> RegisterShape(const CollisionShapeDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<void> UnregisterShape(CollisionShapeId id) = 0;
     [[nodiscard]] virtual bool HasShape(CollisionShapeId id) const = 0;
 };
 
@@ -35,8 +36,8 @@ class IPhysicsStepper
   public:
     virtual ~IPhysicsStepper() = default;
 
-    [[nodiscard]] virtual foundation::Result<PhysicsStepResult> StepFixed(GameDuration fixed_delta) = 0;
-    [[nodiscard]] virtual foundation::Result<PhysicsStepResult> Tick(GameDuration delta) = 0;
+    [[nodiscard]] virtual foundation::Result<PhysicsStepResult> StepFixed(RuntimeFrameDuration fixed_delta) = 0;
+    [[nodiscard]] virtual foundation::Result<PhysicsStepResult> Tick(RuntimeFrameDuration delta) = 0;
 };
 
 class IPhysicsBackend
@@ -46,10 +47,11 @@ class IPhysicsBackend
 
     [[nodiscard]] virtual foundation::Result<void> Initialize(const PhysicsBackendOptions& options) = 0;
     [[nodiscard]] virtual foundation::Result<BackendShapeHandle> CreateShape(const CollisionShapeDesc& desc) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyShape(BackendShapeHandle handle) = 0;
     [[nodiscard]] virtual foundation::Result<BackendBodyHandle> CreateBody(const PhysicsBodyDesc& desc, BackendShapeHandle shape) = 0;
     [[nodiscard]] virtual foundation::Result<void> DestroyBody(BackendBodyHandle handle) = 0;
     [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(BackendBodyHandle handle, const Vec3& impulse) = 0;
-    [[nodiscard]] virtual foundation::Result<void> SimulateFixed(GameDuration fixed_delta) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SimulateFixed(RuntimeFrameDuration fixed_delta) = 0;
     [[nodiscard]] virtual foundation::Result<BackendBodySnapshot> GetBodySnapshot(BackendBodyHandle handle) const = 0;
     [[nodiscard]] virtual foundation::Result<RaycastHit> Raycast(const RaycastQuery& query) const = 0;
 };
@@ -80,6 +82,15 @@ struct PhysicsServices
     std::shared_ptr<IPhysicsBackend> backend;
 };
 
-[[nodiscard]] PhysicsServices CreatePhysicsServices();
-[[nodiscard]] PhysicsServices CreatePhysicsServices(std::shared_ptr<IPhysicsBackend> backend);
+struct PhysicsDependencies
+{
+    std::shared_ptr<IPhysicsBackend> backend;
+    std::shared_ptr<IPhysicsTransformSource> transform_source;
+    std::shared_ptr<IPhysicsTransformSink> transform_sink;
+    PhysicsOptions options{};
+};
+
+[[nodiscard]] foundation::Result<PhysicsServices> CreatePhysicsServices();
+[[nodiscard]] foundation::Result<PhysicsServices> CreatePhysicsServices(std::shared_ptr<IPhysicsBackend> backend);
+[[nodiscard]] foundation::Result<PhysicsServices> CreatePhysicsServices(PhysicsDependencies dependencies);
 } // namespace epidemic::runtime::physics

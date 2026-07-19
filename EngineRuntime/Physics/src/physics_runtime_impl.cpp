@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <optional>
 
 namespace epidemic::runtime::physics
 {
@@ -26,28 +27,124 @@ PhysicsRuntime::PhysicsRuntime(std::shared_ptr<IPhysicsBackend> backend) : backe
 {
 }
 
+PhysicsRuntime::PhysicsRuntime(PhysicsDependencies dependencies)
+    : backend_(std::move(dependencies.backend)),
+      owned_transform_source_(std::move(dependencies.transform_source)),
+      owned_transform_sink_(std::move(dependencies.transform_sink)),
+      transform_source_(owned_transform_source_.get()),
+      transform_sink_(owned_transform_sink_.get())
+{
+    SetFixedStep(dependencies.options.fixed_step);
+    SetMaxSubsteps(dependencies.options.max_substeps);
+}
+
+PhysicsRuntime::~PhysicsRuntime()
+{
+    (void)Shutdown();
+}
+
+foundation::Result<void> PhysicsRuntime::Shutdown()
+{
+    if (backend_ && backend_.get() != this)
+    {
+        std::optional<foundation::Error> first_error;
+        for (auto iterator = bodies_.begin(); iterator != bodies_.end();)
+        {
+            const auto destroyed = backend_->DestroyBody(iterator->second.backend_handle);
+            if (!destroyed && !first_error)
+            {
+                first_error = destroyed.GetError();
+            }
+            backend_to_body_.erase(iterator->second.backend_handle);
+            iterator = bodies_.erase(iterator);
+        }
+        for (auto iterator = shapes_.begin(); iterator != shapes_.end();)
+        {
+            const auto destroyed = backend_->DestroyShape(iterator->second.backend_handle);
+            if (!destroyed && !first_error)
+            {
+                first_error = destroyed.GetError();
+            }
+            iterator = shapes_.erase(iterator);
+        }
+        if (first_error)
+        {
+            return foundation::Result<void>::Failure(*first_error);
+        }
+    }
+    bodies_.clear();
+    shapes_.clear();
+    backend_to_body_.clear();
+    return foundation::Result<void>::Success();
+}
+
 foundation::Result<void> PhysicsRuntime::RegisterShape(const CollisionShapeDesc& desc)
 {
     if (!desc.id.IsValid() || !IsValidAabb(desc.local_bounds))
     {
         return PhysicsFailure("physics.invalid_shape", "collision shape id and bounds must be valid before registration");
     }
+    if (shapes_.contains(desc.id))
+    {
+        return PhysicsFailure("physics.duplicate_shape", "collision shape id is already registered");
+    }
 
-    shapes_[desc.id] = desc;
+    BackendShapeHandle backend_shape{};
     if (backend_ && backend_.get() != this)
     {
-        const auto backend_shape = backend_->CreateShape(desc);
-        if (!backend_shape)
+        const auto created = backend_->CreateShape(desc);
+        if (!created)
         {
-            return foundation::Result<void>::Failure(backend_shape.GetError());
+            return foundation::Result<void>::Failure(created.GetError());
         }
+        if (!created.Value().IsValid())
+        {
+            return PhysicsFailure("physics.invalid_backend_handle", "physics backend returned an invalid shape handle");
+        }
+        backend_shape = created.Value();
     }
+    else
+    {
+        backend_shape = BackendShapeHandle{next_backend_shape_value_++};
+    }
+    shapes_.emplace(desc.id, ShapeRecord{desc, backend_shape});
     return foundation::Result<void>::Success();
 }
 
 bool PhysicsRuntime::HasShape(CollisionShapeId id) const
 {
     return shapes_.contains(id);
+}
+
+foundation::Result<void> PhysicsRuntime::UnregisterShape(CollisionShapeId id)
+{
+    const auto iterator = shapes_.find(id);
+    if (!id.IsValid())
+    {
+        return PhysicsFailure("physics.invalid_shape", "collision shape id must be valid before unregister");
+    }
+    if (iterator == shapes_.end())
+    {
+        return PhysicsFailure("physics.shape_not_found", "collision shape was not registered");
+    }
+    for (const auto& [body_id, body] : bodies_)
+    {
+        (void)body_id;
+        if (body.desc.shape == id)
+        {
+            return PhysicsFailure("physics.shape_in_use", "collision shape cannot be unregistered while bodies use it");
+        }
+    }
+    if (backend_ && backend_.get() != this)
+    {
+        const auto destroyed = backend_->DestroyShape(iterator->second.backend_handle);
+        if (!destroyed)
+        {
+            return destroyed;
+        }
+    }
+    shapes_.erase(iterator);
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBodyDesc& desc)
@@ -60,6 +157,10 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     {
         return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_transform", "physics body must reference a valid transform projection");
     }
+    if (!std::isfinite(desc.mass) || desc.mass < 0.0f || (desc.type == PhysicsBodyType::Dynamic && desc.mass <= 0.0f))
+    {
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_mass", "physics body mass must be finite and positive for dynamic bodies");
+    }
 
     const auto shape_it = shapes_.find(desc.shape);
     if (shape_it == shapes_.end())
@@ -67,18 +168,30 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
         return PhysicsFailureValue<PhysicsBodyHandle>("physics.shape_not_found", "physics body requires a registered collision shape");
     }
 
+    Transform initial_transform = desc.initial_transform;
+    if (transform_source_)
+    {
+        const auto transform = transform_source_->ReadTransform(desc.transform_node);
+        if (!transform)
+        {
+            return foundation::Result<PhysicsBodyHandle>::Failure(transform.GetError());
+        }
+        initial_transform = transform.Value();
+    }
+
+    PhysicsBodyDesc backend_desc = desc;
+    backend_desc.initial_transform = initial_transform;
     BackendBodyHandle backend_handle{next_backend_body_value_++};
     if (backend_ && backend_.get() != this)
     {
-        const auto backend_shape = backend_->CreateShape(shape_it->second);
-        if (!backend_shape)
-        {
-            return foundation::Result<PhysicsBodyHandle>::Failure(backend_shape.GetError());
-        }
-        const auto backend_body = backend_->CreateBody(desc, backend_shape.Value());
+        const auto backend_body = backend_->CreateBody(backend_desc, shape_it->second.backend_handle);
         if (!backend_body)
         {
             return foundation::Result<PhysicsBodyHandle>::Failure(backend_body.GetError());
+        }
+        if (!backend_body.Value().IsValid())
+        {
+            return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_backend_handle", "physics backend returned an invalid body handle");
         }
         backend_handle = backend_body.Value();
     }
@@ -91,16 +204,9 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     record.lifecycle = PhysicsBodyLifecycle::Alive;
     record.activity = ActivityForType(desc.type);
     record.dirty = PhysicsDirtyFlags::Transform | PhysicsDirtyFlags::Shape;
-    record.bounds = shape_it->second.local_bounds;
+    record.world_transform = initial_transform;
+    record.bounds = TransformAabb(record.world_transform, shape_it->second.desc.local_bounds);
     record.revision = ++revision_;
-    if (transform_source_)
-    {
-        const auto transform = transform_source_->ReadTransform(desc.transform_node);
-        if (transform)
-        {
-            record.world_transform = transform.Value();
-        }
-    }
     backend_to_body_[backend_handle] = handle.id;
     bodies_.emplace(handle.id, record);
     return foundation::Result<PhysicsBodyHandle>::Success(handle);
@@ -131,6 +237,10 @@ foundation::Result<void> PhysicsRuntime::DestroyBody(PhysicsBodyHandle handle)
 
 foundation::Result<void> PhysicsRuntime::ApplyImpulse(PhysicsBodyHandle handle, Vec3 impulse)
 {
+    if (!IsFinite(impulse))
+    {
+        return PhysicsFailure("physics.invalid_impulse", "physics impulse must contain finite values");
+    }
     BodyRecord* body = FindBody(handle);
     if (body == nullptr)
     {
@@ -174,45 +284,50 @@ foundation::Result<PhysicsBodySnapshot> PhysicsRuntime::GetBodySnapshot(PhysicsB
         {
             return snapshot;
         }
+        const PhysicsBodySnapshot merged = BuildSnapshotFromBackend(*body, snapshot.Value());
+        if (!IsValidTransform(merged.world_transform) || !IsFinite(merged.linear_velocity) || !IsFinite(merged.angular_velocity) ||
+            !std::isfinite(merged.mass))
+        {
+            return PhysicsFailureValue<PhysicsBodySnapshot>("physics.invalid_backend_snapshot", "physics backend returned non-finite body snapshot data");
+        }
+        return foundation::Result<PhysicsBodySnapshot>::Success(merged);
     }
     return foundation::Result<PhysicsBodySnapshot>::Success(BuildSnapshot(*body));
 }
 
-foundation::Result<PhysicsStepResult> PhysicsRuntime::StepFixed(GameDuration fixed_delta)
+foundation::Result<PhysicsStepResult> PhysicsRuntime::StepFixed(RuntimeFrameDuration fixed_delta)
 {
-    if (fixed_delta.ticks <= 0)
+    if (fixed_delta.value.count() <= 0)
     {
         return PhysicsFailureValue<PhysicsStepResult>("physics.invalid_step", "fixed physics step must be positive");
     }
     return CompleteFixedStep(fixed_delta, 1);
 }
 
-foundation::Result<PhysicsStepResult> PhysicsRuntime::Tick(GameDuration delta)
+foundation::Result<PhysicsStepResult> PhysicsRuntime::Tick(RuntimeFrameDuration delta)
 {
-    if (delta.ticks < 0)
+    if (delta.value.count() < 0)
     {
         return PhysicsFailureValue<PhysicsStepResult>("physics.invalid_step", "physics tick delta must not be negative");
     }
 
-    accumulator_.ticks += delta.ticks;
+    accumulator_.value += delta.value;
     std::uint32_t substeps = 0;
-    while (fixed_step_.ticks > 0 && accumulator_.ticks >= fixed_step_.ticks && substeps < max_substeps_)
+    while (fixed_step_.value.count() > 0 && accumulator_.value >= fixed_step_.value && substeps < max_substeps_)
     {
-        const auto simulated = SimulateFixed(fixed_step_);
-        if (!simulated)
+        const auto stepped = CompleteFixedStep(fixed_step_, 1);
+        if (!stepped)
         {
-            return foundation::Result<PhysicsStepResult>::Failure(simulated.GetError());
+            return foundation::Result<PhysicsStepResult>::Failure(stepped.GetError());
         }
-        accumulator_.ticks -= fixed_step_.ticks;
+        accumulator_.value -= fixed_step_.value;
         ++substeps;
-        ++fixed_step_count_;
-        ++revision_;
     }
 
-    if (fixed_step_.ticks > 0 && accumulator_.ticks >= fixed_step_.ticks)
+    if (fixed_step_.value.count() > 0 && accumulator_.value >= fixed_step_.value)
     {
-        dropped_time_.ticks += accumulator_.ticks;
-        accumulator_.ticks = 0;
+        dropped_time_.value += accumulator_.value;
+        accumulator_.value = std::chrono::microseconds{0};
     }
 
     return foundation::Result<PhysicsStepResult>::Success(
@@ -231,6 +346,15 @@ foundation::Result<BackendShapeHandle> PhysicsRuntime::CreateShape(const Collisi
         return PhysicsFailureValue<BackendShapeHandle>("physics.invalid_shape", "backend shape requires valid id and bounds");
     }
     return foundation::Result<BackendShapeHandle>::Success(BackendShapeHandle{next_backend_shape_value_++});
+}
+
+foundation::Result<void> PhysicsRuntime::DestroyShape(BackendShapeHandle handle)
+{
+    if (!handle.IsValid())
+    {
+        return PhysicsFailure("physics.invalid_handle", "backend shape handle must be valid");
+    }
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<BackendBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBodyDesc& desc, BackendShapeHandle shape)
@@ -260,9 +384,9 @@ foundation::Result<void> PhysicsRuntime::ApplyImpulse(BackendBodyHandle handle, 
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> PhysicsRuntime::SimulateFixed(GameDuration fixed_delta)
+foundation::Result<void> PhysicsRuntime::SimulateFixed(RuntimeFrameDuration fixed_delta)
 {
-    if (fixed_delta.ticks <= 0)
+    if (fixed_delta.value.count() <= 0)
     {
         return PhysicsFailure("physics.invalid_step", "fixed physics step must be positive");
     }
@@ -285,13 +409,29 @@ foundation::Result<BackendBodySnapshot> PhysicsRuntime::GetBodySnapshot(BackendB
 
 foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query) const
 {
-    if (query.max_distance < 0.0f)
+    if (query.max_distance < 0.0f || !IsFinite(query.origin) || !IsFinite(query.direction) || !std::isfinite(query.max_distance))
     {
-        return PhysicsFailureValue<RaycastHit>("physics.invalid_query", "raycast max distance must not be negative");
+        return PhysicsFailureValue<RaycastHit>("physics.invalid_query", "raycast query must be finite and max distance must not be negative");
     }
-    if (query.max_distance > 0.0f && query.direction.x == 0.0f && query.direction.y == 0.0f && query.direction.z == 0.0f)
+    if (Length(query.direction) <= std::numeric_limits<float>::epsilon())
     {
         return PhysicsFailureValue<RaycastHit>("physics.invalid_query", "raycast direction must be non-zero");
+    }
+    const RaycastQuery normalized = NormalizeRaycastQuery(query);
+
+    if (backend_ && backend_.get() != this)
+    {
+        const auto hit = backend_->Raycast(normalized);
+        if (!hit)
+        {
+            return hit;
+        }
+        if ((hit.Value().hit && (!IsFinite(hit.Value().point) || !IsFinite(hit.Value().normal))) ||
+            !std::isfinite(hit.Value().distance) || hit.Value().distance < 0.0f || hit.Value().distance > normalized.max_distance)
+        {
+            return PhysicsFailureValue<RaycastHit>("physics.invalid_backend_hit", "physics backend returned an invalid raycast hit");
+        }
+        return hit;
     }
 
     RaycastHit best{};
@@ -300,9 +440,17 @@ foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query
     {
         (void)body_id;
         float distance = 0.0f;
-        if (RayIntersectsAabb(query, body.bounds, distance) && distance <= query.max_distance && distance < best.distance)
+        if (RayIntersectsAabb(normalized, body.bounds, distance) && distance <= normalized.max_distance && distance < best.distance)
         {
-            best = RaycastHit{true, body.handle, query.origin, Vec3{0.0f, 1.0f, 0.0f}, distance};
+            best = RaycastHit{
+                true,
+                body.handle,
+                Vec3{
+                    normalized.origin.x + normalized.direction.x * distance,
+                    normalized.origin.y + normalized.direction.y * distance,
+                    normalized.origin.z + normalized.direction.z * distance},
+                Vec3{0.0f, 1.0f, 0.0f},
+                distance};
         }
     }
     if (!best.hit)
@@ -314,6 +462,10 @@ foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query
 
 foundation::Result<OverlapResult> PhysicsRuntime::Overlap(const OverlapQuery& query) const
 {
+    if (!IsValidAabb(query.bounds))
+    {
+        return PhysicsFailureValue<OverlapResult>("physics.invalid_query", "overlap query bounds must be valid");
+    }
     OverlapResult result{};
     for (const auto& [body_id, body] : bodies_)
     {
@@ -354,9 +506,9 @@ void PhysicsRuntime::SetTransformSink(IPhysicsTransformSink* sink) noexcept
     transform_sink_ = sink;
 }
 
-void PhysicsRuntime::SetFixedStep(GameDuration step) noexcept
+void PhysicsRuntime::SetFixedStep(RuntimeFrameDuration step) noexcept
 {
-    if (step.ticks > 0)
+    if (step.value.count() > 0)
     {
         fixed_step_ = step;
     }
@@ -432,6 +584,33 @@ bool PhysicsRuntime::RayIntersectsAabb(const RaycastQuery& query, const Aabb& bo
     return true;
 }
 
+bool PhysicsRuntime::IsFinite(Vec3 value) noexcept
+{
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
+}
+
+float PhysicsRuntime::Length(Vec3 value) noexcept
+{
+    return std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z);
+}
+
+Vec3 PhysicsRuntime::Normalize(Vec3 value) noexcept
+{
+    const float length = Length(value);
+    if (length <= std::numeric_limits<float>::epsilon())
+    {
+        return {};
+    }
+    return Vec3{value.x / length, value.y / length, value.z / length};
+}
+
+RaycastQuery PhysicsRuntime::NormalizeRaycastQuery(const RaycastQuery& query) noexcept
+{
+    RaycastQuery normalized = query;
+    normalized.direction = Normalize(query.direction);
+    return normalized;
+}
+
 PhysicsRuntime::BodyRecord* PhysicsRuntime::FindBody(PhysicsBodyHandle handle)
 {
     const auto iterator = bodies_.find(handle.id);
@@ -491,6 +670,19 @@ PhysicsBodySnapshot PhysicsRuntime::BuildSnapshot(const BodyRecord& body) const
         body.revision};
 }
 
+PhysicsBodySnapshot PhysicsRuntime::BuildSnapshotFromBackend(const BodyRecord& body, const BackendBodySnapshot& backend_snapshot) const
+{
+    PhysicsBodySnapshot snapshot = backend_snapshot;
+    snapshot.handle = body.handle;
+    snapshot.owner = body.desc.owner;
+    snapshot.transform_node = body.desc.transform_node;
+    snapshot.type = body.desc.type;
+    snapshot.lifecycle = body.lifecycle;
+    snapshot.mass = body.desc.mass;
+    snapshot.revision = std::max(body.revision, backend_snapshot.revision);
+    return snapshot;
+}
+
 foundation::Result<void> PhysicsRuntime::ValidateHandle(PhysicsBodyHandle handle) const
 {
     if (!handle.IsValid())
@@ -504,7 +696,7 @@ foundation::Result<void> PhysicsRuntime::ValidateHandle(PhysicsBodyHandle handle
     return PhysicsFailure("physics.stale_handle", "physics body handle generation is stale");
 }
 
-foundation::Result<PhysicsStepResult> PhysicsRuntime::CompleteFixedStep(GameDuration fixed_delta, std::uint32_t substeps)
+foundation::Result<PhysicsStepResult> PhysicsRuntime::CompleteFixedStep(RuntimeFrameDuration fixed_delta, std::uint32_t substeps)
 {
     const auto simulated = SimulateFixed(fixed_delta);
     if (!simulated)
@@ -516,12 +708,45 @@ foundation::Result<PhysicsStepResult> PhysicsRuntime::CompleteFixedStep(GameDura
     for (auto& [id, body] : bodies_)
     {
         (void)id;
+        if (backend_ && backend_.get() != this)
+        {
+            const auto synced = SynchronizeBackendBody(body);
+            if (!synced)
+            {
+                return foundation::Result<PhysicsStepResult>::Failure(synced.GetError());
+            }
+        }
         if (body.desc.type == PhysicsBodyType::Dynamic && transform_sink_)
         {
-            (void)transform_sink_->WriteTransform(body.desc.transform_node, body.world_transform);
+            const auto written = transform_sink_->WriteTransform(body.desc.transform_node, body.world_transform);
+            if (!written)
+            {
+                return foundation::Result<PhysicsStepResult>::Failure(written.GetError());
+            }
         }
     }
     return foundation::Result<PhysicsStepResult>::Success(
         PhysicsStepResult{fixed_delta, fixed_step_count_, substeps, accumulator_, dropped_time_, revision_});
+}
+
+foundation::Result<void> PhysicsRuntime::SynchronizeBackendBody(BodyRecord& body)
+{
+    const auto snapshot = backend_->GetBodySnapshot(body.backend_handle);
+    if (!snapshot)
+    {
+        return foundation::Result<void>::Failure(snapshot.GetError());
+    }
+    body.world_transform = snapshot.Value().world_transform;
+    body.linear_velocity = snapshot.Value().linear_velocity;
+    body.angular_velocity = snapshot.Value().angular_velocity;
+    body.activity = snapshot.Value().activity;
+    body.dirty = PhysicsDirtyFlags::None;
+    body.revision = ++revision_;
+    const auto shape = shapes_.find(body.desc.shape);
+    if (shape != shapes_.end())
+    {
+        body.bounds = TransformAabb(body.world_transform, shape->second.desc.local_bounds);
+    }
+    return foundation::Result<void>::Success();
 }
 } // namespace epidemic::runtime::physics

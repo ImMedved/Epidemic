@@ -63,10 +63,7 @@ enum class PhysicsBodyType
 
 enum class PhysicsBodyLifecycle
 {
-    Creating,
-    Alive,
-    Destroying,
-    Destroyed
+    Alive
 };
 
 enum class PhysicsActivityState
@@ -113,11 +110,18 @@ struct PhysicsBodyDesc
     CollisionShapeId shape{};
     PhysicsBodyType type = PhysicsBodyType::Static;
     float mass = 0.0f;
+    Transform initial_transform{};
 };
 
 struct PhysicsBackendOptions
 {
     foundation::StringId profile{};
+};
+
+struct PhysicsOptions
+{
+    RuntimeFrameDuration fixed_step{std::chrono::microseconds{16667}};
+    std::uint32_t max_substeps = 4;
 };
 
 struct CollisionShapeDesc
@@ -170,11 +174,11 @@ struct OverlapResult
 
 struct PhysicsStepResult
 {
-    GameDuration fixed_delta{};
+    RuntimeFrameDuration fixed_delta{};
     std::uint64_t step_index = 0;
     std::uint32_t substeps = 0;
-    GameDuration accumulated_time{};
-    GameDuration dropped_time{};
+    RuntimeFrameDuration accumulated_time{};
+    RuntimeFrameDuration dropped_time{};
     std::uint64_t revision = 0;
 };
 
@@ -184,7 +188,7 @@ struct PhysicsBodySnapshot
     RuntimeObjectId owner{};
     PhysicsTransformId transform_node{};
     PhysicsBodyType type = PhysicsBodyType::Static;
-    PhysicsBodyLifecycle lifecycle = PhysicsBodyLifecycle::Destroyed;
+    PhysicsBodyLifecycle lifecycle = PhysicsBodyLifecycle::Alive;
     PhysicsActivityState activity = PhysicsActivityState::Disabled;
     PhysicsDirtyFlags dirty = PhysicsDirtyFlags::None;
     Transform world_transform{};
