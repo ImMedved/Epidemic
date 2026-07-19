@@ -8,6 +8,12 @@
 
 namespace epidemic::runtime
 {
+enum class ReparentMode
+{
+    KeepWorld,
+    KeepLocal,
+};
+
 // Threading: mutation must occur on the runtime thread.
 // Concurrent reads/writes are not supported unless explicitly documented.
 class ISceneNodeRegistry
@@ -19,8 +25,8 @@ class ISceneNodeRegistry
     [[nodiscard]] virtual foundation::Result<void> DestroyNode(SceneNodeId node) = 0;
     [[nodiscard]] virtual bool Exists(SceneNodeId node) const = 0;
     [[nodiscard]] virtual std::optional<SceneNode> GetNode(SceneNodeId node) const = 0;
-    [[nodiscard]] virtual foundation::Result<void> AttachNode(SceneNodeId child, SceneNodeId parent) = 0;
-    [[nodiscard]] virtual foundation::Result<void> DetachNode(SceneNodeId child) = 0;
+    [[nodiscard]] virtual foundation::Result<void> AttachNode(SceneNodeId child, SceneNodeId parent, ReparentMode mode = ReparentMode::KeepWorld) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DetachNode(SceneNodeId child, ReparentMode mode = ReparentMode::KeepWorld) = 0;
     [[nodiscard]] virtual std::optional<SceneNodeId> GetParent(SceneNodeId child) const = 0;
     [[nodiscard]] virtual std::vector<SceneNodeId> GetChildren(SceneNodeId parent) const = 0;
     [[nodiscard]] virtual foundation::Result<void> SetMobility(SceneNodeId node, SceneMobility mobility) = 0;

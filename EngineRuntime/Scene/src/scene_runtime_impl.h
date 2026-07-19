@@ -21,8 +21,8 @@ class SceneRuntime final : public ISceneNodeRegistry,
     [[nodiscard]] foundation::Result<void> DestroyNode(SceneNodeId node) override;
     [[nodiscard]] bool Exists(SceneNodeId node) const override;
     [[nodiscard]] std::optional<SceneNode> GetNode(SceneNodeId node) const override;
-    [[nodiscard]] foundation::Result<void> AttachNode(SceneNodeId child, SceneNodeId parent) override;
-    [[nodiscard]] foundation::Result<void> DetachNode(SceneNodeId child) override;
+    [[nodiscard]] foundation::Result<void> AttachNode(SceneNodeId child, SceneNodeId parent, ReparentMode mode = ReparentMode::KeepWorld) override;
+    [[nodiscard]] foundation::Result<void> DetachNode(SceneNodeId child, ReparentMode mode = ReparentMode::KeepWorld) override;
     [[nodiscard]] std::optional<SceneNodeId> GetParent(SceneNodeId child) const override;
     [[nodiscard]] std::vector<SceneNodeId> GetChildren(SceneNodeId parent) const override;
     [[nodiscard]] foundation::Result<void> SetMobility(SceneNodeId node, SceneMobility mobility) override;
@@ -62,6 +62,7 @@ class SceneRuntime final : public ISceneNodeRegistry,
     [[nodiscard]] foundation::Result<void> RequireNode(SceneNodeId node, const char* message) const;
     [[nodiscard]] bool WouldCreateCycle(SceneNodeId child, SceneNodeId parent) const;
     [[nodiscard]] Transform ComputeWorldTransform(SceneNodeId node) const;
+    [[nodiscard]] Transform ComputeLocalTransform(SceneNodeId parent, const Transform& world_transform) const;
     [[nodiscard]] std::optional<Aabb> ComputeWorldBounds(SceneNodeId node) const;
     void MarkSubtreeDirty(SceneNodeId node, SceneDirtyMask flags);
     void BumpRevision(SceneNodeRecord& record, SceneDirtyMask flags);

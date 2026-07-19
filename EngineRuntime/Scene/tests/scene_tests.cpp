@@ -27,6 +27,7 @@ using epidemic::runtime::ISceneSnapshotProvider;
 using epidemic::runtime::ISpatialIndex;
 using epidemic::runtime::ITransformRegistry;
 using epidemic::runtime::Quat;
+using epidemic::runtime::ReparentMode;
 using epidemic::runtime::SceneAttachmentState;
 using epidemic::runtime::SceneDirtyFlags;
 using epidemic::runtime::SceneMobility;
@@ -128,6 +129,75 @@ using epidemic::runtime::Vec3;
            world->scale == Vec3{1.0f, 2.0f, 2.0f};
 }
 
+[[nodiscard]] bool TestAttachDetachKeepWorldByDefault()
+{
+    SceneRuntime runtime;
+    const auto parent = runtime.CreateNode();
+    const auto child = runtime.CreateNode();
+    if (!parent || !child ||
+        !runtime.SetLocalTransform(parent.Value(), Transform{Vec3{10.0f, 0.0f, 0.0f}, Quat{}, Vec3{2.0f, 2.0f, 2.0f}}) ||
+        !runtime.SetLocalTransform(child.Value(), Transform{Vec3{3.0f, 0.0f, 0.0f}, Quat{}, Vec3{1.0f, 1.0f, 1.0f}}))
+    {
+        return false;
+    }
+
+    const auto before_attach = runtime.GetWorldTransform(child.Value());
+    const auto attach = runtime.AttachNode(child.Value(), parent.Value());
+    const auto after_attach = runtime.GetWorldTransform(child.Value());
+    const auto local_after_attach = runtime.GetLocalTransform(child.Value());
+    const auto detach = runtime.DetachNode(child.Value());
+    const auto after_detach = runtime.GetWorldTransform(child.Value());
+    const auto local_after_detach = runtime.GetLocalTransform(child.Value());
+
+    return before_attach && attach && after_attach && local_after_attach && detach && after_detach && local_after_detach &&
+           Near(after_attach->position, before_attach->position) &&
+           Near(local_after_attach->position, Vec3{-3.5f, 0.0f, 0.0f}) &&
+           Near(after_detach->position, before_attach->position) &&
+           Near(local_after_detach->position, before_attach->position);
+}
+
+[[nodiscard]] bool TestAttachDetachKeepLocal()
+{
+    SceneRuntime runtime;
+    const auto parent = runtime.CreateNode();
+    const auto child = runtime.CreateNode();
+    if (!parent || !child ||
+        !runtime.SetLocalTransform(parent.Value(), Transform{Vec3{10.0f, 0.0f, 0.0f}, Quat{}, Vec3{2.0f, 2.0f, 2.0f}}) ||
+        !runtime.SetLocalTransform(child.Value(), Transform{Vec3{3.0f, 0.0f, 0.0f}, Quat{}, Vec3{1.0f, 1.0f, 1.0f}}))
+    {
+        return false;
+    }
+
+    const auto attach = runtime.AttachNode(child.Value(), parent.Value(), ReparentMode::KeepLocal);
+    const auto attached_world = runtime.GetWorldTransform(child.Value());
+    const auto detach = runtime.DetachNode(child.Value(), ReparentMode::KeepLocal);
+    const auto detached_world = runtime.GetWorldTransform(child.Value());
+
+    return attach && attached_world && Near(attached_world->position, Vec3{16.0f, 0.0f, 0.0f}) &&
+           detach && detached_world && Near(detached_world->position, Vec3{3.0f, 0.0f, 0.0f});
+}
+
+[[nodiscard]] bool TestDestroyParentKeepsChildWorldTransform()
+{
+    SceneRuntime runtime;
+    const auto parent = runtime.CreateNode();
+    const auto child = runtime.CreateNode();
+    if (!parent || !child ||
+        !runtime.SetLocalTransform(parent.Value(), Transform{Vec3{5.0f, 0.0f, 0.0f}, Quat{}, Vec3{2.0f, 2.0f, 2.0f}}) ||
+        !runtime.SetLocalTransform(child.Value(), Transform{Vec3{2.0f, 0.0f, 0.0f}, Quat{}, Vec3{1.0f, 1.0f, 1.0f}}) ||
+        !runtime.AttachNode(child.Value(), parent.Value(), ReparentMode::KeepLocal))
+    {
+        return false;
+    }
+
+    const auto before_destroy = runtime.GetWorldTransform(child.Value());
+    const auto destroyed = runtime.DestroyNode(parent.Value());
+    const auto after_destroy = runtime.GetWorldTransform(child.Value());
+
+    return before_destroy && destroyed && after_destroy && !runtime.GetParent(child.Value()) &&
+           Near(after_destroy->position, before_destroy->position);
+}
+
 [[nodiscard]] bool TestWorldBoundsAndValidation()
 {
     SceneRuntime runtime;
@@ -187,6 +257,27 @@ using epidemic::runtime::Vec3;
     runtime.MarkTransformClean(node.Value());
     runtime.MarkBoundsClean(node.Value());
     return !runtime.IsTransformDirty(node.Value()) && !runtime.IsBoundsDirty(node.Value());
+}
+
+[[nodiscard]] bool TestDirtyFlagsAreTransientForRevisionAndSnapshots()
+{
+    SceneRuntime runtime;
+    const auto node = runtime.CreateNode();
+    if (!node || !runtime.SetLocalTransform(node.Value(), Transform{}))
+    {
+        return false;
+    }
+
+    const auto revision_after_change = runtime.GetRevision();
+    const auto dirty_snapshot = runtime.CaptureSnapshot();
+    runtime.MarkTransformClean(node.Value());
+    const auto clean_revision = runtime.GetRevision();
+    const auto clean_snapshot = runtime.CaptureSnapshot();
+
+    return dirty_snapshot.nodes.size() == 1u && clean_revision == revision_after_change &&
+           clean_snapshot.nodes.size() == 1u &&
+           clean_snapshot.revision == dirty_snapshot.revision &&
+           clean_snapshot.nodes.front().revision == dirty_snapshot.nodes.front().revision;
 }
 
 [[nodiscard]] bool TestQueriesAreVisibleAndDeterministic()
@@ -275,9 +366,13 @@ int main()
         {"CreateDestroyAndRevision", TestCreateDestroyAndRevision},
         {"HierarchyAttachDetachAndCycleReject", TestHierarchyAttachDetachAndCycleReject},
         {"LocalAndWorldTransforms", TestLocalAndWorldTransforms},
+        {"AttachDetachKeepWorldByDefault", TestAttachDetachKeepWorldByDefault},
+        {"AttachDetachKeepLocal", TestAttachDetachKeepLocal},
+        {"DestroyParentKeepsChildWorldTransform", TestDestroyParentKeepsChildWorldTransform},
         {"WorldBoundsAndValidation", TestWorldBoundsAndValidation},
         {"RotatedScaledWorldBounds", TestRotatedScaledWorldBounds},
         {"DirtyFlagsSetAndClear", TestDirtyFlagsSetAndClear},
+        {"DirtyFlagsAreTransientForRevisionAndSnapshots", TestDirtyFlagsAreTransientForRevisionAndSnapshots},
         {"QueriesAreVisibleAndDeterministic", TestQueriesAreVisibleAndDeterministic},
         {"SnapshotCapturesRevisionAndSortedNodes", TestSnapshotCapturesRevisionAndSortedNodes},
         {"FactoryCreatesSharedRuntimeServices", TestFactoryCreatesSharedRuntimeServices},

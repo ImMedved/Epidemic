@@ -20,7 +20,6 @@ struct SceneNodeSnapshot
     SceneAttachmentState attachment = SceneAttachmentState::Detached;
     SceneMobility mobility = SceneMobility::Dynamic;
     SceneVisibilityState visibility = SceneVisibilityState::Visible;
-    SceneDirtyMask dirty = 0;
     std::uint64_t revision = 0;
 };
 
@@ -44,6 +43,8 @@ class ISceneSnapshotProvider
   public:
     virtual ~ISceneSnapshotProvider() = default;
 
+    // Scene publishes simplified TRS snapshots. Shear-producing combinations, such as non-uniform parent
+    // scale with rotated children, are represented by the deterministic RuntimeFoundation TRS approximation.
     [[nodiscard]] virtual SceneSnapshot CaptureSnapshot() const = 0;
 };
 } // namespace epidemic::runtime

@@ -19,6 +19,16 @@ namespace
 {
     return left.Raw() < right.Raw();
 }
+
+[[nodiscard]] Quat Conjugate(Quat value) noexcept
+{
+    return Quat{-value.x, -value.y, -value.z, value.w};
+}
+
+[[nodiscard]] Vec3 Divide(Vec3 left, Vec3 right) noexcept
+{
+    return Vec3{left.x / right.x, left.y / right.y, left.z / right.z};
+}
 } // namespace
 
 foundation::Result<SceneNodeId> SceneRuntime::CreateNode()
@@ -49,6 +59,7 @@ foundation::Result<void> SceneRuntime::DestroyNode(SceneNodeId node)
         SceneNodeRecord* child_record = FindRecord(child);
         if (child_record != nullptr)
         {
+            child_record->local_transform = ComputeWorldTransform(child);
             child_record->node.parent_id = {};
             child_record->node.attachment_state = SceneAttachmentState::Detached;
             MarkSubtreeDirty(child, ToSceneDirtyMask(SceneDirtyFlags::Hierarchy) | ToSceneDirtyMask(SceneDirtyFlags::Transform) |
@@ -76,7 +87,7 @@ std::optional<SceneNode> SceneRuntime::GetNode(SceneNodeId node) const
     return record->node;
 }
 
-foundation::Result<void> SceneRuntime::AttachNode(SceneNodeId child, SceneNodeId parent)
+foundation::Result<void> SceneRuntime::AttachNode(SceneNodeId child, SceneNodeId parent, ReparentMode mode)
 {
     if (child == parent)
     {
@@ -98,11 +109,16 @@ foundation::Result<void> SceneRuntime::AttachNode(SceneNodeId child, SceneNodeId
     }
 
     SceneNodeRecord& child_record = *FindRecord(child);
+    const Transform child_world = ComputeWorldTransform(child);
     if (child_record.node.parent_id.IsValid())
     {
         RemoveChild(child_record.node.parent_id, child);
     }
 
+    if (mode == ReparentMode::KeepWorld)
+    {
+        child_record.local_transform = ComputeLocalTransform(parent, child_world);
+    }
     child_record.node.parent_id = parent;
     child_record.node.attachment_state = SceneAttachmentState::Attached;
     FindRecord(parent)->children.push_back(child);
@@ -111,7 +127,7 @@ foundation::Result<void> SceneRuntime::AttachNode(SceneNodeId child, SceneNodeId
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> SceneRuntime::DetachNode(SceneNodeId child)
+foundation::Result<void> SceneRuntime::DetachNode(SceneNodeId child, ReparentMode mode)
 {
     const auto required = RequireNode(child, "scene node was not found for detach");
     if (!required)
@@ -120,9 +136,14 @@ foundation::Result<void> SceneRuntime::DetachNode(SceneNodeId child)
     }
 
     SceneNodeRecord& child_record = *FindRecord(child);
+    const Transform child_world = ComputeWorldTransform(child);
     if (child_record.node.parent_id.IsValid())
     {
         RemoveChild(child_record.node.parent_id, child);
+    }
+    if (mode == ReparentMode::KeepWorld)
+    {
+        child_record.local_transform = child_world;
     }
     child_record.node.parent_id = {};
     child_record.node.attachment_state = SceneAttachmentState::Detached;
@@ -338,7 +359,6 @@ SceneSnapshot SceneRuntime::CaptureSnapshot() const
             record.node.attachment_state,
             record.node.mobility,
             record.node.visibility,
-            record.node.dirty_flags,
             record.node.revision});
     }
     return snapshot;
@@ -429,6 +449,18 @@ Transform SceneRuntime::ComputeWorldTransform(SceneNodeId node) const
         return record->local_transform;
     }
     return ComposeTransform(ComputeWorldTransform(record->node.parent_id), record->local_transform);
+}
+
+Transform SceneRuntime::ComputeLocalTransform(SceneNodeId parent, const Transform& world_transform) const
+{
+    const Transform parent_world = ComputeWorldTransform(parent);
+    const Quat inverse_parent_rotation = Conjugate(Normalize(parent_world.rotation));
+    const Vec3 unrotated_position = RotateVector(inverse_parent_rotation, world_transform.position - parent_world.position);
+    return Transform{
+        Divide(unrotated_position, parent_world.scale),
+        Multiply(inverse_parent_rotation, world_transform.rotation),
+        Divide(world_transform.scale, parent_world.scale),
+    };
 }
 
 std::optional<Aabb> SceneRuntime::ComputeWorldBounds(SceneNodeId node) const
