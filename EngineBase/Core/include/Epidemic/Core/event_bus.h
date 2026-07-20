@@ -13,6 +13,10 @@
 
 namespace epidemic::core::events
 {
+// This file defines the minimal in-process event bus used by EngineBase.
+// The bus supports immediate dispatch and queued dispatch so systems can choose whether
+// handlers run synchronously at publish time or later during the frame loop drain phase.
+
 enum class EventDispatchMode
 {
     Sync,
@@ -27,6 +31,7 @@ class IEventBus
 
     virtual ~IEventBus() = default;
 
+    // Registers a synchronous handler for EventT.
     template <typename EventT, typename HandlerT> HandlerToken SubscribeSync(HandlerT &&handler)
     {
         auto typed_handler = std::function<void(const EventT &)>(std::forward<HandlerT>(handler));
@@ -41,6 +46,7 @@ class IEventBus
                              });
     }
 
+    // Registers a queued handler for EventT.
     template <typename EventT, typename HandlerT> HandlerToken SubscribeQueued(HandlerT &&handler)
     {
         auto typed_handler = std::function<void(const EventT &)>(std::forward<HandlerT>(handler));
@@ -55,29 +61,42 @@ class IEventBus
                              });
     }
 
+    // Immediately dispatches one event to synchronous subscribers of EventT.
     template <typename EventT> void PublishSync(const EventT &event)
     {
         PublishSyncImpl(typeid(EventT), std::any(event));
     }
 
+    // Queues one event for later delivery to queued subscribers of EventT.
     template <typename EventT> void Enqueue(const EventT &event)
     {
         EnqueueImpl(typeid(EventT), std::any(event));
     }
 
+    // Drains queued events and returns the number of dispatched items.
     [[nodiscard]] virtual std::size_t DrainQueued() = 0;
+
+    // Removes a previously registered handler token.
     [[nodiscard]] virtual bool Unsubscribe(HandlerToken token) = 0;
 
   private:
+    // Registers a type-erased handler for the specified event type and dispatch mode.
     virtual HandlerToken SubscribeImpl(std::type_index event_type, EventDispatchMode mode, AnyEventHandler handler) = 0;
+
+    // Immediately dispatches a type-erased event to synchronous subscribers.
     virtual void PublishSyncImpl(std::type_index event_type, std::any event) = 0;
+
+    // Enqueues a type-erased event for later dispatch.
     virtual void EnqueueImpl(std::type_index event_type, std::any event) = 0;
 };
 
 class EventBus final : public IEventBus
 {
   public:
+    // Drains queued events in FIFO order and returns the number processed.
     [[nodiscard]] std::size_t DrainQueued() override;
+
+    // Removes a handler token from either the synchronous or queued subscription tables.
     [[nodiscard]] bool Unsubscribe(HandlerToken token) override;
 
   private:
@@ -93,11 +112,19 @@ class EventBus final : public IEventBus
         std::any payload;
     };
 
+    // Registers a type-erased handler in the correct subscription map.
     HandlerToken SubscribeImpl(std::type_index event_type, EventDispatchMode mode, AnyEventHandler handler) override;
+
+    // Immediately dispatches an event to synchronous subscribers.
     void PublishSyncImpl(std::type_index event_type, std::any event) override;
+
+    // Stores an event in the queued FIFO.
     void EnqueueImpl(std::type_index event_type, std::any event) override;
 
+    // Copies synchronous subscribers for an event type and invokes them outside the lock.
     void DispatchSync(std::type_index event_type, const std::any &event);
+
+    // Copies queued subscribers for an event type and invokes them outside the lock.
     void DispatchQueued(std::type_index event_type, const std::any &event);
 
     std::mutex mutex_;

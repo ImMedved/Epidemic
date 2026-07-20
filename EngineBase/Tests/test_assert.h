@@ -2,39 +2,39 @@
 
 #include <exception>
 #include <initializer_list>
-#include <stdexcept>
-#include <string>
-#include <string_view>
 #include <iostream>
+#include <stdexcept>
+#include <string_view>
+#include <utility>
 
 namespace epidemic::tests
 {
-struct TestFailure : std::runtime_error
+// This file defines the tiny assertion and named-test runner helpers shared by EngineBase tests.
+// The helpers keep the baseline test harness dependency-free while still producing readable failures.
+
+struct NamedTest
 {
-    using std::runtime_error::runtime_error;
+    std::string_view name;
+    void (*function)();
 };
 
+// Throws when a test condition is false.
 inline void Assert(bool condition, std::string_view message)
 {
     if (!condition)
     {
-        throw TestFailure(std::string(message));
+        throw std::runtime_error(std::string(message));
     }
 }
 
-struct NamedTest
-{
-    const char *name;
-    void (*run)();
-};
-
+// Runs a list of named tests, prints progress to stdout/stderr, and returns a process exit code.
 inline int RunNamedTests(std::initializer_list<NamedTest> tests)
 {
     try
     {
         for (const auto &test : tests)
         {
-            test.run();
+            test.function();
             std::cout << "[PASS] " << test.name << '\n';
         }
 

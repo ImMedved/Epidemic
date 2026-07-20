@@ -8,6 +8,10 @@
 
 namespace epidemic::core::events
 {
+// This file implements the baseline event bus.
+// Delivery copies the current handler list before invocation so handlers run outside the internal mutex.
+
+// Registers a type-erased handler in the sync or queued subscription table.
 IEventBus::HandlerToken EventBus::SubscribeImpl(std::type_index event_type, EventDispatchMode mode, AnyEventHandler handler)
 {
     if (!handler)
@@ -23,11 +27,13 @@ IEventBus::HandlerToken EventBus::SubscribeImpl(std::type_index event_type, Even
     return next_token_++;
 }
 
+// Immediately dispatches a type-erased event to synchronous subscribers.
 void EventBus::PublishSyncImpl(std::type_index event_type, std::any event)
 {
     DispatchSync(event_type, event);
 }
 
+// Stores a type-erased event for delivery during DrainQueued().
 void EventBus::EnqueueImpl(std::type_index event_type, std::any event)
 {
     std::scoped_lock lock(mutex_);
@@ -35,6 +41,7 @@ void EventBus::EnqueueImpl(std::type_index event_type, std::any event)
     diagnostics::GlobalCounters().Increment(diagnostics::CounterId::EventBusQueuedEvents);
 }
 
+// Drains queued events in FIFO order and returns the number dispatched.
 std::size_t EventBus::DrainQueued()
 {
     EPIDEMIC_PROFILE_SCOPE("EventBus::DrainQueued");
@@ -63,6 +70,7 @@ std::size_t EventBus::DrainQueued()
     return drained;
 }
 
+// Removes a handler token from either subscription table.
 bool EventBus::Unsubscribe(HandlerToken token)
 {
     std::scoped_lock lock(mutex_);
@@ -91,6 +99,7 @@ bool EventBus::Unsubscribe(HandlerToken token)
     return erase_from_subscriptions(sync_subscriptions_) || erase_from_subscriptions(queued_subscriptions_);
 }
 
+// Copies synchronous subscribers and invokes them outside the lock.
 void EventBus::DispatchSync(std::type_index event_type, const std::any &event)
 {
     std::vector<AnyEventHandler> handlers;
@@ -115,6 +124,7 @@ void EventBus::DispatchSync(std::type_index event_type, const std::any &event)
     }
 }
 
+// Copies queued subscribers and invokes them outside the lock.
 void EventBus::DispatchQueued(std::type_index event_type, const std::any &event)
 {
     std::vector<AnyEventHandler> handlers;

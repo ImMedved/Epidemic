@@ -1,3 +1,5 @@
+// This file exercises the Memory baseline contracts and tracking behavior.
+
 #include "../test_assert.h"
 
 #include <Epidemic/Memory/allocation_tag.h>
@@ -11,6 +13,7 @@ namespace
 {
 using epidemic::tests::Assert;
 
+// Verifies allocator normalization, tracking, budgets, and statistics behavior.
 void TestMemoryBaseline()
 {
     using epidemic::memory::AllocationTag;
@@ -57,6 +60,7 @@ void TestMemoryBaseline()
 }
 }
 
+// Runs the Memory unit-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({{"MemoryBaseline", &TestMemoryBaseline}});

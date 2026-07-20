@@ -1,3 +1,5 @@
+// This file exercises integration between EngineBase support composition and available graphics backends.
+
 #include "../test_assert.h"
 
 #include <Epidemic/EngineBase/engine_base_support.h>
@@ -7,6 +9,7 @@ namespace
 {
 using epidemic::tests::Assert;
 
+// Verifies that the null graphics runtime composes successfully and registers expected services.
 void TestNullGraphicsRuntimeRegistration()
 {
     epidemic::core::Application application({"RhiIntegration"});
@@ -24,6 +27,7 @@ void TestNullGraphicsRuntimeRegistration()
            "Null graphics runtime must register IRhiCommandContext");
 }
 
+// Verifies that D3D11 setup failures surface as Result errors rather than hidden exceptions.
 void TestD3D11GraphicsRuntimeFailurePath()
 {
     epidemic::core::Application application({"RhiD3D11Failure"});
@@ -38,6 +42,7 @@ void TestD3D11GraphicsRuntimeFailurePath()
 }
 }
 
+// Runs the RHI integration-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({

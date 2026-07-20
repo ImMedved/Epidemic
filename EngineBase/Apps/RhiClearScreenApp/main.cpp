@@ -1,3 +1,6 @@
+// This file defines the graphics smoke app for EngineBase.
+// It creates a Win32 window, initializes the D3D11 backend through support wiring, clears the back buffer every frame, and reacts to window resize/close events.
+
 #include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
 #include <Epidemic/Core/configuration.h>
@@ -19,6 +22,7 @@
 
 namespace
 {
+// Unwraps a Result value for smoke-app code and throws with the contained error message on failure.
 template <typename TValue>
 TValue RequireValue(epidemic::foundation::Result<TValue> result)
 {
@@ -30,6 +34,7 @@ TValue RequireValue(epidemic::foundation::Result<TValue> result)
     return std::move(result).Value();
 }
 
+// Throws when a Result<void> reports an expected runtime failure that this smoke app treats as fatal.
 void ThrowIfFailed(const epidemic::foundation::Result<void> &result)
 {
     if (!result.HasValue())
@@ -39,6 +44,7 @@ void ThrowIfFailed(const epidemic::foundation::Result<void> &result)
 }
 } // namespace
 
+// Composes the D3D11 graphics runtime, creates the main swap chain, and runs the clear-screen demo until exit.
 int main()
 {
     try

@@ -1,3 +1,5 @@
+// This file exercises the RHI baseline contracts and descriptor validation paths.
+
 #include "../test_assert.h"
 
 #include <Epidemic/RHI/descriptors.h>
@@ -9,6 +11,7 @@ namespace
 {
 using epidemic::tests::Assert;
 
+// Verifies null-RHI device, command-context, swap-chain, and validation behavior.
 void TestRhiContracts()
 {
     const epidemic::rhi::RhiDeviceDesc invalid_device_desc{false, {}};
@@ -55,6 +58,7 @@ void TestRhiContracts()
 }
 }
 
+// Runs the RHI unit-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({{"RhiContracts", &TestRhiContracts}});
