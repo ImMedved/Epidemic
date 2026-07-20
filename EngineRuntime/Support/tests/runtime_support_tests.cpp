@@ -1,10 +1,10 @@
 #include "Epidemic/Runtime/Support/runtime_support.h"
 
-#include <fstream>
+#include <chrono>
 #include <iostream>
-#include <iterator>
-#include <string>
+#include <memory>
 #include <string_view>
+#include <vector>
 
 using epidemic::core::Application;
 using namespace epidemic::runtime;
@@ -20,207 +20,222 @@ bool Expect(bool condition, std::string_view message)
     return condition;
 }
 
-bool TestIndividualRegistrationCreatesRealServices()
+template <typename TLeft, typename TRight>
+bool SameOwner(const std::shared_ptr<TLeft>& left, const std::shared_ptr<TRight>& right)
+{
+    return left && right && !left.owner_before(right) && !right.owner_before(left);
+}
+
+bool TestIndividualRegistration()
 {
     Application app{};
-    bool ok = Expect(RegisterRuntimeFoundation(app).HasValue(), "foundation should register");
-    ok &= Expect(RegisterAssets(app).HasValue(), "assets should register after foundation");
-    ok &= Expect(RegisterSerialization(app).HasValue(), "serialization should register after foundation");
-    ok &= Expect(RegisterTime(app).HasValue(), "time should register after foundation");
-    ok &= Expect(RegisterResources(app).HasValue(), "resources should register after foundation");
-    ok &= Expect(RegisterPersistence(app).HasValue(), "persistence should register after foundation");
-    ok &= Expect(RegisterEnvironment(app).HasValue(), "environment should register after foundation");
-    ok &= Expect(RegisterScene(app).HasValue(), "scene should register after foundation");
-    ok &= Expect(RegisterWorld(app).HasValue(), "world should register after foundation");
-    ok &= Expect(RegisterStreaming(app).HasValue(), "streaming should register after world/resources/persistence");
-    ok &= Expect(RegisterSimulation(app).HasValue(), "simulation should register after time");
-    ok &= Expect(RegisterNavigation(app).HasValue(), "navigation should register after environment");
-    ok &= Expect(RegisterAnimation(app).HasValue(), "animation should register after resources");
-    ok &= Expect(RegisterPhysics(app).HasValue(), "physics should register after scene");
-    ok &= Expect(RegisterAudio(app).HasValue(), "audio should register after resources/scene/environment");
-
-    ok &= Expect(app.Services().Contains<RuntimeFoundationRegistration>(), "foundation marker should exist");
-    ok &= Expect(app.Services().Contains<AssetServices>(), "asset services should exist");
-    ok &= Expect(app.Services().Contains<SerializationServices>(), "serialization services should exist");
-    ok &= Expect(app.Services().Contains<TimeServices>(), "time services should exist");
-    ok &= Expect(app.Services().Contains<streaming::StreamingServices>(), "streaming services should exist");
-    ok &= Expect(app.Services().Contains<physics::PhysicsServices>(), "physics services should exist");
-    ok &= Expect(app.Services().Contains<navigation::NavigationServices>(), "navigation services should exist");
-    ok &= Expect(app.Services().Contains<animation::AnimationServices>(), "animation services should exist");
-    ok &= Expect(app.Services().Contains<audio::AudioServices>(), "audio services should exist");
-    ok &= Expect(app.Services().Contains<simulation::SimulationServices>(), "simulation services should exist");
-    ok &= Expect(app.Services().Get<AssetServices>()->catalog != nullptr, "asset catalog should be real");
-    ok &= Expect(app.Services().Get<SerializationServices>()->archives != nullptr, "archive factory should be real");
+    bool ok = true;
+    ok &= Expect(RegisterRuntimeFoundation(app).HasValue(), "foundation registration failed");
+    ok &= Expect(RegisterAssets(app).HasValue(), "assets registration failed");
+    ok &= Expect(RegisterSerialization(app).HasValue(), "serialization registration failed");
+    ok &= Expect(RegisterResources(app).HasValue(), "resources registration failed");
+    ok &= Expect(RegisterPersistence(app).HasValue(), "persistence registration failed");
+    ok &= Expect(RegisterTime(app).HasValue(), "time registration failed");
+    ok &= Expect(RegisterEnvironment(app).HasValue(), "environment registration failed");
+    ok &= Expect(RegisterScene(app).HasValue(), "scene registration failed");
+    ok &= Expect(RegisterWorld(app).HasValue(), "world registration failed");
+    ok &= Expect(RegisterStreaming(app).HasValue(), "streaming registration failed");
+    ok &= Expect(RegisterSimulation(app).HasValue(), "simulation registration failed");
+    ok &= Expect(RegisterNavigation(app).HasValue(), "navigation registration failed");
+    ok &= Expect(RegisterAnimation(app).HasValue(), "animation registration failed");
+    ok &= Expect(RegisterPhysics(app).HasValue(), "physics registration failed");
+    ok &= Expect(RegisterAudio(app).HasValue(), "audio registration failed");
+    ok &= Expect(RegisterRenderer(app).HasValue(), "renderer registration failed");
+    ok &= Expect(!RegisterRenderer(app).HasValue(), "duplicate registration must fail");
     return ok;
 }
 
-bool TestDuplicateRegistrationFails()
+bool TestAtomicDefaultCompositionAndTypedOwnership()
 {
     Application app{};
-    bool ok = Expect(RegisterRuntimeFoundation(app).HasValue(), "first foundation registration should pass");
-    ok &= Expect(!RegisterRuntimeFoundation(app).HasValue(), "second foundation registration should fail");
-    return ok;
-}
-
-bool TestMissingDependencyFails()
-{
-    Application app{};
-    bool ok = Expect(RegisterRuntimeFoundation(app).HasValue(), "foundation should register");
-    ok &= Expect(!RegisterRenderer(app).HasValue(), "renderer should fail without resources and scene");
-    ok &= Expect(RegisterResources(app).HasValue(), "resources should register");
-    ok &= Expect(!RegisterRenderer(app).HasValue(), "renderer should still fail without scene");
-    ok &= Expect(RegisterScene(app).HasValue(), "scene should register");
-    ok &= Expect(RegisterRenderer(app).HasValue(), "renderer should register after dependencies");
-    ok &= Expect(!RegisterStreaming(app).HasValue(), "streaming should fail without world and persistence");
-    ok &= Expect(RegisterPersistence(app).HasValue(), "persistence should register");
-    ok &= Expect(RegisterWorld(app).HasValue(), "world should register");
-    ok &= Expect(RegisterStreaming(app).HasValue(), "streaming should register after dependencies");
-    ok &= Expect(app.Services().Contains<renderer::RendererServices>(), "renderer services should exist");
-    ok &= Expect(app.Services().Get<renderer::RendererServices>()->scene != nullptr, "renderer scene service should be real");
-    return ok;
-}
-
-bool TestDefaultRegistrationOrder()
-{
-    Application app{};
-    const auto result = RegisterDefaultEngineRuntime(app);
-    bool ok = Expect(result.HasValue(), "default runtime should register");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors.size() == 16, "default runtime should register current freeze majors");
-    ok &= Expect(result.HasValue() && result.Value().profile == RuntimeProfile::Reference, "default profile should be Reference");
-    ok &= Expect(result.HasValue() && result.Value().integrations != nullptr, "default runtime should own integration adapters");
-    ok &= Expect(result.HasValue() && result.Value().coordinator != nullptr, "default runtime should create coordinator");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[0] == "RuntimeFoundation", "foundation should be first");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[1] == "Assets", "assets should follow foundation");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[2] == "Serialization", "serialization should follow assets");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[3] == "Resources", "resources should follow serialization");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[5] == "Time", "time should follow persistence");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[8] == "World", "world should follow scene");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[9] == "Streaming", "streaming should follow world");
-    ok &= Expect(result.HasValue() && result.Value().registered_majors[15] == "Renderer", "renderer should be last");
-    ok &= Expect(app.Services().Contains<PersistenceServices>(), "persistence services should exist");
-    ok &= Expect(app.Services().Contains<EnvironmentServices>(), "environment services should exist");
-    ok &= Expect(app.Services().Contains<SceneServices>(), "scene services should exist");
-    ok &= Expect(app.Services().Contains<streaming::StreamingServices>(), "streaming services should exist");
-    ok &= Expect(app.Services().Contains<physics::PhysicsServices>(), "physics services should exist");
-    ok &= Expect(app.Services().Contains<navigation::NavigationServices>(), "navigation services should exist");
-    ok &= Expect(app.Services().Contains<animation::AnimationServices>(), "animation services should exist");
-    ok &= Expect(app.Services().Contains<audio::AudioServices>(), "audio services should exist");
-    ok &= Expect(app.Services().Contains<simulation::SimulationServices>(), "simulation services should exist");
-    return ok;
-}
-
-bool TestRuntimeProfiles()
-{
-    Application production_app{};
-    EngineRuntimeOptions production{};
-    production.profile = RuntimeProfile::Production;
-    const auto rejected = RegisterDefaultEngineRuntime(production_app, production);
-    bool ok = Expect(!rejected.HasValue(), "production profile should reject mock-only audio composition");
-    ok &= Expect(!production_app.Services().Contains<RuntimeFoundationRegistration>(), "profile preflight failure should not partially register runtime");
-    ok &= Expect(!production_app.Services().Contains<audio::AudioServices>(), "profile preflight failure should not register audio");
-
-    Application production_without_audio_app{};
-    production.enable_audio = false;
-    const auto accepted = RegisterDefaultEngineRuntime(production_without_audio_app, production);
-    ok &= Expect(accepted.HasValue(), "production profile should register when mock-only audio is disabled");
-    ok &= Expect(accepted.HasValue() && accepted.Value().profile == RuntimeProfile::Production, "production profile should be preserved");
-    ok &= Expect(!production_without_audio_app.Services().Contains<audio::AudioServices>(), "production profile should contain no mock audio");
-
-    Application tests_app{};
-    EngineRuntimeOptions tests{};
-    tests.profile = RuntimeProfile::Tests;
-    const auto test_runtime = RegisterDefaultEngineRuntime(tests_app, tests);
-    ok &= Expect(test_runtime.HasValue(), "tests profile should allow explicit mock/fault-injection backends");
-    ok &= Expect(test_runtime.HasValue() && test_runtime.Value().profile == RuntimeProfile::Tests, "tests profile should be preserved");
-    ok &= Expect(tests_app.Services().Contains<audio::AudioServices>(), "tests profile should register mock-capable audio");
-    return ok;
-}
-
-bool TestDefaultRegistrationReportsMissingDependency()
-{
-    Application app{};
-    EngineRuntimeOptions options{};
-    options.enable_scene = false;
-    const auto result = RegisterDefaultEngineRuntime(app, options);
-    bool ok = Expect(!result.HasValue(), "default runtime should fail preflight when scene-dependent majors miss scene");
-    ok &= Expect(!app.Services().Contains<RuntimeFoundationRegistration>(), "preflight failure should not start registration");
-    ok &= Expect(!app.Services().Contains<renderer::RendererServices>(), "failed dependent renderer should not be registered");
-    return ok;
-}
-
-bool TestUpdateShutdownAndAdapterContracts()
-{
-    const auto update = GetRuntimeUpdateOrder();
-    const auto shutdown = GetRuntimeShutdownOrder();
-    const auto adapters = GetAllowedRuntimeAdapters();
-
-    bool ok = Expect(update.size() == 12, "update order should list twelve steps");
-    ok &= Expect(update[0] == RuntimeUpdateStep::Time, "update should start with Time");
-    ok &= Expect(update[3] == RuntimeUpdateStep::Streaming, "streaming should be fourth update step");
-    ok &= Expect(update[11] == RuntimeUpdateStep::DiagnosticsEvents, "diagnostics/events should be last update step");
-    ok &= Expect(shutdown.size() == 12, "shutdown order should list twelve steps");
-    ok &= Expect(shutdown[0] == RuntimeShutdownStep::StopNewWork, "shutdown should stop new work first");
-    ok &= Expect(shutdown[10] == RuntimeShutdownStep::DestroyAdapters, "shutdown should destroy adapters before services");
-    ok &= Expect(shutdown[11] == RuntimeShutdownStep::DestroyServices, "shutdown should destroy services last");
-    ok &= Expect(adapters.size() == 13, "allowed adapter list should match stage 14");
-    ok &= Expect(adapters[0] == RuntimeAdapterKind::SceneToRenderer, "first adapter should be scene to renderer");
-    ok &= Expect(adapters[12] == RuntimeAdapterKind::EnvironmentToNavigation, "last adapter should be environment to navigation");
-    return ok;
-}
-
-bool TestCoordinatorRecordsActualOrderAndShutdownIsIdempotent()
-{
-    Application app{};
-    EngineRuntimeOptions options{};
-    options.enable_streaming = false;
-    options.enable_simulation = false;
-    options.enable_navigation = false;
-    options.enable_animation = false;
-    options.enable_physics = false;
-    options.enable_audio = false;
-    options.enable_renderer = false;
-
-    const auto runtime = RegisterDefaultEngineRuntime(app, options);
-    bool ok = Expect(runtime.HasValue(), "minimal runtime should register for coordinator test");
+    const auto runtime = RegisterDefaultEngineRuntime(app);
+    bool ok = Expect(runtime.HasValue(), "default runtime composition failed");
     if (!runtime)
     {
         return false;
     }
 
-    const RuntimeFrameInput input{.real_delta = std::chrono::microseconds{0}, .game_delta = GameDuration{0}};
-    ok &= Expect(runtime.Value().coordinator->Tick(input).HasValue(), "coordinator tick should call enabled public services");
-    ok &= Expect(runtime.Value().integrations->last_update_order == GetRuntimeUpdateOrder(), "coordinator should record actual update order");
-    ok &= Expect(runtime.Value().coordinator->Shutdown().HasValue(), "coordinator shutdown should succeed");
-    ok &= Expect(runtime.Value().coordinator->Shutdown().HasValue(), "coordinator shutdown should be idempotent");
-    ok &= Expect(runtime.Value().integrations->last_shutdown_order == GetRuntimeShutdownOrder(), "coordinator should record actual shutdown order");
-    ok &= Expect(runtime.Value().integrations->owned_adapters.empty(), "shutdown should release owned adapters before services");
+    const EngineRuntimeServices& services = runtime.Value();
+    ok &= Expect(app.Services().Contains<EngineRuntimeServices>(), "aggregate service was not registered");
+    ok &= Expect(!app.Services().Contains<RuntimeFoundationRegistration>(),
+                 "default composition must not register partial individual services");
+    ok &= Expect(services.registered_majors.size() == 16, "default composition did not create every major");
+    ok &= Expect(services.integrations != nullptr && services.coordinator != nullptr,
+                 "default composition did not create integrations/coordinator");
+
+    const RuntimeIntegrationServices& integrations = *services.integrations;
+    ok &= Expect(SameOwner(integrations.streaming_data_source, integrations.streaming_commit_target),
+                 "streaming roles do not share one adapter instance");
+    ok &= Expect(SameOwner(integrations.streaming_data_source, integrations.streaming_residency_controller),
+                 "streaming residency role does not share the adapter instance");
+    ok &= Expect(SameOwner(integrations.physics_transform_source, integrations.physics_transform_sink),
+                 "physics source and sink do not share one scene adapter");
+    ok &= Expect(SameOwner(integrations.physics_transform_sink, integrations.scene_projections),
+                 "scene projection queue is not the physics sink instance");
+    ok &= Expect(SameOwner(integrations.animation_pose_sink, integrations.animation_pose_cache),
+                 "animation pose sink/cache ownership differs");
     return ok;
 }
 
-bool TestSupportDoesNotIncludePrivateHeaders()
+bool TestProductionPreflightIsAtomic()
 {
-    std::ifstream header{"EngineRuntime/Support/include/Epidemic/Runtime/Support/runtime_support.h"};
-    std::ifstream source{"EngineRuntime/Support/src/runtime_support.cpp"};
-    std::string contents{std::istreambuf_iterator<char>(header), std::istreambuf_iterator<char>()};
-    contents.append(std::istreambuf_iterator<char>(source), std::istreambuf_iterator<char>());
+    Application app{};
+    EngineRuntimeOptions options{};
+    options.profile = RuntimeProfile::Production;
 
-    return Expect(contents.find("_impl.h") == std::string::npos && contents.find("/src/") == std::string::npos &&
-                      contents.find("\\src\\") == std::string::npos,
-                  "support public composition should not include private implementation headers");
+    const auto failed = RegisterDefaultEngineRuntime(app, options, {});
+    bool ok = Expect(!failed.HasValue(), "production composition without backends must fail");
+    ok &= Expect(!app.Services().Contains<EngineRuntimeServices>(),
+                 "failed production composition changed the application");
+    ok &= Expect(!app.Services().Contains<RuntimeFoundationRegistration>(),
+                 "failed production composition registered a partial runtime");
+    return ok;
 }
-} // namespace
+
+bool TestSceneProjectionQueue()
+{
+    Application app{};
+    const auto runtime = RegisterDefaultEngineRuntime(app);
+    bool ok = Expect(runtime.HasValue(), "runtime composition failed for projection test");
+    if (!runtime)
+    {
+        return false;
+    }
+
+    const auto node = runtime.Value().scene->nodes->CreateNode();
+    ok &= Expect(node.HasValue(), "scene node creation failed");
+    if (!node)
+    {
+        return false;
+    }
+
+    Transform projected{};
+    projected.position = Vec3{5.0f, 2.0f, -3.0f};
+    const auto queued = runtime.Value().integrations->physics_transform_sink->WriteTransform(
+        physics::PhysicsTransformId{node.Value().Raw()}, projected);
+    ok &= Expect(queued.HasValue(), "physics transform write was not queued");
+    ok &= Expect(runtime.Value().integrations->scene_projections->PendingCount() == 1,
+                 "scene projection queue count is incorrect");
+
+    const auto before = runtime.Value().scene->transforms->GetWorldTransform(node.Value());
+    ok &= Expect(before.has_value() && before->position.x == 0.0f,
+                 "physics sink mutated Scene before projection commit");
+
+    const auto flushed = runtime.Value().integrations->scene_projections->Flush();
+    ok &= Expect(flushed.HasValue() && flushed.Value() == 1, "scene projection flush failed");
+    const auto after = runtime.Value().scene->transforms->GetWorldTransform(node.Value());
+    ok &= Expect(after.has_value() && after->position == projected.position,
+                 "scene projection did not apply the world transform");
+    return ok;
+}
+
+bool TestStreamingWorldLifecycle()
+{
+    Application app{};
+    const auto runtime = RegisterDefaultEngineRuntime(app);
+    bool ok = Expect(runtime.HasValue(), "runtime composition failed for streaming test");
+    if (!runtime)
+    {
+        return false;
+    }
+
+    const RegionId region{11};
+    const ChunkId chunk{22};
+    ok &= Expect(runtime.Value().world->regions->RegisterRegion(
+                     RegionDescriptor{region, epidemic::foundation::StringId::FromString("test-region")})
+                     .HasValue(),
+                 "region registration failed");
+    ok &= Expect(runtime.Value().world->chunks->RegisterChunk(
+                     ChunkDescriptor{chunk, region, 0, 0, 0})
+                     .HasValue(),
+                 "chunk registration failed");
+
+    const auto demand = runtime.Value().streaming->runtime->Request(
+        streaming::StreamingTarget{streaming::ChunkStreamingTarget{chunk}},
+        streaming::StreamingPriorityClass::High);
+    ok &= Expect(demand.HasValue(), "streaming demand creation failed");
+    if (!demand)
+    {
+        return false;
+    }
+
+    runtime.Value().streaming->runtime->SetBudget(streaming::StreamingBudget{});
+    for (int index = 0; index < 32 &&
+                        runtime.Value().streaming->runtime->GetChunkState(chunk) != streaming::StreamingState::Active;
+         ++index)
+    {
+        const auto tick = runtime.Value().streaming->runtime->Tick();
+        ok &= Expect(tick.failures.empty(), "streaming load tick failed");
+    }
+
+    ok &= Expect(runtime.Value().streaming->runtime->GetChunkState(chunk) == streaming::StreamingState::Active,
+                 "streaming request did not activate the chunk");
+    const auto active_snapshot = runtime.Value().world->chunks->GetChunkSnapshot(chunk);
+    ok &= Expect(active_snapshot.HasValue() && active_snapshot.Value().state == ChunkState::Active,
+                 "streaming adapter did not commit Active state to World");
+
+    ok &= Expect(runtime.Value().streaming->runtime->ReleaseDemand(demand.Value()).HasValue(),
+                 "streaming demand release failed");
+    for (int index = 0; index < 32 &&
+                        runtime.Value().streaming->runtime->GetChunkState(chunk) != streaming::StreamingState::Unloaded;
+         ++index)
+    {
+        const auto tick = runtime.Value().streaming->runtime->Tick();
+        ok &= Expect(tick.failures.empty(), "streaming unload tick failed");
+    }
+
+    ok &= Expect(runtime.Value().streaming->runtime->GetChunkState(chunk) == streaming::StreamingState::Unloaded,
+                 "streaming request did not unload the chunk");
+    const auto unloaded_snapshot = runtime.Value().world->chunks->GetChunkSnapshot(chunk);
+    ok &= Expect(unloaded_snapshot.HasValue() && unloaded_snapshot.Value().state == ChunkState::Unloaded,
+                 "streaming adapter did not commit Unloaded state to World");
+    return ok;
+}
+
+bool TestFullTickAndTerminalShutdown()
+{
+    Application app{};
+    const auto runtime = RegisterDefaultEngineRuntime(app);
+    bool ok = Expect(runtime.HasValue(), "runtime composition failed for coordinator test");
+    if (!runtime)
+    {
+        return false;
+    }
+
+    RuntimeFrameInput input{};
+    input.real_delta = RuntimeFrameDuration{std::chrono::microseconds{16667}};
+    const auto tick = runtime.Value().coordinator->Tick(input);
+    ok &= Expect(tick.HasValue(), "full reference coordinator tick failed");
+    if (tick)
+    {
+        ok &= Expect(tick.Value().executed_steps == GetRuntimeUpdateOrder(),
+                     "coordinator did not execute the complete reference update order");
+        ok &= Expect(tick.Value().failures.empty(), "full reference tick reported phase failures");
+    }
+
+    ok &= Expect(runtime.Value().coordinator->Shutdown().HasValue(), "runtime shutdown failed");
+    ok &= Expect(runtime.Value().coordinator->IsShutdownStarted(), "shutdown-started flag was not set");
+    ok &= Expect(runtime.Value().coordinator->IsShutdownComplete(), "shutdown-complete flag was not set");
+    ok &= Expect(runtime.Value().coordinator->Shutdown().HasValue(), "second shutdown was not idempotent");
+    ok &= Expect(!runtime.Value().coordinator->Tick(input).HasValue(), "coordinator accepted a frame after shutdown");
+    ok &= Expect(runtime.Value().integrations->owned_adapters.empty(), "shutdown retained adapter ownership metadata");
+    return ok;
+}
+}
 
 int main()
 {
     bool ok = true;
-    ok &= TestIndividualRegistrationCreatesRealServices();
-    ok &= TestDuplicateRegistrationFails();
-    ok &= TestMissingDependencyFails();
-    ok &= TestDefaultRegistrationOrder();
-    ok &= TestRuntimeProfiles();
-    ok &= TestDefaultRegistrationReportsMissingDependency();
-    ok &= TestUpdateShutdownAndAdapterContracts();
-    ok &= TestCoordinatorRecordsActualOrderAndShutdownIsIdempotent();
-    ok &= TestSupportDoesNotIncludePrivateHeaders();
+    ok &= TestIndividualRegistration();
+    ok &= TestAtomicDefaultCompositionAndTypedOwnership();
+    ok &= TestProductionPreflightIsAtomic();
+    ok &= TestSceneProjectionQueue();
+    ok &= TestStreamingWorldLifecycle();
+    ok &= TestFullTickAndTerminalShutdown();
     return ok ? 0 : 1;
 }

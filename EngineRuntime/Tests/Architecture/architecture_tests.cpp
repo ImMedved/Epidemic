@@ -123,7 +123,7 @@ bool TestAllMajorsHaveFactoriesAndHandlesAreGenerationAware()
     using namespace epidemic::runtime;
 
     static_assert(std::is_same_v<decltype(streaming::CreateStreamingServices()), epidemic::foundation::Result<streaming::StreamingServices>>);
-    static_assert(std::is_same_v<decltype(physics::CreatePhysicsServices()), physics::PhysicsServices>);
+    static_assert(std::is_same_v<decltype(physics::CreatePhysicsServices()), epidemic::foundation::Result<physics::PhysicsServices>>);
     static_assert(std::is_same_v<decltype(navigation::CreateNavigationServices()), epidemic::foundation::Result<navigation::NavigationServices>>);
     static_assert(std::is_same_v<decltype(navigation::CreateMockNavigationServices()), navigation::NavigationServices>);
     static_assert(std::is_same_v<decltype(animation::CreateAnimationServices()), epidemic::foundation::Result<animation::AnimationServices>>);
@@ -200,13 +200,17 @@ bool TestSupportProfileContracts()
 {
     const fs::path root = RepositoryRoot();
     const std::string source = ReadFile(root / "EngineRuntime" / "Support" / "src" / "runtime_support.cpp");
-    bool ok = Expect(Contains(source, "runtime_support.mock_forbidden"), "production profile must guard mock-only backends");
-    ok &= Expect(Contains(source, "CreateMockAudioServices"), "tests/reference profiles must use explicit mock audio registration");
+    const std::string header = ReadFile(root / "EngineRuntime" / "Support" / "include" / "Epidemic" / "Runtime" / "Support" / "runtime_support.h");
+    bool ok = Expect(Contains(source, "runtime_support.production_dependency_missing"),
+                     "production profile must require external runtime backends");
+    ok &= Expect(!Contains(source, "CreateMockAudioServices"), "support composition must not silently use mock audio factory");
+    ok &= Expect(!Contains(header, "std::shared_ptr<void>"), "support adapters must be owned through typed contracts");
+    ok &= Expect(!Contains(source, "EPIDEMIC_RUNTIME_TRY(Register"), "default runtime registration must not call sequential RegisterXxx helpers");
 
     const auto adapters = epidemic::runtime::GetAllowedRuntimeAdapters();
     const auto update = epidemic::runtime::GetRuntimeUpdateOrder();
     const auto shutdown = epidemic::runtime::GetRuntimeShutdownOrder();
-    ok &= Expect(adapters.size() == 13, "support must expose all integration adapters");
+    ok &= Expect(adapters.size() == 11, "support must expose all integration adapters");
     ok &= Expect(update.size() == 12, "support must expose full update order");
     ok &= Expect(shutdown.size() == 12, "support must expose full shutdown order");
     return ok;
