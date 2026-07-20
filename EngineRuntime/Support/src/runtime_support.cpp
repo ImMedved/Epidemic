@@ -2360,11 +2360,10 @@ class EngineRuntimeCoordinator final : public IEngineRuntimeCoordinator
         return FailureVoid("runtime_support.production_dependency_missing",
                            "Production Audio requires an external backend");
     }
-    if (options.enable_streaming && !HasAllStreamingCoreDependencies(dependencies.streaming) &&
-        !dependencies.chunk_manifests)
+    if (options.enable_streaming && !HasAllStreamingCoreDependencies(dependencies.streaming))
     {
         return FailureVoid("runtime_support.production_dependency_missing",
-                           "Production Streaming requires external roles or a chunk manifest source");
+                           "Production Streaming requires external data, commit, residency, world, persistence and resource roles");
     }
     if (options.enable_simulation && !dependencies.simulation.commit_target)
     {

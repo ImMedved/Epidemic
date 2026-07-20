@@ -26,6 +26,15 @@ bool SameOwner(const std::shared_ptr<TLeft>& left, const std::shared_ptr<TRight>
     return left && right && !left.owner_before(right) && !right.owner_before(left);
 }
 
+class EmptyChunkManifestSource final : public IChunkStreamingManifestSource
+{
+  public:
+    [[nodiscard]] epidemic::foundation::Result<ChunkStreamingManifest> GetManifest(ChunkId chunk) const override
+    {
+        return epidemic::foundation::Result<ChunkStreamingManifest>::Success(ChunkStreamingManifest{chunk, {}, {}});
+    }
+};
+
 bool TestIndividualRegistration()
 {
     Application app{};
@@ -94,6 +103,15 @@ bool TestProductionPreflightIsAtomic()
                  "failed production composition changed the application");
     ok &= Expect(!app.Services().Contains<RuntimeFoundationRegistration>(),
                  "failed production composition registered a partial runtime");
+
+    EngineRuntimeDependencies manifest_only_dependencies{};
+    manifest_only_dependencies.chunk_manifests = std::make_shared<EmptyChunkManifestSource>();
+    const auto manifest_only_failed =
+        RegisterDefaultEngineRuntime(app, options, std::move(manifest_only_dependencies));
+    ok &= Expect(!manifest_only_failed.HasValue(),
+                 "production streaming must require external roles, not only a chunk manifest");
+    ok &= Expect(!app.Services().Contains<EngineRuntimeServices>(),
+                 "manifest-only production failure changed the application");
     return ok;
 }
 
