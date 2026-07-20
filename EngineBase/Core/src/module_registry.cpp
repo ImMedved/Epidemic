@@ -10,13 +10,18 @@
 
 namespace epidemic::core
 {
+// This file implements module ownership, dependency ordering, and lifecycle execution.
+// Public lifecycle contracts are documented in module_registry.h; helpers below support dependency resolution.
+
 namespace
 {
+// Converts manifest id text into the strongly typed module identifier used by the registry.
 [[nodiscard]] foundation::ModuleId ToModuleId(std::string_view id_text)
 {
     return foundation::ModuleId::FromString(id_text);
 }
 
+// Builds a human-readable lifecycle log line for one module action.
 std::string BuildLifecycleMessage(std::string_view action, const ModuleManifest &manifest)
 {
     std::string message(action);
@@ -29,6 +34,7 @@ std::string BuildLifecycleMessage(std::string_view action, const ModuleManifest 
 }
 } // namespace
 
+// Adds a module to the registry before bootstrap begins.
 void ModuleRegistry::Register(std::unique_ptr<IModule> module)
 {
     if (!module)
@@ -59,6 +65,7 @@ void ModuleRegistry::Register(std::unique_ptr<IModule> module)
     state_ = LifecycleState::Registered;
 }
 
+// Resolves execution order and calls Bootstrap on all modules.
 void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
     EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::BootstrapAll");
@@ -90,6 +97,7 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
     }
 }
 
+// Calls Initialize on every bootstrapped module.
 void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
     EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::InitializeAll");
@@ -116,6 +124,7 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
     }
 }
 
+// Calls Tick on every initialized module in execution order.
 void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &logger, const FrameContext &frame_context)
 {
     EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::TickAll");
@@ -140,6 +149,7 @@ void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &l
     }
 }
 
+// Calls Shutdown in reverse execution order for modules that reached bootstrap.
 void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogger &logger)
 {
     EPIDEMIC_PROFILE_SCOPE("ModuleRegistry::ShutdownAll");
@@ -176,11 +186,13 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
     }
 }
 
+// Returns the number of registered module instances.
 std::size_t ModuleRegistry::Size() const noexcept
 {
     return modules_.size();
 }
 
+// Builds the dependency-resolved execution plan lazily and logs the final order.
 void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
 {
     if (!execution_plan_.empty() || modules_.empty())

@@ -12,14 +12,29 @@
 
 namespace epidemic::core
 {
+// This file declares the module registry and dependency planner used by Application.
+// ModuleRegistry owns module instances, validates dependency graphs, and executes lifecycle
+// callbacks in dependency order with reverse-order shutdown.
+
 class ModuleRegistry
 {
   public:
+    // Adds a module instance before bootstrap begins.
     void Register(std::unique_ptr<IModule> module);
+
+    // Resolves dependencies and calls Bootstrap on all modules.
     void BootstrapAll(ServiceContainer &services, diagnostics::ILogger &logger);
+
+    // Calls Initialize on all modules in dependency order.
     void InitializeAll(ServiceContainer &services, diagnostics::ILogger &logger);
+
+    // Calls Tick on all initialized modules in dependency order.
     void TickAll(ServiceContainer &services, diagnostics::ILogger &logger, const FrameContext &frame_context);
+
+    // Calls Shutdown on bootstrapped modules in reverse dependency order.
     void ShutdownAll(ServiceContainer &services, diagnostics::ILogger &logger);
+
+    // Returns the number of registered modules.
     [[nodiscard]] std::size_t Size() const noexcept;
 
   private:
@@ -33,6 +48,7 @@ class ModuleRegistry
         ShutDown,
     };
 
+    // Builds the dependency-resolved execution plan on first use.
     void EnsureExecutionPlan(diagnostics::ILogger &logger);
 
     std::vector<std::unique_ptr<IModule>> modules_;

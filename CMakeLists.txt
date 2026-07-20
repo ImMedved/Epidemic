@@ -7,9 +7,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_TESTING "Build Epidemic Engine tests" ON)
+option(EPIDEMIC_BUILD_RUNTIME "Build Epidemic EngineRuntime" ON)
 
 if(BUILD_TESTING)
     enable_testing()
 endif()
 
 add_subdirectory(EngineBase)
+
+if(EPIDEMIC_BUILD_RUNTIME)
+    add_subdirectory(EngineRuntime)
+endif()

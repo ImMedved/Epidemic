@@ -18,8 +18,12 @@
 
 namespace epidemic::core
 {
+// This file implements the EngineBase application lifecycle and frame loop.
+// Most behavioral contracts are documented in application.h; the local helpers below support those contracts.
+
 namespace
 {
+// Throws when a required core service is missing from the application service container.
 template <typename TService>
 void EnsureRegistered(const ServiceContainer &services, std::string_view service_name)
 {
@@ -29,11 +33,13 @@ void EnsureRegistered(const ServiceContainer &services, std::string_view service
     }
 }
 
+// Converts a frame phase enum to its backing array index.
 [[nodiscard]] constexpr std::size_t ToIndex(FramePhase phase) noexcept
 {
     return static_cast<std::size_t>(phase);
 }
 
+// Routes per-phase timing into the specific diagnostics counters that expose frame-loop health.
 void UpdatePhaseDiagnostics(FramePhase phase, std::int64_t duration_micros) noexcept
 {
     using diagnostics::CounterId;

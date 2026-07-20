@@ -5,6 +5,9 @@
 
 namespace epidemic::input
 {
+// This file defines the normalized keyboard keys recognized by EngineBase input code.
+// Values intentionally mirror Win32 virtual-key codes for the current baseline backend.
+
 enum class KeyCode : std::uint16_t
 {
     Unknown = 0,
@@ -108,6 +111,7 @@ enum class KeyCode : std::uint16_t
     Quote = 222,
 };
 
+// Returns true for concrete supported keys and false for Unknown or out-of-range values.
 [[nodiscard]] constexpr bool IsKnownKeyCode(KeyCode key_code) noexcept
 {
     switch (key_code)
@@ -218,6 +222,7 @@ enum class KeyCode : std::uint16_t
     return false;
 }
 
+// Converts a normalized key code to a stable diagnostic name.
 [[nodiscard]] inline std::string_view ToString(KeyCode key_code) noexcept
 {
     switch (key_code)
@@ -424,5 +429,5 @@ enum class KeyCode : std::uint16_t
 
     return "Unknown";
 }
-} // namespace epidemic::input
+} 
 

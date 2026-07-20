@@ -1,3 +1,5 @@
+// This file exercises integration between the Win32 platform runtime and the normalized input pipeline.
+
 #include "../test_assert.h"
 
 #include <Epidemic/EngineBase/engine_base_support.h>
@@ -17,6 +19,7 @@ namespace
 {
 using epidemic::tests::Assert;
 
+// Unwraps a Result inside the test and throws with the contained error message on failure.
 template <typename TValue>
 TValue RequireValue(epidemic::foundation::Result<TValue> result)
 {
@@ -28,6 +31,7 @@ TValue RequireValue(epidemic::foundation::Result<TValue> result)
     return std::move(result).Value();
 }
 
+// Verifies that platform events flow into input snapshots and that WM_CLOSE surfaces as a close-request event.
 void TestPlatformAndInputIntegration()
 {
     epidemic::core::Application application({"PlatformInputIntegration"});
@@ -80,6 +84,7 @@ void TestPlatformAndInputIntegration()
 }
 }
 
+// Runs the platform/input integration-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({{"PlatformAndInputIntegration", &TestPlatformAndInputIntegration}});

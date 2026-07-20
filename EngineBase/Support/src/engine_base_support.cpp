@@ -23,8 +23,12 @@
 
 namespace epidemic::enginebase
 {
+// This file implements the convenience composition helpers declared in engine_base_support.h.
+// It wires the baseline services and frame-loop hooks without introducing higher-level runtime systems.
+
 namespace detail
 {
+// Converts a Result<void> failure into an exception for internal fail-fast frame-loop glue.
 inline void ThrowIfFailed(const epidemic::foundation::Result<void> &result)
 {
     if (!result.HasValue())
@@ -33,6 +37,7 @@ inline void ThrowIfFailed(const epidemic::foundation::Result<void> &result)
     }
 }
 
+// Aggregates per-tag memory statistics into the global diagnostics counters.
 inline void UpdateMemoryCounters(const std::shared_ptr<memory::IMemoryTracker> &memory_tracker)
 {
     std::int64_t total_used_bytes = 0;
@@ -50,6 +55,7 @@ inline void UpdateMemoryCounters(const std::shared_ptr<memory::IMemoryTracker> &
 }
 } // namespace detail
 
+// Returns the shared per-frame platform-event buffer, creating it on first use.
 std::shared_ptr<FramePlatformEvents> EnsureFramePlatformEvents(core::Application &application)
 {
     if (application.Services().Contains<FramePlatformEvents>())
@@ -62,6 +68,7 @@ std::shared_ptr<FramePlatformEvents> EnsureFramePlatformEvents(core::Application
     return frame_platform_events;
 }
 
+// Registers the baseline services needed by the EngineBase application shell.
 std::shared_ptr<diagnostics::ILogger> RegisterEngineBase(core::Application &application, EngineBaseOptions options)
 {
     diagnostics::SetCurrentThreadName("Main");
@@ -103,6 +110,7 @@ std::shared_ptr<diagnostics::ILogger> RegisterEngineBase(core::Application &appl
     return logger;
 }
 
+// Registers the Win32 platform runtime as both runtime and window-system service.
 std::shared_ptr<platform::IPlatformRuntime> RegisterWindowsRuntime(core::Application &application)
 {
     auto platform_runtime = std::make_shared<platform::WindowsPlatformRuntime>();
@@ -111,6 +119,7 @@ std::shared_ptr<platform::IPlatformRuntime> RegisterWindowsRuntime(core::Applica
     return platform_runtime;
 }
 
+// Registers the normalized input system service.
 std::shared_ptr<input::IInputSystem> RegisterInputRuntime(core::Application &application)
 {
     auto input_system = std::make_shared<input::InputSystem>();
@@ -118,6 +127,7 @@ std::shared_ptr<input::IInputSystem> RegisterInputRuntime(core::Application &app
     return input_system;
 }
 
+// Creates and registers the requested graphics backend and its primary command context.
 foundation::Result<GraphicsRuntimeServices> RegisterGraphicsRuntime(core::Application &application,
                                                                     GraphicsRuntimeOptions options)
 {
@@ -154,6 +164,7 @@ foundation::Result<GraphicsRuntimeServices> RegisterGraphicsRuntime(core::Applic
         GraphicsRuntimeServices{std::move(device), std::move(command_context)});
 }
 
+// Creates the main window through the registered IWindowSystem service.
 foundation::Result<std::shared_ptr<platform::IWindow>>
 CreateMainWindow(core::Application &application, const platform::WindowCreateInfo &create_info)
 {
@@ -161,6 +172,7 @@ CreateMainWindow(core::Application &application, const platform::WindowCreateInf
     return window_system->CreateWindow(create_info);
 }
 
+// Creates and registers the application's main swap chain for the supplied window.
 foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>
 RegisterMainSwapChain(core::Application &application,
                       const std::shared_ptr<platform::IWindow> &window,
@@ -190,6 +202,7 @@ RegisterMainSwapChain(core::Application &application,
     return foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>::Success(std::move(swap_chain));
 }
 
+// Wires platform message pumping and platform-event drainage into the frame loop.
 void RegisterPlatformFrameLoop(core::Application &application)
 {
     auto frame_platform_events = EnsureFramePlatformEvents(application);
@@ -212,6 +225,7 @@ void RegisterPlatformFrameLoop(core::Application &application)
         "EngineBaseSupport::PumpPlatformEvents");
 }
 
+// Wires input normalization into the frame loop after platform events are drained.
 void RegisterInputFrameLoop(core::Application &application)
 {
     auto frame_platform_events = EnsureFramePlatformEvents(application);
@@ -228,6 +242,7 @@ void RegisterInputFrameLoop(core::Application &application)
         "EngineBaseSupport::UpdateInput");
 }
 
+// Wires the baseline RHI frame steps into the application frame phases.
 void RegisterRhiFrameLoop(core::Application &application,
                           const std::shared_ptr<rhi::IRhiCommandContext> &command_context,
                           const std::shared_ptr<rhi::IRhiSwapChain> &swap_chain,
@@ -274,6 +289,7 @@ void RegisterRhiFrameLoop(core::Application &application,
         "EngineBaseSupport::Present");
 }
 
+// Adds a simple end-of-frame sleep handler for fixed pacing in smoke scenarios.
 void RegisterFrameThrottle(core::Application &application, std::chrono::milliseconds duration)
 {
     application.AddFramePhaseHandler(

@@ -5,6 +5,9 @@
 
 namespace epidemic::rhi
 {
+// This file defines the minimal pixel formats understood by the EngineBase RHI baseline.
+// The enum is intentionally tiny for the current clear-screen and swap-chain scenarios.
+
 enum class RhiPixelFormat : std::uint8_t
 {
     Unknown,
@@ -12,6 +15,7 @@ enum class RhiPixelFormat : std::uint8_t
     B8G8R8A8_UNorm,
 };
 
+// Converts a pixel format to a stable diagnostic name.
 [[nodiscard]] inline std::string_view ToString(RhiPixelFormat pixel_format) noexcept
 {
     switch (pixel_format)

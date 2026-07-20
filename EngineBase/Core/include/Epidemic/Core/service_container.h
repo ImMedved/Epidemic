@@ -11,9 +11,15 @@
 
 namespace epidemic::core
 {
+// This file defines the simple service locator used by EngineBase composition.
+// The container supports one long-lived instance per service type and becomes sealed after
+// successful application initialization so runtime code cannot keep mutating the graph.
+
 class ServiceContainer
 {
   public:
+    // Constructs and registers a service implementation under the requested interface type.
+    // Relationship: validation happens before construction so sealed or duplicate failures do not build the instance.
     template <typename TService, typename TImplementation, typename... TArgs>
     std::shared_ptr<TService> Emplace(TArgs &&...args)
     {
@@ -26,6 +32,7 @@ class ServiceContainer
         return instance;
     }
 
+    // Registers an externally created service instance under the requested interface type.
     template <typename TService> void RegisterInstance(std::shared_ptr<TService> instance)
     {
         if (!instance)
@@ -48,6 +55,8 @@ class ServiceContainer
         services_.emplace(key, std::move(instance));
     }
 
+    // Returns the registered service instance for TService.
+    // TODO: If optional lookup becomes common, consider a non-throwing TryGet instead of forcing exception control flow.
     template <typename TService> [[nodiscard]] std::shared_ptr<TService> Get() const
     {
         std::shared_lock lock(mutex_);
@@ -60,18 +69,21 @@ class ServiceContainer
         return std::static_pointer_cast<TService>(it->second);
     }
 
+    // Returns whether a service for TService is currently registered.
     template <typename TService> [[nodiscard]] bool Contains() const
     {
         std::shared_lock lock(mutex_);
         return services_.contains(std::type_index(typeid(TService)));
     }
 
+    // Prevents further service registration.
     void Seal() noexcept
     {
         std::unique_lock lock(mutex_);
         sealed_ = true;
     }
 
+    // Returns whether the container has been sealed.
     [[nodiscard]] bool IsSealed() const noexcept
     {
         std::shared_lock lock(mutex_);
@@ -79,6 +91,7 @@ class ServiceContainer
     }
 
   private:
+    // Checks duplicate and sealed state before constructing a new service implementation.
     template <typename TService> void EnsureCanRegister() const
     {
         std::shared_lock lock(mutex_);

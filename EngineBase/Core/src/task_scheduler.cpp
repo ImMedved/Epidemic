@@ -9,6 +9,10 @@
 
 namespace epidemic::core::tasks
 {
+// This file implements the baseline worker-thread scheduler.
+// It captures completion and failure state for individual handles, task groups, and scheduler-wide idle waits.
+
+// Shared completion state for one scheduled task.
 struct TaskHandle::State
 {
     std::mutex mutex;
@@ -18,6 +22,7 @@ struct TaskHandle::State
     std::string debug_name;
 };
 
+// Shared aggregation state for a set of related scheduled tasks.
 struct TaskGroup::State
 {
     std::mutex mutex;
@@ -26,26 +31,32 @@ struct TaskGroup::State
     std::exception_ptr first_exception;
 };
 
+// Returns whether this handle references live scheduler state.
 bool TaskHandle::IsValid() const noexcept
 {
     return static_cast<bool>(state_);
 }
 
+// Stores the shared state backing the public handle.
 TaskHandle::TaskHandle(std::shared_ptr<State> state) noexcept : state_(std::move(state))
 {
 }
 
+// Creates a new empty aggregation state for grouped scheduling.
 TaskGroup::TaskGroup() : state_(std::make_shared<State>())
 {
 }
 
+// Defaulted because group state is reference-counted.
 TaskGroup::~TaskGroup() = default;
 
+// Returns whether this group references live aggregation state.
 bool TaskGroup::IsValid() const noexcept
 {
     return static_cast<bool>(state_);
 }
 
+// Starts worker threads and assigns stable diagnostic names.
 SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count)
 {
     if (worker_count == 0)
@@ -68,21 +79,25 @@ SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count)
     diagnostics::GlobalCounters().Set(diagnostics::CounterId::WorkerCount, static_cast<std::int64_t>(worker_names_.size()));
 }
 
+// Requests shutdown during destruction so owned workers are released.
 SimpleTaskScheduler::~SimpleTaskScheduler()
 {
     Shutdown();
 }
 
+// Queues an ungrouped task.
 TaskHandle SimpleTaskScheduler::Schedule(Task task, std::string debug_name)
 {
     return ScheduleImpl(std::move(task), {}, std::move(debug_name));
 }
 
+// Queues a task and associates it with a task group.
 TaskHandle SimpleTaskScheduler::Schedule(Task task, TaskGroup &group, std::string debug_name)
 {
     return ScheduleImpl(std::move(task), group.state_, std::move(debug_name));
 }
 
+// Blocks until the task completes and then rethrows its failure, if any.
 void SimpleTaskScheduler::Wait(const TaskHandle &handle)
 {
     if (!handle.IsValid())
@@ -101,6 +116,7 @@ void SimpleTaskScheduler::Wait(const TaskHandle &handle)
     }
 }
 
+// Blocks until the group becomes empty and then rethrows the first task failure, if any.
 void SimpleTaskScheduler::Wait(const TaskGroup &group)
 {
     if (!group.IsValid())
@@ -119,6 +135,7 @@ void SimpleTaskScheduler::Wait(const TaskGroup &group)
     }
 }
 
+// Blocks until the scheduler has no queued or active tasks and then rethrows the first scheduler-level failure.
 void SimpleTaskScheduler::WaitIdle()
 {
     EPIDEMIC_PROFILE_SCOPE("TaskScheduler::WaitIdle");
@@ -135,6 +152,7 @@ void SimpleTaskScheduler::WaitIdle()
     }
 }
 
+// Stops accepting new work, wakes workers, and joins the worker thread list.
 void SimpleTaskScheduler::Shutdown()
 {
     {
@@ -152,24 +170,28 @@ void SimpleTaskScheduler::Shutdown()
     idle_cv_.notify_all();
 }
 
+// Returns the number of worker threads owned by the scheduler.
 std::size_t SimpleTaskScheduler::WorkerCount() const noexcept
 {
     std::scoped_lock lock(mutex_);
     return worker_names_.size();
 }
 
+// Returns a snapshot of pending, active, completed, and worker counts.
 TaskDiagnostics SimpleTaskScheduler::GetDiagnostics() const noexcept
 {
     std::scoped_lock lock(mutex_);
     return TaskDiagnostics{tasks_.size(), active_tasks_, completed_tasks_, worker_names_.size()};
 }
 
+// Returns the worker names assigned during construction.
 std::vector<std::string> SimpleTaskScheduler::WorkerThreadNames() const
 {
     std::scoped_lock lock(mutex_);
     return worker_names_;
 }
 
+// Shared implementation for grouped and ungrouped scheduling requests.
 TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGroup::State> group_state, std::string debug_name)
 {
     if (!task)
@@ -201,6 +223,7 @@ TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGrou
     return TaskHandle(std::move(handle_state));
 }
 
+// Waits for work, executes tasks, records failures, and updates handle/group completion state.
 void SimpleTaskScheduler::WorkerLoop(std::stop_token stop_token)
 {
     while (true)

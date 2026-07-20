@@ -24,6 +24,9 @@
 
 namespace epidemic::tests
 {
+// This file provides small shared helpers for Core-heavy unit, integration, and regression tests.
+// It intentionally avoids production-only composition helpers so tests can exercise lower-level contracts directly.
+
 class RecordingLogger final : public epidemic::diagnostics::ILogger
 {
   public:
@@ -35,6 +38,7 @@ class RecordingLogger final : public epidemic::diagnostics::ILogger
         std::string message;
     };
 
+    // Records the structured log entry in memory for later test assertions.
     void Log(const epidemic::diagnostics::LogMessage &message) override
     {
         records.push_back(
@@ -47,6 +51,7 @@ class RecordingLogger final : public epidemic::diagnostics::ILogger
 class ProbeModule final : public epidemic::core::IModule
 {
   public:
+    // Creates a module probe that appends lifecycle markers into trace and can fail selected phases on demand.
     ProbeModule(std::string id, std::vector<std::string> dependencies, std::vector<std::string> &trace,
                 bool throw_on_bootstrap = false, bool throw_on_initialize = false, bool throw_on_tick = false)
         : manifest_{std::move(id), "ProbeModule", std::move(dependencies)},
@@ -57,11 +62,13 @@ class ProbeModule final : public epidemic::core::IModule
     {
     }
 
+    // Returns the static manifest used by ModuleRegistry.
     [[nodiscard]] const epidemic::core::ModuleManifest &Manifest() const override
     {
         return manifest_;
     }
 
+    // Appends a bootstrap trace marker and optionally throws.
     void Bootstrap(epidemic::core::ServiceContainer &) override
     {
         trace_.push_back(manifest_.id + ":bootstrap");
@@ -71,6 +78,7 @@ class ProbeModule final : public epidemic::core::IModule
         }
     }
 
+    // Appends an initialize trace marker and optionally throws.
     void Initialize(epidemic::core::ServiceContainer &) override
     {
         trace_.push_back(manifest_.id + ":initialize");
@@ -80,6 +88,7 @@ class ProbeModule final : public epidemic::core::IModule
         }
     }
 
+    // Appends a tick trace marker and optionally throws.
     void Tick(epidemic::core::ServiceContainer &, const epidemic::core::FrameContext &) override
     {
         trace_.push_back(manifest_.id + ":tick");
@@ -89,6 +98,7 @@ class ProbeModule final : public epidemic::core::IModule
         }
     }
 
+    // Appends a shutdown trace marker.
     void Shutdown(epidemic::core::ServiceContainer &) override
     {
         trace_.push_back(manifest_.id + ":shutdown");
@@ -102,6 +112,7 @@ class ProbeModule final : public epidemic::core::IModule
     bool throw_on_tick_{false};
 };
 
+// Registers the minimal core services directly into a standalone ServiceContainer for low-level tests.
 inline std::shared_ptr<RecordingLogger> RegisterCoreServices(epidemic::core::ServiceContainer &services,
                                                              std::size_t worker_count = 1,
                                                              std::optional<std::string> runtime_name = std::nullopt)
@@ -125,6 +136,7 @@ inline std::shared_ptr<RecordingLogger> RegisterCoreServices(epidemic::core::Ser
     return logger;
 }
 
+// Registers the minimal core services into an Application's service container.
 inline std::shared_ptr<RecordingLogger> RegisterApplicationCoreServices(epidemic::core::Application &application,
                                                                         std::size_t worker_count = 1,
                                                                         std::optional<std::string> runtime_name = std::nullopt)

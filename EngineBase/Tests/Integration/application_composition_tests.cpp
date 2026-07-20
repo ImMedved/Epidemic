@@ -1,3 +1,5 @@
+// This file exercises composition-level integration of baseline EngineBase services and lifecycle wiring.
+
 #include "../core_test_support.h"
 #include "../test_assert.h"
 
@@ -15,6 +17,7 @@ namespace
 using epidemic::tests::Assert;
 using epidemic::tests::ProbeModule;
 
+// Verifies that RegisterEngineBase installs the expected services and that a minimal lifecycle succeeds.
 void TestRegisterEngineBaseAndLifecycle()
 {
     epidemic::core::Application application({"CompositionTests"});
@@ -41,6 +44,7 @@ void TestRegisterEngineBaseAndLifecycle()
            "Application run must update frame counters");
 }
 
+// Verifies that partial initialization failure still permits a clean shutdown path.
 void TestPartialInitializationFailureAllowsShutdown()
 {
     epidemic::core::Application application({"InitFailureTests"});
@@ -66,6 +70,7 @@ void TestPartialInitializationFailureAllowsShutdown()
     Assert(application.Shutdown() == 0, "Shutdown after partial initialization failure must succeed");
 }
 
+// Verifies that the frame loop no longer blocks every frame on unrelated background scheduler work.
 void TestFrameLoopDoesNotWaitIdleEveryFrame()
 {
     epidemic::core::Application application({"AsyncFrameLoopTests"});
@@ -96,6 +101,7 @@ void TestFrameLoopDoesNotWaitIdleEveryFrame()
 }
 }
 
+// Runs the application-composition integration-test group.
 int main()
 {
     return epidemic::tests::RunNamedTests({

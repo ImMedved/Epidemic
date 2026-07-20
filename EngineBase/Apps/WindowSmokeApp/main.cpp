@@ -1,3 +1,6 @@
+// This file defines a smoke app that exercises the Win32 platform runtime and window lifecycle.
+// The app pumps events, logs visible window-state transitions, and exits when the user closes the window.
+
 #include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Core/application.h>
 #include <Epidemic/Core/configuration.h>
@@ -13,6 +16,7 @@
 
 namespace
 {
+// Unwraps a Result value for smoke-app code and throws with the contained error message on failure.
 template <typename TValue>
 TValue RequireValue(epidemic::foundation::Result<TValue> result)
 {
@@ -25,6 +29,7 @@ TValue RequireValue(epidemic::foundation::Result<TValue> result)
 }
 } // namespace
 
+// Composes the baseline platform runtime, creates a window, and runs until a close request is observed.
 int main()
 {
     try
