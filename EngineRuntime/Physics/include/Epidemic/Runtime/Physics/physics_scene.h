@@ -6,6 +6,7 @@
 #include "Epidemic/Runtime/Physics/physics_types.h"
 
 #include <memory>
+#include <vector>
 
 namespace epidemic::runtime::physics
 {
@@ -40,6 +41,14 @@ class IPhysicsStepper
     [[nodiscard]] virtual foundation::Result<PhysicsStepResult> Tick(RuntimeFrameDuration delta) = 0;
 };
 
+class IPhysicsRuntimeLifecycle
+{
+  public:
+    virtual ~IPhysicsRuntimeLifecycle() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> Shutdown() = 0;
+};
+
 class IPhysicsBackend
 {
   public:
@@ -53,7 +62,8 @@ class IPhysicsBackend
     [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(BackendBodyHandle handle, const Vec3& impulse) = 0;
     [[nodiscard]] virtual foundation::Result<void> SimulateFixed(RuntimeFrameDuration fixed_delta) = 0;
     [[nodiscard]] virtual foundation::Result<BackendBodySnapshot> GetBodySnapshot(BackendBodyHandle handle) const = 0;
-    [[nodiscard]] virtual foundation::Result<RaycastHit> Raycast(const RaycastQuery& query) const = 0;
+    [[nodiscard]] virtual foundation::Result<BackendRaycastHit> RaycastBackend(const RaycastQuery& query) const = 0;
+    [[nodiscard]] virtual foundation::Result<std::vector<BackendContactEvent>> ConsumeContactEvents() = 0;
 };
 
 class IPhysicsTransformSource
@@ -80,6 +90,7 @@ struct PhysicsServices
     std::shared_ptr<IPhysicsQuery> query;
     std::shared_ptr<IPhysicsEventBuffer> events;
     std::shared_ptr<IPhysicsBackend> backend;
+    std::shared_ptr<IPhysicsRuntimeLifecycle> lifecycle;
 };
 
 struct PhysicsDependencies

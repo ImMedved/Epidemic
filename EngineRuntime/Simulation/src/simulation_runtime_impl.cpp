@@ -3,6 +3,8 @@
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -10,53 +12,10 @@ namespace epidemic::runtime::simulation
 {
 namespace
 {
-class ReferenceSimulationJob final : public ISimulationJob
+[[nodiscard]] bool IsValidAttention(AttentionScore score) noexcept
 {
-public:
-    ReferenceSimulationJob(SimulationJobHandle handle, SimulationJobDesc desc)
-        : handle_(handle), desc_(desc), pending_work_units_(desc.work_units)
-    {
-    }
-
-    foundation::Result<SimulationStepResult> ExecuteStep(const RuntimeBudget& budget) override
-    {
-        const std::uint32_t work_budget = budget.max_items == 0 ? pending_work_units_ : std::min<std::uint32_t>(budget.max_items, pending_work_units_);
-        pending_work_units_ -= work_budget;
-
-        SimulationStepResult result{};
-        result.consumed_work_units = work_budget;
-        result.proposals.job = handle_;
-        result.proposals.zone = desc_.zone;
-        result.proposals.source_revision = desc_.source_revision;
-        if (pending_work_units_ == 0)
-        {
-            result.state = desc_.wait_for_main_thread ? SimulationJobState::WaitingForMainThread : SimulationJobState::Completed;
-            result.proposals.proposals.push_back(SimulationProposal{
-                foundation::StringId::FromString("simulation"),
-                foundation::StringId::FromString("reference"),
-                desc_.subject,
-                foundation::StringId::FromString("simulation.reference.v1"),
-                1,
-                {}});
-        }
-        else
-        {
-            result.state = SimulationJobState::PartiallyComplete;
-        }
-        return foundation::Result<SimulationStepResult>::Success(std::move(result));
-    }
-
-    foundation::Result<void> Cancel() override
-    {
-        pending_work_units_ = 0;
-        return foundation::Result<void>::Success();
-    }
-
-private:
-    SimulationJobHandle handle_{};
-    SimulationJobDesc desc_{};
-    std::uint32_t pending_work_units_ = 0;
-};
+    return std::isfinite(score.value) && score.value >= 0.0f && score.value <= 1.0f;
+}
 } // namespace
 
 SimulationRuntime::SimulationRuntime(SimulationOptions options, SimulationDependencies dependencies)
@@ -64,49 +23,49 @@ SimulationRuntime::SimulationRuntime(SimulationOptions options, SimulationDepend
 {
 }
 
-foundation::Result<SimulationJobId> SimulationRuntime::SubmitJob(const SimulationJobDesc& desc)
+foundation::Result<SimulationJobHandle> SimulationRuntime::SubmitJob(
+    std::shared_ptr<ISimulationJob> job,
+    SimulationJobDesc metadata)
 {
-    const auto handle = SubmitJobHandle(desc);
-    if (!handle)
-    {
-        return foundation::Result<SimulationJobId>::Failure(handle.GetError());
-    }
-
-    return foundation::Result<SimulationJobId>::Success(handle.Value().id);
-}
-
-foundation::Result<SimulationJobHandle> SimulationRuntime::SubmitJobHandle(const SimulationJobDesc& desc)
-{
-    if (!desc.zone.IsValid())
+    if (!accepting_jobs_)
     {
         return foundation::Result<SimulationJobHandle>::Failure(
-            foundation::Error::Create("simulation.invalid_zone", "simulation job must reference a valid zone"));
+            foundation::Error::Create("simulation.shutdown", "simulation runtime is not accepting new jobs"));
     }
-
-    if (desc.work_units == 0)
+    const auto validation = ValidateJobMetadata(metadata);
+    if (!validation)
+    {
+        return foundation::Result<SimulationJobHandle>::Failure(validation.GetError());
+    }
+    if (job == nullptr)
     {
         return foundation::Result<SimulationJobHandle>::Failure(
-            foundation::Error::Create("simulation.empty_job", "simulation job must contain work units"));
+            foundation::Error::Create("simulation.job_missing", "simulation job executable must be provided"));
+    }
+    if (next_job_value_ == std::numeric_limits<std::uint64_t>::max() || next_job_generation_ == std::numeric_limits<std::uint32_t>::max())
+    {
+        return foundation::Result<SimulationJobHandle>::Failure(
+            foundation::Error::Create("simulation.job_id_overflow", "simulation job id allocator overflow"));
     }
 
     const SimulationJobId id{next_job_value_++};
     const SimulationJobHandle handle{id, next_job_generation_++};
     JobRecord record{};
-    record.desc = desc;
+    record.desc = metadata;
     record.handle = handle;
     record.state = SimulationJobState::Pending;
-    record.executable = std::make_unique<ReferenceSimulationJob>(handle, desc);
+    record.executable = std::move(job);
     jobs_.emplace(id, std::move(record));
     return foundation::Result<SimulationJobHandle>::Success(handle);
 }
 
-foundation::Result<void> SimulationRuntime::CancelJob(SimulationJobId id)
+foundation::Result<void> SimulationRuntime::CancelJob(SimulationJobHandle handle)
 {
-    JobRecord* job = FindJob(id);
+    JobRecord* job = FindJob(handle);
     if (job == nullptr)
     {
         return foundation::Result<void>::Failure(
-            foundation::Error::Create("simulation.job_not_found", "simulation job was not found for cancellation"));
+            foundation::Error::Create("simulation.stale_handle", "simulation job handle generation is stale"));
     }
 
     if (IsTerminal(job->state))
@@ -115,35 +74,33 @@ foundation::Result<void> SimulationRuntime::CancelJob(SimulationJobId id)
             foundation::Error::Create("simulation.job_terminal", "terminal simulation jobs cannot be cancelled"));
     }
 
-    job->state = SimulationJobState::Cancelled;
     if (job->executable)
     {
-        (void)job->executable->Cancel();
+        const auto cancelled = job->executable->Cancel();
+        if (!cancelled)
+        {
+            return foundation::Result<void>::Failure(cancelled.GetError());
+        }
     }
+    if (job->active_schedule)
+    {
+        scheduled_tasks_.erase(*job->active_schedule);
+        job->active_schedule.reset();
+    }
+    job->state = SimulationJobState::Cancelled;
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> SimulationRuntime::CancelJob(SimulationJobHandle handle)
+foundation::Result<SimulationJobState> SimulationRuntime::GetJobState(SimulationJobHandle handle) const
 {
-    JobRecord* job = FindJob(handle.id);
-    if (job == nullptr || job->handle.generation != handle.generation)
+    const JobRecord* job = FindJob(handle);
+    if (job == nullptr)
     {
-        return foundation::Result<void>::Failure(
+        return foundation::Result<SimulationJobState>::Failure(
             foundation::Error::Create("simulation.stale_handle", "simulation job handle generation is stale"));
     }
 
-    return CancelJob(handle.id);
-}
-
-SimulationJobState SimulationRuntime::GetJobState(SimulationJobId id) const
-{
-    const JobRecord* job = FindJob(id);
-    if (job == nullptr)
-    {
-        return SimulationJobState::Failed;
-    }
-
-    return job->state;
+    return foundation::Result<SimulationJobState>::Success(job->state);
 }
 
 void SimulationRuntime::SetBudget(const SimulationBudget& budget)
@@ -151,20 +108,29 @@ void SimulationRuntime::SetBudget(const SimulationBudget& budget)
     budget_ = budget;
 }
 
-std::size_t SimulationRuntime::Tick()
+foundation::Result<SimulationTickResult> SimulationRuntime::Tick()
 {
+    SimulationTickResult result{};
     if (!options_.enable_budgeted_scheduler)
     {
-        return 0;
+        return foundation::Result<SimulationTickResult>::Success(std::move(result));
+    }
+
+    if (dependencies_.clock != nullptr)
+    {
+        const auto scheduled = ExecuteDueWithinBudget(dependencies_.clock->Now(), budget_);
+        for (const ScheduledTaskFailure& failure : scheduled.failures)
+        {
+            result.failures.push_back(SimulationTickFailure{failure.job, failure.error});
+        }
     }
 
     const std::uint32_t job_limit = budget_.max_jobs == 0 ? static_cast<std::uint32_t>(jobs_.size()) : budget_.max_jobs;
     std::uint32_t work_budget = budget_.max_work_units == 0 ? UINT32_MAX : budget_.max_work_units;
-    std::size_t transitioned = 0;
 
     for (const SimulationJobId id : BuildJobWorkList())
     {
-        if (transitioned >= job_limit || work_budget == 0)
+        if (result.processed_jobs >= job_limit || work_budget == 0)
         {
             break;
         }
@@ -180,29 +146,143 @@ std::size_t SimulationRuntime::Tick()
         if (!step)
         {
             job.state = SimulationJobState::Failed;
-            ++transitioned;
+            result.failures.push_back(SimulationTickFailure{job.handle, step.GetError()});
+            ++result.processed_jobs;
             continue;
         }
 
         const SimulationStepResult& step_result = step.Value();
+        const auto validated = ValidateStepResult(job, step_result);
+        if (!validated)
+        {
+            job.state = SimulationJobState::Failed;
+            result.failures.push_back(SimulationTickFailure{job.handle, validated.GetError()});
+            ++result.processed_jobs;
+            continue;
+        }
+        if (step_result.consumed_work_units > work_budget)
+        {
+            job.state = SimulationJobState::Failed;
+            result.failures.push_back(SimulationTickFailure{
+                job.handle,
+                foundation::Error::Create("simulation.work_budget_exceeded", "simulation job consumed more work than granted")});
+            ++result.processed_jobs;
+            continue;
+        }
         work_budget -= std::min(work_budget, step_result.consumed_work_units);
         job.state = step_result.state;
-        if (job.state == SimulationJobState::Completed && !step_result.proposals.proposals.empty())
+        if (job.state == SimulationJobState::WaitingForMainThread)
         {
-            const auto published = Publish(step_result.proposals);
+            job.pending_main_thread_result = step_result;
+        }
+        else if (job.state == SimulationJobState::Completed && !step_result.proposals.proposals.empty())
+        {
+            SimulationProposalBatch normalized = step_result.proposals;
+            normalized.job = job.handle;
+            normalized.zone = job.desc.zone;
+            normalized.source_revision = job.desc.source_revision;
+            const auto published = Publish(normalized);
             if (!published)
             {
                 job.state = SimulationJobState::Failed;
+                result.failures.push_back(SimulationTickFailure{job.handle, published.GetError()});
+            }
+            else
+            {
+                result.proposal_batches.push_back(std::move(normalized));
             }
         }
         else if (job.state == SimulationJobState::Failed || job.state == SimulationJobState::Cancelled)
         {
             continue;
         }
-        ++transitioned;
+        ++result.processed_jobs;
     }
 
-    return transitioned;
+    PruneTerminalJobs();
+    return foundation::Result<SimulationTickResult>::Success(std::move(result));
+}
+
+foundation::Result<SimulationTickResult> SimulationRuntime::ProcessMainThreadCommits(std::uint32_t max_jobs)
+{
+    SimulationTickResult result{};
+    const std::uint32_t limit = max_jobs == 0 ? UINT32_MAX : max_jobs;
+    for (const SimulationJobId id : BuildMainThreadWorkList())
+    {
+        if (result.processed_jobs >= limit)
+        {
+            break;
+        }
+
+        JobRecord& job = jobs_[id];
+        if (job.pending_main_thread_result.has_value() &&
+            !job.pending_main_thread_result->proposals.proposals.empty())
+        {
+            SimulationProposalBatch normalized = job.pending_main_thread_result->proposals;
+            normalized.job = job.handle;
+            normalized.zone = job.desc.zone;
+            normalized.source_revision = job.desc.source_revision;
+            const auto published = Publish(normalized);
+            if (!published)
+            {
+                job.state = SimulationJobState::Failed;
+                result.failures.push_back(SimulationTickFailure{job.handle, published.GetError()});
+            }
+            else
+            {
+                job.state = SimulationJobState::Completed;
+                result.proposal_batches.push_back(std::move(normalized));
+            }
+        }
+        else
+        {
+            job.state = SimulationJobState::Completed;
+        }
+        job.pending_main_thread_result.reset();
+        ++result.processed_jobs;
+    }
+
+    PruneTerminalJobs();
+    return foundation::Result<SimulationTickResult>::Success(std::move(result));
+}
+
+foundation::Result<void> SimulationRuntime::Shutdown()
+{
+    if (shutdown_)
+    {
+        return foundation::Result<void>::Success();
+    }
+
+    accepting_jobs_ = false;
+    std::optional<foundation::Error> first_error;
+    std::vector<SimulationJobId> ids;
+    ids.reserve(jobs_.size());
+    for (const auto& [id, job] : jobs_)
+    {
+        (void)job;
+        ids.push_back(id);
+    }
+    std::sort(ids.begin(), ids.end(), [](SimulationJobId left, SimulationJobId right) { return left.value < right.value; });
+    for (SimulationJobId id : ids)
+    {
+        JobRecord* job = FindJob(id);
+        if (job == nullptr || IsTerminal(job->state))
+        {
+            continue;
+        }
+        const auto cancelled = CancelJob(job->handle);
+        if (!cancelled && !first_error.has_value())
+        {
+            first_error = cancelled.GetError();
+        }
+    }
+    if (first_error.has_value())
+    {
+        return foundation::Result<void>::Failure(*first_error);
+    }
+    scheduled_tasks_.clear();
+    shutdown_ = true;
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> SimulationRuntime::SetAttention(RuntimeObjectId object, AttentionScore score)
@@ -211,6 +291,11 @@ foundation::Result<void> SimulationRuntime::SetAttention(RuntimeObjectId object,
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("simulation.invalid_object", "attention target object must be valid"));
+    }
+    if (!IsValidAttention(score))
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.invalid_attention", "attention score must be finite and within [0, 1]"));
     }
 
     object_attention_[object] = score;
@@ -235,8 +320,17 @@ foundation::Result<void> SimulationRuntime::SetRegionAttention(RegionId region, 
         return foundation::Result<void>::Failure(
             foundation::Error::Create("simulation.invalid_region", "attention target region must be valid"));
     }
+    if (!IsValidAttention(score))
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.invalid_attention", "attention score must be finite and within [0, 1]"));
+    }
 
     region_attention_[region] = score;
+    if (dependencies_.relevance != nullptr)
+    {
+        region_zone_states_[region] = dependencies_.relevance->ClassifyZone(region, score);
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -251,6 +345,16 @@ AttentionScore SimulationRuntime::GetRegionAttention(RegionId region) const
     return iterator->second;
 }
 
+SimulationZoneState SimulationRuntime::GetRegionZoneState(RegionId region) const
+{
+    const auto iterator = region_zone_states_.find(region);
+    if (iterator == region_zone_states_.end())
+    {
+        return SimulationZoneState::Dormant;
+    }
+    return iterator->second;
+}
+
 foundation::Result<WorldMemoryEventId> SimulationRuntime::RecordEvent(const WorldMemoryEvent& event)
 {
     if (!event.region.IsValid())
@@ -258,8 +362,44 @@ foundation::Result<WorldMemoryEventId> SimulationRuntime::RecordEvent(const Worl
         return foundation::Result<WorldMemoryEventId>::Failure(
             foundation::Error::Create("simulation.invalid_memory_region", "memory event must reference a valid region"));
     }
+    if (event.ttl.ticks < 0)
+    {
+        return foundation::Result<WorldMemoryEventId>::Failure(
+            foundation::Error::Create("simulation.invalid_memory_ttl", "memory event TTL must not be negative"));
+    }
+    if (event.happened_at.ticks < 0)
+    {
+        return foundation::Result<WorldMemoryEventId>::Failure(
+            foundation::Error::Create("simulation.invalid_memory_time", "memory event time must not be negative"));
+    }
 
+    PruneExpiredMemoryEvents();
+    if (options_.max_memory_events != 0 && memory_events_.size() >= options_.max_memory_events)
+    {
+        return foundation::Result<WorldMemoryEventId>::Failure(
+            foundation::Error::Create("simulation.memory_store_full", "world memory event store capacity is exhausted"));
+    }
+
+    if (!event.id.IsValid() && next_memory_value_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return foundation::Result<WorldMemoryEventId>::Failure(
+            foundation::Error::Create("simulation.memory_event_id_overflow", "memory event id allocator overflow"));
+    }
     const WorldMemoryEventId id = event.id.IsValid() ? event.id : WorldMemoryEventId{next_memory_value_++};
+    if (memory_events_.contains(id))
+    {
+        return foundation::Result<WorldMemoryEventId>::Failure(
+            foundation::Error::Create("simulation.memory_event_already_exists", "memory event id already exists"));
+    }
+    if (event.id.IsValid())
+    {
+        if (event.id.value == std::numeric_limits<std::uint64_t>::max())
+        {
+            return foundation::Result<WorldMemoryEventId>::Failure(
+                foundation::Error::Create("simulation.memory_event_id_overflow", "memory event id cannot advance allocator"));
+        }
+        next_memory_value_ = std::max(next_memory_value_, event.id.value + 1);
+    }
     WorldMemoryEvent stored = event;
     stored.id = id;
     memory_events_[id] = stored;
@@ -318,40 +458,43 @@ std::size_t SimulationRuntime::ExpireOldEvents(SimulationTime now, std::uint32_t
         }
     }
 
+    PruneExpiredMemoryEvents();
     return expired;
 }
 
-foundation::Result<void> SimulationRuntime::Submit(const SimulationEffect& effect)
+foundation::Result<void> SimulationRuntime::DiscardAll(ProposalDiscardReason reason)
 {
-    if (!effect.target.IsValid())
+    switch (reason)
     {
+    case ProposalDiscardReason::Shutdown:
+    case ProposalDiscardReason::AdministrativeReset:
+        break;
+    default:
         return foundation::Result<void>::Failure(
-            foundation::Error::Create("simulation.invalid_effect_target", "simulation effect must reference a valid target"));
+            foundation::Error::Create("simulation.invalid_discard_reason", "proposal discard reason is invalid"));
     }
-
-    if (!effect.zone.IsValid())
-    {
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("simulation.invalid_effect_zone", "simulation effect must reference a valid zone"));
-    }
-
-    effects_.push_back(effect);
-    return foundation::Result<void>::Success();
-}
-
-std::span<const SimulationEffect> SimulationRuntime::Effects() const
-{
-    return effects_;
-}
-
-void SimulationRuntime::Clear()
-{
-    effects_.clear();
     proposal_batches_.clear();
+    PruneTerminalJobs();
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> SimulationRuntime::RecordFact(const AbstractFact& fact)
 {
+    if (!fact.domain.IsValid() || !fact.kind.IsValid())
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.invalid_fact_metadata", "abstract fact domain and kind must be valid"));
+    }
+    if (fact.fact_type == 0)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.invalid_fact_type", "abstract fact type must be non-zero"));
+    }
+    if (fact.observed_at.ticks < 0)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.invalid_fact_time", "abstract fact observation time must not be negative"));
+    }
     if (!fact.subject.IsValid())
     {
         return foundation::Result<void>::Failure(
@@ -361,6 +504,16 @@ foundation::Result<void> SimulationRuntime::RecordFact(const AbstractFact& fact)
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("simulation.invalid_fact_zone", "abstract fact must reference a valid zone"));
+    }
+    if (fact_revision_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.revision_overflow", "abstract fact revision overflow"));
+    }
+    if (options_.max_facts != 0 && facts_.size() >= options_.max_facts)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.fact_store_full", "abstract fact store capacity is exhausted"));
     }
 
     AbstractFact stored = fact;
@@ -389,15 +542,16 @@ std::uint64_t SimulationRuntime::Revision() const
 
 foundation::Result<void> SimulationRuntime::Publish(const SimulationProposalBatch& batch)
 {
-    if (!batch.job.IsValid())
+    const auto validation = ValidateProposalBatch(batch);
+    if (!validation)
     {
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("simulation.invalid_proposal_job", "proposal batch must reference a valid job"));
+        return foundation::Result<void>::Failure(validation.GetError());
     }
-    if (!batch.zone.IsValid())
+
+    if (options_.max_proposal_batches != 0 && proposal_batches_.size() >= options_.max_proposal_batches)
     {
         return foundation::Result<void>::Failure(
-            foundation::Error::Create("simulation.invalid_proposal_zone", "proposal batch must reference a valid zone"));
+            foundation::Error::Create("simulation.proposal_queue_full", "simulation proposal queue is full"));
     }
 
     proposal_batches_.push_back(batch);
@@ -429,30 +583,60 @@ foundation::Result<void> SimulationRuntime::CommitNext()
     }
 
     proposal_batches_.erase(proposal_batches_.begin());
+    PruneTerminalJobs();
     return foundation::Result<void>::Success();
 }
 
 foundation::Result<ScheduledSimulationTaskId> SimulationRuntime::Schedule(ScheduledSimulationTask task)
 {
-    if (!task.job.IsValid())
+    JobRecord* job = FindJob(task.job);
+    if (job == nullptr)
     {
         return foundation::Result<ScheduledSimulationTaskId>::Failure(
-            foundation::Error::Create("simulation.invalid_scheduled_job", "scheduled task must reference a valid job"));
+            foundation::Error::Create("simulation.stale_handle", "scheduled task must reference an existing job handle"));
+    }
+    if (IsTerminal(job->state))
+    {
+        return foundation::Result<ScheduledSimulationTaskId>::Failure(
+            foundation::Error::Create("simulation.job_terminal", "terminal simulation jobs cannot be scheduled"));
+    }
+    if (job->active_schedule.has_value() || job->state == SimulationJobState::Scheduled)
+    {
+        return foundation::Result<ScheduledSimulationTaskId>::Failure(
+            foundation::Error::Create("simulation.job_already_scheduled", "simulation job already has an active scheduled task"));
+    }
+    if (next_task_value_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return foundation::Result<ScheduledSimulationTaskId>::Failure(
+            foundation::Error::Create("simulation.task_id_overflow", "scheduled simulation task id allocator overflow"));
     }
 
     const ScheduledSimulationTaskId id{next_task_value_++};
     task.id = id;
     scheduled_tasks_[id] = task;
+    job->state = SimulationJobState::Scheduled;
+    job->active_schedule = id;
     return foundation::Result<ScheduledSimulationTaskId>::Success(id);
 }
 
 foundation::Result<void> SimulationRuntime::Cancel(ScheduledSimulationTaskId id)
 {
-    if (scheduled_tasks_.erase(id) == 0)
+    const auto iterator = scheduled_tasks_.find(id);
+    if (iterator == scheduled_tasks_.end())
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("simulation.scheduled_task_not_found", "scheduled task was not found"));
     }
+    JobRecord* job = FindJob(iterator->second.job);
+    if (job != nullptr && job->active_schedule == id)
+    {
+        job->active_schedule.reset();
+        if (job->state == SimulationJobState::Scheduled)
+        {
+            job->state = SimulationJobState::Pending;
+        }
+    }
+    scheduled_tasks_.erase(iterator);
     return foundation::Result<void>::Success();
 }
 
@@ -470,13 +654,13 @@ std::vector<ScheduledSimulationTask> SimulationRuntime::QueryDue(SimulationTime 
     return due;
 }
 
-std::size_t SimulationRuntime::ExecuteDueWithinBudget(SimulationTime now, const SimulationBudget& budget)
+ScheduledTaskExecutionResult SimulationRuntime::ExecuteDueWithinBudget(SimulationTime now, const SimulationBudget& budget)
 {
     const std::uint32_t limit = budget.max_jobs == 0 ? UINT32_MAX : budget.max_jobs;
-    std::size_t executed = 0;
+    ScheduledTaskExecutionResult result{};
     for (const ScheduledSimulationTaskId id : BuildTaskWorkList())
     {
-        if (executed >= limit)
+        if (result.activated >= limit)
         {
             break;
         }
@@ -485,11 +669,63 @@ std::size_t SimulationRuntime::ExecuteDueWithinBudget(SimulationTime now, const 
         {
             continue;
         }
-        (void)CancelJob(iterator->second.job);
+        const ScheduledSimulationTask task = iterator->second;
+        JobRecord* job = FindJob(iterator->second.job);
+        if (job == nullptr)
+        {
+            result.failures.push_back(ScheduledTaskFailure{
+                task.id,
+                task.job,
+                foundation::Error::Create("simulation.stale_handle", "scheduled task references a missing or stale job")});
+            scheduled_tasks_.erase(iterator);
+            continue;
+        }
+        if (job->state != SimulationJobState::Scheduled || job->active_schedule != id)
+        {
+            result.failures.push_back(ScheduledTaskFailure{
+                task.id,
+                task.job,
+                foundation::Error::Create("simulation.invalid_scheduled_job_state", "scheduled task job is not waiting for this schedule")});
+            if (job->active_schedule == id)
+            {
+                job->active_schedule.reset();
+            }
+            scheduled_tasks_.erase(iterator);
+            continue;
+        }
+
+        if (job != nullptr && job->state == SimulationJobState::Scheduled)
+        {
+            job->desc.lane = iterator->second.lane;
+            job->state = SimulationJobState::Pending;
+            if (job->active_schedule == id)
+            {
+                job->active_schedule.reset();
+            }
+        }
         scheduled_tasks_.erase(iterator);
-        ++executed;
+        ++result.activated;
     }
-    return executed;
+    return result;
+}
+
+void SimulationRuntime::SetJobStateForTesting(SimulationJobHandle handle, SimulationJobState state)
+{
+    JobRecord* job = FindJob(handle);
+    if (job != nullptr)
+    {
+        job->state = state;
+    }
+}
+
+std::optional<ScheduledSimulationTaskId> SimulationRuntime::ActiveScheduleForTesting(SimulationJobHandle handle) const
+{
+    const JobRecord* job = FindJob(handle);
+    if (job == nullptr)
+    {
+        return {};
+    }
+    return job->active_schedule;
 }
 
 SimulationRuntime::JobRecord* SimulationRuntime::FindJob(SimulationJobId id)
@@ -514,18 +750,56 @@ const SimulationRuntime::JobRecord* SimulationRuntime::FindJob(SimulationJobId i
     return &iterator->second;
 }
 
+SimulationRuntime::JobRecord* SimulationRuntime::FindJob(SimulationJobHandle handle)
+{
+    JobRecord* job = FindJob(handle.id);
+    if (job == nullptr || job->handle.generation != handle.generation)
+    {
+        return nullptr;
+    }
+    return job;
+}
+
+const SimulationRuntime::JobRecord* SimulationRuntime::FindJob(SimulationJobHandle handle) const
+{
+    const JobRecord* job = FindJob(handle.id);
+    if (job == nullptr || job->handle.generation != handle.generation)
+    {
+        return nullptr;
+    }
+    return job;
+}
+
 std::vector<SimulationJobId> SimulationRuntime::BuildJobWorkList() const
 {
     std::vector<SimulationJobId> work_list;
     work_list.reserve(jobs_.size());
     for (const auto& [id, job] : jobs_)
     {
-        if (!IsTerminal(job.state) && job.state != SimulationJobState::WaitingForMainThread)
+        if (!IsTerminal(job.state) &&
+            job.state != SimulationJobState::WaitingForMainThread &&
+            job.state != SimulationJobState::Scheduled)
         {
             work_list.push_back(id);
         }
     }
 
+    std::sort(work_list.begin(), work_list.end(), [](SimulationJobId left, SimulationJobId right) {
+        return left.value < right.value;
+    });
+    return work_list;
+}
+
+std::vector<SimulationJobId> SimulationRuntime::BuildMainThreadWorkList() const
+{
+    std::vector<SimulationJobId> work_list;
+    for (const auto& [id, job] : jobs_)
+    {
+        if (job.state == SimulationJobState::WaitingForMainThread)
+        {
+            work_list.push_back(id);
+        }
+    }
     std::sort(work_list.begin(), work_list.end(), [](SimulationJobId left, SimulationJobId right) {
         return left.value < right.value;
     });
@@ -573,4 +847,164 @@ RuntimeBudget SimulationRuntime::ToRuntimeBudget(std::uint32_t work_units) const
 {
     return RuntimeBudget{.max_items = work_units};
 }
+
+foundation::Result<void> SimulationRuntime::ValidateJobMetadata(const SimulationJobDesc& desc) const
+{
+    if (!desc.zone.IsValid())
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.invalid_zone", "simulation job must reference a valid zone"));
+    }
+    if (desc.work_units == 0)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.empty_job", "simulation job must contain work units"));
+    }
+    if (desc.lane == SimulationLane::Object && !desc.subject.IsValid())
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.invalid_subject", "object-lane simulation job must reference a subject"));
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> SimulationRuntime::ValidateProposalBatch(const SimulationProposalBatch& batch) const
+{
+    const JobRecord* job = FindJob(batch.job);
+    if (job == nullptr)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.stale_handle", "proposal batch must reference an existing job handle"));
+    }
+    if (batch.zone != job->desc.zone)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.proposal_zone_mismatch", "proposal batch zone must match source job"));
+    }
+    if (batch.source_revision != job->desc.source_revision)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.stale_revision", "proposal batch source revision must match source job"));
+    }
+    if (job->state != SimulationJobState::Completed && job->state != SimulationJobState::WaitingForMainThread)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.job_not_ready_for_publish", "only completed or main-thread-ready jobs can publish proposals"));
+    }
+    for (const SimulationProposal& proposal : batch.proposals)
+    {
+        if (!proposal.domain.IsValid() || !proposal.kind.IsValid() || !proposal.schema_id.IsValid())
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("simulation.invalid_proposal_schema", "proposal must carry domain, kind and schema id"));
+        }
+        if (proposal.schema_version == 0)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("simulation.invalid_proposal_schema_version", "proposal schema version must be non-zero"));
+        }
+        if (!proposal.target.IsValid())
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("simulation.invalid_proposal_target", "proposal must reference a valid target"));
+        }
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> SimulationRuntime::ValidateStepResult(const JobRecord& job, const SimulationStepResult& result) const
+{
+    if (result.state == SimulationJobState::Pending ||
+        result.state == SimulationJobState::Scheduled ||
+        result.state == SimulationJobState::Running)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.invalid_job_transition", "simulation job step returned a non-terminal scheduler-owned state"));
+    }
+    if (IsTerminal(job.state))
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("simulation.job_terminal", "terminal simulation jobs cannot execute steps"));
+    }
+    if (!result.proposals.proposals.empty())
+    {
+        if (result.state != SimulationJobState::Completed && result.state != SimulationJobState::WaitingForMainThread)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("simulation.job_not_ready_for_publish", "job step proposals require a publishable result state"));
+        }
+        for (const SimulationProposal& proposal : result.proposals.proposals)
+        {
+            if (!proposal.domain.IsValid() || !proposal.kind.IsValid() || !proposal.schema_id.IsValid())
+            {
+                return foundation::Result<void>::Failure(
+                    foundation::Error::Create("simulation.invalid_proposal_schema", "proposal must carry domain, kind and schema id"));
+            }
+            if (proposal.schema_version == 0)
+            {
+                return foundation::Result<void>::Failure(
+                    foundation::Error::Create("simulation.invalid_proposal_schema_version", "proposal schema version must be non-zero"));
+            }
+            if (!proposal.target.IsValid())
+            {
+                return foundation::Result<void>::Failure(
+                    foundation::Error::Create("simulation.invalid_proposal_target", "proposal must reference a valid target"));
+            }
+        }
+    }
+    return foundation::Result<void>::Success();
+}
+
+void SimulationRuntime::PruneTerminalJobs()
+{
+    if (options_.max_terminal_jobs == 0)
+    {
+        return;
+    }
+
+    std::vector<SimulationJobId> terminal;
+    for (const auto& [id, job] : jobs_)
+    {
+        if (IsTerminal(job.state) && !HasPendingProposal(id))
+        {
+            terminal.push_back(id);
+        }
+    }
+    std::sort(terminal.begin(), terminal.end(), [](SimulationJobId left, SimulationJobId right) {
+        return left.value < right.value;
+    });
+    while (terminal.size() > options_.max_terminal_jobs)
+    {
+        jobs_.erase(terminal.front());
+        terminal.erase(terminal.begin());
+    }
+}
+
+void SimulationRuntime::PruneExpiredMemoryEvents()
+{
+    if (options_.max_memory_events == 0 || memory_events_.size() < options_.max_memory_events)
+    {
+        return;
+    }
+    for (const WorldMemoryEventId id : BuildMemoryWorkList())
+    {
+        if (memory_events_.size() < options_.max_memory_events)
+        {
+            break;
+        }
+        const auto iterator = memory_events_.find(id);
+        if (iterator != memory_events_.end() && iterator->second.expired)
+        {
+            memory_events_.erase(iterator);
+        }
+    }
+}
+
+bool SimulationRuntime::HasPendingProposal(SimulationJobId id) const
+{
+    return std::any_of(proposal_batches_.begin(), proposal_batches_.end(), [id](const SimulationProposalBatch& batch) {
+        return batch.job.id == id;
+    });
+}
+
 } // namespace epidemic::runtime::simulation

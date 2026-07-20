@@ -29,14 +29,18 @@ public:
 
     [[nodiscard]] virtual bool IsEnabled() const = 0;
     [[nodiscard]] virtual foundation::Result<void> Initialize(const AudioBackendOptions& options) = 0;
-    [[nodiscard]] virtual foundation::Result<BackendVoiceHandle> CreateVoice(const AudioClipPayload& payload) = 0;
+    [[nodiscard]] virtual foundation::Result<BackendVoiceHandle> CreateVoice(const AudioVoiceDesc& desc) = 0;
     [[nodiscard]] virtual foundation::Result<void> DestroyVoice(BackendVoiceHandle handle) = 0;
     [[nodiscard]] virtual foundation::Result<void> Play(BackendVoiceHandle handle) = 0;
     [[nodiscard]] virtual foundation::Result<void> Pause(BackendVoiceHandle handle) = 0;
     [[nodiscard]] virtual foundation::Result<void> Stop(BackendVoiceHandle handle) = 0;
+    [[nodiscard]] virtual bool IsVoiceFinished(BackendVoiceHandle handle) const = 0;
     [[nodiscard]] virtual foundation::Result<void> SetGain(BackendVoiceHandle handle, float gain) = 0;
     [[nodiscard]] virtual foundation::Result<void> SetSpatialState(BackendVoiceHandle handle, const AudioSpatialState& state) = 0;
-    [[nodiscard]] virtual foundation::Result<void> Update(GameDuration delta) = 0;
+    [[nodiscard]] virtual foundation::Result<void> CreateBackendListener(AudioListenerHandle handle, const Transform& transform) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyBackendListener(AudioListenerHandle handle) = 0;
+    [[nodiscard]] virtual foundation::Result<void> SetBackendListenerTransform(AudioListenerHandle handle, const Transform& transform) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Update(RuntimeFrameDuration delta) = 0;
 };
 
 class IAudioResourceSource
@@ -61,25 +65,30 @@ class IAudioRuntime
 public:
     virtual ~IAudioRuntime() = default;
 
-    [[nodiscard]] virtual foundation::Result<AudioEmitterId> CreateEmitter(const AudioEmitterDesc& desc) = 0;
     [[nodiscard]] virtual foundation::Result<AudioEmitterHandle> CreateEmitterHandle(const AudioEmitterDesc& desc) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> DestroyEmitter(AudioEmitterId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> DestroyEmitter(AudioEmitterHandle handle) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> Play(AudioEmitterId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Play(AudioEmitterHandle handle) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> Stop(AudioEmitterId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Pause(AudioEmitterHandle handle) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> FadeOut(AudioEmitterId id) = 0;
-    [[nodiscard]] virtual foundation::Result<void> FadeOut(AudioEmitterHandle handle, GameDuration duration) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Resume(AudioEmitterHandle handle) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> Virtualize(AudioEmitterId id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Stop(AudioEmitterHandle handle) = 0;
 
-    [[nodiscard]] virtual EmitterState GetEmitterState(AudioEmitterId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<void> FadeOut(AudioEmitterHandle handle, RuntimeFrameDuration duration) = 0;
 
-    [[nodiscard]] virtual AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterId id) const = 0;
-    [[nodiscard]] virtual AudioEmitterSnapshot GetEmitterSnapshot(AudioEmitterHandle handle) const = 0;
-    [[nodiscard]] virtual foundation::Result<void> Tick(GameDuration delta) = 0;
+    [[nodiscard]] virtual foundation::Result<void> FadeIn(AudioEmitterHandle handle, RuntimeFrameDuration duration) = 0;
+
+    // Virtualization releases the backend voice; calling Play(handle) later restarts playback from the clip beginning.
+    [[nodiscard]] virtual foundation::Result<void> Virtualize(AudioEmitterHandle handle) = 0;
+
+    [[nodiscard]] virtual foundation::Result<EmitterState> GetEmitterState(AudioEmitterHandle handle) const = 0;
+
+    [[nodiscard]] virtual foundation::Result<AudioEmitterSnapshot> GetEmitterSnapshot(AudioEmitterHandle handle) const = 0;
+    [[nodiscard]] virtual foundation::Result<void> Tick(RuntimeFrameDuration delta) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Shutdown() = 0;
 };
 
 class IListenerSystem
@@ -87,15 +96,12 @@ class IListenerSystem
 public:
     virtual ~IListenerSystem() = default;
 
-    [[nodiscard]] virtual foundation::Result<AudioListenerId> CreateListener(const AudioListenerDesc& desc) = 0;
     [[nodiscard]] virtual foundation::Result<AudioListenerHandle> CreateListenerHandle(const AudioListenerDesc& desc) = 0;
-    [[nodiscard]] virtual foundation::Result<void> DestroyListener(AudioListenerId id) = 0;
     [[nodiscard]] virtual foundation::Result<void> DestroyListener(AudioListenerHandle handle) = 0;
 
-    [[nodiscard]] virtual foundation::Result<void> SetMainListener(AudioListenerId id) = 0;
     [[nodiscard]] virtual foundation::Result<void> SetMainListener(AudioListenerHandle handle) = 0;
 
-    [[nodiscard]] virtual std::optional<AudioListenerId> GetMainListener() const = 0;
+    [[nodiscard]] virtual std::optional<AudioListenerHandle> GetMainListener() const = 0;
 };
 
 class IAudioEventQueue
@@ -126,10 +132,6 @@ struct AudioDependencies
     std::shared_ptr<IAudioResourceSource> resources;
     std::shared_ptr<IAudioTransformSource> transforms;
 };
-
-[[nodiscard]] std::unique_ptr<class AudioRuntime> CreateAudioRuntime(
-    AudioOptions options = {},
-    AudioDependencies dependencies = {});
 
 struct AudioServices
 {

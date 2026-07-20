@@ -61,11 +61,6 @@ enum class PhysicsBodyType
     Kinematic
 };
 
-enum class PhysicsBodyLifecycle
-{
-    Alive
-};
-
 enum class PhysicsActivityState
 {
     Static,
@@ -146,6 +141,16 @@ struct ContactEvent
     PhysicsEventState state = PhysicsEventState::Begin;
 };
 
+struct BackendContactEvent
+{
+    BackendBodyHandle a{};
+    BackendBodyHandle b{};
+    Vec3 point{};
+    Vec3 normal{};
+    float impulse = 0.0f;
+    PhysicsEventState state = PhysicsEventState::Begin;
+};
+
 struct RaycastQuery
 {
     Vec3 origin{};
@@ -157,6 +162,15 @@ struct RaycastHit
 {
     bool hit = false;
     PhysicsBodyHandle body{};
+    Vec3 point{};
+    Vec3 normal{};
+    float distance = 0.0f;
+};
+
+struct BackendRaycastHit
+{
+    bool hit = false;
+    BackendBodyHandle body{};
     Vec3 point{};
     Vec3 normal{};
     float distance = 0.0f;
@@ -188,7 +202,6 @@ struct PhysicsBodySnapshot
     RuntimeObjectId owner{};
     PhysicsTransformId transform_node{};
     PhysicsBodyType type = PhysicsBodyType::Static;
-    PhysicsBodyLifecycle lifecycle = PhysicsBodyLifecycle::Alive;
     PhysicsActivityState activity = PhysicsActivityState::Disabled;
     PhysicsDirtyFlags dirty = PhysicsDirtyFlags::None;
     Transform world_transform{};
@@ -198,7 +211,13 @@ struct PhysicsBodySnapshot
     std::uint64_t revision = 0;
 };
 
-using BackendBodySnapshot = PhysicsBodySnapshot;
+struct BackendBodySnapshot
+{
+    Transform world_transform{};
+    Vec3 linear_velocity{};
+    Vec3 angular_velocity{};
+    PhysicsActivityState activity = PhysicsActivityState::Disabled;
+};
 } // namespace epidemic::runtime::physics
 
 namespace std

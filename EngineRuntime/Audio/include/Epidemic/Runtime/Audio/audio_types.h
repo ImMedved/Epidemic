@@ -3,9 +3,13 @@
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
 #include "Epidemic/Runtime/Foundation/runtime_time.h"
 #include "Epidemic/Runtime/Foundation/spatial.h"
+#include "Epidemic/Foundation/result.h"
 
 #include <cstdint>
+#include <cstddef>
 #include <functional>
+#include <memory>
+#include <span>
 #include <string>
 
 namespace epidemic::runtime::audio
@@ -122,6 +126,48 @@ struct AudioClipPayload
 {
     SoundId sound{};
     SoundState state = SoundState::Ready;
+    std::shared_ptr<const class IAudioClipResource> resource;
+};
+
+enum class AudioClipStorage
+{
+    InMemoryEncoded,
+    Streaming
+};
+
+struct AudioClipFormat
+{
+    std::uint32_t channel_count = 0;
+    std::uint32_t sample_rate_hz = 0;
+    std::uint32_t bits_per_sample = 0;
+    bool compressed = false;
+};
+
+class IAudioClipResource
+{
+public:
+    virtual ~IAudioClipResource() = default;
+
+    [[nodiscard]] virtual AudioClipFormat GetFormat() const = 0;
+    [[nodiscard]] virtual AudioClipStorage GetStorage() const = 0;
+    [[nodiscard]] virtual std::span<const std::byte> GetEncodedData() const = 0;
+    [[nodiscard]] virtual std::shared_ptr<class IAudioStreamSource> GetStreamSource() const = 0;
+};
+
+struct AudioStreamReadResult
+{
+    std::size_t bytes_read = 0;
+    bool end_of_stream = false;
+};
+
+class IAudioStreamSource
+{
+public:
+    virtual ~IAudioStreamSource() = default;
+
+    [[nodiscard]] virtual std::uint64_t GetSizeBytes() const = 0;
+    [[nodiscard]] virtual bool IsSeekable() const = 0;
+    [[nodiscard]] virtual foundation::Result<AudioStreamReadResult> Read(std::uint64_t offset, std::span<std::byte> output) = 0;
 };
 
 struct AudioBackendOptions
@@ -141,6 +187,18 @@ struct AudioEmitterDesc
     SoundId sound{};
     AudioTransformId transform{};
     bool loop = false;
+    MixerGroupId mixer_group{};
+    float gain = 1.0f;
+    bool spatial = true;
+};
+
+struct AudioVoiceDesc
+{
+    AudioClipPayload clip{};
+    bool loop = false;
+    MixerGroupId mixer_group{};
+    float initial_gain = 1.0f;
+    AudioSpatialState spatial{};
 };
 
 struct AudioEmitterSnapshot
@@ -150,7 +208,7 @@ struct AudioEmitterSnapshot
     SoundId sound{};
     AudioTransformId transform{};
     EmitterState state = EmitterState::Destroyed;
-    GameDuration fade_duration{};
+    RuntimeFrameDuration fade_duration{};
     float fade_progress = 0.0f;
     std::uint64_t revision = 0;
 };
@@ -174,7 +232,7 @@ struct MixerGroupState
     float volume = 1.0f;
     MixerFadeState fade_state = MixerFadeState::Stable;
     MixerGroupId parent{};
-    GameDuration fade_duration{};
+    RuntimeFrameDuration fade_duration{};
     float fade_progress = 0.0f;
 };
 

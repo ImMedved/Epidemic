@@ -29,6 +29,7 @@ enum class StreamingState
     Resident,
     Deactivating,
     Unloading,
+    WaitingForPredecessor,
     Unloaded,
     Cancelled,
     Failed,
@@ -225,6 +226,9 @@ struct StreamingStatistics
     std::uint64_t cancelled = 0;
     std::uint64_t committed = 0;
     std::uint64_t rolled_back = 0;
+    std::uint64_t unloaded = 0;
+    std::uint64_t rollback_failed = 0;
+    std::uint64_t budget_violations = 0;
     std::uint64_t failed = 0;
 };
 } // namespace epidemic::runtime::streaming

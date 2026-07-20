@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Epidemic/Foundation/result.h"
+#include "Epidemic/Runtime/Streaming/residency_controller.h"
 #include "Epidemic/Runtime/Streaming/streaming_sources.h"
 #include "Epidemic/Runtime/Streaming/streaming_types.h"
 
@@ -20,7 +21,6 @@ class IStreamingRuntime
         const StreamingTarget& target,
         StreamingPriorityClass priority) = 0;
     [[nodiscard]] virtual foundation::Result<void> ReleaseDemand(StreamingDemandHandle demand) = 0;
-    [[nodiscard]] virtual foundation::Result<void> CancelRequest(StreamingRequestHandle request) = 0;
     [[nodiscard]] virtual StreamingState GetChunkState(ChunkId chunk) const = 0;
     virtual void SetBudget(const StreamingBudget& budget) = 0;
     [[nodiscard]] virtual StreamingTickResult Tick() = 0;
@@ -38,10 +38,20 @@ class IStreamingQuery
     [[nodiscard]] virtual StreamingStatistics GetStatistics() const = 0;
 };
 
+class IStreamingController
+{
+  public:
+    virtual ~IStreamingController() = default;
+
+    [[nodiscard]] virtual foundation::Result<void> CancelRequest(StreamingRequestHandle request) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Shutdown() = 0;
+};
+
 struct StreamingServices
 {
     std::shared_ptr<IStreamingRuntime> runtime;
     std::shared_ptr<IStreamingQuery> query;
+    std::shared_ptr<IStreamingController> controller;
 };
 
 struct StreamingDependencies
@@ -49,6 +59,10 @@ struct StreamingDependencies
     std::shared_ptr<IStreamingDataSource> data_source;
     std::shared_ptr<IStreamingCommitTarget> commit_target;
     std::shared_ptr<IStreamingPriorityProvider> priority_provider;
+    std::shared_ptr<IResidencyController> residency_controller;
+    std::shared_ptr<IStreamingWorldSource> world_source;
+    std::shared_ptr<IStreamingPersistenceSource> persistence_source;
+    std::shared_ptr<IStreamingResourceSource> resource_source;
 };
 
 [[nodiscard]] foundation::Result<StreamingServices> CreateStreamingServices(const StreamingDependencies& dependencies = {});

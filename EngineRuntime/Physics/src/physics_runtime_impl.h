@@ -17,13 +17,14 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
                              public IPhysicsStepper,
                              public IPhysicsQuery,
                              public IPhysicsEventBuffer,
-                             public IPhysicsBackend
+                             public IPhysicsBackend,
+                             public IPhysicsRuntimeLifecycle
 {
   public:
     explicit PhysicsRuntime(std::shared_ptr<IPhysicsBackend> backend = {});
     explicit PhysicsRuntime(PhysicsDependencies dependencies);
     ~PhysicsRuntime() override;
-    [[nodiscard]] foundation::Result<void> Shutdown();
+    [[nodiscard]] foundation::Result<void> Shutdown() override;
 
     [[nodiscard]] foundation::Result<void> RegisterShape(const CollisionShapeDesc& desc) override;
     [[nodiscard]] foundation::Result<void> UnregisterShape(CollisionShapeId id) override;
@@ -44,7 +45,9 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     [[nodiscard]] foundation::Result<void> ApplyImpulse(BackendBodyHandle handle, const Vec3& impulse) override;
     [[nodiscard]] foundation::Result<void> SimulateFixed(RuntimeFrameDuration fixed_delta) override;
     [[nodiscard]] foundation::Result<BackendBodySnapshot> GetBodySnapshot(BackendBodyHandle handle) const override;
+    [[nodiscard]] foundation::Result<std::vector<BackendContactEvent>> ConsumeContactEvents() override;
 
+    [[nodiscard]] foundation::Result<BackendRaycastHit> RaycastBackend(const RaycastQuery& query) const override;
     [[nodiscard]] foundation::Result<RaycastHit> Raycast(const RaycastQuery& query) const override;
     [[nodiscard]] foundation::Result<OverlapResult> Overlap(const OverlapQuery& query) const override;
 
@@ -63,7 +66,6 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
         PhysicsBodyHandle handle{};
         BackendBodyHandle backend_handle{};
         PhysicsBodyDesc desc{};
-        PhysicsBodyLifecycle lifecycle = PhysicsBodyLifecycle::Alive;
         PhysicsActivityState activity = PhysicsActivityState::Disabled;
         PhysicsDirtyFlags dirty = PhysicsDirtyFlags::None;
         Vec3 last_impulse{};
@@ -85,6 +87,10 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     [[nodiscard]] static bool IntersectsAabb(const Aabb& left, const Aabb& right) noexcept;
     [[nodiscard]] static bool RayIntersectsAabb(const RaycastQuery& query, const Aabb& bounds, float& distance) noexcept;
     [[nodiscard]] static bool IsFinite(Vec3 value) noexcept;
+    [[nodiscard]] static bool IsValidActivity(PhysicsActivityState value) noexcept;
+    [[nodiscard]] static bool IsValidEventState(PhysicsEventState value) noexcept;
+    [[nodiscard]] static bool IsValidBackendSnapshot(const BackendBodySnapshot& snapshot) noexcept;
+    [[nodiscard]] static bool IsValidBackendContactPayload(const BackendContactEvent& contact) noexcept;
     [[nodiscard]] static float Length(Vec3 value) noexcept;
     [[nodiscard]] static Vec3 Normalize(Vec3 value) noexcept;
     [[nodiscard]] static RaycastQuery NormalizeRaycastQuery(const RaycastQuery& query) noexcept;
@@ -92,11 +98,13 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     [[nodiscard]] const BodyRecord* FindBody(PhysicsBodyHandle handle) const;
     [[nodiscard]] BodyRecord* FindBackendBody(BackendBodyHandle handle);
     [[nodiscard]] const BodyRecord* FindBackendBody(BackendBodyHandle handle) const;
+    [[nodiscard]] foundation::Result<PhysicsBodyHandle> MapBackendBody(BackendBodyHandle handle) const;
     [[nodiscard]] PhysicsBodySnapshot BuildSnapshot(const BodyRecord& body) const;
     [[nodiscard]] PhysicsBodySnapshot BuildSnapshotFromBackend(const BodyRecord& body, const BackendBodySnapshot& backend_snapshot) const;
     [[nodiscard]] foundation::Result<void> ValidateHandle(PhysicsBodyHandle handle) const;
     [[nodiscard]] foundation::Result<PhysicsStepResult> CompleteFixedStep(RuntimeFrameDuration fixed_delta, std::uint32_t substeps);
     [[nodiscard]] foundation::Result<void> SynchronizeBackendBody(BodyRecord& body);
+    [[nodiscard]] foundation::Result<void> ApplyBackendSnapshot(BodyRecord& body, const BackendBodySnapshot& snapshot);
 
     std::unordered_map<CollisionShapeId, ShapeRecord> shapes_;
     std::unordered_map<PhysicsBodyId, BodyRecord> bodies_;
@@ -113,6 +121,8 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     std::uint32_t next_body_generation_ = 1;
     std::uint64_t fixed_step_count_ = 0;
     std::uint64_t revision_ = 0;
+    std::uint64_t invalid_backend_contact_count_ = 0;
+    bool backend_step_pending_sync_ = false;
     RuntimeFrameDuration fixed_step_{std::chrono::microseconds{16667}};
     RuntimeFrameDuration accumulator_{};
     RuntimeFrameDuration dropped_time_{};

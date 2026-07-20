@@ -41,6 +41,7 @@ foundation::Result<PhysicsServices> CreatePhysicsServices(PhysicsDependencies de
     services.query = runtime;
     services.events = runtime;
     services.backend = external_backend ? external_backend : std::static_pointer_cast<IPhysicsBackend>(runtime);
+    services.lifecycle = runtime;
     return foundation::Result<PhysicsServices>::Success(std::move(services));
 }
 } // namespace epidemic::runtime::physics

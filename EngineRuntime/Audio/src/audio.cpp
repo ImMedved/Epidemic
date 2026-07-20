@@ -6,11 +6,6 @@
 
 namespace epidemic::runtime::audio
 {
-std::unique_ptr<AudioRuntime> CreateAudioRuntime(AudioOptions options, AudioDependencies dependencies)
-{
-    return std::make_unique<AudioRuntime>(options, std::move(dependencies));
-}
-
 foundation::Result<AudioServices> CreateAudioServices(AudioOptions options, AudioDependencies dependencies)
 {
     if (dependencies.backend == nullptr)

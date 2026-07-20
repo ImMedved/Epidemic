@@ -6,6 +6,7 @@
 #include <cmath>
 #include <limits>
 #include <optional>
+#include <utility>
 
 namespace epidemic::runtime::physics
 {
@@ -55,8 +56,17 @@ foundation::Result<void> PhysicsRuntime::Shutdown()
             {
                 first_error = destroyed.GetError();
             }
+            if (!destroyed)
+            {
+                ++iterator;
+                continue;
+            }
             backend_to_body_.erase(iterator->second.backend_handle);
             iterator = bodies_.erase(iterator);
+        }
+        if (!bodies_.empty())
+        {
+            return foundation::Result<void>::Failure(*first_error);
         }
         for (auto iterator = shapes_.begin(); iterator != shapes_.end();)
         {
@@ -65,6 +75,11 @@ foundation::Result<void> PhysicsRuntime::Shutdown()
             {
                 first_error = destroyed.GetError();
             }
+            if (!destroyed)
+            {
+                ++iterator;
+                continue;
+            }
             iterator = shapes_.erase(iterator);
         }
         if (first_error)
@@ -72,9 +87,12 @@ foundation::Result<void> PhysicsRuntime::Shutdown()
             return foundation::Result<void>::Failure(*first_error);
         }
     }
-    bodies_.clear();
-    shapes_.clear();
-    backend_to_body_.clear();
+    if (!backend_ || backend_.get() == this)
+    {
+        bodies_.clear();
+        shapes_.clear();
+        backend_to_body_.clear();
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -105,6 +123,10 @@ foundation::Result<void> PhysicsRuntime::RegisterShape(const CollisionShapeDesc&
     }
     else
     {
+        if (next_backend_shape_value_ == std::numeric_limits<std::uint64_t>::max())
+        {
+            return PhysicsFailure("physics.backend_shape_id_overflow", "backend shape id allocator overflow");
+        }
         backend_shape = BackendShapeHandle{next_backend_shape_value_++};
     }
     shapes_.emplace(desc.id, ShapeRecord{desc, backend_shape});
@@ -181,6 +203,12 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
 
     PhysicsBodyDesc backend_desc = desc;
     backend_desc.initial_transform = initial_transform;
+    if (next_body_value_ == std::numeric_limits<std::uint64_t>::max() || next_body_generation_ == std::numeric_limits<std::uint32_t>::max() ||
+        next_backend_body_value_ == std::numeric_limits<std::uint64_t>::max() || revision_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.body_id_overflow", "physics body id allocator overflow");
+    }
+
     BackendBodyHandle backend_handle{next_backend_body_value_++};
     if (backend_ && backend_.get() != this)
     {
@@ -201,7 +229,6 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     record.handle = handle;
     record.backend_handle = backend_handle;
     record.desc = desc;
-    record.lifecycle = PhysicsBodyLifecycle::Alive;
     record.activity = ActivityForType(desc.type);
     record.dirty = PhysicsDirtyFlags::Transform | PhysicsDirtyFlags::Shape;
     record.world_transform = initial_transform;
@@ -282,7 +309,7 @@ foundation::Result<PhysicsBodySnapshot> PhysicsRuntime::GetBodySnapshot(PhysicsB
         const auto snapshot = backend_->GetBodySnapshot(body->backend_handle);
         if (!snapshot)
         {
-            return snapshot;
+            return foundation::Result<PhysicsBodySnapshot>::Failure(snapshot.GetError());
         }
         const PhysicsBodySnapshot merged = BuildSnapshotFromBackend(*body, snapshot.Value());
         if (!IsValidTransform(merged.world_transform) || !IsFinite(merged.linear_velocity) || !IsFinite(merged.angular_velocity) ||
@@ -345,6 +372,10 @@ foundation::Result<BackendShapeHandle> PhysicsRuntime::CreateShape(const Collisi
     {
         return PhysicsFailureValue<BackendShapeHandle>("physics.invalid_shape", "backend shape requires valid id and bounds");
     }
+    if (next_backend_shape_value_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return PhysicsFailureValue<BackendShapeHandle>("physics.backend_shape_id_overflow", "backend shape id allocator overflow");
+    }
     return foundation::Result<BackendShapeHandle>::Success(BackendShapeHandle{next_backend_shape_value_++});
 }
 
@@ -362,6 +393,10 @@ foundation::Result<BackendBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     if (!shape.IsValid() || !desc.owner.IsValid())
     {
         return PhysicsFailureValue<BackendBodyHandle>("physics.invalid_body", "backend body requires valid shape and owner");
+    }
+    if (next_backend_body_value_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return PhysicsFailureValue<BackendBodyHandle>("physics.backend_body_id_overflow", "backend body id allocator overflow");
     }
     return foundation::Result<BackendBodyHandle>::Success(BackendBodyHandle{next_backend_body_value_++});
 }
@@ -404,7 +439,28 @@ foundation::Result<BackendBodySnapshot> PhysicsRuntime::GetBodySnapshot(BackendB
     {
         return PhysicsFailureValue<BackendBodySnapshot>("physics.unknown_handle", "backend body handle is unknown");
     }
-    return foundation::Result<BackendBodySnapshot>::Success(BuildSnapshot(*body));
+    return foundation::Result<BackendBodySnapshot>::Success(BackendBodySnapshot{
+        body->world_transform,
+        body->linear_velocity,
+        body->angular_velocity,
+        body->activity});
+}
+
+foundation::Result<std::vector<BackendContactEvent>> PhysicsRuntime::ConsumeContactEvents()
+{
+    std::vector<BackendContactEvent> consumed;
+    consumed.reserve(contacts_.size());
+    for (const ContactEvent& contact : contacts_)
+    {
+        const BodyRecord* left = FindBody(contact.a);
+        const BodyRecord* right = FindBody(contact.b);
+        if (left != nullptr && right != nullptr)
+        {
+            consumed.push_back(BackendContactEvent{left->backend_handle, right->backend_handle, contact.point, contact.normal, contact.impulse, contact.state});
+        }
+    }
+    contacts_.clear();
+    return foundation::Result<std::vector<BackendContactEvent>>::Success(std::move(consumed));
 }
 
 foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query) const
@@ -421,17 +477,31 @@ foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query
 
     if (backend_ && backend_.get() != this)
     {
-        const auto hit = backend_->Raycast(normalized);
+        const auto hit = backend_->RaycastBackend(normalized);
         if (!hit)
         {
-            return hit;
+            return foundation::Result<RaycastHit>::Failure(hit.GetError());
         }
         if ((hit.Value().hit && (!IsFinite(hit.Value().point) || !IsFinite(hit.Value().normal))) ||
             !std::isfinite(hit.Value().distance) || hit.Value().distance < 0.0f || hit.Value().distance > normalized.max_distance)
         {
             return PhysicsFailureValue<RaycastHit>("physics.invalid_backend_hit", "physics backend returned an invalid raycast hit");
         }
-        return hit;
+        RaycastHit mapped{};
+        mapped.hit = hit.Value().hit;
+        mapped.point = hit.Value().point;
+        mapped.normal = hit.Value().normal;
+        mapped.distance = hit.Value().distance;
+        if (hit.Value().hit)
+        {
+            const auto body = MapBackendBody(hit.Value().body);
+            if (!body)
+            {
+                return foundation::Result<RaycastHit>::Failure(body.GetError());
+            }
+            mapped.body = body.Value();
+        }
+        return foundation::Result<RaycastHit>::Success(mapped);
     }
 
     RaycastHit best{};
@@ -458,6 +528,44 @@ foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query
         best.distance = 0.0f;
     }
     return foundation::Result<RaycastHit>::Success(best);
+}
+
+foundation::Result<BackendRaycastHit> PhysicsRuntime::RaycastBackend(const RaycastQuery& query) const
+{
+    if (query.max_distance < 0.0f || !IsFinite(query.origin) || !IsFinite(query.direction) || !std::isfinite(query.max_distance))
+    {
+        return PhysicsFailureValue<BackendRaycastHit>("physics.invalid_query", "backend raycast query must be finite and max distance must not be negative");
+    }
+    if (Length(query.direction) <= std::numeric_limits<float>::epsilon())
+    {
+        return PhysicsFailureValue<BackendRaycastHit>("physics.invalid_query", "backend raycast direction must be non-zero");
+    }
+    const RaycastQuery normalized = NormalizeRaycastQuery(query);
+
+    BackendRaycastHit best{};
+    best.distance = std::numeric_limits<float>::max();
+    for (const auto& [body_id, body] : bodies_)
+    {
+        (void)body_id;
+        float distance = 0.0f;
+        if (RayIntersectsAabb(normalized, body.bounds, distance) && distance <= normalized.max_distance && distance < best.distance)
+        {
+            best = BackendRaycastHit{
+                true,
+                body.backend_handle,
+                Vec3{
+                    normalized.origin.x + normalized.direction.x * distance,
+                    normalized.origin.y + normalized.direction.y * distance,
+                    normalized.origin.z + normalized.direction.z * distance},
+                Vec3{0.0f, 1.0f, 0.0f},
+                distance};
+        }
+    }
+    if (!best.hit)
+    {
+        best.distance = 0.0f;
+    }
+    return foundation::Result<BackendRaycastHit>::Success(best);
 }
 
 foundation::Result<OverlapResult> PhysicsRuntime::Overlap(const OverlapQuery& query) const
@@ -589,6 +697,48 @@ bool PhysicsRuntime::IsFinite(Vec3 value) noexcept
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
 
+bool PhysicsRuntime::IsValidActivity(PhysicsActivityState value) noexcept
+{
+    switch (value)
+    {
+    case PhysicsActivityState::Static:
+    case PhysicsActivityState::Awake:
+    case PhysicsActivityState::Sleeping:
+    case PhysicsActivityState::Disabled:
+        return true;
+    }
+    return false;
+}
+
+bool PhysicsRuntime::IsValidEventState(PhysicsEventState value) noexcept
+{
+    switch (value)
+    {
+    case PhysicsEventState::Begin:
+    case PhysicsEventState::Persist:
+    case PhysicsEventState::End:
+        return true;
+    }
+    return false;
+}
+
+bool PhysicsRuntime::IsValidBackendSnapshot(const BackendBodySnapshot& snapshot) noexcept
+{
+    return IsValidTransform(snapshot.world_transform) &&
+           IsFinite(snapshot.linear_velocity) &&
+           IsFinite(snapshot.angular_velocity) &&
+           IsValidActivity(snapshot.activity);
+}
+
+bool PhysicsRuntime::IsValidBackendContactPayload(const BackendContactEvent& contact) noexcept
+{
+    return IsFinite(contact.point) &&
+           IsFinite(contact.normal) &&
+           std::isfinite(contact.impulse) &&
+           contact.impulse >= 0.0f &&
+           IsValidEventState(contact.state);
+}
+
 float PhysicsRuntime::Length(Vec3 value) noexcept
 {
     return std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z);
@@ -653,6 +803,20 @@ const PhysicsRuntime::BodyRecord* PhysicsRuntime::FindBackendBody(BackendBodyHan
     return body == bodies_.end() ? nullptr : &body->second;
 }
 
+foundation::Result<PhysicsBodyHandle> PhysicsRuntime::MapBackendBody(BackendBodyHandle handle) const
+{
+    if (!handle.IsValid())
+    {
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_backend_handle", "backend body handle must be valid");
+    }
+    const BodyRecord* body = FindBackendBody(handle);
+    if (body == nullptr)
+    {
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.unknown_backend_handle", "backend body handle is unknown");
+    }
+    return foundation::Result<PhysicsBodyHandle>::Success(body->handle);
+}
+
 PhysicsBodySnapshot PhysicsRuntime::BuildSnapshot(const BodyRecord& body) const
 {
     return PhysicsBodySnapshot{
@@ -660,7 +824,6 @@ PhysicsBodySnapshot PhysicsRuntime::BuildSnapshot(const BodyRecord& body) const
         body.desc.owner,
         body.desc.transform_node,
         body.desc.type,
-        body.lifecycle,
         body.activity,
         body.dirty,
         body.world_transform,
@@ -672,15 +835,18 @@ PhysicsBodySnapshot PhysicsRuntime::BuildSnapshot(const BodyRecord& body) const
 
 PhysicsBodySnapshot PhysicsRuntime::BuildSnapshotFromBackend(const BodyRecord& body, const BackendBodySnapshot& backend_snapshot) const
 {
-    PhysicsBodySnapshot snapshot = backend_snapshot;
-    snapshot.handle = body.handle;
-    snapshot.owner = body.desc.owner;
-    snapshot.transform_node = body.desc.transform_node;
-    snapshot.type = body.desc.type;
-    snapshot.lifecycle = body.lifecycle;
-    snapshot.mass = body.desc.mass;
-    snapshot.revision = std::max(body.revision, backend_snapshot.revision);
-    return snapshot;
+    return PhysicsBodySnapshot{
+        body.handle,
+        body.desc.owner,
+        body.desc.transform_node,
+        body.desc.type,
+        backend_snapshot.activity,
+        body.dirty,
+        backend_snapshot.world_transform,
+        backend_snapshot.linear_velocity,
+        backend_snapshot.angular_velocity,
+        body.desc.mass,
+        body.revision};
 }
 
 foundation::Result<void> PhysicsRuntime::ValidateHandle(PhysicsBodyHandle handle) const
@@ -698,24 +864,49 @@ foundation::Result<void> PhysicsRuntime::ValidateHandle(PhysicsBodyHandle handle
 
 foundation::Result<PhysicsStepResult> PhysicsRuntime::CompleteFixedStep(RuntimeFrameDuration fixed_delta, std::uint32_t substeps)
 {
-    const auto simulated = SimulateFixed(fixed_delta);
-    if (!simulated)
+    if (!backend_step_pending_sync_)
     {
-        return foundation::Result<PhysicsStepResult>::Failure(simulated.GetError());
+        const auto simulated = SimulateFixed(fixed_delta);
+        if (!simulated)
+        {
+            return foundation::Result<PhysicsStepResult>::Failure(simulated.GetError());
+        }
+        backend_step_pending_sync_ = backend_ && backend_.get() != this;
     }
-    ++fixed_step_count_;
-    ++revision_;
+    std::vector<std::pair<PhysicsBodyId, BackendBodySnapshot>> backend_snapshots;
+    if (backend_ && backend_.get() != this)
+    {
+        backend_snapshots.reserve(bodies_.size());
+        for (const auto& [id, body] : bodies_)
+        {
+            const auto snapshot = backend_->GetBodySnapshot(body.backend_handle);
+            if (!snapshot)
+            {
+                return foundation::Result<PhysicsStepResult>::Failure(snapshot.GetError());
+            }
+            if (!IsValidBackendSnapshot(snapshot.Value()))
+            {
+                return PhysicsFailureValue<PhysicsStepResult>("physics.invalid_backend_snapshot", "physics backend returned invalid body snapshot data");
+            }
+            backend_snapshots.push_back(std::pair{id, snapshot.Value()});
+        }
+    }
+    for (const auto& [id, snapshot] : backend_snapshots)
+    {
+        auto body = bodies_.find(id);
+        if (body == bodies_.end())
+        {
+            continue;
+        }
+        const auto applied = ApplyBackendSnapshot(body->second, snapshot);
+        if (!applied)
+        {
+            return foundation::Result<PhysicsStepResult>::Failure(applied.GetError());
+        }
+    }
     for (auto& [id, body] : bodies_)
     {
         (void)id;
-        if (backend_ && backend_.get() != this)
-        {
-            const auto synced = SynchronizeBackendBody(body);
-            if (!synced)
-            {
-                return foundation::Result<PhysicsStepResult>::Failure(synced.GetError());
-            }
-        }
         if (body.desc.type == PhysicsBodyType::Dynamic && transform_sink_)
         {
             const auto written = transform_sink_->WriteTransform(body.desc.transform_node, body.world_transform);
@@ -725,6 +916,40 @@ foundation::Result<PhysicsStepResult> PhysicsRuntime::CompleteFixedStep(RuntimeF
             }
         }
     }
+    if (backend_ && backend_.get() != this)
+    {
+        const auto backend_contacts = backend_->ConsumeContactEvents();
+        if (!backend_contacts)
+        {
+            return foundation::Result<PhysicsStepResult>::Failure(backend_contacts.GetError());
+        }
+        std::vector<ContactEvent> mapped_contacts;
+        mapped_contacts.reserve(backend_contacts.Value().size());
+        for (const BackendContactEvent& contact : backend_contacts.Value())
+        {
+            if (!IsValidBackendContactPayload(contact))
+            {
+                ++invalid_backend_contact_count_;
+                continue;
+            }
+            const auto left = MapBackendBody(contact.a);
+            const auto right = MapBackendBody(contact.b);
+            if (!left || !right)
+            {
+                ++invalid_backend_contact_count_;
+                continue;
+            }
+            mapped_contacts.push_back(ContactEvent{left.Value(), right.Value(), contact.point, contact.normal, contact.impulse, contact.state});
+        }
+        contacts_.insert(contacts_.end(), mapped_contacts.begin(), mapped_contacts.end());
+    }
+    backend_step_pending_sync_ = false;
+    if (fixed_step_count_ == std::numeric_limits<std::uint64_t>::max() || revision_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return PhysicsFailureValue<PhysicsStepResult>("physics.revision_overflow", "physics step counter or revision overflow");
+    }
+    ++fixed_step_count_;
+    ++revision_;
     return foundation::Result<PhysicsStepResult>::Success(
         PhysicsStepResult{fixed_delta, fixed_step_count_, substeps, accumulator_, dropped_time_, revision_});
 }
@@ -736,11 +961,29 @@ foundation::Result<void> PhysicsRuntime::SynchronizeBackendBody(BodyRecord& body
     {
         return foundation::Result<void>::Failure(snapshot.GetError());
     }
-    body.world_transform = snapshot.Value().world_transform;
-    body.linear_velocity = snapshot.Value().linear_velocity;
-    body.angular_velocity = snapshot.Value().angular_velocity;
-    body.activity = snapshot.Value().activity;
+    const BackendBodySnapshot candidate = snapshot.Value();
+    if (!IsValidBackendSnapshot(candidate))
+    {
+        return PhysicsFailure("physics.invalid_backend_snapshot", "physics backend returned invalid body snapshot data");
+    }
+    return ApplyBackendSnapshot(body, candidate);
+}
+
+foundation::Result<void> PhysicsRuntime::ApplyBackendSnapshot(BodyRecord& body, const BackendBodySnapshot& snapshot)
+{
+    if (!IsValidBackendSnapshot(snapshot))
+    {
+        return PhysicsFailure("physics.invalid_backend_snapshot", "physics backend returned invalid body snapshot data");
+    }
+    body.world_transform = snapshot.world_transform;
+    body.linear_velocity = snapshot.linear_velocity;
+    body.angular_velocity = snapshot.angular_velocity;
+    body.activity = snapshot.activity;
     body.dirty = PhysicsDirtyFlags::None;
+    if (revision_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return PhysicsFailure("physics.revision_overflow", "physics revision overflow");
+    }
     body.revision = ++revision_;
     const auto shape = shapes_.find(body.desc.shape);
     if (shape != shapes_.end())

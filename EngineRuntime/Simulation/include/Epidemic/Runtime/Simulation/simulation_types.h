@@ -3,6 +3,7 @@
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
 #include "Epidemic/Runtime/Foundation/runtime_budget.h"
 #include "Epidemic/Runtime/Foundation/runtime_time.h"
+#include "Epidemic/Foundation/error.h"
 #include "Epidemic/Foundation/string_id.h"
 
 #include <cstddef>
@@ -72,6 +73,7 @@ enum class SimulationZoneState
 enum class SimulationJobState
 {
     Pending,
+    Scheduled,
     Running,
     PartiallyComplete,
     WaitingForMainThread,
@@ -110,7 +112,6 @@ struct SimulationJobDesc
     SimulationZoneId zone{};
     RuntimeObjectId subject{};
     std::uint32_t work_units = 1;
-    bool wait_for_main_thread = false;
     SimulationLane lane = SimulationLane::Zone;
     std::uint64_t source_revision = 0;
 };
@@ -150,6 +151,19 @@ struct SimulationStepResult
     SimulationProposalBatch proposals{};
 };
 
+struct SimulationTickFailure
+{
+    SimulationJobHandle job{};
+    foundation::Error error{};
+};
+
+struct SimulationTickResult
+{
+    std::size_t processed_jobs = 0;
+    std::vector<SimulationTickFailure> failures{};
+    std::vector<SimulationProposalBatch> proposal_batches{};
+};
+
 struct WorldMemoryEvent
 {
     WorldMemoryEventId id{};
@@ -180,22 +194,38 @@ struct ScheduledSimulationTask
     SimulationLane lane = SimulationLane::Background;
 };
 
+struct ScheduledTaskFailure
+{
+    ScheduledSimulationTaskId task{};
+    SimulationJobHandle job{};
+    foundation::Error error{};
+};
+
+struct ScheduledTaskExecutionResult
+{
+    std::size_t activated = 0;
+    std::vector<ScheduledTaskFailure> failures{};
+};
+
+enum class ProposalDiscardReason
+{
+    Shutdown,
+    AdministrativeReset
+};
+
 struct WorldMemoryQuery
 {
     RegionId region{};
     bool include_expired = false;
 };
 
-struct SimulationEffect
-{
-    RuntimeObjectId target{};
-    SimulationZoneId zone{};
-    std::uint64_t effect_type = 0;
-};
-
 struct SimulationOptions
 {
     bool enable_budgeted_scheduler = true;
+    std::uint32_t max_terminal_jobs = 256;
+    std::uint32_t max_memory_events = 1024;
+    std::uint32_t max_facts = 1024;
+    std::uint32_t max_proposal_batches = 256;
 };
 } // namespace epidemic::runtime::simulation
 
