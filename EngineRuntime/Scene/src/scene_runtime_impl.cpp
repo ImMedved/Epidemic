@@ -29,6 +29,11 @@ namespace
 {
     return Vec3{left.x / right.x, left.y / right.y, left.z / right.z};
 }
+
+[[nodiscard]] bool IsInvertibleScale(Vec3 scale) noexcept
+{
+    return std::abs(scale.x) > kSpatialEpsilon && std::abs(scale.y) > kSpatialEpsilon && std::abs(scale.z) > kSpatialEpsilon;
+}
 } // namespace
 
 foundation::Result<SceneNodeId> SceneRuntime::CreateNode()
@@ -117,7 +122,12 @@ foundation::Result<void> SceneRuntime::AttachNode(SceneNodeId child, SceneNodeId
 
     if (mode == ReparentMode::KeepWorld)
     {
-        child_record.local_transform = ComputeLocalTransform(parent, child_world);
+        auto local_transform = ComputeLocalTransform(parent, child_world);
+        if (!local_transform)
+        {
+            return foundation::Result<void>::Failure(local_transform.GetError());
+        }
+        child_record.local_transform = local_transform.Value();
     }
     child_record.node.parent_id = parent;
     child_record.node.attachment_state = SceneAttachmentState::Attached;
@@ -216,6 +226,42 @@ foundation::Result<void> SceneRuntime::SetLocalTransform(SceneNodeId node, const
     }
 
     record->local_transform = transform;
+    MarkSubtreeDirty(node, ToSceneDirtyMask(SceneDirtyFlags::Transform) | ToSceneDirtyMask(SceneDirtyFlags::Bounds));
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> SceneRuntime::SetWorldTransform(SceneNodeId node, const Transform& transform, WorldTransformWriteMode mode)
+{
+    if (mode != WorldTransformWriteMode::RejectNonInvertibleParent)
+    {
+        return SceneFailure("scene.unsupported_world_transform_write_mode", "scene world transform write mode is not supported");
+    }
+    if (!IsValidTransform(transform))
+    {
+        return SceneFailure("scene.invalid_transform", "scene transform must contain finite values and non-zero scale");
+    }
+    SceneNodeRecord* record = FindRecord(node);
+    if (record == nullptr)
+    {
+        return SceneFailure("scene.node_not_found", "scene node was not found for transform update");
+    }
+
+    Transform local_transform = transform;
+    if (record->node.parent_id.IsValid())
+    {
+        auto computed = ComputeLocalTransform(record->node.parent_id, transform);
+        if (!computed)
+        {
+            return foundation::Result<void>::Failure(computed.GetError());
+        }
+        local_transform = computed.Value();
+        if (!IsValidTransform(local_transform))
+        {
+            return SceneFailure("scene.invalid_transform", "scene computed local transform is not representable as a valid TRS transform");
+        }
+    }
+
+    record->local_transform = local_transform;
     MarkSubtreeDirty(node, ToSceneDirtyMask(SceneDirtyFlags::Transform) | ToSceneDirtyMask(SceneDirtyFlags::Bounds));
     return foundation::Result<void>::Success();
 }
@@ -451,16 +497,21 @@ Transform SceneRuntime::ComputeWorldTransform(SceneNodeId node) const
     return ComposeTransform(ComputeWorldTransform(record->node.parent_id), record->local_transform);
 }
 
-Transform SceneRuntime::ComputeLocalTransform(SceneNodeId parent, const Transform& world_transform) const
+foundation::Result<Transform> SceneRuntime::ComputeLocalTransform(SceneNodeId parent, const Transform& world_transform) const
 {
     const Transform parent_world = ComputeWorldTransform(parent);
+    if (!IsInvertibleScale(parent_world.scale))
+    {
+        return foundation::Result<Transform>::Failure(
+            foundation::Error::Create("scene.non_invertible_parent_transform", "parent scene transform cannot be inverted"));
+    }
     const Quat inverse_parent_rotation = Conjugate(Normalize(parent_world.rotation));
     const Vec3 unrotated_position = RotateVector(inverse_parent_rotation, world_transform.position - parent_world.position);
-    return Transform{
+    return foundation::Result<Transform>::Success(Transform{
         Divide(unrotated_position, parent_world.scale),
         Multiply(inverse_parent_rotation, world_transform.rotation),
         Divide(world_transform.scale, parent_world.scale),
-    };
+    });
 }
 
 std::optional<Aabb> SceneRuntime::ComputeWorldBounds(SceneNodeId node) const

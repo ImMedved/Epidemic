@@ -37,6 +37,7 @@ using epidemic::runtime::SceneRuntime;
 using epidemic::runtime::SceneVisibilityState;
 using epidemic::runtime::Transform;
 using epidemic::runtime::Vec3;
+using epidemic::runtime::WorldTransformWriteMode;
 
 [[nodiscard]] bool Near(float left, float right)
 {
@@ -127,6 +128,88 @@ using epidemic::runtime::Vec3;
     const auto world = runtime.GetWorldTransform(child.Value());
     return local && *local == child_transform && world && world->position == Vec3{12.0f, 4.0f, 6.0f} &&
            world->scale == Vec3{1.0f, 2.0f, 2.0f};
+}
+
+[[nodiscard]] bool TestSetWorldTransformRoot()
+{
+    SceneRuntime runtime;
+    const auto node = runtime.CreateNode();
+    if (!node)
+    {
+        return false;
+    }
+
+    const std::uint64_t before_revision = runtime.GetRevision();
+    const Transform requested{Vec3{4.0f, 5.0f, 6.0f}, Quat{}, Vec3{2.0f, 3.0f, 4.0f}};
+    const auto set = runtime.SetWorldTransform(node.Value(), requested);
+    const auto local = runtime.GetLocalTransform(node.Value());
+    const auto world = runtime.GetWorldTransform(node.Value());
+
+    return set && local && world && Near(local->position, requested.position) && Near(world->position, requested.position) &&
+           Near(world->scale, requested.scale) && runtime.GetRevision() == before_revision + 1u;
+}
+
+[[nodiscard]] bool TestSetWorldTransformChildUnderParent()
+{
+    SceneRuntime runtime;
+    const auto parent = runtime.CreateNode();
+    const auto child = runtime.CreateNode();
+    if (!parent || !child ||
+        !runtime.SetLocalTransform(parent.Value(), Transform{Vec3{10.0f, 0.0f, 0.0f}, Quat{}, Vec3{2.0f, 2.0f, 2.0f}}) ||
+        !runtime.AttachNode(child.Value(), parent.Value(), ReparentMode::KeepLocal))
+    {
+        return false;
+    }
+
+    const std::uint64_t before_revision = runtime.GetRevision();
+    const Transform requested{Vec3{14.0f, 6.0f, 8.0f}, Quat{}, Vec3{4.0f, 2.0f, 2.0f}};
+    const auto set = runtime.SetWorldTransform(child.Value(), requested);
+    const auto local = runtime.GetLocalTransform(child.Value());
+    const auto world = runtime.GetWorldTransform(child.Value());
+
+    return set && local && world && Near(local->position, Vec3{2.0f, 3.0f, 4.0f}) &&
+           Near(world->position, requested.position) && Near(world->scale, requested.scale) &&
+           runtime.GetRevision() == before_revision + 1u;
+}
+
+[[nodiscard]] bool TestSetWorldTransformChildUnderRotatedScaledParent()
+{
+    SceneRuntime runtime;
+    const auto parent = runtime.CreateNode();
+    const auto child = runtime.CreateNode();
+    const float quarter_turn = 0.70710677f;
+    if (!parent || !child ||
+        !runtime.SetLocalTransform(parent.Value(),
+                                   Transform{Vec3{10.0f, 0.0f, 0.0f}, Quat{0.0f, 0.0f, quarter_turn, quarter_turn}, Vec3{2.0f, 3.0f, 1.0f}}) ||
+        !runtime.AttachNode(child.Value(), parent.Value(), ReparentMode::KeepLocal))
+    {
+        return false;
+    }
+
+    const Transform requested{Vec3{10.0f, 2.0f, 0.0f}, Quat{}, Vec3{4.0f, 6.0f, 1.0f}};
+    const auto set = runtime.SetWorldTransform(child.Value(), requested, WorldTransformWriteMode::RejectNonInvertibleParent);
+    const auto local = runtime.GetLocalTransform(child.Value());
+    const auto world = runtime.GetWorldTransform(child.Value());
+
+    return set && local && world && Near(local->position, Vec3{1.0f, 0.0f, 0.0f}) &&
+           Near(world->position, requested.position) && Near(world->scale, requested.scale);
+}
+
+[[nodiscard]] bool TestSetWorldTransformRejectsInvalidWithoutMutation()
+{
+    SceneRuntime runtime;
+    const auto node = runtime.CreateNode();
+    if (!node || !runtime.SetWorldTransform(node.Value(), Transform{Vec3{2.0f, 0.0f, 0.0f}, Quat{}, Vec3{1.0f, 1.0f, 1.0f}}))
+    {
+        return false;
+    }
+
+    const auto before = runtime.GetWorldTransform(node.Value());
+    const auto rejected = runtime.SetWorldTransform(node.Value(), Transform{Vec3{9.0f, 0.0f, 0.0f}, Quat{}, Vec3{0.0f, 1.0f, 1.0f}});
+    const auto after = runtime.GetWorldTransform(node.Value());
+
+    return before && !rejected && rejected.GetError().HasCode("scene.invalid_transform") && after &&
+           Near(after->position, before->position) && Near(after->scale, before->scale);
 }
 
 [[nodiscard]] bool TestAttachDetachKeepWorldByDefault()
@@ -366,6 +449,10 @@ int main()
         {"CreateDestroyAndRevision", TestCreateDestroyAndRevision},
         {"HierarchyAttachDetachAndCycleReject", TestHierarchyAttachDetachAndCycleReject},
         {"LocalAndWorldTransforms", TestLocalAndWorldTransforms},
+        {"SetWorldTransformRoot", TestSetWorldTransformRoot},
+        {"SetWorldTransformChildUnderParent", TestSetWorldTransformChildUnderParent},
+        {"SetWorldTransformChildUnderRotatedScaledParent", TestSetWorldTransformChildUnderRotatedScaledParent},
+        {"SetWorldTransformRejectsInvalidWithoutMutation", TestSetWorldTransformRejectsInvalidWithoutMutation},
         {"AttachDetachKeepWorldByDefault", TestAttachDetachKeepWorldByDefault},
         {"AttachDetachKeepLocal", TestAttachDetachKeepLocal},
         {"DestroyParentKeepsChildWorldTransform", TestDestroyParentKeepsChildWorldTransform},

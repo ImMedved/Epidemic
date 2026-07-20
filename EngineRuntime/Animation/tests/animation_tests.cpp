@@ -415,6 +415,24 @@ bool TestEventCapacityDropsOldest()
                         "event capacity should retain the newest event");
 }
 
+bool TestZeroEventCapacityUsesDefaultBound()
+{
+    AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true, .event_capacity = 0}};
+    bool ok = Expect(SeedResources(runtime), "resources should seed for zero event capacity");
+    for (std::uint64_t index = 0; index < 70; ++index)
+    {
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{100 + index}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(animator.HasValue(), "animator should create for zero event capacity");
+        if (animator)
+        {
+            ok &= Expect(runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{10}}).HasValue(),
+                         "play should queue event under default event capacity");
+        }
+    }
+    return ok && Expect(runtime.Events().size() == AnimationOptions{}.event_capacity,
+                        "zero event capacity should use the default bounded capacity");
+}
+
 bool TestFactoryProfilesSeparateMockEvaluation()
 {
     auto sink = std::make_shared<TestPoseSink>();
@@ -474,6 +492,7 @@ int main()
     ok &= TestFractionalPlaybackRateAccumulates();
     ok &= TestPoseSinkFailurePropagates();
     ok &= TestEventCapacityDropsOldest();
+    ok &= TestZeroEventCapacityUsesDefaultBound();
     ok &= TestFactoryProfilesSeparateMockEvaluation();
     return ok ? 0 : 1;
 }

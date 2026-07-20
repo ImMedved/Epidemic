@@ -30,6 +30,10 @@ class SceneRuntime final : public ISceneNodeRegistry,
     [[nodiscard]] std::uint64_t GetRevision() const override;
 
     [[nodiscard]] foundation::Result<void> SetLocalTransform(SceneNodeId node, const Transform& transform) override;
+    [[nodiscard]] foundation::Result<void> SetWorldTransform(
+        SceneNodeId node,
+        const Transform& transform,
+        WorldTransformWriteMode mode = WorldTransformWriteMode::RejectNonInvertibleParent) override;
     [[nodiscard]] std::optional<Transform> GetLocalTransform(SceneNodeId node) const override;
     [[nodiscard]] std::optional<Transform> GetWorldTransform(SceneNodeId node) const override;
     void MarkTransformClean(SceneNodeId node) override;
@@ -62,7 +66,7 @@ class SceneRuntime final : public ISceneNodeRegistry,
     [[nodiscard]] foundation::Result<void> RequireNode(SceneNodeId node, const char* message) const;
     [[nodiscard]] bool WouldCreateCycle(SceneNodeId child, SceneNodeId parent) const;
     [[nodiscard]] Transform ComputeWorldTransform(SceneNodeId node) const;
-    [[nodiscard]] Transform ComputeLocalTransform(SceneNodeId parent, const Transform& world_transform) const;
+    [[nodiscard]] foundation::Result<Transform> ComputeLocalTransform(SceneNodeId parent, const Transform& world_transform) const;
     [[nodiscard]] std::optional<Aabb> ComputeWorldBounds(SceneNodeId node) const;
     void MarkSubtreeDirty(SceneNodeId node, SceneDirtyMask flags);
     void BumpRevision(SceneNodeRecord& record, SceneDirtyMask flags);

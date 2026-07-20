@@ -644,7 +644,8 @@ void AnimationRuntime::AdvanceCrossfade(AnimatorRecord& animator, FrameDuration 
 
 void AnimationRuntime::QueueEvent(AnimatorInstanceId animator, std::string name, float time)
 {
-    if (options_.event_capacity != 0 && events_.size() >= options_.event_capacity)
+    const std::size_t event_capacity = options_.event_capacity == 0 ? AnimationOptions{}.event_capacity : options_.event_capacity;
+    if (event_capacity != 0 && events_.size() >= event_capacity)
     {
         events_.erase(events_.begin());
     }
