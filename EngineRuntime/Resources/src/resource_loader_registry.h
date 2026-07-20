@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Runtime/Resources/resource_loader_registry.h"
 

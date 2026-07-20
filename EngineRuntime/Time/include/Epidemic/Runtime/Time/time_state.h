@@ -5,10 +5,8 @@ namespace epidemic::runtime
 enum class DayPhase
 {
     Dawn,
-    Morning,
-    Noon,
-    Afternoon,
-    Evening,
+    Day,
+    Dusk,
     Night,
 };
 
@@ -17,7 +15,6 @@ enum class TimeRuntimeState
     Running,
     Paused,
     TimeScaleChanged,
-    Skipping,
     TimeJumped,
     DayChanged,
     PhaseChanged,

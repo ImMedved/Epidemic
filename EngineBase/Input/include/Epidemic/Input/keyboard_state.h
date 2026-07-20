@@ -78,4 +78,4 @@ class KeyboardState
     std::array<bool, KeyCount> keys_pressed_{};
     std::array<bool, KeyCount> keys_released_{};
 };
-} // namespace epidemic::input
+} 

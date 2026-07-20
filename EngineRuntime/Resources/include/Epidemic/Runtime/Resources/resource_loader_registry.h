@@ -5,6 +5,8 @@
 
 namespace epidemic::runtime
 {
+// Threading: mutation must occur on the runtime thread.
+// Concurrent reads/writes are not supported unless explicitly documented.
 class IResourceLoaderRegistry
 {
   public:

@@ -70,4 +70,4 @@ class Path
   private:
     std::filesystem::path path_;
 };
-} // namespace epidemic::foundation
+} 

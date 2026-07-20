@@ -35,4 +35,4 @@ class IInputSystem
     // Returns the transient events produced by the most recent PublishSnapshot() call.
     [[nodiscard]] virtual std::span<const InputEvent> CurrentEvents() const noexcept = 0;
 };
-} // namespace epidemic::input
+} 

@@ -26,4 +26,4 @@ class ConsoleLogger final : public ILogger
     std::ofstream file_;
     bool file_initialized_{false};
 };
-} // namespace epidemic::diagnostics
+} 

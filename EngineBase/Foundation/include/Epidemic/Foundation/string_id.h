@@ -85,7 +85,7 @@ using NameId = detail::BasicId<detail::NameIdTag>;
 using ModuleId = detail::BasicId<detail::ModuleIdTag>;
 using ServiceId = detail::BasicId<detail::ServiceIdTag>;
 using EventTypeId = detail::BasicId<detail::EventTypeIdTag>;
-} // namespace epidemic::foundation
+} 
 
 namespace std
 {

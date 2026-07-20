@@ -1,6 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
+
+#include <cstdint>
 
 namespace epidemic::runtime
 {
@@ -19,13 +21,37 @@ enum class SurfaceConditionKind
 struct SurfaceState
 {
     SurfaceId surface_id{};
+    RegionId region_id{};
     SurfaceConditionKind condition = SurfaceConditionKind::Dry;
     float wetness = 0.0f;
     float snow_depth = 0.0f;
     float mud_depth = 0.0f;
     float ice_thickness = 0.0f;
     float temperature = 0.0f;
+    std::uint64_t revision = 0;
 
     [[nodiscard]] constexpr bool operator==(const SurfaceState&) const noexcept = default;
 };
+
+[[nodiscard]] constexpr SurfaceConditionKind DeriveSurfaceCondition(const SurfaceState& state) noexcept
+{
+    if (state.ice_thickness > 0.0f)
+    {
+        return SurfaceConditionKind::Icy;
+    }
+    if (state.snow_depth > 0.0f)
+    {
+        return SurfaceConditionKind::SnowCovered;
+    }
+    if (state.mud_depth > 0.0f)
+    {
+        return SurfaceConditionKind::Muddy;
+    }
+    if (state.wetness > 0.0f)
+    {
+        return SurfaceConditionKind::Wet;
+    }
+    return SurfaceConditionKind::Dry;
+}
 } // namespace epidemic::runtime
+

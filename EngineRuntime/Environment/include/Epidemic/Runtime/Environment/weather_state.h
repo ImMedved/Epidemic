@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 namespace epidemic::runtime
 {
@@ -21,6 +21,8 @@ struct WeatherState
     float precipitation = 0.0f;
     float wind_speed = 0.0f;
     float wind_direction_degrees = 0.0f;
+    float current_temperature = 0.0f;
+    float current_humidity = 0.0f;
 
     [[nodiscard]] constexpr bool operator==(const WeatherState&) const noexcept = default;
 };

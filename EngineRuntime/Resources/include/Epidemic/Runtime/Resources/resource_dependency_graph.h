@@ -3,6 +3,7 @@
 #include "Epidemic/Runtime/Foundation/runtime_ids.h"
 #include "Epidemic/Runtime/Resources/resource_type.h"
 
+
 #include <vector>
 
 namespace epidemic::runtime
@@ -21,4 +22,4 @@ struct ResourceDependencySet
     ResourceId root{};
     std::vector<ResourceDependency> dependencies;
 };
-} // namespace epidemic::runtime
+} 

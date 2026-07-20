@@ -1,105 +1,118 @@
-#pragma once
+﻿#pragma once
 
-#include "Epidemic/Runtime/Persistence/dirty_tracker.h"
-#include "Epidemic/Runtime/Persistence/lazy_rule_record.h"
+#include "Epidemic/Runtime/Persistence/persistence_backend.h"
+#include "Epidemic/Runtime/Persistence/persistence_operation.h"
+#include "Epidemic/Runtime/Persistence/persistence_services.h"
 #include "Epidemic/Runtime/Persistence/persistence_store.h"
-#include "Epidemic/Runtime/Persistence/persistent_object_store.h"
-#include "Epidemic/Runtime/Persistence/save_transaction.h"
-#include "Epidemic/Runtime/Persistence/tombstone_store.h"
-#include "Epidemic/Runtime/Persistence/zone_override_store.h"
 
+#include <cstddef>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 namespace epidemic::runtime
 {
 struct PersistenceLocationHash
 {
-    [[nodiscard]] size_t operator()(const PersistenceLocation& location) const noexcept
-    {
-        size_t seed = std::hash<RegionId>{}(location.region_id);
-        seed ^= std::hash<ChunkId>{}(location.chunk_id) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        seed ^= std::hash<std::uint64_t>{}(location.location_tag.Raw()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        return seed;
-    }
+    [[nodiscard]] size_t operator()(const PersistenceLocation& location) const noexcept;
 };
 
-class InMemoryDirtyTracker final : public IDirtyTracker
-{
-  public:
-    void MarkDirty(PersistentObjectId id) override;
-    void MarkClean(PersistentObjectId id) override;
-    [[nodiscard]] bool IsDirty(PersistentObjectId id) const override;
-    [[nodiscard]] std::vector<PersistentObjectId> CollectDirty() const override;
+class InMemoryPersistenceStore;
 
-  private:
-    std::unordered_set<PersistentObjectId> dirty_ids_;
+struct PersistenceCandidateState
+{
+    PersistenceSnapshot snapshot{};
+    std::unordered_set<PersistentObjectId> dirty_ids{};
 };
 
-class InMemoryTombstoneStore final : public ITombstoneStore
+class InMemorySaveTransaction final : public ISaveTransaction, public IPersistenceAdministrativeTransaction
 {
   public:
-    [[nodiscard]] foundation::Result<void> AddTombstone(PersistentObjectId id) override;
-    [[nodiscard]] bool IsTombstoned(PersistentObjectId id) const override;
-
-  private:
-    std::unordered_set<PersistentObjectId> tombstones_;
-};
-
-class InMemoryZoneOverrideStore final : public IZoneOverrideStore
-{
-  public:
-    [[nodiscard]] foundation::Result<void> Upsert(ZoneOverrideSnapshot snapshot) override;
-    [[nodiscard]] std::optional<ZoneOverrideSnapshot> Find(const PersistenceLocation& location) const override;
-    [[nodiscard]] foundation::Result<void> Remove(const PersistenceLocation& location) override;
-
-  private:
-    std::unordered_map<PersistenceLocation, ZoneOverrideSnapshot, PersistenceLocationHash> overrides_;
-};
-
-class InMemoryPersistentObjectStore final : public IPersistentObjectStore
-{
-  public:
-    [[nodiscard]] foundation::Result<void> Upsert(PersistentObjectRecord record) override;
-    [[nodiscard]] std::optional<PersistentObjectRecord> Find(PersistentObjectId id) const override;
-    [[nodiscard]] std::vector<PersistentObjectRecord> FindByLocation(const PersistenceLocation& location) const override;
-    [[nodiscard]] foundation::Result<void> Remove(PersistentObjectId id) override;
-
-  private:
-    std::unordered_map<PersistentObjectId, PersistentObjectRecord> records_;
-};
-
-class InMemorySaveTransaction final : public ISaveTransaction
-{
-  public:
-    InMemorySaveTransaction();
+    InMemorySaveTransaction(InMemoryPersistenceStore& store, PersistenceRevision base_revision);
 
     [[nodiscard]] SaveTransactionState GetState() const override;
+    [[nodiscard]] PersistenceRevision GetBaseRevision() const override;
+    [[nodiscard]] foundation::Result<void> UpsertObject(PersistentObjectRecord record) override;
+    [[nodiscard]] foundation::Result<void> DeleteObject(TombstoneRecord tombstone) override;
+    [[nodiscard]] foundation::Result<void> UpsertLazyRule(LazyRuleRecord record) override;
+    [[nodiscard]] foundation::Result<void> UpdateLazyRule(LazyRuleRecord record) override;
+    [[nodiscard]] foundation::Result<void> RemoveLazyRule(LazyRuleId id) override;
+    [[nodiscard]] foundation::Result<void> UpsertZoneOverride(ZoneOverrideSnapshot snapshot) override;
+    [[nodiscard]] foundation::Result<void> RemoveZoneOverride(const PersistenceLocation& location) override;
     [[nodiscard]] foundation::Result<void> Commit() override;
     void Rollback() override;
 
+    [[nodiscard]] foundation::Result<void> AdminRemoveObject(PersistentObjectId id) override;
+    [[nodiscard]] foundation::Result<void> AdminAddTombstone(TombstoneRecord tombstone) override;
+
   private:
-    SaveTransactionState state_ = SaveTransactionState::NotStarted;
+    friend class InMemoryPersistenceStore;
+
+    [[nodiscard]] foundation::Result<void> EnsureOpen() const;
+
+    InMemoryPersistenceStore& store_;
+    PersistenceRevision base_revision_ = 0;
+    SaveTransactionState state_ = SaveTransactionState::Open;
+    std::vector<PersistenceOperation> operations_;
 };
 
 class InMemoryPersistenceStore final : public IPersistenceStore
 {
   public:
-    [[nodiscard]] IPersistentObjectStore& Objects() override;
-    [[nodiscard]] IDirtyTracker& Dirty() override;
-    [[nodiscard]] ITombstoneStore& Tombstones() override;
-    [[nodiscard]] IZoneOverrideStore& ZoneOverrides() override;
+    InMemoryPersistenceStore() = default;
+    explicit InMemoryPersistenceStore(PersistenceSnapshot snapshot);
+    InMemoryPersistenceStore(PersistenceSnapshot snapshot, std::shared_ptr<IPersistenceBackend> backend, PersistenceDurability durability);
 
-    [[nodiscard]] foundation::Result<void> UpsertLazyRule(LazyRuleRecord record) override;
+    [[nodiscard]] std::optional<PersistentObjectRecord> FindObject(PersistentObjectId id) const override;
+    [[nodiscard]] std::vector<PersistentObjectRecord> FindByLocation(const PersistenceLocation& location) const override;
+    [[nodiscard]] std::vector<PersistentObjectRecord> ListObjects() const override;
+
+    [[nodiscard]] bool IsDirty(PersistentObjectId id) const override;
+    [[nodiscard]] std::vector<PersistentObjectId> CollectDirty() const override;
+
+    [[nodiscard]] std::optional<TombstoneRecord> FindTombstone(PersistentObjectId id) const override;
+    [[nodiscard]] bool IsTombstoned(PersistentObjectId id) const override;
+    [[nodiscard]] std::vector<TombstoneRecord> ListTombstones() const override;
+
+    [[nodiscard]] std::optional<ZoneOverrideSnapshot> FindZoneOverride(const PersistenceLocation& location) const override;
+    [[nodiscard]] std::vector<ZoneOverrideSnapshot> ListZoneOverrides() const override;
+
+    [[nodiscard]] std::optional<LazyRuleRecord> FindLazyRule(LazyRuleId id) const override;
     [[nodiscard]] std::vector<LazyRuleRecord> FindLazyRules(PersistentObjectId target_id) const override;
-
+    [[nodiscard]] std::vector<LazyRuleRecord> QueryDueLazyRules(GameTimePoint now) const override;
+    [[nodiscard]] std::vector<LazyRuleRecord> ListLazyRules() const override;
+    [[nodiscard]] PersistenceRevision GetRevision() const override;
     [[nodiscard]] std::unique_ptr<ISaveTransaction> OpenTransaction() override;
+    [[nodiscard]] std::unique_ptr<ISaveTransaction> OpenTransaction(PersistenceRevision base_revision) override;
+    [[nodiscard]] PersistenceSnapshot CreateSnapshot() const;
 
   private:
-    InMemoryPersistentObjectStore object_store_;
-    InMemoryDirtyTracker dirty_tracker_;
-    InMemoryTombstoneStore tombstone_store_;
-    InMemoryZoneOverrideStore zone_override_store_;
-    std::unordered_multimap<PersistentObjectId, LazyRuleRecord> lazy_rules_;
+    friend class InMemorySaveTransaction;
+
+    [[nodiscard]] foundation::Result<PersistenceCandidateState> BuildCandidateSnapshot(const InMemorySaveTransaction& transaction) const;
+    [[nodiscard]] foundation::Result<void> PublishSnapshot(PersistenceCandidateState candidate);
+
+    std::unordered_map<PersistentObjectId, PersistentObjectRecord> objects_;
+    std::unordered_map<LazyRuleId, LazyRuleRecord> lazy_rules_;
+    std::unordered_map<PersistentObjectId, TombstoneRecord> tombstones_;
+    std::unordered_map<PersistenceLocation, ZoneOverrideSnapshot, PersistenceLocationHash> zone_overrides_;
+    std::unordered_set<PersistentObjectId> dirty_ids_;
+    PersistenceRevision revision_ = 0;
+    std::shared_ptr<IPersistenceBackend> backend_;
+    PersistenceDurability durability_ = PersistenceDurability::MemoryOnly;
+};
+
+[[nodiscard]] foundation::Result<void> ValidatePersistenceSnapshot(const PersistenceSnapshot& snapshot);
+
+class InMemoryPersistenceBackend final : public IPersistenceBackend
+{
+  public:
+    [[nodiscard]] foundation::Result<PersistenceSnapshot> Load() override;
+    [[nodiscard]] foundation::Result<void> CommitSnapshot(const PersistenceSnapshot& snapshot, PersistenceDurability durability) override;
+
+  private:
+    PersistenceSnapshot snapshot_{};
 };
 } // namespace epidemic::runtime
+
+

@@ -37,4 +37,4 @@ struct InputEvent
     std::int32_t mouse_delta_y{};
     std::int32_t wheel_delta{};
 };
-} // namespace epidemic::input
+} 

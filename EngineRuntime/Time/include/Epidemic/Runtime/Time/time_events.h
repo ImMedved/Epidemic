@@ -10,7 +10,7 @@ enum class TimeEventKind
     TimeScaleChanged,
     Paused,
     Resumed,
-    TimeSkipped,
+    TimeJumped,
     DayChanged,
     DayPhaseChanged,
 };

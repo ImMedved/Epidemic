@@ -1,47 +1,46 @@
-#include "serializer_registry.h"
+﻿#include "serializer_registry.h"
 
 #include "Epidemic/Runtime/Serialization/serialization_error.h"
 
 namespace epidemic::runtime
 {
-foundation::Result<void> SerializerRegistry::RegisterSerializer(ISerializer& serializer)
+namespace
 {
-    const foundation::StringId type_id = serializer.GetTypeId();
+[[nodiscard]] foundation::Result<void> SerializerFailure(std::string_view code, std::string_view message)
+{
+    return foundation::Result<void>::Failure(CreateSerializationError(code, message));
+}
+} // namespace
+
+foundation::Result<void> SerializerRegistry::RegisterSerializer(std::shared_ptr<const ISerializer> serializer)
+{
+    if (!serializer)
+    {
+        return SerializerFailure("serialization.serializer.null", "serializer pointer must not be null");
+    }
+
+    const foundation::StringId type_id = serializer->GetTypeId();
     if (!type_id.IsValid())
     {
-        return foundation::Result<void>::Failure(
-            CreateSerializationError("serialization.serializer.invalid_type", "serializer must declare a valid type id"));
+        return SerializerFailure("serialization.serializer.invalid_type", "serializer must declare a valid type id");
     }
 
     if (serializers_.contains(type_id))
     {
-        return foundation::Result<void>::Failure(
-            CreateSerializationError("serialization.serializer.duplicate_type", "serializer type is already registered"));
+        return SerializerFailure("serialization.serializer.duplicate_type", "serializer type is already registered");
     }
 
-    serializers_.emplace(type_id, &serializer);
+    serializers_.emplace(type_id, std::move(serializer));
     return foundation::Result<void>::Success();
 }
 
-ISerializer* SerializerRegistry::FindSerializer(foundation::StringId type_id)
+std::shared_ptr<const ISerializer> SerializerRegistry::FindSerializer(foundation::StringId type_id) const
 {
     const auto iterator = serializers_.find(type_id);
     if (iterator == serializers_.end())
     {
-        return nullptr;
+        return {};
     }
-
-    return iterator->second;
-}
-
-const ISerializer* SerializerRegistry::FindSerializer(foundation::StringId type_id) const
-{
-    const auto iterator = serializers_.find(type_id);
-    if (iterator == serializers_.end())
-    {
-        return nullptr;
-    }
-
     return iterator->second;
 }
 

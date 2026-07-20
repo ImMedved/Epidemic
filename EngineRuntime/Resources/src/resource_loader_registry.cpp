@@ -1,4 +1,4 @@
-#include "resource_loader_registry.h"
+﻿#include "resource_loader_registry.h"
 
 #include "Epidemic/Foundation/error.h"
 
@@ -12,7 +12,6 @@ foundation::Result<void> ResourceLoaderRegistry::RegisterLoader(IResourceLoader&
         return foundation::Result<void>::Failure(
             foundation::Error::Create("resource_loader.invalid_type", "resource loader must declare a valid resource type"));
     }
-
     if (loaders_.contains(type.value))
     {
         return foundation::Result<void>::Failure(
@@ -30,7 +29,6 @@ IResourceLoader* ResourceLoaderRegistry::FindLoader(ResourceType type)
     {
         return nullptr;
     }
-
     return iterator->second;
 }
 
@@ -41,7 +39,6 @@ const IResourceLoader* ResourceLoaderRegistry::FindLoader(ResourceType type) con
     {
         return nullptr;
     }
-
     return iterator->second;
 }
 

@@ -1,7 +1,8 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/Runtime/Resources/resource_dependency_graph.h"
+#include "Epidemic/Runtime/Resources/resource_payload.h"
 #include "Epidemic/Runtime/Resources/resource_request.h"
 #include "Epidemic/Runtime/Resources/resource_type.h"
 
@@ -13,6 +14,7 @@ struct ResourceLoadArtifact
 {
     ResourceId resource_id{};
     ResourceType type{};
+    ResourcePayloadPtr payload{};
     std::vector<ResourceDependency> dependencies;
 };
 

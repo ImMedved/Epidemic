@@ -13,4 +13,4 @@ void SetCurrentThreadName(std::string name);
 
 // Returns the current thread's stored name, or an empty view when none was assigned.
 [[nodiscard]] std::string_view GetCurrentThreadName() noexcept;
-} // namespace epidemic::diagnostics
+} 

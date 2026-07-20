@@ -158,4 +158,4 @@ class ILogger
         Log(LogLevel::Fatal, module_name, message);
     }
 };
-} // namespace epidemic::diagnostics
+} 

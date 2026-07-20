@@ -25,7 +25,7 @@ class IMigration
     virtual ~IMigration() = default;
 
     [[nodiscard]] virtual MigrationKey GetKey() const = 0;
-    [[nodiscard]] virtual foundation::Result<void> Apply(IArchiveReader& input, IArchiveWriter& output) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Apply(IArchiveReader& input, IArchiveWriter& output) const = 0;
 };
 } // namespace epidemic::runtime
 

@@ -57,7 +57,7 @@ template <typename TTag> class Handle
     std::uint32_t index_{kInvalidIndex};
     std::uint32_t generation_{0};
 };
-} // namespace epidemic::foundation
+} 
 
 namespace std
 {

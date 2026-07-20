@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Runtime/Scene/scene_state.h"
 
@@ -33,7 +33,11 @@ struct SceneNode
 {
     SceneNodeId id{};
     SceneNodeId parent_id{};
-    SceneNodeState state = SceneNodeState::Detached;
+    SceneAttachmentState attachment_state = SceneAttachmentState::Detached;
+    SceneMobility mobility = SceneMobility::Dynamic;
+    SceneVisibilityState visibility = SceneVisibilityState::Visible;
+    SceneDirtyMask dirty_flags = 0;
+    std::uint64_t revision = 0;
 
     [[nodiscard]] constexpr bool operator==(const SceneNode&) const noexcept = default;
 };

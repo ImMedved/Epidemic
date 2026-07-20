@@ -16,6 +16,7 @@ set(_epidemic_runtime_persistence_forbidden_targets
     EpidemicRuntimeWorld
     EpidemicRuntimeSerialization
     EpidemicRuntimeAssets
+    EpidemicRuntimeSupport
 )
 
 get_target_property(_epidemic_runtime_persistence_links EpidemicRuntimePersistence LINK_LIBRARIES)

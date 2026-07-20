@@ -116,4 +116,4 @@ void ConsoleLogger::Log(const LogMessage &message)
         file_.flush();
     }
 }
-} // namespace epidemic::diagnostics
+} 

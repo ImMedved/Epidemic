@@ -5,4 +5,4 @@
 namespace epidemic::runtime
 {
 template <typename Tag> using RuntimeHandle = foundation::Handle<Tag>;
-} // namespace epidemic::runtime
+} 

@@ -1,0 +1,34 @@
+﻿add_library(EpidemicRuntimeSupport STATIC
+    src/runtime_support.cpp
+)
+
+target_include_directories(EpidemicRuntimeSupport PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/include"
+)
+
+target_link_libraries(EpidemicRuntimeSupport
+    PUBLIC EpidemicCore
+    PUBLIC EpidemicRuntimeFoundation
+    PUBLIC EpidemicRuntimeAssets
+    PUBLIC EpidemicRuntimeSerialization
+    PUBLIC EpidemicRuntimeResources
+    PUBLIC EpidemicRuntimePersistence
+    PUBLIC EpidemicRuntimeTime
+    PUBLIC EpidemicRuntimeEnvironment
+    PUBLIC EpidemicRuntimeScene
+    PUBLIC EpidemicRuntimeWorld
+    PUBLIC EpidemicRuntimeStreaming
+    PUBLIC EpidemicRuntimeSimulation
+    PUBLIC EpidemicRuntimeNavigation
+    PUBLIC EpidemicRuntimeAnimation
+    PUBLIC EpidemicRuntimePhysics
+    PUBLIC EpidemicRuntimeAudio
+    PUBLIC EpidemicRuntimeRenderer
+    PRIVATE EpidemicFoundation
+)
+
+epidemic_configure_target(EpidemicRuntimeSupport)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

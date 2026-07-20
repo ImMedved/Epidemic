@@ -127,4 +127,4 @@ class DiagnosticsCounters
 // Returns the process-wide diagnostics counter registry.
 // Relationship: core systems use this singleton-like accessor for low-friction instrumentation.
 [[nodiscard]] DiagnosticsCounters &GlobalCounters() noexcept;
-} // namespace epidemic::diagnostics
+} 

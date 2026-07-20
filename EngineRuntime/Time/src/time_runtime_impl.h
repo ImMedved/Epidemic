@@ -1,50 +1,50 @@
 #pragma once
 
-#include "Epidemic/Runtime/Time/time_events.h"
 #include "Epidemic/Runtime/Time/time_runtime.h"
-#include "Epidemic/Runtime/Time/time_snapshot.h"
 
 #include <vector>
 
 namespace epidemic::runtime
 {
-class TimeRuntime final : public ITimeRuntime
+class TimeRuntime final : public IGameClock, public ITimeRuntime
 {
   public:
-    TimeRuntime();
+    explicit TimeRuntime(TimeOptions options = {});
 
-    [[nodiscard]] GameTime Now() const override;
+    [[nodiscard]] GameTimePoint Now() const override;
     [[nodiscard]] GameDuration LastDelta() const override;
-    [[nodiscard]] float GetTimeScale() const override;
-    [[nodiscard]] bool IsPaused() const override;
-    [[nodiscard]] CalendarDate GetCalendarDate() const override;
-    [[nodiscard]] DayPhase GetDayPhase() const override;
+    [[nodiscard]] TimeSnapshot GetSnapshot() const override;
 
-    void SetTimeScale(float scale) override;
-    void Pause() override;
-    void Resume() override;
-    [[nodiscard]] foundation::Result<void> Skip(GameDuration duration) override;
+    [[nodiscard]] foundation::Result<TimeAdvanceResult> Advance(std::chrono::microseconds real_delta) override;
+    [[nodiscard]] foundation::Result<void> Pause() override;
+    [[nodiscard]] foundation::Result<void> Resume() override;
+    [[nodiscard]] foundation::Result<void> SetTimeScale(TimeScale scale) override;
+    [[nodiscard]] foundation::Result<TimeAdvanceResult> Skip(GameDuration duration) override;
 
-    void Update(GameDuration real_delta);
-
-    [[nodiscard]] TimeSnapshot GetSnapshot() const;
     [[nodiscard]] const std::vector<TimeEvent>& GetEvents() const;
+    [[nodiscard]] foundation::Result<GameTimePoint> ToGameTimePoint(CalendarDate date) const;
+    [[nodiscard]] CalendarDate ToCalendarDate(GameTimePoint time) const;
 
   private:
-    [[nodiscard]] static CalendarDate ToCalendarDate(GameTime time) noexcept;
-    [[nodiscard]] static DayPhase DetermineDayPhase(const CalendarDate& date) noexcept;
+    [[nodiscard]] foundation::Result<void> ValidateOptions() const;
+    [[nodiscard]] foundation::Result<void> ValidateDate(CalendarDate date) const;
+    [[nodiscard]] DayPhase DetermineDayPhase(const CalendarDate& date) const;
+    [[nodiscard]] TimeAdvanceResult MakeResult(TimeSnapshot previous) const;
 
-    void RefreshSnapshot();
+    void RefreshSnapshot(bool changed);
     void PushEvent(TimeEventKind kind);
-    void AppendBoundaryEvents(CalendarDate previous_date, DayPhase previous_phase);
+    void AppendBoundaryEvents(const TimeSnapshot& previous);
     void ClearEvents();
 
-    GameTime now_{};
+    TimeOptions options_{};
+    GameTimePoint now_{};
     GameDuration last_delta_{};
-    float time_scale_ = 1.0f;
+    TimeScale time_scale_{};
     bool paused_ = false;
     TimeRuntimeState state_ = TimeRuntimeState::Running;
     TimeSnapshot snapshot_{};
     std::vector<TimeEvent> events_;
+    std::int64_t tick_remainder_numerator_ = 0;
+    std::uint64_t revision_ = 0;
 };
 } // namespace epidemic::runtime

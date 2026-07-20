@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "Epidemic/Foundation/string_id.h"
 
@@ -20,6 +20,9 @@ struct RuntimeObjectIdTag
 {
 };
 struct PersistentObjectIdTag
+{
+};
+struct LazyRuleIdTag
 {
 };
 struct RegionIdTag
@@ -137,6 +140,11 @@ struct PersistentObjectId : detail::NumericRuntimeId<detail::PersistentObjectIdT
     using detail::NumericRuntimeId<detail::PersistentObjectIdTag>::NumericRuntimeId;
 };
 
+struct LazyRuleId : detail::NumericRuntimeId<detail::LazyRuleIdTag>
+{
+    using detail::NumericRuntimeId<detail::LazyRuleIdTag>::NumericRuntimeId;
+};
+
 struct RegionId : detail::NumericRuntimeId<detail::RegionIdTag>
 {
     using detail::NumericRuntimeId<detail::RegionIdTag>::NumericRuntimeId;
@@ -156,7 +164,7 @@ struct SimulationZoneId : detail::NumericRuntimeId<detail::SimulationZoneIdTag>
 {
     using detail::NumericRuntimeId<detail::SimulationZoneIdTag>::NumericRuntimeId;
 };
-} // namespace epidemic::runtime
+} 
 
 namespace std
 {
@@ -200,6 +208,14 @@ template <> struct hash<epidemic::runtime::PersistentObjectId>
     }
 };
 
+template <> struct hash<epidemic::runtime::LazyRuleId>
+{
+    [[nodiscard]] size_t operator()(epidemic::runtime::LazyRuleId value) const noexcept
+    {
+        return hash<std::uint64_t>{}(value.Raw());
+    }
+};
+
 template <> struct hash<epidemic::runtime::RegionId>
 {
     [[nodiscard]] size_t operator()(epidemic::runtime::RegionId value) const noexcept
@@ -232,3 +248,7 @@ template <> struct hash<epidemic::runtime::SimulationZoneId>
     }
 };
 } // namespace std
+
+
+
+

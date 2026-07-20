@@ -1,8 +1,10 @@
 # Epidemic Engine v1.0
 
-`EngineBase` is the current stable runtime base of the repository. It contains the low-level engine contracts and the minimal executable baseline needed to bootstrap the engine, open a native window, process input, run a frame loop, and present through a minimal RHI boundary.
+`EngineBase` is the stable low-level engine base of the repository. It contains the engine contracts and the minimal executable baseline needed to bootstrap the engine, open a native window, process input, run a frame loop, and present through a minimal RHI boundary.
 
-Today the repository is intentionally centered on `EngineBase/`. This layer includes:
+`EngineRuntime` is the modular runtime layer above EngineBase. It owns runtime systems, shared runtime state, backend-facing contracts and Support composition, but it does not contain gameplay rules or concrete game content.
+
+`EngineBase/` includes:
 
 - `Foundation`
 - `Memory`
@@ -15,9 +17,28 @@ Today the repository is intentionally centered on `EngineBase/`. This layer incl
 - `Support`
 - smoke apps and grouped tests
 
-`EngineBase` does not contain renderer-grade systems, asset/resource management, world runtime, gameplay framework, editor logic, or game-specific code. Those belong to the future upper layers:
+`EngineRuntime/` includes:
 
-- `EngineRuntime`
+- `RuntimeFoundation`
+- `Assets`
+- `Resources`
+- `Serialization`
+- `Persistence`
+- `Time`
+- `Environment`
+- `Scene`
+- `World`
+- `Streaming`
+- `Renderer`
+- `Physics`
+- `Navigation`
+- `Animation`
+- `Audio`
+- `Simulation`
+- `Support`
+
+Gameplay and final product behavior belong above these layers:
+
 - `GameFramework`
 - `Game`
 
@@ -34,6 +55,12 @@ cmake --build build --config Debug
 
 ```powershell
 ctest --test-dir build -C Debug --output-on-failure
+```
+
+Runtime-focused tests can be filtered with:
+
+```powershell
+ctest --test-dir build -R EpidemicRuntime --output-on-failure
 ```
 
 ## Smoke Apps
@@ -64,3 +91,9 @@ Detailed `EngineBase` module documentation lives in:
 - `EngineBase/README.md`
 - `EngineBase/API_STABILITY.md`
 - `docs/base/README.md`
+
+Detailed `EngineRuntime` documentation lives in:
+
+- `docs/runtime/README.md`
+- `docs/runtime/api_stability.md`
+- `docs/runtime/using_runtime.md`

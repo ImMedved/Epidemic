@@ -1,24 +1,35 @@
-#include "environment_runtime_impl.h"
+﻿#include "environment_runtime_impl.h"
 
 #include "Epidemic/Runtime/Environment/climate_profile.h"
 #include "Epidemic/Runtime/Environment/environment_projection.h"
 #include "Epidemic/Runtime/Environment/environment_runtime.h"
+#include "Epidemic/Runtime/Environment/environment_services.h"
 #include "Epidemic/Runtime/Environment/environment_snapshot.h"
 #include "Epidemic/Runtime/Environment/environment_update.h"
 #include "Epidemic/Runtime/Environment/season_state.h"
 #include "Epidemic/Runtime/Environment/surface_state.h"
 #include "Epidemic/Runtime/Environment/weather_state.h"
 
+#include <iostream>
+#include <memory>
 #include <type_traits>
 
 namespace
 {
+using epidemic::foundation::Result;
 using epidemic::runtime::ClimateProfile;
+using epidemic::runtime::CreateEnvironmentServices;
 using epidemic::runtime::EnvironmentProjection;
 using epidemic::runtime::EnvironmentRuntime;
 using epidemic::runtime::EnvironmentSnapshot;
+using epidemic::runtime::EnvironmentStateUpdate;
 using epidemic::runtime::EnvironmentUpdateInput;
+using epidemic::runtime::GameDuration;
+using epidemic::runtime::GameTimePoint;
+using epidemic::runtime::IEnvironmentQuery;
 using epidemic::runtime::IEnvironmentRuntime;
+using epidemic::runtime::IEnvironmentUpdatePolicy;
+using epidemic::runtime::IEnvironmentWriter;
 using epidemic::runtime::RegionId;
 using epidemic::runtime::SeasonKind;
 using epidemic::runtime::SeasonState;
@@ -28,77 +39,408 @@ using epidemic::runtime::SurfaceState;
 using epidemic::runtime::WeatherKind;
 using epidemic::runtime::WeatherState;
 
-bool TestDefaultWeatherIsClear()
+[[nodiscard]] bool SeedRegion(EnvironmentRuntime& runtime, RegionId region)
 {
-    EnvironmentRuntime runtime;
-    const WeatherState weather = runtime.GetWeather(RegionId{77});
-    return weather.kind == WeatherKind::Clear && weather.intensity == 0.0f;
+    return static_cast<bool>(runtime.RegisterRegionEnvironment(region,
+                                                               WeatherState{WeatherKind::Rain, 0.7f, 0.8f, 0.6f, 4.0f, 180.0f, 11.0f, 0.65f},
+                                                               SeasonState{SeasonKind::Autumn, 0.5f},
+                                                               ClimateProfile{9.0f, 0.75f, 3.0f, 900.0f}));
 }
 
-bool TestSetGetWeatherByRegion()
+[[nodiscard]] SurfaceState MakeSurface(SurfaceId surface, RegionId region)
+{
+    SurfaceState state{};
+    state.surface_id = surface;
+    state.region_id = region;
+    state.condition = SurfaceConditionKind::Muddy;
+    state.wetness = 0.6f;
+    state.snow_depth = 0.2f;
+    state.mud_depth = 0.4f;
+    state.ice_thickness = 0.1f;
+    state.temperature = 1.5f;
+    return state;
+}
+
+class WetnessPolicy final : public IEnvironmentUpdatePolicy
+{
+  public:
+    [[nodiscard]] Result<EnvironmentStateUpdate> BuildUpdate(const EnvironmentUpdateInput& input, const IEnvironmentQuery& query) const override
+    {
+        const auto surface = query.GetSurfaceState(SurfaceId{10});
+        if (!surface)
+        {
+            return Result<EnvironmentStateUpdate>::Failure(surface.GetError());
+        }
+
+        SurfaceState updated = surface.Value();
+        updated.wetness = 0.25f;
+        updated.mud_depth = 0.7f;
+        updated.condition = SurfaceConditionKind::Muddy;
+        updated.temperature = static_cast<float>(input.game_delta.ticks) * 0.01f;
+
+        EnvironmentStateUpdate update{};
+        update.region = input.region_id;
+        const auto region_revision = query.GetRegionRevision(input.region_id);
+        if (!region_revision)
+        {
+            return Result<EnvironmentStateUpdate>::Failure(region_revision.GetError());
+        }
+        update.source_revision = region_revision.Value();
+        update.surfaces.push_back(updated);
+        return Result<EnvironmentStateUpdate>::Success(std::move(update));
+    }
+};
+
+[[nodiscard]] bool TestUnknownRegionAndSurfaceFail()
+{
+    EnvironmentRuntime runtime;
+    const auto weather = runtime.GetWeather(RegionId{77});
+    const auto surface = runtime.GetSurfaceState(SurfaceId{88});
+    const auto snapshot = runtime.BuildSnapshot(RegionId{77});
+    return !weather && weather.GetError().HasCode("environment.region_unknown") && !surface &&
+           surface.GetError().HasCode("environment.surface_unknown") && !snapshot && snapshot.GetError().HasCode("environment.region_unknown");
+}
+
+[[nodiscard]] bool TestSetGetWeatherSeasonClimateByRegion()
 {
     EnvironmentRuntime runtime;
     const RegionId region{10};
-    runtime.SetWeather(region, WeatherState{WeatherKind::Storm, 1.0f, 1.0f, 0.9f, 12.0f, 270.0f});
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
 
-    const WeatherState weather = runtime.GetWeather(region);
-    return weather.kind == WeatherKind::Storm && weather.wind_speed == 12.0f && weather.precipitation == 0.9f;
+    const auto weather = runtime.GetWeather(region);
+    const auto season = runtime.GetSeason(region);
+    const auto climate = runtime.GetClimateProfile(region);
+    const auto region_revision = runtime.GetRegionRevision(region);
+    return weather && weather.Value().kind == WeatherKind::Rain && season && season.Value().kind == SeasonKind::Autumn && climate &&
+           climate.Value().average_humidity == 0.75f && region_revision && region_revision.Value() == 1u && runtime.GetRevision() == 1u;
 }
 
-bool TestSetGetSeasonByRegion()
+[[nodiscard]] bool TestDuplicateRegionRegistrationRejected()
 {
     EnvironmentRuntime runtime;
-    const RegionId region{11};
-    runtime.SetSeason(region, SeasonState{SeasonKind::Winter, 0.4f});
-
-    const SeasonState season = runtime.GetSeason(region);
-    return season.kind == SeasonKind::Winter && season.progress == 0.4f;
+    const RegionId region{12};
+    const auto first = runtime.RegisterRegionEnvironment(region,
+                                                          WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f},
+                                                          SeasonState{SeasonKind::Spring, 0.0f},
+                                                          ClimateProfile{10.0f, 0.5f, 1.0f, 300.0f});
+    const auto duplicate = runtime.RegisterRegionEnvironment(region,
+                                                              WeatherState{WeatherKind::Storm, 1.0f, 1.0f, 1.0f, 8.0f, 90.0f},
+                                                              SeasonState{SeasonKind::Winter, 0.8f},
+                                                              ClimateProfile{-5.0f, 0.8f, 4.0f, 800.0f});
+    const auto weather = runtime.GetWeather(region);
+    return first && !duplicate && duplicate.GetError().HasCode("environment.region_already_registered") &&
+           weather && weather.Value().kind == WeatherKind::Clear && runtime.GetRevision() == 1u;
 }
 
-bool TestSetGetSurfaceState()
+[[nodiscard]] bool TestNoOpSettersDoNotBumpRevision()
 {
     EnvironmentRuntime runtime;
-    runtime.SetSurfaceState(SurfaceState{SurfaceId{12}, SurfaceConditionKind::Muddy, 0.2f, 0.0f, 0.4f, 0.0f, 8.0f});
+    const RegionId region{13};
+    if (!SeedRegion(runtime, region) || !runtime.SetSurfaceState(MakeSurface(SurfaceId{13}, region)))
+    {
+        return false;
+    }
 
+    const auto weather = runtime.GetWeather(region);
+    const auto season = runtime.GetSeason(region);
+    const auto climate = runtime.GetClimateProfile(region);
+    const auto surface = runtime.GetSurfaceState(SurfaceId{13});
+    const auto before_global = runtime.GetRevision();
+    const auto before_region = runtime.GetRegionRevision(region);
+    if (!weather || !season || !climate || !surface || !before_region)
+    {
+        return false;
+    }
+
+    SurfaceState same_surface = surface.Value();
+    same_surface.revision = 0;
+    const auto set_weather = runtime.SetWeather(region, weather.Value());
+    const auto set_season = runtime.SetSeason(region, season.Value());
+    const auto set_climate = runtime.SetClimateProfile(region, climate.Value());
+    const auto set_surface = runtime.SetSurfaceState(same_surface);
+    const auto after_region = runtime.GetRegionRevision(region);
+    return set_weather && set_season && set_climate && set_surface &&
+           after_region && runtime.GetRevision() == before_global && after_region.Value() == before_region.Value();
+}
+
+[[nodiscard]] bool TestSurfaceStateStoresRegionAndMixedConditions()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{5};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+
+    const auto set = runtime.SetSurfaceState(MakeSurface(SurfaceId{12}, region));
     const auto surface = runtime.GetSurfaceState(SurfaceId{12});
-    return surface.has_value() && surface->condition == SurfaceConditionKind::Muddy && surface->mud_depth == 0.4f;
+    const auto region_revision = runtime.GetRegionRevision(region);
+    return set && surface && surface.Value().region_id == region && surface.Value().condition == SurfaceConditionKind::Icy &&
+           surface.Value().wetness == 0.6f &&
+           surface.Value().snow_depth == 0.2f && surface.Value().mud_depth == 0.4f && surface.Value().ice_thickness == 0.1f &&
+           region_revision && surface.Value().revision == region_revision.Value();
 }
 
-bool TestSnapshotStoresClimateAndRegion()
+[[nodiscard]] bool TestSurfaceRegionOwnershipIsImmutable()
 {
     EnvironmentRuntime runtime;
-    runtime.SetClimateProfile(RegionId{5}, ClimateProfile{7.0f, 0.65f, 3.5f, 1100.0f});
-    const EnvironmentSnapshot snapshot = runtime.BuildSnapshot(RegionId{5});
+    const RegionId first{13};
+    const RegionId second{14};
+    const SurfaceId surface{10};
+    if (!SeedRegion(runtime, first) || !SeedRegion(runtime, second) || !runtime.SetSurfaceState(MakeSurface(surface, first)))
+    {
+        return false;
+    }
 
-    return snapshot.region_id.IsValid() && snapshot.temperature == 7.0f && snapshot.humidity == 0.65f &&
-           snapshot.climate.average_wind_speed == 3.5f;
+    const auto before_first = runtime.GetRegionRevision(first);
+    const auto before_second = runtime.GetRegionRevision(second);
+    SurfaceState moved = MakeSurface(surface, second);
+    moved.wetness = 0.9f;
+    const auto rejected = runtime.SetSurfaceState(moved);
+    const auto after_first = runtime.GetRegionRevision(first);
+    const auto after_second = runtime.GetRegionRevision(second);
+    const auto stored = runtime.GetSurfaceState(surface);
+    return before_first && before_second && after_first && after_second && stored &&
+           !rejected && rejected.GetError().HasCode("environment.surface_region_mismatch") &&
+           after_first.Value() == before_first.Value() && after_second.Value() == before_second.Value() &&
+           stored.Value().region_id == first;
 }
 
-bool TestProjectionIsSnapshotCopy()
+[[nodiscard]] bool TestValidationRejectsInvalidValues()
+{
+    EnvironmentRuntime runtime;
+    const auto invalid_weather = runtime.RegisterRegionEnvironment(RegionId{1},
+                                                                   WeatherState{WeatherKind::Storm, 1.5f, 0.0f, 0.0f, 1.0f, 0.0f},
+                                                                   SeasonState{SeasonKind::Spring, 0.0f},
+                                                                   ClimateProfile{0.0f, 0.5f, 0.0f, 0.0f});
+    const auto invalid_surface = runtime.SetSurfaceState(SurfaceState{SurfaceId{2}, RegionId{}, SurfaceConditionKind::Wet, 0.5f, 0.0f, 0.0f, 0.0f, 2.0f});
+    const auto invalid_update = runtime.Update(EnvironmentUpdateInput{GameTimePoint{100}, GameDuration{-1}, RegionId{1}});
+    return !invalid_weather && invalid_weather.GetError().HasCode("environment.invalid_weather") && !invalid_surface &&
+           invalid_surface.GetError().HasCode("environment.invalid_region") && !invalid_update &&
+           invalid_update.GetError().HasCode("environment.invalid_delta");
+}
+
+[[nodiscard]] bool TestPartialRegionInitializationRejected()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{31};
+
+    const auto set_weather = runtime.SetWeather(region, WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f});
+    const auto surface = runtime.SetSurfaceState(MakeSurface(SurfaceId{31}, region));
+    const auto registered = runtime.RegisterRegionEnvironment(region,
+                                                              WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f},
+                                                              SeasonState{SeasonKind::Summer, 0.2f},
+                                                              ClimateProfile{20.0f, 0.4f, 2.0f, 400.0f});
+    const auto set_weather_after = runtime.SetWeather(region, WeatherState{WeatherKind::Cloudy, 0.1f, 0.5f, 0.0f, 2.0f, 0.0f});
+
+    return !set_weather && set_weather.GetError().HasCode("environment.region_unknown") && !surface &&
+           surface.GetError().HasCode("environment.region_unknown") && registered && set_weather_after;
+}
+
+[[nodiscard]] bool TestSnapshotAndProjectionAreRevisionedCopies()
 {
     EnvironmentRuntime runtime;
     const RegionId region{8};
-    runtime.SetWeather(region, WeatherState{WeatherKind::Rain, 0.8f, 0.9f, 0.7f, 4.0f, 180.0f});
-    runtime.SetSeason(region, SeasonState{SeasonKind::Autumn, 0.6f});
-    runtime.SetClimateProfile(region, ClimateProfile{9.5f, 0.8f, 5.0f, 1300.0f});
+    if (!SeedRegion(runtime, region) || !runtime.SetSurfaceState(MakeSurface(SurfaceId{20}, region)) ||
+        !runtime.SetSurfaceState(MakeSurface(SurfaceId{10}, region)))
+    {
+        return false;
+    }
 
-    const EnvironmentProjection projection = runtime.BuildProjection(region);
-    runtime.SetWeather(region, WeatherState{WeatherKind::Clear, 0.0f, 0.1f, 0.0f, 1.0f, 0.0f});
+    const auto snapshot = runtime.BuildSnapshot(region);
+    const auto projection = runtime.BuildProjection(region);
+    if (!snapshot || !projection)
+    {
+        return false;
+    }
 
-    return projection.region_id == region && projection.weather.kind == WeatherKind::Rain &&
-           projection.season.kind == SeasonKind::Autumn && projection.temperature == 9.5f && projection.humidity == 0.8f;
+    const auto changed_weather = runtime.SetWeather(region, WeatherState{WeatherKind::Clear, 0.0f, 0.1f, 0.0f, 1.0f, 0.0f, 18.0f, 0.2f});
+    return changed_weather && snapshot.Value().region_id == region && snapshot.Value().revision < runtime.GetRevision() && snapshot.Value().surfaces.size() == 2u &&
+           snapshot.Value().surfaces[0].surface_id == SurfaceId{10} && projection.Value().revision == snapshot.Value().revision &&
+           projection.Value().weather.kind == WeatherKind::Rain && projection.Value().temperature == 11.0f &&
+           projection.Value().humidity == 0.65f;
 }
 
-bool TestUpdateCanDryWetSurface()
+[[nodiscard]] bool TestUpdateWithoutPolicyDoesNotMutateSurface()
 {
     EnvironmentRuntime runtime;
-    runtime.SetSurfaceState(SurfaceState{SurfaceId{11}, SurfaceConditionKind::Wet, 0.6f, 0.0f, 0.0f, 0.0f, 12.0f});
+    const RegionId region{3};
+    if (!SeedRegion(runtime, region) || !runtime.SetSurfaceState(MakeSurface(SurfaceId{10}, region)))
+    {
+        return false;
+    }
 
-    const auto result = runtime.Update(EnvironmentUpdateInput{1000u, 1000, RegionId{3}});
-    const auto surface = runtime.GetSurfaceState(SurfaceId{11});
+    const auto before = runtime.GetSurfaceState(SurfaceId{10});
+    const auto update = runtime.Update(EnvironmentUpdateInput{GameTimePoint{1000}, GameDuration{100}, region});
+    const auto after = runtime.GetSurfaceState(SurfaceId{10});
+    return before && update && after && before.Value() == after.Value();
+}
 
-    return result.HasValue() && surface.has_value() && surface->wetness < 0.6f &&
-           surface->condition == SurfaceConditionKind::Drying;
+[[nodiscard]] bool TestOptionalPolicyCanMutateSurface()
+{
+    EnvironmentRuntime runtime;
+    auto policy = std::make_shared<WetnessPolicy>();
+    runtime.SetUpdatePolicy(policy);
+    const RegionId region{3};
+    if (!SeedRegion(runtime, region) || !runtime.SetSurfaceState(MakeSurface(SurfaceId{10}, region)))
+    {
+        return false;
+    }
+
+    const auto update = runtime.Update(EnvironmentUpdateInput{GameTimePoint{1000}, GameDuration{100}, region});
+    const auto surface = runtime.GetSurfaceState(SurfaceId{10});
+    return update && surface && surface.Value().wetness == 0.25f && surface.Value().mud_depth == 0.7f && surface.Value().temperature == 1.0f;
+}
+
+[[nodiscard]] bool TestApplyUpdateRejectsRevisionConflict()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{44};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate update{};
+    update.region = region;
+    const auto region_revision = runtime.GetRegionRevision(region);
+    if (!region_revision)
+    {
+        return false;
+    }
+    update.source_revision = region_revision.Value() + 1u;
+    update.weather = WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 1.0f, 720.0f};
+
+    const auto rejected = runtime.ApplyUpdate(update);
+    const auto weather = runtime.GetWeather(region);
+    return !rejected && rejected.GetError().HasCode("environment.revision_conflict") &&
+           weather && weather.Value().kind == WeatherKind::Rain;
+}
+
+[[nodiscard]] bool TestBatchNormalizesWindDirection()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{46};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate update{};
+    update.region = region;
+    const auto region_revision = runtime.GetRegionRevision(region);
+    if (!region_revision)
+    {
+        return false;
+    }
+    update.source_revision = region_revision.Value();
+    update.weather = WeatherState{WeatherKind::Cloudy, 0.2f, 0.5f, 0.0f, 3.0f, 725.0f};
+    const auto applied = runtime.ApplyUpdate(update);
+    const auto weather = runtime.GetWeather(region);
+    return applied && weather && weather.Value().wind_direction_degrees == 5.0f;
+}
+
+[[nodiscard]] bool TestInvalidBatchLeavesStateUnchanged()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{45};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+
+    const auto before_weather = runtime.GetWeather(region);
+    const auto before_revision = runtime.GetRevision();
+    const auto before_region_revision = runtime.GetRegionRevision(region);
+    if (!before_region_revision)
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate update{};
+    update.region = region;
+    update.source_revision = before_region_revision.Value();
+    update.weather = WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 2.0f, 90.0f};
+    update.surfaces.push_back(SurfaceState{SurfaceId{99}, RegionId{}, SurfaceConditionKind::Wet, 0.5f, 0.0f, 0.0f, 0.0f, 2.0f});
+
+    const auto rejected = runtime.ApplyUpdate(update);
+    const auto after_weather = runtime.GetWeather(region);
+    return before_weather && !rejected && rejected.GetError().HasCode("environment.invalid_region") &&
+           after_weather && after_weather.Value() == before_weather.Value() && runtime.GetRevision() == before_revision;
+}
+
+[[nodiscard]] bool TestEmptyUpdateDoesNotBumpRevision()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{47};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+
+    const auto before_global = runtime.GetRevision();
+    const auto before_region = runtime.GetRegionRevision(region);
+    if (!before_region)
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate update{};
+    update.region = region;
+    update.source_revision = before_region.Value();
+    const auto applied = runtime.ApplyUpdate(update);
+    const auto after_region = runtime.GetRegionRevision(region);
+    return applied && after_region && runtime.GetRevision() == before_global && after_region.Value() == before_region.Value();
+}
+
+[[nodiscard]] bool TestCrossRegionRevisionDoesNotConflict()
+{
+    EnvironmentRuntime runtime;
+    const RegionId first{50};
+    const RegionId second{51};
+    if (!SeedRegion(runtime, first) || !SeedRegion(runtime, second))
+    {
+        return false;
+    }
+
+    const auto first_revision = runtime.GetRegionRevision(first);
+    if (!first_revision || !runtime.SetWeather(second, WeatherState{WeatherKind::Cloudy, 0.2f, 0.5f, 0.0f, 3.0f, 90.0f}))
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate update{};
+    update.region = first;
+    update.source_revision = first_revision.Value();
+    update.weather = WeatherState{WeatherKind::Fog, 0.1f, 0.7f, 0.0f, 1.0f, 15.0f};
+    const auto applied = runtime.ApplyUpdate(update);
+    const auto first_weather = runtime.GetWeather(first);
+    return applied && first_weather && first_weather.Value().kind == WeatherKind::Fog;
+}
+
+[[nodiscard]] bool TestFactoryCreatesSplitServices()
+{
+    auto policy = std::make_shared<WetnessPolicy>();
+    const auto services = CreateEnvironmentServices({policy});
+    if (!services || !services.Value().runtime || !services.Value().query || !services.Value().writer)
+    {
+        return false;
+    }
+
+    const RegionId region{22};
+    if (!services.Value().writer->RegisterRegionEnvironment(region,
+                                                            WeatherState{WeatherKind::Clear, 0.0f, 0.0f, 0.0f, 2.0f, 0.0f},
+                                                            SeasonState{SeasonKind::Summer, 0.2f},
+                                                            ClimateProfile{20.0f, 0.4f, 2.0f, 400.0f}))
+    {
+        return false;
+    }
+
+    const auto weather = services.Value().query->GetWeather(region);
+    return weather && weather.Value().kind == WeatherKind::Clear;
 }
 } // namespace
 
@@ -108,45 +450,48 @@ int main()
     static_assert(std::is_trivially_copyable_v<SeasonState>);
     static_assert(std::is_trivially_copyable_v<ClimateProfile>);
     static_assert(std::is_trivially_copyable_v<SurfaceState>);
-    static_assert(std::is_trivially_copyable_v<EnvironmentSnapshot>);
+    static_assert(!std::is_trivially_copyable_v<EnvironmentSnapshot>);
     static_assert(std::is_trivially_copyable_v<EnvironmentProjection>);
     static_assert(std::is_trivially_copyable_v<EnvironmentUpdateInput>);
     static_assert(std::has_virtual_destructor_v<IEnvironmentRuntime>);
+    static_assert(std::has_virtual_destructor_v<IEnvironmentQuery>);
+    static_assert(std::has_virtual_destructor_v<IEnvironmentWriter>);
 
-    if (!TestDefaultWeatherIsClear())
+    struct NamedTest
     {
-        return 1;
-    }
+        const char* name;
+        bool (*run)();
+    };
 
-    if (!TestSetGetWeatherByRegion())
-    {
-        return 2;
-    }
+    const NamedTest tests[] = {
+        {"UnknownRegionAndSurfaceFail", TestUnknownRegionAndSurfaceFail},
+        {"SetGetWeatherSeasonClimateByRegion", TestSetGetWeatherSeasonClimateByRegion},
+        {"DuplicateRegionRegistrationRejected", TestDuplicateRegionRegistrationRejected},
+        {"NoOpSettersDoNotBumpRevision", TestNoOpSettersDoNotBumpRevision},
+        {"SurfaceStateStoresRegionAndMixedConditions", TestSurfaceStateStoresRegionAndMixedConditions},
+        {"SurfaceRegionOwnershipIsImmutable", TestSurfaceRegionOwnershipIsImmutable},
+        {"ValidationRejectsInvalidValues", TestValidationRejectsInvalidValues},
+        {"PartialRegionInitializationRejected", TestPartialRegionInitializationRejected},
+        {"SnapshotAndProjectionAreRevisionedCopies", TestSnapshotAndProjectionAreRevisionedCopies},
+        {"UpdateWithoutPolicyDoesNotMutateSurface", TestUpdateWithoutPolicyDoesNotMutateSurface},
+        {"OptionalPolicyCanMutateSurface", TestOptionalPolicyCanMutateSurface},
+        {"ApplyUpdateRejectsRevisionConflict", TestApplyUpdateRejectsRevisionConflict},
+        {"BatchNormalizesWindDirection", TestBatchNormalizesWindDirection},
+        {"InvalidBatchLeavesStateUnchanged", TestInvalidBatchLeavesStateUnchanged},
+        {"EmptyUpdateDoesNotBumpRevision", TestEmptyUpdateDoesNotBumpRevision},
+        {"CrossRegionRevisionDoesNotConflict", TestCrossRegionRevisionDoesNotConflict},
+        {"FactoryCreatesSplitServices", TestFactoryCreatesSplitServices},
+    };
 
-    if (!TestSetGetSeasonByRegion())
+    for (const NamedTest& test : tests)
     {
-        return 3;
-    }
-
-    if (!TestSetGetSurfaceState())
-    {
-        return 4;
-    }
-
-    if (!TestSnapshotStoresClimateAndRegion())
-    {
-        return 5;
-    }
-
-    if (!TestProjectionIsSnapshotCopy())
-    {
-        return 6;
-    }
-
-    if (!TestUpdateCanDryWetSurface())
-    {
-        return 7;
+        if (!test.run())
+        {
+            std::cerr << "Environment test failed: " << test.name << "\n";
+            return 1;
+        }
     }
 
     return 0;
 }
+

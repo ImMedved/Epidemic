@@ -182,4 +182,4 @@ template <> class Result<void>
     bool has_value_{false};
     Error error_;
 };
-} // namespace epidemic::foundation
+} 
