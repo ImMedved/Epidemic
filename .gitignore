@@ -8,3 +8,6 @@ cmake-build-debug/
 .idea/
 build-codex-runtime-freeze/
 build-codex-runtime-freeze-no-tests/
+build-codex-runtime-freeze-asan/
+build-codex-runtime-freeze-release-notests/
+build-codex-runtime-freeze-werror/
