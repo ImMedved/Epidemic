@@ -755,7 +755,7 @@ bool TestMemoryFactShutdownAndProposalCleanupEdges()
     }
     {
         auto target = std::make_shared<TestCommitTarget>();
-        SimulationRuntime runtime{SimulationOptions{.max_terminal_jobs = 1}, SimulationDependencies{.commit_target = target}};
+        SimulationRuntime runtime{SimulationOptions{.max_terminal_jobs = 1}, SimulationDependencies{.relevance = {}, .commit_target = target, .clock = {}}};
         runtime.SetBudget(SimulationBudget{2, 2});
         const auto first_desc = MakeJob(1);
         const auto second_desc = SimulationJobDesc{SimulationZoneId{5}, RuntimeObjectId{79}, 1};

@@ -31,7 +31,7 @@ TValue RequireValue(epidemic::foundation::Result<TValue> result)
     return std::move(result).Value();
 }
 
-// Verifies that platform events flow into input snapshots and that WM_CLOSE surfaces as a close-request event.
+// Verifies the real Win32 -> PlatformEvent -> InputSystem path and WM_CLOSE handling.
 void TestPlatformAndInputIntegration()
 {
     epidemic::core::Application application({"PlatformInputIntegration"});
@@ -51,25 +51,46 @@ void TestPlatformAndInputIntegration()
         application, epidemic::platform::WindowCreateInfo{"Hidden Platform/Input Test", 320, 240, false}));
     Assert(window->GetNativeHandle().IsValid(), "Created window must expose a valid native handle");
 
-    epidemic::platform::PlatformEvent focus_event;
-    focus_event.type = epidemic::platform::PlatformEventType::WindowFocusChanged;
-    focus_event.focused = true;
-
-    epidemic::platform::PlatformEvent key_event;
-    key_event.type = epidemic::platform::PlatformEventType::KeyPressed;
-    key_event.key_code = static_cast<std::uint32_t>(epidemic::input::KeyCode::Escape);
-
-    input_system->QueuePlatformEvent(focus_event);
-    input_system->QueuePlatformEvent(key_event);
-    input_system->PublishSnapshot();
-
-    Assert(input_system->CurrentSnapshot().keyboard.WasPressedThisFrame(epidemic::input::KeyCode::Escape),
-           "Synthetic input events must update the snapshot");
-    Assert(!input_system->CurrentEvents().empty(), "Synthetic input events must populate CurrentEvents");
-
-    SendMessageW(window->GetNativeHandle().As<HWND>(), WM_CLOSE, 0, 0);
+    const HWND hwnd = window->GetNativeHandle().As<HWND>();
     const auto runtime = application.Services().Get<epidemic::platform::IPlatformRuntime>();
     const auto window_system = application.Services().Get<epidemic::platform::IWindowSystem>();
+
+    SendMessageW(hwnd, WM_SETFOCUS, 0, 0);
+    SendMessageW(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(123, 45));
+    SendMessageW(hwnd, WM_KEYDOWN, VK_ESCAPE, 1);
+    runtime->PumpEvents();
+
+    const auto first_events = window_system->DrainEvents();
+    bool platform_key_seen = false;
+    bool platform_mouse_seen = false;
+    for (const auto &event : first_events)
+    {
+        platform_key_seen |= event.type == epidemic::platform::PlatformEventType::KeyPressed;
+        platform_mouse_seen |= event.type == epidemic::platform::PlatformEventType::MouseMoved;
+        input_system->QueuePlatformEvent(event);
+    }
+    input_system->PublishSnapshot();
+
+    Assert(platform_key_seen, "WM_KEYDOWN must be translated into a platform key event");
+    Assert(platform_mouse_seen, "WM_MOUSEMOVE must be translated into a platform mouse event");
+    Assert(input_system->CurrentSnapshot().HasFocus(), "WM_SETFOCUS must propagate into InputSnapshot");
+    Assert(input_system->CurrentSnapshot().keyboard.WasPressedThisFrame(epidemic::input::KeyCode::Escape),
+           "WM_KEYDOWN(VK_ESCAPE) must produce an Escape press in InputSnapshot");
+    Assert(input_system->CurrentSnapshot().mouse.PositionX() == 123 &&
+               input_system->CurrentSnapshot().mouse.PositionY() == 45,
+           "WM_MOUSEMOVE coordinates must reach InputSnapshot");
+
+    SendMessageW(hwnd, WM_KEYUP, VK_ESCAPE, 1);
+    runtime->PumpEvents();
+    for (const auto &event : window_system->DrainEvents())
+    {
+        input_system->QueuePlatformEvent(event);
+    }
+    input_system->PublishSnapshot();
+    Assert(input_system->CurrentSnapshot().keyboard.WasReleasedThisFrame(epidemic::input::KeyCode::Escape),
+           "WM_KEYUP(VK_ESCAPE) must produce an Escape release in InputSnapshot");
+
+    SendMessageW(hwnd, WM_CLOSE, 0, 0);
     runtime->PumpEvents();
     bool close_event_seen = false;
     for (const auto &event : window_system->DrainEvents())
@@ -82,6 +103,7 @@ void TestPlatformAndInputIntegration()
     Assert(close_event_seen, "WM_CLOSE must emit a close-requested platform event");
     window->Close();
 }
+
 }
 
 // Runs the platform/input integration-test group.

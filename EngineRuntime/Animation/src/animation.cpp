@@ -14,7 +14,7 @@ class ReferenceAnimationEvaluator final : public IAnimationEvaluatorBackend
 public:
     [[nodiscard]] foundation::Result<PoseBuffer> EvaluatePose(const AnimationEvaluationRequest& request) const override
     {
-        PoseBuffer pose{request.animator, std::vector<Transform>(request.skeleton.joint_count), request.revision};
+        PoseBuffer pose{request.animator, request.owner, std::vector<Transform>(request.skeleton.joint_count), request.revision};
         const float source_sample = static_cast<float>(request.source_time.value.count()) / 1000000.0f;
         const float target_sample = static_cast<float>(request.target_time.value.count()) / 1000000.0f;
         const float blended_sample = source_sample * request.source_weight + target_sample * request.target_weight;

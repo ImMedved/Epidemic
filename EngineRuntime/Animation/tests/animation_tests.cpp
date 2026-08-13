@@ -83,7 +83,7 @@ struct TestEvaluatorBackend final : IAnimationEvaluatorBackend
     epidemic::foundation::Result<PoseBuffer> EvaluatePose(const AnimationEvaluationRequest& request) const override
     {
         ++evaluations;
-        PoseBuffer pose{request.animator, std::vector<epidemic::runtime::Transform>(request.skeleton.joint_count), request.revision};
+        PoseBuffer pose{request.animator, request.owner, std::vector<epidemic::runtime::Transform>(request.skeleton.joint_count), request.revision};
         for (std::size_t index = 0; index < pose.bone_transforms.size(); ++index)
         {
             pose.bone_transforms[index].position.x = static_cast<float>(request.target_time.value.count()) / 1000000.0f;
@@ -440,7 +440,7 @@ bool TestFactoryProfilesSeparateMockEvaluation()
     auto evaluator = std::make_shared<TestEvaluatorBackend>();
     const auto missing_evaluator = CreateAnimationServices(
         AnimationOptions{.enable_mock_pose_evaluation = true},
-        AnimationDependencies{resources, sink});
+        AnimationDependencies{resources, sink, {}});
     if (!Expect(!missing_evaluator.HasValue() && missing_evaluator.GetError().HasCode("animation.evaluator_missing"),
                 "production animation factory should require evaluator backend"))
     {

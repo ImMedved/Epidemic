@@ -2,26 +2,22 @@
 
 ## Назначение
 
-Animation управляет skeleton/clip metadata, animator instances, playback state, crossfade, LOD, pose publication и events. Реальная оценка pose вынесена в evaluator backend.
+Animation управляет skeleton/clip metadata, animator instances, playback, crossfade, LOD, pose publication и events. Реальная оценка pose вынесена в evaluator backend; Animation не знает Renderer.
 
 ## Контракты
 
-`ISkeletonRegistry` и `IAnimationClipRegistry` регистрируют данные. `IAnimationRuntime` создает generation handle, выполняет Play, Pause, Stop, Crossfade, Tick и queries. `IPoseProvider` читает immutable pose. `IAnimationResourceSource` загружает descriptors, `IAnimationEvaluatorBackend` оценивает pose, а `IAnimationPoseSink` публикует его.
+`ISkeletonRegistry` и `IAnimationClipRegistry` регистрируют descriptors. `IAnimationRuntime` создает generation handle, выполняет Play/Pause/Stop/Crossfade/Tick и возвращает snapshots. `IAnimationResourceSource` загружает skeleton/clip descriptors, `IAnimationEvaluatorBackend` оценивает pose, а `IAnimationPoseSink` публикует immutable `PoseBuffer`.
 
-## Playback
+`PoseBuffer` содержит `AnimatorHandle`, `RuntimeObjectId owner`, bone transforms и revision. Owner является нейтральной связью с runtime object и позволяет Support передать pose Renderer без прямой зависимости Animation → Renderer.
 
-Frame time выражается `RuntimeFrameDuration`. Fractional playback rate сохраняет remainder. Loop выполняет modulo clip duration. Crossfade продвигает source/target time и weights. Invalid transition отклоняется; stale pose query возвращает error.
+## Playback и владение
 
-Pose buffer публикуется immutable snapshot. Event queue bounded; нулевая capacity использует зафиксированную default policy.
+Frame time выражается `RuntimeFrameDuration`. Crossfade и playback state принадлежат animator. Pose после публикации является immutable snapshot. Resource adapter может временно удерживать ResourceLease во время загрузки, но после копирования готового skeleton/clip descriptor payload больше не обязан оставаться pinned.
+
+## Граница
+
+Animation не содержит animation graph gameplay rules, actor state, Renderer contracts или конкретный resource manager. Retargeting, IK, motion matching и сложный graph могут появляться выше либо за отдельными backend/extension contracts.
 
 ## Стабильность
 
-Модуль frozen. Animation graph, IK, retargeting и motion matching будут верхними extensions или backends.
-
-## Карта публичных заголовков
-
-Этот раздел служит быстрым индексом объявлений. Семантика и инварианты описаны выше; точные сигнатуры остаются источником истины в public headers.
-
-- `animation.h`: factory-функции или backend implementation без отдельного публичного типа.
-- `animation_runtime.h`: `ISkeletonRegistry`, `IAnimationClipRegistry`, `IAnimationRuntime`, `IPoseProvider`, `IAnimationResourceSource`, `IAnimationPoseSink`, `IAnimationEvaluatorBackend`, `IAnimationEventBuffer`, `AnimationDependencies`, `AnimationServices`.
-- `animation_types.h`: `SkeletonId`, `AnimationClipId`, `AnimatorInstanceId`, `AnimatorLifecycle`, `AnimatorReadiness`, `AnimatorPlaybackState`, `PoseState`, `AnimationLodLevel`, `SkeletonDesc`, `AnimationClipDesc`, `AnimatorPlayback`, `CrossfadeState`, `AnimatorDesc`, `AnimationEvent`, `AnimatorHandle`, `PoseSnapshot`, `PoseBuffer`, `AnimatorSnapshot`, `AnimationEvaluationRequest`, `AnimationPlaybackCommand`, `AnimationOptions`.
+Публичный runtime contract считается frozen. Cross-major pose wiring реализуется только в Support.

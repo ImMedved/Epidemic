@@ -1,208 +1,191 @@
 # Использование EngineRuntime
 
-## Общая модель
+## Полный Runtime
 
-До завершения `Runtime Support` каждый major можно создавать отдельно через public factory. Это удобно для unit tests, tools и ручной composition. В готовой игре composition root должен получать один `EngineRuntimeServices`, подготовленный атомарно Support.
-
-Service bundle содержит interfaces, а не concrete implementation. Код хранит только те interfaces, которые реально нужны.
+В обычном приложении Runtime собирается через Support. Сначала создается конфигурация и внешние production/reference dependencies, затем весь Runtime подготавливается без изменения `Application`:
 
 ```cpp
-auto scene_result =
-    epidemic::runtime::CreateSceneServices();
+using namespace epidemic::runtime;
 
-if (!scene_result)
+EngineRuntimeOptions options{};
+EngineRuntimeDependencies dependencies{};
+
+auto prepared = PrepareEngineRuntime(options, dependencies);
+if (!prepared)
 {
-    return scene_result.GetError();
+    return prepared.GetError();
 }
 
-epidemic::runtime::SceneServices scene =
-    std::move(scene_result.Value());
+auto committed = CommitPreparedRuntime(
+    application,
+    std::move(prepared.Value()));
+
+if (!committed)
+{
+    return committed.GetError();
+}
+
+EngineRuntimeServices runtime = std::move(committed.Value());
 ```
+
+`RegisterDefaultEngineRuntime()` выполняет те же два шага одной функцией. Раздельная форма полезна, когда composition root хочет проверить или дополнить конфигурацию до регистрации aggregate.
+
+Верхний слой хранит `EngineRuntimeServices` либо только необходимые service bundles. Он не ищет concrete implementations и не соединяет Runtime majors вручную.
+
+## Кадр
+
+Игровой executable передает coordinator только данные текущего кадра и budgets:
+
+```cpp
+RuntimeFrameInput frame{};
+frame.real_delta = real_frame_delta;
+frame.resource_budget = resource_budget;
+frame.streaming_budget = streaming_budget;
+frame.navigation_budget = navigation_budget;
+frame.max_animators = animation_budget;
+
+auto tick = runtime.coordinator->Tick(frame);
+if (!tick)
+{
+    return tick.GetError();
+}
+
+for (const RuntimePhaseFailure& failure : tick.Value().failures)
+{
+    // Diagnostics / recovery policy upper layer.
+}
+```
+
+Локальная recoverable ошибка одного major отражается в `failures`; coordinator продолжает независимые последующие phases. Fatal `Result` означает ошибку самого coordinator contract, например кадр после начала shutdown или некорректный frame input.
 
 ## Assets и Resources
 
-Assets отвечает на вопрос «что это за данные и где они находятся». Resources отвечает на вопрос «загружены ли они сейчас и кто удерживает payload».
-
-Сначала metadata регистрируется через `IAssetCatalogWriter`. Затем resource loader связывает `ResourceType` с чтением artifact, а consumer получает lease:
+Assets отвечает за identity/location/metadata, Resources — за фактически загруженный payload и ownership.
 
 ```cpp
-epidemic::runtime::ResourceRequest request;
+ResourceRequest request{};
 request.resource_id = resource_id;
 request.type = resource_type;
 
-auto lease_result =
-    resources.manager->RequestLease(request);
-
+auto lease_result = runtime.resources->manager->RequestLease(request);
 if (!lease_result)
 {
     return lease_result.GetError();
 }
 
-auto lease = lease_result.Value();
+ResourceLease lease = lease_result.Value();
 
-auto processed =
-    resources.manager->ProcessPendingLoads(frame_budget);
-
+auto processed = runtime.resources->manager->ProcessPendingLoads(frame_budget);
 if (!processed)
 {
     return processed.GetError();
 }
 
-auto state =
-    resources.manager->GetState(lease.handle);
-
-if (state == epidemic::runtime::ResourceState::Ready)
+if (runtime.resources->manager->GetState(lease.resource) == ResourceState::Ready)
 {
-    auto payload =
-        resources.manager->GetPayload(lease.handle);
+    auto payload = runtime.resources->manager->GetPayload(lease.resource);
+    // Использовать immutable payload.
 }
 
-resources.manager->Release(lease);
+auto released = runtime.resources->manager->Release(lease);
 ```
 
-Handle можно использовать для query, но release выполняется только исходным `ResourceLease`.
+`ResourceHandle` используется для query, но не выражает ownership. Освободить ресурс имеет право только владелец соответствующего `ResourceLease`.
 
 ## Scene и World
 
-Scene хранит пространственное представление, hierarchy и bounds. World хранит смысл объекта: region/chunk, placement, reality level, residency и persistence tier. Один игровой объект обычно имеет `RuntimeObjectId`, а его визуальное/физическое представление связывается с `SceneNodeId` через adapter верхнего слоя.
+Scene хранит пространственное представление и hierarchy. World хранит логическое состояние объекта, region/chunk placement, reality, residency и persistence tier. Gameplay record верхнего слоя обычно связывается с Runtime через `RuntimeObjectId`, но Runtime не получает gameplay fields.
 
-World изменяется командами с ожидаемой revision:
+World меняется revisioned commands. Следующая команда использует revision из предыдущего `WorldCommandResult`; `expected_revision == 0` не является wildcard.
 
-```cpp
-epidemic::runtime::WorldObjectRecord record;
-record.runtime_id = object_id;
-record.asset_id = asset_id;
-record.reality =
-    epidemic::runtime::ObjectRealityLevel::Logical;
-record.residency =
-    epidemic::runtime::ResidencyState::Resident;
-record.persistence_tier =
-    epidemic::runtime::PersistenceTier::Disposable;
-record.placement = epidemic::runtime::WorldSurfacePlacement{
-    .region = region_id,
-    .chunk = chunk_id,
-    .transform = initial_transform,
-};
-record.revision = 1;
-
-auto created = world.writer->Apply(
-    epidemic::runtime::CreateObjectCommand{
-        .record = record,
-    });
-```
-
-Следующая команда использует revision из `WorldCommandResult`. Значение `0` не является публичным wildcard.
-
-Scene transform изменяется через registry. Когда внешний backend сообщает world transform, применяется `SetWorldTransform()`, а Scene самостоятельно вычисляет local transform относительно parent.
+Physics записывает world-space transforms не напрямую в Scene во время simulation step, а через Support projection queue. Scene применяет их в отдельной frame phase и самостоятельно вычисляет local transform относительно parent.
 
 ## Persistence
 
-Изменения долговечного состояния группируются в transaction:
+Долговечные изменения группируются в transaction:
 
 ```cpp
-auto transaction =
-    persistence.store->OpenTransaction();
-
+auto transaction = runtime.persistence->store->OpenTransaction();
 transaction->UpsertObject(record);
 transaction->UpsertLazyRule(rule);
 
-auto committed =
-    transaction->Commit();
-
+auto committed = transaction->Commit();
 if (!committed)
 {
     transaction->Rollback();
 }
 ```
 
-Backend получает атомарный `CommitSnapshot`. Query interface не открывает transaction и безопасен для read-only consumers. Administrative transaction используется только restore, import и migration code.
+Read-only consumers используют `IPersistenceQuery`. Administrative transaction предназначен только для restore/import/migration operations.
 
 ## Time и Environment
 
-Time получает real frame delta и возвращает authoritative game-time result:
-
-```cpp
-auto advanced =
-    time.runtime->Advance(real_delta);
-
-if (!advanced)
-{
-    return advanced.GetError();
-}
-
-const auto& time_result = advanced.Value();
-```
-
-`TimeAdvanceResult` содержит предыдущий и текущий snapshot и события перехода дня, фазы или сезона. Upper code не рассчитывает второй независимый game delta.
-
-Environment регистрирует регион целиком: weather, season и climate. Current weather отделена от климатических средних. Surface state принадлежит одному region и не переносится неявно.
+`Time` является единственным authoritative источником game time. Upper code не вычисляет параллельный game delta. `Environment` хранит нейтральное состояние region/weather/season/surfaces и revisions; gameplay-реакция на это состояние реализуется выше Runtime.
 
 ## Streaming
 
-Consumer создает demand и хранит его, пока chunk действительно нужен:
+Consumer создает demand и хранит его ровно пока target нужен:
 
 ```cpp
-auto demand =
-    streaming.runtime->Request(
-        epidemic::runtime::streaming::ChunkStreamingTarget{chunk},
-        epidemic::runtime::streaming::StreamingPriorityClass::High);
+auto demand = runtime.streaming->runtime->Request(
+    streaming::StreamingTarget{streaming::ChunkStreamingTarget{chunk}},
+    streaming::StreamingPriorityClass::High);
 
-streaming.runtime->SetBudget(streaming_budget);
-auto tick = streaming.runtime->Tick();
+// Coordinator выполняет progressive loading каждый кадр.
 
-streaming.runtime->ReleaseDemand(demand.Value());
+runtime.streaming->runtime->ReleaseDemand(demand.Value());
 ```
 
-Несколько consumers одного target получают разные demand handles, но могут разделять один request. Controller API используется composition/shutdown code, а не обычным consumer.
+Несколько consumers имеют разные demand handles, но могут разделять один request. Standard Support adapter использует World, Resources и Persistence. Подготовленный detached persistence snapshot можно прочитать через `runtime.integrations->streaming_prepared_data` до unload/rollback chunk.
 
-## Physics, Animation и Audio
+## Animation и Renderer
 
-Эти modules не читают Scene или Resources напрямую. Их dependencies реализуются adapters.
+Animation получает skeleton/clip через resource adapter и публикует immutable pose. Pose содержит `RuntimeObjectId owner`; Support преобразует его в renderer-neutral pose, поэтому Renderer может добавить pose к submission proxy того же owner, не завися от Animation headers.
 
-Physics получает world transforms через `IPhysicsTransformSource` и публикует новые transforms через sink. Animation получает skeletons и clips через `IAnimationResourceSource` и публикует immutable pose buffer. Audio получает typed clip resource и transform source, а backend владеет voices.
+GameFramework создает animator и render proxy для одного domain object, но не переносит bone data между majors вручную.
 
-Кадровая длительность во всех трех модулях — `RuntimeFrameDuration`, а не игровое календарное время.
+## Audio
+
+Audio получает typed `IAudioClipResource` через Support. Resource lease передается вместе с clip и остается активным, пока реальный voice/clip consumer существует. После уничтожения voice lease освобождается, поэтому ResourceManager может evict неиспользуемый звук.
 
 ## Simulation
 
-GameFramework передает конкретный `ISimulationJob`, который выполняет ограниченную часть работы:
+GameFramework передает конкретный `ISimulationJob`, а Runtime только планирует его выполнение:
 
 ```cpp
-auto job =
-    std::make_shared<MyPopulationSimulationJob>();
-
-auto handle =
-    simulation.scheduler->SubmitJob(
-        job,
-        metadata);
-
-simulation.scheduler->SetBudget(simulation_budget);
-
-auto tick =
-    simulation.scheduler->Tick();
+auto handle = runtime.simulation->scheduler->SubmitJob(job, metadata);
+runtime.simulation->scheduler->SetBudget(simulation_budget);
 ```
 
-Job не изменяет World или gameplay domain напрямую. Он возвращает `SimulationProposalBatch`. Main-thread phase публикует и commit-ит proposals через `ISimulationCommitTarget`.
+Job не изменяет World или gameplay state напрямую. Результат оформляется как `SimulationProposalBatch`, который публикуется и commit-ится main-thread phase через `ISimulationCommitTarget`. Scheduled tasks привязывают уже существующие jobs к `SimulationTime`.
 
-Scheduled task привязывает уже существующий job к `SimulationTime`. World memory хранит события, abstract facts — обобщенные утверждения, а Attention/Relevance выбирают необходимую детализацию.
+## Production profile
 
-## Ошибки и владение
+В Production application передает настоящие внешние backends через `EngineRuntimeDependencies`: Renderer command sink, Physics backend, Navigation backend, Animation evaluator, Audio backend и Simulation commit target. Standard cross-major wiring остается обязанностью Support.
 
-Borrowed values действуют только во время вызова. Immutable snapshots и payloads можно передавать между systems через `shared_ptr<const T>`. Long-lived external backend и adapter передаются через `shared_ptr`.
+Для Streaming достаточно передать настоящий `IChunkStreamingManifestSource`, если используется стандартный World/Resources/Persistence adapter. Полная custom Streaming integration разрешена только когда переданы все core roles одновременно.
 
-Любой handle нужно считать stale после destruction или generation mismatch. Query methods возвращают `Result` или `optional` согласно contract; sentinel state не используется вместо ошибки stale handle.
+## Изолированное использование major
 
-Shutdown начинается с запрета новой работы. Failed cleanup не должен терять backend handles или leases; повторный shutdown завершает оставшиеся операции.
+Unit tests, tools и subsystem experiments могут создавать отдельный major напрямую:
 
-## Будущий GameFramework
-
-GameFramework строит поверх Runtime конкретные systems: управление персонажем и кораблем, инвентарь, владение, преступления, фракции, NPC, экономика, квесты и диалоги. Он связывает `RuntimeObjectId` с собственными domain records, но не добавляет gameplay fields в World, Scene или Resources.
-
-Правильная зависимость:
-
-```text
-EngineBase
-    <- EngineRuntime
-        <- GameFramework
-            <- Game
+```cpp
+auto scene = CreateSceneServices();
+auto resources = CreateResourceServices();
 ```
+
+Это специальный сценарий. Обычная игра использует `EngineRuntimeServices`, чтобы lifecycle и cross-major ownership оставались согласованными.
+
+## Shutdown
+
+Завершение Runtime выполняется через coordinator:
+
+```cpp
+auto shutdown = runtime.coordinator->Shutdown();
+if (!shutdown)
+{
+    // После устранения внешней причины Shutdown можно повторить.
+}
+```
+
+После начала shutdown coordinator больше не принимает кадры. Failed cleanup не теряет owned handles или leases; повторный вызов продолжает незавершенное освобождение. Успешный повторный shutdown идемпотентен.

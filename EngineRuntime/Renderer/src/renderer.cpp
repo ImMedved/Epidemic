@@ -1,4 +1,4 @@
-﻿#include "Epidemic/Runtime/Renderer/renderer_services.h"
+#include "Epidemic/Runtime/Renderer/renderer_services.h"
 
 #include "renderer_runtime_impl.h"
 
@@ -97,13 +97,17 @@ foundation::Result<RendererServices> CreateRendererServices(const RendererOption
             foundation::Error::Create("renderer.command_sink_missing", "production renderer services require a command sink"));
     }
 
-    auto runtime = std::make_shared<RendererRuntime>(dependencies.resource_bridge.get(), dependencies.scene_source.get(), dependencies.command_sink.get());
+    auto runtime = std::make_shared<RendererRuntime>(dependencies.resource_bridge.get(),
+                                                     dependencies.scene_source.get(),
+                                                     dependencies.pose_source.get(),
+                                                     dependencies.command_sink.get());
     RendererServices services{};
     services.scene = runtime;
     services.views = runtime;
     services.runtime = runtime;
     services.resource_bridge = std::move(dependencies.resource_bridge);
     services.scene_source = std::move(dependencies.scene_source);
+    services.pose_source = std::move(dependencies.pose_source);
     services.command_sink = std::move(dependencies.command_sink);
     return foundation::Result<RendererServices>::Success(std::move(services));
 }
@@ -121,6 +125,7 @@ foundation::Result<RendererServices> CreateMockRendererServices()
     services.runtime = runtime;
     services.resource_bridge = resource_bridge;
     services.scene_source = scene_source;
+    services.pose_source = {};
     services.command_sink = command_sink;
     return foundation::Result<RendererServices>::Success(std::move(services));
 }

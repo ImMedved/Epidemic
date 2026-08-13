@@ -2,38 +2,24 @@
 
 ## Назначение
 
-Streaming координирует residency targets под byte/CPU budget. Он объединяет demands нескольких consumers, выполняет progressive plan, commit/rollback и управляет жизненным циклом chunk от запроса до unload.
+Streaming координирует residency targets под byte/CPU budget. Он объединяет demands нескольких consumers, выполняет progressive load plan, commit/rollback и управляет жизненным циклом request от `Requested` до unload. Сам major не знает World, Resources или Persistence.
 
 ## Контракты
 
-`IStreamingRuntime` принимает `Request`, освобождает `StreamingDemandHandle`, выполняет `Tick` и выдает progress/statistics. `IStreamingQuery` предоставляет read-only view. `IStreamingController` выполняет административную отмену и terminal shutdown.
+`IStreamingRuntime` принимает demands, выполняет Tick и предоставляет progress/statistics. `IStreamingQuery` является read-only view, `IStreamingController` отвечает за cancellation и terminal shutdown. `StreamingDependencies` содержит data/commit/priority/residency/world/persistence/resource ports; concrete Support adapter передается через обычный public factory.
 
-`StreamingDependencies` содержит `IStreamingDataSource`, commit target, priority provider, residency controller и источники World, Persistence и Resources. Все long-lived dependencies передаются через `shared_ptr`.
+Несколько consumers одного target получают отдельные demand handles, но разделяют request. Во время необратимого `Unloading` существует не более одного successor. Последний released demand отменяет waiting successor. Terminal history не удаляет mapping, если он уже принадлежит более новому request.
 
-## Demands и requests
+## Standard Support integration
 
-Каждый consumer владеет demand, но один target может иметь общий request. Во время необратимого Unloading создается не более одного successor; все новые demands присоединяются к нему. Successor не начинает загрузку до завершения predecessor. Освобождение последнего waiting demand отменяет successor.
+Standard Support adapter связывает Streaming с World, Resources и Persistence через neutral manifest. Он начинает загрузку только тогда, когда сам переводит World chunk `Unloaded → Loading`, поэтому rollback не отменяет чужой transition. Подготовленные Resource leases становятся active только после commit. При unload сначала выполняется переход в `Unloading`, затем освобождаются active leases и только после этого World становится `Unloaded`.
 
-Terminal history удаляет mapping только если он все еще указывает на удаляемый request.
-
-## Progressive execution
-
-Data source получает доступный budget и возвращает `processed_bytes` и `completed`. Cursor меняется только после completed step. Commit выполняется один раз после completed commit-step. Byte counters и IDs защищены от overflow.
+Persistence override читается как detached data и доступен через Support `IStreamingPreparedChunkDataQuery`, пока chunk находится в подготовленном/загруженном lifetime. Streaming major не интерпретирует gameplay payload persistence records.
 
 ## Shutdown
 
-После начала shutdown новые demands запрещены. Cleanup дренирует reversible work, unload и rollback; failed external cleanup сохраняется для повторной попытки. Success означает отсутствие demands, live requests и resident ownership.
+После начала shutdown новые demands отклоняются. Failed rollback/unload сохраняет ownership для следующего вызова. Успешный shutdown означает отсутствие live demands/requests и временного/resident ownership.
 
 ## Стабильность
 
-После перечисленных финальных fixes модуль считается frozen. Support реализует реальные sources и commit target через public dependencies.
-
-## Карта публичных заголовков
-
-Этот раздел служит быстрым индексом объявлений. Семантика и инварианты описаны выше; точные сигнатуры остаются источником истины в public headers.
-
-- `residency_controller.h`: `IResidencyController`.
-- `streaming_priority_resolver.h`: `IStreamingPriorityResolver`.
-- `streaming_runtime.h`: `IStreamingRuntime`, `IStreamingQuery`, `IStreamingController`, `StreamingServices`, `StreamingDependencies`.
-- `streaming_sources.h`: `IStreamingWorldSource`, `IStreamingPersistenceSource`, `IStreamingResourceSource`, `IStreamingDataSource`, `IStreamingCommitTarget`, `IStreamingPriorityProvider`.
-- `streaming_types.h`: `StreamingState`, `StreamingPriorityClass`, `StreamingRequestId`, `StreamingRequestHandle`, `StreamingDemandId`, `StreamingDemandHandle`, `ChunkStreamingTarget`, `RegionStreamingTarget`, `AssetStreamingTarget`, `ObjectStreamingTarget`, `ResourceGroupStreamingTarget`, `StreamingPlanStep`, `StreamingPlanStepRecord`, `StreamingStepResult`, `ProgressiveLoadPlan`, `StreamingCancellationToken`, `StreamingRequest`, `StreamingBudget`, `StreamingProgress`, `StreamingTickFailure`, `StreamingTickResult`, `StreamingStatistics`.
+State machine и public dependencies считаются frozen. Cross-major policy остается в Support.

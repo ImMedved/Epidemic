@@ -387,6 +387,7 @@ foundation::Result<void> AudioRuntime::Play(AudioEmitterHandle handle)
             return foundation::Result<void>::Failure(voice.GetError());
         }
         emitter->voice = voice.Value();
+        emitter->clip_resource = payload.Value().resource;
         created_voice = true;
     }
 
@@ -588,6 +589,7 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
                 return foundation::Result<void>::Failure(voice.GetError());
             }
             emitter->voice = voice.Value();
+            emitter->clip_resource = payload.Value().resource;
             created_voice = true;
         }
         emitter->fade_multiplier = 0.0f;
@@ -598,8 +600,9 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
         {
             if (created_voice)
             {
-                RollbackCreatedVoice(*backend, emitter->voice);
+                RollbackCreatedVoice(*backend, emitter->voice, emitter->clip_resource);
                 emitter->voice = {};
+                emitter->clip_resource.reset();
             }
             return spatial;
         }
@@ -608,8 +611,9 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
         {
             if (created_voice)
             {
-                RollbackCreatedVoice(*backend, emitter->voice);
+                RollbackCreatedVoice(*backend, emitter->voice, emitter->clip_resource);
                 emitter->voice = {};
+                emitter->clip_resource.reset();
             }
             return foundation::Result<void>::Failure(gain.GetError());
         }
@@ -618,8 +622,9 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
         {
             if (created_voice)
             {
-                RollbackCreatedVoice(*backend, emitter->voice);
+                RollbackCreatedVoice(*backend, emitter->voice, emitter->clip_resource);
                 emitter->voice = {};
+                emitter->clip_resource.reset();
             }
             return foundation::Result<void>::Failure(played.GetError());
         }
@@ -657,6 +662,7 @@ foundation::Result<void> AudioRuntime::Virtualize(AudioEmitterHandle handle)
                 }
             }
             emitter->voice = {};
+            emitter->clip_resource.reset();
         }
         emitter->state = EmitterState::Virtualized;
         ResetFade(*emitter);
@@ -862,6 +868,7 @@ foundation::Result<void> AudioRuntime::Shutdown()
             if (destroyed)
             {
                 emitter.voice = {};
+                emitter.clip_resource.reset();
                 emitter.state = EmitterState::Stopped;
                 ++emitter.revision;
             }
@@ -892,25 +899,25 @@ foundation::Result<void> AudioRuntime::Shutdown()
 
     if (backend != nullptr)
     {
-        auto write = one_shot_voices_.begin();
-        for (auto read = one_shot_voices_.begin(); read != one_shot_voices_.end(); ++read)
+        std::vector<VoiceOwnership> survivors;
+        survivors.reserve(one_shot_voices_.size());
+        for (auto& owned : one_shot_voices_)
         {
-            const BackendVoiceHandle voice = *read;
-            if (!voice.IsValid())
+            if (!owned.voice.IsValid())
             {
                 continue;
             }
-            const auto destroyed = backend->DestroyVoice(voice);
-            if (!destroyed && !first_error.has_value())
-            {
-                first_error = destroyed.GetError();
-            }
+            const auto destroyed = backend->DestroyVoice(owned.voice);
             if (!destroyed)
             {
-                *write++ = voice;
+                if (!first_error.has_value())
+                {
+                    first_error = destroyed.GetError();
+                }
+                survivors.push_back(std::move(owned));
             }
         }
-        one_shot_voices_.erase(write, one_shot_voices_.end());
+        one_shot_voices_ = std::move(survivors);
     }
 
     if (first_error.has_value())
@@ -1273,10 +1280,10 @@ foundation::Result<void> AudioRuntime::ProcessOneShot(const AudioEvent& event)
     const auto played = backend->Play(voice.Value());
     if (!played)
     {
-        RollbackCreatedVoice(*backend, voice.Value());
+        RollbackCreatedVoice(*backend, voice.Value(), payload.Value().resource);
         return foundation::Result<void>::Failure(played.GetError());
     }
-    one_shot_voices_.push_back(voice.Value());
+    one_shot_voices_.push_back(VoiceOwnership{voice.Value(), payload.Value().resource});
     return foundation::Result<void>::Success();
 }
 
@@ -1289,24 +1296,24 @@ foundation::Result<void> AudioRuntime::CleanupFinishedOneShots()
     }
 
     std::optional<foundation::Error> first_error;
-    std::vector<BackendVoiceHandle> survivors;
+    std::vector<VoiceOwnership> survivors;
     survivors.reserve(one_shot_voices_.size());
-    for (BackendVoiceHandle voice : one_shot_voices_)
+    for (auto& owned : one_shot_voices_)
     {
-        if (!voice.IsValid() || !backend->IsVoiceFinished(voice))
+        if (!owned.voice.IsValid() || !backend->IsVoiceFinished(owned.voice))
         {
-            survivors.push_back(voice);
+            survivors.push_back(std::move(owned));
             continue;
         }
 
-        const auto destroyed = backend->DestroyVoice(voice);
+        const auto destroyed = backend->DestroyVoice(owned.voice);
         if (!destroyed)
         {
             if (!first_error.has_value())
             {
                 first_error = destroyed.GetError();
             }
-            survivors.push_back(voice);
+            survivors.push_back(std::move(owned));
         }
     }
     one_shot_voices_ = std::move(survivors);
@@ -1326,18 +1333,18 @@ foundation::Result<void> AudioRuntime::CleanupPendingVoices()
     }
 
     std::optional<foundation::Error> first_error;
-    std::vector<BackendVoiceHandle> survivors;
+    std::vector<VoiceOwnership> survivors;
     survivors.reserve(pending_voice_cleanups_.size());
-    for (BackendVoiceHandle voice : pending_voice_cleanups_)
+    for (auto& owned : pending_voice_cleanups_)
     {
-        const auto destroyed = backend->DestroyVoice(voice);
+        const auto destroyed = backend->DestroyVoice(owned.voice);
         if (!destroyed)
         {
             if (!first_error.has_value())
             {
                 first_error = destroyed.GetError();
             }
-            survivors.push_back(voice);
+            survivors.push_back(std::move(owned));
         }
     }
     pending_voice_cleanups_ = std::move(survivors);
@@ -1363,7 +1370,9 @@ void AudioRuntime::RecordCleanupFailure(const foundation::Error&)
     ++cleanup_failures_;
 }
 
-void AudioRuntime::RollbackCreatedVoice(IAudioBackend& backend, BackendVoiceHandle voice)
+void AudioRuntime::RollbackCreatedVoice(IAudioBackend& backend,
+                                        BackendVoiceHandle voice,
+                                        std::shared_ptr<const IAudioClipResource> clip_resource)
 {
     if (!voice.IsValid())
     {
@@ -1374,7 +1383,7 @@ void AudioRuntime::RollbackCreatedVoice(IAudioBackend& backend, BackendVoiceHand
     if (!destroyed)
     {
         RecordCleanupFailure(destroyed.GetError());
-        pending_voice_cleanups_.push_back(voice);
+        pending_voice_cleanups_.push_back(VoiceOwnership{voice, std::move(clip_resource)});
     }
 }
 

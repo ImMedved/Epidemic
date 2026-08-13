@@ -4,6 +4,9 @@
 #include "Epidemic/Runtime/Foundation/spatial.h"
 #include "Epidemic/Runtime/Renderer/render_types.h"
 
+#include <memory>
+#include <vector>
+
 namespace epidemic::runtime::renderer
 {
 struct RenderTransformSnapshot
@@ -11,6 +14,22 @@ struct RenderTransformSnapshot
     RenderTransformId node{};
     Transform world_transform{};
     std::uint64_t revision = 0;
+};
+
+struct RenderPoseBuffer
+{
+    RuntimeObjectId owner{};
+    std::vector<Transform> bone_transforms{};
+    std::uint64_t revision = 0;
+};
+
+class IRenderPoseSource
+{
+  public:
+    virtual ~IRenderPoseSource() = default;
+
+    [[nodiscard]] virtual foundation::Result<std::shared_ptr<const RenderPoseBuffer>>
+        GetPose(RuntimeObjectId owner) const = 0;
 };
 
 class IRenderResourceBridge
@@ -36,6 +55,7 @@ struct RenderProxySubmission
     RenderProxyId proxy{};
     RenderTransformSnapshot transform{};
     RenderResourcePayloads payloads{};
+    std::shared_ptr<const RenderPoseBuffer> pose{};
     RenderLayer layer = RenderLayer::Opaque;
     RenderProxyVisibility visibility = RenderProxyVisibility::Visible;
 };

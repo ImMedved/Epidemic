@@ -8,6 +8,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(BUILD_TESTING "Build Epidemic Engine tests" ON)
 option(EPIDEMIC_BUILD_RUNTIME "Build Epidemic EngineRuntime" ON)
+option(EPIDEMIC_WARNINGS_AS_ERRORS "Treat warnings in Epidemic-owned targets as errors" OFF)
 
 if(BUILD_TESTING)
     enable_testing()

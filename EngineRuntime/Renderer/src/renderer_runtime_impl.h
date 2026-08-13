@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Epidemic/Runtime/Renderer/render_resource_bridge.h"
 #include "Epidemic/Runtime/Renderer/render_scene.h"
@@ -15,6 +15,10 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
   public:
     explicit RendererRuntime(IRenderResourceBridge* resource_bridge, IRenderSceneSource* scene_source);
     RendererRuntime(IRenderResourceBridge* resource_bridge, IRenderSceneSource* scene_source, IRenderCommandSink* command_sink);
+    RendererRuntime(IRenderResourceBridge* resource_bridge,
+                    IRenderSceneSource* scene_source,
+                    IRenderPoseSource* pose_source,
+                    IRenderCommandSink* command_sink);
     ~RendererRuntime() override;
 
     [[nodiscard]] foundation::Result<RenderProxyId> RegisterProxy(const RenderProxyDesc& desc) override;
@@ -70,6 +74,7 @@ class RendererRuntime final : public IRenderScene, public IViewSystem, public IR
 
     IRenderResourceBridge* resource_bridge_ = nullptr;
     IRenderSceneSource* scene_source_ = nullptr;
+    IRenderPoseSource* pose_source_ = nullptr;
     IRenderCommandSink* command_sink_ = nullptr;
     std::unordered_map<RenderProxyId, ProxyRecord> proxies_;
     std::unordered_map<ViewId, ViewRecord> views_;

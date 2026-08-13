@@ -311,8 +311,8 @@ bool TestPersistencePromotionForbidsDowngrade()
         return false;
     }
 
-    const auto downgrade = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::Disposable});
-    const auto upgrade = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::Protected});
+    const auto downgrade = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::Disposable, std::nullopt});
+    const auto upgrade = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::Protected, std::nullopt});
     const auto stored = runtime.FindObject(created.Value());
     return !downgrade.HasValue() && downgrade.GetError().HasCode("world.forbidden_persistence_downgrade") &&
            upgrade.HasValue() && stored.has_value() && stored->persistence_tier == PersistenceTier::Protected &&
@@ -328,7 +328,7 @@ bool TestPlayerTouchedPromotionRequiresPersistentId()
         return false;
     }
 
-    const auto missing_id = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::PlayerTouched});
+    const auto missing_id = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::PlayerTouched, std::nullopt});
     const auto promoted = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 1, PersistenceTier::PlayerTouched, PersistentObjectId{901}});
     const auto stored = runtime.FindObject(created.Value());
     return !missing_id.HasValue() && missing_id.GetError().HasCode("world.persistent_id_required") &&
@@ -347,7 +347,7 @@ bool TestPublicCommandsRequireExpectedRevision()
 
     const auto placement = runtime.Apply(ChangePlacementCommand{created.Value(), 0, HiddenPlacement{}});
     const auto residency = runtime.Apply(ChangeResidencyCommand{created.Value(), 0, ResidencyState::Resident});
-    const auto promotion = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 0, PersistenceTier::TemporaryObserved});
+    const auto promotion = runtime.Apply(PromotePersistenceTierCommand{created.Value(), 0, PersistenceTier::TemporaryObserved, std::nullopt});
     const auto destruction = runtime.Apply(DestroyObjectCommand{created.Value(), 0});
     return !placement.HasValue() && placement.GetError().HasCode("world.expected_revision_required") &&
            !residency.HasValue() && residency.GetError().HasCode("world.expected_revision_required") &&

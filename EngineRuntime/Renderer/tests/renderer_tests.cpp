@@ -477,7 +477,10 @@ class TestCommandSink final : public IRenderCommandSink
     }
     auto bridge = std::make_shared<TestResourceBridge>();
     auto scene = std::make_shared<TestSceneSource>();
-    const auto missing_sink = CreateRendererServices({}, RendererDependencies{bridge, scene, nullptr});
+    RendererDependencies missing_sink_dependencies{};
+    missing_sink_dependencies.resource_bridge = bridge;
+    missing_sink_dependencies.scene_source = scene;
+    const auto missing_sink = CreateRendererServices({}, missing_sink_dependencies);
     if (missing_sink || !missing_sink.GetError().HasCode("renderer.command_sink_missing"))
     {
         return false;

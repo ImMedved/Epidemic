@@ -1,4 +1,4 @@
-﻿#include "renderer_runtime_impl.h"
+#include "renderer_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
 
@@ -50,6 +50,14 @@ RendererRuntime::RendererRuntime(IRenderResourceBridge* resource_bridge, IRender
 
 RendererRuntime::RendererRuntime(IRenderResourceBridge* resource_bridge, IRenderSceneSource* scene_source, IRenderCommandSink* command_sink)
     : resource_bridge_(resource_bridge), scene_source_(scene_source), command_sink_(command_sink)
+{
+}
+
+RendererRuntime::RendererRuntime(IRenderResourceBridge* resource_bridge,
+                                 IRenderSceneSource* scene_source,
+                                 IRenderPoseSource* pose_source,
+                                 IRenderCommandSink* command_sink)
+    : resource_bridge_(resource_bridge), scene_source_(scene_source), pose_source_(pose_source), command_sink_(command_sink)
 {
 }
 
@@ -361,7 +369,20 @@ foundation::Result<void> RendererRuntime::RenderFrame()
         for (RenderProxyId id : submissions)
         {
             const ProxyRecord& proxy = proxies_.at(id);
-            const auto submitted = command_sink_->SubmitProxy(RenderProxySubmission{id, proxy.cached_transform, proxy.payloads, proxy.desc.layer, proxy.visibility});
+            std::shared_ptr<const RenderPoseBuffer> pose;
+            if (pose_source_ != nullptr)
+            {
+                const auto resolved_pose = pose_source_->GetPose(proxy.desc.owner);
+                if (!resolved_pose)
+                {
+                    (void)command_sink_->AbortFrame();
+                    frame_state_ = RenderFrameState::Failed;
+                    return foundation::Result<void>::Failure(resolved_pose.GetError());
+                }
+                pose = resolved_pose.Value();
+            }
+            const auto submitted = command_sink_->SubmitProxy(
+                RenderProxySubmission{id, proxy.cached_transform, proxy.payloads, std::move(pose), proxy.desc.layer, proxy.visibility});
             if (!submitted)
             {
                 (void)command_sink_->AbortFrame();

@@ -147,6 +147,7 @@ struct PoseSnapshot
 struct PoseBuffer
 {
     AnimatorHandle animator{};
+    RuntimeObjectId owner{};
     std::vector<Transform> bone_transforms{};
     std::uint64_t revision = 0;
 };
@@ -166,6 +167,7 @@ struct AnimatorSnapshot
 struct AnimationEvaluationRequest
 {
     AnimatorHandle animator{};
+    RuntimeObjectId owner{};
     SkeletonDesc skeleton{};
     AnimationClipDesc source_clip{};
     AnimationClipDesc target_clip{};

@@ -121,7 +121,7 @@ foundation::Result<AnimatorHandle> AnimationRuntime::CreateAnimatorHandle(const 
     record.playback_state = AnimatorPlaybackState::Stopped;
     record.pose_state = PoseState::Clean;
     record.revision = 1;
-    record.cached_pose = PoseBuffer{handle, std::vector<Transform>(skeleton.Value().joint_count), record.revision};
+    record.cached_pose = PoseBuffer{handle, desc.owner, std::vector<Transform>(skeleton.Value().joint_count), record.revision};
     animators_.emplace(id, record);
     return foundation::Result<AnimatorHandle>::Success(handle);
 }
@@ -542,7 +542,7 @@ PoseBuffer AnimationRuntime::BuildPoseBuffer(const AnimatorRecord& animator) con
         }
     }
 
-    PoseBuffer pose{animator.handle, std::vector<Transform>(bone_count), animator.revision};
+    PoseBuffer pose{animator.handle, animator.desc.owner, std::vector<Transform>(bone_count), animator.revision};
     const float sample = static_cast<float>(animator.playback.local_time.value.count()) / 1000000.0f;
     for (std::size_t index = 0; index < pose.bone_transforms.size(); ++index)
     {
@@ -576,6 +576,7 @@ foundation::Result<PoseBuffer> AnimationRuntime::EvaluatePose(const AnimatorReco
 
     AnimationEvaluationRequest request{};
     request.animator = animator.handle;
+    request.owner = animator.desc.owner;
     request.skeleton = skeleton.Value();
     request.source_clip = source_clip.Value();
     request.target_clip = target_clip.Value();
