@@ -45,6 +45,7 @@ struct AIAgentState{GameplayObjectRef subject{};AIProfileId profile{};AIAgentAct
 struct AIContextSnapshot{std::vector<TypeId> known_topics;std::vector<GameplayObjectRef> perceived_targets;GameplayTimePoint now{};std::vector<std::byte> payload;};
 struct AIThinkResult{GameplayObjectRef subject{};std::optional<AIGoalInstance> goal{};std::optional<AIIntent> intent{};bool deferred=false;Revision revision{};};
 struct AIBudget{std::uint32_t max_agents_thinking_per_tick=256;std::uint32_t max_goals_evaluated=4096;std::uint32_t max_intents_issued=512;};
+struct AITickBudgetState{GameplayTickId tick{};std::uint32_t agents_thought=0;std::uint32_t goals_evaluated=0;std::uint32_t intents_issued=0;};
 struct AIChange{std::uint64_t sequence=0;AIChangeKind kind=AIChangeKind::AgentRegistered;GameplayObjectRef subject{};AIGoalId goal{};AIIntentId intent{};AIIntentTypeId intent_type{};GameplayContext context{};Revision revision{};};
 struct AISnapshot{std::vector<AIProfile> profiles;std::vector<AIGoalDefinition> goals;std::vector<AIAccessPolicy> policies;std::vector<AIAgentState> agents;MonotonicIdGenerator<GameplayObjectId>::Snapshot intent_ids{};Revision revision{};};
 struct AIDiagnostics{std::uint64_t profiles=0,agents=0,agents_thinking=0,goals_evaluated=0,intents_issued=0,intents_failed=0,budget_exhaustions=0;};
@@ -83,6 +84,7 @@ public:
 private:
     void Bump() noexcept{revision_.value++;}
     void Record(AIChange change);
+    void EnsureBudgetEpoch(GameplayTickId tick) noexcept;
     [[nodiscard]] AIAgentState* FindMutableAgent(GameplayObjectRef subject) noexcept;
     [[nodiscard]] AIAgentState* FindAgentByIntent(AIIntentId id) noexcept;
     [[nodiscard]] bool AccessAllows(const AIProfile& profile,AIAccessFlag flag) const noexcept;
@@ -99,6 +101,11 @@ private:
     std::vector<AIChange> changes_;
     std::uint64_t next_change_sequence_=1;
     AIBudget budget_{};
+    AITickBudgetState tick_budget_{};
     AIDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::ai
+
+
+
+

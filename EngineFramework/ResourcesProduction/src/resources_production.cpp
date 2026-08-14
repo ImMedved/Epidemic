@@ -96,6 +96,21 @@ Fixed ResourcesProductionService::GetAmount(ResourceStockpileId stockpile, Resou
     const auto it = amounts_.find({stockpile, type});
     return it == amounts_.end() ? 0 : it->second;
 }
+Fixed ResourcesProductionService::GetReservedAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept
+{
+    Fixed reserved = 0;
+    for (const auto& [id, reservation] : reservations_)
+    {
+        (void)id;
+        if (reservation.state != ResourceReservationState::Active || reservation.stockpile != stockpile) continue;
+        for (const auto& quantity : reservation.quantities) if (quantity.type == type) reserved += quantity.amount;
+    }
+    return reserved;
+}
+Fixed ResourcesProductionService::GetAvailableAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept
+{
+    return std::max<Fixed>(0, GetAmount(stockpile, type) - GetReservedAmount(stockpile, type));
+}
 foundation::Result<void> ResourcesProductionService::Add(ResourceStockpileId stockpile, ResourceQuantity quantity, GameplayContext context)
 {
     if (!stockpiles_.contains(stockpile) || !quantity.IsValid() || !types_.contains(quantity.type)) return foundation::Result<void>::Failure(Error("gameplay.resources.invalid_add", "cannot add resource"));
@@ -107,11 +122,12 @@ foundation::Result<void> ResourcesProductionService::Remove(ResourceStockpileId 
 {
     if (!stockpiles_.contains(stockpile) || !quantity.IsValid() || !types_.contains(quantity.type)) return foundation::Result<void>::Failure(Error("gameplay.resources.invalid_remove", "cannot remove resource"));
     auto& amount = amounts_[{stockpile, quantity.type}];
-    if (amount < quantity.amount)
+    const auto available = GetAvailableAmount(stockpile, quantity.type);
+    if (available < quantity.amount)
     {
         ++diagnostics_.shortages;
-        Record({0, ResourceChangeKind::ShortageDetected, stockpile, quantity.type, {}, quantity.amount - amount, context.time, context, revision_});
-        return foundation::Result<void>::Failure(Error("gameplay.resources.shortage", "insufficient resource amount"));
+        Record({0, ResourceChangeKind::ShortageDetected, stockpile, quantity.type, {}, quantity.amount - available, context.time, context, revision_});
+        return foundation::Result<void>::Failure(Error("gameplay.resources.shortage", "insufficient unreserved resource amount"));
     }
     Bump(); amount -= quantity.amount;
     Record({0, ResourceChangeKind::ResourceRemoved, stockpile, quantity.type, {}, quantity.amount, context.time, context, revision_});
@@ -120,8 +136,55 @@ foundation::Result<void> ResourcesProductionService::Remove(ResourceStockpileId 
 bool ResourcesProductionService::CanReserve(ResourceStockpileId stockpile, std::span<const ResourceQuantity> quantities) const noexcept
 {
     if (!stockpiles_.contains(stockpile)) return false;
-    for (const auto& q : quantities) if (!q.IsValid() || GetAmount(stockpile, q.type) < q.amount) return false;
+    for (const auto& q : quantities) if (!q.IsValid() || GetAvailableAmount(stockpile, q.type) < q.amount) return false;
     return true;
+}
+foundation::Result<ResourceReservationId> ResourcesProductionService::Reserve(ResourceStockpileId stockpile, std::vector<ResourceQuantity> quantities, GameplayObjectRef owner, TypeId reason, GameplayContext context)
+{
+    auto valid = ValidateQuantities(quantities);
+    if (!valid) return foundation::Result<ResourceReservationId>::Failure(valid.GetError());
+    if (!CanReserve(stockpile, quantities)) return foundation::Result<ResourceReservationId>::Failure(Error("gameplay.resources.shortage", "resources unavailable for reservation"));
+    ResourceReservation reservation;
+    reservation.id = ResourceReservationId{reservation_ids_.Next()};
+    reservation.stockpile = stockpile;
+    reservation.quantities = std::move(quantities);
+    reservation.owner = owner;
+    reservation.reason = reason;
+    Bump(); reservation.revision = revision_;
+    const auto id = reservation.id;
+    reservations_.emplace(id, reservation);
+    ++diagnostics_.active_reservations;
+    for (const auto& q : reservation.quantities) Record({0, ResourceChangeKind::ResourceReserved, stockpile, q.type, {}, q.amount, context.time, context, revision_});
+    return foundation::Result<ResourceReservationId>::Success(id);
+}
+const ResourceReservation* ResourcesProductionService::FindReservation(ResourceReservationId id) const noexcept
+{
+    const auto it = reservations_.find(id);
+    return it == reservations_.end() ? nullptr : &it->second;
+}
+foundation::Result<void> ResourcesProductionService::ReleaseReservation(ResourceReservationId id, GameplayContext context)
+{
+    auto it = reservations_.find(id);
+    if (it == reservations_.end() || it->second.state != ResourceReservationState::Active) return foundation::Result<void>::Failure(Error("gameplay.resources.reservation_missing", "active resource reservation missing"));
+    Bump(); it->second.state = ResourceReservationState::Released; it->second.revision = revision_;
+    if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
+    for (const auto& q : it->second.quantities) Record({0, ResourceChangeKind::ResourceReservationReleased, it->second.stockpile, q.type, {}, q.amount, context.time, context, revision_});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> ResourcesProductionService::ConsumeReservation(ResourceReservationId id, GameplayContext context)
+{
+    auto it = reservations_.find(id);
+    if (it == reservations_.end() || it->second.state != ResourceReservationState::Active) return foundation::Result<void>::Failure(Error("gameplay.resources.reservation_missing", "active resource reservation missing"));
+    for (const auto& q : it->second.quantities) if (GetAmount(it->second.stockpile, q.type) < q.amount) return foundation::Result<void>::Failure(Error("gameplay.resources.reservation_invalid", "reserved resource amount is no longer available"));
+    Bump();
+    for (const auto& q : it->second.quantities)
+    {
+        amounts_[{it->second.stockpile, q.type}] -= q.amount;
+        Record({0, ResourceChangeKind::ResourceReservationConsumed, it->second.stockpile, q.type, {}, q.amount, context.time, context, revision_});
+    }
+    it->second.state = ResourceReservationState::Consumed; it->second.revision = revision_;
+    if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
+    return foundation::Result<void>::Success();
 }
 foundation::Result<ResourceTransactionId> ResourcesProductionService::Transfer(ResourceStockpileId from, ResourceStockpileId to, std::vector<ResourceQuantity> quantities, TypeId reason, GameplayContext context)
 {
@@ -155,6 +218,48 @@ foundation::Result<void> ResourcesProductionService::RegenerateNode(ResourceNode
     Bump(); it->second.remaining_amount += elapsed.ticks * it->second.regeneration_rate_per_tick; it->second.state = ResourceNodeState::Active; it->second.revision = revision_;
     Record({0, ResourceChangeKind::NodeRegenerated, {}, it->second.type, {}, it->second.remaining_amount, context.time, context, revision_});
     return foundation::Result<void>::Success();
+}
+foundation::Result<ProductionCapabilityId> ResourcesProductionService::CreateProductionCapability(ProductionCapability capability)
+{
+    if (!capability.site.IsValid() || capability.capacity < 0) return foundation::Result<ProductionCapabilityId>::Failure(Error("gameplay.resources.invalid_capability", "invalid production capability"));
+    if (!capability.id.IsValid()) capability.id = ProductionCapabilityId{capability_ids_.Next()};
+    if (capabilities_.contains(capability.id)) return foundation::Result<ProductionCapabilityId>::Failure(Error("gameplay.resources.duplicate_capability", "duplicate production capability"));
+    Bump(); capability.revision = revision_;
+    const auto id = capability.id; capabilities_.emplace(id, std::move(capability));
+    Record({0, ResourceChangeKind::ProductionCapabilityCreated, {}, {}, {}, 0, {}, {}, revision_});
+    return foundation::Result<ProductionCapabilityId>::Success(id);
+}
+const ProductionCapability* ResourcesProductionService::FindProductionCapability(ProductionCapabilityId id) const noexcept
+{
+    const auto it = capabilities_.find(id); return it == capabilities_.end() ? nullptr : &it->second;
+}
+foundation::Result<ProductionPlanId> ResourcesProductionService::CreateProductionPlan(ProductionPlan plan)
+{
+    if (!plan.owner.IsValid() || !types_.contains(plan.desired_output) || plan.target_quantity <= 0) return foundation::Result<ProductionPlanId>::Failure(Error("gameplay.resources.invalid_plan", "invalid production plan"));
+    if (!plan.id.IsValid()) plan.id = ProductionPlanId{plan_ids_.Next()};
+    if (plans_.contains(plan.id)) return foundation::Result<ProductionPlanId>::Failure(Error("gameplay.resources.duplicate_plan", "duplicate production plan"));
+    Bump(); plan.revision = revision_;
+    const auto id = plan.id; plans_.emplace(id, std::move(plan));
+    Record({0, ResourceChangeKind::ProductionPlanCreated, {}, {}, {}, 0, {}, {}, revision_});
+    return foundation::Result<ProductionPlanId>::Success(id);
+}
+foundation::Result<void> ResourcesProductionService::SetProductionPlanState(ProductionPlanId id, ProductionPlanState state, GameplayContext context)
+{
+    auto it = plans_.find(id); if (it == plans_.end()) return foundation::Result<void>::Failure(Error("gameplay.resources.plan_missing", "production plan missing"));
+    Bump(); it->second.state = state; it->second.revision = revision_;
+    Record({0, ResourceChangeKind::ProductionPlanChanged, {}, it->second.desired_output, {}, it->second.target_quantity, context.time, context, revision_});
+    return foundation::Result<void>::Success();
+}
+const ProductionPlan* ResourcesProductionService::FindProductionPlan(ProductionPlanId id) const noexcept
+{
+    const auto it = plans_.find(id); return it == plans_.end() ? nullptr : &it->second;
+}
+std::vector<ProductionPlan> ResourcesProductionService::FindProductionPlans(GameplayObjectRef owner) const
+{
+    std::vector<ProductionPlan> out;
+    for (const auto& [id, plan] : plans_) { (void)id; if (!owner.IsValid() || plan.owner == owner) out.push_back(plan); }
+    std::sort(out.begin(), out.end(), [](const auto& a, const auto& b){ if (a.priority != b.priority) return a.priority > b.priority; return a.id < b.id; });
+    return out;
 }
 foundation::Result<ProductionOrderId> ResourcesProductionService::StartProductionOrder(ProductionSiteId site_id, ProductionRecipeId recipe_id, ResourceStockpileId input, ResourceStockpileId output, GameplayTimePoint now, GameplayContext context)
 {
@@ -205,29 +310,38 @@ ResourcesSnapshot ResourcesProductionService::CaptureSnapshot() const
     for (const auto& [key, amount] : amounts_) s.amounts.push_back({key.stockpile, {key.type, amount}});
     for (const auto& [id, v] : nodes_) { (void)id; s.nodes.push_back(v); }
     for (const auto& [id, v] : sites_) { (void)id; s.sites.push_back(v); }
+    for (const auto& [id, v] : reservations_) { (void)id; s.reservations.push_back(v); }
+    for (const auto& [id, v] : capabilities_) { (void)id; s.capabilities.push_back(v); }
+    for (const auto& [id, v] : plans_) { (void)id; s.plans.push_back(v); }
     for (const auto& [id, v] : orders_) { (void)id; if (v.state != ProductionOrderState::Completed) s.orders.push_back(v); }
     std::sort(s.stockpiles.begin(), s.stockpiles.end(), [](auto&a, auto&b){ return a.id < b.id; });
     std::sort(s.amounts.begin(), s.amounts.end(), [](auto&a, auto&b){ return a.first == b.first ? a.second.type < b.second.type : a.first < b.first; });
     std::sort(s.nodes.begin(), s.nodes.end(), [](auto&a, auto&b){ return a.id < b.id; });
     std::sort(s.sites.begin(), s.sites.end(), [](auto&a, auto&b){ return a.id < b.id; });
+    std::sort(s.reservations.begin(), s.reservations.end(), [](auto&a, auto&b){ return a.id < b.id; });
+    std::sort(s.capabilities.begin(), s.capabilities.end(), [](auto&a, auto&b){ return a.id < b.id; });
+    std::sort(s.plans.begin(), s.plans.end(), [](auto&a, auto&b){ return a.id < b.id; });
     std::sort(s.orders.begin(), s.orders.end(), [](auto&a, auto&b){ return a.id < b.id; });
-    s.stockpile_ids = stockpile_ids_.GetSnapshot(); s.node_ids = node_ids_.GetSnapshot(); s.site_ids = site_ids_.GetSnapshot(); s.order_ids = order_ids_.GetSnapshot(); s.transaction_ids = transaction_ids_.GetSnapshot(); s.revision = revision_;
+    s.stockpile_ids = stockpile_ids_.GetSnapshot(); s.node_ids = node_ids_.GetSnapshot(); s.site_ids = site_ids_.GetSnapshot(); s.reservation_ids = reservation_ids_.GetSnapshot(); s.capability_ids = capability_ids_.GetSnapshot(); s.plan_ids = plan_ids_.GetSnapshot(); s.order_ids = order_ids_.GetSnapshot(); s.transaction_ids = transaction_ids_.GetSnapshot(); s.revision = revision_;
     return s;
 }
 foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSnapshot s)
 {
-    stockpiles_.clear(); amounts_.clear(); nodes_.clear(); sites_.clear(); orders_.clear();
+    stockpiles_.clear(); amounts_.clear(); nodes_.clear(); sites_.clear(); reservations_.clear(); capabilities_.clear(); plans_.clear(); orders_.clear();
     for (auto& v : s.stockpiles) { if (!v.id.IsValid()) return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid stockpile")); stockpiles_[v.id] = std::move(v); }
     for (auto& p : s.amounts) { if (!stockpiles_.contains(p.first) || !types_.contains(p.second.type)) return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid amount")); amounts_[{p.first, p.second.type}] = p.second.amount; }
     for (auto& v : s.nodes) { if (!v.id.IsValid() || !types_.contains(v.type)) return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid node")); nodes_[v.id] = std::move(v); }
     for (auto& v : s.sites) { if (!v.id.IsValid()) return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid site")); sites_[v.id] = std::move(v); }
+    for (auto& v : s.reservations) { if (!v.id.IsValid() || !stockpiles_.contains(v.stockpile)) return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid reservation")); reservations_[v.id] = std::move(v); }
+    for (auto& v : s.capabilities) { if (!v.id.IsValid() || !v.site.IsValid()) return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid capability")); capabilities_[v.id] = std::move(v); }
+    for (auto& v : s.plans) { if (!v.id.IsValid() || !types_.contains(v.desired_output)) return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid production plan")); plans_[v.id] = std::move(v); }
     for (auto& v : s.orders) { if (!v.id.IsValid() || !recipes_.contains(v.recipe)) return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid order")); orders_[v.id] = std::move(v); }
-    stockpile_ids_.Restore(s.stockpile_ids); node_ids_.Restore(s.node_ids); site_ids_.Restore(s.site_ids); order_ids_.Restore(s.order_ids); transaction_ids_.Restore(s.transaction_ids); revision_ = s.revision; changes_.clear(); next_change_sequence_ = 1;
+    stockpile_ids_.Restore(s.stockpile_ids); node_ids_.Restore(s.node_ids); site_ids_.Restore(s.site_ids); reservation_ids_.Restore(s.reservation_ids); capability_ids_.Restore(s.capability_ids); plan_ids_.Restore(s.plan_ids); order_ids_.Restore(s.order_ids); transaction_ids_.Restore(s.transaction_ids); revision_ = s.revision; changes_.clear(); next_change_sequence_ = 1;
     return foundation::Result<void>::Success();
 }
 ResourcesDiagnostics ResourcesProductionService::GetDiagnostics() const noexcept
 {
-    auto d = diagnostics_; d.stockpiles = stockpiles_.size(); d.nodes = nodes_.size(); d.production_sites = sites_.size(); d.resource_records = amounts_.size(); d.active_orders = 0; for (const auto& [id, o] : orders_) { (void)id; if (o.state == ProductionOrderState::Running || o.state == ProductionOrderState::Queued) ++d.active_orders; } return d;
+    auto d = diagnostics_; d.stockpiles = stockpiles_.size(); d.nodes = nodes_.size(); d.production_sites = sites_.size(); d.resource_records = amounts_.size(); d.production_capabilities = capabilities_.size(); d.production_plans = plans_.size(); d.active_reservations = 0; for (const auto& [id, r] : reservations_) { (void)id; if (r.state == ResourceReservationState::Active) ++d.active_reservations; } d.active_orders = 0; for (const auto& [id, o] : orders_) { (void)id; if (o.state == ProductionOrderState::Running || o.state == ProductionOrderState::Queued) ++d.active_orders; } return d;
 }
 void ResourcesProductionService::Record(ResourceChange change)
 {

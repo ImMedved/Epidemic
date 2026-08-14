@@ -36,6 +36,7 @@ enum class PlacementAvailability { Available, Unavailable, Blocked, RequiresReso
 enum class PlacementCommitPolicy { Instant, CreateSite, PreviewOnly };
 enum class ConstructionCostPolicy { ValidateOnly, ReserveThenCommit, ConsumeOnCommit, Free };
 enum class ConstructionSiteState { Planned, UnderConstruction, Paused, Completed, Cancelled, Failed };
+enum class PlacementPlanState { Prepared, Committed, Cancelled, Expired };
 enum class SocketState { Free, Occupied, Disabled, Reserved };
 enum class ConstructionChangeKind { PlacementValidated, PlacementRejected, PlacementCommitted, PlacedObjectCreated, SiteCreated, SiteStarted, SiteCompleted, SiteCancelled, SocketReserved, SocketReleased, SocketOccupied };
 
@@ -72,8 +73,11 @@ struct PlacementPlan
     std::vector<ConstructionCost> reserved_costs;
     Revision dependency_revision{};
     GameplayContext context{};
+    PlacementPlanState state=PlacementPlanState::Prepared;
+    std::optional<PlacementSocketId> dependency_socket{};
+    Revision dependency_socket_revision{};
 };
-struct PlacementOutputOperation { PlacementOutputTypeId type{}; GameplayObjectRef subject{}; std::vector<std::byte> payload; };
+struct PlacementOutputOperation { PlacementOutputTypeId type{}; GameplayObjectRef subject{}; TypeId archetype{}; PlacedObjectId placed_record{}; std::vector<std::byte> payload; };
 struct PlacementCommitResult { PlacementExecutionId execution{}; PlacedObjectId placed_object{}; std::vector<PlacementOutputOperation> outputs; Revision revision{}; };
 struct PlacementSocket { PlacementSocketId id{}; GameplayObjectRef owner{}; GameplayTagSet accepted_tags; SocketState state=SocketState::Free; Revision revision{}; };
 struct ConstructionSite { ConstructionSiteId id{}; GameplayObjectRef actor{}; ConstructionRecipeId recipe{}; PlacementTarget target{}; ConstructionSiteState state=ConstructionSiteState::Planned; GameplayTimePoint started_at{}; Fixed progress_micro=0; Revision revision{}; };
@@ -97,6 +101,7 @@ public:
     [[nodiscard]] const PlacementSocket* FindSocket(PlacementSocketId id) const noexcept;
     [[nodiscard]] foundation::Result<PlacementValidationResult> ValidatePlacement(const PlacementRequest& request) const;
     [[nodiscard]] foundation::Result<PlacementPlan> PreparePlacementPlan(const PlacementRequest& request);
+    [[nodiscard]] foundation::Result<PlacementCommitResult> CommitPlacement(PlacementPlanId plan, ConstructionCostPolicy cost_policy=ConstructionCostPolicy::ConsumeOnCommit);
     [[nodiscard]] foundation::Result<PlacementCommitResult> CommitPlacement(const PlacementPlan& plan, ConstructionCostPolicy cost_policy=ConstructionCostPolicy::ConsumeOnCommit);
     [[nodiscard]] foundation::Result<ConstructionSiteId> StartConstructionSite(const PlacementPlan& plan, GameplayTimePoint started_at={}, GameplayContext context={});
     [[nodiscard]] foundation::Result<void> CompleteConstructionSite(ConstructionSiteId id, GameplayContext context={});
@@ -131,3 +136,5 @@ private:
     std::uint64_t validations_=0,rejections_=0,committed_=0,socket_reservations_=0,completed_sites_=0;
 };
 } // namespace epidemic::gameplay::construction
+
+

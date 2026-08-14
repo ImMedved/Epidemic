@@ -49,9 +49,12 @@ int main()
     request.area=forest;
     request.seed=RandomSeed{55};
     auto spawn=encounter_adapter.SpawnFromPopulation(population,encounters,bandit_group.Value(),request,2);
-    Check(spawn.spawn.state==SpawnResultState::Succeeded,"population backed spawn");
-    Check(spawn.allocated_units.size()==2,"allocated units");
-    Check(population.GetPopulationCounts(bandit_group.Value()).materialized==2,"population materialized");
+    Check(spawn.spawn.state==SpawnResultState::Succeeded,"population backed spawn");    Check(spawn.allocated_units.size()==2,"allocated units");
+    Check(spawn.spawn.spawned_records.size()==2,"spawn records created");
+    Check(spawn.spawn.created_entities.empty(),"encounters did not fabricate entities");
+    Check(population.GetPopulationCounts(bandit_group.Value()).materialized==0,"population waits for real entity binding");
+    for(std::size_t i=0;i<spawn.allocated_units.size();++i){auto entity=Ref("entities",i==0?"bandit.0":"bandit.1");Check(static_cast<bool>(encounters.BindSpawnedEntity(spawn.spawn.spawned_records[i],entity)),"bind spawned entity");Check(static_cast<bool>(population.MaterializeUnit(spawn.allocated_units[i],entity,request.context)),"materialize real entity");}
+    Check(population.GetPopulationCounts(bandit_group.Value()).materialized==2,"population materialized after entity bind");
 
     RolesJobsService roles;
     JobDefinition job;
@@ -107,3 +110,5 @@ int main()
     Check(needs.FindLifePressures(assignment.worker).empty(),"pressures resolved after death");
     return 0;
 }
+
+

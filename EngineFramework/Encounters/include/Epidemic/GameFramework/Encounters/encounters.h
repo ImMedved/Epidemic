@@ -38,7 +38,7 @@ struct SpawnedEntityRecord{SpawnedEntityRecordId id{};EncounterInstanceId encoun
 struct EncounterInstance{EncounterInstanceId id{};EncounterDefinitionId definition{};GameplayObjectRef area{};GameplayObjectRef origin{};EncounterState state=EncounterState::Pending;std::vector<SpawnedEntityRecordId> spawned_entities;GameplayTimePoint created_at{};GameplayTimePoint last_updated_at{};std::vector<std::byte> payload;Revision revision{};};
 struct RespawnRule{RespawnRuleId id{};EncounterDefinitionId encounter{};GameplayDuration delay{};std::uint32_t remaining_limit=0;Revision revision{};};
 struct SpawnRequest{SpawnRequestId id{};EncounterDefinitionId encounter{};GameplayObjectRef area{};std::optional<GameplayObjectRef> origin;std::optional<SpawnPointId> spawn_point;random::RandomSeed seed{};SpawnPersistencePolicy persistence=SpawnPersistencePolicy::Transient;GameplayContext context{};};
-struct SpawnResult{SpawnRequestId request_id{};EncounterInstanceId encounter_instance{};std::vector<GameplayObjectRef> created_entities;std::vector<GameplayObjectRef> linked_population_units;SpawnResultState state=SpawnResultState::Failed;Revision revision{};};
+struct SpawnResult{SpawnRequestId request_id{};EncounterInstanceId encounter_instance{};std::vector<SpawnedEntityRecordId> spawned_records;std::vector<GameplayObjectRef> created_entities;std::vector<GameplayObjectRef> linked_population_units;SpawnResultState state=SpawnResultState::Failed;Revision revision{};};
 struct EncounterChange{std::uint64_t sequence=0;EncounterChangeKind kind=EncounterChangeKind::EncounterCreated;EncounterInstanceId encounter{};GameplayObjectRef entity{};GameplayObjectRef area{};GameplayContext context{};Revision revision{};};
 struct EncountersSnapshot{std::vector<EncounterDefinition> definitions;std::vector<SpawnTable> tables;std::vector<SpawnPoint> points;std::vector<EncounterInstance> instances;std::vector<SpawnedEntityRecord> spawned;std::vector<RespawnRule> respawn_rules;MonotonicIdGenerator<GameplayObjectId>::Snapshot instance_ids{};MonotonicIdGenerator<GameplayObjectId>::Snapshot point_ids{};MonotonicIdGenerator<GameplayObjectId>::Snapshot request_ids{};MonotonicIdGenerator<GameplayObjectId>::Snapshot spawned_ids{};MonotonicIdGenerator<GameplayObjectId>::Snapshot respawn_ids{};Revision revision{};};
 struct EncounterBudgets{std::uint32_t max_active_encounters=1000;std::uint32_t max_spawn_operations_per_tick=64;std::uint32_t max_spawned_entities_per_encounter=256;};
@@ -53,11 +53,13 @@ public:
     [[nodiscard]] foundation::Result<SpawnPointId> AddSpawnPoint(SpawnPoint point);
     void SetBudgets(EncounterBudgets budgets) noexcept{budgets_=budgets;}
     [[nodiscard]] SpawnResult SpawnEncounter(SpawnRequest request);
+    [[nodiscard]] foundation::Result<void> BindSpawnedEntity(SpawnedEntityRecordId record,GameplayObjectRef entity,GameplayContext context={});
     [[nodiscard]] foundation::Result<void> CompleteEncounter(EncounterInstanceId id,GameplayContext context={});
     [[nodiscard]] foundation::Result<void> FailEncounter(EncounterInstanceId id,GameplayContext context={});
     [[nodiscard]] foundation::Result<RespawnRuleId> ScheduleRespawn(RespawnRule rule,GameplayContext context={});
     [[nodiscard]] std::vector<EncounterDefinition> FindDefinitionsByTag(TagId tag) const;
     [[nodiscard]] const EncounterInstance* GetEncounterInstance(EncounterInstanceId id) const noexcept;
+    [[nodiscard]] const SpawnedEntityRecord* GetSpawnedEntityRecord(SpawnedEntityRecordId id) const noexcept;
     [[nodiscard]] const SpawnTable* GetSpawnTable(SpawnTableId id) const noexcept;
     [[nodiscard]] std::vector<EncounterInstance> FindActiveEncountersInArea(GameplayObjectRef area) const;
     [[nodiscard]] std::vector<SpawnPoint> FindSpawnPointsInArea(GameplayObjectRef area) const;
@@ -70,7 +72,6 @@ public:
 private:
     void Bump() noexcept{revision_.value++;}
     void Record(EncounterChange change);
-    [[nodiscard]] GameplayObjectRef MakeSpawnedEntityRef(SpawnedEntityRecordId id) const noexcept;
     [[nodiscard]] std::vector<SpawnEntry> ResolveEntries(const SpawnTable& table,random::RandomSeed seed) const;
     Revision revision_{};
     MonotonicIdGenerator<GameplayObjectId> instance_ids_{0x2700};
@@ -90,3 +91,6 @@ private:
     mutable EncounterDiagnostics diagnostics_{};
 };
 }
+
+
+

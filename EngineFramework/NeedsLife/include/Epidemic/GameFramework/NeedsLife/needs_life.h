@@ -19,6 +19,8 @@ struct LifePressureId{GameplayObjectId value{}; static constexpr LifePressureId 
 struct NeedDecayRuleId{TypeId value{}; static constexpr NeedDecayRuleId FromString(std::string_view s) noexcept{return {TypeId::FromString(s)};} [[nodiscard]] constexpr bool IsValid() const noexcept{return value.IsValid();} [[nodiscard]] constexpr bool operator==(const NeedDecayRuleId&) const noexcept=default; [[nodiscard]] constexpr auto operator<=>(const NeedDecayRuleId&) const noexcept=default;};
 struct LifeSimulationProfileId{TypeId value{}; static constexpr LifeSimulationProfileId FromString(std::string_view s) noexcept{return {TypeId::FromString(s)};} [[nodiscard]] constexpr bool IsValid() const noexcept{return value.IsValid();} [[nodiscard]] constexpr bool operator==(const LifeSimulationProfileId&) const noexcept=default; [[nodiscard]] constexpr auto operator<=>(const LifeSimulationProfileId&) const noexcept=default;};
 struct IdHash{template<class T> [[nodiscard]] std::size_t operator()(const T& id) const noexcept{return std::hash<decltype(id.value)>{}(id.value);}};
+struct NeedStateKey{GameplayObjectRef subject{};NeedTypeId need{};[[nodiscard]] constexpr bool operator==(const NeedStateKey&) const noexcept=default;};
+struct NeedStateKeyHash{[[nodiscard]] std::size_t operator()(const NeedStateKey& key) const noexcept{auto a=std::hash<GameplayObjectRef>{}(key.subject);auto b=std::hash<TypeId>{}(key.need.value);return a^(b+0x9E3779B97F4A7C15ull+(a<<6u)+(a>>2u));}};
 
 enum class NeedThreshold{Satisfied,Low,Medium,High,Critical};
 enum class NeedMaterializationPolicy{AbstractCapable,MaterializedOnly,DisabledWhenAbstract};
@@ -66,14 +68,14 @@ private:
     void Record(NeedsLifeChange change);
     [[nodiscard]] NeedThreshold ThresholdFor(const NeedDefinition& def,std::int64_t value) const noexcept;
     [[nodiscard]] std::int64_t Clamp(const NeedDefinition& def,std::int64_t value) const noexcept{return std::max(def.min_value,std::min(def.max_value,value));}
-    [[nodiscard]] std::uint64_t StateKey(GameplayObjectRef subject,NeedTypeId need) const noexcept;
+    [[nodiscard]] static NeedStateKey StateKey(GameplayObjectRef subject,NeedTypeId need) noexcept;
     Revision revision_{};
     MonotonicIdGenerator<GameplayObjectId> profile_ids_{0x2900};
     MonotonicIdGenerator<GameplayObjectId> pressure_ids_{0x2901};
     MonotonicIdGenerator<GameplayObjectId> routine_ids_{0x2902};
     std::unordered_map<NeedTypeId,NeedDefinition,IdHash> definitions_;
     std::unordered_map<NeedProfileId,NeedProfile,IdHash> profiles_;
-    std::unordered_map<std::uint64_t,NeedState> states_;
+    std::unordered_map<NeedStateKey,NeedState,NeedStateKeyHash> states_;
     std::unordered_map<LifePressureId,LifePressure,IdHash> pressures_;
     std::unordered_map<LifeRoutineId,LifeRoutine,IdHash> routines_;
     std::vector<NeedsLifeChange> changes_;
@@ -81,3 +83,7 @@ private:
     mutable NeedsLifeDiagnostics diagnostics_{};
 };
 }
+
+
+
+

@@ -1,0 +1,154 @@
+#include "Epidemic/GameFramework/ItemsInventory/items_inventory.h"
+#include "Epidemic/Foundation/error.h"
+
+#include <algorithm>
+#include <iterator>
+#include <utility>
+
+namespace epidemic::gameplay::items
+{
+namespace { [[nodiscard]] foundation::Error Error(std::string_view c,std::string_view m){return foundation::Error::Create(c,m);} }
+
+ItemsInventoryService::ItemsInventoryService()=default;
+foundation::Result<ItemDefinitionId> ItemsInventoryService::RegisterDefinition(ItemDefinition d)
+{
+    if(frozen_) return foundation::Result<ItemDefinitionId>::Failure(Error("gameplay.items.frozen","item definitions are frozen"));
+    if(d.canonical_name.empty()&&!d.id.IsValid()) return foundation::Result<ItemDefinitionId>::Failure(Error("gameplay.items.invalid_definition","item definition requires an id or canonical name"));
+    if(!d.id.IsValid()) d.id=ItemDefinitionId::FromString(d.canonical_name);
+    if(definitions_.contains(d.id)) return foundation::Result<ItemDefinitionId>::Failure(Error("gameplay.items.duplicate_definition","duplicate item definition"));
+    if(d.base_weight<0||d.base_volume<0||d.max_durability<0||d.max_charges<0) return foundation::Result<ItemDefinitionId>::Failure(Error("gameplay.items.invalid_definition","negative item definition values"));
+    d.revision=Revision{1}; const auto id=d.id; definitions_.emplace(id,std::move(d)); return foundation::Result<ItemDefinitionId>::Success(id);
+}
+const ItemDefinition* ItemsInventoryService::FindDefinition(ItemDefinitionId id) const noexcept { const auto it=definitions_.find(id); return it==definitions_.end()?nullptr:&it->second; }
+foundation::Result<ContainerId> ItemsInventoryService::CreateContainer(ContainerRecord c)
+{
+    if(c.max_weight<0||c.max_volume<0) return foundation::Result<ContainerId>::Failure(Error("gameplay.items.invalid_container","container capacities must be non-negative"));
+    if(c.parent.IsValid()&&!containers_.contains(c.parent)) return foundation::Result<ContainerId>::Failure(Error("gameplay.items.parent_missing","parent container is missing"));
+    if(!c.id.IsValid()) c.id=ContainerId{container_ids_.Next()};
+    if(containers_.contains(c.id)) return foundation::Result<ContainerId>::Failure(Error("gameplay.items.duplicate_container","duplicate container"));
+    if(c.parent==c.id) return foundation::Result<ContainerId>::Failure(Error("gameplay.items.container_cycle","container cannot parent itself"));
+    Bump(); c.revision=revision_; const auto id=c.id; containers_.emplace(id,std::move(c)); ++diagnostics_.containers; Record({0,ItemChangeKind::ContainerCreated,{},id,0,{},revision_}); return foundation::Result<ContainerId>::Success(id);
+}
+foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemInstance item,GameplayContext context)
+{
+    const auto* def=FindDefinition(item.definition); if(!def) return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.definition_missing","item definition missing"));
+    if(item.quantity<=0) return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_quantity","item quantity must be positive"));
+    if(def->stack_policy==ItemStackPolicy::NonStackable&&item.quantity!=1) return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.nonstackable_quantity","non-stackable item quantity must be one"));
+    if(item.location.kind==ItemLocationKind::Container)
+    {
+        const auto* container=FindContainer(item.location.container);
+        if(!container||container->state!=ContainerState::Active) return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.container_reject","target container rejects item"));
+        auto usage=GetContainerUsage(item.location.container);
+        usage.weight+=def->base_weight*item.quantity;
+        usage.volume+=def->base_volume*item.quantity;
+        ++usage.slots;
+        if((container->max_weight>0&&usage.weight>container->max_weight)||(container->max_volume>0&&usage.volume>container->max_volume)||(container->max_slots>0&&usage.slots>container->max_slots)) return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.container_capacity","target container capacity exceeded"));
+    }
+    if(!item.id.IsValid()) item.id=ItemInstanceId{item_ids_.Next()};
+    if(items_.contains(item.id)) return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.duplicate_item","duplicate item instance"));
+    if(def->durability_policy==ItemDurabilityPolicy::InstanceValue&&item.durability==0) item.durability=def->default_durability;
+    if(def->charge_policy==ItemChargePolicy::InstanceValue&&item.charges==0) item.charges=def->default_charges;
+    Bump(); item.revision=revision_; const auto id=item.id; items_.emplace(id,std::move(item)); ++diagnostics_.items; Record({0,ItemChangeKind::ItemCreated,id,{},1,context,revision_}); return foundation::Result<ItemInstanceId>::Success(id);
+}
+foundation::Result<void> ItemsInventoryService::DestroyItem(ItemInstanceId id,GameplayContext context)
+{
+    auto it=items_.find(id); if(it==items_.end()) return foundation::Result<void>::Failure(Error("gameplay.items.item_missing","item missing"));
+    for(const auto& [rid,r]:reservations_) if(r.item==id&&r.state==ReservationState::Active){(void)rid; return foundation::Result<void>::Failure(Error("gameplay.items.item_reserved","reserved item cannot be destroyed"));}
+    items_.erase(it); Bump(); if(diagnostics_.items>0)--diagnostics_.items; Record({0,ItemChangeKind::ItemDestroyed,id,{},0,context,revision_}); return foundation::Result<void>::Success();
+}
+const ItemInstance* ItemsInventoryService::FindItem(ItemInstanceId id) const noexcept { const auto it=items_.find(id); return it==items_.end()?nullptr:&it->second; }
+const ContainerRecord* ItemsInventoryService::FindContainer(ContainerId id) const noexcept { const auto it=containers_.find(id); return it==containers_.end()?nullptr:&it->second; }
+bool ItemsInventoryService::EquivalentForStack(const ItemInstance& a,const ItemInstance& b) const noexcept
+{
+    if(a.definition!=b.definition) return false;
+    const auto* def=FindDefinition(a.definition);
+    if(!def||def->stack_policy==ItemStackPolicy::NonStackable) return false;
+    if(def->stack_policy==ItemStackPolicy::StackByDefinition) return true;
+    return a.durability==b.durability&&a.charges==b.charges&&a.properties==b.properties;
+}
+foundation::Result<ItemInstanceId> ItemsInventoryService::SplitStack(ItemInstanceId id,Fixed quantity,GameplayContext context)
+{
+    auto it=items_.find(id); if(it==items_.end()||quantity<=0||quantity>=it->second.quantity) return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_split","invalid stack split"));
+    if(ReservedQuantity(id)>it->second.quantity-quantity) return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.reservation_conflict","split would invalidate reservations"));
+    ItemInstance copy=it->second; copy.id=ItemInstanceId{item_ids_.Next()}; copy.quantity=quantity;
+    Bump(); it->second.quantity-=quantity; it->second.revision=revision_; copy.revision=revision_; const auto new_id=copy.id; items_.emplace(new_id,std::move(copy)); ++diagnostics_.items; Record({0,ItemChangeKind::StackSplit,id,{},quantity,context,revision_}); return foundation::Result<ItemInstanceId>::Success(new_id);
+}
+foundation::Result<void> ItemsInventoryService::MergeStacks(ItemInstanceId target,ItemInstanceId source,GameplayContext context)
+{
+    if(target==source) return foundation::Result<void>::Failure(Error("gameplay.items.invalid_merge","cannot merge item with itself"));
+    auto t=items_.find(target),s=items_.find(source); if(t==items_.end()||s==items_.end()||!EquivalentForStack(t->second,s->second)) return foundation::Result<void>::Failure(Error("gameplay.items.merge_incompatible","item stacks are incompatible"));
+    if(ReservedQuantity(source)>0) return foundation::Result<void>::Failure(Error("gameplay.items.item_reserved","reserved source stack cannot be merged"));
+    Bump(); t->second.quantity+=s->second.quantity; t->second.revision=revision_; const auto moved=s->second.quantity; items_.erase(s); if(diagnostics_.items>0)--diagnostics_.items; Record({0,ItemChangeKind::StacksMerged,target,{},moved,context,revision_}); return foundation::Result<void>::Success();
+}
+std::uint32_t ItemsInventoryService::ContainerDepth(ContainerId id) const noexcept
+{
+    std::uint32_t depth=0; ContainerId cursor=id; while(cursor.IsValid()&&depth<1024){const auto* c=FindContainer(cursor);if(!c)break;++depth;cursor=c->parent;} return depth;
+}
+ContainerUsage ItemsInventoryService::GetContainerUsage(ContainerId id) const noexcept
+{
+    ContainerUsage out; for(const auto& [iid,item]:items_){(void)iid;if(item.location.kind!=ItemLocationKind::Container||item.location.container!=id)continue;const auto* def=FindDefinition(item.definition);if(!def)continue;out.weight+=def->base_weight*item.quantity;out.volume+=def->base_volume*item.quantity;++out.slots;} return out;
+}
+bool ItemsInventoryService::ValidateContainerTarget(ItemInstanceId moving,ContainerId target,Fixed quantity) const noexcept
+{
+    const auto* c=FindContainer(target); if(!c||c->state!=ContainerState::Active||quantity<=0)return false;
+    const auto* item=moving.IsValid()?FindItem(moving):nullptr; ContainerUsage usage=GetContainerUsage(target);
+    if(item&&item->location.kind==ItemLocationKind::Container&&item->location.container==target){const auto* def=FindDefinition(item->definition);if(def){usage.weight-=def->base_weight*item->quantity;usage.volume-=def->base_volume*item->quantity;if(usage.slots>0)--usage.slots;}}
+    if(item){const auto* def=FindDefinition(item->definition);if(!def)return false;usage.weight+=def->base_weight*quantity;usage.volume+=def->base_volume*quantity;++usage.slots;}
+    if(c->max_weight>0&&usage.weight>c->max_weight)return false;
+    if(c->max_volume>0&&usage.volume>c->max_volume)return false;
+    if(c->max_slots>0&&usage.slots>c->max_slots)return false;
+    return ContainerDepth(target)<=c->max_nesting_depth;
+}
+bool ItemsInventoryService::CanTransfer(ItemInstanceId id,ItemLocation target,Fixed quantity) const noexcept
+{
+    const auto* item=FindItem(id); if(!item||quantity<=0||quantity>item->quantity||quantity>item->quantity-ReservedQuantity(id))return false;
+    if(target.kind==ItemLocationKind::Container)return ValidateContainerTarget(id,target.container,quantity);
+    return target.kind!=ItemLocationKind::Destroyed;
+}
+Revision ItemsInventoryService::LocationRevision(const ItemLocation& l) const noexcept { if(l.kind==ItemLocationKind::Container){const auto* c=FindContainer(l.container);return c?c->revision:Revision{};}return revision_; }
+foundation::Result<ItemTransferPlan> ItemsInventoryService::PrepareTransfer(ItemInstanceId id,ItemLocation target,Fixed quantity,GameplayContext context)
+{
+    const auto* item=FindItem(id); if(!item||!CanTransfer(id,target,quantity)){++diagnostics_.rejected_transfers;return foundation::Result<ItemTransferPlan>::Failure(Error("gameplay.items.transfer_invalid","item transfer is not valid"));}
+    ItemTransferPlan p; p.id=ItemTransferId{transfer_ids_.Next()};p.item=id;p.source=item->location;p.target=std::move(target);p.quantity=quantity;p.item_revision=item->revision;p.source_revision=LocationRevision(p.source);p.target_revision=LocationRevision(p.target);p.context=context;return foundation::Result<ItemTransferPlan>::Success(std::move(p));
+}
+foundation::Result<void> ItemsInventoryService::CommitTransfer(const ItemTransferPlan& p)
+{
+    auto it=items_.find(p.item); if(it==items_.end())return foundation::Result<void>::Failure(Error("gameplay.items.item_missing","item missing"));
+    if(it->second.revision!=p.item_revision||LocationRevision(p.source)!=p.source_revision||LocationRevision(p.target)!=p.target_revision||it->second.location!=p.source||!CanTransfer(p.item,p.target,p.quantity))return foundation::Result<void>::Failure(Error("gameplay.items.stale_transfer","item transfer plan is stale"));
+    if(p.quantity<it->second.quantity){auto split=SplitStack(p.item,p.quantity,p.context);if(!split)return foundation::Result<void>::Failure(split.GetError());auto moved=items_.find(split.Value());Bump();moved->second.location=p.target;moved->second.revision=revision_;Record({0,ItemChangeKind::TransferCommitted,moved->second.id,p.target.container,p.quantity,p.context,revision_});}
+    else {Bump();it->second.location=p.target;it->second.revision=revision_;Record({0,ItemChangeKind::TransferCommitted,p.item,p.target.container,p.quantity,p.context,revision_});}
+    ++diagnostics_.transfers; return foundation::Result<void>::Success();
+}
+Fixed ItemsInventoryService::ReservedQuantity(ItemInstanceId id) const noexcept { Fixed out=0;for(const auto&[rid,r]:reservations_){(void)rid;if(r.item==id&&r.state==ReservationState::Active)out+=r.quantity;}return out; }
+foundation::Result<ItemReservationId> ItemsInventoryService::ReserveItem(ItemInstanceId id,Fixed quantity,GameplayObjectRef owner,TypeId reason,GameplayContext context)
+{
+    const auto* item=FindItem(id);if(!item||quantity<=0||item->quantity-ReservedQuantity(id)<quantity)return foundation::Result<ItemReservationId>::Failure(Error("gameplay.items.reservation_unavailable","requested item quantity is unavailable"));
+    ItemReservation r;r.id=ItemReservationId{reservation_ids_.Next()};r.item=id;r.quantity=quantity;r.owner=owner;r.reason=reason;Bump();r.revision=revision_;const auto rid=r.id;reservations_.emplace(rid,r);++diagnostics_.active_reservations;Record({0,ItemChangeKind::ReservationCreated,id,{},quantity,context,revision_});return foundation::Result<ItemReservationId>::Success(rid);
+}
+foundation::Result<void> ItemsInventoryService::ReleaseReservation(ItemReservationId id,GameplayContext context)
+{
+    auto it=reservations_.find(id);if(it==reservations_.end()||it->second.state!=ReservationState::Active)return foundation::Result<void>::Failure(Error("gameplay.items.reservation_missing","active reservation missing"));Bump();it->second.state=ReservationState::Released;it->second.revision=revision_;if(diagnostics_.active_reservations>0)--diagnostics_.active_reservations;Record({0,ItemChangeKind::ReservationReleased,it->second.item,{},it->second.quantity,context,revision_});return foundation::Result<void>::Success();
+}
+foundation::Result<void> ItemsInventoryService::ConsumeReservation(ItemReservationId id,GameplayContext context)
+{
+    auto it=reservations_.find(id);if(it==reservations_.end()||it->second.state!=ReservationState::Active)return foundation::Result<void>::Failure(Error("gameplay.items.reservation_missing","active reservation missing"));auto item=items_.find(it->second.item);if(item==items_.end()||item->second.quantity<it->second.quantity)return foundation::Result<void>::Failure(Error("gameplay.items.reservation_invalid","reserved item no longer has enough quantity"));
+    const auto qty=it->second.quantity;const auto iid=it->second.item;Bump();item->second.quantity-=qty;item->second.revision=revision_;it->second.state=ReservationState::Consumed;it->second.revision=revision_;if(item->second.quantity==0){items_.erase(item);if(diagnostics_.items>0)--diagnostics_.items;}if(diagnostics_.active_reservations>0)--diagnostics_.active_reservations;Record({0,ItemChangeKind::ReservationConsumed,iid,{},qty,context,revision_});return foundation::Result<void>::Success();
+}
+const ItemReservation* ItemsInventoryService::FindReservation(ItemReservationId id) const noexcept {const auto it=reservations_.find(id);return it==reservations_.end()?nullptr:&it->second;}
+std::vector<ItemReservation> ItemsInventoryService::FindReservations(ItemInstanceId id) const {std::vector<ItemReservation> out;for(const auto&[rid,r]:reservations_){(void)rid;if(r.item==id)out.push_back(r);}std::sort(out.begin(),out.end(),[](const auto&a,const auto&b){return a.id<b.id;});return out;}
+foundation::Result<void> ItemsInventoryService::AdjustDurability(ItemInstanceId id,Fixed delta,GameplayContext context){auto it=items_.find(id);if(it==items_.end())return foundation::Result<void>::Failure(Error("gameplay.items.item_missing","item missing"));const auto* d=FindDefinition(it->second.definition);if(!d||d->durability_policy==ItemDurabilityPolicy::None)return foundation::Result<void>::Failure(Error("gameplay.items.no_durability","item has no durability"));Bump();it->second.durability=std::clamp(it->second.durability+delta,Fixed{0},d->max_durability);it->second.revision=revision_;Record({0,ItemChangeKind::DurabilityChanged,id,{},delta,context,revision_});return foundation::Result<void>::Success();}
+foundation::Result<void> ItemsInventoryService::AdjustCharges(ItemInstanceId id,Fixed delta,GameplayContext context){auto it=items_.find(id);if(it==items_.end())return foundation::Result<void>::Failure(Error("gameplay.items.item_missing","item missing"));const auto* d=FindDefinition(it->second.definition);if(!d||d->charge_policy==ItemChargePolicy::None)return foundation::Result<void>::Failure(Error("gameplay.items.no_charges","item has no charges"));Bump();it->second.charges=std::clamp(it->second.charges+delta,Fixed{0},d->max_charges);it->second.revision=revision_;Record({0,ItemChangeKind::ChargesChanged,id,{},delta,context,revision_});return foundation::Result<void>::Success();}
+std::vector<ItemInstance> ItemsInventoryService::FindItemsInContainer(ContainerId c) const {std::vector<ItemInstance> out;for(const auto&[id,i]:items_){(void)id;if(i.location.kind==ItemLocationKind::Container&&i.location.container==c)out.push_back(i);}std::sort(out.begin(),out.end(),[](const auto&a,const auto&b){return a.id<b.id;});return out;}
+std::vector<ItemInstance> ItemsInventoryService::FindItemsByDefinition(ItemDefinitionId d) const {std::vector<ItemInstance> out;for(const auto&[id,i]:items_){(void)id;if(i.definition==d)out.push_back(i);}std::sort(out.begin(),out.end(),[](const auto&a,const auto&b){return a.id<b.id;});return out;}
+std::vector<ItemChange> ItemsInventoryService::ChangesSince(std::uint64_t seq) const {std::vector<ItemChange> out;std::copy_if(changes_.begin(),changes_.end(),std::back_inserter(out),[seq](const auto&c){return c.sequence>seq;});return out;}
+ItemsSnapshot ItemsInventoryService::CaptureSnapshot() const {ItemsSnapshot s;for(const auto&[id,v]:items_){(void)id;s.items.push_back(v);}for(const auto&[id,v]:containers_){(void)id;s.containers.push_back(v);}for(const auto&[id,v]:reservations_){(void)id;s.reservations.push_back(v);}std::sort(s.items.begin(),s.items.end(),[](auto&a,auto&b){return a.id<b.id;});std::sort(s.containers.begin(),s.containers.end(),[](auto&a,auto&b){return a.id<b.id;});std::sort(s.reservations.begin(),s.reservations.end(),[](auto&a,auto&b){return a.id<b.id;});s.item_ids=item_ids_.GetSnapshot();s.container_ids=container_ids_.GetSnapshot();s.transfer_ids=transfer_ids_.GetSnapshot();s.reservation_ids=reservation_ids_.GetSnapshot();s.revision=revision_;return s;}
+foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
+{
+    std::unordered_map<ContainerId,ContainerRecord,IdHash> containers;for(auto&v:s.containers){if(!v.id.IsValid()||containers.contains(v.id))return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid","invalid container snapshot"));containers.emplace(v.id,std::move(v));}
+    std::unordered_map<ItemInstanceId,ItemInstance,IdHash> items;for(auto&v:s.items){if(!v.id.IsValid()||!definitions_.contains(v.definition)||v.quantity<=0||items.contains(v.id))return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid","invalid item snapshot"));if(v.location.kind==ItemLocationKind::Container&&!containers.contains(v.location.container))return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid","item references missing container"));items.emplace(v.id,std::move(v));}
+    std::unordered_map<ItemReservationId,ItemReservation,IdHash> reservations;for(auto&v:s.reservations){if(!v.id.IsValid()||!items.contains(v.item)||reservations.contains(v.id))return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid","invalid reservation snapshot"));reservations.emplace(v.id,std::move(v));}
+    containers_=std::move(containers);items_=std::move(items);reservations_=std::move(reservations);item_ids_.Restore(s.item_ids);container_ids_.Restore(s.container_ids);transfer_ids_.Restore(s.transfer_ids);reservation_ids_.Restore(s.reservation_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;diagnostics_={};diagnostics_.items=items_.size();diagnostics_.containers=containers_.size();for(const auto&[id,r]:reservations_){(void)id;if(r.state==ReservationState::Active)++diagnostics_.active_reservations;}return foundation::Result<void>::Success();
+}
+ItemsDiagnostics ItemsInventoryService::GetDiagnostics() const noexcept {auto d=diagnostics_;d.items=items_.size();d.containers=containers_.size();return d;}
+void ItemsInventoryService::Record(ItemChange c){c.sequence=next_change_sequence_++;changes_.push_back(std::move(c));}
+}

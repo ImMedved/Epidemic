@@ -7,7 +7,7 @@ namespace epidemic::gameplay::queries
 QueryId GameplayQueryService::NextQueryId() const noexcept
 {
     constexpr auto kScope = QueryId::FromString("framework.gameplay_queries").High();
-    const auto value = next_query_id_.fetch_add(1, std::memory_order_relaxed);
+    const auto value = state_->next_query_id.fetch_add(1, std::memory_order_relaxed);
     if (value == 0 || value == std::numeric_limits<std::uint64_t>::max())
     {
         return {};
@@ -29,3 +29,4 @@ bool GameplayQueryService::CoverageSatisfies(QueryCoverage actual, QueryCoverage
     return false;
 }
 } // namespace epidemic::gameplay::queries
+

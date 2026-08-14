@@ -18,6 +18,8 @@ set(_epidemic_resources_forbidden_targets
     EpidemicGameFrameworkSimulation
     EpidemicGameFrameworkAI
     EpidemicGameFrameworkRuntimeBridge
+    EpidemicGameFrameworkItemsInventory
+    EpidemicGameFrameworkEconomy
 )
 get_target_property(_epidemic_resources_links EpidemicGameFrameworkResourcesProduction LINK_LIBRARIES)
 if(_epidemic_resources_links STREQUAL "_epidemic_resources_links-NOTFOUND")

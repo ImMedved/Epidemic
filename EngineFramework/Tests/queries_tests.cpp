@@ -97,6 +97,29 @@ int main()
     {
         return 5;
     }
-
+    std::shared_future<foundation::Result<QueryResponse<std::vector<int>>>> lifetime_future;
+    core::tasks::SimpleTaskScheduler lifetime_scheduler(1);
+    {
+        GameplayQueryService temporary;
+        auto reg = temporary.RegisterProvider<NumberQuery>("framework.test.numbers", caps, [](const NumberQuery& query, const QueryContext& context) {
+            std::vector<int> values(static_cast<std::size_t>(query.limit), 7);
+            QueryMetadata metadata;
+            metadata.revision = context.snapshot_revision;
+            metadata.coverage = QueryCoverage::Complete;
+            metadata.result_count = values.size();
+            metadata.work_units = values.size();
+            return foundation::Result<QueryResponse<std::vector<int>>>::Success({std::move(values), metadata});
+        });
+        if (!reg) return 6;
+        temporary.Freeze();
+        lifetime_future = temporary.SubmitSnapshot(NumberQuery{3}, snapshot_context, lifetime_scheduler);
+    }
+    lifetime_scheduler.WaitIdle();
+    auto lifetime_result = lifetime_future.get();
+    if (!lifetime_result || lifetime_result.Value().value.size() != 3)
+    {
+        return 7;
+    }
     return 0;
 }
+

@@ -43,6 +43,8 @@ struct AwarenessRecord{GameplayObjectRef perceiver{};GameplayObjectRef target{};
 struct VisibilityResult{PerceptionVisibilityState state=PerceptionVisibilityState::Unknown;Fixed score_micro=0;std::vector<TypeId> reasons;Revision revision{};};
 struct AudibilityResult{PerceptionAudibilityState state=PerceptionAudibilityState::NotHeard;Fixed score_micro=0;std::vector<TypeId> reasons;Revision revision{};};
 struct PerceptionBudget{std::uint32_t max_stimuli_per_tick=1024;std::uint32_t max_perceivers_per_stimulus=256;std::uint32_t max_visibility_tests_per_tick=4096;};
+struct PerceptionProcessingContext{GameplayTickId tick{};GameplayTimePoint now{};GameplayContext gameplay{};PerceptionProcessingContext()=default;explicit PerceptionProcessingContext(GameplayTickId t,GameplayTimePoint n,GameplayContext g={}):tick(t),now(n),gameplay(g){}};
+struct PerceptionTickBudgetState{GameplayTickId tick{};std::uint32_t processed_stimuli=0;std::uint32_t visibility_tests=0;};
 struct PerceptionChange{std::uint64_t sequence=0;PerceptionChangeKind kind=PerceptionChangeKind::StimulusCreated;GameplayObjectRef subject{};GameplayObjectRef target{};PerceptionStimulusId stimulus{};PerceptionObservationId observation{};AwarenessLevel awareness=AwarenessLevel::Unaware;GameplayContext context{};Revision revision{};};
 struct PerceptionSnapshot{std::vector<PerceiverProfile> profiles;std::vector<PerceptionStimulus> stimuli;std::vector<PerceptionObservation> observations;std::vector<AwarenessRecord> awareness;MonotonicIdGenerator<GameplayObjectId>::Snapshot stimulus_ids{};MonotonicIdGenerator<GameplayObjectId>::Snapshot observation_ids{};Revision revision{};};
 struct PerceptionDiagnostics{std::uint64_t profiles=0,stimuli=0,observations=0,awareness_records=0,processed_stimuli=0,dropped_stimuli=0,visibility_tests=0,audibility_tests=0,budget_exhaustions=0;};
@@ -65,6 +67,7 @@ public:
 
     [[nodiscard]] foundation::Result<PerceptionStimulusId> CreateStimulus(PerceptionStimulus stimulus);
     [[nodiscard]] foundation::Result<void> ExpireStimuli(GameplayTimePoint now);
+    [[nodiscard]] foundation::Result<std::vector<PerceptionObservation>> ProcessStimulus(PerceptionStimulusId stimulus,const PerceptionProcessingContext& context);
     [[nodiscard]] foundation::Result<std::vector<PerceptionObservation>> ProcessStimulus(PerceptionStimulusId stimulus,GameplayTimePoint now);
     [[nodiscard]] VisibilityResult EvaluateVisibility(GameplayObjectRef perceiver,GameplayObjectRef target,WorldPosition observer_position,WorldPosition target_position) const;
     [[nodiscard]] AudibilityResult EvaluateAudibility(GameplayObjectRef perceiver,PerceptionStimulusId stimulus) const;
@@ -84,6 +87,7 @@ public:
 private:
     void Bump() noexcept{revision_.value++;}
     void Record(PerceptionChange change);
+    void EnsureBudgetEpoch(GameplayTickId tick) noexcept;
     [[nodiscard]] static Fixed DistanceSquared(WorldPosition a,WorldPosition b) noexcept;
     [[nodiscard]] Fixed ModifierFor(GameplayObjectRef perceiver,SenseTypeId sense) const noexcept;
     [[nodiscard]] bool IsOccluded(GameplayObjectRef perceiver,GameplayObjectRef target) const noexcept;
@@ -105,6 +109,12 @@ private:
     std::vector<PerceptionChange> changes_;
     std::uint64_t next_change_sequence_=1;
     PerceptionBudget budget_{};
+    PerceptionTickBudgetState tick_budget_{};
     PerceptionDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::perception
+
+
+
+
+

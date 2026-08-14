@@ -13,12 +13,17 @@ struct ProcessResourcePayload
     resources::ResourceStockpileId stockpile{};
     resources::ResourceTypeId resource{};
 };
+struct ProcessResourceReservationPayload
+{
+    resources::ResourceReservationId reservation{};
+};
 
 class ResourceProcessInputProvider final : public processes::IProcessInputProvider
 {
 public:
     explicit ResourceProcessInputProvider(resources::ResourcesProductionService& resources) : resources_(resources) {}
     [[nodiscard]] static constexpr TypeId PayloadType() noexcept { return TypeId::FromString("framework.process.resource.payload"); }
+    [[nodiscard]] static constexpr TypeId ReservationPayloadType() noexcept { return TypeId::FromString("framework.process.resource.reservation"); }
     [[nodiscard]] foundation::Result<processes::ReservedProcessInput> Reserve(const processes::ProcessInputDefinition& input, const processes::StartProcessRequest& request, processes::ProcessInstanceId instance) override;
     [[nodiscard]] foundation::Result<void> Consume(const processes::ReservedProcessInput& reservation, GameplayContext context) override;
     [[nodiscard]] foundation::Result<void> Release(const processes::ReservedProcessInput& reservation, GameplayContext context) override;

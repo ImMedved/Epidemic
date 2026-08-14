@@ -100,6 +100,7 @@ struct RewardBundle
 };
 
 enum class RewardDeliveryDisposition { Delivered, NoOp, Unavailable, Rejected };
+struct RewardDeliveryStage { RewardOperation operation; RewardDeliveryDisposition disposition=RewardDeliveryDisposition::Delivered; };
 class IRewardHandler
 {
   public:
@@ -107,6 +108,17 @@ class IRewardHandler
     [[nodiscard]] virtual RewardTypeId Type() const noexcept=0;
     [[nodiscard]] virtual foundation::Result<RewardDeliveryDisposition> Validate(const RewardOperation& operation) const=0;
     [[nodiscard]] virtual foundation::Result<RewardDeliveryDisposition> Deliver(const RewardOperation& operation)=0;
+    [[nodiscard]] virtual foundation::Result<RewardDeliveryStage> Prepare(const RewardOperation& operation)
+    {
+        auto valid=Validate(operation);
+        if(!valid)return foundation::Result<RewardDeliveryStage>::Failure(valid.GetError());
+        return foundation::Result<RewardDeliveryStage>::Success(RewardDeliveryStage{operation,valid.Value()});
+    }
+    virtual void Commit(RewardDeliveryStage& stage) noexcept
+    {
+        if(stage.disposition==RewardDeliveryDisposition::Delivered)static_cast<void>(Deliver(stage.operation));
+    }
+    virtual void Cancel(RewardDeliveryStage&) noexcept{}
 };
 
 enum class PendingRewardState { Generated, Available, Claimed, Expired, Cancelled };
@@ -170,3 +182,4 @@ class LootService
     LootDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::loot
+

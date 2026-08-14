@@ -55,7 +55,11 @@ int main()
     Check(static_cast<bool>(second_service.RegisterEncounterDefinition(def)),"register def second");
     auto second=second_service.SpawnEncounter(request);
     Check(first.state==SpawnResultState::Succeeded,"spawn succeeded");
-    Check(first.created_entities.size()==second.created_entities.size(),"deterministic count");
+    Check(first.spawned_records.size()==second.spawned_records.size(),"deterministic count");
+    Check(first.created_entities.empty(),"encounters must not fabricate entity refs");
+    auto real_entity=Ref("entities","wolf.1");
+    Check(static_cast<bool>(service.BindSpawnedEntity(first.spawned_records.front(),real_entity)),"bind spawned entity");
+    Check(service.GetSpawnedEntityRecord(first.spawned_records.front())->entity==real_entity,"bound real entity");
     Check(service.FindActiveEncountersInArea(point.area).size()==1,"active encounter query");
     Check(static_cast<bool>(service.CompleteEncounter(first.encounter_instance)),"complete encounter");
     Check(service.FindActiveEncountersInArea(point.area).empty(),"no active after complete");
@@ -73,3 +77,4 @@ int main()
     Check(restored.GetEncounterInstance(first.encounter_instance)!=nullptr,"restore encounter");
     return 0;
 }
+

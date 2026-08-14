@@ -11,31 +11,33 @@ foundation::Result<processes::ReservedProcessInput> ResourceProcessInputProvider
 {
     auto payload = input.payload.AsTrivial<ProcessResourcePayload>(PayloadType());
     if (!payload) return foundation::Result<processes::ReservedProcessInput>::Failure(Error("gameplay.integration.resource_payload_invalid", "process input payload is not a resource payload"));
-    const resources::ResourceQuantity required{payload->resource, input.amount};
-    if (!resources_.CanReserve(payload->stockpile, std::span<const resources::ResourceQuantity>(&required, 1)))
+    std::vector<resources::ResourceQuantity> required{{payload->resource, input.amount}};
+    auto resource_reservation = resources_.Reserve(payload->stockpile, std::move(required), request.actor, TypeId::FromString("framework.process.input"), request.context);
+    if (!resource_reservation)
     {
-        return foundation::Result<processes::ReservedProcessInput>::Failure(Error("gameplay.resources.shortage", "resource process input unavailable"));
+        return foundation::Result<processes::ReservedProcessInput>::Failure(resource_reservation.GetError());
     }
     processes::ReservedProcessInput reservation;
     reservation.id = processes::ProcessReservationId::FromRaw(instance.value.High(), input.id.value.Raw());
     reservation.input = input.id;
     reservation.type = input.type;
     reservation.amount = input.amount;
-    reservation.provider_token = processes::RegisteredPayload::FromTrivial(PayloadType(), *payload);
-    (void)request;
+    reservation.provider_token = processes::RegisteredPayload::FromTrivial(ReservationPayloadType(), ProcessResourceReservationPayload{resource_reservation.Value()});
     return foundation::Result<processes::ReservedProcessInput>::Success(std::move(reservation));
 }
 foundation::Result<void> ResourceProcessInputProvider::Consume(const processes::ReservedProcessInput& reservation, GameplayContext context)
 {
-    auto payload = reservation.provider_token.AsTrivial<ProcessResourcePayload>(PayloadType());
+    auto payload = reservation.provider_token.AsTrivial<ProcessResourceReservationPayload>(ReservationPayloadType());
     if (!payload) return foundation::Result<void>::Failure(Error("gameplay.integration.resource_payload_invalid", "process reservation payload is invalid"));
-    return resources_.Remove(payload->stockpile, {payload->resource, reservation.amount}, context);
+    return resources_.ConsumeReservation(payload->reservation, context);
 }
 foundation::Result<void> ResourceProcessInputProvider::Release(const processes::ReservedProcessInput& reservation, GameplayContext context)
 {
-    (void)reservation;
-    (void)context;
-    return foundation::Result<void>::Success();
+    auto payload = reservation.provider_token.AsTrivial<ProcessResourceReservationPayload>(ReservationPayloadType());
+    if (!payload) return foundation::Result<void>::Failure(Error("gameplay.integration.resource_payload_invalid", "process reservation payload is invalid"));
+    const auto* current = resources_.FindReservation(payload->reservation);
+    if (!current || current->state != resources::ResourceReservationState::Active) return foundation::Result<void>::Success();
+    return resources_.ReleaseReservation(payload->reservation, context);
 }
 foundation::Result<void> ResourceProcessOutputHandler::Produce(const processes::ProcessOutputDefinition& output, const processes::ProcessInstance&, GameplayContext context)
 {
@@ -49,15 +51,15 @@ foundation::Result<simulation::SimulationLayerSummary> ProductionSimulationLayer
     simulation::SimulationLayerSummary summary;
     summary.layer = StaticLayer();
     summary.state = simulation::SimulationTaskState::Completed;
-    summary.operations = snapshot.orders.size();
+    summary.operations = snapshot.plans.size();
     summary.revision = snapshot.revision;
     (void)task;
     return foundation::Result<simulation::SimulationLayerSummary>::Success(summary);
 }
 foundation::Result<void> ProductionSimulationLayer::Commit(const simulation::SimulationTask& task, const simulation::SimulationLayerSummary&)
 {
-    auto completed = resources_.CompleteDueOrders(task.to);
-    if (!completed) return foundation::Result<void>::Failure(completed.GetError());
+    // Resource production owns aggregate capacity/plans only. Timed recipe execution is owned by Processes.
+    (void)task;
     return foundation::Result<void>::Success();
 }
 foundation::Result<simulation::SimulationLayerSummary> ProcessesSimulationLayer::Prepare(const simulation::SimulationTask& task)
