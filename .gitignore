@@ -12,3 +12,4 @@ build-codex-runtime-freeze-asan/
 build-codex-runtime-freeze-release-notests/
 build-codex-runtime-freeze-werror/
 EngineFramework-zips/
+done/

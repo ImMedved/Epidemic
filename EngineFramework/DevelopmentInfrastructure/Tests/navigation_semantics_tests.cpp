@@ -1,0 +1,66 @@
+#include "Epidemic/GameFramework/NavigationSemantics/navigation_semantics.h"
+using namespace epidemic::gameplay;
+using namespace epidemic::gameplay::navigation_semantics;
+int main()
+{
+    NavigationSemanticsService n;
+    auto domain = NavigationDomainId::FromString("game.humanoid");
+    NavigationDomainDefinition d;
+    d.id = domain;
+    d.canonical_name = "game.humanoid";
+    if (!n.RegisterDomain(d))
+        return 1;
+    NavigationRuleDefinition r;
+    r.id = NavigationRuleId::FromString("game.danger_cost");
+    r.domain = domain;
+    r.priority = 1;
+    r.decision = NavigationDecisionKind::AddCost;
+    r.additive_cost_micro = 100;
+    if (!n.RegisterRule(r))
+        return 2;
+    n.Freeze();
+    GameplayObjectRef actor{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("actor")};
+    GameplayObjectRef a{GameplayDomainId::FromString("test.area"), GameplayObjectId::FromString("a")};
+    GameplayObjectRef b{GameplayDomainId::FromString("test.area"), GameplayObjectId::FromString("b")};
+    if (!n.SetProfile({actor, domain, {}, {}}))
+        return 3;
+    NavigationSemanticLayer l;
+    l.area = b;
+    l.type = NavigationLayerTypeId::FromString("game.blocked");
+    l.decision = NavigationDecisionKind::Deny;
+    l.priority = 10;
+    auto lid = n.AddLayer(l);
+    if (!lid)
+        return 4;
+    auto denied = n.CanEnterArea(actor, b);
+    if (denied.decision != NavigationDecisionKind::Deny)
+        return 5;
+    if (!n.RemoveLayer(lid.Value()))
+        return 6;
+    NavigationSemanticLink link;
+    link.id = NavigationLinkId::FromString("a_to_b");
+    link.from_area = a;
+    link.to_area = b;
+    link.type = NavigationLinkTypeId::FromString("game.bridge");
+    if (!n.AddOrUpdateLink(link))
+        return 7;
+    auto allowed = n.CanUseLink(actor, link.id);
+    if (allowed.decision == NavigationDecisionKind::Deny || allowed.cost.additive_cost_micro != 100)
+        return 8;
+    if (!n.SetLinkState(link.id, LinkState::Destroyed))
+        return 9;
+    if (n.CanUseLink(actor, link.id).decision != NavigationDecisionKind::Deny)
+        return 10;
+    auto snap = n.CaptureSnapshot();
+    NavigationSemanticsService restored;
+    if (!restored.RegisterDomain(d))
+        return 13;
+    if (!restored.RegisterRule(r))
+        return 14;
+    restored.Freeze();
+    if (!restored.RestoreSnapshot(std::move(snap)))
+        return 11;
+    if (restored.CanUseLink(actor, link.id).decision != NavigationDecisionKind::Deny)
+        return 12;
+    return 0;
+}

@@ -1,0 +1,63 @@
+#include "Epidemic/GameFramework/InteractionTimeIntegration/interaction_time_adapter.h"
+namespace epidemic::gameplay::interaction_time_integration
+{
+foundation::Result<void> InteractionTimeAdapter::RegisterContracts()
+{
+    auto r = time_.RegisterAction("framework.interaction.complete", interaction::InteractionService::Domain());
+    if (!r)
+        return foundation::Result<void>::Failure(r.GetError());
+    complete_action_ = r.Value();
+    return foundation::Result<void>::Success();
+}
+foundation::Result<std::uint64_t> InteractionTimeAdapter::Synchronize(ClockId clock)
+{
+    std::uint64_t n = 0;
+    for (const auto &change : interactions_.ChangesSince(cursor_))
+    {
+        const auto *session = interactions_.FindSession(change.execution);
+        if (change.kind == interaction::InteractionChangeKind::Started && session && session->completes_at &&
+            !session->completion_schedule)
+        {
+            auto s = time_.Schedule(clock, *session->completes_at, SessionRef(session->id), complete_action_, {},
+                                    time::CatchUpPolicy::FireOnce, time::SchedulePersistence::Persistent);
+            if (!s)
+                return foundation::Result<std::uint64_t>::Failure(s.GetError());
+            auto b = interactions_.BindCompletionSchedule(session->id, s.Value());
+            if (!b)
+                return foundation::Result<std::uint64_t>::Failure(b.GetError());
+            ++n;
+        }
+        else if ((change.kind == interaction::InteractionChangeKind::Completed ||
+                  change.kind == interaction::InteractionChangeKind::Cancelled ||
+                  change.kind == interaction::InteractionChangeKind::Failed) &&
+                 session && session->completion_schedule)
+        {
+            if (time_.HasSchedule(*session->completion_schedule))
+            {
+                auto c = time_.Cancel(*session->completion_schedule);
+                if (!c)
+                    return foundation::Result<std::uint64_t>::Failure(c.GetError());
+            }
+            ++n;
+        }
+        cursor_ = change.sequence;
+    }
+    return foundation::Result<std::uint64_t>::Success(n);
+}
+foundation::Result<std::uint64_t> InteractionTimeAdapter::ProcessTriggers(
+    std::span<const time::ScheduledTrigger> triggers, GameplayContext context)
+{
+    std::uint64_t n = 0;
+    for (const auto &t : triggers)
+    {
+        if (t.action != complete_action_ || t.owner.domain != interaction::InteractionService::Domain())
+            continue;
+        interaction::InteractionExecutionId id{t.owner.id};
+        auto r = interactions_.Complete(id, context);
+        if (!r)
+            return foundation::Result<std::uint64_t>::Failure(r.GetError());
+        ++n;
+    }
+    return foundation::Result<std::uint64_t>::Success(n);
+}
+} // namespace epidemic::gameplay::interaction_time_integration

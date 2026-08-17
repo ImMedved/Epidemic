@@ -1,0 +1,358 @@
+#include "Epidemic/GameFramework/Interaction/interaction.h"
+#include <algorithm>
+#include <iterator>
+
+namespace epidemic::gameplay::interaction
+{
+namespace
+{
+foundation::Error E(std::string_view c, std::string_view m)
+{
+    return foundation::Error::Create(c, m);
+}
+} // namespace
+InteractionService::InteractionService()
+    : ids_(GameplayObjectId::FromString("framework.interaction.execution.seed").High())
+{
+}
+foundation::Result<void> InteractionService::RegisterDefinition(InteractionDefinition d)
+{
+    if (frozen_)
+        return foundation::Result<void>::Failure(E("gameplay.registry_frozen", "interaction registry is frozen"));
+    if (!d.type.IsValid() || d.canonical_name.empty() || definitions_.contains(d.type))
+        return foundation::Result<void>::Failure(
+            E("gameplay.interaction.invalid_definition", "invalid or duplicate interaction definition"));
+    definitions_.emplace(d.type, std::move(d));
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> InteractionService::RegisterProvider(const IInteractionProvider &p)
+{
+    if (frozen_)
+        return foundation::Result<void>::Failure(E("gameplay.registry_frozen", "interaction registry is frozen"));
+    if (!p.Id().IsValid() || providers_.contains(p.Id()))
+        return foundation::Result<void>::Failure(
+            E("gameplay.interaction.invalid_provider", "invalid or duplicate interaction provider"));
+    providers_.emplace(p.Id(), &p);
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> InteractionService::RegisterExecutor(InteractionTypeId t, IInteractionExecutor &e)
+{
+    if (frozen_)
+        return foundation::Result<void>::Failure(E("gameplay.registry_frozen", "interaction registry is frozen"));
+    if (!t.IsValid() || !definitions_.contains(t) || executors_.contains(t))
+        return foundation::Result<void>::Failure(
+            E("gameplay.interaction.invalid_executor", "invalid or duplicate interaction executor"));
+    executors_.emplace(t, &e);
+    return foundation::Result<void>::Success();
+}
+const InteractionDefinition *InteractionService::FindDefinition(InteractionTypeId t) const noexcept
+{
+    auto i = definitions_.find(t);
+    return i == definitions_.end() ? nullptr : &i->second;
+}
+std::vector<InteractionCandidate> InteractionService::GetAvailableInteractions(const InteractionContext &c) const
+{
+    ++candidate_requests_;
+    std::vector<InteractionCandidate> out;
+    std::vector<std::pair<InteractionProviderId, const IInteractionProvider *>> ps(providers_.begin(),
+                                                                                   providers_.end());
+    std::sort(ps.begin(), ps.end(), [](auto &a, auto &b) { return a.first < b.first; });
+    for (auto [p, provider] : ps)
+    {
+        auto v = provider->Collect(c);
+        for (auto &x : v)
+        {
+            if (!x.provider.IsValid())
+                x.provider = p;
+            if (x.actor.IsValid() == false)
+                x.actor = c.actor;
+            if (x.target.IsValid() == false)
+                x.target = c.target;
+            if (definitions_.contains(x.type))
+                out.push_back(std::move(x));
+        }
+    }
+    std::sort(out.begin(), out.end(), [](const auto &a, const auto &b) {
+        if (a.priority != b.priority)
+            return a.priority > b.priority;
+        if (a.type != b.type)
+            return a.type < b.type;
+        return a.provider < b.provider;
+    });
+    std::vector<InteractionCandidate> deduplicated;
+    deduplicated.reserve(out.size());
+    for (auto &candidate : out)
+    {
+        const bool duplicate = std::any_of(deduplicated.begin(), deduplicated.end(), [&](const auto &existing) {
+            return existing.type == candidate.type && existing.actor == candidate.actor &&
+                   existing.target == candidate.target;
+        });
+        if (!duplicate)
+            deduplicated.push_back(std::move(candidate));
+    }
+    candidates_ += deduplicated.size();
+    return deduplicated;
+}
+bool InteractionService::MaterializationAllowed(const InteractionDefinition &d, const InteractionContext &c) const
+{
+    if (d.materialization == InteractionMaterializationPolicy::AbstractAllowed)
+        return true;
+    if (!state_provider_)
+        return false;
+    const bool a = state_provider_->IsMaterialized(c.actor), t = state_provider_->IsMaterialized(c.target);
+    switch (d.materialization)
+    {
+    case InteractionMaterializationPolicy::AbstractAllowed:
+        return true;
+    case InteractionMaterializationPolicy::RequiresMaterializedActor:
+        return a;
+    case InteractionMaterializationPolicy::RequiresMaterializedTarget:
+        return t;
+    case InteractionMaterializationPolicy::RequiresBothMaterialized:
+        return a && t;
+    }
+    return false;
+}
+foundation::Result<InteractionPlan> InteractionService::Prepare(const InteractionContext &c,
+                                                                InteractionCandidate candidate) const
+{
+    auto d = FindDefinition(candidate.type);
+    if (!d || candidate.availability != InteractionAvailability::Available)
+        return foundation::Result<InteractionPlan>::Failure(
+            E("gameplay.interaction.unavailable", "interaction is unavailable"));
+    if (!MaterializationAllowed(*d, c))
+        return foundation::Result<InteractionPlan>::Failure(
+            E("gameplay.interaction.not_materialized", "interaction materialization requirements are not met"));
+    if (candidate.actor != c.actor || candidate.target != c.target)
+        return foundation::Result<InteractionPlan>::Failure(
+            E("gameplay.interaction.context_mismatch", "interaction candidate context mismatch"));
+    InteractionPlan p{std::move(candidate), c, revision_};
+    auto ex = executors_.find(p.candidate.type);
+    if (ex != executors_.end())
+    {
+        auto v = ex->second->Validate(p);
+        if (!v)
+            return foundation::Result<InteractionPlan>::Failure(v.GetError());
+    }
+    return foundation::Result<InteractionPlan>::Success(std::move(p));
+}
+foundation::Result<InteractionResult> InteractionService::Commit(const InteractionPlan &p)
+{
+    auto d = FindDefinition(p.candidate.type);
+    if (!d)
+        return foundation::Result<InteractionResult>::Failure(
+            E("gameplay.interaction.definition_missing", "interaction definition missing"));
+    if (state_provider_)
+    {
+        if (p.context.actor_revision.value && state_provider_->RevisionOf(p.context.actor) != p.context.actor_revision)
+            return foundation::Result<InteractionResult>::Failure(
+                E("gameplay.stale_revision", "actor revision changed"));
+        if (p.context.target_revision.value &&
+            state_provider_->RevisionOf(p.context.target) != p.context.target_revision)
+            return foundation::Result<InteractionResult>::Failure(
+                E("gameplay.stale_revision", "target revision changed"));
+    }
+    InteractionExecutionId id{ids_.Next()};
+    auto ex = executors_.find(d->type);
+    if (d->mode == InteractionExecutionMode::Instant)
+    {
+        if (ex != executors_.end())
+        {
+            auto v = ex->second->Validate(p);
+            if (!v)
+            {
+                ++failed_;
+                return foundation::Result<InteractionResult>::Failure(v.GetError());
+            }
+            auto r = ex->second->Commit(p, id);
+            if (!r)
+            {
+                ++failed_;
+                return foundation::Result<InteractionResult>::Failure(r.GetError());
+            }
+        }
+        ++completed_;
+        Bump();
+        Record({0, InteractionChangeKind::Completed, id, d->type, p.context.actor, p.context.target, p.context.gameplay,
+                revision_});
+        return foundation::Result<InteractionResult>::Success({id, InteractionSessionState::Completed, {}});
+    }
+    InteractionSession s{id,
+                         d->type,
+                         p.context.actor,
+                         p.context.target,
+                         InteractionSessionState::Active,
+                         p.context.gameplay.time,
+                         std::nullopt,
+                         p.context.actor_revision,
+                         p.context.target_revision,
+                         p.candidate.payload,
+                         p.context.gameplay,
+                         std::nullopt,
+                         {}};
+    if (d->mode == InteractionExecutionMode::Timed && d->duration.ticks > 0)
+        s.completes_at = GameplayTimePoint{p.context.gameplay.time.ticks + d->duration.ticks};
+    Bump();
+    s.revision = revision_;
+    sessions_.emplace(id, s);
+    Record({0, InteractionChangeKind::Started, id, d->type, s.actor, s.target, p.context.gameplay, revision_});
+    return foundation::Result<InteractionResult>::Success({id, InteractionSessionState::Active, {}});
+}
+foundation::Result<void> InteractionService::BindCompletionSchedule(InteractionExecutionId id, ScheduleId schedule)
+{
+    auto i = sessions_.find(id);
+    if (i == sessions_.end() || i->second.state != InteractionSessionState::Active || !schedule.IsValid())
+        return foundation::Result<void>::Failure(
+            E("gameplay.interaction.session_missing", "active interaction session missing or schedule invalid"));
+    i->second.completion_schedule = schedule;
+    Bump();
+    i->second.revision = revision_;
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> InteractionService::Complete(InteractionExecutionId id, GameplayContext c)
+{
+    auto i = sessions_.find(id);
+    if (i == sessions_.end() || i->second.state != InteractionSessionState::Active)
+        return foundation::Result<void>::Failure(
+            E("gameplay.interaction.session_missing", "active interaction session missing"));
+    auto d = FindDefinition(i->second.type);
+    if (!d)
+        return foundation::Result<void>::Failure(E("gameplay.interaction.definition_missing", "interaction definition missing"));
+    InteractionCandidate candidate;
+    candidate.type = i->second.type;
+    candidate.actor = i->second.actor;
+    candidate.target = i->second.target;
+    candidate.payload = i->second.payload;
+    InteractionContext context;
+    context.actor = i->second.actor;
+    context.target = i->second.target;
+    context.actor_revision = i->second.actor_revision;
+    context.target_revision = i->second.target_revision;
+    context.gameplay = i->second.origin_context;
+    if (c.time.ticks != 0)
+        context.gameplay.time = c.time;
+    if (c.tick.value != 0)
+        context.gameplay.tick = c.tick;
+    InteractionPlan plan{std::move(candidate), context, revision_};
+    auto ex = executors_.find(i->second.type);
+    if (ex != executors_.end())
+    {
+        auto v = ex->second->Validate(plan);
+        if (!v)
+        {
+            ++failed_;
+            return foundation::Result<void>::Failure(v.GetError());
+        }
+        auto r = ex->second->Commit(plan, id);
+        if (!r)
+        {
+            ++failed_;
+            return foundation::Result<void>::Failure(r.GetError());
+        }
+    }
+    i->second.state = InteractionSessionState::Completed;
+    Bump();
+    i->second.revision = revision_;
+    ++completed_;
+    Record({0, InteractionChangeKind::Completed, id, i->second.type, i->second.actor, i->second.target, c, revision_});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> InteractionService::Cancel(InteractionExecutionId id, TypeId reason, GameplayContext c)
+{
+    (void)reason;
+    auto i = sessions_.find(id);
+    if (i == sessions_.end() || i->second.state != InteractionSessionState::Active)
+        return foundation::Result<void>::Failure(
+            E("gameplay.interaction.session_missing", "active interaction session missing"));
+    i->second.state = InteractionSessionState::Cancelled;
+    Bump();
+    i->second.revision = revision_;
+    ++cancelled_;
+    Record({0, InteractionChangeKind::Cancelled, id, i->second.type, i->second.actor, i->second.target, c, revision_});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> InteractionService::SweepTimed(GameplayTimePoint now, GameplayContext c)
+{
+    std::vector<InteractionExecutionId> due;
+    for (const auto &[id, s] : sessions_)
+        if (s.state == InteractionSessionState::Active && s.completes_at && s.completes_at->ticks <= now.ticks)
+            due.push_back(id);
+    std::sort(due.begin(), due.end());
+    for (auto id : due)
+    {
+        auto r = Complete(id, c);
+        if (!r)
+            return r;
+    }
+    return foundation::Result<void>::Success();
+}
+const InteractionSession *InteractionService::FindSession(InteractionExecutionId id) const noexcept
+{
+    auto i = sessions_.find(id);
+    return i == sessions_.end() ? nullptr : &i->second;
+}
+std::vector<InteractionSession> InteractionService::FindActive(GameplayObjectRef actor) const
+{
+    std::vector<InteractionSession> out;
+    for (const auto &[id, s] : sessions_)
+    {
+        (void)id;
+        if (s.actor == actor && s.state == InteractionSessionState::Active)
+            out.push_back(s);
+    }
+    std::sort(out.begin(), out.end(), [](auto &a, auto &b) { return a.id < b.id; });
+    return out;
+}
+InteractionSnapshot InteractionService::CaptureSnapshot() const
+{
+    InteractionSnapshot s;
+    for (const auto &[id, x] : sessions_)
+    {
+        (void)id;
+        auto d = FindDefinition(x.type);
+        if (d && d->persistence == InteractionPersistence::PersistentSession &&
+            x.state == InteractionSessionState::Active)
+            s.sessions.push_back(x);
+    }
+    std::sort(s.sessions.begin(), s.sessions.end(), [](auto &a, auto &b) { return a.id < b.id; });
+    s.ids = ids_.GetSnapshot();
+    s.revision = revision_;
+    return s;
+}
+foundation::Result<void> InteractionService::RestoreSnapshot(InteractionSnapshot s)
+{
+    sessions_.clear();
+    for (auto &x : s.sessions)
+    {
+        auto d = FindDefinition(x.type);
+        if (!x.id.IsValid() || !d || d->persistence != InteractionPersistence::PersistentSession)
+            return foundation::Result<void>::Failure(
+                E("gameplay.interaction.restore_invalid", "invalid session in snapshot"));
+        sessions_.emplace(x.id, std::move(x));
+    }
+    ids_.Restore(s.ids);
+    revision_ = s.revision;
+    changes_.clear();
+    next_change_sequence_ = 1;
+    return foundation::Result<void>::Success();
+}
+std::vector<InteractionChange> InteractionService::ChangesSince(std::uint64_t x) const
+{
+    std::vector<InteractionChange> out;
+    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(out), [x](auto &c) { return c.sequence > x; });
+    return out;
+}
+void InteractionService::Record(InteractionChange c)
+{
+    c.sequence = next_change_sequence_++;
+    changes_.push_back(std::move(c));
+}
+InteractionDiagnostics InteractionService::GetDiagnostics() const noexcept
+{
+    return {candidate_requests_, candidates_, sessions_.size(), completed_, cancelled_, failed_};
+}
+} // namespace epidemic::gameplay::interaction
+
+
+
+

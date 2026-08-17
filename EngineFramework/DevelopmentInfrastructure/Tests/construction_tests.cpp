@@ -1,0 +1,95 @@
+#include "Epidemic/GameFramework/Construction/construction.h"
+using namespace epidemic::gameplay;
+using namespace epidemic::gameplay::construction;
+int main()
+{
+    ConstructionService c;
+    PlacementDefinition free_def;
+    free_def.id = PlacementRuleId::FromString("game.free");
+    free_def.canonical_name = "game.free";
+    free_def.target_kind = PlacementTargetKind::Free;
+    if (!c.RegisterPlacementDefinition(free_def))
+        return 1;
+    PlacementDefinition socket_def;
+    socket_def.id = PlacementRuleId::FromString("game.socket");
+    socket_def.canonical_name = "game.socket";
+    socket_def.target_kind = PlacementTargetKind::Socket;
+    if (!c.RegisterPlacementDefinition(socket_def))
+        return 2;
+    ConstructionRecipe r;
+    r.id = ConstructionRecipeId::FromString("game.bridge");
+    r.canonical_name = "game.bridge";
+    r.result_entity_archetype = TypeId::FromString("game.bridge.entity");
+    if (!c.RegisterRecipe(r))
+        return 3;
+    c.Freeze();
+    GameplayObjectRef actor{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("actor")};
+    GameplayObjectRef area{GameplayDomainId::FromString("test.area"), GameplayObjectId::FromString("river")};
+    PlacementRequest req;
+    req.actor = actor;
+    req.recipe = r.id;
+    req.placement_rule = free_def.id;
+    req.target.position = WorldPosition{1, 2, 3};
+    req.target.area = area;
+    auto val = c.ValidatePlacement(req);
+    if (!val || val.Value().availability != PlacementAvailability::Available)
+        return 4;
+    auto plan = c.PreparePlacementPlan(req);
+    if (!plan)
+        return 5;
+    auto site = c.StartConstructionSite(plan.Value());
+    if (!site)
+        return 6;
+    if (!c.CompleteConstructionSite(site.Value()))
+        return 7;
+    auto committed = c.CommitPlacement(plan.Value());
+    if (!committed || committed.Value().outputs.size() < 2)
+        return 8;
+    if (committed.Value().outputs[0].subject.IsValid())
+        return 18;
+    if (!committed.Value().outputs[0].placed_record.IsValid())
+        return 19;
+    if (c.CommitPlacement(plan.Value()))
+        return 20;
+    GameplayObjectRef wall{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("wall")};
+    PlacementSocket sock;
+    sock.id = PlacementSocketId::FromString("socket.wall.1");
+    sock.owner = wall;
+    if (!c.RegisterSocket(sock))
+        return 9;
+    PlacementRequest sreq;
+    sreq.actor = actor;
+    sreq.recipe = r.id;
+    sreq.placement_rule = socket_def.id;
+    sreq.target.socket = sock.id;
+    auto stale = c.PreparePlacementPlan(sreq);
+    if (!stale)
+        return 21;
+    if (!c.ReserveSocket(sock.id))
+        return 22;
+    if (c.CommitPlacement(stale.Value()))
+        return 23;
+    if (!c.ReleaseSocket(sock.id))
+        return 24;
+    auto spl = c.PreparePlacementPlan(sreq);
+    if (!spl)
+        return 10;
+    if (!c.CommitPlacement(spl.Value()))
+        return 11;
+    if (c.FindSocket(sock.id)->state != SocketState::Occupied)
+        return 12;
+    auto snap = c.CaptureSnapshot();
+    ConstructionService restored;
+    if (!restored.RegisterPlacementDefinition(free_def))
+        return 15;
+    if (!restored.RegisterPlacementDefinition(socket_def))
+        return 16;
+    if (!restored.RegisterRecipe(r))
+        return 17;
+    restored.Freeze();
+    if (!restored.RestoreSnapshot(std::move(snap)))
+        return 13;
+    if (restored.FindSocket(sock.id)->state != SocketState::Occupied)
+        return 14;
+    return 0;
+}

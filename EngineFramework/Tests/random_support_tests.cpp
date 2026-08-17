@@ -1,3 +1,0 @@
-#include "Epidemic/GameFramework/SupportRandom/deterministic_random.h"
-using namespace epidemic::gameplay::random;
-int main(){RandomSequence a({42},RandomStream::FromString("combat.hit"));RandomSequence b({42},RandomStream::FromString("combat.hit"));for(int i=0;i<1000;++i)if(a.NextU64()!=b.NextU64())return 1;RandomSequence c({42},RandomStream::FromString("loot.table"));RandomSequence d({42},RandomStream::FromString("combat.hit"));bool differs=false;for(int i=0;i<8;++i)if(c.NextU64()!=d.NextU64())differs=true;if(!differs)return 2;RandomSequence e({7},RandomStream::FromString("chance"));if(e.RollMicro(0)||!e.RollMicro(1'000'000))return 3;return 0;}

@@ -1,0 +1,339 @@
+#include "Epidemic/GameFramework/Society/society.h"
+#include "Epidemic/Foundation/error.h"
+#include <iterator>
+#include <utility>
+
+namespace epidemic::gameplay::society
+{
+namespace
+{
+foundation::Error Error(std::string_view c, std::string_view m)
+{
+    return foundation::Error::Create(c, m);
+}
+} // namespace
+foundation::Result<void> SocietyService::RegisterGroup(SocialGroupDefinition g)
+{
+    if (!g.group.IsValid() || groups_.contains(g.group))
+        return foundation::Result<void>::Failure(Error("gameplay.society.invalid_group", "invalid or duplicate group"));
+    Bump();
+    g.revision = revision_;
+    auto group_ref = g.group;
+    groups_[group_ref] = std::move(g);
+    Record({0, SocietyChangeKind::GroupCreated, group_ref, {}, {}, {}, {}, {}, revision_});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<MembershipId> SocietyService::AddMembership(MembershipRecord m)
+{
+    if (!m.member.IsValid() || !m.group.IsValid())
+        return foundation::Result<MembershipId>::Failure(
+            Error("gameplay.society.invalid_membership", "invalid membership"));
+    if (!m.id.IsValid())
+        m.id = MembershipId{membership_ids_.Next()};
+    if (memberships_.contains(m.id))
+        return foundation::Result<MembershipId>::Failure(
+            Error("gameplay.society.duplicate_membership", "duplicate membership"));
+    Bump();
+    m.revision = revision_;
+    auto id = m.id;
+    memberships_[id] = m;
+    Record({0, SocietyChangeKind::MembershipAdded, m.member, m.group, {}, {}, id, {}, revision_});
+    return foundation::Result<MembershipId>::Success(id);
+}
+foundation::Result<void> SocietyService::RemoveMembership(MembershipId id, GameplayContext c)
+{
+    auto it = memberships_.find(id);
+    if (it == memberships_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.society.membership_missing", "membership missing"));
+    auto m = it->second;
+    memberships_.erase(it);
+    Bump();
+    Record({0, SocietyChangeKind::MembershipRemoved, m.member, m.group, {}, {}, id, c, revision_});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<RelationshipId> SocietyService::SetRelationship(RelationshipRecord r)
+{
+    if (!r.subject.IsValid() || !r.target.IsValid() || !r.type.IsValid())
+        return foundation::Result<RelationshipId>::Failure(
+            Error("gameplay.society.invalid_relationship", "invalid relationship"));
+    if (!r.id.IsValid())
+        r.id = RelationshipId{relationship_ids_.Next()};
+    Bump();
+    auto existing = FindMutableRelationship(r.subject, r.target, r.type);
+    if (existing)
+    {
+        existing->value_micro = r.value_micro;
+        existing->state = r.state;
+        existing->updated_at = r.updated_at;
+        existing->revision = revision_;
+        ++diagnostics_.relationship_changes;
+        Record({0, SocietyChangeKind::RelationshipChanged, r.subject, r.target, r.type, {}, {}, {}, revision_});
+        return foundation::Result<RelationshipId>::Success(existing->id);
+    }
+    r.revision = revision_;
+    auto id = r.id;
+    relationships_[id] = r;
+    ++diagnostics_.relationship_changes;
+    Record({0, SocietyChangeKind::RelationshipChanged, r.subject, r.target, r.type, {}, {}, {}, revision_});
+    return foundation::Result<RelationshipId>::Success(id);
+}
+RelationshipRecord *SocietyService::FindMutableRelationship(GameplayObjectRef s, GameplayObjectRef t,
+                                                            RelationshipTypeId type) noexcept
+{
+    for (auto &[id, r] : relationships_)
+    {
+        (void)id;
+        if (r.subject == s && r.target == t && r.type == type)
+            return &r;
+    }
+    return nullptr;
+}
+foundation::Result<void> SocietyService::ApplySocialChange(SocialChangeRequest q)
+{
+    if (!q.subject.IsValid() || !q.target.IsValid() || !q.type.IsValid())
+        return foundation::Result<void>::Failure(Error("gameplay.society.invalid_change", "invalid social change"));
+    auto *r = FindMutableRelationship(q.subject, q.target, q.type);
+    if (!r)
+    {
+        RelationshipRecord nr;
+        nr.subject = q.subject;
+        nr.target = q.target;
+        nr.type = q.type;
+        nr.value_micro = q.delta_micro;
+        nr.state = nr.value_micro > 300000
+                       ? RelationshipState::Friendly
+                       : (nr.value_micro < -300000 ? RelationshipState::Hostile : RelationshipState::Neutral);
+        auto set = SetRelationship(nr);
+        if (!set)
+            return foundation::Result<void>::Failure(std::move(set.GetError()));
+        return foundation::Result<void>::Success();
+    }
+    Bump();
+    r->value_micro += q.delta_micro;
+    r->state = r->value_micro > 300000
+                   ? RelationshipState::Friendly
+                   : (r->value_micro < -300000 ? RelationshipState::Hostile : RelationshipState::Neutral);
+    r->revision = revision_;
+    ++diagnostics_.relationship_changes;
+    Record({0, SocietyChangeKind::RelationshipChanged, q.subject, q.target, q.type, {}, {}, q.context, revision_});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> SocietyService::SetReputation(ReputationRecord r)
+{
+    if (!r.subject.IsValid() || !r.scope.IsValid() || !r.track.IsValid())
+        return foundation::Result<void>::Failure(Error("gameplay.society.invalid_reputation", "invalid reputation"));
+    Bump();
+    for (auto &e : reputations_)
+    {
+        if (e.subject == r.subject && e.scope == r.scope && e.track == r.track)
+        {
+            e.value_micro = r.value_micro;
+            e.revision = revision_;
+            ++diagnostics_.reputation_changes;
+            Record({0, SocietyChangeKind::ReputationChanged, r.subject, r.scope, {}, r.track, {}, {}, revision_});
+            return foundation::Result<void>::Success();
+        }
+    }
+    r.revision = revision_;
+    reputations_.push_back(r);
+    ++diagnostics_.reputation_changes;
+    Record({0, SocietyChangeKind::ReputationChanged, r.subject, r.scope, {}, r.track, {}, {}, revision_});
+    return foundation::Result<void>::Success();
+}
+const SocialGroupDefinition *SocietyService::GetGroup(GameplayObjectRef g) const noexcept
+{
+    auto it = groups_.find(g);
+    return it == groups_.end() ? nullptr : &it->second;
+}
+const MembershipRecord *SocietyService::GetMembership(MembershipId id) const noexcept
+{
+    auto it = memberships_.find(id);
+    return it == memberships_.end() ? nullptr : &it->second;
+}
+std::vector<MembershipRecord> SocietyService::FindGroupsOf(GameplayObjectRef m) const
+{
+    std::vector<MembershipRecord> out;
+    for (const auto &[id, r] : memberships_)
+    {
+        (void)id;
+        if (r.member == m)
+            out.push_back(r);
+    }
+    std::sort(out.begin(), out.end(), [](auto &a, auto &b) {
+        if (a.group != b.group)
+            return a.group < b.group;
+        return a.id < b.id;
+    });
+    return out;
+}
+std::vector<MembershipRecord> SocietyService::FindMembersOf(GameplayObjectRef g) const
+{
+    std::vector<MembershipRecord> out;
+    for (const auto &[id, r] : memberships_)
+    {
+        (void)id;
+        if (r.group == g)
+            out.push_back(r);
+    }
+    std::sort(out.begin(), out.end(), [](auto &a, auto &b) {
+        if (a.member != b.member)
+            return a.member < b.member;
+        return a.id < b.id;
+    });
+    return out;
+}
+std::optional<RelationshipRecord> SocietyService::GetRelationship(GameplayObjectRef s, GameplayObjectRef t,
+                                                                  RelationshipTypeId type) const
+{
+    for (const auto &[id, r] : relationships_)
+    {
+        (void)id;
+        if (r.subject == s && r.target == t && r.type == type)
+            return r;
+    }
+    return std::nullopt;
+}
+std::int64_t SocietyService::GetEffectiveAttitude(AttitudeQuery q) const
+{
+    ++diagnostics_.attitude_queries;
+    std::int64_t value = 0;
+    for (const auto &[id, r] : relationships_)
+    {
+        (void)id;
+        if (r.subject == q.observer && r.target == q.target)
+            value += r.value_micro;
+    }
+    auto groups = FindGroupsOf(q.observer);
+    for (const auto &g : groups)
+    {
+        for (const auto &[id, r] : relationships_)
+        {
+            (void)id;
+            if (r.subject == g.group && r.target == q.target)
+                value += r.value_micro / 2;
+        }
+    }
+    return value;
+}
+std::optional<ReputationRecord> SocietyService::GetReputation(GameplayObjectRef s, GameplayObjectRef scope,
+                                                              ReputationTrackId track) const
+{
+    for (const auto &r : reputations_)
+        if (r.subject == s && r.scope == scope && r.track == track)
+            return r;
+    return std::nullopt;
+}
+SocialStandingSnapshot SocietyService::GetSocialStanding(GameplayObjectRef s, GameplayObjectRef scope) const
+{
+    SocialStandingSnapshot out;
+    out.subject = s;
+    out.scope = scope;
+    out.revision = revision_;
+    for (const auto &r : reputations_)
+        if (r.subject == s && r.scope == scope)
+            out.reputations.push_back(r);
+    std::sort(out.reputations.begin(), out.reputations.end(), [](auto &a, auto &b) { return a.track < b.track; });
+    return out;
+}
+bool SocietyService::HasRole(GameplayObjectRef subject, SocialRoleId role, GameplayObjectRef scope) const
+{
+    for (const auto &[id, m] : memberships_)
+    {
+        (void)id;
+        if (m.member == subject && m.role == role && m.state == MembershipState::Active &&
+            (!scope.IsValid() || m.group == scope))
+            return true;
+    }
+    return false;
+}
+std::vector<SocietyChange> SocietyService::ChangesSince(std::uint64_t seq) const
+{
+    std::vector<SocietyChange> out;
+    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(out),
+                 [seq](auto &c) { return c.sequence > seq; });
+    return out;
+}
+SocietySnapshot SocietyService::CaptureSnapshot() const
+{
+    SocietySnapshot s;
+    for (const auto &[g, d] : groups_)
+    {
+        (void)g;
+        s.groups.push_back(d);
+    }
+    for (const auto &[id, m] : memberships_)
+    {
+        (void)id;
+        s.memberships.push_back(m);
+    }
+    for (const auto &[id, r] : relationships_)
+    {
+        (void)id;
+        s.relationships.push_back(r);
+    }
+    s.reputations = reputations_;
+    std::sort(s.groups.begin(), s.groups.end(), [](auto &a, auto &b) { return a.group < b.group; });
+    std::sort(s.memberships.begin(), s.memberships.end(), [](auto &a, auto &b) { return a.id < b.id; });
+    std::sort(s.relationships.begin(), s.relationships.end(), [](auto &a, auto &b) { return a.id < b.id; });
+    std::sort(s.reputations.begin(), s.reputations.end(), [](auto &a, auto &b) {
+        if (a.subject != b.subject)
+            return a.subject < b.subject;
+        if (a.scope != b.scope)
+            return a.scope < b.scope;
+        return a.track < b.track;
+    });
+    s.membership_ids = membership_ids_.GetSnapshot();
+    s.relationship_ids = relationship_ids_.GetSnapshot();
+    s.revision = revision_;
+    return s;
+}
+foundation::Result<void> SocietyService::RestoreSnapshot(SocietySnapshot s)
+{
+    groups_.clear();
+    memberships_.clear();
+    relationships_.clear();
+    reputations_.clear();
+    for (auto &g : s.groups)
+    {
+        if (!g.group.IsValid())
+            return foundation::Result<void>::Failure(
+                Error("gameplay.society.restore_invalid", "invalid group snapshot"));
+        groups_[g.group] = g;
+    }
+    for (auto &m : s.memberships)
+    {
+        if (!m.id.IsValid() || !m.member.IsValid() || !m.group.IsValid())
+            return foundation::Result<void>::Failure(
+                Error("gameplay.society.restore_invalid", "invalid membership snapshot"));
+        memberships_[m.id] = m;
+    }
+    for (auto &r : s.relationships)
+    {
+        if (!r.id.IsValid() || !r.subject.IsValid() || !r.target.IsValid())
+            return foundation::Result<void>::Failure(
+                Error("gameplay.society.restore_invalid", "invalid relationship snapshot"));
+        relationships_[r.id] = r;
+    }
+    reputations_ = std::move(s.reputations);
+    membership_ids_.Restore(s.membership_ids);
+    relationship_ids_.Restore(s.relationship_ids);
+    revision_ = s.revision;
+    changes_.clear();
+    next_change_sequence_ = 1;
+    return foundation::Result<void>::Success();
+}
+SocietyDiagnostics SocietyService::GetDiagnostics() const noexcept
+{
+    auto d = diagnostics_;
+    d.groups = groups_.size();
+    d.memberships = memberships_.size();
+    d.relationships = relationships_.size();
+    d.reputation_records = reputations_.size();
+    return d;
+}
+void SocietyService::Record(SocietyChange c)
+{
+    c.sequence = next_change_sequence_++;
+    changes_.push_back(c);
+}
+} // namespace epidemic::gameplay::society
