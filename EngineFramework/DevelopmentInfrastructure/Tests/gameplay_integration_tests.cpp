@@ -47,6 +47,16 @@ int main()
     auto boosted = progression.GetAttribute(player, attack_id.Value());
     if (!boosted || boosted.Value() != 7'000'000) return 5;
 
+    ConditionProgressionAdapter failing_condition_adapter(conditions, progression);
+    failing_condition_adapter.AddMapping(
+        {buff_id.Value(), {}, ModifierOperation::FinalAdd, TypeId::FromString("game.mod.attack_buff.invalid"), 0, 1'000'000});
+    const auto failed_checkpoint = failing_condition_adapter.CaptureCheckpoint();
+    if (failed_checkpoint.cursor != 0) return 30;
+    auto failed_apply = failing_condition_adapter.ProcessChanges();
+    if (failed_apply || failing_condition_adapter.Cursor() != 0) return 31;
+    failing_condition_adapter.RestoreCheckpoint({17});
+    if (failing_condition_adapter.Cursor() != 17) return 32;
+
     CombatService combat;
     CombatResourceDefinition health;
     health.canonical_name = "game.health";
@@ -180,3 +190,4 @@ int main()
 
     return 0;
 }
+

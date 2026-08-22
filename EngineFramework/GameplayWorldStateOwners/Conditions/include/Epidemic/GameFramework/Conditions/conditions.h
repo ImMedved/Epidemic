@@ -242,11 +242,20 @@ struct ConditionChange
     std::uint32_t stacks = 0;
 };
 
+struct ConditionChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<ConditionChange> changes;
+};
+
 struct ConditionsSnapshot
 {
     std::vector<ConditionInstance> instances;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot id_generator{};
     Revision revision{};
+    std::vector<ConditionChange> journal;
+    std::uint64_t next_change_sequence = 1;
 };
 
 struct ConditionsDiagnostics

@@ -103,6 +103,10 @@ struct ConditionProgressionMapping
     std::int32_t priority=0;
     std::int64_t magnitude_scale_micro=1'000'000;
 };
+struct ConditionProgressionCheckpoint
+{
+    std::uint64_t cursor = 0;
+};
 class ConditionProgressionAdapter
 {
   public:
@@ -111,6 +115,8 @@ class ConditionProgressionAdapter
     [[nodiscard]] foundation::Result<void> ProcessChanges();
     [[nodiscard]] std::uint64_t Cursor() const noexcept { return cursor_; }
     void RestoreCursor(std::uint64_t cursor) noexcept { cursor_ = cursor; }
+    [[nodiscard]] ConditionProgressionCheckpoint CaptureCheckpoint() const noexcept { return {cursor_}; }
+    void RestoreCheckpoint(ConditionProgressionCheckpoint checkpoint) noexcept { cursor_ = checkpoint.cursor; }
   private:
     [[nodiscard]] static GameplayObjectRef ConditionSource(conditions::ConditionInstanceId id) noexcept { return {conditions::ConditionService::Domain(),id.value}; }
     const conditions::ConditionService& conditions_;
@@ -150,6 +156,10 @@ class ProgressionRewardHandler final : public loot::IRewardHandler
     progression::ProgressionService& progression_;
 };
 
+struct DeathRewardCheckpoint
+{
+    std::uint64_t cursor = 0;
+};
 class DeathRewardAdapter
 {
   public:
@@ -158,6 +168,8 @@ class DeathRewardAdapter
     [[nodiscard]] foundation::Result<std::vector<loot::RewardExecutionId>> ProcessChanges();
     [[nodiscard]] std::uint64_t Cursor() const noexcept { return cursor_; }
     void RestoreCursor(std::uint64_t cursor) noexcept { cursor_ = cursor; }
+    [[nodiscard]] DeathRewardCheckpoint CaptureCheckpoint() const noexcept { return {cursor_}; }
+    void RestoreCheckpoint(DeathRewardCheckpoint checkpoint) noexcept { cursor_ = checkpoint.cursor; }
   private:
     const combat::CombatService& combat_;
     loot::LootService& loot_;
@@ -165,3 +177,4 @@ class DeathRewardAdapter
     std::uint64_t cursor_=0;
 };
 } // namespace epidemic::gameplay::integration
+

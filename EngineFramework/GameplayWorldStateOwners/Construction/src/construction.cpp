@@ -391,34 +391,46 @@ std::vector<PlacementOutputOperation> ConstructionService::BuildOutputs(const Pl
     return outputs;
 }
 
-foundation::Result<void> ConstructionService::QueueOutputs(PlacementExecutionId execution,
-                                                            const std::vector<PlacementOutputOperation> &outputs,
-                                                            PlacementPlanId plan, ConstructionSiteId site,
-                                                            GameplayObjectRef actor, GameplayContext context)
+foundation::Result<std::vector<PlacementOutputEnvelope>> ConstructionService::StageOutputs(
+    PlacementExecutionId execution,
+    const std::vector<PlacementOutputOperation> &outputs) const
 {
     if (outputs.size() > kOutboxCapacity - outbox_.size())
-        return foundation::Result<void>::Failure(Error("gameplay.construction.outbox_full", "construction outbox full"));
+        return foundation::Result<std::vector<PlacementOutputEnvelope>>::Failure(
+            Error("gameplay.construction.outbox_full", "construction outbox full"));
 
+    auto output_ids = output_ids_;
     std::vector<PlacementOutputEnvelope> envelopes;
     envelopes.reserve(outputs.size());
     for (std::size_t i = 0; i < outputs.size(); ++i)
     {
         PlacementOutputEnvelope envelope;
-        envelope.id = PlacementOutputId{output_ids_.Next()};
+        envelope.id = PlacementOutputId{output_ids.Next()};
         if (!envelope.id.IsValid())
-            return foundation::Result<void>::Failure(Error("gameplay.construction.id_exhausted", "output id exhausted"));
+        {
+            return foundation::Result<std::vector<PlacementOutputEnvelope>>::Failure(
+                Error("gameplay.construction.id_exhausted", "output id exhausted"));
+        }
         envelope.execution = execution;
         envelope.ordinal = static_cast<std::uint32_t>(i);
         envelope.operation = outputs[i];
         envelopes.push_back(std::move(envelope));
     }
-    for (auto &envelope : envelopes)
+    return foundation::Result<std::vector<PlacementOutputEnvelope>>::Success(std::move(envelopes));
+}
+
+void ConstructionService::QueueOutputs(std::vector<PlacementOutputEnvelope> outputs,
+                                       PlacementPlanId plan, ConstructionSiteId site,
+                                       GameplayObjectRef actor, GameplayContext context)
+{
+    for (auto &envelope : outputs)
     {
+        output_ids_.Restore({output_ids_.Scope().Raw(), envelope.id.value.Low() + 1});
         const auto output_id = envelope.id;
+        const auto execution = envelope.execution;
         outbox_.push_back(std::move(envelope));
         Record({0, ConstructionChangeKind::OutputQueued, plan, execution, site, {}, actor, revision_, context, output_id});
     }
-    return foundation::Result<void>::Success();
 }
 
 foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(PlacementPlanId id,
@@ -480,6 +492,7 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
         return foundation::Result<PlacementCommitResult>::Failure(Error("gameplay.construction.id_exhausted", "execution id exhausted"));
     }
 
+    std::vector<PlacementOutputEnvelope> staged_outputs;
     if (definition_it->second.commit_policy == PlacementCommitPolicy::Instant)
     {
         result.placed_object = PlacedObjectId{placed_ids_.Next()};
@@ -489,11 +502,13 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
             return foundation::Result<PlacementCommitResult>::Failure(Error("gameplay.construction.id_exhausted", "placed object id exhausted"));
         }
         result.outputs = BuildOutputs(plan, recipe_it->second, result.placed_object);
-        if (result.outputs.size() > kOutboxCapacity - outbox_.size())
+        auto staged = StageOutputs(result.execution, result.outputs);
+        if (!staged)
         {
             ReleaseCosts(reservations.Value(), plan.context);
-            return foundation::Result<PlacementCommitResult>::Failure(Error("gameplay.construction.outbox_full", "construction outbox full"));
+            return foundation::Result<PlacementCommitResult>::Failure(staged.GetError());
         }
+        staged_outputs = std::move(staged).Value();
     }
     else
     {
@@ -520,13 +535,7 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
     if (definition_it->second.commit_policy == PlacementCommitPolicy::Instant)
     {
         placed_objects_.push_back(result.placed_object);
-        auto queued = QueueOutputs(result.execution, result.outputs, plan.id, {}, plan.actor, plan.context);
-        if (!queued)
-        {
-            /* Capacity was checked before mutation. ID exhaustion is checked while staging in QueueOutputs. */
-            ReleaseCosts(reservations.Value(), plan.context);
-            return foundation::Result<PlacementCommitResult>::Failure(queued.GetError());
-        }
+        QueueOutputs(std::move(staged_outputs), plan.id, {}, plan.actor, plan.context);
         Record({0, ConstructionChangeKind::PlacedObjectCreated, plan.id, result.execution, {}, {}, plan.actor,
                 revision_, plan.context, {}});
     }
@@ -645,8 +654,9 @@ foundation::Result<void> ConstructionService::CompleteConstructionSite(Construct
     if (!execution.IsValid() || !placed.IsValid())
         return foundation::Result<void>::Failure(Error("gameplay.construction.id_exhausted", "construction completion id exhausted"));
     const auto outputs = BuildOutputs(plan_it->second, recipe_it->second, placed);
-    if (outputs.size() > kOutboxCapacity - outbox_.size())
-        return foundation::Result<void>::Failure(Error("gameplay.construction.outbox_full", "construction outbox full"));
+    auto staged_outputs = StageOutputs(execution, outputs);
+    if (!staged_outputs)
+        return foundation::Result<void>::Failure(staged_outputs.GetError());
 
     Bump();
     site->state = ConstructionSiteState::Completed;
@@ -655,9 +665,7 @@ foundation::Result<void> ConstructionService::CompleteConstructionSite(Construct
     site->placed_object = placed;
     site->revision = revision_;
     placed_objects_.push_back(placed);
-    auto queued = QueueOutputs(execution, outputs, site->plan, id, site->actor, context);
-    if (!queued)
-        return queued;
+    QueueOutputs(std::move(staged_outputs).Value(), site->plan, id, site->actor, context);
     ++completed_sites_;
     Record({0, ConstructionChangeKind::PlacedObjectCreated, site->plan, execution, id, {}, site->actor, revision_, context, {}});
     Record({0, ConstructionChangeKind::SiteCompleted, site->plan, execution, id, {}, site->actor, revision_, context, {}});
@@ -957,3 +965,4 @@ void ConstructionService::Record(ConstructionChange change)
         changes_.pop_front();
 }
 } // namespace epidemic::gameplay::construction
+

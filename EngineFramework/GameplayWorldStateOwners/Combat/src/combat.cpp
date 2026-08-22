@@ -340,6 +340,11 @@ foundation::Result<CombatPlan> CombatService::PrepareDamage(DamageRequest reques
     auto resource = GetResource(request.target, profile->second.target_resource);
     if (!resource)
         return foundation::Result<CombatPlan>::Failure(resource.GetError());
+
+    // Keep at most one outstanding prepared plan per target. Any older target-bound plan is stale
+    // once a newer snapshot of the same combatant has been prepared.
+    std::erase_if(prepared_plans_, [&](const auto &entry) { return entry.second.request.target == request.target; });
+
     CombatPlan plan;
     plan.id = {resolution_ids_.Next()};
     plan.request = std::move(request);
@@ -534,3 +539,4 @@ CombatDiagnostics CombatService::GetDiagnostics() const noexcept
     return d;
 }
 } // namespace epidemic::gameplay::combat
+

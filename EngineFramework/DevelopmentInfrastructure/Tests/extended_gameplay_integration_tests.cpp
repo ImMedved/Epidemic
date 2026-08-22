@@ -89,6 +89,7 @@ int main()
     integration::EquipmentItemsAdapter equipment_items(item_service);
     equipment::EquipmentService equipment_service;
     equipment_service.SetItemProvider(&equipment_items);
+    equipment_service.Freeze();
     equipment::EquipmentProfile equipment_profile;
     equipment_profile.subject = seller;
     auto profile_id = equipment_service.CreateProfile(equipment_profile);
@@ -230,5 +231,37 @@ int main()
     const auto* new_owner = ownership_service.GetOwner(integration::ItemPropertyRef(sword_id.Value()));
     Check(new_owner && new_owner->owner == buyer, "trade transferred ownership");
 
+    ownership::OwnershipRecord ore_ownership;
+    ore_ownership.property = integration::ItemPropertyRef(ore_id.Value());
+    ore_ownership.owner = seller;
+    ore_ownership.domain = ownership::PropertyDomainId::FromString("personal");
+    Check(static_cast<bool>(ownership_service.AssignOwnership(ore_ownership)), "assign ore ownership");
+    const auto ingots = item_service.FindItemsByDefinition(ingot_definition_id.Value());
+    Check(ingots.size() == 1, "find produced ingot");
+    ownership::OwnershipRecord ingot_ownership;
+    ingot_ownership.property = integration::ItemPropertyRef(ingots.front().id);
+    ingot_ownership.owner = seller;
+    ingot_ownership.domain = ownership::PropertyDomainId::FromString("personal");
+    Check(static_cast<bool>(ownership_service.AssignOwnership(ingot_ownership)), "assign ingot ownership");
+
+    integration::CoordinatedTradePlan multi_goods_trade;
+    multi_goods_trade.money.buyer = buyer;
+    multi_goods_trade.money.seller = seller;
+    multi_goods_trade.money.monetary_transfers.push_back({buyer_account_id.Value(), seller_account_id.Value(), 10, coin_id.Value()});
+    multi_goods_trade.goods.push_back({ore_id.Value(), buyer_container_id.Value(), seller, buyer});
+    multi_goods_trade.goods.push_back({ingots.front().id, buyer_container_id.Value(), seller, buyer});
+    auto multi_goods_result = trade.Execute(std::move(multi_goods_trade));
+    Check(static_cast<bool>(multi_goods_result), "multi-good trade to one container");
+    Check(economy_service.GetBalance(buyer_account_id.Value()) == 65, "buyer money transferred for multi-good trade");
+    Check(economy_service.GetBalance(seller_account_id.Value()) == 35, "seller money transferred for multi-good trade");
+    Check(item_service.FindItem(ore_id.Value())->location.container == buyer_container_id.Value(), "ore moved in multi-good trade");
+    Check(item_service.FindItem(ingots.front().id)->location.container == buyer_container_id.Value(), "ingot moved in multi-good trade");
+    const auto* ore_owner = ownership_service.GetOwner(integration::ItemPropertyRef(ore_id.Value()));
+    Check(ore_owner && ore_owner->owner == buyer, "ore ownership transferred");
+    const auto* ingot_owner = ownership_service.GetOwner(integration::ItemPropertyRef(ingots.front().id));
+    Check(ingot_owner && ingot_owner->owner == buyer, "ingot ownership transferred");
+
     return 0;
 }
+
+

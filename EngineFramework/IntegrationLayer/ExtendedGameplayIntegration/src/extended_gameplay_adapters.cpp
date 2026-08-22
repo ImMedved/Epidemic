@@ -190,7 +190,6 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Execute(Coordi
     struct PreparedGood
     {
         TradeGoodsLine line;
-        items::ItemTransferPlan transfer;
         items::ItemLocation source;
         items::Fixed quantity = 0;
         bool item_moved = false;
@@ -224,7 +223,7 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Execute(Coordi
         auto transfer = items_.PrepareTransfer(line.item, target, item->quantity, plan.money.context);
         if (!transfer)
             return foundation::Result<economy::TradeTransactionId>::Failure(transfer.GetError());
-        goods.push_back({line, transfer.Value(), item->location, item->quantity, false, false});
+        goods.push_back({line, item->location, item->quantity, false, false});
     }
 
     auto tx = economy_.PrepareTrade(std::move(plan.money));
@@ -253,7 +252,7 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Execute(Coordi
             {
                 const auto ownership_back = ownership_.TransferOwnership(
                     {ItemPropertyRef(g.line.item), g.line.to_owner, g.line.from_owner,
-                     ownership::TransferReason::Trade, g.transfer.context});
+                     ownership::TransferReason::Trade, plan.money.context});
                 if (!ownership_back)
                     consistent = false;
                 else
@@ -269,7 +268,7 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Execute(Coordi
                 }
                 else
                 {
-                    auto back = items_.PrepareTransfer(g.line.item, g.source, g.quantity, g.transfer.context);
+                    auto back = items_.PrepareTransfer(g.line.item, g.source, g.quantity, plan.money.context);
                     if (!back)
                     {
                         consistent = false;
@@ -296,7 +295,18 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Execute(Coordi
     for (std::size_t i = 0; i < goods.size(); ++i)
     {
         auto &g = goods[i];
-        auto moved_item = items_.CommitTransfer(g.transfer);
+        items::ItemLocation target;
+        target.kind = items::ItemLocationKind::Container;
+        target.container = g.line.destination;
+        auto prepared_transfer = items_.PrepareTransfer(g.line.item, target, g.quantity, plan.money.context);
+        if (!prepared_transfer)
+        {
+            if (!compensate(committed_goods))
+                return foundation::Result<economy::TradeTransactionId>::Failure(
+                    Error("gameplay.trade.reconciliation_required", "item transfer failed and trade compensation was incomplete"));
+            return foundation::Result<economy::TradeTransactionId>::Failure(prepared_transfer.GetError());
+        }
+        auto moved_item = items_.CommitTransfer(prepared_transfer.Value());
         if (!moved_item)
         {
             if (!compensate(committed_goods))
@@ -309,7 +319,7 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Execute(Coordi
 
         auto moved_ownership = ownership_.TransferOwnership(
             {ItemPropertyRef(g.line.item), g.line.from_owner, g.line.to_owner,
-             ownership::TransferReason::Trade, g.transfer.context});
+             ownership::TransferReason::Trade, plan.money.context});
         if (!moved_ownership)
         {
             if (!compensate(committed_goods))
@@ -332,3 +342,4 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Execute(Coordi
     return foundation::Result<economy::TradeTransactionId>::Success(tx.Value());
 }
 } // namespace epidemic::gameplay::integration
+

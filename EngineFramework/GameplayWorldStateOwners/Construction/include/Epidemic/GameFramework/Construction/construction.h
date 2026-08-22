@@ -513,10 +513,12 @@ class ConstructionService
     [[nodiscard]] std::vector<PlacementOutputOperation> BuildOutputs(const PlacementPlan &plan,
                                                                      const ConstructionRecipe &recipe,
                                                                      PlacedObjectId placed) const;
-    [[nodiscard]] foundation::Result<void> QueueOutputs(PlacementExecutionId execution,
-                                                         const std::vector<PlacementOutputOperation> &outputs,
-                                                         PlacementPlanId plan, ConstructionSiteId site,
-                                                         GameplayObjectRef actor, GameplayContext context);
+    [[nodiscard]] foundation::Result<std::vector<PlacementOutputEnvelope>> StageOutputs(
+        PlacementExecutionId execution,
+        const std::vector<PlacementOutputOperation> &outputs) const;
+    void QueueOutputs(std::vector<PlacementOutputEnvelope> outputs,
+                      PlacementPlanId plan, ConstructionSiteId site,
+                      GameplayObjectRef actor, GameplayContext context);
     [[nodiscard]] foundation::Result<PlacementValidationResult> ValidatePlacementInternal(
         const PlacementRequest &request, bool count_diagnostics) const;
 
@@ -542,3 +544,4 @@ class ConstructionService
     std::uint64_t committed_ = 0, socket_reservations_ = 0, completed_sites_ = 0;
 };
 } // namespace epidemic::gameplay::construction
+

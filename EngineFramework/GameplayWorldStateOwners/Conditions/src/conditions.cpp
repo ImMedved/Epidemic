@@ -798,14 +798,29 @@ void ConditionService::RecordChange(ConditionChange change)
 {
     change.sequence = next_change_sequence_++;
     changes_.push_back(std::move(change));
+    while (changes_.size() > kChangeJournalCapacity)
+        changes_.pop_front();
 }
 
 std::vector<ConditionChange> ConditionService::ChangesSince(std::uint64_t sequence) const
 {
+    return ReadChangesSince(sequence).changes;
+}
+
+ConditionChangeBatch ConditionService::ReadChangesSince(std::uint64_t sequence) const
+{
+    ConditionChangeBatch batch;
+    batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
+    if (!changes_.empty() && sequence < changes_.front().sequence - 1)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
     const auto found = std::upper_bound(changes_.begin(), changes_.end(), sequence, [](std::uint64_t value, const ConditionChange& change) {
         return value < change.sequence;
     });
-    return std::vector<ConditionChange>(found, changes_.end());
+    batch.changes.assign(found, changes_.end());
+    return batch;
 }
 
 void ConditionService::PruneChangesBefore(std::uint64_t sequence)
@@ -821,6 +836,8 @@ ConditionsSnapshot ConditionService::CaptureSnapshot() const
     ConditionsSnapshot snapshot;
     snapshot.id_generator = ids_.GetSnapshot();
     snapshot.revision = revision_;
+    snapshot.journal.assign(changes_.begin(), changes_.end());
+    snapshot.next_change_sequence = next_change_sequence_;
     for (const auto& instance : instances_)
     {
         const auto* definition = FindDefinition(instance.type);
@@ -855,21 +872,26 @@ foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot sn
         instance.periodic_schedule.reset();
         const auto payload = ValidatePayload(definition_found->second, instance.payload);
         if (!payload)
-        {
             return foundation::Result<void>::Failure(payload.GetError());
-        }
         seen.emplace(instance.id, true);
     }
-
+    if (snapshot.journal.size() > kChangeJournalCapacity || snapshot.next_change_sequence == 0)
+        return foundation::Result<void>::Failure(Error("gameplay.condition_snapshot_invalid", "condition snapshot journal is invalid"));
+    std::deque<ConditionChange> restored_changes;
+    std::uint64_t previous_sequence = 0;
+    for (const auto& change : snapshot.journal)
+    {
+        if (change.sequence == 0 || change.sequence <= previous_sequence || change.sequence >= snapshot.next_change_sequence)
+            return foundation::Result<void>::Failure(Error("gameplay.condition_snapshot_invalid", "condition snapshot journal is invalid"));
+        restored_changes.push_back(change);
+        previous_sequence = change.sequence;
+    }
     instances_.clear();
     id_to_index_.clear();
     subject_index_.clear();
-    changes_.clear();
-    next_change_sequence_ = 1;
     ids_.Restore(snapshot.id_generator);
     revision_ = snapshot.revision;
     applied_ = expired_ = removed_ = periodic_triggers_ = stack_merges_ = 0;
-
     instances_.reserve(snapshot.instances.size());
     for (auto& instance : snapshot.instances)
     {
@@ -878,6 +900,8 @@ foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot sn
         instances_.push_back(std::move(instance));
         IndexInstance(instances_.back());
     }
+    changes_.swap(restored_changes);
+    next_change_sequence_ = snapshot.next_change_sequence;
     return foundation::Result<void>::Success();
 }
 

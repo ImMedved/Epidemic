@@ -218,26 +218,36 @@ foundation::Result<void> ConditionProgressionAdapter::ProcessChanges()
     const auto changes = conditions_.ChangesSince(cursor_);
     for (const auto &c : changes)
     {
-        cursor_ = std::max(cursor_, c.sequence);
+        const auto next_cursor = std::max(cursor_, c.sequence);
         auto map =
             std::find_if(mappings_.begin(), mappings_.end(), [&](const auto &m) { return m.condition == c.type; });
         if (map == mappings_.end())
+        {
+            cursor_ = next_cursor;
             continue;
+        }
         const auto source = ConditionSource(c.instance);
         if (c.kind == conditions::ConditionChangeKind::Removed || c.kind == conditions::ConditionChangeKind::Expired)
         {
             const auto removed = progression_.RemoveModifiersBySource(c.subject, source, c.context);
             (void)removed;
+            cursor_ = next_cursor;
             continue;
         }
         if (c.kind != conditions::ConditionChangeKind::Added && c.kind != conditions::ConditionChangeKind::Refreshed &&
             c.kind != conditions::ConditionChangeKind::StackChanged)
+        {
+            cursor_ = next_cursor;
             continue;
+        }
         const auto removed = progression_.RemoveModifiersBySource(c.subject, source, c.context);
         (void)removed;
         const auto *current = conditions_.Find(c.instance);
         if (current == nullptr)
+        {
+            cursor_ = next_cursor;
             continue;
+        }
         progression::ProgressionModifier modifier;
         modifier.target = map->attribute;
         modifier.operation = map->operation;
@@ -251,6 +261,7 @@ foundation::Result<void> ConditionProgressionAdapter::ProcessChanges()
         auto added = progression_.AddModifier(c.subject, std::move(modifier), c.context);
         if (!added)
             return foundation::Result<void>::Failure(added.GetError());
+        cursor_ = next_cursor;
     }
     return foundation::Result<void>::Success();
 }
@@ -377,3 +388,4 @@ foundation::Result<std::vector<loot::RewardExecutionId>> DeathRewardAdapter::Pro
     return foundation::Result<std::vector<loot::RewardExecutionId>>::Success(std::move(out));
 }
 } // namespace epidemic::gameplay::integration
+

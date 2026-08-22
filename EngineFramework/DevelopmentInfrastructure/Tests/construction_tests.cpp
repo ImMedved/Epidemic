@@ -129,5 +129,60 @@ int main()
         return 13;
     if (restored.FindSocket(sock.id)->state != SocketState::Occupied)
         return 14;
+
+    ConstructionService staged;
+    if (!staged.RegisterPlacementDefinition(free_def))
+        return 26;
+    PlacementDefinition instant_def;
+    instant_def.id = PlacementRuleId::FromString("game.instant");
+    instant_def.canonical_name = "game.instant";
+    instant_def.target_kind = PlacementTargetKind::Free;
+    instant_def.commit_policy = PlacementCommitPolicy::Instant;
+    if (!staged.RegisterPlacementDefinition(instant_def))
+        return 27;
+    ConstructionRecipe staged_recipe;
+    staged_recipe.id = ConstructionRecipeId::FromString("game.instant.bridge");
+    staged_recipe.canonical_name = "game.instant.bridge";
+    staged_recipe.result_entity_archetype = TypeId::FromString("game.instant.bridge.entity");
+    staged_recipe.footprint_size_mm = {100, 100, 100};
+    PlacementOutputTemplate extra_output;
+    extra_output.type = PlacementOutputTypeId::FromString("construction.output.custom");
+    extra_output.subject_is_target_area = true;
+    staged_recipe.output_templates.push_back(extra_output);
+    if (!staged.RegisterRecipe(staged_recipe))
+        return 28;
+    staged.Freeze();
+    auto staged_snapshot = staged.CaptureSnapshot();
+    staged_snapshot.output_ids.next = std::numeric_limits<std::uint64_t>::max();
+    ConstructionService exhausted;
+    if (!exhausted.RegisterPlacementDefinition(free_def))
+        return 29;
+    if (!exhausted.RegisterPlacementDefinition(instant_def))
+        return 30;
+    if (!exhausted.RegisterRecipe(staged_recipe))
+        return 31;
+    exhausted.Freeze();
+    if (!exhausted.RestoreSnapshot(std::move(staged_snapshot)))
+        return 32;
+    PlacementRequest instant_req;
+    instant_req.actor = actor;
+    instant_req.recipe = staged_recipe.id;
+    instant_req.placement_rule = instant_def.id;
+    instant_req.target.position = WorldPosition{4, 5, 6};
+    instant_req.target.area = area;
+    auto instant_plan = exhausted.PreparePlacementPlan(instant_req);
+    if (!instant_plan)
+        return 33;
+    auto instant_commit = exhausted.CommitPlacement(instant_plan.Value());
+    if (instant_commit || !instant_commit.GetError().HasCode("gameplay.construction.id_exhausted"))
+        return 34;
+    const auto *preserved_plan = exhausted.FindPlan(instant_plan.Value().id);
+    if (preserved_plan == nullptr || preserved_plan->state != PlacementPlanState::Prepared)
+        return 35;
+    if (!exhausted.PendingOutputs().empty())
+        return 36;
+
     return 0;
 }
+
+

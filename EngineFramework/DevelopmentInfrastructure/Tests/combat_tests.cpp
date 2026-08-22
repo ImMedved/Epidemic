@@ -45,6 +45,20 @@ int main()
     auto result = s.CommitDamage(plan.Value());
     if (!result || result.Value().resource_after_micro != 80'000'000)
         return 6;
+
+    auto superseded_first = s.PrepareDamage(req);
+    if (!superseded_first)
+        return 12;
+    auto superseding_second = s.PrepareDamage(req);
+    if (!superseding_second)
+        return 13;
+    auto superseded_commit = s.CommitDamage(superseded_first.Value());
+    if (superseded_commit || !superseded_commit.GetError().HasCode("gameplay.combat.plan_unknown"))
+        return 14;
+    auto superseding_commit = s.CommitDamage(superseding_second.Value());
+    if (!superseding_commit)
+        return 15;
+
     auto stale = s.PrepareDamage(req);
     if (!stale)
         return 7;
@@ -62,7 +76,9 @@ int main()
     if (!rr || !rd || !rdp || !restored.RestoreSnapshot(std::move(snap)))
         return 10;
     auto state = restored.GetResource(target, hp.Value());
-    if (!state || state.Value().current_micro != 81'000'000)
+    if (!state || state.Value().current_micro != 61'000'000)
         return 11;
     return 0;
 }
+
+
