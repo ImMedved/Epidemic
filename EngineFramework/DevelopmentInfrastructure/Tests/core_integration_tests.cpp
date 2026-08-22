@@ -12,6 +12,19 @@ using namespace epidemic::gameplay::time;
 
 namespace
 {
+class TestSnapshotCoordinator final : public IQuerySnapshotCoordinator
+{
+  public:
+    [[nodiscard]] foundation::Result<QuerySnapshotReadEpoch> AcquireReadEpoch(GameplayTickId) const override
+    {
+        return foundation::Result<QuerySnapshotReadEpoch>::Success(
+            QuerySnapshotReadEpoch{next_++, std::make_shared<int>(1)});
+    }
+
+  private:
+    mutable std::uint64_t next_ = 1;
+};
+
 class FakeGameClock final : public runtime::IGameClock
 {
   public:
@@ -35,6 +48,12 @@ int main()
     if (!fact_type || !clock || !action)
     {
         return 1;
+    }
+
+    TestSnapshotCoordinator snapshot_coordinator;
+    if (!queries.SetSnapshotCoordinator(&snapshot_coordinator))
+    {
+        return 21;
     }
 
     FactsQueryAdapter facts_query(facts, queries);

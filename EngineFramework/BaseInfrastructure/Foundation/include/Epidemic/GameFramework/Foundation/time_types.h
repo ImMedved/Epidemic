@@ -138,6 +138,15 @@ struct Revision
     return Revision{revision.value + 1};
 }
 
+[[nodiscard]] constexpr std::optional<std::uint64_t> CheckedNextSequence(std::uint64_t current) noexcept
+{
+    if (current == std::numeric_limits<std::uint64_t>::max())
+    {
+        return std::nullopt;
+    }
+    return current + 1;
+}
+
 struct GameplayTickContext
 {
     GameplayTickId tick{};

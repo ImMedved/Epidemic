@@ -357,6 +357,7 @@ class EffectService
     [[nodiscard]] foundation::Result<void> CancelDeferred(DeferredEffectId id, GameplayContext context = {});
     [[nodiscard]] std::uint64_t CancelDeferredTargeting(GameplayObjectRef target, GameplayContext context = {});
     [[nodiscard]] const DeferredEffectRecord* FindDeferred(DeferredEffectId id) const noexcept;
+    [[nodiscard]] std::optional<DeferredEffectRecord> FindDeferredCopy(DeferredEffectId id) const noexcept;
     [[nodiscard]] std::vector<DeferredEffectRecord> UnscheduledDeferred() const;
     [[nodiscard]] foundation::Result<EffectRequest> TakeDeferredBySchedule(ScheduleId schedule, GameplayContext context = {});
 
@@ -406,6 +407,7 @@ class EffectService
     MonotonicIdGenerator<GameplayObjectId> execution_ids_;
     MonotonicIdGenerator<GameplayObjectId> deferred_ids_;
     std::unordered_map<DeferredEffectId, DeferredEffectRecord, DeferredEffectIdHash> deferred_;
+    std::unordered_map<ScheduleId, DeferredEffectId> deferred_by_schedule_;
 
     std::vector<EffectChange> changes_;
     std::uint64_t next_change_sequence_ = 1;

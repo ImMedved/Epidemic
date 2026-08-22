@@ -46,6 +46,8 @@ class RandomSequence
     RandomSequence(RandomSeed seed, RandomStream stream, std::uint64_t sequence = 0) noexcept;
     explicit RandomSequence(RandomSequenceSnapshot snapshot) noexcept;
 
+    [[nodiscard]] std::optional<std::uint64_t> TryNextU64() noexcept;
+    [[nodiscard]] std::optional<std::uint64_t> TryUniform(std::uint64_t exclusive_max) noexcept;
     [[nodiscard]] std::uint64_t NextU64() noexcept;
     [[nodiscard]] std::uint64_t Uniform(std::uint64_t exclusive_max) noexcept;
     [[nodiscard]] std::uint64_t UniformRange(std::uint64_t minimum, std::uint64_t maximum_exclusive) noexcept;

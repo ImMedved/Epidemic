@@ -30,18 +30,18 @@ class Resource final : public IAbilityResourceProvider
         return foundation::Result<AbilityResourceReservation>::Success({{GameplayObjectId::FromRaw(1, static_cast<std::uint64_t>(amount))}, type, RegisteredAbilityPayload::FromTrivial(TypeId::FromString("p"), Payload{amount})});
     }
 
-    [[nodiscard]] foundation::Result<void> Commit(const AbilityResourceReservation&, GameplayContext) override { return foundation::Result<void>::Success(); }
+    void Commit(const AbilityResourceReservation&, GameplayContext) noexcept override {}
 
-    [[nodiscard]] foundation::Result<void> Release(const AbilityResourceReservation& reservation, GameplayContext) override
+    void Release(const AbilityResourceReservation& reservation, GameplayContext) noexcept override
     {
         struct Payload { std::int64_t amount; };
         auto payload = reservation.provider_token.AsTrivial<Payload>(TypeId::FromString("p"));
         if (!payload)
         {
-            return foundation::Result<void>::Failure(foundation::Error::Create("bad", "bad"));
+            return;
         }
         balance += payload->amount;
-        return foundation::Result<void>::Success();
+        return;
     }
 };
 } // namespace
@@ -107,3 +107,5 @@ int main()
     if (failed || tx_res.balance != 100) return 12;
     return 0;
 }
+
+

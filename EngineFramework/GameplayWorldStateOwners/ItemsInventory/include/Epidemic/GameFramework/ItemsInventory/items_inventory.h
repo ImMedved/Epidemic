@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <cstring>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -69,6 +70,7 @@ struct IdHash
 struct RegisteredPayload
 {
     TypeId type{};
+    std::uint32_t schema_version = 1;
     std::vector<std::byte> bytes;
     [[nodiscard]] bool operator==(const RegisteredPayload &) const = default;
     template <class T> [[nodiscard]] static RegisteredPayload FromTrivial(TypeId type_id, const T &value)
@@ -76,6 +78,7 @@ struct RegisteredPayload
         static_assert(std::is_trivially_copyable_v<T>);
         RegisteredPayload out;
         out.type = type_id;
+        out.schema_version = 1;
         out.bytes.resize(sizeof(T));
         std::memcpy(out.bytes.data(), &value, sizeof(T));
         return out;
@@ -83,7 +86,7 @@ struct RegisteredPayload
     template <class T> [[nodiscard]] std::optional<T> AsTrivial(TypeId expected) const
     {
         static_assert(std::is_trivially_copyable_v<T>);
-        if (type != expected || bytes.size() != sizeof(T))
+        if (type != expected || schema_version != 1 || bytes.size() != sizeof(T))
             return std::nullopt;
         T value{};
         std::memcpy(&value, bytes.data(), sizeof(T));
@@ -190,6 +193,12 @@ struct ItemInstance
     std::optional<GameplayObjectRef> world_entity;
     Revision revision{};
 };
+struct ItemCreateRequest
+{
+    ItemInstance item;
+    std::optional<Fixed> durability_override{};
+    std::optional<Fixed> charges_override{};
+};
 struct ContainerRecord
 {
     ContainerId id{};
@@ -240,6 +249,10 @@ struct ItemChange
     Fixed quantity = 0;
     GameplayContext context{};
     Revision revision{};
+    ItemLocation source{};
+    ItemLocation target{};
+    ItemInstanceId related_item{};
+    ItemReservationId reservation{};
 };
 struct ItemsSnapshot
 {
@@ -252,6 +265,31 @@ struct ItemsSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot reservation_ids{};
     Revision revision{};
 };
+
+struct ItemPropertySchema
+{
+    ItemPropertyTypeId type{};
+    TypeId payload_type{};
+    std::uint32_t schema_version = 1;
+    std::size_t max_payload_bytes = 0;
+};
+
+struct ContainerPolicyContext
+{
+    ContainerId container{};
+    ItemInstanceId moving_item{};
+    ItemDefinitionId definition{};
+    Fixed quantity = 0;
+};
+
+class IContainerPolicy
+{
+  public:
+    virtual ~IContainerPolicy() = default;
+    [[nodiscard]] virtual ContainerPolicyId Id() const noexcept = 0;
+    [[nodiscard]] virtual bool AllowsInsert(const ContainerPolicyContext& context) const = 0;
+};
+
 struct ItemsDiagnostics
 {
     std::uint64_t items = 0;
@@ -270,6 +308,8 @@ class ItemsInventoryService
         return GameplayDomainId::FromString("framework.items_inventory");
     }
     [[nodiscard]] foundation::Result<ItemDefinitionId> RegisterDefinition(ItemDefinition definition);
+    [[nodiscard]] foundation::Result<void> RegisterPropertySchema(ItemPropertySchema schema);
+    [[nodiscard]] foundation::Result<void> RegisterContainerPolicy(const IContainerPolicy& policy);
     void Freeze() noexcept
     {
         frozen_ = true;
@@ -278,9 +318,12 @@ class ItemsInventoryService
 
     [[nodiscard]] foundation::Result<ContainerId> CreateContainer(ContainerRecord container);
     [[nodiscard]] foundation::Result<ItemInstanceId> CreateItem(ItemInstance item, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<ItemInstanceId> CreateItem(ItemCreateRequest request, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> DestroyItem(ItemInstanceId item, GameplayContext context = {});
     [[nodiscard]] const ItemInstance *FindItem(ItemInstanceId id) const noexcept;
     [[nodiscard]] const ContainerRecord *FindContainer(ContainerId id) const noexcept;
+    [[nodiscard]] std::optional<ItemInstance> FindItemCopy(ItemInstanceId id) const noexcept;
+    [[nodiscard]] std::optional<ContainerRecord> FindContainerCopy(ContainerId id) const noexcept;
 
     [[nodiscard]] foundation::Result<ItemInstanceId> SplitStack(ItemInstanceId item, Fixed quantity,
                                                                 GameplayContext context = {});
@@ -299,7 +342,18 @@ class ItemsInventoryService
                                                               GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> ConsumeReservation(ItemReservationId reservation,
                                                               GameplayContext context = {});
+    // Atomically releases an existing set of reservations and creates one new
+    // reservation. No reservation state is changed if any precondition fails.
+    // This is the cross-owner primitive used by Equipment for conflict swaps.
+    [[nodiscard]] foundation::Result<ItemReservationId> ExchangeReservations(
+        std::span<const ItemReservationId> release_reservations,
+        ItemInstanceId reserve_item,
+        Fixed reserve_quantity,
+        GameplayObjectRef reserve_owner,
+        TypeId reserve_reason = {},
+        GameplayContext context = {});
     [[nodiscard]] const ItemReservation *FindReservation(ItemReservationId reservation) const noexcept;
+    [[nodiscard]] std::optional<ItemReservation> FindReservationCopy(ItemReservationId reservation) const noexcept;
     [[nodiscard]] std::vector<ItemReservation> FindReservations(ItemInstanceId item) const;
     [[nodiscard]] Fixed ReservedQuantity(ItemInstanceId item) const noexcept;
 
@@ -332,10 +386,15 @@ class ItemsInventoryService
                                                Fixed quantity) const noexcept;
     [[nodiscard]] std::uint32_t ContainerDepth(ContainerId id) const noexcept;
     [[nodiscard]] Revision LocationRevision(const ItemLocation &location) const noexcept;
+    [[nodiscard]] bool ValidateLocation(const ItemLocation& location) const noexcept;
+    [[nodiscard]] bool ValidateProperties(std::vector<ItemProperty>& properties) const;
+    [[nodiscard]] bool PolicyAllows(ContainerId container, ItemInstanceId moving, ItemDefinitionId definition, Fixed quantity) const;
 
     bool frozen_ = false;
     Revision revision_{};
     std::unordered_map<ItemDefinitionId, ItemDefinition, IdHash> definitions_;
+    std::unordered_map<ItemPropertyTypeId, ItemPropertySchema, IdHash> property_schemas_;
+    std::unordered_map<ContainerPolicyId, const IContainerPolicy*, IdHash> container_policies_;
     std::unordered_map<ItemInstanceId, ItemInstance, IdHash> items_;
     std::unordered_map<ContainerId, ContainerRecord, IdHash> containers_;
     std::unordered_map<ItemReservationId, ItemReservation, IdHash> reservations_;

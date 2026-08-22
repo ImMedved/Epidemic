@@ -149,6 +149,9 @@ struct MaterialComposition
     std::vector<MaterialConstituent> constituents;
 };
 
+// Semantic substance quantity in micro-units of the base quantity unit agreed for the
+// substance/game data. This is deliberately not an implicit SI unit; every producer and
+// consumer of a SubstanceId must use the same authored quantity unit.
 struct SubstanceAmount
 {
     std::int64_t micro = 0;
@@ -330,7 +333,7 @@ class MaterialService
         MaterialComposition composition,
         GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> RemoveSlot(GameplayObjectRef subject, MaterialSlotId slot, GameplayContext context = {});
-    [[nodiscard]] std::uint64_t RemoveSubject(GameplayObjectRef subject, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<std::uint64_t> RemoveSubject(GameplayObjectRef subject, GameplayContext context = {});
 
     [[nodiscard]] foundation::Result<void> ApplySubstanceExposure(
         GameplayObjectRef subject,
@@ -368,7 +371,7 @@ class MaterialService
     [[nodiscard]] std::vector<MaterialSlotState> FindByMaterialTag(TagId tag, const GameplayTagRegistry& tags) const;
 
     [[nodiscard]] std::vector<MaterialChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return next_change_sequence_ - 1; }
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return last_change_sequence_; }
     void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] MaterialsSnapshot CaptureSnapshot() const;
@@ -385,8 +388,9 @@ class MaterialService
         const MaterialSlotState& state,
         const MaterialStimulus& stimulus,
         const GameplayTagRegistry& tags) const;
-    void RecordChange(MaterialChange change);
-    void BumpRevision(MaterialSlotState& state) noexcept;
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    [[nodiscard]] bool CanRecordChanges(std::size_t count) const noexcept;
+    void RecordChange(MaterialChange change) noexcept;
 
     std::unordered_map<MaterialId, MaterialDefinition, TypeHash> materials_;
     std::unordered_map<SubstanceId, SubstanceDefinition, TypeHash> substances_;
@@ -399,6 +403,7 @@ class MaterialService
     bool frozen_ = false;
     std::vector<MaterialChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t last_change_sequence_ = 0;
 
     mutable std::uint64_t reaction_evaluations_ = 0;
     std::uint64_t stimuli_ = 0;

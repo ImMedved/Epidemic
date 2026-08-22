@@ -1,9 +1,40 @@
 #include "Epidemic/GameFramework/TraversalNavigationConstructionIntegration/traversal_navigation_construction_adapters.h"
+using namespace epidemic;
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::traversal;
 using namespace epidemic::gameplay::navigation_semantics;
 using namespace epidemic::gameplay::construction;
 using namespace epidemic::gameplay::traversal_navigation_construction;
+
+namespace
+{
+class PlacementProvider final : public IConstructionPlacementProvider
+{
+  public:
+    [[nodiscard]] foundation::Result<PlacementSemanticProjection> Project(const PlacementRequest &request) const override
+    {
+        PlacementSemanticProjection projection;
+        projection.materialized = true;
+        projection.area_allowed = true;
+        projection.permission_granted = true;
+        projection.capability_available = true;
+        projection.spacing_clear = true;
+        projection.revision = {1};
+        if (request.target.area)
+            projection.footprint.volume.area = *request.target.area;
+        if (request.target.position)
+        {
+            projection.footprint.volume.min = *request.target.position;
+            projection.footprint.volume.max = {request.target.position->x_mm + 100, request.target.position->y_mm + 100,
+                                               request.target.position->z_mm + 100};
+        }
+        return foundation::Result<PlacementSemanticProjection>::Success(projection);
+    }
+
+    [[nodiscard]] Revision CurrentRevision() const noexcept override { return {1}; }
+};
+} // namespace
+
 int main()
 {
     TraversalService t;
@@ -29,6 +60,8 @@ int main()
         return 3;
     n.Freeze();
     ConstructionService c;
+    PlacementProvider provider;
+    c.SetPlacementProvider(&provider);
     PlacementDefinition def;
     def.id = PlacementRuleId::FromString("game.free");
     def.canonical_name = "game.free";
@@ -38,6 +71,16 @@ int main()
     ConstructionRecipe recipe;
     recipe.id = ConstructionRecipeId::FromString("game.bridge");
     recipe.canonical_name = "game.bridge";
+    recipe.footprint_size_mm = {100, 100, 100};
+    PlacementOutputTemplate output;
+    output.type = PlacementOutputTypeId::FromString("construction.output.navigation_layer");
+    output.subject_is_target_area = true;
+    ConstructionNavigationLayerPayload payload;
+    payload.layer_type = NavigationLayerTypeId::FromString("game.bridge.layer");
+    payload.decision = NavigationDecisionKind::AddCost;
+    payload.additive_cost_micro = 500;
+    output.payload = EncodeNavigationLayerPayload(payload);
+    recipe.output_templates.push_back(output);
     if (!c.RegisterRecipe(recipe))
         return 5;
     c.Freeze();

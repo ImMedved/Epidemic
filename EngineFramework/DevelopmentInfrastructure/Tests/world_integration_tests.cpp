@@ -23,6 +23,8 @@ int main()
     a.canonical_name = "test.area";
     a.bounds = {{0, 0, 0}, {1000, 1000, 1000}};
     CHECK(w.RegisterArea(a));
+    CHECK(w.Freeze());
+    e.Freeze();
     world_integration::WorldQueryAdapter qa(w, e, i, q);
     CHECK(qa.RegisterProviders());
     world_integration::WorldFactsAdapter fa(w, e, i, f);

@@ -1,16 +1,11 @@
 #pragma once
 
+#include "Epidemic/Foundation/error.h"
 #include "Epidemic/Foundation/result.h"
-#include "Epidemic/GameFramework/Environment/environment.h"
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
-#include "Epidemic/GameFramework/World/world.h"
-#include "Epidemic/Runtime/Environment/environment_runtime.h"
-#include "Epidemic/Runtime/Physics/physics_scene.h"
-#include "Epidemic/Runtime/World/world_services.h"
 
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 #include <optional>
 #include <unordered_map>
 #include <variant>
@@ -18,6 +13,66 @@
 
 namespace epidemic::gameplay::runtime_bridge
 {
+struct RuntimeObjectHandle
+{
+    std::uint64_t value = 0;
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const RuntimeObjectHandle&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const RuntimeObjectHandle&) const noexcept = default;
+};
+struct RuntimePersistentObjectHandle
+{
+    std::uint64_t value = 0;
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const RuntimePersistentObjectHandle&) const noexcept = default;
+};
+struct RuntimePhysicsBodyHandle
+{
+    std::uint64_t value = 0;
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const RuntimePhysicsBodyHandle&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const RuntimePhysicsBodyHandle&) const noexcept = default;
+};
+struct RuntimeRegionHandle
+{
+    std::uint64_t value = 0;
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const RuntimeRegionHandle&) const noexcept = default;
+};
+struct RuntimeVector3
+{
+    float x = 0.0f, y = 0.0f, z = 0.0f;
+    [[nodiscard]] constexpr bool operator==(const RuntimeVector3&) const noexcept = default;
+};
+struct RuntimeQuaternion
+{
+    float x = 0.0f, y = 0.0f, z = 0.0f, w = 1.0f;
+    [[nodiscard]] constexpr bool operator==(const RuntimeQuaternion&) const noexcept = default;
+};
+struct RuntimeWorldPosition
+{
+    std::int64_t x_mm = 0, y_mm = 0, z_mm = 0;
+    [[nodiscard]] constexpr bool operator==(const RuntimeWorldPosition&) const noexcept = default;
+};
+struct RuntimeWorldAabb
+{
+    RuntimeWorldPosition min{}, max{};
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return min.x_mm <= max.x_mm && min.y_mm <= max.y_mm && min.z_mm <= max.z_mm;
+    }
+};
+
+struct RuntimeEnvironmentValues
+{
+    std::int32_t temperature_milli_c = 0;
+    std::int32_t humidity_milli = 0;
+    std::int32_t precipitation_milli = 0;
+    std::int32_t wind_strength_milli = 0;
+    std::int32_t visibility_milli = 1000;
+    std::int32_t light_exposure_milli = 1000;
+};
+
 enum class RuntimeBindingState
 {
     Materializing,
@@ -35,17 +90,29 @@ enum class RuntimeProjectionPriority
 struct RuntimeBindingGeneration
 {
     std::uint32_t value = 0;
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value != 0;
-    }
-    [[nodiscard]] constexpr bool operator==(const RuntimeBindingGeneration &) const noexcept = default;
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const RuntimeBindingGeneration&) const noexcept = default;
+};
+struct RuntimeTransformObservation
+{
+    RuntimeWorldPosition position{};
+    RuntimeQuaternion rotation{};
+    RuntimeVector3 scale{1.0f, 1.0f, 1.0f};
+    RuntimeRegionHandle region{};
+    RuntimeBindingGeneration generation{};
+};
+struct RuntimePhysicsAttachment
+{
+    RuntimePhysicsBodyHandle body{};
+    GameplayObjectPartRef part{}; // invalid part means the body represents the whole object
+    [[nodiscard]] constexpr bool operator==(const RuntimePhysicsAttachment&) const noexcept = default;
 };
 struct RuntimeBinding
 {
     GameplayObjectRef gameplay_object{};
-    runtime::RuntimeObjectId runtime_object{};
-    std::optional<runtime::physics::PhysicsBodyHandle> physics_body{};
+    RuntimePersistentObjectHandle persistent_object{};
+    RuntimeObjectHandle runtime_object{};
+    std::vector<RuntimePhysicsAttachment> physics_attachments;
     RuntimeBindingGeneration generation{};
     RuntimeBindingState state = RuntimeBindingState::Materializing;
     Revision gameplay_revision{};
@@ -53,7 +120,7 @@ struct RuntimeBinding
 struct MaterializeRequest
 {
     GameplayObjectRef object{};
-    runtime::PersistentObjectId persistent_id{};
+    RuntimePersistentObjectHandle persistent_id{};
     Revision gameplay_revision{};
     RuntimeProjectionPriority priority = RuntimeProjectionPriority::Normal;
     GameplayContext context{};
@@ -75,46 +142,59 @@ struct DestroyRuntimeRequest
 struct ImpulseProjectionRequest
 {
     GameplayObjectRef object{};
+    GameplayObjectPartRef part{};
     RuntimeBindingGeneration generation{};
-    runtime::Vec3 impulse{};
+    RuntimeVector3 impulse{};
     RuntimeProjectionPriority priority = RuntimeProjectionPriority::High;
     GameplayContext context{};
 };
 struct EnvironmentProjectionRequest
 {
-    runtime::RegionId region{};
-    environment::EnvironmentValues values{};
+    RuntimeRegionHandle region{};
+    RuntimeEnvironmentValues values{};
     Revision gameplay_revision{};
     RuntimeProjectionPriority priority = RuntimeProjectionPriority::Normal;
     GameplayContext context{};
 };
 struct WorldAlterationProjectionRequest
 {
-    world::WorldAlterationId alteration{};
-    world::WorldAlterationTypeId type{};
-    world::WorldAabb area{};
+    GameplayObjectId alteration{};
+    TypeId type{};
+    RuntimeWorldAabb area{};
     std::vector<std::byte> payload;
     Revision gameplay_revision{};
     RuntimeProjectionPriority priority = RuntimeProjectionPriority::Normal;
     GameplayContext context{};
 };
-using RuntimeProjectionRequest =
-    std::variant<MaterializeRequest, DematerializeRequest, DestroyRuntimeRequest, ImpulseProjectionRequest,
-                 EnvironmentProjectionRequest, WorldAlterationProjectionRequest>;
+using RuntimeProjectionRequest = std::variant<MaterializeRequest,
+                                              DematerializeRequest,
+                                              DestroyRuntimeRequest,
+                                              ImpulseProjectionRequest,
+                                              EnvironmentProjectionRequest,
+                                              WorldAlterationProjectionRequest>;
 
 struct RuntimeBridgeBudget
 {
-    std::uint32_t max_commands = 4096, max_materializations = 128, max_observations = 8192;
+    std::uint32_t max_commands = 4096;
+    std::uint32_t max_materializations = 128;
+    std::uint32_t max_observations = 8192;
 };
 struct RuntimeBridgeProcessResult
 {
     std::uint32_t processed = 0, deferred = 0, failed = 0, materialized = 0, dematerialized = 0, destroyed = 0;
 };
+struct RuntimeContactObservation
+{
+    RuntimePhysicsBodyHandle a{}, b{};
+    RuntimeVector3 point{};
+    float impulse = 0.0f;
+};
 struct SemanticImpactObservation
 {
     GameplayObjectRef subject{}, other{};
+    GameplayObjectPartRef subject_part{}, other_part{};
     RuntimeBindingGeneration subject_generation{}, other_generation{};
-    world::WorldPosition point{};
+    RuntimeWorldPosition point{};
     std::int64_t impulse_milli = 0;
     GameplayTickId observed_tick{};
 };
@@ -124,90 +204,216 @@ struct RuntimeBridgeDiagnostics
                   observations = 0, stale_observations = 0, materializations = 0, dematerializations = 0;
 };
 
+struct RuntimeMaterializationResult
+{
+    RuntimeObjectHandle object{};
+    bool created = true;
+};
+
+struct RuntimeRayQuery
+{
+    RuntimeVector3 origin{};
+    RuntimeVector3 direction{};
+    float max_distance = 0.0f;
+};
+struct RuntimeRayHit
+{
+    RuntimePhysicsBodyHandle body{};
+    RuntimeVector3 point{};
+    RuntimeVector3 normal{};
+    float distance = 0.0f;
+};
+struct SemanticRayHit
+{
+    GameplayObjectRef object{};
+    GameplayObjectPartRef part{};
+    RuntimeBindingGeneration generation{};
+    RuntimeWorldPosition point{};
+    std::int64_t distance_milli = 0;
+};
+struct RuntimeOverlapQuery
+{
+    RuntimeWorldAabb bounds{};
+};
+struct SemanticOverlapHit
+{
+    GameplayObjectRef object{};
+    GameplayObjectPartRef part{};
+    RuntimeBindingGeneration generation{};
+};
+struct RuntimeNavigationQueryHandle
+{
+    std::uint64_t value = 0;
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value != 0; }
+    [[nodiscard]] constexpr bool operator==(const RuntimeNavigationQueryHandle&) const noexcept = default;
+};
+enum class RuntimeNavigationPathState
+{
+    Pending,
+    Running,
+    PartiallyComplete,
+    Completed,
+    Failed,
+    Cancelled,
+    Stale,
+};
+struct RuntimeNavigationPathQuery
+{
+    RuntimeWorldPosition from{};
+    RuntimeWorldPosition to{};
+    RuntimeRegionHandle region{};
+    std::uint64_t source_revision = 0;
+};
+struct RuntimeNavigationPath
+{
+    RuntimeNavigationPathState state = RuntimeNavigationPathState::Pending;
+    std::vector<RuntimeWorldPosition> points;
+    std::uint64_t navigation_revision = 0;
+    std::uint64_t result_revision = 0;
+    [[nodiscard]] bool IsComplete() const noexcept { return state == RuntimeNavigationPathState::Completed; }
+};
+struct RuntimeEnvironmentSample
+{
+    RuntimeEnvironmentValues values{};
+    Revision revision{};
+};
+
 class IRuntimeBridgeBackend
 {
   public:
     virtual ~IRuntimeBridgeBackend() = default;
-    [[nodiscard]] virtual foundation::Result<runtime::RuntimeObjectId> Materialize(
-        runtime::PersistentObjectId persistent_id) = 0;
-    [[nodiscard]] virtual foundation::Result<void> Dematerialize(runtime::RuntimeObjectId object) = 0;
-    [[nodiscard]] virtual foundation::Result<void> Destroy(runtime::RuntimeObjectId object) = 0;
-    [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(runtime::physics::PhysicsBodyHandle body,
-                                                                runtime::Vec3 impulse) = 0;
-    [[nodiscard]] virtual foundation::Result<void> ProjectEnvironment(runtime::RegionId region,
-                                                                      const environment::EnvironmentValues &values,
-                                                                      Revision revision) = 0;
-    [[nodiscard]] virtual foundation::Result<void> ProjectWorldAlteration(
-        const WorldAlterationProjectionRequest &request) = 0;
-    [[nodiscard]] virtual std::vector<runtime::physics::ContactEvent> ConsumeContacts() = 0;
-};
-
-class EngineRuntimeBridgeBackend final : public IRuntimeBridgeBackend
-{
-  public:
-    EngineRuntimeBridgeBackend(runtime::WorldServices world, runtime::physics::PhysicsServices physics,
-                               std::shared_ptr<runtime::IEnvironmentRuntime> environment)
-        : world_(std::move(world)), physics_(std::move(physics)), environment_(std::move(environment))
+    [[nodiscard]] virtual foundation::Result<RuntimeMaterializationResult> Materialize(RuntimePersistentObjectHandle persistent_id) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Dematerialize(RuntimeObjectHandle object) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Destroy(RuntimeObjectHandle object) = 0;
+    [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(RuntimePhysicsBodyHandle body, RuntimeVector3 impulse) = 0;
+    [[nodiscard]] virtual foundation::Result<void> ProjectEnvironment(
+        RuntimeRegionHandle region, const RuntimeEnvironmentValues& values, Revision revision) = 0;
+    [[nodiscard]] virtual bool SupportsWorldAlterationProjection() const noexcept { return false; }
+    [[nodiscard]] virtual foundation::Result<void> ProjectWorldAlteration(const WorldAlterationProjectionRequest&)
     {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.world_projection_unsupported",
+                                      "runtime backend does not support generic world alteration projection"));
     }
-    [[nodiscard]] foundation::Result<runtime::RuntimeObjectId> Materialize(
-        runtime::PersistentObjectId persistent_id) override;
-    [[nodiscard]] foundation::Result<void> Dematerialize(runtime::RuntimeObjectId object) override;
-    [[nodiscard]] foundation::Result<void> Destroy(runtime::RuntimeObjectId object) override;
-    [[nodiscard]] foundation::Result<void> ApplyImpulse(runtime::physics::PhysicsBodyHandle body,
-                                                        runtime::Vec3 impulse) override;
-    [[nodiscard]] foundation::Result<void> ProjectEnvironment(runtime::RegionId region,
-                                                              const environment::EnvironmentValues &values,
-                                                              Revision revision) override;
-    [[nodiscard]] foundation::Result<void> ProjectWorldAlteration(
-        const WorldAlterationProjectionRequest &request) override;
-    [[nodiscard]] std::vector<runtime::physics::ContactEvent> ConsumeContacts() override;
+    [[nodiscard]] virtual std::vector<RuntimeContactObservation> ConsumeContacts() = 0;
 
-  private:
-    runtime::WorldServices world_;
-    runtime::physics::PhysicsServices physics_;
-    std::shared_ptr<runtime::IEnvironmentRuntime> environment_;
+    [[nodiscard]] virtual foundation::Result<std::vector<RuntimeRayHit>> Raycast(const RuntimeRayQuery&) const
+    {
+        return foundation::Result<std::vector<RuntimeRayHit>>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.raycast_unsupported", "runtime backend does not expose ray queries"));
+    }
+    [[nodiscard]] virtual foundation::Result<std::vector<RuntimePhysicsBodyHandle>> Overlap(const RuntimeOverlapQuery&) const
+    {
+        return foundation::Result<std::vector<RuntimePhysicsBodyHandle>>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.overlap_unsupported", "runtime backend does not expose overlap queries"));
+    }
+    [[nodiscard]] virtual foundation::Result<bool> Visible(RuntimeObjectHandle, RuntimeObjectHandle) const
+    {
+        return foundation::Result<bool>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.visibility_unsupported", "runtime backend does not expose visibility queries"));
+    }
+    [[nodiscard]] virtual foundation::Result<RuntimeTransformObservation> ObserveTransform(RuntimeObjectHandle) const
+    {
+        return foundation::Result<RuntimeTransformObservation>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.transform_unsupported", "runtime backend does not expose object transforms"));
+    }
+    [[nodiscard]] virtual foundation::Result<bool> IsRepresentationAlive(RuntimeObjectHandle) const
+    {
+        return foundation::Result<bool>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.reconciliation_unsupported", "runtime backend does not expose representation liveness"));
+    }
+    [[nodiscard]] virtual foundation::Result<RuntimeNavigationQueryHandle> RequestPath(const RuntimeNavigationPathQuery&)
+    {
+        return foundation::Result<RuntimeNavigationQueryHandle>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.navigation_unsupported", "runtime backend does not expose navigation queries"));
+    }
+    [[nodiscard]] virtual foundation::Result<RuntimeNavigationPathState> GetPathState(RuntimeNavigationQueryHandle) const
+    {
+        return foundation::Result<RuntimeNavigationPathState>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.navigation_unsupported", "runtime backend does not expose navigation queries"));
+    }
+    [[nodiscard]] virtual foundation::Result<RuntimeNavigationPath> GetPathResult(RuntimeNavigationQueryHandle) const
+    {
+        return foundation::Result<RuntimeNavigationPath>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.navigation_unsupported", "runtime backend does not expose navigation queries"));
+    }
+    [[nodiscard]] virtual foundation::Result<void> CancelPath(RuntimeNavigationQueryHandle)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.navigation_unsupported", "runtime backend does not expose navigation queries"));
+    }
+    [[nodiscard]] virtual foundation::Result<void> ReleasePath(RuntimeNavigationQueryHandle)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.navigation_unsupported", "runtime backend does not expose navigation queries"));
+    }
+    [[nodiscard]] virtual foundation::Result<RuntimeEnvironmentSample> SampleEnvironment(RuntimeRegionHandle) const
+    {
+        return foundation::Result<RuntimeEnvironmentSample>::Failure(
+            foundation::Error::Create("gameplay.runtime_bridge.environment_sample_unsupported",
+                                      "runtime backend does not expose environment sampling"));
+    }
 };
 
 class RuntimeBridgeService
 {
   public:
-    explicit RuntimeBridgeService(IRuntimeBridgeBackend &backend)
-        : backend_(backend)
-    {
-    }
+    explicit RuntimeBridgeService(IRuntimeBridgeBackend& backend) : backend_(backend) {}
     [[nodiscard]] foundation::Result<void> Enqueue(RuntimeProjectionRequest request);
-    [[nodiscard]] foundation::Result<void> AttachPhysicsBody(GameplayObjectRef object,
-                                                             RuntimeBindingGeneration generation,
-                                                             runtime::physics::PhysicsBodyHandle body);
+    [[nodiscard]] foundation::Result<void> AttachPhysicsBody(
+        GameplayObjectRef object,
+        RuntimeBindingGeneration generation,
+        RuntimePhysicsBodyHandle body,
+        GameplayObjectPartRef part = {});
     [[nodiscard]] RuntimeBridgeProcessResult Process(RuntimeBridgeBudget budget = {});
-    [[nodiscard]] std::vector<SemanticImpactObservation> CollectImpactObservations(GameplayTickId tick,
-                                                                                   RuntimeBridgeBudget budget = {});
-    [[nodiscard]] const RuntimeBinding *FindBinding(GameplayObjectRef object) const noexcept;
-    [[nodiscard]] const RuntimeBinding *FindBinding(runtime::RuntimeObjectId object) const noexcept;
+    [[nodiscard]] std::vector<SemanticImpactObservation> CollectImpactObservations(GameplayTickId tick, RuntimeBridgeBudget budget = {});
+    [[nodiscard]] std::optional<RuntimeBinding> GetBinding(GameplayObjectRef object) const noexcept;
+    [[nodiscard]] std::optional<RuntimeBinding> GetBinding(RuntimeObjectHandle object) const noexcept;
+
+    [[nodiscard]] foundation::Result<std::vector<SemanticRayHit>> Raycast(const RuntimeRayQuery& query) const;
+    [[nodiscard]] foundation::Result<std::vector<SemanticOverlapHit>> Overlap(const RuntimeOverlapQuery& query) const;
+    [[nodiscard]] foundation::Result<bool> Visible(GameplayObjectRef observer, GameplayObjectRef target) const;
+    [[nodiscard]] foundation::Result<RuntimeTransformObservation> ObserveTransform(GameplayObjectRef object) const;
+    // Reconciles bindings whose Runtime representation disappeared independently (streaming/runtime-side teardown).
+    // Returned objects were removed from the active binding map and can be rematerialized by gameplay orchestration.
+    [[nodiscard]] foundation::Result<std::vector<GameplayObjectRef>> ReconcileBindings();
+    [[nodiscard]] foundation::Result<RuntimeNavigationQueryHandle> RequestPath(const RuntimeNavigationPathQuery& query)
+    {
+        return backend_.RequestPath(query);
+    }
+    [[nodiscard]] foundation::Result<RuntimeNavigationPathState> GetPathState(RuntimeNavigationQueryHandle handle) const
+    {
+        return backend_.GetPathState(handle);
+    }
+    [[nodiscard]] foundation::Result<RuntimeNavigationPath> GetPathResult(RuntimeNavigationQueryHandle handle) const
+    {
+        return backend_.GetPathResult(handle);
+    }
+    [[nodiscard]] foundation::Result<void> CancelPath(RuntimeNavigationQueryHandle handle) { return backend_.CancelPath(handle); }
+    [[nodiscard]] foundation::Result<void> ReleasePath(RuntimeNavigationQueryHandle handle) { return backend_.ReleasePath(handle); }
+    [[nodiscard]] foundation::Result<RuntimeEnvironmentSample> SampleEnvironment(RuntimeRegionHandle region) const
+    {
+        return backend_.SampleEnvironment(region);
+    }
     [[nodiscard]] RuntimeBridgeDiagnostics GetDiagnostics() const noexcept;
 
   private:
     struct RefHash
     {
-        std::size_t operator()(GameplayObjectRef r) const noexcept
-        {
-            return std::hash<GameplayObjectRef>{}(r);
-        }
+        std::size_t operator()(GameplayObjectRef r) const noexcept { return std::hash<GameplayObjectRef>{}(r); }
     };
     struct RuntimeHash
     {
-        std::size_t operator()(runtime::RuntimeObjectId r) const noexcept
-        {
-            return std::hash<runtime::RuntimeObjectId>{}(r);
-        }
+        std::size_t operator()(RuntimeObjectHandle r) const noexcept { return std::hash<std::uint64_t>{}(r.value); }
     };
     struct BodyHash
     {
-        std::size_t operator()(runtime::physics::PhysicsBodyHandle b) const noexcept
-        {
-            return std::hash<runtime::physics::PhysicsBodyHandle>{}(b);
-        }
+        std::size_t operator()(RuntimePhysicsBodyHandle b) const noexcept { return std::hash<std::uint64_t>{}(b.value); }
+    };
+    struct BodyOwner
+    {
+        GameplayObjectRef object{};
+        GameplayObjectPartRef part{};
     };
     struct Queued
     {
@@ -215,29 +421,54 @@ class RuntimeBridgeService
         RuntimeProjectionPriority priority = RuntimeProjectionPriority::Normal;
         RuntimeProjectionRequest request;
     };
-    [[nodiscard]] foundation::Result<void> ProcessOne(const RuntimeProjectionRequest &request,
-                                                      RuntimeBridgeProcessResult &result);
-    static RuntimeProjectionPriority PriorityOf(const RuntimeProjectionRequest &request);
-    static world::WorldPosition Quantize(runtime::Vec3 p) noexcept;
+    [[nodiscard]] foundation::Result<void> ProcessOne(const RuntimeProjectionRequest& request, RuntimeBridgeProcessResult& result);
+    static RuntimeProjectionPriority PriorityOf(const RuntimeProjectionRequest& request);
+    static RuntimeWorldPosition Quantize(RuntimeVector3 p) noexcept;
     void RemoveBinding(GameplayObjectRef object);
-    IRuntimeBridgeBackend &backend_;
+
+    IRuntimeBridgeBackend& backend_;
     std::unordered_map<GameplayObjectRef, RuntimeBinding, RefHash> bindings_;
-    std::unordered_map<runtime::RuntimeObjectId, GameplayObjectRef, RuntimeHash> reverse_;
-    std::unordered_map<runtime::physics::PhysicsBodyHandle, GameplayObjectRef, BodyHash> body_reverse_;
+    std::unordered_map<RuntimeObjectHandle, GameplayObjectRef, RuntimeHash> reverse_;
+    std::unordered_map<RuntimePhysicsBodyHandle, BodyOwner, BodyHash> body_reverse_;
     std::unordered_map<GameplayObjectRef, std::uint32_t, RefHash> generations_;
     std::unordered_map<std::uint64_t, Revision> environment_projection_revision_;
-    struct AlterationHash
-    {
-        std::size_t operator()(world::WorldAlterationId id) const noexcept
-        {
-            return std::hash<GameplayObjectId>{}(id.value);
-        }
-    };
-    std::unordered_map<world::WorldAlterationId, Revision, AlterationHash> world_projection_revision_;
+    std::unordered_map<GameplayObjectId, Revision> world_projection_revision_;
     std::vector<Queued> queue_;
-    std::vector<runtime::physics::ContactEvent> contact_backlog_;
+    std::vector<RuntimeContactObservation> contact_backlog_;
     std::uint64_t next_sequence_ = 1;
     std::uint64_t projection_requests_ = 0, projection_failures_ = 0, observations_ = 0, stale_observations_ = 0,
                   materializations_ = 0, dematerializations_ = 0;
 };
 } // namespace epidemic::gameplay::runtime_bridge
+
+namespace std
+{
+template <> struct hash<epidemic::gameplay::runtime_bridge::RuntimeObjectHandle>
+{
+    std::size_t operator()(epidemic::gameplay::runtime_bridge::RuntimeObjectHandle value) const noexcept
+    {
+        return std::hash<std::uint64_t>{}(value.value);
+    }
+};
+template <> struct hash<epidemic::gameplay::runtime_bridge::RuntimePersistentObjectHandle>
+{
+    std::size_t operator()(epidemic::gameplay::runtime_bridge::RuntimePersistentObjectHandle value) const noexcept
+    {
+        return std::hash<std::uint64_t>{}(value.value);
+    }
+};
+template <> struct hash<epidemic::gameplay::runtime_bridge::RuntimeRegionHandle>
+{
+    std::size_t operator()(epidemic::gameplay::runtime_bridge::RuntimeRegionHandle value) const noexcept
+    {
+        return std::hash<std::uint64_t>{}(value.value);
+    }
+};
+template <> struct hash<epidemic::gameplay::runtime_bridge::RuntimePhysicsBodyHandle>
+{
+    std::size_t operator()(epidemic::gameplay::runtime_bridge::RuntimePhysicsBodyHandle value) const noexcept
+    {
+        return std::hash<std::uint64_t>{}(value.value);
+    }
+};
+} // namespace std

@@ -80,6 +80,26 @@ int main()
     Check(s.FindItem(swid.Value())->durability == 100, "default durability");
     Check(static_cast<bool>(s.AdjustDurability(swid.Value(), -25)), "durability change");
     Check(s.FindItem(swid.Value())->durability == 75, "durability stored");
+
+    // B25 support regression: exchange old equipment reservations for a new item
+    // under one Items revision and without exposing a partially released state.
+    ItemInstance replacement;
+    replacement.definition = sword_id.Value();
+    replacement.location = {ItemLocationKind::Container, bag_id.Value(), {}, {}, {}};
+    auto replacement_id = s.CreateItem(replacement);
+    Check(static_cast<bool>(replacement_id), "create replacement sword");
+    const auto equipment_owner = Ref("actor", "equipment_owner");
+    const auto equipment_reason = TypeId::FromString("equipment.binding");
+    auto old_equipment_reservation = s.ReserveItem(swid.Value(), 1, equipment_owner, equipment_reason);
+    Check(static_cast<bool>(old_equipment_reservation), "reserve old equipment item");
+    const auto before_exchange_revision = s.CurrentRevision();
+    auto exchanged = s.ExchangeReservations({&old_equipment_reservation.Value(), 1}, replacement_id.Value(), 1,
+                                             equipment_owner, equipment_reason);
+    Check(static_cast<bool>(exchanged), "atomic reservation exchange");
+    Check(s.CurrentRevision().value == before_exchange_revision.value + 1, "exchange uses one revision");
+    Check(s.FindReservations(swid.Value()).empty(), "old equipment reservation released");
+    Check(s.FindReservations(replacement_id.Value()).size() == 1, "replacement item reserved");
+
     auto snap = s.CaptureSnapshot();
     ItemsInventoryService restored;
     Check(static_cast<bool>(restored.RegisterDefinition(apple)), "restore apple def");

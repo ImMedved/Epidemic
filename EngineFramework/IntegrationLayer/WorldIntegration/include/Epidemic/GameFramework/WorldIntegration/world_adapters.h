@@ -38,6 +38,7 @@ struct EnvironmentSampleQuery
     using ResultType = environment::EnvironmentSample;
     environment::EnvironmentPosition position{};
     GameplayTimePoint time{};
+    std::vector<GameplayObjectRef> scopes;
     [[nodiscard]] static constexpr QueryTypeId Type() noexcept
     {
         return QueryTypeId::FromString("framework.query.environment.sample");

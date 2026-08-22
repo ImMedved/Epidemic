@@ -40,9 +40,10 @@ struct Exec final : IInteractionExecutor
 };
 struct State final : IInteractionStateProvider
 {
+    bool materialized = true;
     bool IsMaterialized(GameplayObjectRef) const override
     {
-        return true;
+        return materialized;
     }
     Revision RevisionOf(GameplayObjectRef) const override
     {
@@ -78,12 +79,26 @@ int main()
     CHECK(cs.size() == 1);
     auto plan = s.Prepare(c, cs[0]);
     CHECK(plan);
+    CHECK(plan.Value().context.actor_revision == Revision{2});
+    CHECK(plan.Value().context.target_revision == Revision{2});
+
+    // B21 regression: materialization is volatile and must be rechecked at commit,
+    // independently from gameplay revisions.
+    st.materialized = false;
+    CHECK(!s.Commit(plan.Value()));
+    CHECK(x.commits == 0);
+    st.materialized = true;
+
     auto result = s.Commit(plan.Value());
     CHECK(result);
     CHECK(result.Value().state == InteractionSessionState::Active);
     CHECK(x.commits == 0);
     CHECK(s.FindActive(c.actor).size() == 1);
-    CHECK(s.SweepTimed(GameplayTimePoint{15}));
+    CHECK(!s.SweepTimed(GameplayTimePoint{15}));
+    CHECK(x.commits == 0);
+    GameplayContext completion_context = c.gameplay;
+    completion_context.time = GameplayTimePoint{15};
+    CHECK(s.Complete(result.Value().execution, completion_context));
     CHECK(x.commits == 1);
     CHECK(s.FindActive(c.actor).empty());
     return 0;

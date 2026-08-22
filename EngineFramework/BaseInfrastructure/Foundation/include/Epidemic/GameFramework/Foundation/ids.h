@@ -176,6 +176,20 @@ struct GameplayObjectRef
     [[nodiscard]] constexpr bool operator==(const GameplayObjectRef&) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const GameplayObjectRef&) const noexcept = default;
 };
+
+// Generic address of a stable semantic part of a gameplay object. The owning major defines
+// the meaning and hierarchy of `part`; Foundation only provides a peer-independent address
+// usable by bridges, effects and observations without importing the owner's part type.
+struct GameplayObjectPartRef
+{
+    GameplayObjectRef object{};
+    TypeId part{};
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return object.IsValid() && part.IsValid(); }
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return IsValid(); }
+    [[nodiscard]] constexpr bool operator==(const GameplayObjectPartRef&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const GameplayObjectPartRef&) const noexcept = default;
+};
 } // namespace epidemic::gameplay
 
 namespace std
@@ -204,6 +218,16 @@ template <> struct hash<epidemic::gameplay::GameplayObjectRef>
     {
         const auto a = hash<epidemic::gameplay::GameplayDomainId>{}(ref.domain);
         const auto b = hash<epidemic::gameplay::GameplayObjectId>{}(ref.id);
+        return a ^ (b + 0x9E3779B97F4A7C15ull + (a << 6u) + (a >> 2u));
+    }
+};
+
+template <> struct hash<epidemic::gameplay::GameplayObjectPartRef>
+{
+    [[nodiscard]] size_t operator()(const epidemic::gameplay::GameplayObjectPartRef& ref) const noexcept
+    {
+        const auto a = hash<epidemic::gameplay::GameplayObjectRef>{}(ref.object);
+        const auto b = hash<epidemic::gameplay::TypeId>{}(ref.part);
         return a ^ (b + 0x9E3779B97F4A7C15ull + (a << 6u) + (a >> 2u));
     }
 };

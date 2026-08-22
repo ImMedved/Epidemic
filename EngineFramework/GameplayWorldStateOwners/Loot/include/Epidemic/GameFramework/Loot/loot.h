@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -218,22 +219,12 @@ class IRewardHandler
     [[nodiscard]] virtual RewardTypeId Type() const noexcept = 0;
     [[nodiscard]] virtual foundation::Result<RewardDeliveryDisposition> Validate(
         const RewardOperation &operation) const = 0;
-    [[nodiscard]] virtual foundation::Result<RewardDeliveryDisposition> Deliver(const RewardOperation &operation) = 0;
-    [[nodiscard]] virtual foundation::Result<RewardDeliveryStage> Prepare(const RewardOperation &operation)
-    {
-        auto valid = Validate(operation);
-        if (!valid)
-            return foundation::Result<RewardDeliveryStage>::Failure(valid.GetError());
-        return foundation::Result<RewardDeliveryStage>::Success(RewardDeliveryStage{operation, valid.Value()});
-    }
-    virtual void Commit(RewardDeliveryStage &stage) noexcept
-    {
-        if (stage.disposition == RewardDeliveryDisposition::Delivered)
-            static_cast<void>(Deliver(stage.operation));
-    }
-    virtual void Cancel(RewardDeliveryStage &) noexcept
-    {
-    }
+
+    // Prepare is the only fallible stage. A successful Delivered stage must reserve
+    // everything required for Commit. Commit and Cancel are infallible and idempotent.
+    [[nodiscard]] virtual foundation::Result<RewardDeliveryStage> Prepare(const RewardOperation &operation) = 0;
+    virtual void Commit(RewardDeliveryStage &stage) noexcept = 0;
+    virtual void Cancel(RewardDeliveryStage &stage) noexcept = 0;
 };
 
 enum class PendingRewardState
@@ -270,11 +261,20 @@ struct LootChange
     GameplayObjectRef recipient{};
     GameplayContext context{};
 };
+struct LootChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<LootChange> changes;
+};
 struct LootSnapshot
 {
+    std::vector<RewardBundle> generated;
     std::vector<PendingReward> pending;
     std::vector<RewardExecutionId> claimed;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot execution_ids{};
+    std::vector<LootChange> journal;
+    std::uint64_t next_change_sequence = 1;
 };
 struct LootDiagnostics
 {
@@ -313,6 +313,7 @@ class LootService
     [[nodiscard]] bool WasClaimed(RewardExecutionId reward) const noexcept;
 
     [[nodiscard]] std::vector<LootChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] LootChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] LootSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(LootSnapshot snapshot);
     [[nodiscard]] LootDiagnostics GetDiagnostics() const noexcept;
@@ -332,11 +333,16 @@ class LootService
     std::unordered_map<RewardDefinitionId, RewardDefinition, IdHash> rewards_;
     std::unordered_map<LootTableId, LootTableDefinition, IdHash> tables_;
     const ILootConditionProvider *conditions_ = nullptr;
+    std::unordered_map<RewardExecutionId, RewardBundle, IdHash> generated_;
     std::unordered_map<RewardExecutionId, PendingReward, IdHash> pending_;
     std::unordered_set<RewardExecutionId, IdHash> claimed_;
+    std::deque<RewardExecutionId> claimed_order_;
     MonotonicIdGenerator<GameplayObjectId> execution_ids_;
     bool frozen_ = false;
-    std::vector<LootChange> changes_;
+    static constexpr std::size_t kGeneratedCapacity = 4096;
+    static constexpr std::size_t kClaimedTombstoneCapacity = 8192;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+    std::deque<LootChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     LootDiagnostics diagnostics_{};
 };

@@ -447,13 +447,7 @@ void GameplayFactsService::PublishFactChanges(const std::vector<FactChange>& cha
     }
 }
 
-const FactRecord* GameplayFactsService::FindFact(const FactKey& key) const noexcept
-{
-    const auto found = facts_.find(key);
-    return found == facts_.end() ? nullptr : &found->second;
-}
-
-std::optional<FactRecord> GameplayFactsService::FindFactCopy(const FactKey& key) const
+std::optional<FactRecord> GameplayFactsService::FindFact(const FactKey& key) const
 {
     const auto found = facts_.find(key);
     if (found == facts_.end())
@@ -824,6 +818,137 @@ foundation::Result<void> GameplayFactsService::RestoreSnapshot(FactsSnapshot sna
         submitted_batches_.clear();
     }
     return foundation::Result<void>::Success();
+}
+
+foundation::Result<FactsPersistenceSnapshot> GameplayFactsService::CapturePersistenceSnapshot() const
+{
+    const auto memory = CaptureSnapshot();
+    if (!memory)
+    {
+        return foundation::Result<FactsPersistenceSnapshot>::Failure(memory.GetError());
+    }
+
+    FactsPersistenceSnapshot output;
+    output.fact_ids = memory.Value().fact_ids;
+    output.event_ids = memory.Value().event_ids;
+    output.fact_revision = memory.Value().fact_revision;
+    output.next_event_sequence = memory.Value().next_event_sequence;
+    output.facts.reserve(memory.Value().facts.size());
+    output.history.reserve(memory.Value().history.size());
+
+    for (const auto& fact : memory.Value().facts)
+    {
+        const auto codec = fact_codecs_.find(fact.key.type);
+        if (codec == fact_codecs_.end() || codec->second.cpp_type != fact.value_type)
+        {
+            return foundation::Result<FactsPersistenceSnapshot>::Failure(
+                foundation::Error::Create("gameplay.fact_codec_missing", "persistent fact type has no compatible registered codec"));
+        }
+        auto encoded = codec->second.encode(fact.value);
+        if (!encoded)
+        {
+            return foundation::Result<FactsPersistenceSnapshot>::Failure(encoded.GetError());
+        }
+        output.facts.push_back(PersistentFactRecord{fact.id,
+                                                    fact.key,
+                                                    fact.owner,
+                                                    fact.created_at,
+                                                    fact.updated_at,
+                                                    fact.revision,
+                                                    fact.source_operation,
+                                                    fact.source_event,
+                                                    fact.persistence,
+                                                    fact.expires_at,
+                                                    codec->second.schema,
+                                                    codec->second.version,
+                                                    std::move(encoded).Value()});
+    }
+
+    for (const auto& event : memory.Value().history)
+    {
+        const auto codec = event_codecs_.find(event.envelope.type);
+        if (codec == event_codecs_.end() || codec->second.cpp_type != event.payload_type)
+        {
+            return foundation::Result<FactsPersistenceSnapshot>::Failure(
+                foundation::Error::Create("gameplay.event_codec_missing", "persistent event type has no compatible registered codec"));
+        }
+        auto encoded = codec->second.encode(event.payload);
+        if (!encoded)
+        {
+            return foundation::Result<FactsPersistenceSnapshot>::Failure(encoded.GetError());
+        }
+        output.history.push_back(PersistentEventRecord{event.envelope,
+                                                        codec->second.schema,
+                                                        codec->second.version,
+                                                        std::move(encoded).Value()});
+    }
+    return foundation::Result<FactsPersistenceSnapshot>::Success(std::move(output));
+}
+
+foundation::Result<void> GameplayFactsService::RestorePersistenceSnapshot(FactsPersistenceSnapshot snapshot)
+{
+    FactsSnapshot decoded;
+    decoded.fact_ids = snapshot.fact_ids;
+    decoded.event_ids = snapshot.event_ids;
+    decoded.fact_revision = snapshot.fact_revision;
+    decoded.next_event_sequence = snapshot.next_event_sequence;
+    decoded.facts.reserve(snapshot.facts.size());
+    decoded.history.reserve(snapshot.history.size());
+
+    for (auto& persisted : snapshot.facts)
+    {
+        const auto info = fact_types_.find(persisted.key.type);
+        const auto codec = fact_codecs_.find(persisted.key.type);
+        if (info == fact_types_.end() || codec == fact_codecs_.end() || codec->second.schema != persisted.payload_schema ||
+            persisted.payload_version == 0)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.fact_codec_mismatch", "persistent fact payload schema is not registered"));
+        }
+        auto value = codec->second.decode(persisted.payload, persisted.payload_version);
+        if (!value || value.Value().type() != info->second.value_type)
+        {
+            return foundation::Result<void>::Failure(
+                value ? foundation::Error::Create("gameplay.fact_codec_type_mismatch", "decoded fact payload has the wrong C++ type")
+                      : value.GetError());
+        }
+        FactRecord record;
+        record.id = persisted.id;
+        record.key = persisted.key;
+        record.owner = persisted.owner;
+        record.created_at = persisted.created_at;
+        record.updated_at = persisted.updated_at;
+        record.revision = persisted.revision;
+        record.source_operation = persisted.source_operation;
+        record.source_event = persisted.source_event;
+        record.persistence = persisted.persistence;
+        record.expires_at = persisted.expires_at;
+        record.value = std::move(value).Value();
+        record.value_type = info->second.value_type;
+        decoded.facts.push_back(std::move(record));
+    }
+
+    for (auto& persisted : snapshot.history)
+    {
+        const auto info = event_types_.find(persisted.envelope.type);
+        const auto codec = event_codecs_.find(persisted.envelope.type);
+        if (info == event_types_.end() || codec == event_codecs_.end() || codec->second.schema != persisted.payload_schema ||
+            persisted.payload_version == 0)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.event_codec_mismatch", "persistent event payload schema is not registered"));
+        }
+        auto payload = codec->second.decode(persisted.payload, persisted.payload_version);
+        if (!payload || payload.Value().type() != info->second.payload_type)
+        {
+            return foundation::Result<void>::Failure(
+                payload ? foundation::Error::Create("gameplay.event_codec_type_mismatch", "decoded event payload has the wrong C++ type")
+                        : payload.GetError());
+        }
+        decoded.history.push_back(EventRecord{persisted.envelope, std::move(payload).Value(), info->second.payload_type});
+    }
+
+    return RestoreSnapshot(std::move(decoded));
 }
 
 FactsDiagnostics GameplayFactsService::GetDiagnostics() const noexcept

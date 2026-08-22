@@ -152,29 +152,34 @@ foundation::Result<abilities::AbilityResourceReservation> CombatAbilityResourceP
     if (map == mappings_.end() || !CanAfford(owner, type, amount))
         return foundation::Result<abilities::AbilityResourceReservation>::Failure(
             Error("gameplay.integration.resource_unavailable", "combat resource unavailable"));
+    const auto reservation_id = reservation_ids_.Next();
+    if (!reservation_id.IsValid())
+        return foundation::Result<abilities::AbilityResourceReservation>::Failure(
+            Error("gameplay.integration.id_exhausted", "ability resource reservation id exhausted"));
     auto debit = combat_.ModifyResource(owner, map->second, -amount, context);
     if (!debit)
         return foundation::Result<abilities::AbilityResourceReservation>::Failure(debit.GetError());
     ReservationToken token{owner, map->second, amount};
+    active_reservations_.emplace(reservation_id, token);
     abilities::AbilityResourceReservation r;
-    r.id = {reservation_ids_.Next()};
+    r.id = {reservation_id};
     r.resource = type;
     r.provider_token = abilities::RegisteredAbilityPayload::FromTrivial(TokenType(), token);
     return foundation::Result<abilities::AbilityResourceReservation>::Success(std::move(r));
 }
-foundation::Result<void> CombatAbilityResourceProvider::Commit(const abilities::AbilityResourceReservation &,
-                                                               GameplayContext)
+void CombatAbilityResourceProvider::Commit(const abilities::AbilityResourceReservation &r, GameplayContext) noexcept
 {
-    return foundation::Result<void>::Success();
+    active_reservations_.erase(r.id.value);
 }
-foundation::Result<void> CombatAbilityResourceProvider::Release(const abilities::AbilityResourceReservation &r,
-                                                                GameplayContext context)
+void CombatAbilityResourceProvider::Release(const abilities::AbilityResourceReservation &r,
+                                            GameplayContext context) noexcept
 {
-    auto token = r.provider_token.AsTrivial<ReservationToken>(TokenType());
-    if (!token)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.integration.resource_token_invalid", "resource reservation token invalid"));
-    return combat_.ModifyResource(token->owner, token->resource, token->amount_micro, context);
+    const auto active = active_reservations_.find(r.id.value);
+    if (active == active_reservations_.end())
+        return;
+    const auto token = active->second;
+    active_reservations_.erase(active);
+    (void)combat_.ModifyResource(token.owner, token.resource, token.amount_micro, context);
 }
 
 foundation::Result<std::vector<effects::EffectExecutionResult>> AbilityEffectsDispatcher::Dispatch(
@@ -238,9 +243,9 @@ foundation::Result<void> ConditionProgressionAdapter::ProcessChanges()
         modifier.operation = map->operation;
         modifier.modifier_type = map->modifier_type;
         modifier.priority = map->priority;
-        modifier.value_micro =
-            MulMicro(current->magnitude_micro * static_cast<std::int64_t>(std::max<std::uint32_t>(1, current->stacks)),
-                     map->magnitude_scale_micro);
+        const auto stack_scale_micro = static_cast<std::int64_t>(std::max<std::uint32_t>(1, current->stacks)) * 1'000'000;
+        modifier.value_micro = MulMicro(MulMicro(current->magnitude_micro, stack_scale_micro),
+                                        map->magnitude_scale_micro);
         modifier.source = source;
         modifier.persistent = true;
         auto added = progression_.AddModifier(c.subject, std::move(modifier), c.context);
@@ -301,47 +306,73 @@ foundation::Result<std::vector<abilities::AbilityOutput>> AbilityTimeAdapter::Pr
 foundation::Result<loot::RewardDeliveryDisposition> ProgressionRewardHandler::Validate(
     const loot::RewardOperation &o) const
 {
-    auto p = o.payload.AsTrivial<ProgressionRewardPayload>(PayloadType());
-    if (!p || !progression_.HasProfile(o.recipient))
+    const auto payload = o.payload.AsTrivial<ProgressionRewardPayload>(PayloadType());
+    if (!payload || !progression_.HasProfile(o.recipient) || !progression_.GetTrack(o.recipient, payload->track))
         return foundation::Result<loot::RewardDeliveryDisposition>::Success(loot::RewardDeliveryDisposition::Rejected);
     return foundation::Result<loot::RewardDeliveryDisposition>::Success(loot::RewardDeliveryDisposition::Delivered);
 }
-foundation::Result<loot::RewardDeliveryDisposition> ProgressionRewardHandler::Deliver(const loot::RewardOperation &o)
+foundation::Result<loot::RewardDeliveryStage> ProgressionRewardHandler::Prepare(const loot::RewardOperation &o)
 {
-    auto p = o.payload.AsTrivial<ProgressionRewardPayload>(PayloadType());
-    if (!p)
-        return foundation::Result<loot::RewardDeliveryDisposition>::Failure(
+    const auto payload = o.payload.AsTrivial<ProgressionRewardPayload>(PayloadType());
+    if (!payload)
+        return foundation::Result<loot::RewardDeliveryStage>::Failure(
             Error("gameplay.integration.reward_payload_invalid", "progression reward payload invalid"));
-    auto granted = progression_.GrantProgress(o.recipient, p->track, o.quantity_micro, o.context);
-    if (!granted)
-        return foundation::Result<loot::RewardDeliveryDisposition>::Failure(granted.GetError());
-    return foundation::Result<loot::RewardDeliveryDisposition>::Success(loot::RewardDeliveryDisposition::Delivered);
+    auto reservation = progression_.ReserveProgressGrant(o.recipient, payload->track, o.quantity_micro, o.context);
+    if (!reservation)
+        return foundation::Result<loot::RewardDeliveryStage>::Failure(reservation.GetError());
+    loot::RewardDeliveryStage stage;
+    stage.operation = o;
+    stage.operation.payload = loot::RegisteredRewardPayload::FromTrivial(StagePayloadType(), StagePayload{reservation.Value()});
+    stage.disposition = loot::RewardDeliveryDisposition::Delivered;
+    return foundation::Result<loot::RewardDeliveryStage>::Success(std::move(stage));
+}
+void ProgressionRewardHandler::Commit(loot::RewardDeliveryStage &stage) noexcept
+{
+    const auto payload = stage.operation.payload.AsTrivial<StagePayload>(StagePayloadType());
+    if (!payload)
+        return;
+    progression_.CommitProgressGrant(payload->reservation);
+    stage.operation.payload = {};
+}
+void ProgressionRewardHandler::Cancel(loot::RewardDeliveryStage &stage) noexcept
+{
+    const auto payload = stage.operation.payload.AsTrivial<StagePayload>(StagePayloadType());
+    if (!payload)
+        return;
+    progression_.ReleaseProgressGrant(payload->reservation);
+    stage.operation.payload = {};
 }
 
 foundation::Result<std::vector<loot::RewardExecutionId>> DeathRewardAdapter::ProcessChanges()
 {
     std::vector<loot::RewardExecutionId> out;
-    for (const auto &c : combat_.ChangesSince(cursor_))
+    const auto batch = combat_.ReadChangesSince(cursor_);
+    if (batch.snapshot_required)
+        return foundation::Result<std::vector<loot::RewardExecutionId>>::Failure(
+            Error("gameplay.integration.change_gap", "combat change journal gap requires reconciliation from snapshot"));
+    for (const auto &c : batch.changes)
     {
-        cursor_ = std::max(cursor_, c.sequence);
-        if (c.kind != combat::CombatChangeKind::LifeStateChanged || c.life_state != combat::CombatLifeState::Dead)
-            continue;
-        auto table = tables_.find(c.subject);
-        if (table == tables_.end() || !c.context.instigator.IsValid())
-            continue;
-        loot::LootContext context;
-        context.source = c.subject;
-        context.recipient = c.context.instigator;
-        context.instigator = c.context.instigator;
-        context.gameplay = c.context;
-        context.seed = {random::StableMix(c.subject.id.Low() ^ c.resolution.value.Low() ^ c.sequence)};
-        auto bundle = loot_.Generate(table->second, context);
-        if (!bundle)
-            return foundation::Result<std::vector<loot::RewardExecutionId>>::Failure(bundle.GetError());
-        auto pending = loot_.MakePending(std::move(bundle).Value());
-        if (!pending)
-            return foundation::Result<std::vector<loot::RewardExecutionId>>::Failure(pending.GetError());
-        out.push_back(pending.Value());
+        if (c.kind == combat::CombatChangeKind::LifeStateChanged && c.life_state == combat::CombatLifeState::Dead)
+        {
+            const auto table = tables_.find(c.subject);
+            if (table != tables_.end() && c.context.instigator.IsValid())
+            {
+                loot::LootContext context;
+                context.source = c.subject;
+                context.recipient = c.context.instigator;
+                context.instigator = c.context.instigator;
+                context.gameplay = c.context;
+                context.seed = {random::StableMix(c.subject.id.Low() ^ c.resolution.value.Low() ^ c.sequence)};
+                auto bundle = loot_.Generate(table->second, context);
+                if (!bundle)
+                    return foundation::Result<std::vector<loot::RewardExecutionId>>::Failure(bundle.GetError());
+                auto pending = loot_.MakePending(std::move(bundle).Value());
+                if (!pending)
+                    return foundation::Result<std::vector<loot::RewardExecutionId>>::Failure(pending.GetError());
+                out.push_back(pending.Value());
+            }
+        }
+        cursor_ = c.sequence;
     }
     return foundation::Result<std::vector<loot::RewardExecutionId>>::Success(std::move(out));
 }

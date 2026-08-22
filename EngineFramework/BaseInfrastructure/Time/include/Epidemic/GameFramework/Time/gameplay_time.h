@@ -84,6 +84,7 @@ struct ClockState
     Revision revision{};
     bool paused = false;
     std::uint32_t time_scale_milli = 1000;
+    std::uint32_t fractional_milli = 0; // accumulated sub-tick numerator remainder, [0, 999]
 };
 
 struct ScheduleEntry
@@ -152,9 +153,11 @@ class GameplayTimeService
     [[nodiscard]] foundation::Result<void> SynchronizeClock(ClockId clock, GameplayTimePoint now, Revision source_revision);
 
     [[nodiscard]] std::optional<ClockState> GetClock(ClockId clock) const noexcept;
-    [[nodiscard]] const ClockState* FindClock(ClockId clock) const noexcept;
     [[nodiscard]] std::optional<ClockDefinition> GetClockDefinition(ClockId clock) const noexcept;
     [[nodiscard]] const ClockDefinition* FindClockDefinition(ClockId clock) const noexcept;
+    [[nodiscard]] foundation::Result<void> ValidateCalendarDate(ClockId clock, const CalendarDate& date) const;
+    [[nodiscard]] foundation::Result<GameplayTimePoint> ToGameplayTime(ClockId clock, const CalendarDate& date) const;
+    [[nodiscard]] foundation::Result<CalendarDate> ToCalendarDate(ClockId clock, GameplayTimePoint time) const;
 
     [[nodiscard]] foundation::Result<ScheduleId> Schedule(
         ClockId clock,
@@ -178,7 +181,6 @@ class GameplayTimeService
     [[nodiscard]] foundation::Result<void> Reschedule(ScheduleId schedule, GameplayTimePoint new_due);
     [[nodiscard]] bool HasSchedule(ScheduleId schedule) const noexcept;
     [[nodiscard]] std::optional<ScheduleEntry> GetSchedule(ScheduleId schedule) const noexcept;
-    [[nodiscard]] const ScheduleEntry* FindSchedule(ScheduleId schedule) const noexcept;
 
     [[nodiscard]] foundation::Result<std::vector<ScheduledTrigger>> CollectDue(
         ClockId clock,
@@ -213,13 +215,15 @@ class GameplayTimeService
 
     [[nodiscard]] foundation::Result<void> ValidateRecurrence(ClockId clock, const RecurrenceRule& recurrence) const;
     [[nodiscard]] foundation::Result<GameplayTimePoint> NextCalendarDue(ClockId clock, CalendarPattern pattern) const;
-    [[nodiscard]] std::uint64_t CalculateOccurrences(const ScheduleEntry& entry, GameplayTimePoint now) const noexcept;
-    [[nodiscard]] GameplayTimePoint AdvanceDue(const ScheduleEntry& entry, std::uint64_t occurrences) const noexcept;
+    [[nodiscard]] foundation::Result<std::uint64_t> CalculateOccurrences(const ScheduleEntry& entry, GameplayTimePoint now) const;
+    [[nodiscard]] foundation::Result<GameplayTimePoint> AdvanceDue(const ScheduleEntry& entry, std::uint64_t occurrences) const;
+    [[nodiscard]] foundation::Result<std::int64_t> RecurrenceIntervalTicks(const ScheduleEntry& entry) const;
     void InsertScheduleIndex(const ScheduleEntry& entry);
     void RemoveScheduleIndex(const ScheduleEntry& entry);
 
     std::unordered_map<ClockId, ClockDefinition> clock_definitions_;
     std::unordered_map<ClockId, ClockState> clocks_;
+    std::unordered_map<ClockId, Revision> synchronization_revisions_;
     std::unordered_map<ActionTypeId, ActionTypeInfo> action_types_;
     std::unordered_map<ScheduleId, ScheduleEntry> schedules_;
     std::unordered_map<ClockId, std::set<ScheduleKey>> schedule_index_;

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <functional>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -117,18 +118,17 @@ struct EnvironmentValues
     EnvironmentValueMask present = kEnvironmentAllValues;
     [[nodiscard]] constexpr bool operator==(const EnvironmentValues &) const noexcept = default;
 };
-enum class EnvironmentHazardKind
+struct EnvironmentHazardTypeId
 {
-    Heat,
-    Cold,
-    Toxic,
-    Radiation,
-    LowVisibility,
-    Electrical,
+    TypeId value{};
+    static constexpr EnvironmentHazardTypeId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr bool operator==(const EnvironmentHazardTypeId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const EnvironmentHazardTypeId &) const noexcept = default;
 };
 struct EnvironmentHazard
 {
-    EnvironmentHazardKind kind = EnvironmentHazardKind::Heat;
+    EnvironmentHazardTypeId type{};
     EnvironmentFixed intensity = 0;
     GameplayTagSet tags;
     [[nodiscard]] bool operator==(const EnvironmentHazard &) const noexcept = default;
@@ -200,6 +200,7 @@ class EnvironmentService
     [[nodiscard]] foundation::Result<void> RegisterLayerType(EnvironmentLayerTypeId id, std::string canonical_name);
     [[nodiscard]] foundation::Result<void> RegisterBlendHandler(EnvironmentBlendHandlerId id,
                                                                 std::string canonical_name, BlendHandler handler);
+    [[nodiscard]] foundation::Result<void> RegisterHazardType(EnvironmentHazardTypeId id, std::string canonical_name);
     void Freeze() noexcept
     {
         frozen_ = true;
@@ -215,16 +216,13 @@ class EnvironmentService
                                                        GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> SweepExpired(GameplayTimePoint now, GameplayContext context = {});
     [[nodiscard]] std::optional<EnvironmentLayer> GetLayer(EnvironmentLayerId id) const noexcept;
-    [[nodiscard]] const EnvironmentLayer *FindLayer(EnvironmentLayerId id) const noexcept;
     [[nodiscard]] std::vector<EnvironmentLayer> FindLayers(EnvironmentPosition position) const;
-    [[nodiscard]] EnvironmentSample Sample(EnvironmentPosition position, GameplayTimePoint time, std::optional<GameplayObjectRef> area = std::nullopt) const;
+    [[nodiscard]] EnvironmentSample Sample(EnvironmentPosition position, GameplayTimePoint time,
+                                           std::span<const GameplayObjectRef> scopes = {}) const;
     [[nodiscard]] EnvironmentSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(EnvironmentSnapshot snapshot);
     [[nodiscard]] std::vector<EnvironmentChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
-    {
-        return next_change_sequence_ - 1;
-    }
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return last_change_sequence_; }
     [[nodiscard]] Revision CurrentRevision() const noexcept
     {
         return revision_;
@@ -268,11 +266,13 @@ class EnvironmentService
     };
     [[nodiscard]] foundation::Result<void> ValidateLayer(const EnvironmentLayer &layer) const;
     void Blend(EnvironmentValues &base, const EnvironmentLayer &layer) const;
-    void Record(EnvironmentChange change);
-    void Bump() noexcept
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    [[nodiscard]] bool CanRecordChanges(std::size_t count) const noexcept;
+    void Record(EnvironmentChange change) noexcept;
+    struct HazardHash
     {
-        ++revision_.value;
-    }
+        std::size_t operator()(EnvironmentHazardTypeId id) const noexcept { return std::hash<TypeId>{}(id.value); }
+    };
     struct BlendHash
     {
         std::size_t operator()(EnvironmentBlendHandlerId id) const noexcept
@@ -282,6 +282,7 @@ class EnvironmentService
     };
     std::unordered_map<EnvironmentLayerTypeId, std::string, TypeHash> types_;
     std::unordered_map<EnvironmentBlendHandlerId, std::pair<std::string, BlendHandler>, BlendHash> blend_handlers_;
+    std::unordered_map<EnvironmentHazardTypeId, std::string, HazardHash> hazard_types_;
     std::unordered_map<EnvironmentLayerId, EnvironmentLayer, IdHash> layers_;
     std::unordered_map<CellKey, std::vector<EnvironmentLayerId>, CellHash> spatial_index_;
     std::vector<EnvironmentLayerId> global_layers_;
@@ -293,5 +294,6 @@ class EnvironmentService
     std::uint64_t expired_ = 0;
     std::vector<EnvironmentChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t last_change_sequence_ = 0;
 };
 } // namespace epidemic::gameplay::environment

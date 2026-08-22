@@ -21,6 +21,11 @@ public:
     [[nodiscard]] std::optional<equipment::EquipmentItemDescriptor> Describe(equipment::EquipmentItemId item) const override;
     [[nodiscard]] foundation::Result<void> ReserveForEquipment(equipment::EquipmentItemId item,GameplayObjectRef subject,GameplayContext context) override;
     [[nodiscard]] foundation::Result<void> ReleaseFromEquipment(equipment::EquipmentItemId item,GameplayObjectRef subject,GameplayContext context) override;
+    [[nodiscard]] foundation::Result<void> ExchangeEquipmentReservations(
+        std::span<const equipment::EquipmentItemId> release_items,
+        std::optional<equipment::EquipmentItemId> reserve_item,
+        GameplayObjectRef subject,
+        GameplayContext context) override;
 private: items::ItemsInventoryService& items_;
 };
 

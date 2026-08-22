@@ -294,10 +294,7 @@ class WorldService
     [[nodiscard]] foundation::Result<void> RegisterFeatureType(WorldFeatureTypeId id, std::string canonical_name);
     [[nodiscard]] foundation::Result<void> RegisterAlterationType(WorldAlterationTypeId id, std::string canonical_name);
     [[nodiscard]] foundation::Result<void> AddStaticFeature(WorldFeatureRecord feature);
-    void Freeze() noexcept
-    {
-        frozen_ = true;
-    }
+    [[nodiscard]] foundation::Result<void> Freeze();
     [[nodiscard]] bool IsFrozen() const noexcept
     {
         return frozen_;
@@ -306,8 +303,8 @@ class WorldService
     [[nodiscard]] const WorldRegionDefinition *FindRegion(WorldRegionId id) const noexcept;
     [[nodiscard]] const WorldAreaDefinition *FindArea(WorldAreaId id) const noexcept;
     [[nodiscard]] const LocationDefinition *FindLocation(LocationId id) const noexcept;
-    [[nodiscard]] const WorldFeatureRecord *FindFeature(WorldFeatureId id) const noexcept;
-    [[nodiscard]] const WorldAlterationRecord *FindAlteration(WorldAlterationId id) const noexcept;
+    [[nodiscard]] std::optional<WorldFeatureRecord> FindFeature(WorldFeatureId id) const;
+    [[nodiscard]] std::optional<WorldAlterationRecord> FindAlteration(WorldAlterationId id) const;
     [[nodiscard]] std::optional<ObjectPlacementRecord> FindObjectPlacement(GameplayObjectRef object) const noexcept;
     [[nodiscard]] bool IsAlterationTypeRegistered(WorldAlterationTypeId id) const noexcept
     {
@@ -336,10 +333,7 @@ class WorldService
     [[nodiscard]] WorldSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(WorldSnapshot snapshot);
     [[nodiscard]] std::vector<WorldChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
-    {
-        return next_change_sequence_ - 1;
-    }
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return last_change_sequence_; }
     [[nodiscard]] Revision CurrentRevision() const noexcept
     {
         return revision_;
@@ -350,11 +344,12 @@ class WorldService
     friend class WorldTransaction;
     [[nodiscard]] foundation::Result<void> CommitMutations(std::span<const WorldTransaction::Mutation> mutations,
                                                            GameplayContext context);
-    void Record(WorldChange change);
-    void Bump() noexcept
-    {
-        ++revision_.value;
-    }
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    [[nodiscard]] bool CanRecordChanges(std::size_t count) const noexcept;
+    void Record(WorldChange change) noexcept;
+    [[nodiscard]] foundation::Result<void> ValidateTopology() const;
+    [[nodiscard]] foundation::Result<void> ValidateAlteration(const WorldAlterationRecord &record) const;
+    void RebuildTopologyIndexes();
 
     struct CellKey
     {
@@ -411,6 +406,7 @@ class WorldService
     bool frozen_ = false;
     std::vector<WorldChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t last_change_sequence_ = 0;
     std::uint64_t transactions_ = 0;
 };
 } // namespace epidemic::gameplay::world

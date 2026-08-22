@@ -2,6 +2,7 @@
 #include "Epidemic/GameFramework/Effects/effects.h"
 
 #include <unordered_map>
+#include <optional>
 
 using namespace epidemic;
 using namespace epidemic::gameplay;
@@ -21,8 +22,9 @@ class TargetState final : public IEffectTargetStateProvider
 class CountingHandler final : public IEffectHandler
 {
   public:
-    CountingHandler(EffectTypeId type, std::unordered_map<GameplayObjectRef, int>& values, EffectTypeId derived = {})
-        : type_(type), values_(values), derived_(derived)
+    CountingHandler(EffectTypeId type, std::unordered_map<GameplayObjectRef, int>& values, EffectTypeId derived = {},
+                    std::optional<GameplayContext>* observed_context = nullptr)
+        : type_(type), values_(values), derived_(derived), observed_context_(observed_context)
     {
     }
     [[nodiscard]] EffectTypeId Type() const noexcept override { return type_; }
@@ -35,6 +37,7 @@ class CountingHandler final : public IEffectHandler
     [[nodiscard]] foundation::Result<EffectCommitResult> Commit(const EffectOperation& operation, const RegisteredEffectPayload&) override
     {
         values_[operation.target] += static_cast<int>(operation.magnitude_micro);
+        if (observed_context_ != nullptr) *observed_context_ = operation.context;
         EffectCommitResult result;
         if (derived_.IsValid())
         {
@@ -42,7 +45,8 @@ class CountingHandler final : public IEffectHandler
             derived.type = derived_;
             derived.target = operation.target;
             derived.magnitude_micro = 1;
-            derived.context = operation.context;
+            // Intentionally leave derived.context empty. EffectService must inherit
+            // the complete causal GameplayContext from the parent operation.
             result.derived_effects.push_back(derived);
         }
         return foundation::Result<EffectCommitResult>::Success(std::move(result));
@@ -52,6 +56,7 @@ class CountingHandler final : public IEffectHandler
     EffectTypeId type_{};
     std::unordered_map<GameplayObjectRef, int>& values_;
     EffectTypeId derived_{};
+    std::optional<GameplayContext>* observed_context_ = nullptr;
 };
 
 class MaterializedHandler final : public IEffectHandler
@@ -83,7 +88,8 @@ int main()
     const auto derived_type = EffectTypeId::FromString("test.effect.derived");
     const auto root_type = EffectTypeId::FromString("test.effect.root");
     const auto materialized_type = EffectTypeId::FromString("test.effect.materialized");
-    if (!service.RegisterHandler("test.effect.derived", std::make_shared<CountingHandler>(derived_type, values)) ||
+    std::optional<GameplayContext> observed_derived_context;
+    if (!service.RegisterHandler("test.effect.derived", std::make_shared<CountingHandler>(derived_type, values, EffectTypeId{}, &observed_derived_context)) ||
         !service.RegisterHandler("test.effect.root", std::make_shared<CountingHandler>(root_type, values, derived_type)) ||
         !service.RegisterHandler("test.effect.materialized", std::make_shared<MaterializedHandler>(materialized_type))) return 1;
 
@@ -110,12 +116,26 @@ int main()
     request.targets = {b, a, b};
     request.scale_micro = 1'000'000;
     request.context.tick = GameplayTickId{1};
+    request.context.time = GameplayTimePoint{123};
+    request.context.actor = a;
+    request.context.instigator = b;
+    request.context.source = a;
+    request.context.operation = OperationId::FromString("test.effect.operation");
     request.context.correlation = CorrelationId::FromString("test.correlation");
+    request.context.parent_operation = OperationId::FromString("test.effect.parent");
+    request.context.cause_event = EventId::FromString("test.effect.event");
 
     core::tasks::SimpleTaskScheduler scheduler(4);
     const auto executed = service.Execute(request, {}, &scheduler);
     if (!executed || executed.Value().disposition != EffectBatchDisposition::Succeeded || executed.Value().waves != 2) return 4;
     if (values[a] != 3 || values[b] != 3 || service.GetDiagnostics().derived_effects != 2) return 5;
+    if (!observed_derived_context.has_value()) return 51;
+    const auto& inherited = *observed_derived_context;
+    if (inherited.tick != request.context.tick || inherited.time != request.context.time ||
+        inherited.actor != request.context.actor || inherited.instigator != request.context.instigator ||
+        inherited.source != request.context.source || inherited.operation != request.context.operation ||
+        inherited.correlation != request.context.correlation || inherited.parent_operation != request.context.parent_operation ||
+        inherited.cause_event != request.context.cause_event) return 52;
 
     // Materialized-only handler rejects an abstract target without triggering materialization.
     const GameplayObjectRef abstract_target{domain, GameplayObjectId::FromRaw(1, 3)};

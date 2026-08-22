@@ -213,13 +213,21 @@ foundation::Result<void> MaterialService::ValidateComposition(MaterialCompositio
     return foundation::Result<void>::Success();
 }
 
-void MaterialService::BumpRevision(MaterialSlotState& state) noexcept
+foundation::Result<Revision> MaterialService::PrepareRevision() const
 {
-    if (revision_.value < std::numeric_limits<std::uint64_t>::max())
+    const auto next = CheckedNext(revision_);
+    if (!next)
     {
-        ++revision_.value;
+        return foundation::Result<Revision>::Failure(Error("gameplay.revision_exhausted", "material revision counter is exhausted"));
     }
-    state.revision = revision_;
+    return foundation::Result<Revision>::Success(*next);
+}
+
+bool MaterialService::CanRecordChanges(std::size_t count) const noexcept
+{
+    if (count == 0) return true;
+    if (next_change_sequence_ == 0) return false;
+    return count - 1 <= std::numeric_limits<std::uint64_t>::max() - next_change_sequence_;
 }
 
 foundation::Result<void> MaterialService::AssignComposition(
@@ -228,70 +236,96 @@ foundation::Result<void> MaterialService::AssignComposition(
     MaterialComposition composition,
     GameplayContext context)
 {
+    if (!frozen_)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
+    }
     if (!subject.IsValid() || !IsSlotRegistered(slot))
     {
         return foundation::Result<void>::Failure(Error("gameplay.material_assignment_invalid", "subject and registered material slot are required"));
     }
     auto validation = ValidateComposition(composition);
-    if (!validation)
-    {
-        return validation;
-    }
+    if (!validation) return validation;
 
     const MaterialSlotKey key{subject, slot};
     auto found = states_.find(key);
+    if (found != states_.end() && found->second.composition.constituents == composition.constituents)
+    {
+        return foundation::Result<void>::Success();
+    }
+    if (!CanRecordChanges(1))
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted", "material change sequence is exhausted"));
+    }
+    auto next = PrepareRevision();
+    if (!next) return foundation::Result<void>::Failure(next.GetError());
+
     const auto kind = found == states_.end() ? MaterialChangeKind::Assigned : MaterialChangeKind::CompositionChanged;
+    revision_ = next.Value();
     if (found == states_.end())
     {
         MaterialSlotState state;
         state.key = key;
         state.composition = std::move(composition);
-        BumpRevision(state);
+        state.revision = revision_;
         found = states_.emplace(key, std::move(state)).first;
     }
     else
     {
-        if (found->second.composition.constituents == composition.constituents)
-        {
-            return foundation::Result<void>::Success();
-        }
         found->second.composition = std::move(composition);
-        BumpRevision(found->second);
+        found->second.revision = revision_;
     }
-    RecordChange(MaterialChange{0, kind, key, {}, {}, {}, found->second.revision, context});
+    RecordChange(MaterialChange{0, kind, key, {}, {}, {}, revision_, context});
     return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> MaterialService::RemoveSlot(GameplayObjectRef subject, MaterialSlotId slot, GameplayContext context)
 {
+    if (!frozen_)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
+    }
     const MaterialSlotKey key{subject, slot};
     const auto found = states_.find(key);
     if (found == states_.end())
     {
         return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
     }
-    ++revision_.value;
+    if (!CanRecordChanges(1))
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted", "material change sequence is exhausted"));
+    }
+    auto next = PrepareRevision();
+    if (!next) return foundation::Result<void>::Failure(next.GetError());
+    revision_ = next.Value();
     RecordChange(MaterialChange{0, MaterialChangeKind::Removed, key, {}, {}, {}, revision_, context});
     states_.erase(found);
     return foundation::Result<void>::Success();
 }
 
-std::uint64_t MaterialService::RemoveSubject(GameplayObjectRef subject, GameplayContext context)
+foundation::Result<std::uint64_t> MaterialService::RemoveSubject(GameplayObjectRef subject, GameplayContext context)
 {
-    std::vector<MaterialSlotKey> keys;
-    for (const auto& [key, _] : states_)
+    if (!frozen_)
     {
-        if (key.subject == subject)
-        {
-            keys.push_back(key);
-        }
+        return foundation::Result<std::uint64_t>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
     }
+    std::vector<MaterialSlotKey> keys;
+    for (const auto& [key, _] : states_) if (key.subject == subject) keys.push_back(key);
     std::sort(keys.begin(), keys.end(), [](const auto& left, const auto& right) { return left.slot < right.slot; });
+    if (keys.empty()) return foundation::Result<std::uint64_t>::Success(0);
+    if (!CanRecordChanges(keys.size()))
+    {
+        return foundation::Result<std::uint64_t>::Failure(Error("gameplay.change_sequence_exhausted", "material change sequence is exhausted"));
+    }
+    auto next = PrepareRevision();
+    if (!next) return foundation::Result<std::uint64_t>::Failure(next.GetError());
+    revision_ = next.Value();
     for (const auto& key : keys)
     {
-        [[maybe_unused]] const auto result = RemoveSlot(key.subject, key.slot, context);
+        RecordChange(MaterialChange{0, MaterialChangeKind::Removed, key, {}, {}, {}, revision_, context});
+        states_.erase(key);
     }
-    return keys.size();
+    return foundation::Result<std::uint64_t>::Success(static_cast<std::uint64_t>(keys.size()));
 }
 
 foundation::Result<void> MaterialService::ApplySubstanceExposure(
@@ -302,33 +336,22 @@ foundation::Result<void> MaterialService::ApplySubstanceExposure(
     std::uint32_t coverage_ppm,
     GameplayContext context)
 {
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
     if (FindSubstance(substance) == nullptr || !amount.IsPositive() || coverage_ppm == 0 || coverage_ppm > kCompositionOnePpm)
-    {
         return foundation::Result<void>::Failure(Error("gameplay.substance_exposure_invalid", "substance exposure parameters are invalid"));
-    }
     auto found = states_.find(MaterialSlotKey{subject, slot});
-    if (found == states_.end())
-    {
-        return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
-    }
-    auto& exposures = found->second.dynamic.exposures;
-    auto exposure = std::lower_bound(exposures.begin(), exposures.end(), substance, [](const SubstanceExposure& item, SubstanceId id) {
-        return item.substance < id;
-    });
-    if (exposure == exposures.end() || exposure->substance != substance)
-    {
-        exposure = exposures.insert(exposure, SubstanceExposure{substance, amount, coverage_ppm});
-    }
-    else
-    {
-        exposure->amount.micro = SaturatingAdd(exposure->amount.micro, amount.micro);
-        exposure->coverage_ppm = std::max(exposure->coverage_ppm, coverage_ppm);
-    }
-    BumpRevision(found->second);
-    RecordChange(MaterialChange{0, MaterialChangeKind::ExposureAdded, found->first, substance, {}, {}, found->second.revision, context});
+    if (found == states_.end()) return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
+    if (!CanRecordChanges(1)) return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted", "material change sequence is exhausted"));
+    auto next = PrepareRevision(); if (!next) return foundation::Result<void>::Failure(next.GetError());
+
+    auto updated = found->second.dynamic.exposures;
+    auto exposure = std::lower_bound(updated.begin(), updated.end(), substance, [](const SubstanceExposure& item, SubstanceId id) { return item.substance < id; });
+    if (exposure == updated.end() || exposure->substance != substance) exposure = updated.insert(exposure, SubstanceExposure{substance, amount, coverage_ppm});
+    else { exposure->amount.micro = SaturatingAdd(exposure->amount.micro, amount.micro); exposure->coverage_ppm = std::max(exposure->coverage_ppm, coverage_ppm); }
+    revision_ = next.Value(); found->second.dynamic.exposures = std::move(updated); found->second.revision = revision_;
+    RecordChange(MaterialChange{0, MaterialChangeKind::ExposureAdded, found->first, substance, {}, {}, revision_, context});
     return foundation::Result<void>::Success();
 }
-
 
 foundation::Result<void> MaterialService::SetContainedSubstance(
     GameplayObjectRef subject,
@@ -337,33 +360,19 @@ foundation::Result<void> MaterialService::SetContainedSubstance(
     SubstanceAmount amount,
     GameplayContext context)
 {
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
     if (FindSubstance(substance) == nullptr || !amount.IsPositive())
-    {
         return foundation::Result<void>::Failure(Error("gameplay.substance_quantity_invalid", "contained substance quantity is invalid"));
-    }
     auto found = states_.find(MaterialSlotKey{subject, slot});
-    if (found == states_.end())
-    {
-        return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
-    }
-    auto& contents = found->second.dynamic.contents;
-    auto quantity = std::lower_bound(contents.begin(), contents.end(), substance, [](const SubstanceQuantity& item, SubstanceId id) {
-        return item.substance < id;
-    });
-    if (quantity == contents.end() || quantity->substance != substance)
-    {
-        contents.insert(quantity, SubstanceQuantity{substance, amount});
-    }
-    else
-    {
-        if (quantity->amount == amount)
-        {
-            return foundation::Result<void>::Success();
-        }
-        quantity->amount = amount;
-    }
-    BumpRevision(found->second);
-    RecordChange(MaterialChange{0, MaterialChangeKind::StateChanged, found->first, substance, {}, {}, found->second.revision, context});
+    if (found == states_.end()) return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
+    auto updated = found->second.dynamic.contents;
+    auto quantity = std::lower_bound(updated.begin(), updated.end(), substance, [](const SubstanceQuantity& item, SubstanceId id) { return item.substance < id; });
+    if (quantity != updated.end() && quantity->substance == substance && quantity->amount == amount) return foundation::Result<void>::Success();
+    if (!CanRecordChanges(1)) return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted", "material change sequence is exhausted"));
+    auto next = PrepareRevision(); if (!next) return foundation::Result<void>::Failure(next.GetError());
+    if (quantity == updated.end() || quantity->substance != substance) updated.insert(quantity, SubstanceQuantity{substance, amount}); else quantity->amount = amount;
+    revision_ = next.Value(); found->second.dynamic.contents = std::move(updated); found->second.revision = revision_;
+    RecordChange(MaterialChange{0, MaterialChangeKind::StateChanged, found->first, substance, {}, {}, revision_, context});
     return foundation::Result<void>::Success();
 }
 
@@ -373,22 +382,16 @@ foundation::Result<void> MaterialService::RemoveContainedSubstance(
     SubstanceId substance,
     GameplayContext context)
 {
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
     auto found = states_.find(MaterialSlotKey{subject, slot});
-    if (found == states_.end())
-    {
-        return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
-    }
+    if (found == states_.end()) return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
     auto& contents = found->second.dynamic.contents;
-    const auto quantity = std::lower_bound(contents.begin(), contents.end(), substance, [](const SubstanceQuantity& item, SubstanceId id) {
-        return item.substance < id;
-    });
-    if (quantity == contents.end() || quantity->substance != substance)
-    {
-        return foundation::Result<void>::Failure(Error("gameplay.substance_quantity_unknown", "contained substance quantity does not exist"));
-    }
-    contents.erase(quantity);
-    BumpRevision(found->second);
-    RecordChange(MaterialChange{0, MaterialChangeKind::StateChanged, found->first, substance, {}, {}, found->second.revision, context});
+    const auto quantity = std::lower_bound(contents.begin(), contents.end(), substance, [](const SubstanceQuantity& item, SubstanceId id) { return item.substance < id; });
+    if (quantity == contents.end() || quantity->substance != substance) return foundation::Result<void>::Failure(Error("gameplay.substance_quantity_unknown", "contained substance quantity does not exist"));
+    if (!CanRecordChanges(1)) return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted", "material change sequence is exhausted"));
+    auto next = PrepareRevision(); if (!next) return foundation::Result<void>::Failure(next.GetError());
+    revision_ = next.Value(); contents.erase(quantity); found->second.revision = revision_;
+    RecordChange(MaterialChange{0, MaterialChangeKind::StateChanged, found->first, substance, {}, {}, revision_, context});
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> MaterialService::RemoveSubstanceExposure(
@@ -397,22 +400,16 @@ foundation::Result<void> MaterialService::RemoveSubstanceExposure(
     SubstanceId substance,
     GameplayContext context)
 {
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
     auto found = states_.find(MaterialSlotKey{subject, slot});
-    if (found == states_.end())
-    {
-        return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
-    }
+    if (found == states_.end()) return foundation::Result<void>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
     auto& exposures = found->second.dynamic.exposures;
-    const auto exposure = std::lower_bound(exposures.begin(), exposures.end(), substance, [](const SubstanceExposure& item, SubstanceId id) {
-        return item.substance < id;
-    });
-    if (exposure == exposures.end() || exposure->substance != substance)
-    {
-        return foundation::Result<void>::Failure(Error("gameplay.substance_exposure_unknown", "substance exposure does not exist"));
-    }
-    exposures.erase(exposure);
-    BumpRevision(found->second);
-    RecordChange(MaterialChange{0, MaterialChangeKind::ExposureRemoved, found->first, substance, {}, {}, found->second.revision, context});
+    const auto exposure = std::lower_bound(exposures.begin(), exposures.end(), substance, [](const SubstanceExposure& item, SubstanceId id) { return item.substance < id; });
+    if (exposure == exposures.end() || exposure->substance != substance) return foundation::Result<void>::Failure(Error("gameplay.substance_exposure_unknown", "substance exposure does not exist"));
+    if (!CanRecordChanges(1)) return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted", "material change sequence is exhausted"));
+    auto next = PrepareRevision(); if (!next) return foundation::Result<void>::Failure(next.GetError());
+    revision_ = next.Value(); exposures.erase(exposure); found->second.revision = revision_;
+    RecordChange(MaterialChange{0, MaterialChangeKind::ExposureRemoved, found->first, substance, {}, {}, revision_, context});
     return foundation::Result<void>::Success();
 }
 
@@ -488,7 +485,7 @@ std::vector<MaterialResponse> MaterialService::EvaluateRules(
     std::vector<MaterialResponse> result;
     for (const auto reaction_id : reaction_order_)
     {
-        ++reaction_evaluations_;
+        if (reaction_evaluations_ != std::numeric_limits<std::uint64_t>::max()) ++reaction_evaluations_;
         const auto& rule = reactions_.at(reaction_id);
         if (rule.stimulus != stimulus.type)
         {
@@ -520,6 +517,7 @@ foundation::Result<std::vector<MaterialResponse>> MaterialService::EvaluateStimu
     const MaterialStimulus& stimulus,
     const GameplayTagRegistry& tags) const
 {
+    if (!frozen_) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
     if (stimulus.magnitude_micro < 0)
     {
         return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_stimulus_invalid", "stimulus magnitude must be non-negative"));
@@ -536,58 +534,43 @@ foundation::Result<std::vector<MaterialResponse>> MaterialService::ApplyStimulus
     const MaterialStimulus& stimulus,
     const GameplayTagRegistry& tags)
 {
-    if (stimulus.magnitude_micro < 0)
-    {
-        return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_stimulus_invalid", "stimulus magnitude must be non-negative"));
-    }
+    if (!frozen_) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
+    if (stimulus.magnitude_micro < 0) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_stimulus_invalid", "stimulus magnitude must be non-negative"));
     auto found = states_.find(MaterialSlotKey{stimulus.target, stimulus.slot});
-    if (found == states_.end())
-    {
-        return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
-    }
+    if (found == states_.end()) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
 
-    auto& state = found->second;
-    const auto before = state.dynamic;
+    auto projected = found->second;
     switch (stimulus.type)
     {
-    case MaterialStimulusType::Heat:
-        state.dynamic.temperature_micro = SaturatingAdd(state.dynamic.temperature_micro, stimulus.magnitude_micro);
-        break;
-    case MaterialStimulusType::Cold:
-        state.dynamic.temperature_micro = SaturatingAdd(state.dynamic.temperature_micro, -stimulus.magnitude_micro);
-        break;
-    case MaterialStimulusType::Moisture:
-        state.dynamic.saturation_ppm = ClampPpm(SaturatingAdd(static_cast<std::int64_t>(state.dynamic.saturation_ppm), stimulus.magnitude_micro));
-        break;
-    case MaterialStimulusType::Drying:
-        state.dynamic.saturation_ppm = ClampPpm(SaturatingAdd(static_cast<std::int64_t>(state.dynamic.saturation_ppm), -stimulus.magnitude_micro));
-        break;
-    case MaterialStimulusType::Corrosive:
-        state.dynamic.corrosion_ppm = ClampPpm(SaturatingAdd(static_cast<std::int64_t>(state.dynamic.corrosion_ppm), stimulus.magnitude_micro));
-        break;
+    case MaterialStimulusType::Heat: projected.dynamic.temperature_micro = SaturatingAdd(projected.dynamic.temperature_micro, stimulus.magnitude_micro); break;
+    case MaterialStimulusType::Cold: projected.dynamic.temperature_micro = SaturatingAdd(projected.dynamic.temperature_micro, -stimulus.magnitude_micro); break;
+    case MaterialStimulusType::Moisture: projected.dynamic.saturation_ppm = ClampPpm(SaturatingAdd(static_cast<std::int64_t>(projected.dynamic.saturation_ppm), stimulus.magnitude_micro)); break;
+    case MaterialStimulusType::Drying: projected.dynamic.saturation_ppm = ClampPpm(SaturatingAdd(static_cast<std::int64_t>(projected.dynamic.saturation_ppm), -stimulus.magnitude_micro)); break;
+    case MaterialStimulusType::Corrosive: projected.dynamic.corrosion_ppm = ClampPpm(SaturatingAdd(static_cast<std::int64_t>(projected.dynamic.corrosion_ppm), stimulus.magnitude_micro)); break;
     case MaterialStimulusType::Electricity:
-    case MaterialStimulusType::Chemical:
-        break;
+    case MaterialStimulusType::Chemical: break;
     }
-    ++stimuli_;
-    if (!(state.dynamic == before))
+    const bool state_changed = !(projected.dynamic == found->second.dynamic);
+    auto responses = EvaluateRules(projected, stimulus, tags);
+    const std::size_t change_count = responses.size() + (state_changed ? 1u : 0u);
+    if (!CanRecordChanges(change_count)) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.change_sequence_exhausted", "material change sequence is exhausted"));
+    std::optional<Revision> mutation_revision;
+    if (state_changed)
     {
-        BumpRevision(state);
-        RecordChange(MaterialChange{0, MaterialChangeKind::StateChanged, state.key, {}, {}, {}, state.revision, stimulus.context});
+        auto next = PrepareRevision(); if (!next) return foundation::Result<std::vector<MaterialResponse>>::Failure(next.GetError());
+        mutation_revision = next.Value();
     }
-
-    auto responses = EvaluateRules(state, stimulus, tags);
-    reactions_triggered_ += responses.size();
+    if (stimuli_ != std::numeric_limits<std::uint64_t>::max()) ++stimuli_;
+    if (state_changed)
+    {
+        revision_ = *mutation_revision; found->second.dynamic = std::move(projected.dynamic); found->second.revision = revision_;
+        RecordChange(MaterialChange{0, MaterialChangeKind::StateChanged, found->second.key, {}, {}, {}, revision_, stimulus.context});
+    }
+    if (responses.size() > std::numeric_limits<std::uint64_t>::max() - reactions_triggered_) reactions_triggered_ = std::numeric_limits<std::uint64_t>::max();
+    else reactions_triggered_ += static_cast<std::uint64_t>(responses.size());
     for (const auto& response : responses)
     {
-        RecordChange(MaterialChange{0,
-                                    MaterialChangeKind::ReactionTriggered,
-                                    state.key,
-                                    {},
-                                    response.type,
-                                    response.reaction,
-                                    state.revision,
-                                    stimulus.context});
+        RecordChange(MaterialChange{0, MaterialChangeKind::ReactionTriggered, found->second.key, {}, response.type, response.reaction, found->second.revision, stimulus.context});
     }
     return foundation::Result<std::vector<MaterialResponse>>::Success(std::move(responses));
 }
@@ -659,13 +642,12 @@ std::vector<MaterialSlotState> MaterialService::FindByMaterialTag(TagId tag, con
     return result;
 }
 
-void MaterialService::RecordChange(MaterialChange change)
+void MaterialService::RecordChange(MaterialChange change) noexcept
 {
     change.sequence = next_change_sequence_;
-    if (next_change_sequence_ < std::numeric_limits<std::uint64_t>::max())
-    {
-        ++next_change_sequence_;
-    }
+    last_change_sequence_ = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max()) next_change_sequence_ = 0;
+    else ++next_change_sequence_;
     changes_.push_back(std::move(change));
 }
 
@@ -706,6 +688,7 @@ MaterialsSnapshot MaterialService::CaptureSnapshot() const
 
 foundation::Result<void> MaterialService::RestoreSnapshot(MaterialsSnapshot snapshot)
 {
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before restore"));
     std::unordered_map<MaterialSlotKey, MaterialSlotState, MaterialSlotKeyHash> rebuilt;
     for (auto& state : snapshot.states)
     {
@@ -753,6 +736,7 @@ foundation::Result<void> MaterialService::RestoreSnapshot(MaterialsSnapshot snap
     revision_ = snapshot.revision;
     changes_.clear();
     next_change_sequence_ = 1;
+    last_change_sequence_ = 0;
     stimuli_ = 0;
     reactions_triggered_ = 0;
     reaction_evaluations_ = 0;

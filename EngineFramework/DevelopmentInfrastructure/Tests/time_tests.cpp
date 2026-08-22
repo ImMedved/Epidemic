@@ -40,8 +40,8 @@ int main()
     {
         return 5;
     }
-    const auto* recurring = service.FindSchedule(schedule.Value());
-    if (recurring == nullptr || recurring->due.ticks != 40)
+    const auto recurring = service.GetSchedule(schedule.Value());
+    if (!recurring || recurring->due.ticks != 40)
     {
         return 6;
     }
@@ -101,13 +101,13 @@ int main()
     {
         return 15;
     }
-    const auto* each_remaining = policy_service.FindSchedule(each.Value());
-    if (each_remaining == nullptr || each_remaining->due.ticks != 55)
+    const auto each_remaining = policy_service.GetSchedule(each.Value());
+    if (!each_remaining || each_remaining->due.ticks != 55)
     {
         return 16;
     }
     const auto each_rest = policy_service.CollectDue(policy_clock.Value(), SchedulerBudget{10, 100});
-    if (!each_rest || each_rest.Value().size() != 2 || policy_service.FindSchedule(each.Value())->due.ticks != 65)
+    if (!each_rest || each_rest.Value().size() != 2 || (!policy_service.GetSchedule(each.Value()) || policy_service.GetSchedule(each.Value())->due.ticks != 65))
     {
         return 17;
     }
@@ -119,7 +119,7 @@ int main()
         return 18;
     }
     const auto skip_due = policy_service.CollectDue(policy_clock.Value());
-    if (!skip_due || !skip_due.Value().empty() || policy_service.FindSchedule(skipped.Value())->due.ticks != 65)
+    if (!skip_due || !skip_due.Value().empty() || (!policy_service.GetSchedule(skipped.Value()) || policy_service.GetSchedule(skipped.Value())->due.ticks != 65))
     {
         return 19;
     }
@@ -131,9 +131,105 @@ int main()
         return 20;
     }
     const auto once_due = policy_service.CollectDue(policy_clock.Value());
-    if (!once_due || once_due.Value().size() != 1 || policy_service.FindSchedule(once.Value())->due.ticks != 65)
+    if (!once_due || once_due.Value().size() != 1 || (!policy_service.GetSchedule(once.Value()) || policy_service.GetSchedule(once.Value())->due.ticks != 65))
     {
         return 21;
+    }
+
+    // Fractional time scales keep their sub-tick remainder across advances.
+    GameplayTimeService fractional_service;
+    const auto fractional_clock = fractional_service.RegisterClock("framework.clock.fractional", CalendarDefinition{});
+    if (!fractional_clock)
+    {
+        return 22;
+    }
+    fractional_service.Freeze();
+    if (!fractional_service.SetTimeScale(fractional_clock.Value(), 500))
+    {
+        return 23;
+    }
+    for (int i = 0; i < 1000; ++i)
+    {
+        if (!fractional_service.AdvanceClock(fractional_clock.Value(), GameplayDuration{1}))
+        {
+            return 24;
+        }
+    }
+    const auto fractional_state = fractional_service.GetClock(fractional_clock.Value());
+    if (!fractional_state || fractional_state->now.ticks != 500 || fractional_state->fractional_milli != 0)
+    {
+        return 25;
+    }
+
+    // Analytical catch-up is O(1) and is not rejected by the FireEach materialization budget.
+    GameplayTimeService aggregate_service;
+    const auto aggregate_clock = aggregate_service.RegisterClock("framework.clock.aggregate", CalendarDefinition{});
+    const auto aggregate_action = aggregate_service.RegisterAction("framework.test.aggregate", domain);
+    if (!aggregate_clock || !aggregate_action)
+    {
+        return 26;
+    }
+    aggregate_service.Freeze();
+    RecurrenceRule aggregate_rule;
+    aggregate_rule.kind = RecurrenceKind::FixedInterval;
+    aggregate_rule.interval = GameplayDuration{1};
+    const auto aggregate_schedule = aggregate_service.Schedule(
+        aggregate_clock.Value(), GameplayTimePoint{1}, owner, aggregate_action.Value(), aggregate_rule, CatchUpPolicy::Aggregate);
+    if (!aggregate_schedule || !aggregate_service.AdvanceTo(aggregate_clock.Value(), GameplayTimePoint{10'000'000}))
+    {
+        return 27;
+    }
+    const auto aggregate_due = aggregate_service.CollectDue(aggregate_clock.Value(), SchedulerBudget{1, 8});
+    if (!aggregate_due || aggregate_due.Value().size() != 1 || aggregate_due.Value().front().occurrence_count != 10'000'000)
+    {
+        return 28;
+    }
+
+    // Calendar round-trips use the registered fixed calendar dimensions.
+    GameplayTimeService calendar_service;
+    CalendarDefinition custom_calendar;
+    custom_calendar.hours_per_day = 20;
+    custom_calendar.days_per_month = 10;
+    custom_calendar.months_per_year = 8;
+    const auto custom_clock = calendar_service.RegisterClock("framework.clock.calendar", custom_calendar);
+    if (!custom_clock)
+    {
+        return 29;
+    }
+    calendar_service.Freeze();
+    const CalendarDate expected_date{3, 4, 7, 12, 34, 56};
+    const auto as_time = calendar_service.ToGameplayTime(custom_clock.Value(), expected_date);
+    const auto round_trip = as_time ? calendar_service.ToCalendarDate(custom_clock.Value(), as_time.Value())
+                                    : foundation::Result<CalendarDate>::Failure(as_time.GetError());
+    if (!as_time || !round_trip || round_trip.Value() != expected_date)
+    {
+        return 30;
+    }
+    if (calendar_service.ValidateCalendarDate(custom_clock.Value(), CalendarDate{1, 9, 1, 0, 0, 0}))
+    {
+        return 31;
+    }
+
+    // Corrupt restore is atomic and a generator behind restored IDs is rejected.
+    const auto good_snapshot = service.CaptureSnapshot();
+    auto duplicate_snapshot = good_snapshot;
+    duplicate_snapshot.schedules.push_back(duplicate_snapshot.schedules.front());
+    if (service.RestoreSnapshot(duplicate_snapshot) || !service.HasSchedule(schedule.Value()))
+    {
+        return 32;
+    }
+    auto behind_snapshot = good_snapshot;
+    if (!behind_snapshot.schedules.empty())
+    {
+        behind_snapshot.schedule_ids.next = behind_snapshot.schedules.front().id.Low();
+        if (behind_snapshot.schedule_ids.next == 0)
+        {
+            behind_snapshot.schedule_ids.next = 1;
+        }
+        if (service.RestoreSnapshot(behind_snapshot))
+        {
+            return 33;
+        }
     }
 
     return 0;

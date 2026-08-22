@@ -117,8 +117,12 @@ int main()
     const auto next_revision = CheckedNext(Revision{41});
     Check(next_revision && next_revision->Raw() == 42, 44);
     Check(!CheckedNext(Revision{std::numeric_limits<std::uint64_t>::max()}), 45);
+    Check(CheckedNextSequence(41).value_or(0) == 42, 451);
+    Check(!CheckedNextSequence(std::numeric_limits<std::uint64_t>::max()), 452);
 
     const auto actor = MakeRef("framework.entities", "actor");
+    const GameplayObjectPartRef actor_part{actor, TypeId::FromString("entity.part.hand")};
+    Check(actor_part.IsValid() && actor_part.object == actor, 453);
     const auto source = MakeRef("framework.effects", "source");
     GameplayContext context;
     context.tick = GameplayTickId{1};

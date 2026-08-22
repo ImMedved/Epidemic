@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <cstring>
 #include <optional>
 #include <span>
@@ -193,6 +194,8 @@ struct AbilityTargetSet
     GameplayObjectRef primary{};
     std::vector<GameplayObjectRef> targets;
     std::optional<std::array<std::int64_t, 3>> point_micro{};
+    std::optional<std::array<std::int64_t, 3>> direction_micro{};
+    std::int64_t area_radius_micro = 0;
 };
 
 struct AbilityInstance
@@ -213,6 +216,7 @@ enum class AbilityExecutionState
     Channeling,
     Executing,
     Completed,
+    Cancelled,
     Interrupted,
     Failed
 };
@@ -265,6 +269,12 @@ class IAbilityRequirementProvider
                                                           const AbilityTargetSet &targets,
                                                           GameplayTimePoint now) const = 0;
 };
+class IAbilityMaterializationProvider
+{
+  public:
+    virtual ~IAbilityMaterializationProvider() = default;
+    [[nodiscard]] virtual bool IsMaterialized(GameplayObjectRef subject) const noexcept = 0;
+};
 class IAbilityResourceProvider
 {
   public:
@@ -275,10 +285,8 @@ class IAbilityResourceProvider
                                                                                  AbilityResourceTypeId type,
                                                                                  std::int64_t amount_micro,
                                                                                  GameplayContext context) = 0;
-    [[nodiscard]] virtual foundation::Result<void> Commit(const AbilityResourceReservation &reservation,
-                                                          GameplayContext context) = 0;
-    [[nodiscard]] virtual foundation::Result<void> Release(const AbilityResourceReservation &reservation,
-                                                           GameplayContext context) = 0;
+    virtual void Commit(const AbilityResourceReservation &reservation, GameplayContext context) noexcept = 0;
+    virtual void Release(const AbilityResourceReservation &reservation, GameplayContext context) noexcept = 0;
 };
 
 struct AbilityOutput
@@ -298,6 +306,7 @@ enum class AbilityChangeKind
     Revoked,
     Started,
     Executed,
+    Cancelled,
     Interrupted,
     Failed,
     CooldownStarted,
@@ -319,6 +328,12 @@ struct AbilityCooldownState
     CooldownGroupId group{};
     GameplayTimePoint ends_at{};
 };
+struct AbilityChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<AbilityChange> changes;
+};
 struct AbilitiesSnapshot
 {
     std::vector<AbilityInstance> instances;
@@ -326,6 +341,8 @@ struct AbilitiesSnapshot
     std::vector<AbilityCooldownState> cooldowns;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot instance_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot execution_ids{};
+    std::vector<AbilityChange> journal;
+    std::uint64_t next_change_sequence = 1;
 };
 struct AbilitiesDiagnostics
 {
@@ -355,6 +372,10 @@ class AbilityService
     {
         resources_ = provider;
     }
+    void SetMaterializationProvider(const IAbilityMaterializationProvider *provider) noexcept
+    {
+        materialization_ = provider;
+    }
 
     [[nodiscard]] foundation::Result<AbilityInstanceId> Grant(
         GameplayObjectRef owner, AbilityDefinitionId definition, GameplayObjectRef source = {},
@@ -373,6 +394,8 @@ class AbilityService
     [[nodiscard]] foundation::Result<std::vector<AbilityOutput>> ChannelTick(AbilityExecutionId execution,
                                                                              GameplayTimePoint now,
                                                                              std::uint64_t occurrences = 1);
+    [[nodiscard]] foundation::Result<void> Cancel(AbilityExecutionId execution, GameplayTimePoint now,
+                                                  GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> Interrupt(AbilityExecutionId execution, TypeId reason, GameplayTimePoint now,
                                                      GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> BindSchedule(AbilityExecutionId execution, ScheduleId schedule);
@@ -383,6 +406,7 @@ class AbilityService
                                                      GameplayTimePoint now) const noexcept;
     [[nodiscard]] const AbilityExecution *FindExecution(AbilityExecutionId id) const noexcept;
     [[nodiscard]] std::vector<AbilityChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] AbilityChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] AbilitiesSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(AbilitiesSnapshot snapshot);
     [[nodiscard]] AbilitiesDiagnostics GetDiagnostics() const noexcept;
@@ -391,7 +415,10 @@ class AbilityService
     [[nodiscard]] foundation::Result<void> AcquireStartCosts(const AbilityDefinition &def, AbilityExecution &execution);
     [[nodiscard]] foundation::Result<void> AcquireExecuteCosts(const AbilityDefinition &def,
                                                                AbilityExecution &execution);
-    [[nodiscard]] foundation::Result<void> CommitReservations(AbilityExecution &execution);
+    void CommitReservations(AbilityExecution &execution) noexcept;
+    [[nodiscard]] AbilityAvailabilityResult ValidateTargets(const AbilityDefinition &definition, const AbilityInstance &instance,
+                                                           const AbilityTargetSet &targets) const;
+    [[nodiscard]] static bool IsTerminal(AbilityExecutionState state) noexcept;
     void StartCooldown(const AbilityDefinition &def, GameplayObjectRef owner, GameplayTimePoint now,
                        GameplayContext context, AbilityInstanceId ability, AbilityExecutionId execution);
     [[nodiscard]] std::vector<AbilityOutput> BuildOutputs(const AbilityDefinition &def,
@@ -406,8 +433,12 @@ class AbilityService
     MonotonicIdGenerator<GameplayObjectId> execution_ids_;
     const IAbilityRequirementProvider *requirements_ = nullptr;
     IAbilityResourceProvider *resources_ = nullptr;
+    const IAbilityMaterializationProvider *materialization_ = nullptr;
+    std::unordered_map<ScheduleId, AbilityExecutionId> schedule_to_execution_;
     bool frozen_ = false;
-    std::vector<AbilityChange> changes_;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+    static constexpr std::uint64_t kMaxChannelOccurrencesPerCall = 1024;
+    std::deque<AbilityChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     AbilitiesDiagnostics diagnostics_{};
 };

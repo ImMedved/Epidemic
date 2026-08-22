@@ -58,6 +58,7 @@ struct ConditionInstanceIdHash
 struct RegisteredConditionPayload
 {
     TypeId type{};
+    std::uint32_t schema_version = 1;
     std::vector<std::byte> bytes;
 
     [[nodiscard]] bool Empty() const noexcept { return bytes.empty(); }
@@ -68,6 +69,7 @@ struct RegisteredConditionPayload
         static_assert(std::is_trivially_copyable_v<T>);
         RegisteredConditionPayload result;
         result.type = type_id;
+        result.schema_version = 1;
         result.bytes.resize(sizeof(T));
         std::memcpy(result.bytes.data(), &value, sizeof(T));
         return result;
@@ -116,7 +118,6 @@ enum class ConditionDematerializationPolicy
 {
     Pause,
     Remove,
-    Aggregate,
     RejectDematerialization,
 };
 
@@ -143,10 +144,11 @@ struct ConditionDefinition
     ActionTypeId on_periodic{};
     ActionTypeId on_remove{};
     TypeId payload_type{};
+    std::uint32_t payload_schema_version = 1;
     std::size_t max_payload_bytes = 0;
     bool publish_fact = false;
     ConditionMaterializationPolicy materialization = ConditionMaterializationPolicy::AbstractCapable;
-    ConditionDematerializationPolicy dematerialization = ConditionDematerializationPolicy::Aggregate;
+    ConditionDematerializationPolicy dematerialization = ConditionDematerializationPolicy::Pause;
     PeriodicCatchUpPolicy periodic_catch_up = PeriodicCatchUpPolicy::Aggregate;
 };
 
@@ -165,6 +167,7 @@ struct ConditionInstance
     std::optional<ScheduleId> expiration_schedule{};
     std::optional<ScheduleId> periodic_schedule{};
     bool paused_for_materialization = false;
+    std::optional<GameplayTimePoint> materialization_paused_at{};
     Revision revision{};
 };
 
@@ -323,6 +326,7 @@ class ConditionService
         GameplayContext context = {});
 
     [[nodiscard]] const ConditionInstance* Find(ConditionInstanceId id) const noexcept;
+    [[nodiscard]] std::optional<ConditionInstance> FindCopy(ConditionInstanceId id) const noexcept;
     [[nodiscard]] std::vector<ConditionInstance> GetConditions(GameplayObjectRef subject) const;
     [[nodiscard]] std::vector<ConditionInstance> AllConditions() const;
     [[nodiscard]] bool HasCondition(GameplayObjectRef subject, ConditionTypeId type) const;

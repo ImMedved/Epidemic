@@ -56,6 +56,7 @@ int main()
     items.desc.available = true;
     items.desc.revision = Revision{1};
     s.SetItemProvider(&items);
+    s.Freeze();
     EquipmentProfile p;
     p.subject = Ref("actor", "hero");
     auto pid = s.CreateProfile(p);

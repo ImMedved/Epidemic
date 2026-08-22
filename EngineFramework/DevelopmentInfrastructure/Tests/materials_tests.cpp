@@ -1,5 +1,7 @@
 #include "Epidemic/GameFramework/Materials/materials.h"
 
+#include <limits>
+
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::materials;
 
@@ -38,6 +40,9 @@ int main()
     ignition.priority = 5;
     const auto reaction = service.RegisterReaction(ignition);
     if (!wood_id || !iron_id || !water_id || !slot || !reaction) return 2;
+    const GameplayObjectRef pre_freeze_subject{GameplayDomainId::FromString("test.domain"), GameplayObjectId::FromString("test.pre_freeze")};
+    MaterialComposition pre_freeze_composition{{MaterialConstituent{wood_id.Value(), 1'000'000}}};
+    if (service.AssignComposition(pre_freeze_subject, slot.Value(), pre_freeze_composition)) return 22;
     service.Freeze();
     if (service.RegisterSlot("test.slot.late")) return 3;
 
@@ -79,6 +84,17 @@ int main()
         if (!service.AssignComposition(object_ref, slot.Value(), std::move(c))) return 14;
     }
     if (service.GetDiagnostics().material_states != 10001) return 15;
+
+    auto exhausted_revision_snapshot = service.CaptureSnapshot();
+    exhausted_revision_snapshot.revision = Revision{std::numeric_limits<std::uint64_t>::max()};
+    for (auto& restored_state : exhausted_revision_snapshot.states)
+    {
+        restored_state.revision = exhausted_revision_snapshot.revision;
+    }
+    if (!service.RestoreSnapshot(exhausted_revision_snapshot)) return 23;
+    const GameplayObjectRef after_exhaustion{GameplayDomainId::FromString("test.domain"), GameplayObjectId::FromString("test.after_exhaustion")};
+    MaterialComposition after_exhaustion_composition{{MaterialConstituent{wood_id.Value(), 1'000'000}}};
+    if (service.AssignComposition(after_exhaustion, slot.Value(), after_exhaustion_composition)) return 24;
 
     MaterialDefinition invalid_material;
     invalid_material.canonical_name = "test.material.invalid";

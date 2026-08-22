@@ -148,5 +148,10 @@ int main()
     RandomSequence exhausted_restore(exhausted_snapshot);
     Check(exhausted_restore.IsExhausted(), 48);
 
+
+    RandomSequence exhausted_checked({1}, RandomStream::FromString("exhausted"), std::numeric_limits<std::uint64_t>::max());
+    Check(!exhausted_checked.TryNextU64().has_value(), 60);
+    Check(!exhausted_checked.TryUniform(2).has_value(), 61);
+    Check(!RandomSequence({1}, RandomStream::FromString("invalid.uniform")).TryUniform(0).has_value(), 62);
     return 0;
 }

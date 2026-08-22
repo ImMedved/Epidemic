@@ -6,7 +6,6 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 namespace epidemic::gameplay::dialogue
@@ -173,7 +172,7 @@ struct ConversationSession
     ConversationState state = ConversationState::Preparing;
     ConversationContext context{};
     GameplayTimePoint started_at{};
-    std::unordered_set<TypeId> resolved_persistent_options;
+    std::vector<TypeId> resolved_persistent_options;
     Revision revision{};
 };
 struct DialogueConditionContext
@@ -292,7 +291,8 @@ class DialogueService
                                                          DialogueNodeId id) const noexcept;
     [[nodiscard]] bool ConditionsPass(const std::vector<TypeId> &ids, const DialogueConditionContext &ctx) const;
     [[nodiscard]] foundation::Result<void> EnterNode(ConversationSession &session, DialogueNodeId node,
-                                                     GameplayContext context);
+                                                     GameplayContext context,
+                                                     std::optional<std::vector<DialogueConsequenceExecution>> prepared_consequences = std::nullopt);
     [[nodiscard]] foundation::Result<std::vector<DialogueConsequenceExecution>> PrepareConsequences(
         ConversationSessionId session, const std::vector<TypeId> &ids, DialogueNodeId source_node,
         DialogueOptionId source_option, GameplayContext context);
@@ -300,6 +300,7 @@ class DialogueService
     [[nodiscard]] GameplayObjectRef ResolveRole(const ConversationSession &session, TypeId role) const noexcept;
     [[nodiscard]] DialogueConditionContext MakeConditionContext(const ConversationSession &session,
                                                                 GameplayObjectRef actor) const noexcept;
+    void MaybeCleanupTerminalSession(ConversationSessionId id);
     bool frozen_ = false;
     Revision revision_{};
     std::unordered_map<ConversationDefinitionId, ConversationDefinition, IdHash> definitions_;

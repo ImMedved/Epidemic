@@ -133,9 +133,9 @@ class EntityDestroyHandler final : public effects::IEffectHandler
     [[nodiscard]] foundation::Result<effects::EffectPrepareResult> Prepare(const effects::EffectOperation& operation) const override
     {
         const auto id = entities::EntityService::FromGameplayObjectRef(operation.target);
-        const auto* record = service_.Find(id);
-        const auto disposition = record == nullptr ? effects::EffectPrepareDisposition::InvalidTarget
-                                                   : (record->lifecycle == entities::EntityLifecycleState::Alive
+        const auto record = service_.Find(id);
+        const auto disposition = !record ? effects::EffectPrepareDisposition::InvalidTarget
+                                        : (record->lifecycle == entities::EntityLifecycleState::Alive
                                                           ? effects::EffectPrepareDisposition::Accepted
                                                           : effects::EffectPrepareDisposition::Rejected);
         return foundation::Result<effects::EffectPrepareResult>::Success({disposition, {}});
@@ -171,7 +171,7 @@ class EntityConvertHandler final : public effects::IEffectHandler
             return foundation::Result<effects::EffectPrepareResult>::Failure(payload.GetError());
         }
         const auto id = entities::EntityService::FromGameplayObjectRef(operation.target);
-        const auto disposition = service_.Find(id) != nullptr && service_.FindArchetype(payload.Value().archetype) != nullptr
+        const auto disposition = service_.Find(id).has_value() && service_.FindArchetype(payload.Value().archetype) != nullptr
                                      ? effects::EffectPrepareDisposition::Accepted
                                      : effects::EffectPrepareDisposition::InvalidTarget;
         return foundation::Result<effects::EffectPrepareResult>::Success({disposition, {}});
@@ -218,7 +218,7 @@ class EntityTagHandler final : public effects::IEffectHandler
         }
         const auto id = entities::EntityService::FromGameplayObjectRef(operation.target);
         return foundation::Result<effects::EffectPrepareResult>::Success(
-            {service_.Find(id) != nullptr && payload.Value().tag.IsValid() ? effects::EffectPrepareDisposition::Accepted
+            {service_.Find(id).has_value() && payload.Value().tag.IsValid() ? effects::EffectPrepareDisposition::Accepted
                                                                            : effects::EffectPrepareDisposition::InvalidTarget,
              {}});
     }
@@ -466,11 +466,7 @@ foundation::Result<void> StateQueryAdapter::RegisterProviders()
     auto get_entity = queries_.RegisterProvider<GetEntityQuery>(
         "framework.query.entities.get", capabilities,
         [this](const GetEntityQuery& query, const queries::QueryContext&) {
-            std::optional<entities::EntityRecord> value;
-            if (const auto* record = entities_.Find(query.id))
-            {
-                value = *record;
-            }
+            auto value = entities_.Find(query.id);
             queries::QueryMetadata metadata;
             metadata.revision = entities_.CurrentRevision();
             metadata.coverage = queries::QueryCoverage::Complete;
@@ -793,8 +789,8 @@ effects::EffectTargetState EntityTargetStateProvider::Resolve(GameplayObjectRef 
     {
         return effects::EffectTargetState{true, false, false};
     }
-    const auto* record = entities_.Find(entities::EntityService::FromGameplayObjectRef(target));
-    if (record == nullptr)
+    const auto record = entities_.Find(entities::EntityService::FromGameplayObjectRef(target));
+    if (!record)
     {
         return effects::EffectTargetState{false, false, false};
     }
@@ -882,7 +878,11 @@ foundation::Result<std::uint64_t> StateLifecycleAdapter::ProcessEntityChanges(Ga
         const auto effective_context = change.context.tick.IsValid() ? change.context : context;
         if (change.kind == entities::EntityChangeKind::Destroyed)
         {
-            [[maybe_unused]] const auto removed_materials = materials_.RemoveSubject(ref, effective_context);
+            const auto removed_materials = materials_.RemoveSubject(ref, effective_context);
+            if (!removed_materials)
+            {
+                return foundation::Result<std::uint64_t>::Failure(removed_materials.GetError());
+            }
             [[maybe_unused]] const auto removed_conditions = conditions_.RemoveSubject(
                 ref, conditions::ConditionRemovalReason::SubjectDestroyed, effective_context);
             [[maybe_unused]] const auto cancelled_effects = effects_.CancelDeferredTargeting(ref, effective_context);

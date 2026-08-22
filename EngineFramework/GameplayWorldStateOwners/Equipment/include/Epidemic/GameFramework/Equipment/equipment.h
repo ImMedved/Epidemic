@@ -1,9 +1,11 @@
 #pragma once
 #include "Epidemic/Foundation/result.h"
+#include "Epidemic/Foundation/error.h"
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -73,7 +75,7 @@ enum class EquipmentChangeKind
     BindingCreated,
     BindingRemoved,
     BindingStateChanged,
-    LoadoutActivated
+    LoadoutSaved
 };
 struct EquipmentGrantDescriptor
 {
@@ -90,10 +92,24 @@ struct EquipmentSlotDefinition
     TypeId conflict_group{};
     Revision revision{};
 };
+struct EquipmentProfileDefinition
+{
+    EquipmentProfileDefinitionId id{};
+    std::string canonical_name;
+    std::vector<EquipmentSlotDefinition> slots;
+};
+struct EquipmentGrantSchema
+{
+    EquipmentGrantTypeId type{};
+    TypeId payload_type{};
+    std::uint32_t schema_version = 1;
+    std::size_t max_payload_bytes = 0;
+};
 struct EquipmentProfile
 {
     EquipmentProfileId id{};
     GameplayObjectRef subject{};
+    EquipmentProfileDefinitionId definition{};
     std::vector<EquipmentSlotDefinition> slots;
     Revision revision{};
 };
@@ -103,6 +119,7 @@ struct EquipmentItemDescriptor
     GameplayTagSet tags;
     Revision revision{};
     bool available = false;
+    std::vector<EquipmentGrantDescriptor> grants;
 };
 struct EquipmentBinding
 {
@@ -142,6 +159,10 @@ struct EquipmentChange
     EquipmentItemId item{};
     GameplayContext context{};
     Revision revision{};
+    std::vector<EquipmentSlotId> slots;
+    std::vector<EquipmentGrantDescriptor> grants;
+    EquipmentBindingState old_state = EquipmentBindingState::Active;
+    EquipmentBindingState new_state = EquipmentBindingState::Active;
 };
 struct EquipmentSnapshot
 {
@@ -172,6 +193,22 @@ class IEquipmentItemProvider
                                                                        GameplayContext context) = 0;
     [[nodiscard]] virtual foundation::Result<void> ReleaseFromEquipment(EquipmentItemId item, GameplayObjectRef subject,
                                                                         GameplayContext context) = 0;
+    // Override when the backing item owner can atomically exchange several equipment reservations.
+    // The default path safely supports zero/one released binding and refuses larger swaps before mutation.
+    [[nodiscard]] virtual foundation::Result<void> ExchangeEquipmentReservations(
+        std::span<const EquipmentItemId> release_items,
+        std::optional<EquipmentItemId> reserve_item,
+        GameplayObjectRef subject,
+        GameplayContext context)
+    {
+        if (!release_items.empty())
+            return foundation::Result<void>::Failure(foundation::Error::Create(
+                "gameplay.equipment.atomic_exchange_unsupported",
+                "item provider must override atomic exchange before replacing existing equipment bindings"));
+        if (reserve_item.has_value())
+            return ReserveForEquipment(*reserve_item, subject, context);
+        return foundation::Result<void>::Success();
+    }
 };
 
 class EquipmentService
@@ -186,10 +223,17 @@ class EquipmentService
     {
         item_provider_ = provider;
     }
+    [[nodiscard]] foundation::Result<EquipmentProfileDefinitionId> RegisterProfileDefinition(EquipmentProfileDefinition definition);
+    [[nodiscard]] foundation::Result<void> RegisterGrantSchema(EquipmentGrantSchema schema);
+    void Freeze() noexcept { frozen_ = true; }
+    [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
     [[nodiscard]] foundation::Result<EquipmentProfileId> CreateProfile(EquipmentProfile profile);
+    [[nodiscard]] foundation::Result<EquipmentProfileId> CreateProfileFromDefinition(GameplayObjectRef subject, EquipmentProfileDefinitionId definition);
     [[nodiscard]] foundation::Result<EquipmentSlotId> AddSlot(EquipmentProfileId profile, EquipmentSlotDefinition slot);
     [[nodiscard]] const EquipmentProfile *FindProfile(GameplayObjectRef subject) const noexcept;
     [[nodiscard]] const EquipmentBinding *FindBinding(EquipmentBindingId id) const noexcept;
+    [[nodiscard]] std::optional<EquipmentProfile> FindProfileCopy(GameplayObjectRef subject) const noexcept;
+    [[nodiscard]] std::optional<EquipmentBinding> FindBindingCopy(EquipmentBindingId id) const noexcept;
     [[nodiscard]] foundation::Result<EquipPlan> PrepareEquip(GameplayObjectRef subject, EquipmentItemId item,
                                                              std::vector<EquipmentSlotId> slots,
                                                              GameplayContext context = {});
@@ -217,7 +261,13 @@ class EquipmentService
     [[nodiscard]] EquipmentProfile *MutableProfile(EquipmentProfileId id) noexcept;
     [[nodiscard]] bool SlotAccepts(const EquipmentSlotDefinition &slot,
                                    const EquipmentItemDescriptor &item) const noexcept;
+    [[nodiscard]] std::vector<EquipmentBindingId> ComputeConflicts(const EquipmentProfile& profile, GameplayObjectRef subject,
+                                                                    const std::vector<EquipmentSlotId>& slots) const;
+    [[nodiscard]] bool ValidateGrants(const std::vector<EquipmentGrantDescriptor>& grants) const;
     Revision revision_{};
+    bool frozen_ = false;
+    std::unordered_map<EquipmentProfileDefinitionId, EquipmentProfileDefinition, IdHash> profile_definitions_;
+    std::unordered_map<EquipmentGrantTypeId, EquipmentGrantSchema, IdHash> grant_schemas_;
     std::unordered_map<EquipmentProfileId, EquipmentProfile, IdHash> profiles_;
     std::unordered_map<GameplayObjectRef, EquipmentProfileId> profile_by_subject_;
     std::unordered_map<EquipmentBindingId, EquipmentBinding, IdHash> bindings_;

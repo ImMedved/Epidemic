@@ -17,6 +17,8 @@
 #include <typeindex>
 #include <unordered_map>
 #include <utility>
+#include <vector>
+#include <algorithm>
 
 namespace epidemic::gameplay::queries
 {
@@ -61,6 +63,22 @@ struct QueryContext
     QueryConsistency consistency = QueryConsistency::Current;
     QueryRequirements requirements{};
     QueryBudget budget{};
+    std::uint64_t snapshot_epoch = 0;
+};
+
+struct QuerySnapshotReadEpoch
+{
+    std::uint64_t value = 0;
+    std::shared_ptr<const void> lease{};
+
+    [[nodiscard]] bool IsValid() const noexcept { return value != 0 && lease != nullptr; }
+};
+
+class IQuerySnapshotCoordinator
+{
+  public:
+    virtual ~IQuerySnapshotCoordinator() = default;
+    [[nodiscard]] virtual foundation::Result<QuerySnapshotReadEpoch> AcquireReadEpoch(GameplayTickId tick) const = 0;
 };
 
 struct QueryMetadata
@@ -273,6 +291,7 @@ struct QueryServiceState
 {
     std::unordered_map<QueryTypeId, std::shared_ptr<IQueryProvider>> providers;
     std::unordered_map<QueryTypeId, std::string> names;
+    std::vector<QueryTypeId> provider_order;
     std::atomic<std::uint64_t> next_query_id{1};
     std::atomic<std::uint64_t> executed{0};
     std::atomic<std::uint64_t> failed{0};
@@ -348,7 +367,33 @@ class GameplayQueryService
             std::move(execute_snapshot));
     }
 
-    void Freeze() noexcept { frozen_ = true; }
+    [[nodiscard]] foundation::Result<void> SetSnapshotCoordinator(const IQuerySnapshotCoordinator* coordinator)
+    {
+        if (frozen_)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.registry_frozen", "query snapshot coordinator cannot change after Freeze"));
+        }
+        if (coordinator == nullptr)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.query_snapshot_coordinator_invalid", "query snapshot coordinator must be valid"));
+        }
+        snapshot_coordinator_ = coordinator;
+        return foundation::Result<void>::Success();
+    }
+
+    void Freeze() noexcept
+    {
+        state_->provider_order.clear();
+        state_->provider_order.reserve(state_->providers.size());
+        for (const auto& [type, _] : state_->providers)
+        {
+            state_->provider_order.push_back(type);
+        }
+        std::sort(state_->provider_order.begin(), state_->provider_order.end());
+        frozen_ = true;
+    }
     [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
     [[nodiscard]] std::size_t ProviderCount() const noexcept { return state_->providers.size(); }
 
@@ -362,9 +407,47 @@ class GameplayQueryService
         }
 
         context.consistency = QueryConsistency::Snapshot;
-        auto views = std::make_shared<QuerySnapshot::SnapshotMap>();
-        for (const auto& [type, provider] : state_->providers)
+        bool has_snapshot_provider = false;
+        for (const auto type : state_->provider_order)
         {
+            const auto found = state_->providers.find(type);
+            if (found != state_->providers.end() && found->second->Capabilities().supports_snapshot)
+            {
+                has_snapshot_provider = true;
+                break;
+            }
+        }
+        QuerySnapshotReadEpoch epoch;
+        if (has_snapshot_provider)
+        {
+            if (snapshot_coordinator_ == nullptr)
+            {
+                ++state_->failed;
+                return foundation::Result<QuerySnapshot>::Failure(
+                    foundation::Error::Create("gameplay.query_snapshot_coordinator_missing",
+                                              "coherent snapshots require a configured read-epoch coordinator"));
+            }
+            auto acquired = snapshot_coordinator_->AcquireReadEpoch(context.tick);
+            if (!acquired || !acquired.Value().IsValid())
+            {
+                ++state_->failed;
+                return foundation::Result<QuerySnapshot>::Failure(
+                    acquired ? foundation::Error::Create("gameplay.query_snapshot_epoch_invalid", "snapshot coordinator returned an invalid epoch")
+                             : acquired.GetError());
+            }
+            epoch = std::move(acquired).Value();
+            context.snapshot_epoch = epoch.value;
+        }
+
+        auto views = std::make_shared<QuerySnapshot::SnapshotMap>();
+        for (const auto type : state_->provider_order)
+        {
+            const auto found = state_->providers.find(type);
+            if (found == state_->providers.end())
+            {
+                continue;
+            }
+            const auto& provider = found->second;
             const auto capabilities = provider->Capabilities();
             if (!capabilities.supports_snapshot)
             {
@@ -579,6 +662,7 @@ class GameplayQueryService
     [[nodiscard]] static bool RequirementsSatisfied(QueryMetadata metadata, QueryRequirements requirements) noexcept;
 
     std::shared_ptr<detail::QueryServiceState> state_ = std::make_shared<detail::QueryServiceState>();
+    const IQuerySnapshotCoordinator* snapshot_coordinator_ = nullptr;
     bool frozen_ = false;
 };
 } // namespace epidemic::gameplay::queries

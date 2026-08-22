@@ -27,34 +27,55 @@ RandomSequence::RandomSequence(RandomSequenceSnapshot snapshot) noexcept
 {
 }
 
-std::uint64_t RandomSequence::NextU64() noexcept
+std::optional<std::uint64_t> RandomSequence::TryNextU64() noexcept
 {
-    assert(!IsExhausted());
-    const auto counter = sequence_;
-    if (!IsExhausted())
+    if (IsExhausted())
     {
-        ++sequence_;
+        return std::nullopt;
     }
+    const auto counter = sequence_;
+    ++sequence_;
     return StableMix(seed_.value ^ StableMix(stream_.id.Raw()) ^ StableMix(counter));
 }
 
-std::uint64_t RandomSequence::Uniform(std::uint64_t exclusive_max) noexcept
+std::uint64_t RandomSequence::NextU64() noexcept
 {
-    assert(exclusive_max != 0);
-    if (exclusive_max <= 1)
+    const auto value = TryNextU64();
+    assert(value.has_value());
+    return value.value_or(0);
+}
+
+std::optional<std::uint64_t> RandomSequence::TryUniform(std::uint64_t exclusive_max) noexcept
+{
+    if (exclusive_max == 0)
     {
-        return 0;
+        return std::nullopt;
+    }
+    if (exclusive_max == 1)
+    {
+        return std::uint64_t{0};
     }
 
     const auto limit = UINT64_MAX - (UINT64_MAX % exclusive_max);
     for (;;)
     {
-        const auto value = NextU64();
-        if (value < limit)
+        const auto value = TryNextU64();
+        if (!value)
         {
-            return value % exclusive_max;
+            return std::nullopt;
+        }
+        if (*value < limit)
+        {
+            return *value % exclusive_max;
         }
     }
+}
+
+std::uint64_t RandomSequence::Uniform(std::uint64_t exclusive_max) noexcept
+{
+    const auto value = TryUniform(exclusive_max);
+    assert(value.has_value());
+    return value.value_or(0);
 }
 
 std::uint64_t RandomSequence::UniformRange(std::uint64_t minimum, std::uint64_t maximum_exclusive) noexcept

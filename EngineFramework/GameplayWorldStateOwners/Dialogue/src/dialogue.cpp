@@ -27,16 +27,15 @@ bool SameObject(GameplayObjectRef a, GameplayObjectRef b) noexcept
 }
 GameplayContext MergeContext(GameplayContext base, const GameplayContext &overlay) noexcept
 {
-    if (overlay.actor.IsValid())
-        base.actor = overlay.actor;
-    if (overlay.instigator.IsValid())
-        base.instigator = overlay.instigator;
-    if (overlay.source.IsValid())
-        base.source = overlay.source;
-    if (overlay.correlation.IsValid())
-        base.correlation = overlay.correlation;
-    if (overlay.time.ticks != 0)
-        base.time = overlay.time;
+    if (overlay.tick.value != 0) base.tick = overlay.tick;
+    if (overlay.time.ticks != 0) base.time = overlay.time;
+    if (overlay.actor.IsValid()) base.actor = overlay.actor;
+    if (overlay.instigator.IsValid()) base.instigator = overlay.instigator;
+    if (overlay.source.IsValid()) base.source = overlay.source;
+    if (overlay.operation.IsValid()) base.operation = overlay.operation;
+    if (overlay.correlation.IsValid()) base.correlation = overlay.correlation;
+    if (overlay.parent_operation.IsValid()) base.parent_operation = overlay.parent_operation;
+    if (overlay.cause_event.IsValid()) base.cause_event = overlay.cause_event;
     return base;
 }
 } // namespace
@@ -200,7 +199,8 @@ std::optional<ConversationSession> DialogueService::GetSession(ConversationSessi
 GameplayObjectRef DialogueService::ResolveRole(const ConversationSession &s, TypeId role) const noexcept
 {
     if (!role.IsValid())
-        return s.current_speaker.IsValid() ? s.current_speaker : (!s.participants.empty() ? s.participants.front() : GameplayObjectRef{});
+        return s.current_speaker.IsValid() ? s.current_speaker :
+               (!s.participant_bindings.empty() ? s.participant_bindings.front().object : GameplayObjectRef{});
     auto it = std::find_if(s.participant_bindings.begin(), s.participant_bindings.end(),
                            [role](const auto &p) { return p.role == role; });
     return it == s.participant_bindings.end() ? GameplayObjectRef{} : it->object;
@@ -209,14 +209,14 @@ DialogueConditionContext DialogueService::MakeConditionContext(const Conversatio
                                                                GameplayObjectRef actor) const noexcept
 {
     GameplayObjectRef listener{};
-    for (auto p : s.participants)
-        if (!SameObject(p, actor))
-        {
-            listener = p;
-            break;
-        }
+    if (s.current_speaker.IsValid() && !SameObject(s.current_speaker, actor))
+        listener = s.current_speaker;
+    else
+        for (const auto& participant : s.participant_bindings)
+            if (!SameObject(participant.object, actor)) { listener = participant.object; break; }
     return {s.id, actor, listener, s.context};
 }
+
 bool DialogueService::ConditionsPass(const std::vector<TypeId> &ids, const DialogueConditionContext &ctx) const
 {
     for (auto id : ids)
@@ -297,7 +297,8 @@ void DialogueService::CommitPreparedConsequences(std::vector<DialogueConsequence
     }
 }
 foundation::Result<void> DialogueService::EnterNode(ConversationSession &s, DialogueNodeId node,
-                                                    GameplayContext context)
+                                                    GameplayContext context,
+                                                    std::optional<std::vector<DialogueConsequenceExecution>> prepared_consequences)
 {
     const auto *d = GetDefinition(s.definition);
     const auto *n = d ? FindNode(*d, node) : nullptr;
@@ -309,9 +310,15 @@ foundation::Result<void> DialogueService::EnterNode(ConversationSession &s, Dial
     if (!ConditionsPass(n->conditions, MakeConditionContext(s, speaker)))
         return foundation::Result<void>::Failure(
             Error("gameplay.dialogue.node_unavailable", "dialogue node conditions failed"));
-    auto consequences = PrepareConsequences(s.id, n->consequences, node, {}, MergeContext(s.context.gameplay, context));
-    if (!consequences)
-        return foundation::Result<void>::Failure(consequences.GetError());
+    std::vector<DialogueConsequenceExecution> consequences;
+    if (prepared_consequences.has_value())
+        consequences = std::move(*prepared_consequences);
+    else
+    {
+        auto prepared = PrepareConsequences(s.id, n->consequences, node, {}, MergeContext(s.context.gameplay, context));
+        if (!prepared) return foundation::Result<void>::Failure(prepared.GetError());
+        consequences = std::move(prepared.Value());
+    }
     const bool was_active = !IsTerminal(s.state);
     Bump();
     s.current_speaker = speaker;
@@ -320,7 +327,7 @@ foundation::Result<void> DialogueService::EnterNode(ConversationSession &s, Dial
                   ? (n->automatic_next.IsValid() ? ConversationState::Active : ConversationState::Completed)
                   : ConversationState::WaitingForChoice;
     s.revision = revision_;
-    CommitPreparedConsequences(std::move(consequences.Value()));
+    CommitPreparedConsequences(std::move(consequences));
     DialogueChange entered;
     entered.kind = DialogueChangeKind::NodeEntered;
     entered.session = s.id;
@@ -429,12 +436,13 @@ std::vector<DialogueOptionDefinition> DialogueService::GetAvailableOptions(Conve
     const auto *n = d ? FindNode(*d, s->current_node) : nullptr;
     if (!s || !n || s->state != ConversationState::WaitingForChoice || !actor.IsValid())
         return out;
-    if (std::none_of(s->participants.begin(), s->participants.end(), [actor](auto p) { return SameObject(p, actor); }))
+    if (std::none_of(s->participant_bindings.begin(), s->participant_bindings.end(),
+                     [actor](const auto& p) { return SameObject(p.object, actor); }))
         return out;
     auto ctx = MakeConditionContext(*s, actor);
     for (const auto &o : n->options)
         if ((o.repeat_policy == DialogueOptionRepeatPolicy::Repeatable ||
-             !s->resolved_persistent_options.contains(o.id.value)) &&
+             std::find(s->resolved_persistent_options.begin(), s->resolved_persistent_options.end(), o.id.value) == s->resolved_persistent_options.end()) &&
             ConditionsPass(o.conditions, ctx))
             out.push_back(o);
     std::sort(out.begin(), out.end(), [](auto &a, auto &b) { return a.id < b.id; });
@@ -447,7 +455,8 @@ foundation::Result<void> DialogueService::SelectOption(ConversationSessionId id,
     if (it == sessions_.end() || it->second.state != ConversationState::WaitingForChoice)
         return foundation::Result<void>::Failure(
             Error("gameplay.dialogue.session_not_waiting", "conversation is not waiting for a choice"));
-    if (std::none_of(it->second.participants.begin(), it->second.participants.end(), [actor](auto p) { return SameObject(p, actor); }))
+    if (std::none_of(it->second.participant_bindings.begin(), it->second.participant_bindings.end(),
+                     [actor](const auto& p) { return SameObject(p.object, actor); }))
         return foundation::Result<void>::Failure(Error("gameplay.dialogue.actor_invalid", "actor is not a participant"));
     const auto *d = GetDefinition(it->second.definition);
     const auto *n = d ? FindNode(*d, it->second.current_node) : nullptr;
@@ -456,10 +465,11 @@ foundation::Result<void> DialogueService::SelectOption(ConversationSessionId id,
     auto oit = std::find_if(n->options.begin(), n->options.end(), [option](const auto &o) { return o.id == option; });
     if (oit == n->options.end() ||
         (oit->repeat_policy == DialogueOptionRepeatPolicy::OncePerConversation &&
-         it->second.resolved_persistent_options.contains(option.value)) ||
+         std::find(it->second.resolved_persistent_options.begin(), it->second.resolved_persistent_options.end(), option.value) != it->second.resolved_persistent_options.end()) ||
         !ConditionsPass(oit->conditions, MakeConditionContext(it->second, actor)))
         return foundation::Result<void>::Failure(
             Error("gameplay.dialogue.option_unavailable", "dialogue option unavailable"));
+    std::optional<std::vector<DialogueConsequenceExecution>> next_prepared;
     if (oit->next_node.IsValid())
     {
         const auto *next = FindNode(*d, oit->next_node);
@@ -467,11 +477,10 @@ foundation::Result<void> DialogueService::SelectOption(ConversationSessionId id,
             return foundation::Result<void>::Failure(Error("gameplay.dialogue.node_missing", "dialogue node missing"));
         auto speaker = ResolveRole(it->second, next->speaker_role);
         if (!speaker.IsValid() || !ConditionsPass(next->conditions, MakeConditionContext(it->second, speaker)))
-            return foundation::Result<void>::Failure(
-                Error("gameplay.dialogue.node_unavailable", "dialogue node conditions failed"));
-        auto next_consequences = PrepareConsequences(id, next->consequences, next->id, {}, MergeContext(it->second.context.gameplay, context));
-        if (!next_consequences)
-            return foundation::Result<void>::Failure(next_consequences.GetError());
+            return foundation::Result<void>::Failure(Error("gameplay.dialogue.node_unavailable", "dialogue node conditions failed"));
+        auto prepared = PrepareConsequences(id, next->consequences, next->id, {}, MergeContext(it->second.context.gameplay, context));
+        if (!prepared) return foundation::Result<void>::Failure(prepared.GetError());
+        next_prepared = std::move(prepared.Value());
     }
     auto option_consequences = PrepareConsequences(id, oit->consequences, it->second.current_node, option,
                                                    MergeContext(it->second.context.gameplay, context));
@@ -479,7 +488,13 @@ foundation::Result<void> DialogueService::SelectOption(ConversationSessionId id,
         return foundation::Result<void>::Failure(option_consequences.GetError());
     Bump();
     if (oit->repeat_policy == DialogueOptionRepeatPolicy::OncePerConversation)
-        it->second.resolved_persistent_options.insert(option.value);
+        {
+            it->second.resolved_persistent_options.push_back(option.value);
+            std::sort(it->second.resolved_persistent_options.begin(), it->second.resolved_persistent_options.end());
+            it->second.resolved_persistent_options.erase(std::unique(it->second.resolved_persistent_options.begin(),
+                                                                     it->second.resolved_persistent_options.end()),
+                                                         it->second.resolved_persistent_options.end());
+        }
     it->second.revision = revision_;
     ++diagnostics_.options_selected;
     DialogueChange selected;
@@ -492,7 +507,7 @@ foundation::Result<void> DialogueService::SelectOption(ConversationSessionId id,
     Record(selected);
     CommitPreparedConsequences(std::move(option_consequences.Value()));
     if (oit->next_node.IsValid())
-        return EnterNode(it->second, oit->next_node, context);
+        return EnterNode(it->second, oit->next_node, context, std::move(next_prepared));
     it->second.state = ConversationState::Completed;
     if (diagnostics_.active_sessions > 0)
         --diagnostics_.active_sessions;
@@ -504,6 +519,7 @@ foundation::Result<void> DialogueService::SelectOption(ConversationSessionId id,
     completed.context = context;
     completed.revision = revision_;
     Record(completed);
+    MaybeCleanupTerminalSession(id);
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> DialogueService::Advance(ConversationSessionId id, GameplayContext context)
@@ -541,6 +557,7 @@ foundation::Result<void> DialogueService::Interrupt(ConversationSessionId id, Ty
     interrupted.context = context;
     interrupted.revision = revision_;
     Record(interrupted);
+    MaybeCleanupTerminalSession(id);
     return foundation::Result<void>::Success();
 }
 std::vector<DialogueConsequenceExecutionId> DialogueService::ExecutePendingConsequences(std::size_t budget)
@@ -603,6 +620,9 @@ std::vector<DialogueConsequenceExecutionId> DialogueService::ExecutePendingConse
             ++it;
     }
     diagnostics_.consequences = consequences_.size();
+    std::vector<ConversationSessionId> terminal_sessions;
+    for (const auto& [sid, session] : sessions_) if (IsTerminal(session.state)) terminal_sessions.push_back(sid);
+    for (const auto sid : terminal_sessions) MaybeCleanupTerminalSession(sid);
     return applied;
 }
 std::vector<DialogueChange> DialogueService::ChangesSince(std::uint64_t seq) const
@@ -654,6 +674,10 @@ foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
                     Error("gameplay.dialogue.restore_invalid", "invalid dialogue participant snapshot"));
             objects.push_back(p.object);
         }
+        std::sort(v.resolved_persistent_options.begin(), v.resolved_persistent_options.end());
+        if (std::adjacent_find(v.resolved_persistent_options.begin(), v.resolved_persistent_options.end()) != v.resolved_persistent_options.end())
+            return foundation::Result<void>::Failure(Error("gameplay.dialogue.restore_invalid", "duplicate resolved dialogue option"));
+        v.participants = objects;
         for (auto role : d->participant_roles)
             if (!roles.contains(role))
                 return foundation::Result<void>::Failure(
@@ -683,6 +707,15 @@ foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
     diagnostics_.consequences = consequences_.size();
     diagnostics_.definitions = definitions_.size();
     return foundation::Result<void>::Success();
+}
+void DialogueService::MaybeCleanupTerminalSession(ConversationSessionId id)
+{
+    const auto session = sessions_.find(id);
+    if (session == sessions_.end() || !IsTerminal(session->second.state)) return;
+    const bool has_live = std::any_of(consequences_.begin(), consequences_.end(), [&](const auto& pair){
+        return pair.second.session == id && IsLiveConsequence(pair.second.state);
+    });
+    if (!has_live) sessions_.erase(session);
 }
 DialogueDiagnostics DialogueService::GetDiagnostics() const noexcept
 {

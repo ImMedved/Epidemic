@@ -4,7 +4,9 @@
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -87,6 +89,13 @@ struct TraversalCapabilityId
     [[nodiscard]] constexpr bool operator==(const TraversalCapabilityId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const TraversalCapabilityId &) const noexcept = default;
 };
+struct TraversalCapabilityGrantId
+{
+    GameplayObjectId value{};
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr auto operator<=>(const TraversalCapabilityGrantId &) const noexcept = default;
+};
+
 struct TraversalCarrierRoleId
 {
     TypeId value{};
@@ -162,7 +171,11 @@ enum class TraversalChangeKind
     SessionCompleted,
     SessionCancelled,
     CarrierBoarded,
-    CarrierDisembarked
+    CarrierDisembarked,
+    CapabilityGranted,
+    CapabilityRevoked,
+    SessionSuspended,
+    SessionResumed
 };
 
 enum class TraversalResultKind
@@ -178,9 +191,30 @@ struct TraversalModeDefinition
     std::string canonical_name;
     GameplayTagSet tags;
     TraversalCapabilityId required_capability{};
+    Fixed required_capability_parameter_micro = 0;
     TraversalMaterializationPolicy materialization_policy = TraversalMaterializationPolicy::AbstractCapable;
     Fixed base_speed_micro = 1'000'000;
     Fixed acceleration_modifier_micro = 1'000'000;
+};
+
+struct TraversalCapabilityGrant
+{
+    TraversalCapabilityGrantId id{};
+    GameplayObjectRef subject{};
+    TraversalCapabilityId capability{};
+    GameplayObjectRef source{};
+    Fixed parameter_micro = 1'000'000;
+    std::optional<GameplayTimePoint> expires_at{};
+    bool persistent = true;
+    Revision revision{};
+};
+
+class ITraversalMaterializationProvider
+{
+  public:
+    virtual ~ITraversalMaterializationProvider() = default;
+    [[nodiscard]] virtual bool IsMaterialized(GameplayObjectRef subject) const noexcept = 0;
+    [[nodiscard]] virtual bool HasRuntimeProjection(GameplayObjectRef subject) const noexcept = 0;
 };
 
 struct TraversalProfile
@@ -266,14 +300,28 @@ struct TraversalChange
     TraversalReasonId reason{};
     GameplayContext context{};
     Revision revision{};
+    TraversalCapabilityId capability{};
+    TraversalCapabilityGrantId capability_grant{};
+};
+struct TraversalChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<TraversalChange> changes;
 };
 struct TraversalSnapshot
 {
     std::vector<TraversalState> states;
     std::vector<TraversalSession> sessions;
+    std::vector<TraversalRoute> routes;
+    std::vector<TraversalCapabilityGrant> capability_grants;
     std::vector<TraversalCarrierBinding> carrier_bindings;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot session_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot route_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot capability_grant_ids{};
     Revision revision{};
+    std::vector<TraversalChange> journal;
+    std::uint64_t next_change_sequence = 1;
 };
 struct TraversalDiagnostics
 {
@@ -301,6 +349,13 @@ class TraversalService
     }
     [[nodiscard]] const TraversalModeDefinition *FindMode(TraversalModeId id) const noexcept;
     [[nodiscard]] const TraversalProfile *FindProfile(TraversalProfileId id) const noexcept;
+    void SetMaterializationProvider(const ITraversalMaterializationProvider *provider) noexcept { materialization_ = provider; }
+
+    [[nodiscard]] foundation::Result<TraversalCapabilityGrantId> GrantCapability(TraversalCapabilityGrant grant, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RevokeCapability(TraversalCapabilityGrantId grant, GameplayContext context = {});
+    [[nodiscard]] std::uint64_t RevokeCapabilitiesBySource(GameplayObjectRef subject, GameplayObjectRef source, GameplayContext context = {});
+    [[nodiscard]] std::uint64_t ExpireCapabilities(GameplayTimePoint now, GameplayContext context = {});
+    [[nodiscard]] bool HasCapability(GameplayObjectRef subject, TraversalCapabilityId capability, Fixed min_parameter_micro = 0) const noexcept;
 
     [[nodiscard]] foundation::Result<void> AssignProfile(GameplayObjectRef subject, TraversalProfileId profile,
                                                          GameplayContext context = {});
@@ -312,6 +367,8 @@ class TraversalService
                                                                       TraversalRouteId route = {},
                                                                       GameplayTimePoint started_at = {},
                                                                       GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> SuspendSession(TraversalSessionId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ResumeSession(TraversalSessionId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CompleteSession(TraversalSessionId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CancelSession(TraversalSessionId id, TraversalReasonId reason = {},
                                                          GameplayContext context = {});
@@ -326,6 +383,7 @@ class TraversalService
     [[nodiscard]] std::vector<TraversalState> FindSubjectsUsingMode(TraversalModeId mode) const;
     [[nodiscard]] std::vector<TraversalCarrierBinding> FindCarrierPassengers(GameplayObjectRef carrier) const;
     [[nodiscard]] std::vector<TraversalChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] TraversalChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
     {
         return next_change_sequence_ - 1;
@@ -342,8 +400,8 @@ class TraversalService
     [[nodiscard]] TraversalState *FindMutableState(GameplayObjectRef subject) noexcept;
     [[nodiscard]] TraversalSession *FindMutableSession(TraversalSessionId id) noexcept;
     [[nodiscard]] bool ProfileAllows(const TraversalProfile &profile, TraversalModeId mode) const noexcept;
-    [[nodiscard]] bool ProfileHasCapability(const TraversalProfile &profile,
-                                            TraversalCapabilityId capability) const noexcept;
+    [[nodiscard]] bool ProfileHasCapability(const TraversalProfile &profile, TraversalCapabilityId capability) const noexcept;
+    [[nodiscard]] bool IsLiveSession(TraversalSessionState state) const noexcept;
     void Bump() noexcept
     {
         ++revision_.value;
@@ -355,11 +413,16 @@ class TraversalService
     std::unordered_map<GameplayObjectRef, TraversalState, RefHash> states_;
     std::unordered_map<TraversalSessionId, TraversalSession, IdHash> sessions_;
     std::unordered_map<TraversalRouteId, TraversalRoute, IdHash> routes_;
+    std::unordered_map<TraversalCapabilityGrantId, TraversalCapabilityGrant, IdHash> capability_grants_;
     std::unordered_map<GameplayObjectRef, TraversalCarrierBinding, RefHash> carrier_by_passenger_;
     MonotonicIdGenerator<GameplayObjectId> session_ids_;
+    MonotonicIdGenerator<GameplayObjectId> route_ids_;
+    MonotonicIdGenerator<GameplayObjectId> capability_grant_ids_;
+    const ITraversalMaterializationProvider *materialization_ = nullptr;
     Revision revision_{};
     bool frozen_ = false;
-    std::vector<TraversalChange> changes_;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+    std::deque<TraversalChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     std::uint64_t mode_changes_ = 0, rejected_mode_changes_ = 0, boarding_ops_ = 0;
 };

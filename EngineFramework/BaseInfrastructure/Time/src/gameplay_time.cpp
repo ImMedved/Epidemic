@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <limits>
+#include <set>
+#include <unordered_set>
 
 namespace epidemic::gameplay::time
 {
@@ -111,17 +113,34 @@ foundation::Result<void> GameplayTimeService::AdvanceClock(ClockId clock, Gamepl
     {
         return foundation::Result<void>::Success();
     }
-    if (real_delta.ticks > std::numeric_limits<std::int64_t>::max() / static_cast<std::int64_t>(found->second.time_scale_milli))
+
+    const auto scale = static_cast<std::int64_t>(found->second.time_scale_milli);
+    const auto whole_real = real_delta.ticks / 1000;
+    const auto remainder_real = real_delta.ticks % 1000;
+    if (whole_real != 0 && scale > std::numeric_limits<std::int64_t>::max() / whole_real)
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.time_overflow", "scaled clock delta overflows gameplay time"));
     }
-    const GameplayDuration scaled{(real_delta.ticks * static_cast<std::int64_t>(found->second.time_scale_milli)) / 1000};
+    const auto scaled_whole = whole_real * scale;
+    const auto fractional_numerator = remainder_real * scale + static_cast<std::int64_t>(found->second.fractional_milli);
+    const auto scaled_fraction = fractional_numerator / 1000;
+    if (scaled_whole > std::numeric_limits<std::int64_t>::max() - scaled_fraction)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "scaled clock delta overflows gameplay time"));
+    }
+    const GameplayDuration scaled{scaled_whole + scaled_fraction};
+    const auto new_fractional = static_cast<std::uint32_t>(fractional_numerator % 1000);
     const auto advanced = CheckedAdd(found->second.now, scaled);
     if (!advanced)
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.time_overflow", "clock advance overflows gameplay time"));
+    }
+    if (*advanced == found->second.now && new_fractional == found->second.fractional_milli)
+    {
+        return foundation::Result<void>::Success();
     }
     const auto next_revision = CheckedNext(found->second.revision);
     if (!next_revision)
@@ -130,6 +149,7 @@ foundation::Result<void> GameplayTimeService::AdvanceClock(ClockId clock, Gamepl
             foundation::Error::Create("gameplay.revision_exhausted", "clock revision is exhausted"));
     }
     found->second.now = *advanced;
+    found->second.fractional_milli = new_fractional;
     found->second.revision = *next_revision;
     return foundation::Result<void>::Success();
 }
@@ -158,6 +178,7 @@ foundation::Result<void> GameplayTimeService::AdvanceTo(ClockId clock, GameplayT
             foundation::Error::Create("gameplay.revision_exhausted", "clock revision is exhausted"));
     }
     found->second.now = now;
+    found->second.fractional_milli = 0;
     found->second.revision = *next_revision;
     return foundation::Result<void>::Success();
 }
@@ -213,9 +234,26 @@ foundation::Result<void> GameplayTimeService::SetTimeScale(ClockId clock, std::u
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> GameplayTimeService::SynchronizeClock(ClockId clock, GameplayTimePoint now, Revision)
+foundation::Result<void> GameplayTimeService::SynchronizeClock(ClockId clock, GameplayTimePoint now, Revision source_revision)
 {
-    return AdvanceTo(clock, now);
+    if (!source_revision.value)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.clock_sync_revision_invalid", "clock synchronization requires a non-zero source revision"));
+    }
+    const auto previous = synchronization_revisions_.find(clock);
+    if (previous != synchronization_revisions_.end() && source_revision <= previous->second)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.clock_sync_stale", "clock synchronization source revision is stale"));
+    }
+    auto advanced = AdvanceTo(clock, now);
+    if (!advanced)
+    {
+        return advanced;
+    }
+    synchronization_revisions_[clock] = source_revision;
+    return foundation::Result<void>::Success();
 }
 
 std::optional<ClockState> GameplayTimeService::GetClock(ClockId clock) const noexcept
@@ -223,12 +261,6 @@ std::optional<ClockState> GameplayTimeService::GetClock(ClockId clock) const noe
     const auto found = clocks_.find(clock);
     return found == clocks_.end() ? std::nullopt : std::optional<ClockState>{found->second};
 }
-const ClockState* GameplayTimeService::FindClock(ClockId clock) const noexcept
-{
-    const auto found = clocks_.find(clock);
-    return found == clocks_.end() ? nullptr : &found->second;
-}
-
 std::optional<ClockDefinition> GameplayTimeService::GetClockDefinition(ClockId clock) const noexcept
 {
     const auto found = clock_definitions_.find(clock);
@@ -238,6 +270,112 @@ const ClockDefinition* GameplayTimeService::FindClockDefinition(ClockId clock) c
 {
     const auto found = clock_definitions_.find(clock);
     return found == clock_definitions_.end() ? nullptr : &found->second;
+}
+
+foundation::Result<void> GameplayTimeService::ValidateCalendarDate(ClockId clock, const CalendarDate& date) const
+{
+    const auto* definition = FindClockDefinition(clock);
+    if (definition == nullptr || !definition->calendar.has_value())
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.calendar_unavailable", "clock has no calendar definition"));
+    }
+    const auto& calendar = *definition->calendar;
+    if (date.year < 1 || date.month == 0 || date.month > calendar.months_per_year || date.day == 0 ||
+        date.day > calendar.days_per_month || date.hour >= calendar.hours_per_day || date.minute >= 60 || date.second >= 60)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.calendar_date_invalid", "calendar date is outside the clock calendar range"));
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<GameplayTimePoint> GameplayTimeService::ToGameplayTime(ClockId clock, const CalendarDate& date) const
+{
+    const auto valid = ValidateCalendarDate(clock, date);
+    if (!valid)
+    {
+        return foundation::Result<GameplayTimePoint>::Failure(valid.GetError());
+    }
+    const auto& calendar = *FindClockDefinition(clock)->calendar;
+    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(calendar.hours_per_day), kSecondsPerHour);
+    const auto days_per_year = CheckedMultiply(static_cast<std::int64_t>(calendar.days_per_month),
+                                                static_cast<std::int64_t>(calendar.months_per_year));
+    if (!seconds_per_day || !days_per_year)
+    {
+        return foundation::Result<GameplayTimePoint>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar dimensions overflow gameplay time"));
+    }
+    const auto year_index = date.year - 1;
+    if (year_index != 0 && *days_per_year > std::numeric_limits<std::int64_t>::max() / year_index)
+    {
+        return foundation::Result<GameplayTimePoint>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar year overflows gameplay time"));
+    }
+    auto day_index = year_index * *days_per_year;
+    const auto month_days = static_cast<std::int64_t>(date.month - 1) * static_cast<std::int64_t>(calendar.days_per_month);
+    if (day_index > std::numeric_limits<std::int64_t>::max() - month_days - static_cast<std::int64_t>(date.day - 1))
+    {
+        return foundation::Result<GameplayTimePoint>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar date overflows gameplay time"));
+    }
+    day_index += month_days + static_cast<std::int64_t>(date.day - 1);
+    if (day_index != 0 && *seconds_per_day > std::numeric_limits<std::int64_t>::max() / day_index)
+    {
+        return foundation::Result<GameplayTimePoint>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar date overflows gameplay time"));
+    }
+    const auto second_of_day = static_cast<std::int64_t>(date.hour) * kSecondsPerHour +
+                               static_cast<std::int64_t>(date.minute) * kSecondsPerMinute + date.second;
+    const auto base = day_index * *seconds_per_day;
+    if (base > std::numeric_limits<std::int64_t>::max() - second_of_day)
+    {
+        return foundation::Result<GameplayTimePoint>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar date overflows gameplay time"));
+    }
+    return foundation::Result<GameplayTimePoint>::Success(GameplayTimePoint{base + second_of_day});
+}
+
+foundation::Result<CalendarDate> GameplayTimeService::ToCalendarDate(ClockId clock, GameplayTimePoint time) const
+{
+    const auto* definition = FindClockDefinition(clock);
+    if (definition == nullptr || !definition->calendar.has_value())
+    {
+        return foundation::Result<CalendarDate>::Failure(
+            foundation::Error::Create("gameplay.calendar_unavailable", "clock has no calendar definition"));
+    }
+    if (time.ticks < 0)
+    {
+        return foundation::Result<CalendarDate>::Failure(
+            foundation::Error::Create("gameplay.calendar_time_invalid", "negative gameplay time cannot be represented by this calendar"));
+    }
+    const auto& calendar = *definition->calendar;
+    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(calendar.hours_per_day), kSecondsPerHour);
+    const auto days_per_year = CheckedMultiply(static_cast<std::int64_t>(calendar.days_per_month),
+                                                static_cast<std::int64_t>(calendar.months_per_year));
+    if (!seconds_per_day || !days_per_year)
+    {
+        return foundation::Result<CalendarDate>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar dimensions overflow gameplay time"));
+    }
+    const auto day_index = time.ticks / *seconds_per_day;
+    const auto second_of_day = time.ticks % *seconds_per_day;
+    const auto year_index = day_index / *days_per_year;
+    if (year_index == std::numeric_limits<std::int64_t>::max())
+    {
+        return foundation::Result<CalendarDate>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar year cannot be represented"));
+    }
+    const auto day_of_year = day_index % *days_per_year;
+    CalendarDate date;
+    date.year = year_index + 1;
+    date.month = static_cast<std::uint32_t>(day_of_year / calendar.days_per_month) + 1;
+    date.day = static_cast<std::uint32_t>(day_of_year % calendar.days_per_month) + 1;
+    date.hour = static_cast<std::uint32_t>(second_of_day / kSecondsPerHour);
+    const auto within_hour = second_of_day % kSecondsPerHour;
+    date.minute = static_cast<std::uint32_t>(within_hour / kSecondsPerMinute);
+    date.second = static_cast<std::uint32_t>(within_hour % kSecondsPerMinute);
+    return foundation::Result<CalendarDate>::Success(date);
 }
 
 foundation::Result<void> GameplayTimeService::ValidateRecurrence(ClockId clock, const RecurrenceRule& recurrence) const
@@ -319,9 +457,9 @@ foundation::Result<ScheduleId> GameplayTimeService::Schedule(
 
 foundation::Result<GameplayTimePoint> GameplayTimeService::NextCalendarDue(ClockId clock, CalendarPattern pattern) const
 {
-    const auto* state = FindClock(clock);
+    const auto state = GetClock(clock);
     const auto* definition = FindClockDefinition(clock);
-    if (state == nullptr || definition == nullptr || !definition->calendar.has_value())
+    if (!state || definition == nullptr || !definition->calendar.has_value())
     {
         return foundation::Result<GameplayTimePoint>::Failure(
             foundation::Error::Create("gameplay.schedule_calendar_unavailable", "calendar scheduling requires synchronized clock and calendar"));
@@ -443,64 +581,90 @@ std::optional<ScheduleEntry> GameplayTimeService::GetSchedule(ScheduleId schedul
     const auto found = schedules_.find(schedule);
     return found == schedules_.end() ? std::nullopt : std::optional<ScheduleEntry>{found->second};
 }
-const ScheduleEntry* GameplayTimeService::FindSchedule(ScheduleId schedule) const noexcept
+foundation::Result<std::int64_t> GameplayTimeService::RecurrenceIntervalTicks(const ScheduleEntry& entry) const
 {
-    const auto found = schedules_.find(schedule);
-    return found == schedules_.end() ? nullptr : &found->second;
+    if (entry.recurrence.kind == RecurrenceKind::Once)
+    {
+        return foundation::Result<std::int64_t>::Success(0);
+    }
+    if (entry.recurrence.kind == RecurrenceKind::FixedInterval)
+    {
+        if (entry.recurrence.interval.ticks <= 0)
+        {
+            return foundation::Result<std::int64_t>::Failure(
+                foundation::Error::Create("gameplay.schedule_invalid_interval", "recurrence interval must be positive"));
+        }
+        return foundation::Result<std::int64_t>::Success(entry.recurrence.interval.ticks);
+    }
+    const auto* definition = FindClockDefinition(entry.clock);
+    if (definition == nullptr || !definition->calendar.has_value())
+    {
+        return foundation::Result<std::int64_t>::Failure(
+            foundation::Error::Create("gameplay.schedule_calendar_unavailable", "calendar recurrence requires a calendar clock"));
+    }
+    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(definition->calendar->hours_per_day), kSecondsPerHour);
+    if (!seconds_per_day)
+    {
+        return foundation::Result<std::int64_t>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar day length overflows gameplay time"));
+    }
+    const auto interval = CheckedMultiply(*seconds_per_day, static_cast<std::int64_t>(entry.recurrence.calendar.every_days));
+    if (!interval || *interval <= 0)
+    {
+        return foundation::Result<std::int64_t>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "calendar recurrence interval overflows gameplay time"));
+    }
+    return foundation::Result<std::int64_t>::Success(*interval);
 }
 
-std::uint64_t GameplayTimeService::CalculateOccurrences(const ScheduleEntry& entry, GameplayTimePoint now) const noexcept
+foundation::Result<std::uint64_t> GameplayTimeService::CalculateOccurrences(const ScheduleEntry& entry, GameplayTimePoint now) const
 {
     if (entry.due > now)
     {
-        return 0;
+        return foundation::Result<std::uint64_t>::Success(0);
     }
     if (entry.recurrence.kind == RecurrenceKind::Once)
     {
-        return 1;
+        return foundation::Result<std::uint64_t>::Success(1);
     }
-
-    std::int64_t interval = entry.recurrence.interval.ticks;
-    if (entry.recurrence.kind == RecurrenceKind::CalendarPattern)
+    const auto interval = RecurrenceIntervalTicks(entry);
+    if (!interval)
     {
-        const auto* definition = FindClockDefinition(entry.clock);
-        if (definition == nullptr || !definition->calendar.has_value())
-        {
-            return 1;
-        }
-        const auto seconds_per_day = static_cast<std::int64_t>(definition->calendar->hours_per_day) * kSecondsPerHour;
-        interval = seconds_per_day * static_cast<std::int64_t>(entry.recurrence.calendar.every_days);
+        return foundation::Result<std::uint64_t>::Failure(interval.GetError());
     }
-    if (interval <= 0)
+    const auto elapsed = static_cast<std::uint64_t>(now.ticks) - static_cast<std::uint64_t>(entry.due.ticks);
+    const auto quotient = elapsed / static_cast<std::uint64_t>(interval.Value());
+    if (quotient == std::numeric_limits<std::uint64_t>::max())
     {
-        return 1;
+        return foundation::Result<std::uint64_t>::Success(std::numeric_limits<std::uint64_t>::max());
     }
-    const auto elapsed = now.ticks - entry.due.ticks;
-    return static_cast<std::uint64_t>(elapsed / interval) + 1;
+    return foundation::Result<std::uint64_t>::Success(quotient + 1);
 }
 
-GameplayTimePoint GameplayTimeService::AdvanceDue(const ScheduleEntry& entry, std::uint64_t occurrences) const noexcept
+foundation::Result<GameplayTimePoint> GameplayTimeService::AdvanceDue(const ScheduleEntry& entry, std::uint64_t occurrences) const
 {
     if (entry.recurrence.kind == RecurrenceKind::Once || occurrences == 0)
     {
-        return entry.due;
+        return foundation::Result<GameplayTimePoint>::Success(entry.due);
     }
-    std::int64_t interval = entry.recurrence.interval.ticks;
-    if (entry.recurrence.kind == RecurrenceKind::CalendarPattern)
+    const auto interval = RecurrenceIntervalTicks(entry);
+    if (!interval)
     {
-        const auto* definition = FindClockDefinition(entry.clock);
-        if (definition == nullptr || !definition->calendar.has_value())
-        {
-            return entry.due;
-        }
-        interval = static_cast<std::int64_t>(definition->calendar->hours_per_day) * kSecondsPerHour *
-                   static_cast<std::int64_t>(entry.recurrence.calendar.every_days);
+        return foundation::Result<GameplayTimePoint>::Failure(interval.GetError());
     }
-    if (interval <= 0 || occurrences > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max() / interval))
+    if (occurrences > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max() / interval.Value()))
     {
-        return GameplayTimePoint{std::numeric_limits<std::int64_t>::max()};
+        return foundation::Result<GameplayTimePoint>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "recurring schedule next due time overflows gameplay time"));
     }
-    return ::epidemic::gameplay::SaturatingAdd(entry.due, GameplayDuration{interval * static_cast<std::int64_t>(occurrences)});
+    const auto delta = GameplayDuration{interval.Value() * static_cast<std::int64_t>(occurrences)};
+    const auto advanced = CheckedAdd(entry.due, delta);
+    if (!advanced)
+    {
+        return foundation::Result<GameplayTimePoint>::Failure(
+            foundation::Error::Create("gameplay.time_overflow", "recurring schedule next due time overflows gameplay time"));
+    }
+    return foundation::Result<GameplayTimePoint>::Success(*advanced);
 }
 
 foundation::Result<std::vector<ScheduledTrigger>> GameplayTimeService::CollectDue(ClockId clock, SchedulerBudget budget)
@@ -519,7 +683,17 @@ foundation::Result<std::vector<ScheduledTrigger>> GameplayTimeService::CollectDu
     }
 
     std::vector<ScheduledTrigger> triggers;
-    std::uint64_t consumed_occurrences = 0;
+    std::uint64_t materialized_catch_up = 0;
+    auto add_catchup_diagnostic = [this](std::uint64_t value) {
+        if (value > std::numeric_limits<std::uint64_t>::max() - catch_up_occurrences_)
+        {
+            catch_up_occurrences_ = std::numeric_limits<std::uint64_t>::max();
+        }
+        else
+        {
+            catch_up_occurrences_ += value;
+        }
+    };
 
     while (!index->second.empty())
     {
@@ -531,8 +705,7 @@ foundation::Result<std::vector<ScheduledTrigger>> GameplayTimeService::CollectDu
         if (triggers.size() >= budget.max_triggers)
         {
             ++budget_exhaustions_;
-            return foundation::Result<std::vector<ScheduledTrigger>>::Failure(
-                foundation::Error::Create("gameplay.schedule_budget_exceeded", "scheduler trigger budget exhausted"));
+            break;
         }
 
         const auto found_entry = schedules_.find(key.id);
@@ -542,25 +715,22 @@ foundation::Result<std::vector<ScheduledTrigger>> GameplayTimeService::CollectDu
             continue;
         }
 
-        ScheduleEntry entry = found_entry->second;
-        const auto occurrences = CalculateOccurrences(entry, state->second.now);
+        const ScheduleEntry entry = found_entry->second;
+        const auto occurrence_result = CalculateOccurrences(entry, state->second.now);
+        if (!occurrence_result)
+        {
+            return foundation::Result<std::vector<ScheduledTrigger>>::Failure(occurrence_result.GetError());
+        }
+        const auto occurrences = occurrence_result.Value();
         if (occurrences == 0)
         {
             break;
         }
-        if (occurrences > budget.max_catch_up_occurrences - consumed_occurrences)
-        {
-            ++budget_exhaustions_;
-            return foundation::Result<std::vector<ScheduledTrigger>>::Failure(
-                foundation::Error::Create("gameplay.schedule_catchup_budget_exceeded", "scheduler catch-up budget exhausted"));
-        }
-        consumed_occurrences += occurrences;
-        catch_up_occurrences_ += occurrences > 1 ? occurrences - 1 : 0;
-
-        RemoveScheduleIndex(found_entry->second);
+        add_catchup_diagnostic(occurrences > 1 ? occurrences - 1 : 0);
 
         if (entry.recurrence.kind == RecurrenceKind::Once)
         {
+            RemoveScheduleIndex(found_entry->second);
             triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, entry.due, state->second.now, 1});
             schedules_.erase(found_entry);
             continue;
@@ -570,20 +740,39 @@ foundation::Result<std::vector<ScheduledTrigger>> GameplayTimeService::CollectDu
         {
         case CatchUpPolicy::FireEach:
         {
-            const auto remaining_trigger_budget = budget.max_triggers - triggers.size();
-            const auto to_fire = std::min<std::uint64_t>(occurrences, remaining_trigger_budget);
-            for (std::uint64_t i = 0; i < to_fire; ++i)
+            const auto trigger_room = budget.max_triggers - static_cast<std::uint64_t>(triggers.size());
+            const auto catchup_room = budget.max_catch_up_occurrences - materialized_catch_up;
+            const auto to_fire = std::min<std::uint64_t>(occurrences, std::min(trigger_room, catchup_room));
+            if (to_fire == 0)
             {
-                triggers.push_back(ScheduledTrigger{entry.id,
-                                                     entry.clock,
-                                                     entry.owner,
-                                                     entry.action,
-                                                     AdvanceDue(entry, i),
-                                                     state->second.now,
-                                                     1});
+                ++budget_exhaustions_;
+                emitted_triggers_ += triggers.size();
+                return foundation::Result<std::vector<ScheduledTrigger>>::Success(std::move(triggers));
             }
-            found_entry->second.due = AdvanceDue(entry, to_fire);
+            std::vector<GameplayTimePoint> due_times;
+            due_times.reserve(static_cast<std::size_t>(to_fire));
+            for (std::uint64_t index_value = 0; index_value < to_fire; ++index_value)
+            {
+                auto due = AdvanceDue(entry, index_value);
+                if (!due)
+                {
+                    return foundation::Result<std::vector<ScheduledTrigger>>::Failure(due.GetError());
+                }
+                due_times.push_back(due.Value());
+            }
+            auto next_due = AdvanceDue(entry, to_fire);
+            if (!next_due)
+            {
+                return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());
+            }
+            RemoveScheduleIndex(found_entry->second);
+            for (const auto due : due_times)
+            {
+                triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, due, state->second.now, 1});
+            }
+            found_entry->second.due = next_due.Value();
             InsertScheduleIndex(found_entry->second);
+            materialized_catch_up += to_fire;
             if (to_fire < occurrences)
             {
                 ++budget_exhaustions_;
@@ -593,23 +782,47 @@ foundation::Result<std::vector<ScheduledTrigger>> GameplayTimeService::CollectDu
             break;
         }
         case CatchUpPolicy::FireOnce:
+        {
+            auto next_due = AdvanceDue(entry, occurrences);
+            if (!next_due)
+            {
+                return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());
+            }
+            RemoveScheduleIndex(found_entry->second);
             triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, entry.due, state->second.now, 1});
-            found_entry->second.due = AdvanceDue(entry, occurrences);
+            found_entry->second.due = next_due.Value();
             InsertScheduleIndex(found_entry->second);
             break;
+        }
         case CatchUpPolicy::SkipMissed:
+        {
+            auto next_due = AdvanceDue(entry, occurrences);
+            if (!next_due)
+            {
+                return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());
+            }
+            RemoveScheduleIndex(found_entry->second);
             if (occurrences == 1 && entry.due == state->second.now)
             {
                 triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, entry.due, state->second.now, 1});
             }
-            found_entry->second.due = AdvanceDue(entry, occurrences);
+            found_entry->second.due = next_due.Value();
             InsertScheduleIndex(found_entry->second);
             break;
+        }
         case CatchUpPolicy::Aggregate:
+        {
+            auto next_due = AdvanceDue(entry, occurrences);
+            if (!next_due)
+            {
+                return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());
+            }
+            RemoveScheduleIndex(found_entry->second);
             triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, entry.due, state->second.now, occurrences});
-            found_entry->second.due = AdvanceDue(entry, occurrences);
+            found_entry->second.due = next_due.Value();
             InsertScheduleIndex(found_entry->second);
             break;
+        }
         }
     }
 
@@ -645,46 +858,73 @@ GameplayTimeSnapshot GameplayTimeService::CaptureSnapshot() const
 
 foundation::Result<void> GameplayTimeService::RestoreSnapshot(GameplayTimeSnapshot snapshot)
 {
+    if (!MonotonicIdGenerator<ScheduleId>::IsValidSnapshot(snapshot.schedule_ids) ||
+        snapshot.schedule_ids.scope != schedule_ids_.GetSnapshot().scope)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.schedule_snapshot_invalid", "snapshot contains an invalid schedule id generator"));
+    }
+
+    std::unordered_map<ClockId, ClockState> restored_clocks;
+    restored_clocks.reserve(clock_definitions_.size());
+    for (const auto& [id, _] : clock_definitions_)
+    {
+        restored_clocks.emplace(id, ClockState{id});
+    }
+    std::unordered_set<ClockId> seen_clocks;
     for (const auto& clock : snapshot.clocks)
     {
-        if (!clock_definitions_.contains(clock.id))
+        if (!clock.id.IsValid() || !clock_definitions_.contains(clock.id) || !seen_clocks.insert(clock.id).second ||
+            clock.fractional_milli >= 1000)
         {
             return foundation::Result<void>::Failure(
-                foundation::Error::Create("gameplay.clock_snapshot_invalid", "snapshot contains an unregistered clock"));
+                foundation::Error::Create("gameplay.clock_snapshot_invalid", "snapshot contains an invalid or duplicate clock"));
         }
+        restored_clocks[clock.id] = clock;
     }
+
+    std::unordered_map<ScheduleId, ScheduleEntry> restored_schedules;
+    std::unordered_map<ClockId, std::set<ScheduleKey>> restored_index;
+    for (const auto& [id, _] : clock_definitions_)
+    {
+        restored_index.emplace(id, std::set<ScheduleKey>{});
+    }
+    std::set<ScheduleId> seen_schedules;
+    std::uint64_t max_schedule_low = 0;
     for (const auto& schedule : snapshot.schedules)
     {
         const auto action = action_types_.find(schedule.action);
-        if (!clock_definitions_.contains(schedule.clock) || action == action_types_.end() ||
-            !schedule.owner.IsValid() || schedule.owner.domain != action->second.owner_domain)
+        if (!schedule.id.IsValid() || !seen_schedules.insert(schedule.id).second ||
+            !clock_definitions_.contains(schedule.clock) || action == action_types_.end() ||
+            !schedule.owner.IsValid() || schedule.owner.domain != action->second.owner_domain ||
+            schedule.persistence != SchedulePersistence::Persistent)
         {
             return foundation::Result<void>::Failure(
-                foundation::Error::Create("gameplay.schedule_snapshot_invalid", "snapshot contains unknown clock/action or invalid owner"));
+                foundation::Error::Create("gameplay.schedule_snapshot_invalid", "snapshot contains an invalid or duplicate persistent schedule"));
         }
         const auto recurrence = ValidateRecurrence(schedule.clock, schedule.recurrence);
         if (!recurrence)
         {
             return foundation::Result<void>::Failure(recurrence.GetError());
         }
+        if (schedule.id.High() == snapshot.schedule_ids.scope)
+        {
+            max_schedule_low = std::max(max_schedule_low, schedule.id.Low());
+        }
+        restored_schedules.emplace(schedule.id, schedule);
+        restored_index[schedule.clock].insert(ScheduleKey{schedule.due, schedule.id});
+    }
+    if (snapshot.schedule_ids.next != 0 && snapshot.schedule_ids.next <= max_schedule_low)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.schedule_snapshot_invalid", "schedule id generator is behind restored schedules"));
     }
 
-    for (auto& [_, index] : schedule_index_)
-    {
-        index.clear();
-    }
-    schedules_.clear();
-
-    for (const auto& clock : snapshot.clocks)
-    {
-        clocks_[clock.id] = clock;
-    }
-    for (auto& schedule : snapshot.schedules)
-    {
-        schedules_.emplace(schedule.id, schedule);
-        InsertScheduleIndex(schedule);
-    }
+    clocks_ = std::move(restored_clocks);
+    schedules_ = std::move(restored_schedules);
+    schedule_index_ = std::move(restored_index);
     schedule_ids_.Restore(snapshot.schedule_ids);
+    synchronization_revisions_.clear();
     return foundation::Result<void>::Success();
 }
 

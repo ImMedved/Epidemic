@@ -53,6 +53,7 @@ int main()
     materialized.stacking = ConditionStackingPolicy::UniquePerSubject;
     materialized.materialization = ConditionMaterializationPolicy::MaterializedOnly;
     materialized.dematerialization = ConditionDematerializationPolicy::Pause;
+    materialized.default_duration = GameplayDuration{10};
     materialized.clock = clock;
     const auto materialized_id = service.RegisterCondition(materialized);
 
@@ -116,9 +117,22 @@ int main()
     mat.subject = subject;
     mat.context = context;
     const auto m = service.Apply(mat);
-    if (!m || !service.NotifySubjectMaterialization(subject, false)) return 9;
+    GameplayContext pause_context = context;
+    pause_context.time = GameplayTimePoint{104};
+    if (!m || !service.NotifySubjectMaterialization(subject, false, pause_context)) return 9;
     if (!service.Find(m.Value().instance)->paused_for_materialization) return 10;
-    if (!service.NotifySubjectMaterialization(subject, true) || service.Find(m.Value().instance)->paused_for_materialization) return 11;
+    // Expiration callbacks while paused are ignored and must not remove the condition.
+    if (!service.HandleExpirationDue(m.Value().instance, GameplayTimePoint{114}, pause_context) ||
+        service.Find(m.Value().instance) == nullptr) return 101;
+    GameplayContext resume_context = context;
+    resume_context.time = GameplayTimePoint{120};
+    if (!service.NotifySubjectMaterialization(subject, true, resume_context) || service.Find(m.Value().instance)->paused_for_materialization) return 11;
+    const auto* resumed = service.Find(m.Value().instance);
+    // Applied at t=103, original expiration t=113, paused from 104..120 (16 ticks):
+    // both phase and expiration move by exactly 16 ticks.
+    if (resumed == nullptr || resumed->applied_at.ticks != 119 || !resumed->expires_at.has_value() || resumed->expires_at->ticks != 129) return 111;
+    if (service.HandleExpirationDue(m.Value().instance, GameplayTimePoint{128}, resume_context)) return 112;
+    if (!service.HandleExpirationDue(m.Value().instance, GameplayTimePoint{129}, resume_context)) return 113;
 
     if (!service.SetScheduleLinks(a.Value().instance, ScheduleId::FromString("expire"), ScheduleId::FromString("periodic"))) return 12;
     if (!service.HandlePeriodicDue(a.Value().instance, 7, context)) return 13;

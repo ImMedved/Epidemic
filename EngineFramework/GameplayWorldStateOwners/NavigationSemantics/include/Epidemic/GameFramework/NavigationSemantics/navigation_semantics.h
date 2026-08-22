@@ -4,7 +4,9 @@
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -155,6 +157,15 @@ enum class NavigationDecisionKind
     Avoid,
     Prefer
 };
+enum class NavigationAvailability
+{
+    PhysicallyImpossible,
+    TraversalUnsupported,
+    Forbidden,
+    Unsafe,
+    TemporarilyBlocked,
+    Available
+};
 enum class NavigationLayerLifetime
 {
     Transient,
@@ -206,6 +217,9 @@ struct NavigationSemanticLayer
     Fixed additive_cost_micro = 0;
     Fixed multiplier_micro = 1'000'000;
     GameplayTagSet tags;
+    TypeId requirement{};
+    Fixed required_parameter_micro = 0;
+    std::optional<GameplayTimePoint> expires_at{};
     Revision revision{};
 };
 struct NavigationSemanticLink
@@ -216,6 +230,7 @@ struct NavigationSemanticLink
     NavigationLinkTypeId type{};
     GameplayTagSet tags;
     LinkState state = LinkState::Open;
+    TypeId required_fact{};
     Revision revision{};
 };
 struct NavigationRuleDefinition
@@ -228,7 +243,11 @@ struct NavigationRuleDefinition
     Fixed additive_cost_micro = 0;
     Fixed multiplier_micro = 1'000'000;
     GameplayTagSet required_subject_tags;
+    GameplayTagSet required_from_layer_tags;
     GameplayTagSet required_layer_tags;
+    TraversalModeSemanticId required_traversal_mode{};
+    TypeId requirement{};
+    Fixed required_parameter_micro = 0;
 };
 struct NavigationSemanticCost
 {
@@ -244,6 +263,19 @@ struct NavigationReason
     NavigationLinkId link{};
     NavigationDecisionKind decision = NavigationDecisionKind::Allow;
 };
+class INavigationCapabilityProvider
+{
+  public:
+    virtual ~INavigationCapabilityProvider() = default;
+    [[nodiscard]] virtual bool HasCapability(GameplayObjectRef subject, TypeId capability, Fixed min_parameter_micro) const noexcept = 0;
+};
+class INavigationFactProvider
+{
+  public:
+    virtual ~INavigationFactProvider() = default;
+    [[nodiscard]] virtual bool HasFact(GameplayObjectRef subject, TypeId fact, const GameplayContext &context) const noexcept = 0;
+};
+
 struct NavigationPermissionQuery
 {
     GameplayObjectRef subject{};
@@ -255,6 +287,7 @@ struct NavigationPermissionQuery
 struct NavigationPermissionResult
 {
     NavigationDecisionKind decision = NavigationDecisionKind::Allow;
+    NavigationAvailability availability = NavigationAvailability::Available;
     NavigationSemanticCost cost{};
     std::vector<NavigationReason> reasons;
     Revision revision{};
@@ -269,6 +302,12 @@ struct NavigationChange
     Revision revision{};
     GameplayContext context{};
 };
+struct NavigationChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<NavigationChange> changes;
+};
 struct NavigationSnapshot
 {
     std::vector<NavigationSemanticProfile> profiles;
@@ -276,6 +315,8 @@ struct NavigationSnapshot
     std::vector<NavigationSemanticLink> links;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot layer_ids{};
     Revision revision{};
+    std::vector<NavigationChange> journal;
+    std::uint64_t next_change_sequence = 1;
 };
 struct NavigationDiagnostics
 {
@@ -301,10 +342,13 @@ class NavigationSemanticsService
     {
         return frozen_;
     }
+    void SetCapabilityProvider(const INavigationCapabilityProvider *provider) noexcept { capabilities_ = provider; }
+    void SetFactProvider(const INavigationFactProvider *provider) noexcept { facts_ = provider; }
     [[nodiscard]] foundation::Result<void> SetProfile(NavigationSemanticProfile profile, GameplayContext context = {});
     [[nodiscard]] foundation::Result<NavigationLayerId> AddLayer(NavigationSemanticLayer layer,
                                                                  GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> RemoveLayer(NavigationLayerId id, GameplayContext context = {});
+    [[nodiscard]] std::uint64_t ExpireLayers(GameplayTimePoint now, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> AddOrUpdateLink(NavigationSemanticLink link, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> SetLinkState(NavigationLinkId id, LinkState state,
                                                         GameplayContext context = {});
@@ -320,6 +364,7 @@ class NavigationSemanticsService
     [[nodiscard]] NavigationSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(NavigationSnapshot snapshot);
     [[nodiscard]] std::vector<NavigationChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] NavigationChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
     {
         return next_change_sequence_ - 1;
@@ -337,16 +382,21 @@ class NavigationSemanticsService
     }
     void Record(NavigationChange change);
     [[nodiscard]] NavigationPermissionResult EvaluateAreaForProfile(const NavigationSemanticProfile *profile,
-                                                                    GameplayObjectRef area) const;
+                                                                    GameplayObjectRef from_area, GameplayObjectRef area,
+                                                                    TraversalModeSemanticId traversal_mode,
+                                                                    const GameplayContext &context) const;
     std::unordered_map<NavigationDomainId, NavigationDomainDefinition, IdHash> domains_;
     std::vector<NavigationRuleDefinition> rules_;
     std::unordered_map<GameplayObjectRef, NavigationSemanticProfile, RefHash> profiles_;
     std::unordered_map<NavigationLayerId, NavigationSemanticLayer, IdHash> layers_;
     std::unordered_map<NavigationLinkId, NavigationSemanticLink, IdHash> links_;
     MonotonicIdGenerator<GameplayObjectId> layer_ids_;
+    const INavigationCapabilityProvider *capabilities_ = nullptr;
+    const INavigationFactProvider *facts_ = nullptr;
     Revision revision_{};
     bool frozen_ = false;
-    std::vector<NavigationChange> changes_;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+    std::deque<NavigationChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     mutable std::uint64_t permission_queries_ = 0, denied_queries_ = 0, cost_modified_queries_ = 0;
     std::uint64_t dynamic_updates_ = 0;

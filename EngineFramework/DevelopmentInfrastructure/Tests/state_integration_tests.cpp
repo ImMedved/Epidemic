@@ -254,7 +254,7 @@ int main()
     if (!published || published.Value() == 0 || !facts.Dispatch()) return 17;
     const FactKey burning_fact{facts_adapter.ActiveConditionFact(), house,
                                GameplayObjectRef{ConditionService::Domain(), active_conditions.front().id.value}};
-    if (facts.FindFactValue<ConditionFactValue>(burning_fact) == nullptr) return 18;
+    if (!facts.FindFactValueCopy<ConditionFactValue>(burning_fact).has_value()) return 18;
 
     const auto entity_query = queries.Execute(GetEntityQuery{house_id}, QueryContext{});
     const auto condition_query = queries.Execute(GetConditionsQuery{house}, QueryContext{});
@@ -266,13 +266,15 @@ int main()
     const auto due = time_adapter.ProcessDue(clock.Value(), context);
     if (!due || due.Value().condition_periodic == 0) return 21;
     const auto periodic_effects = condition_effects.ProcessPending();
-    if (!periodic_effects || periodic_effects.Value().empty() || !entities.Find(house_id)->instance_tags.HasExact(periodic_tag.Value())) return 22;
+    const auto house_after_periodic = entities.Find(house_id);
+    if (!periodic_effects || periodic_effects.Value().empty() || !house_after_periodic ||
+        !house_after_periodic->instance_tags.HasExact(periodic_tag.Value())) return 22;
 
     auto water_result = effects.Execute(MakeRequest(water_effect.Value(), house, context));
     if (!water_result || conditions.HasCondition(house, burning.Value())) return 23;
     if (!time_adapter.SynchronizeConditionSchedules(context)) return 24;
     if (!facts_adapter.PublishPendingChanges(context) || !facts.Dispatch()) return 25;
-    if (facts.FindFact(burning_fact) != nullptr) return 26;
+    if (facts.FindFact(burning_fact).has_value()) return 26;
 
     CreateEntityRequest stone_create;
     stone_create.archetype = archetype.Value();
@@ -294,8 +296,9 @@ int main()
     context.time = GameplayTimePoint{5};
     if (!time.SynchronizeClock(clock.Value(), context.time, Revision{3})) return 32;
     const auto delayed_due = time_adapter.ProcessDue(clock.Value(), context);
-    if (!delayed_due || delayed_due.Value().effect_executions.size() != 1 ||
-        !entities.Find(house_id)->instance_tags.HasExact(delayed_tag.Value())) return 33;
+    const auto house_after_delayed = entities.Find(house_id);
+    if (!delayed_due || delayed_due.Value().effect_executions.size() != 1 || !house_after_delayed ||
+        !house_after_delayed->instance_tags.HasExact(delayed_tag.Value())) return 33;
 
     // Lifecycle cleanup is routed through the adapter; no major calls its peers directly.
     const auto cleanup_deferred = effects.Defer(MakeRequest(delayed_tag_effect.Value(), stone_ref, context), clock.Value(), GameplayTimePoint{20},
@@ -303,7 +306,7 @@ int main()
     if (!cleanup_deferred || !time_adapter.SynchronizeDeferredEffects(context)) return 34;
     if (!entities.RequestDestroy(stone_created.Value().id, EntityDestroyReason::Destroyed, context)) return 35;
     const auto destroyed = entities.CommitPendingDestruction();
-    if (destroyed.size() != 1 || !lifecycle_adapter.ProcessEntityChanges(context)) return 36;
+    if (!destroyed || destroyed.Value().size() != 1 || !lifecycle_adapter.ProcessEntityChanges(context)) return 36;
     if (!materials.FindSlots(stone_ref).empty() || !conditions.GetConditions(stone_ref).empty() ||
         effects.FindDeferred(cleanup_deferred.Value()) != nullptr) return 37;
 

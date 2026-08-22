@@ -32,9 +32,13 @@ enum class HistoryPolicy
 
 enum class FactPersistence
 {
+    // Runtime-only scratch assertion. It is never included in SaveGame persistence snapshots.
     Transient,
+    // Authoritative for the current gameplay session, but deliberately not restored by SaveGame.
     Session,
+    // Authoritative SaveGame state; payload requires a registered stable persistence codec.
     Persistent,
+    // Persistent fact with an explicit gameplay-time expiry; payload also requires a persistence codec.
     Timed,
 };
 
@@ -254,6 +258,41 @@ struct FactsSnapshot
     std::uint64_t next_event_sequence = 1;
 };
 
+struct PersistentFactRecord
+{
+    FactId id{};
+    FactKey key{};
+    GameplayDomainId owner{};
+    GameplayTimePoint created_at{};
+    GameplayTimePoint updated_at{};
+    Revision revision{};
+    OperationId source_operation{};
+    EventId source_event{};
+    FactPersistence persistence = FactPersistence::Persistent;
+    std::optional<GameplayTimePoint> expires_at{};
+    TypeId payload_schema{};
+    std::uint32_t payload_version = 0;
+    std::vector<std::byte> payload;
+};
+
+struct PersistentEventRecord
+{
+    EventEnvelope envelope{};
+    TypeId payload_schema{};
+    std::uint32_t payload_version = 0;
+    std::vector<std::byte> payload;
+};
+
+struct FactsPersistenceSnapshot
+{
+    std::vector<PersistentFactRecord> facts;
+    std::vector<PersistentEventRecord> history;
+    MonotonicIdGenerator<FactId>::Snapshot fact_ids{};
+    MonotonicIdGenerator<EventId>::Snapshot event_ids{};
+    Revision fact_revision{};
+    std::uint64_t next_event_sequence = 1;
+};
+
 class GameplayFactsService
 {
   public:
@@ -326,6 +365,98 @@ class GameplayFactsService
 
         fact_types_.emplace(type, FactTypeInfo{type, std::string(canonical_name), owner, typeid(TValue)});
         return foundation::Result<FactTypeId>::Success(type);
+    }
+
+    template <typename TValue, typename TEncode, typename TDecode>
+    [[nodiscard]] foundation::Result<void> RegisterFactCodec(
+        FactTypeId type, std::string_view schema_name, std::uint32_t version, TEncode&& encode, TDecode&& decode)
+    {
+        if (frozen_)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.registry_frozen", "fact codec registry is frozen"));
+        }
+        const auto info = fact_types_.find(type);
+        const auto schema = TypeId::FromString(schema_name);
+        if (info == fact_types_.end() || info->second.value_type != typeid(TValue) || !schema.IsValid() || version == 0)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.fact_codec_invalid", "fact codec type/schema/version is invalid"));
+        }
+        if (fact_codecs_.contains(type))
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.already_registered", "fact codec is already registered"));
+        }
+        PayloadCodec codec;
+        codec.cpp_type = typeid(TValue);
+        codec.schema = schema;
+        codec.version = version;
+        codec.encode = [fn = std::forward<TEncode>(encode)](const std::any& value) -> foundation::Result<std::vector<std::byte>> {
+            if (value.type() != typeid(TValue))
+            {
+                return foundation::Result<std::vector<std::byte>>::Failure(
+                    foundation::Error::Create("gameplay.fact_codec_type_mismatch", "fact codec received an unexpected C++ type"));
+            }
+            return fn(std::any_cast<const TValue&>(value));
+        };
+        codec.decode = [fn = std::forward<TDecode>(decode)](std::span<const std::byte> bytes, std::uint32_t source_version)
+            -> foundation::Result<std::any> {
+            auto decoded = fn(bytes, source_version);
+            if (!decoded)
+            {
+                return foundation::Result<std::any>::Failure(decoded.GetError());
+            }
+            return foundation::Result<std::any>::Success(std::any(std::move(decoded).Value()));
+        };
+        fact_codecs_.emplace(type, std::move(codec));
+        return foundation::Result<void>::Success();
+    }
+
+    template <typename TPayload, typename TEncode, typename TDecode>
+    [[nodiscard]] foundation::Result<void> RegisterEventCodec(
+        EventTypeId type, std::string_view schema_name, std::uint32_t version, TEncode&& encode, TDecode&& decode)
+    {
+        if (frozen_)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.registry_frozen", "event codec registry is frozen"));
+        }
+        const auto info = event_types_.find(type);
+        const auto schema = TypeId::FromString(schema_name);
+        if (info == event_types_.end() || info->second.payload_type != typeid(TPayload) || !schema.IsValid() || version == 0)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.event_codec_invalid", "event codec type/schema/version is invalid"));
+        }
+        if (event_codecs_.contains(type))
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.already_registered", "event codec is already registered"));
+        }
+        PayloadCodec codec;
+        codec.cpp_type = typeid(TPayload);
+        codec.schema = schema;
+        codec.version = version;
+        codec.encode = [fn = std::forward<TEncode>(encode)](const std::any& value) -> foundation::Result<std::vector<std::byte>> {
+            if (value.type() != typeid(TPayload))
+            {
+                return foundation::Result<std::vector<std::byte>>::Failure(
+                    foundation::Error::Create("gameplay.event_codec_type_mismatch", "event codec received an unexpected C++ type"));
+            }
+            return fn(std::any_cast<const TPayload&>(value));
+        };
+        codec.decode = [fn = std::forward<TDecode>(decode)](std::span<const std::byte> bytes, std::uint32_t source_version)
+            -> foundation::Result<std::any> {
+            auto decoded = fn(bytes, source_version);
+            if (!decoded)
+            {
+                return foundation::Result<std::any>::Failure(decoded.GetError());
+            }
+            return foundation::Result<std::any>::Success(std::any(std::move(decoded).Value()));
+        };
+        event_codecs_.emplace(type, std::move(codec));
+        return foundation::Result<void>::Success();
     }
 
     template <typename TPayload, typename TCallback>
@@ -412,19 +543,8 @@ class GameplayFactsService
         GameplayContext context,
         EventId source_event = {});
 
-    [[nodiscard]] const FactRecord* FindFact(const FactKey& key) const noexcept;
-    [[nodiscard]] std::optional<FactRecord> FindFactCopy(const FactKey& key) const;
-
-    template <typename TValue> [[nodiscard]] const TValue* FindFactValue(const FactKey& key) const noexcept
-    {
-        const auto* fact = FindFact(key);
-        if (fact == nullptr || fact->value_type != typeid(TValue))
-        {
-            return nullptr;
-        }
-        return std::any_cast<TValue>(&fact->value);
-    }
-
+    [[nodiscard]] std::optional<FactRecord> FindFact(const FactKey& key) const;
+    [[nodiscard]] std::optional<FactRecord> FindFactCopy(const FactKey& key) const { return FindFact(key); }
 
     template <typename TValue> [[nodiscard]] std::optional<TValue> FindFactValueCopy(const FactKey& key) const
     {
@@ -445,11 +565,22 @@ class GameplayFactsService
 
     [[nodiscard]] foundation::Result<FactsSnapshot> CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(FactsSnapshot snapshot);
+    [[nodiscard]] foundation::Result<FactsPersistenceSnapshot> CapturePersistenceSnapshot() const;
+    [[nodiscard]] foundation::Result<void> RestorePersistenceSnapshot(FactsPersistenceSnapshot snapshot);
     [[nodiscard]] Revision FactRevision() const noexcept { return fact_revision_; }
     [[nodiscard]] EventTypeId FactChangedEventType() const noexcept { return fact_changed_event_type_; }
     [[nodiscard]] FactsDiagnostics GetDiagnostics() const noexcept;
 
   private:
+    struct PayloadCodec
+    {
+        std::type_index cpp_type{typeid(void)};
+        TypeId schema{};
+        std::uint32_t version = 0;
+        std::function<foundation::Result<std::vector<std::byte>>(const std::any&)> encode;
+        std::function<foundation::Result<std::any>(std::span<const std::byte>, std::uint32_t)> decode;
+    };
+
     struct EventTypeInfo
     {
         EventTypeId id{};
@@ -499,6 +630,8 @@ class GameplayFactsService
 
     std::unordered_map<EventTypeId, EventTypeInfo> event_types_;
     std::unordered_map<FactTypeId, FactTypeInfo> fact_types_;
+    std::unordered_map<EventTypeId, PayloadCodec> event_codecs_;
+    std::unordered_map<FactTypeId, PayloadCodec> fact_codecs_;
     std::unordered_map<EventTypeId, std::vector<Subscriber>> subscribers_;
     std::unordered_map<FactKey, FactRecord, FactKeyHash> facts_;
     std::vector<EventRecord> history_;

@@ -17,6 +17,8 @@ template <typename TId> class MonotonicIdGenerator
         std::uint64_t next = 1;
     };
 
+    // Unscoped generator is reserved for local/session-only IDs. Persistent or globally addressable IDs
+    // must use an explicit deterministic scope (numeric, IdScopeId or FromScopeName).
     constexpr MonotonicIdGenerator() noexcept = default;
     explicit constexpr MonotonicIdGenerator(std::uint64_t scope) noexcept : scope_(NormalizeScope(scope)) {}
     explicit constexpr MonotonicIdGenerator(IdScopeId scope) noexcept : scope_(NormalizeScope(scope.Raw())) {}

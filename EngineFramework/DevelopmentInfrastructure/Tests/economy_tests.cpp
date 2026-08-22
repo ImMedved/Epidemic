@@ -60,9 +60,34 @@ int main()
     plan.monetary_transfers.push_back({bid.Value(), sid.Value(), 100, cid.Value()});
     auto tx = s.PrepareTrade(plan);
     Check(static_cast<bool>(tx), "prepare trade");
+
+    TradePlan duplicate_plan = plan;
+    duplicate_plan.id = TradeTransactionId::FromRaw(0xE001, 0x77);
+    auto explicit_tx = s.PrepareTrade(duplicate_plan);
+    Check(static_cast<bool>(explicit_tx), "prepare explicit trade id");
+    const auto duplicate_revision = s.CurrentRevision();
+    Check(!static_cast<bool>(s.PrepareTrade(duplicate_plan)), "duplicate trade id rejected");
+    Check(s.CurrentRevision() == duplicate_revision, "duplicate trade id does not mutate economy");
+    Check(static_cast<bool>(s.CancelTrade(explicit_tx.Value())), "cancel explicit-id trade");
+
     Check(static_cast<bool>(s.ReserveTrade(tx.Value())), "reserve trade");
+
+    // B29 regression: account state is a volatile monetary precondition and is
+    // checked again after reservation, before final balance mutation.
+    Check(static_cast<bool>(s.SetAccountState(bid.Value(), AccountState::Frozen)), "freeze buyer after reserve");
+    Check(!static_cast<bool>(s.CommitTrade(tx.Value())), "frozen source invalidates reserved trade");
+    Check(s.GetBalance(bid.Value()) == 800 && s.GetBalance(sid.Value()) == 250, "failed commit leaves balances unchanged");
+    Check(static_cast<bool>(s.SetAccountState(bid.Value(), AccountState::Active)), "unfreeze buyer");
     Check(static_cast<bool>(s.CommitTrade(tx.Value())), "commit trade");
     Check(s.GetBalance(bid.Value()) == 700 && s.GetBalance(sid.Value()) == 350, "trade funds moved");
+
+    EconomicAccount closable;
+    closable.owner = Ref("actor", "closable");
+    closable.currency = cid.Value();
+    auto closable_id = s.CreateAccount(closable);
+    Check(static_cast<bool>(closable_id), "create closable account");
+    Check(static_cast<bool>(s.SetAccountState(closable_id.Value(), AccountState::Closed)), "close account");
+    Check(!static_cast<bool>(s.SetAccountState(closable_id.Value(), AccountState::Active)), "closed account cannot reopen");
     MarketState market;
     market.area = Ref("area", "city");
     auto mid = s.CreateMarket(market);

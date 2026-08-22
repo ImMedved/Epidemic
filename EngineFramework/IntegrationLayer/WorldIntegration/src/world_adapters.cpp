@@ -1,5 +1,7 @@
 #include "Epidemic/GameFramework/WorldIntegration/world_adapters.h"
 
+#include <algorithm>
+
 namespace epidemic::gameplay::world_integration
 {
 foundation::Result<void> WorldQueryAdapter::RegisterProviders()
@@ -27,7 +29,19 @@ foundation::Result<void> WorldQueryAdapter::RegisterProviders()
     auto c = queries_.RegisterProvider<EnvironmentSampleQuery>(
         "framework.query.environment.sample", caps,
         [this](const EnvironmentSampleQuery &q, const queries::QueryContext &) {
-            auto v = environment_.Sample(q.position, q.time);
+            auto scopes = q.scopes;
+            const world::WorldPosition world_position{q.position.x_mm, q.position.y_mm, q.position.z_mm};
+            for (const auto &area : world_.FindAreasAt(world_position))
+            {
+                scopes.push_back(GameplayObjectRef{world::WorldService::Domain(), area.id.value});
+                for (const auto region : area.regions)
+                {
+                    scopes.push_back(GameplayObjectRef{world::WorldService::Domain(), region.value});
+                }
+            }
+            std::sort(scopes.begin(), scopes.end());
+            scopes.erase(std::unique(scopes.begin(), scopes.end()), scopes.end());
+            auto v = environment_.Sample(q.position, q.time, scopes);
             return foundation::Result<queries::QueryResponse<EnvironmentSampleQuery::ResultType>>::Success(
                 {std::move(v), {{}, environment_.CurrentRevision(), queries::QueryCoverage::Complete, 1, 1, true}});
         });
@@ -100,13 +114,13 @@ foundation::Result<std::uint64_t> WorldFactsAdapter::PublishPending(GameplayCont
 bool EntityInteractionStateProvider::IsMaterialized(GameplayObjectRef object) const
 {
     auto id = entities::EntityService::FromGameplayObjectRef(object);
-    auto *r = entities_.Find(id);
+    const auto r = entities_.Find(id);
     return r && r->materialization == entities::EntityMaterializationState::Materialized;
 }
 Revision EntityInteractionStateProvider::RevisionOf(GameplayObjectRef object) const
 {
     auto id = entities::EntityService::FromGameplayObjectRef(object);
-    auto *r = entities_.Find(id);
+    const auto r = entities_.Find(id);
     return r ? r->revision : Revision{};
 }
 } // namespace epidemic::gameplay::world_integration

@@ -33,11 +33,6 @@ int main()
     auto changed = s.ChangeMode({actor, swim, {}});
     if (!changed || changed.Value().kind != TraversalResultKind::Accepted)
         return 5;
-    auto session = s.StartSession(actor, swim, {}, {}, {});
-    if (!session)
-        return 6;
-    if (!s.FindState(actor) || !s.FindState(actor)->active_session)
-        return 7;
     GameplayObjectRef horse{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("horse")};
     auto role = TraversalCarrierRoleId::FromString("game.rider");
     if (!s.BoardCarrier(actor, horse, walk, role))
@@ -46,6 +41,11 @@ int main()
         return 9;
     if (!s.Disembark(actor))
         return 10;
+    auto session = s.StartSession(actor, swim, {}, {}, {});
+    if (!session)
+        return 6;
+    if (!s.FindState(actor) || !s.FindState(actor)->active_session)
+        return 7;
     auto snap = s.CaptureSnapshot();
     TraversalService restored;
     if (!restored.RegisterMode(w))

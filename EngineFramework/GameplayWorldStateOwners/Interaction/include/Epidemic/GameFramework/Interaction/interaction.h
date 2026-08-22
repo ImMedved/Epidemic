@@ -178,6 +178,7 @@ struct InteractionChange
     GameplayObjectRef actor{}, target{};
     GameplayContext context{};
     Revision revision{};
+    TypeId reason{};
 };
 struct InteractionDiagnostics
 {
@@ -241,6 +242,7 @@ class InteractionService
                                                   GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> SweepTimed(GameplayTimePoint now, GameplayContext context = {});
     [[nodiscard]] const InteractionSession *FindSession(InteractionExecutionId id) const noexcept;
+    [[nodiscard]] std::optional<InteractionSession> FindSessionCopy(InteractionExecutionId id) const noexcept;
     [[nodiscard]] std::vector<InteractionSession> FindActive(GameplayObjectRef actor) const;
     [[nodiscard]] InteractionSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(InteractionSnapshot snapshot);
@@ -279,6 +281,7 @@ class InteractionService
     std::unordered_map<InteractionProviderId, const IInteractionProvider *, ProviderHash> providers_;
     std::unordered_map<InteractionTypeId, IInteractionExecutor *, TypeHash> executors_;
     std::unordered_map<InteractionExecutionId, InteractionSession, ExecutionHash> sessions_;
+    std::unordered_map<ScheduleId, InteractionExecutionId> session_by_schedule_;
     const IInteractionStateProvider *state_provider_ = nullptr;
     MonotonicIdGenerator<GameplayObjectId> ids_;
     Revision revision_{};

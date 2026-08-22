@@ -16,6 +16,35 @@ struct TestEvent
 {
     int value = 0;
 };
+
+foundation::Result<std::vector<std::byte>> EncodeInt(int value)
+{
+    const auto bits = static_cast<std::uint32_t>(value);
+    return foundation::Result<std::vector<std::byte>>::Success({
+        static_cast<std::byte>(bits & 0xffu),
+        static_cast<std::byte>((bits >> 8u) & 0xffu),
+        static_cast<std::byte>((bits >> 16u) & 0xffu),
+        static_cast<std::byte>((bits >> 24u) & 0xffu)});
+}
+foundation::Result<int> DecodeInt(std::span<const std::byte> bytes, std::uint32_t version)
+{
+    if (version != 1 || bytes.size() != 4)
+    {
+        return foundation::Result<int>::Failure(foundation::Error::Create("test.codec.invalid", "invalid integer payload"));
+    }
+    const auto bits = std::to_integer<std::uint32_t>(bytes[0]) |
+                      (std::to_integer<std::uint32_t>(bytes[1]) << 8u) |
+                      (std::to_integer<std::uint32_t>(bytes[2]) << 16u) |
+                      (std::to_integer<std::uint32_t>(bytes[3]) << 24u);
+    return foundation::Result<int>::Success(static_cast<int>(bits));
+}
+foundation::Result<std::vector<std::byte>> EncodeEvent(const TestEvent& value) { return EncodeInt(value.value); }
+foundation::Result<TestEvent> DecodeEvent(std::span<const std::byte> bytes, std::uint32_t version)
+{
+    auto value = DecodeInt(bytes, version);
+    if (!value) return foundation::Result<TestEvent>::Failure(value.GetError());
+    return foundation::Result<TestEvent>::Success(TestEvent{value.Value()});
+}
 } // namespace
 
 int main()
@@ -28,6 +57,11 @@ int main()
     if (!event_type || !fact_type)
     {
         return 1;
+    }
+    if (!service.RegisterEventCodec<TestEvent>(event_type.Value(), "framework.test.event.v1", 1, EncodeEvent, DecodeEvent) ||
+        !service.RegisterFactCodec<int>(fact_type.Value(), "framework.test.fact.v1", 1, EncodeInt, DecodeInt))
+    {
+        return 101;
     }
 
     std::vector<int> observed;
@@ -86,8 +120,8 @@ int main()
         return 7;
     }
     const FactKey key{fact_type.Value(), subject, {}};
-    const auto* value = service.FindFactValue<int>(key);
-    if (value == nullptr || *value != 42)
+    auto value = service.FindFactValueCopy<int>(key);
+    if (!value || *value != 42)
     {
         return 8;
     }
@@ -109,8 +143,8 @@ int main()
     {
         return 11;
     }
-    value = service.FindFactValue<int>(key);
-    if (value == nullptr || *value != 42 || service.HistoryCount() != 2)
+    value = service.FindFactValueCopy<int>(key);
+    if (!value || *value != 42 || service.HistoryCount() != 2)
     {
         return 12;
     }
@@ -200,7 +234,7 @@ int main()
     }
     timed_context.time = GameplayTimePoint{50};
     const auto expired = service.ExpireDueFacts(timed_context.time, timed_context);
-    if (!expired || expired.Value() != 1 || service.FindFact(timed_key) != nullptr)
+    if (!expired || expired.Value() != 1 || service.FindFact(timed_key).has_value())
     {
         return 20;
     }
@@ -243,6 +277,27 @@ int main()
     if (!clean_snapshot)
     {
         return 26;
+    }
+
+    const auto disk_snapshot = service.CapturePersistenceSnapshot();
+    if (!disk_snapshot) return 261;
+    GameplayFactsService disk_restored;
+    const auto disk_event = disk_restored.RegisterEventType<TestEvent>("framework.test.event", owner, HistoryPolicy::Persistent);
+    const auto disk_fact = disk_restored.RegisterFactType<int>("framework.test.fact", owner);
+    if (!disk_event || !disk_fact ||
+        !disk_restored.RegisterEventCodec<TestEvent>(disk_event.Value(), "framework.test.event.v1", 1, EncodeEvent, DecodeEvent) ||
+        !disk_restored.RegisterFactCodec<int>(disk_fact.Value(), "framework.test.fact.v1", 1, EncodeInt, DecodeInt))
+        return 262;
+    disk_restored.Freeze();
+    if (!disk_restored.RestorePersistenceSnapshot(disk_snapshot.Value())) return 263;
+    const auto disk_value = disk_restored.FindFactValueCopy<int>(key);
+    if (!disk_value || *disk_value != 42 || disk_restored.HistoryCount() != service.HistoryCount()) return 264;
+    auto bad_schema = disk_snapshot.Value();
+    if (!bad_schema.facts.empty())
+    {
+        bad_schema.facts.front().payload_schema = TypeId::FromString("framework.test.wrong_schema");
+        const auto bad_restore = disk_restored.RestorePersistenceSnapshot(std::move(bad_schema));
+        if (bad_restore || !bad_restore.GetError().HasCode("gameplay.fact_codec_mismatch")) return 265;
     }
 
     auto duplicate_fact_snapshot = clean_snapshot.Value();

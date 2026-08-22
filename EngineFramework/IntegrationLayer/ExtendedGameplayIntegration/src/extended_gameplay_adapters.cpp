@@ -59,6 +59,56 @@ foundation::Result<void> EquipmentItemsAdapter::ReleaseFromEquipment(equipment::
             return items_.ReleaseReservation(r.id, context);
     return foundation::Result<void>::Success();
 }
+
+foundation::Result<void> EquipmentItemsAdapter::ExchangeEquipmentReservations(
+    std::span<const equipment::EquipmentItemId> release_items,
+    std::optional<equipment::EquipmentItemId> reserve_item,
+    GameplayObjectRef subject,
+    GameplayContext context)
+{
+    if (!reserve_item.has_value())
+    {
+        // Equipment currently uses this operation for swaps; ordinary unequip
+        // continues to use ReleaseFromEquipment(). Refuse an ambiguous release-only
+        // batch rather than silently performing a non-atomic sequence.
+        if (release_items.empty()) return foundation::Result<void>::Success();
+        return foundation::Result<void>::Failure(
+            Error("gameplay.integration.equipment_exchange_invalid", "equipment reservation exchange requires a replacement item"));
+    }
+
+    const items::ItemInstanceId replacement{reserve_item->value};
+    const auto replacement_item = items_.FindItemCopy(replacement);
+    if (!replacement_item || replacement_item->quantity != 1)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.integration.equipment_item_invalid", "equipment requires one concrete replacement item instance"));
+
+    const auto reason = TypeId::FromString("equipment.binding");
+    std::vector<items::ItemReservationId> releases;
+    releases.reserve(release_items.size());
+    for (const auto release : release_items)
+    {
+        const items::ItemInstanceId item{release.value};
+        std::optional<items::ItemReservationId> matching;
+        for (const auto& reservation : items_.FindReservations(item))
+        {
+            if (reservation.state != items::ReservationState::Active || reservation.owner != subject ||
+                reservation.reason != reason)
+                continue;
+            if (matching.has_value())
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.integration.equipment_reservation_ambiguous", "multiple equipment reservations match one binding"));
+            matching = reservation.id;
+        }
+        if (!matching.has_value())
+            return foundation::Result<void>::Failure(
+                Error("gameplay.integration.equipment_reservation_missing", "equipment binding reservation is missing"));
+        releases.push_back(*matching);
+    }
+
+    const auto exchanged = items_.ExchangeReservations(releases, replacement, 1, subject, reason, context);
+    if (!exchanged) return foundation::Result<void>::Failure(exchanged.GetError());
+    return foundation::Result<void>::Success();
+}
 foundation::Result<processes::ReservedProcessInput> ItemProcessInputProvider::Reserve(
     const processes::ProcessInputDefinition &input, const processes::StartProcessRequest &request,
     processes::ProcessInstanceId instance)
@@ -142,76 +192,143 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Execute(Coordi
         TradeGoodsLine line;
         items::ItemTransferPlan transfer;
         items::ItemLocation source;
+        items::Fixed quantity = 0;
+        bool item_moved = false;
+        bool ownership_moved = false;
     };
+
     std::vector<PreparedGood> goods;
     goods.reserve(plan.goods.size());
+
+    // Cross-major preflight. No owner is mutated in this phase.
     for (const auto &line : plan.goods)
     {
-        const auto *item = items_.FindItem(line.item);
+        if (!line.from_owner.IsValid() || !line.to_owner.IsValid() || line.from_owner == line.to_owner)
+            return foundation::Result<economy::TradeTransactionId>::Failure(
+                Error("gameplay.trade.owner_invalid", "trade goods require distinct valid source and destination owners"));
+
+        const auto item = items_.FindItemCopy(line.item);
         if (!item || item->quantity <= 0)
             return foundation::Result<economy::TradeTransactionId>::Failure(
                 Error("gameplay.trade.item_missing", "trade item missing"));
+
+        const auto property = ItemPropertyRef(line.item);
+        const auto *owner = ownership_.GetOwner(property);
+        if (!owner || owner->owner != line.from_owner)
+            return foundation::Result<economy::TradeTransactionId>::Failure(
+                Error("gameplay.trade.owner_mismatch", "trade goods are not owned by the declared source owner"));
+
         items::ItemLocation target;
         target.kind = items::ItemLocationKind::Container;
         target.container = line.destination;
         auto transfer = items_.PrepareTransfer(line.item, target, item->quantity, plan.money.context);
         if (!transfer)
             return foundation::Result<economy::TradeTransactionId>::Failure(transfer.GetError());
-        goods.push_back({line, transfer.Value(), item->location});
+        goods.push_back({line, transfer.Value(), item->location, item->quantity, false, false});
     }
+
     auto tx = economy_.PrepareTrade(std::move(plan.money));
     if (!tx)
         return foundation::Result<economy::TradeTransactionId>::Failure(tx.GetError());
+
     auto reserve = economy_.ReserveTrade(tx.Value());
     if (!reserve)
     {
-        (void)economy_.CancelTrade(tx.Value());
+        const auto cancelled = economy_.CancelTrade(tx.Value());
+        if (!cancelled)
+            return foundation::Result<economy::TradeTransactionId>::Failure(
+                Error("gameplay.trade.reconciliation_required", "trade reservation failed and the prepared money transaction could not be cancelled"));
         return foundation::Result<economy::TradeTransactionId>::Failure(reserve.GetError());
     }
-    std::size_t moved = 0;
-    for (; moved < goods.size(); ++moved)
-    {
-        auto r = items_.CommitTransfer(goods[moved].transfer);
-        if (!r)
-            break;
-        auto property = ItemPropertyRef(goods[moved].line.item);
-        auto own = ownership_.TransferOwnership({property, goods[moved].line.from_owner, goods[moved].line.to_owner,
-                                                 ownership::TransferReason::Trade, goods[moved].transfer.context});
-        if (!own)
-            break;
-    }
-    if (moved != goods.size())
-    {
-        for (std::size_t i = 0; i < moved; ++i)
+
+    auto compensate = [&](std::size_t committed_goods) -> bool {
+        bool consistent = true;
+        while (committed_goods > 0)
         {
-            auto back =
-                items_.PrepareTransfer(goods[i].line.item, goods[i].source,
-                                       items_.FindItem(goods[i].line.item)->quantity, goods[i].transfer.context);
-            if (back)
-                (void)items_.CommitTransfer(back.Value());
-            (void)ownership_.TransferOwnership({ItemPropertyRef(goods[i].line.item), goods[i].line.to_owner,
-                                                goods[i].line.from_owner, ownership::TransferReason::Trade,
-                                                goods[i].transfer.context});
+            --committed_goods;
+            auto &g = goods[committed_goods];
+
+            // Reverse the forward order: ownership was committed after the item move.
+            if (g.ownership_moved)
+            {
+                const auto ownership_back = ownership_.TransferOwnership(
+                    {ItemPropertyRef(g.line.item), g.line.to_owner, g.line.from_owner,
+                     ownership::TransferReason::Trade, g.transfer.context});
+                if (!ownership_back)
+                    consistent = false;
+                else
+                    g.ownership_moved = false;
+            }
+
+            if (g.item_moved)
+            {
+                const auto item_now = items_.FindItemCopy(g.line.item);
+                if (!item_now || item_now->quantity < g.quantity)
+                {
+                    consistent = false;
+                }
+                else
+                {
+                    auto back = items_.PrepareTransfer(g.line.item, g.source, g.quantity, g.transfer.context);
+                    if (!back)
+                    {
+                        consistent = false;
+                    }
+                    else
+                    {
+                        const auto committed_back = items_.CommitTransfer(back.Value());
+                        if (!committed_back)
+                            consistent = false;
+                        else
+                            g.item_moved = false;
+                    }
+                }
+            }
         }
-        (void)economy_.CancelTrade(tx.Value());
-        return foundation::Result<economy::TradeTransactionId>::Failure(
-            Error("gameplay.trade.goods_commit_failed", "goods or ownership transfer failed"));
+
+        const auto cancelled = economy_.CancelTrade(tx.Value());
+        if (!cancelled)
+            consistent = false;
+        return consistent;
+    };
+
+    std::size_t committed_goods = 0;
+    for (std::size_t i = 0; i < goods.size(); ++i)
+    {
+        auto &g = goods[i];
+        auto moved_item = items_.CommitTransfer(g.transfer);
+        if (!moved_item)
+        {
+            if (!compensate(committed_goods))
+                return foundation::Result<economy::TradeTransactionId>::Failure(
+                    Error("gameplay.trade.reconciliation_required", "item transfer failed and trade compensation was incomplete"));
+            return foundation::Result<economy::TradeTransactionId>::Failure(moved_item.GetError());
+        }
+        g.item_moved = true;
+        committed_goods = i + 1;
+
+        auto moved_ownership = ownership_.TransferOwnership(
+            {ItemPropertyRef(g.line.item), g.line.from_owner, g.line.to_owner,
+             ownership::TransferReason::Trade, g.transfer.context});
+        if (!moved_ownership)
+        {
+            if (!compensate(committed_goods))
+                return foundation::Result<economy::TradeTransactionId>::Failure(
+                    Error("gameplay.trade.reconciliation_required", "ownership transfer failed and trade compensation was incomplete"));
+            return foundation::Result<economy::TradeTransactionId>::Failure(moved_ownership.GetError());
+        }
+        g.ownership_moved = true;
     }
+
     auto commit = economy_.CommitTrade(tx.Value());
     if (!commit)
     {
-        for (auto &g : goods)
-        {
-            auto back = items_.PrepareTransfer(g.line.item, g.source, items_.FindItem(g.line.item)->quantity,
-                                               g.transfer.context);
-            if (back)
-                (void)items_.CommitTransfer(back.Value());
-            (void)ownership_.TransferOwnership({ItemPropertyRef(g.line.item), g.line.to_owner, g.line.from_owner,
-                                                ownership::TransferReason::Trade, g.transfer.context});
-        }
-        (void)economy_.CancelTrade(tx.Value());
+        if (!compensate(goods.size()))
+            return foundation::Result<economy::TradeTransactionId>::Failure(
+                Error("gameplay.trade.reconciliation_required", "money commit failed and trade compensation was incomplete"));
         return foundation::Result<economy::TradeTransactionId>::Failure(commit.GetError());
     }
+
     return foundation::Result<economy::TradeTransactionId>::Success(tx.Value());
 }
 } // namespace epidemic::gameplay::integration

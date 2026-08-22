@@ -22,11 +22,7 @@ class Handler final : public IRewardHandler
 
     [[nodiscard]] RewardTypeId Type() const noexcept override { return type; }
     [[nodiscard]] foundation::Result<RewardDeliveryDisposition> Validate(const RewardOperation&) const override { return foundation::Result<RewardDeliveryDisposition>::Success(RewardDeliveryDisposition::Delivered); }
-    [[nodiscard]] foundation::Result<RewardDeliveryDisposition> Deliver(const RewardOperation& operation) override
-    {
-        delivered += operation.quantity_micro;
-        return foundation::Result<RewardDeliveryDisposition>::Success(RewardDeliveryDisposition::Delivered);
-    }
+
     [[nodiscard]] foundation::Result<RewardDeliveryStage> Prepare(const RewardOperation& operation) override
     {
         if (fail_prepare)
@@ -110,3 +106,4 @@ int main()
     if (claim || good.delivered != 0 || good.cancelled != 100 || !tx.FindPending(tx_pending.Value())) return 12;
     return 0;
 }
+

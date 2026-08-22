@@ -113,6 +113,7 @@ enum class ContractState
 enum class EconomyChangeKind
 {
     AccountCreated,
+    AccountStateChanged,
     BalanceChanged,
     FundsReserved,
     FundsReleased,
@@ -261,6 +262,17 @@ struct EconomyChange
     Fixed amount = 0;
     GameplayContext context{};
     Revision revision{};
+    FundsReservationId reservation{};
+    MarketId market{};
+    OfferId offer{};
+    DebtId debt{};
+    EconomicContractId contract{};
+    CurrencyId currency{};
+    EconomicAccountId source_account{};
+    EconomicAccountId destination_account{};
+    EconomicCommodityId commodity{};
+    AccountState old_account_state = AccountState::Active;
+    AccountState new_account_state = AccountState::Active;
 };
 struct EconomySnapshot
 {
@@ -313,6 +325,7 @@ class EconomyService
     [[nodiscard]] foundation::Result<void> AddPriceProvider(const IPriceProvider *provider);
     [[nodiscard]] foundation::Result<EconomicAccountId> CreateAccount(EconomicAccount account);
     [[nodiscard]] const EconomicAccount *FindAccount(EconomicAccountId id) const noexcept;
+    [[nodiscard]] std::optional<EconomicAccount> FindAccountCopy(EconomicAccountId id) const noexcept;
     [[nodiscard]] foundation::Result<void> SetAccountState(EconomicAccountId id, AccountState state,
                                                            GameplayContext context = {});
     [[nodiscard]] Fixed GetBalance(EconomicAccountId id) const noexcept;
@@ -345,6 +358,8 @@ class EconomyService
     [[nodiscard]] foundation::Result<void> CommitTrade(TradeTransactionId transaction);
     [[nodiscard]] foundation::Result<void> CancelTrade(TradeTransactionId transaction);
     [[nodiscard]] const TradeTransaction *FindTransaction(TradeTransactionId id) const noexcept;
+    [[nodiscard]] std::optional<TradeTransaction> FindTransactionCopy(TradeTransactionId id) const noexcept;
+    [[nodiscard]] std::vector<EconomicAccount> FindAccounts(GameplayObjectRef owner, std::optional<CurrencyId> currency = std::nullopt) const;
     [[nodiscard]] foundation::Result<DebtId> CreateDebt(DebtRecord debt);
     [[nodiscard]] foundation::Result<void> ResolveDebt(DebtId debt, DebtState state, GameplayContext context = {});
     [[nodiscard]] std::vector<DebtRecord> FindDebts(GameplayObjectRef subject) const;

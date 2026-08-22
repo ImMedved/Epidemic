@@ -5,6 +5,7 @@
 #include "Epidemic/GameFramework/SupportRandom/deterministic_random.h"
 
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -47,7 +48,13 @@ struct CombatResolutionId
 };
 struct IdHash
 {
-    template <typename T> [[nodiscard]] std::size_t operator()(const T& id) const noexcept { return std::hash<TypeId>{}(id.value); }
+    template <typename T> [[nodiscard]] std::size_t operator()(const T& id) const noexcept
+    {
+        if constexpr (requires { id.value.Raw(); })
+            return std::hash<TypeId>{}(id.value);
+        else
+            return std::hash<GameplayObjectId>{}(id.value);
+    }
 };
 
 struct CombatResourceDefinition
@@ -147,6 +154,7 @@ struct CombatPlan
     CombatResourceTypeId resource{};
     Revision expected_target_revision{};
     Revision expected_modifier_revision{};
+    std::uint64_t expected_provider_epoch = 0;
     std::int64_t requested_amount_micro = 0;
     std::int64_t final_amount_micro = 0;
     CombatOutcome outcomes = CombatOutcome::None;
@@ -180,7 +188,19 @@ struct CombatChange
     GameplayContext context{};
 };
 
-struct CombatSnapshot { std::vector<CombatantRecord> combatants; MonotonicIdGenerator<GameplayObjectId>::Snapshot resolution_ids{}; };
+struct CombatChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<CombatChange> changes;
+};
+struct CombatSnapshot
+{
+    std::vector<CombatantRecord> combatants;
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot resolution_ids{};
+    std::vector<CombatChange> journal;
+    std::uint64_t next_change_sequence = 1;
+};
 struct CombatDiagnostics
 {
     std::uint64_t combatants = 0;
@@ -203,7 +223,7 @@ class CombatService
     [[nodiscard]] foundation::Result<DamageProfileId> RegisterDamageProfile(DamageProfile profile);
     void Freeze() noexcept { frozen_ = true; }
     [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
-    void SetModifierProvider(const ICombatModifierProvider* provider) noexcept { modifier_provider_ = provider; }
+    void SetModifierProvider(const ICombatModifierProvider* provider) noexcept;
 
     [[nodiscard]] foundation::Result<void> RegisterCombatant(GameplayObjectRef subject, std::vector<CombatResourceState> resources, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> RemoveCombatant(GameplayObjectRef subject, GameplayContext context = {});
@@ -217,6 +237,7 @@ class CombatService
     [[nodiscard]] foundation::Result<CombatResult> CommitDamage(const CombatPlan& plan);
 
     [[nodiscard]] std::vector<CombatChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] CombatChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] CombatSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(CombatSnapshot snapshot);
     [[nodiscard]] CombatDiagnostics GetDiagnostics() const noexcept;
@@ -224,6 +245,7 @@ class CombatService
   private:
     void Bump(CombatantRecord& record) noexcept;
     void Record(CombatChange change);
+    [[nodiscard]] bool ReconcileLifeState(CombatantRecord& record, CombatResourceTypeId changed_resource) noexcept;
     [[nodiscard]] static std::int64_t ApplyModifiers(std::int64_t amount, std::vector<CombatModifier> modifiers) noexcept;
 
     std::unordered_map<CombatResourceTypeId, CombatResourceDefinition, IdHash> resources_;
@@ -231,9 +253,13 @@ class CombatService
     std::unordered_map<DamageProfileId, DamageProfile, IdHash> damage_profiles_;
     std::unordered_map<GameplayObjectRef, CombatantRecord> combatants_;
     const ICombatModifierProvider* modifier_provider_ = nullptr;
+    std::uint64_t modifier_provider_epoch_ = 1;
     MonotonicIdGenerator<GameplayObjectId> resolution_ids_;
+    std::unordered_map<CombatResolutionId, CombatPlan, IdHash> prepared_plans_;
     bool frozen_ = false;
-    std::vector<CombatChange> changes_;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+    static constexpr std::size_t kPreparedPlanCapacity = 4096;
+    std::deque<CombatChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     CombatDiagnostics diagnostics_{};
 };

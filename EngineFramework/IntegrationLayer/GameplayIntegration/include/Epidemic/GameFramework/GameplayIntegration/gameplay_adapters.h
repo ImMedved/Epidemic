@@ -72,13 +72,14 @@ class CombatAbilityResourceProvider final : public abilities::IAbilityResourcePr
     void AddMapping(CombatAbilityResourceMapping mapping) { mappings_[mapping.ability]=mapping.combat; }
     [[nodiscard]] bool CanAfford(GameplayObjectRef owner,abilities::AbilityResourceTypeId type,std::int64_t amount_micro) const override;
     [[nodiscard]] foundation::Result<abilities::AbilityResourceReservation> Reserve(GameplayObjectRef owner,abilities::AbilityResourceTypeId type,std::int64_t amount_micro,GameplayContext context) override;
-    [[nodiscard]] foundation::Result<void> Commit(const abilities::AbilityResourceReservation& reservation,GameplayContext context) override;
-    [[nodiscard]] foundation::Result<void> Release(const abilities::AbilityResourceReservation& reservation,GameplayContext context) override;
+    void Commit(const abilities::AbilityResourceReservation& reservation,GameplayContext context) noexcept override;
+    void Release(const abilities::AbilityResourceReservation& reservation,GameplayContext context) noexcept override;
   private:
     struct ReservationToken { GameplayObjectRef owner{}; combat::CombatResourceTypeId resource{}; std::int64_t amount_micro=0; };
     static constexpr TypeId TokenType() noexcept { return TypeId::FromString("framework.abilities.combat_resource.reservation"); }
     combat::CombatService& combat_;
     std::unordered_map<abilities::AbilityResourceTypeId,combat::CombatResourceTypeId,abilities::IdHash> mappings_;
+    std::unordered_map<GameplayObjectId, ReservationToken> active_reservations_;
     MonotonicIdGenerator<GameplayObjectId> reservation_ids_;
 };
 
@@ -108,6 +109,8 @@ class ConditionProgressionAdapter
     ConditionProgressionAdapter(const conditions::ConditionService& conditions,progression::ProgressionService& progression) : conditions_(conditions),progression_(progression) {}
     void AddMapping(ConditionProgressionMapping mapping) { mappings_.push_back(mapping); }
     [[nodiscard]] foundation::Result<void> ProcessChanges();
+    [[nodiscard]] std::uint64_t Cursor() const noexcept { return cursor_; }
+    void RestoreCursor(std::uint64_t cursor) noexcept { cursor_ = cursor; }
   private:
     [[nodiscard]] static GameplayObjectRef ConditionSource(conditions::ConditionInstanceId id) noexcept { return {conditions::ConditionService::Domain(),id.value}; }
     const conditions::ConditionService& conditions_;
@@ -138,8 +141,12 @@ class ProgressionRewardHandler final : public loot::IRewardHandler
     [[nodiscard]] static constexpr TypeId PayloadType() noexcept { return TypeId::FromString("framework.reward.progression.payload"); }
     [[nodiscard]] loot::RewardTypeId Type() const noexcept override { return StaticType(); }
     [[nodiscard]] foundation::Result<loot::RewardDeliveryDisposition> Validate(const loot::RewardOperation& operation) const override;
-    [[nodiscard]] foundation::Result<loot::RewardDeliveryDisposition> Deliver(const loot::RewardOperation& operation) override;
+    [[nodiscard]] foundation::Result<loot::RewardDeliveryStage> Prepare(const loot::RewardOperation& operation) override;
+    void Commit(loot::RewardDeliveryStage& stage) noexcept override;
+    void Cancel(loot::RewardDeliveryStage& stage) noexcept override;
   private:
+    struct StagePayload { progression::ProgressionGrantReservationId reservation{}; };
+    [[nodiscard]] static constexpr TypeId StagePayloadType() noexcept { return TypeId::FromString("framework.reward.progression.stage"); }
     progression::ProgressionService& progression_;
 };
 
@@ -149,6 +156,8 @@ class DeathRewardAdapter
     DeathRewardAdapter(const combat::CombatService& combat,loot::LootService& loot) : combat_(combat),loot_(loot) {}
     void SetTable(GameplayObjectRef subject,loot::LootTableId table) { tables_[subject]=table; }
     [[nodiscard]] foundation::Result<std::vector<loot::RewardExecutionId>> ProcessChanges();
+    [[nodiscard]] std::uint64_t Cursor() const noexcept { return cursor_; }
+    void RestoreCursor(std::uint64_t cursor) noexcept { cursor_ = cursor; }
   private:
     const combat::CombatService& combat_;
     loot::LootService& loot_;
