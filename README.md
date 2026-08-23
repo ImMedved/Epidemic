@@ -59,3 +59,13 @@ ctest --test-dir build -C Debug -R EpidemicRuntime --output-on-failure
 Нижний слой никогда не зависит от верхнего. Внутри `EngineRuntime` один major не включает и не линкует другой major; взаимодействие между ними осуществляется через public contracts и adapters в `Support`. Gameplay-смысл не добавляется в EngineBase или Runtime ради удобства верхнего кода.
 
 Текущая базовая платформа — Windows 11 / Win32 / D3D11. Cross-platform поддержка не является целью этого этапа.
+
+## License
+
+This project is licensed under the PolyForm Noncommercial License 1.0.0.
+
+Non-commercial use, study, research, modification, and hobby projects are permitted under the terms of the license.
+
+Commercial use requires a separate license from the copyright holder.
+
+See [LICENSE](LICENSE) for the full license terms.
