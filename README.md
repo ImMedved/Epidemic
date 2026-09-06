@@ -58,4 +58,85 @@ ctest --test-dir build -C Debug -R EpidemicRuntime --output-on-failure
 
 Нижний слой никогда не зависит от верхнего. Внутри `EngineRuntime` один major не включает и не линкует другой major; взаимодействие между ними осуществляется через public contracts и adapters в `Support`. Gameplay-смысл не добавляется в EngineBase или Runtime ради удобства верхнего кода.
 
-Текущая базовая платформа — Windows 11 / Win32 / D3D11. Cross-platform поддержка не является целью этого этапа.
+Текущая базовая платформа — Windows 11 / Win32 / D3D11.
+
+## TODO
+
+- [ ] Framework Freeze
+  -   [ ] Foudation
+  -   [ ] SupportRandom
+  -   [ ] Queries
+  -   [ ] Facts
+  -   [ ] Time
+  -   [ ] Мир и основные объекты
+      -   [ ] RuntimeBridge
+      -   [ ] Entities
+      -   [ ] World
+      -   [ ] Environment
+      -   [ ] Materials
+  -   [ ] Состояния и воздействия
+      -   [ ] Conditions
+      -   [ ] Effects
+  -   [ ] Базовая деятельность
+      -   [ ] Interaction
+      -   [ ] ItemsInventory
+      -   [ ] Equipment
+      -   [ ] Dialogue
+      -   [ ] Economy
+  -   [ ] Combat loop
+      -   [ ] Combat
+      -   [ ] Abilities
+      -   [ ] Progression
+      -   [ ] Loot
+  -   [ ] Перемещение и строительство
+      -   [ ] Traversal
+      -   [ ] NavigationSemantics
+      -   [ ] Construction
+  -   [ ] Восприятие и интеллект
+      -   [ ] Perception
+      -   [ ] Knowledge
+      -   [ ] AI
+  -   [ ] Социальный слой
+      -   [ ] Ownership
+      -   [ ] Society
+      -   [ ] Crime
+  -   [ ] Массовая симуляция NPC
+      -   [ ] Population
+      -   [ ] Encounters
+      -   [ ] RolesJobs
+      -   [ ] NeedsLife
+  -   [ ] Производство и симуляция
+      -   [ ] Processes
+      -   [ ] ResourcesProduction
+      -   [ ] Simulation
+      -   [ ] SaveGame
+  -   [ ] Narrative
+      -   [ ] Narrative
+  -   [ ] Integration-слой
+      -   [ ] Integration
+      -   [ ] StateIntegration
+      -   [ ] GameplayIntegration
+      -   [ ] ExtendedGameplayIntegration
+      -   [ ] WorldIntegration
+      -   [ ] InteractionEffectsIntegration
+      -   [ ] InteractionTimeIntegration
+      -   [ ] TraversalNavigationConstructionIntegration
+      -   [ ] PerceptionKnowledgeAIIntegration
+      -   [ ] PopulationSimulationIntegration
+      -   [ ] ProcessResourceSimulationIntegration
+      -   [ ] SocialLegalIntegration
+      -   [ ] NarrativeIntegration
+  -   [ ] Служебные директории
+      -   [ ] Tests
+- [ ] Code cleanup
+- [ ] Framework Documentation
+- [ ] Base and Runtime checkup
+- [ ] Комментарии
+  -   [ ] Base перевод комментариев на русский
+  -   [ ] Runtime добавить комментарии в код на английском и русском
+  -   [ ] Framework добавить комментарии в код на английском и русском
+  -   [ ] Переписать документацию из ии-слопа в нормальный текст
+- [ ] Добавление заготовки под DX11/12/Vulacan/Metal для мультиплатформенности
+- [ ] Интеграция Angel Script
+- [ ] Добавление инструментов мониторинга и контроля ресурсов приложения
+- [ ] Добавление дефолтного проекта
