@@ -251,6 +251,7 @@ struct AwarenessRecord
     AwarenessLevel level = AwarenessLevel::Unaware;
     Fixed suspicion_micro = 0;
     GameplayTimePoint last_observed_at{};
+    GameplayTimePoint last_decay_at{};
     WorldPosition last_known_position{};
     Revision revision{};
 };
@@ -274,15 +275,37 @@ struct PerceptionBudget
     std::uint32_t max_perceivers_per_stimulus = 256;
     std::uint32_t max_visibility_tests_per_tick = 4096;
 };
+struct PerceptionTemporalPolicy
+{
+    GameplayDuration observation_retention{1};
+    GameplayDuration awareness_decay_interval{1};
+    Fixed awareness_decay_micro_per_interval = 100'000;
+};
+struct PerceiverSpatialSample
+{
+    GameplayObjectRef subject{};
+    WorldPosition position{};
+};
 struct PerceptionProcessingContext
 {
     GameplayTickId tick{};
     GameplayTimePoint now{};
     GameplayContext gameplay{};
+    std::vector<PerceiverSpatialSample> perceiver_positions;
     PerceptionProcessingContext() = default;
-    explicit PerceptionProcessingContext(GameplayTickId t, GameplayTimePoint n, GameplayContext g = {})
-        : tick(t), now(n), gameplay(g)
+    explicit PerceptionProcessingContext(GameplayTickId t, GameplayTimePoint n, GameplayContext g = {},
+                                         std::vector<PerceiverSpatialSample> positions = {})
+        : tick(t), now(n), gameplay(g), perceiver_positions(std::move(positions))
     {
+    }
+    [[nodiscard]] std::optional<WorldPosition> FindPerceiverPosition(GameplayObjectRef subject) const noexcept
+    {
+        for (const auto &sample : perceiver_positions)
+        {
+            if (sample.subject == subject)
+                return sample.position;
+        }
+        return std::nullopt;
     }
 };
 struct PerceptionTickBudgetState
@@ -368,11 +391,17 @@ class PerceptionService
                                                       WorldPosition observer_position,
                                                       WorldPosition target_position) const;
     [[nodiscard]] AudibilityResult EvaluateAudibility(GameplayObjectRef perceiver, PerceptionStimulusId stimulus) const;
+    [[nodiscard]] AudibilityResult EvaluateAudibility(GameplayObjectRef perceiver, PerceptionStimulusId stimulus,
+                                                       WorldPosition observer_position) const;
     void SetOccluded(GameplayObjectRef perceiver, GameplayObjectRef target, bool occluded);
     void SetSenseModifier(GameplayObjectRef perceiver, SenseTypeId sense, Fixed multiplier_micro);
     void SetBudget(PerceptionBudget budget) noexcept
     {
         budget_ = budget;
+    }
+    void SetTemporalPolicy(PerceptionTemporalPolicy policy) noexcept
+    {
+        temporal_policy_ = policy;
     }
 
     [[nodiscard]] const PerceptionStimulus *FindStimulus(PerceptionStimulusId id) const noexcept;
@@ -396,7 +425,11 @@ class PerceptionService
     }
     void Record(PerceptionChange change);
     void EnsureBudgetEpoch(GameplayTickId tick) noexcept;
+    void MaintainTemporalState(GameplayTimePoint now, GameplayContext context);
     [[nodiscard]] static Fixed DistanceSquared(WorldPosition a, WorldPosition b) noexcept;
+    [[nodiscard]] static Fixed DistanceAttenuatedScore(Fixed strength_micro, Fixed range_mm, WorldPosition observer,
+                                                       WorldPosition stimulus) noexcept;
+    [[nodiscard]] static Fixed ScaledRange(Fixed base_range_mm, Fixed multiplier_micro) noexcept;
     [[nodiscard]] Fixed ModifierFor(GameplayObjectRef perceiver, SenseTypeId sense) const noexcept;
     [[nodiscard]] bool IsOccluded(GameplayObjectRef perceiver, GameplayObjectRef target) const noexcept;
     [[nodiscard]] PerceptionConfidence ConfidenceFromScore(Fixed score_micro) const noexcept;
@@ -417,6 +450,7 @@ class PerceptionService
     std::vector<PerceptionChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     PerceptionBudget budget_{};
+    PerceptionTemporalPolicy temporal_policy_{};
     PerceptionTickBudgetState tick_budget_{};
     PerceptionDiagnostics diagnostics_{};
 };

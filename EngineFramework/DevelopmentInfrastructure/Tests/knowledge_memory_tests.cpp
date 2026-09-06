@@ -25,9 +25,14 @@ int main()
                        player,
                        KnowledgeConfidence::High,
                        {},
-                       {}});
+                       GameplayContext{GameplayTickId{77}, GameplayTimePoint{5}}});
     if (!id)
         return 3;
+    const auto *learned = k.FindKnowledge(id.Value());
+    if (!learned || learned->source_kind != KnowledgeSourceId::FromString("direct") || learned->source != player)
+        return 14;
+    if (learned->learned_at != GameplayTimePoint{5} || learned->last_confirmed_at != GameplayTimePoint{5})
+        return 15;
     if (k.FindKnowledgeAboutSubject(npc, player).size() != 1)
         return 4;
     auto mem = k.CreateMemory({npc,
@@ -38,14 +43,21 @@ int main()
                                MemoryPersistencePolicy::Timed,
                                {10},
                                {},
-                               {}});
+                               GameplayContext{GameplayTickId{99}, GameplayTimePoint{6}}});
     if (!mem)
         return 5;
+    const auto *memory = k.FindMemory(mem.Value());
+    if (!memory || memory->time != GameplayTimePoint{6})
+        return 16;
     auto shared = k.Share({npc, guard, id.Value(), KnowledgeShareMode::Report, {}});
     if (!shared)
         return 6;
-    if (k.FindKnowledgeByOwner(guard).empty())
+    const auto guard_knowledge = k.FindKnowledgeByOwner(guard);
+    if (guard_knowledge.empty())
         return 7;
+    if (guard_knowledge.front().source_kind != KnowledgeSourceId::FromString("framework.knowledge.report") ||
+        guard_knowledge.front().source != npc)
+        return 17;
     if (!k.Decay({20}))
         return 8;
     if (!k.FindMemoriesByOwner(npc).empty())

@@ -69,8 +69,6 @@ ai::AIContextSnapshot KnowledgeAIAdapter::BuildContext(GameplayObjectRef agent,
             r.truth_state != knowledge::KnowledgeTruthState::Outdated)
         {
             context.known_topics.push_back(TypeId{r.topic.id.value.Raw()});
-            if (r.subject.IsValid())
-                context.perceived_targets.push_back(r.subject);
         }
     }
     if (perception_service)

@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <functional>
 #include <optional>
 #include <span>
@@ -344,6 +345,7 @@ class ConditionService
     [[nodiscard]] std::vector<ConditionInstance> FindBySource(GameplayObjectRef source) const;
 
     [[nodiscard]] std::vector<ConditionChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] ConditionChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return next_change_sequence_ - 1; }
     void PruneChangesBefore(std::uint64_t sequence);
 
@@ -353,6 +355,8 @@ class ConditionService
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
 
   private:
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+
     struct DefinitionEntry
     {
         ConditionDefinition definition;
@@ -378,7 +382,7 @@ class ConditionService
     Revision revision_{};
     bool frozen_ = false;
 
-    std::vector<ConditionChange> changes_;
+    std::deque<ConditionChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
 
     std::uint64_t applied_ = 0;

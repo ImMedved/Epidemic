@@ -66,16 +66,19 @@ int main()
     if (!ai.RegisterAgent(npc, ap.id))
         return 9;
     KnowledgeAIAdapter kai{k};
+    auto knowledge_only_ctx = kai.BuildContext(npc, nullptr, {2});
+    if (knowledge_only_ctx.known_topics.empty() || !knowledge_only_ctx.perceived_targets.empty())
+        return 10;
     auto ctx = kai.BuildContext(npc, &p, {2});
     auto think = ai.Think(npc, ctx, {});
     if (!think || !think.Value().intent)
-        return 10;
+        return 11;
     AIIntentExecutionLog log;
     if (!log.Accept(*think.Value().intent, ai))
-        return 11;
-    if (log.AcceptedIntents().size() != 1)
         return 12;
-    if (!log.Succeed(think.Value().intent->id, ai))
+    if (log.AcceptedIntents().size() != 1)
         return 13;
+    if (!log.Succeed(think.Value().intent->id, ai))
+        return 14;
     return 0;
 }

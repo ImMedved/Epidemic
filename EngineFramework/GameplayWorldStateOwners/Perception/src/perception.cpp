@@ -89,6 +89,7 @@ foundation::Result<PerceptionStimulusId> PerceptionService::CreateStimulus(Perce
 }
 foundation::Result<void> PerceptionService::ExpireStimuli(GameplayTimePoint now)
 {
+    MaintainTemporalState(now, {});
     std::vector<PerceptionStimulusId> ids;
     for (const auto &[id, s] : stimuli_)
     {
@@ -116,18 +117,143 @@ foundation::Result<void> PerceptionService::ExpireStimuli(GameplayTimePoint now)
     }
     return foundation::Result<void>::Success();
 }
+
+void PerceptionService::MaintainTemporalState(GameplayTimePoint now, GameplayContext context)
+{
+    if (temporal_policy_.observation_retention.ticks > 0)
+    {
+        std::vector<PerceptionObservationId> expired;
+        for (const auto &[id, observation] : observations_)
+        {
+            const auto age = now - observation.observed_at;
+            if (age.ticks >= temporal_policy_.observation_retention.ticks)
+                expired.push_back(id);
+        }
+        std::sort(expired.begin(), expired.end());
+        for (auto id : expired)
+        {
+            auto it = observations_.find(id);
+            if (it == observations_.end())
+                continue;
+            const auto observation = it->second;
+            Bump();
+            Record({0,
+                    PerceptionChangeKind::Lost,
+                    observation.perceiver,
+                    observation.perceived_subject,
+                    observation.stimulus,
+                    observation.id,
+                    AwarenessLevel::Lost,
+                    context.tick.IsValid() ? context : observation.context,
+                    revision_});
+            observations_.erase(it);
+        }
+    }
+
+    const auto interval = temporal_policy_.awareness_decay_interval.ticks;
+    const auto decay = temporal_policy_.awareness_decay_micro_per_interval;
+    if (interval <= 0 || decay <= 0)
+        return;
+
+    std::vector<AwarenessKey> keys;
+    keys.reserve(awareness_.size());
+    for (const auto &[key, record] : awareness_)
+    {
+        (void)record;
+        keys.push_back(key);
+    }
+    std::sort(keys.begin(), keys.end());
+
+    for (const auto &key : keys)
+    {
+        auto it = awareness_.find(key);
+        if (it == awareness_.end())
+            continue;
+        auto &record = it->second;
+        if (now <= record.last_decay_at)
+            continue;
+
+        const auto elapsed = now - record.last_decay_at;
+        const auto steps = elapsed.ticks / interval;
+        if (steps <= 0)
+            continue;
+
+        const auto old_level = record.level;
+        const auto old_suspicion = record.suspicion_micro;
+        if (record.suspicion_micro > 0)
+        {
+            const long double total_decay = static_cast<long double>(decay) * static_cast<long double>(steps);
+            record.suspicion_micro = total_decay >= static_cast<long double>(record.suspicion_micro)
+                                         ? 0
+                                         : record.suspicion_micro - static_cast<Fixed>(total_decay);
+            if (record.suspicion_micro >= 800'000)
+                record.level = AwarenessLevel::Confirmed;
+            else if (record.suspicion_micro >= 400'000)
+                record.level = AwarenessLevel::Aware;
+            else if (record.suspicion_micro > 0)
+                record.level = AwarenessLevel::Suspicious;
+            else
+                record.level = AwarenessLevel::Lost;
+        }
+        else if (record.level == AwarenessLevel::Lost)
+        {
+            record.level = AwarenessLevel::Unaware;
+        }
+
+        record.last_decay_at = record.last_decay_at + GameplayDuration{steps * interval};
+        if (record.level == old_level && record.suspicion_micro == old_suspicion)
+            continue;
+
+        Bump();
+        record.revision = revision_;
+        Record({0,
+                record.level == AwarenessLevel::Lost ? PerceptionChangeKind::Lost
+                                                     : PerceptionChangeKind::AwarenessChanged,
+                record.perceiver,
+                record.target,
+                {},
+                {},
+                record.level,
+                context,
+                revision_});
+    }
+}
+
 Fixed PerceptionService::DistanceSquared(WorldPosition a, WorldPosition b) noexcept
 {
-    auto dx = a.x_mm - b.x_mm;
-    auto dy = a.y_mm - b.y_mm;
-    auto dz = a.z_mm - b.z_mm;
-    auto safe = [](Fixed v) {
-        long double x = static_cast<long double>(v);
-        return x * x;
-    };
-    long double d = safe(dx) + safe(dy) + safe(dz);
+    const long double dx = static_cast<long double>(a.x_mm) - static_cast<long double>(b.x_mm);
+    const long double dy = static_cast<long double>(a.y_mm) - static_cast<long double>(b.y_mm);
+    const long double dz = static_cast<long double>(a.z_mm) - static_cast<long double>(b.z_mm);
+    const long double d = dx * dx + dy * dy + dz * dz;
     return d > static_cast<long double>(std::numeric_limits<Fixed>::max()) ? std::numeric_limits<Fixed>::max()
                                                                            : static_cast<Fixed>(d);
+}
+Fixed PerceptionService::ScaledRange(Fixed base_range_mm, Fixed multiplier_micro) noexcept
+{
+    if (base_range_mm <= 0 || multiplier_micro <= 0)
+        return 0;
+    const long double scaled = static_cast<long double>(base_range_mm) * static_cast<long double>(multiplier_micro) /
+                               1'000'000.0L;
+    if (scaled >= static_cast<long double>(std::numeric_limits<Fixed>::max()))
+        return std::numeric_limits<Fixed>::max();
+    return std::max<Fixed>(1, static_cast<Fixed>(scaled));
+}
+Fixed PerceptionService::DistanceAttenuatedScore(Fixed strength_micro, Fixed range_mm, WorldPosition observer,
+                                                  WorldPosition stimulus) noexcept
+{
+    if (strength_micro <= 0 || range_mm <= 0)
+        return 0;
+    const long double dx = static_cast<long double>(observer.x_mm) - static_cast<long double>(stimulus.x_mm);
+    const long double dy = static_cast<long double>(observer.y_mm) - static_cast<long double>(stimulus.y_mm);
+    const long double dz = static_cast<long double>(observer.z_mm) - static_cast<long double>(stimulus.z_mm);
+    const long double distance = std::sqrt(dx * dx + dy * dy + dz * dz);
+    const long double range = static_cast<long double>(range_mm);
+    if (distance >= range)
+        return 0;
+    const long double attenuation = 1.0L - distance / range;
+    const long double clamped_strength = static_cast<long double>(std::clamp<Fixed>(strength_micro, 0, 1'000'000));
+    const long double score = clamped_strength * attenuation;
+    return std::clamp<Fixed>(static_cast<Fixed>(score), 0, 1'000'000);
 }
 PerceptionConfidence PerceptionService::ConfidenceFromScore(Fixed score) const noexcept
 {
@@ -192,8 +318,8 @@ VisibilityResult PerceptionService::EvaluateVisibility(GameplayObjectRef p, Game
         return r;
     }
     auto d2 = DistanceSquared(op, tp);
-    auto range = (def->base_range_mm * std::max<Fixed>(1, ModifierFor(p, chosen))) / 1'000'000;
-    auto range2 = range * range;
+    auto range = ScaledRange(def->base_range_mm, ModifierFor(p, chosen));
+    auto range2 = DistanceSquared({}, WorldPosition{range, 0, 0});
     if (d2 > range2)
     {
         r.state = PerceptionVisibilityState::Hidden;
@@ -205,6 +331,11 @@ VisibilityResult PerceptionService::EvaluateVisibility(GameplayObjectRef p, Game
     return r;
 }
 AudibilityResult PerceptionService::EvaluateAudibility(GameplayObjectRef p, PerceptionStimulusId sid) const
+{
+    return EvaluateAudibility(p, sid, {});
+}
+AudibilityResult PerceptionService::EvaluateAudibility(GameplayObjectRef p, PerceptionStimulusId sid,
+                                                        WorldPosition observer_position) const
 {
     AudibilityResult r;
     r.revision = revision_;
@@ -223,7 +354,7 @@ AudibilityResult PerceptionService::EvaluateAudibility(GameplayObjectRef p, Perc
         if (def && s == stim->sense)
         {
             has = true;
-            range = (def->base_range_mm * std::max<Fixed>(1, ModifierFor(p, s))) / 1'000'000;
+            range = ScaledRange(def->base_range_mm, ModifierFor(p, s));
             break;
         }
     }
@@ -232,7 +363,12 @@ AudibilityResult PerceptionService::EvaluateAudibility(GameplayObjectRef p, Perc
         r.state = PerceptionAudibilityState::NotHeard;
         return r;
     }
-    r.score_micro = std::min<Fixed>(1'000'000, stim->strength_micro);
+    r.score_micro = DistanceAttenuatedScore(stim->strength_micro, range, observer_position, stim->position);
+    if (r.score_micro <= 0)
+    {
+        r.state = PerceptionAudibilityState::NotHeard;
+        return r;
+    }
     r.state = r.score_micro > 800000 ? PerceptionAudibilityState::HeardExactly
                                      : (r.score_micro > 350000 ? PerceptionAudibilityState::HeardDirectionOnly
                                                                : PerceptionAudibilityState::HeardVagueNoise);
@@ -248,6 +384,7 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
     PerceptionStimulusId sid, const PerceptionProcessingContext &pc)
 {
     EnsureBudgetEpoch(pc.tick);
+    MaintainTemporalState(pc.now, pc.gameplay);
     auto *stim = FindStimulus(sid);
     if (!stim)
         return foundation::Result<std::vector<PerceptionObservation>>::Failure(
@@ -282,11 +419,38 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
     if (candidates.size() > budget_.max_perceivers_per_stimulus)
         candidates.resize(budget_.max_perceivers_per_stimulus);
     std::vector<PerceptionObservation> out;
+    const auto hearing = SenseTypeId::FromString("framework.sense.hearing");
+    const auto vision = SenseTypeId::FromString("framework.sense.vision");
     for (const auto &p : candidates)
     {
-        auto audible = EvaluateAudibility(p.subject, sid);
-        ++diagnostics_.audibility_tests;
-        if (audible.score_micro <= 0)
+        const auto observer_position = pc.FindPerceiverPosition(p.subject).value_or(WorldPosition{});
+        Fixed detection_score = 0;
+        if (stim->sense == hearing)
+        {
+            auto audible = EvaluateAudibility(p.subject, sid, observer_position);
+            ++diagnostics_.audibility_tests;
+            detection_score = audible.score_micro;
+        }
+        else if (stim->sense == vision)
+        {
+            auto visible = EvaluateVisibility(p.subject, stim->source, observer_position, stim->position);
+            ++diagnostics_.visibility_tests;
+            detection_score = visible.score_micro <= 0
+                                  ? 0
+                                  : static_cast<Fixed>((static_cast<long double>(visible.score_micro) *
+                                                        std::clamp<Fixed>(stim->strength_micro, 0, 1'000'000)) /
+                                                       1'000'000.0L);
+        }
+        else
+        {
+            const auto *definition = FindSense(stim->sense);
+            if (definition)
+            {
+                const auto range = ScaledRange(definition->base_range_mm, ModifierFor(p.subject, stim->sense));
+                detection_score = DistanceAttenuatedScore(stim->strength_micro, range, observer_position, stim->position);
+            }
+        }
+        if (detection_score <= 0)
             continue;
         Bump();
         auto oid = PerceptionObservationId{observation_ids_.Next()};
@@ -295,7 +459,7 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
                                 stim->source,
                                 sid,
                                 stim->sense,
-                                ConfidenceFromScore(audible.score_micro),
+                                ConfidenceFromScore(detection_score),
                                 stim->position,
                                 pc.now,
                                 stim->tags,
@@ -303,11 +467,12 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
                                 revision_};
         observations_.emplace(oid, o);
         auto &aw = TouchAwareness(p.subject, stim->source);
-        aw.suspicion_micro = std::min<Fixed>(1'000'000, aw.suspicion_micro + audible.score_micro / 2);
+        aw.suspicion_micro = std::min<Fixed>(1'000'000, aw.suspicion_micro + detection_score / 2);
         aw.level = aw.suspicion_micro >= 800000
                        ? AwarenessLevel::Confirmed
                        : (aw.suspicion_micro >= 400000 ? AwarenessLevel::Aware : AwarenessLevel::Suspicious);
         aw.last_observed_at = pc.now;
+        aw.last_decay_at = pc.now;
         aw.last_known_position = stim->position;
         aw.revision = revision_;
         Record(

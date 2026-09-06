@@ -217,6 +217,7 @@ struct KnowledgeRecord
     KnowledgeTruthState truth_state = KnowledgeTruthState::Unknown;
     KnowledgeConfidence confidence = KnowledgeConfidence::None;
     GameplayObjectRef subject{};
+    KnowledgeSourceId source_kind{};
     GameplayObjectRef source{};
     GameplayTimePoint learned_at{};
     GameplayTimePoint last_confirmed_at{};

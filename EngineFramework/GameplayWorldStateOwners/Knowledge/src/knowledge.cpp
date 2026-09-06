@@ -57,10 +57,9 @@ foundation::Result<KnowledgeRecordId> KnowledgeService::Learn(LearnKnowledgeRequ
         existing->confidence = std::max(existing->confidence, r.confidence);
         existing->truth_state =
             r.confidence >= KnowledgeConfidence::High ? KnowledgeTruthState::KnownTrue : KnowledgeTruthState::Suspected;
+        existing->source_kind = r.source_kind;
         existing->source = r.source_object;
-        existing->last_confirmed_at = r.context.tick.IsValid()
-                                          ? GameplayTimePoint{static_cast<std::int64_t>(r.context.tick.Raw())}
-                                          : existing->last_confirmed_at;
+        existing->last_confirmed_at = r.context.time;
         existing->payload = r.payload;
         existing->revision = revision_;
         ++diagnostics_.learn_ops;
@@ -85,8 +84,9 @@ foundation::Result<KnowledgeRecordId> KnowledgeService::Learn(LearnKnowledgeRequ
         r.confidence >= KnowledgeConfidence::High ? KnowledgeTruthState::KnownTrue : KnowledgeTruthState::Suspected;
     k.confidence = r.confidence;
     k.subject = r.topic.primary_subject;
+    k.source_kind = r.source_kind;
     k.source = r.source_object;
-    k.learned_at = GameplayTimePoint{static_cast<std::int64_t>(r.context.tick.Raw())};
+    k.learned_at = r.context.time;
     k.last_confirmed_at = k.learned_at;
     k.payload = r.payload;
     k.revision = revision_;
@@ -106,7 +106,7 @@ foundation::Result<MemoryRecordId> KnowledgeService::CreateMemory(CreateMemoryRe
     m.id = id;
     m.owner = r.owner;
     m.type = r.type;
-    m.time = GameplayTimePoint{static_cast<std::int64_t>(r.context.tick.Raw())};
+    m.time = r.context.time;
     m.subject = r.subject;
     m.area = r.area;
     m.importance = r.importance;
