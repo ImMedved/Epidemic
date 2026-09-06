@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <string_view>
 #include <unordered_map>
@@ -188,12 +189,14 @@ enum class RolesJobsChangeKind
     JobResumed,
     WorkplaceCreated,
     WorkplaceStateChanged,
+    ShiftScheduled,
     ShiftStarted,
     ShiftEnded,
     DutyCreated,
     DutyActivated,
     DutyCompleted,
     DutyFailed,
+    DutySkipped,
     DutyCancelled
 };
 
@@ -232,6 +235,8 @@ struct WorkShift
     WorkShiftId id{};
     GameplayTimePoint start{};
     GameplayDuration duration{};
+    // Zero duration means a one-shot shift. Positive duration creates recurring occurrences at this interval.
+    GameplayDuration recurrence{};
     JobTaskTypeId task_type{};
     GameplayObjectRef target_area{};
     GameplayObjectRef target_object{};
@@ -254,6 +259,9 @@ struct Duty
     DutyState state = DutyState::Scheduled;
     JobAssignmentId assignment{};
     WorkShiftId shift{};
+    GameplayTimePoint scheduled_start{};
+    GameplayTimePoint scheduled_end{};
+    std::vector<JobTaskTypeId> tasks;
     std::vector<std::byte> payload;
     Revision revision{};
 };
@@ -267,6 +275,13 @@ struct RolesJobsChange
     DutyId duty{};
     GameplayContext context{};
     Revision revision{};
+};
+struct RolesJobsChangeBatch
+{
+    std::vector<RolesJobsChange> changes;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+    bool snapshot_required = false;
 };
 struct RolesJobsSnapshot
 {
@@ -285,7 +300,7 @@ struct RolesJobsSnapshot
 struct RolesJobsDiagnostics
 {
     std::uint64_t definitions = 0, workplaces = 0, assignments = 0, schedules = 0, active_duties = 0, shift_events = 0,
-                  duty_failures = 0;
+                  duty_failures = 0, retained_changes = 0, retained_terminal_duties = 0;
 };
 
 class RolesJobsService
@@ -300,21 +315,35 @@ class RolesJobsService
     [[nodiscard]] foundation::Result<void> SetWorkplaceState(WorkplaceId id, WorkplaceState state,
                                                              GameplayContext context = {});
     [[nodiscard]] foundation::Result<JobAssignmentId> AssignJob(JobAssignment assignment, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> PauseAssignment(JobAssignmentId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ResumeAssignment(JobAssignmentId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> SuspendAssignment(JobAssignmentId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CompleteAssignment(JobAssignmentId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CancelAssignment(JobAssignmentId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<WorkScheduleId> CreateSchedule(WorkSchedule schedule);
     [[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty, GameplayContext context = {});
     [[nodiscard]] std::vector<DutyId> ActivateDueShifts(GameplayTimePoint now, GameplayContext context = {});
+    [[nodiscard]] std::vector<DutyId> ActivateDueShifts(GameplayTimePoint from, GameplayTimePoint to,
+                                                        GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ActivateDuty(DutyId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CompleteDuty(DutyId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> FailDuty(DutyId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> SkipDuty(DutyId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CancelDuty(DutyId id, GameplayContext context = {});
     [[nodiscard]] const JobAssignment *GetJobAssignment(JobAssignmentId id) const noexcept;
     [[nodiscard]] const Workplace *GetWorkplace(WorkplaceId id) const noexcept;
+    [[nodiscard]] const Duty *FindDuty(DutyId id) const noexcept;
     [[nodiscard]] const Duty *GetCurrentDuty(GameplayObjectRef subject) const noexcept;
     [[nodiscard]] std::vector<JobAssignment> FindJobsOfSubject(GameplayObjectRef subject) const;
     [[nodiscard]] std::vector<JobAssignment> FindWorkersAtWorkplace(WorkplaceId workplace) const;
     [[nodiscard]] std::vector<Workplace> FindWorkplacesInArea(GameplayObjectRef area) const;
+    [[nodiscard]] std::vector<Duty> FindDutiesForAssignment(JobAssignmentId assignment) const;
     [[nodiscard]] std::vector<Duty> FindActiveDuties() const;
     [[nodiscard]] std::vector<RolesJobsChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] RolesJobsChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept;
+    [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
+    void PruneChangesBefore(std::uint64_t sequence) noexcept;
     [[nodiscard]] RolesJobsSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(RolesJobsSnapshot snapshot);
     [[nodiscard]] RolesJobsDiagnostics GetDiagnostics() const noexcept;
@@ -324,11 +353,38 @@ class RolesJobsService
     }
 
   private:
-    void Bump() noexcept
+    struct DutyOccurrenceKey
     {
-        revision_.value++;
+        JobAssignmentId assignment{};
+        WorkShiftId shift{};
+        GameplayTimePoint start{};
+        [[nodiscard]] bool operator==(const DutyOccurrenceKey &) const noexcept = default;
+    };
+    struct DutyOccurrenceKeyHash
+    {
+        [[nodiscard]] std::size_t operator()(const DutyOccurrenceKey &key) const noexcept;
+    };
+
+    [[nodiscard]] foundation::Result<Revision> NextRevision() const;
+    void Bump(Revision next) noexcept
+    {
+        revision_ = next;
     }
     void Record(RolesJobsChange change);
+    void RebuildIndexes();
+    void PruneTerminalDuties();
+    [[nodiscard]] bool IsWorkplaceOperational(WorkplaceId id) const noexcept;
+    [[nodiscard]] bool IsWorkplaceStateOperational(WorkplaceState state) const noexcept;
+    [[nodiscard]] bool IsTerminalAssignment(AssignmentState state) const noexcept;
+    [[nodiscard]] bool IsTerminalDuty(DutyState state) const noexcept;
+    [[nodiscard]] bool IsLiveDuty(DutyState state) const noexcept;
+    [[nodiscard]] bool HasDutyOccurrence(JobAssignmentId assignment, WorkShiftId shift, GameplayTimePoint start) const;
+    [[nodiscard]] foundation::Result<DutyId> CreateDutyInternal(Duty duty, RolesJobsChangeKind initial_shift_change,
+                                                                GameplayContext context);
+    [[nodiscard]] foundation::Result<void> TransitionDuty(DutyId id, DutyState state, RolesJobsChangeKind change,
+                                                          GameplayContext context);
+    [[nodiscard]] foundation::Result<void> TransitionAssignment(JobAssignmentId id, AssignmentState state,
+                                                                RolesJobsChangeKind change, GameplayContext context);
     [[nodiscard]] Duty *FindMutableDuty(DutyId id) noexcept;
     [[nodiscard]] JobAssignment *FindMutableAssignment(JobAssignmentId id) noexcept;
     Revision revision_{};
@@ -342,8 +398,15 @@ class RolesJobsService
     std::unordered_map<JobAssignmentId, JobAssignment, IdHash> assignments_;
     std::unordered_map<WorkScheduleId, WorkSchedule, IdHash> schedules_;
     std::unordered_map<DutyId, Duty, IdHash> duties_;
-    std::vector<RolesJobsChange> changes_;
+    std::unordered_map<GameplayObjectRef, std::vector<JobAssignmentId>> assignments_by_worker_;
+    std::unordered_map<WorkplaceId, std::vector<JobAssignmentId>, IdHash> assignments_by_workplace_;
+    std::unordered_map<JobAssignmentId, std::vector<WorkScheduleId>, IdHash> schedules_by_assignment_;
+    std::unordered_map<JobAssignmentId, std::vector<DutyId>, IdHash> duties_by_assignment_;
+    std::unordered_map<GameplayObjectRef, std::vector<DutyId>> duties_by_subject_;
+    std::deque<RolesJobsChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::size_t change_retention_capacity_ = 4096;
+    std::size_t terminal_duty_retention_capacity_ = 2048;
     mutable RolesJobsDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::roles_jobs

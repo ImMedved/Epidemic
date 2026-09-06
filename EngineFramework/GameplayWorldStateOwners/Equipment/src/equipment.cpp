@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <iterator>
+#include <limits>
+#include <unordered_set>
 #include <utility>
 namespace epidemic::gameplay::equipment
 {
@@ -12,8 +14,61 @@ foundation::Error Error(std::string_view c, std::string_view m)
 {
     return foundation::Error::Create(c, m);
 }
+
+template <class Snapshot>
+[[nodiscard]] bool ValidGeneratorSnapshot(Snapshot snapshot, std::uint64_t expected_scope, std::uint64_t max_low) noexcept
+{
+    if (snapshot.scope != expected_scope) return false;
+    if (snapshot.next == 0) return true;
+    return snapshot.next > max_low;
+}
+
+
+template <class WrappedId>
+void AdvanceGeneratorPast(MonotonicIdGenerator<GameplayObjectId>& generator, WrappedId id) noexcept
+{
+    if (!id.IsValid() || id.value.High() != generator.Scope().Raw()) return;
+    auto snapshot = generator.GetSnapshot();
+    if (snapshot.next == 0 || id.value.Low() < snapshot.next) return;
+    snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
+    generator.Restore(snapshot);
+}
 } // namespace
-EquipmentService::EquipmentService() = default;
+EquipmentService::EquipmentService(std::size_t change_capacity) : change_capacity_(std::max<std::size_t>(1, change_capacity)) {}
+
+foundation::Result<void> EquipmentService::EnsureMutationReady() const
+{
+    if (reconciliation_state_ == EquipmentReconciliationState::NeedsReconciliation)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.equipment.reconciliation_required", "restored equipment bindings must be reconciled before mutation"));
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> EquipmentService::ReconcileRestoredBindings(GameplayContext context)
+{
+    if (reconciliation_state_ == EquipmentReconciliationState::Ready)
+        return foundation::Result<void>::Success();
+    if (!item_provider_)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.equipment.item_provider_missing", "item provider is required to reconcile restored equipment bindings"));
+
+    std::vector<EquipmentBindingId> ids;
+    ids.reserve(bindings_.size());
+    for (const auto& [id, binding] : bindings_)
+    {
+        (void)binding;
+        ids.push_back(id);
+    }
+    std::sort(ids.begin(), ids.end());
+    for (const auto id : ids)
+    {
+        const auto& binding = bindings_.at(id);
+        auto result = item_provider_->ReconcileEquipmentReservation(binding.item, binding.subject, binding.id, context);
+        if (!result) return result;
+    }
+    reconciliation_state_ = EquipmentReconciliationState::Ready;
+    return foundation::Result<void>::Success();
+}
 foundation::Result<EquipmentProfileDefinitionId> EquipmentService::RegisterProfileDefinition(EquipmentProfileDefinition d)
 {
     if (frozen_) return foundation::Result<EquipmentProfileDefinitionId>::Failure(Error("gameplay.registry_frozen", "equipment registry is frozen"));
@@ -47,6 +102,7 @@ EquipmentProfile *EquipmentService::MutableProfile(EquipmentProfileId id) noexce
 }
 foundation::Result<EquipmentProfileId> EquipmentService::CreateProfile(EquipmentProfile p)
 {
+    if (auto ready = EnsureMutationReady(); !ready) return foundation::Result<EquipmentProfileId>::Failure(ready.GetError());
     if (!frozen_) return foundation::Result<EquipmentProfileId>::Failure(Error("gameplay.registry_not_frozen", "equipment registry must be frozen before runtime mutation"));
     if (!p.subject.IsValid() || profile_by_subject_.contains(p.subject))
         return foundation::Result<EquipmentProfileId>::Failure(
@@ -63,13 +119,19 @@ foundation::Result<EquipmentProfileId> EquipmentService::CreateProfile(Equipment
     std::sort(p.slots.begin(), p.slots.end(), [](const auto& a, const auto& b){ return a.id < b.id; });
     if (std::adjacent_find(p.slots.begin(), p.slots.end(), [](const auto& a, const auto& b){ return a.id == b.id; }) != p.slots.end())
         return foundation::Result<EquipmentProfileId>::Failure(Error("gameplay.equipment.duplicate_slot", "profile contains duplicate equipment slot"));
+    AdvanceGeneratorPast(profile_ids_, p.id);
+    for (const auto& slot : p.slots) AdvanceGeneratorPast(slot_ids_, slot.id);
     Bump();
     p.revision = revision_;
     const auto id = p.id;
     profiles_.emplace(id, p);
     profile_by_subject_[p.subject] = id;
     ++diagnostics_.profiles;
-    Record({0, EquipmentChangeKind::ProfileCreated, p.subject, {}, {}, {}, revision_});
+    EquipmentChange created_profile;
+    created_profile.kind = EquipmentChangeKind::ProfileCreated;
+    created_profile.subject = p.subject;
+    created_profile.revision = revision_;
+    Record(std::move(created_profile));
     return foundation::Result<EquipmentProfileId>::Success(id);
 }
 foundation::Result<EquipmentProfileId> EquipmentService::CreateProfileFromDefinition(GameplayObjectRef subject, EquipmentProfileDefinitionId definition)
@@ -85,6 +147,7 @@ foundation::Result<EquipmentProfileId> EquipmentService::CreateProfileFromDefini
 }
 foundation::Result<EquipmentSlotId> EquipmentService::AddSlot(EquipmentProfileId id, EquipmentSlotDefinition s)
 {
+    if (auto ready = EnsureMutationReady(); !ready) return foundation::Result<EquipmentSlotId>::Failure(ready.GetError());
     auto *p = MutableProfile(id);
     if (!p)
         return foundation::Result<EquipmentSlotId>::Failure(
@@ -96,11 +159,18 @@ foundation::Result<EquipmentSlotId> EquipmentService::AddSlot(EquipmentProfileId
         if (existing.id == s.id)
             return foundation::Result<EquipmentSlotId>::Failure(
                 Error("gameplay.equipment.duplicate_slot", "duplicate equipment slot"));
+    AdvanceGeneratorPast(slot_ids_, s.id);
     Bump();
     s.revision = revision_;
     p->slots.push_back(s);
     std::sort(p->slots.begin(), p->slots.end(), [](auto &a, auto &b) { return a.id < b.id; });
     p->revision = revision_;
+    EquipmentChange change;
+    change.kind = EquipmentChangeKind::SlotAdded;
+    change.subject = p->subject;
+    change.revision = revision_;
+    change.slots = {s.id};
+    Record(std::move(change));
     return foundation::Result<EquipmentSlotId>::Success(s.id);
 }
 const EquipmentProfile *EquipmentService::FindProfile(GameplayObjectRef subject) const noexcept
@@ -204,6 +274,7 @@ foundation::Result<EquipPlan> EquipmentService::PrepareEquip(GameplayObjectRef s
                                                              std::vector<EquipmentSlotId> slots,
                                                              GameplayContext context)
 {
+    if (auto ready = EnsureMutationReady(); !ready) return foundation::Result<EquipPlan>::Failure(ready.GetError());
     std::sort(slots.begin(), slots.end());
     slots.erase(std::unique(slots.begin(), slots.end()), slots.end());
     const auto *p = FindProfile(subject);
@@ -230,6 +301,7 @@ foundation::Result<EquipPlan> EquipmentService::PrepareEquip(GameplayObjectRef s
 foundation::Result<EquipmentBindingId> EquipmentService::CommitEquip(const EquipPlan &p,
                                                                      std::vector<EquipmentGrantDescriptor> grants)
 {
+    if (auto ready = EnsureMutationReady(); !ready) return foundation::Result<EquipmentBindingId>::Failure(ready.GetError());
     if (!frozen_ || !item_provider_)
         return foundation::Result<EquipmentBindingId>::Failure(Error("gameplay.equipment.not_ready", "equipment service is not frozen or item provider is missing"));
     const auto *profile = FindProfile(p.subject);
@@ -281,7 +353,13 @@ foundation::Result<EquipmentBindingId> EquipmentService::CommitEquip(const Equip
     for (const auto& removed : removed_bindings)
     {
         bindings_.erase(removed.id);
-        EquipmentChange change{0, EquipmentChangeKind::BindingRemoved, removed.subject, removed.id, removed.item, p.context, revision_};
+        EquipmentChange change;
+        change.kind = EquipmentChangeKind::BindingRemoved;
+        change.subject = removed.subject;
+        change.binding = removed.id;
+        change.item = removed.item;
+        change.context = p.context;
+        change.revision = revision_;
         change.slots = removed.slots;
         change.grants = removed.grants;
         change.old_state = removed.state;
@@ -291,7 +369,13 @@ foundation::Result<EquipmentBindingId> EquipmentService::CommitEquip(const Equip
     bindings_.emplace(new_id, binding);
     diagnostics_.bindings = bindings_.size();
     ++diagnostics_.equip_operations;
-    EquipmentChange created{0, EquipmentChangeKind::BindingCreated, p.subject, new_id, p.item, p.context, revision_};
+    EquipmentChange created;
+    created.kind = EquipmentChangeKind::BindingCreated;
+    created.subject = p.subject;
+    created.binding = new_id;
+    created.item = p.item;
+    created.context = p.context;
+    created.revision = revision_;
     created.slots = binding.slots;
     created.grants = binding.grants;
     created.new_state = binding.state;
@@ -301,6 +385,7 @@ foundation::Result<EquipmentBindingId> EquipmentService::CommitEquip(const Equip
 
 foundation::Result<void> EquipmentService::Unequip(EquipmentBindingId id, GameplayContext context)
 {
+    if (auto ready = EnsureMutationReady(); !ready) return ready;
     auto it = bindings_.find(id);
     if (it == bindings_.end())
         return foundation::Result<void>::Failure(
@@ -316,7 +401,13 @@ foundation::Result<void> EquipmentService::Unequip(EquipmentBindingId id, Gamepl
     Bump();
     if (diagnostics_.bindings > 0)
         --diagnostics_.bindings;
-    EquipmentChange change{0, EquipmentChangeKind::BindingRemoved, copy.subject, id, copy.item, context, revision_};
+    EquipmentChange change;
+    change.kind = EquipmentChangeKind::BindingRemoved;
+    change.subject = copy.subject;
+    change.binding = id;
+    change.item = copy.item;
+    change.context = context;
+    change.revision = revision_;
     change.slots = copy.slots;
     change.grants = copy.grants;
     change.old_state = copy.state;
@@ -327,6 +418,7 @@ foundation::Result<void> EquipmentService::Unequip(EquipmentBindingId id, Gamepl
 foundation::Result<void> EquipmentService::SetBindingState(EquipmentBindingId id, EquipmentBindingState state,
                                                            GameplayContext context)
 {
+    if (auto ready = EnsureMutationReady(); !ready) return ready;
     auto it = bindings_.find(id);
     if (it == bindings_.end())
         return foundation::Result<void>::Failure(
@@ -337,7 +429,13 @@ foundation::Result<void> EquipmentService::SetBindingState(EquipmentBindingId id
     Bump();
     it->second.state = state;
     it->second.revision = revision_;
-    EquipmentChange change{0, EquipmentChangeKind::BindingStateChanged, it->second.subject, id, it->second.item, context, revision_};
+    EquipmentChange change;
+    change.kind = EquipmentChangeKind::BindingStateChanged;
+    change.subject = it->second.subject;
+    change.binding = id;
+    change.item = it->second.item;
+    change.context = context;
+    change.revision = revision_;
     change.slots = it->second.slots;
     change.grants = it->second.grants;
     change.old_state = old_state;
@@ -364,27 +462,87 @@ std::optional<EquipmentItemId> EquipmentService::GetEquippedItem(GameplayObjectR
             return b.item;
     return std::nullopt;
 }
+foundation::Result<void> EquipmentService::ValidateAndCanonicalizeLoadout(EquipmentLoadout& loadout) const
+{
+    if (!loadout.subject.IsValid())
+        return foundation::Result<void>::Failure(Error("gameplay.equipment.invalid_loadout", "loadout subject is invalid"));
+    const auto* profile = FindProfile(loadout.subject);
+    if (!profile)
+        return foundation::Result<void>::Failure(Error("gameplay.equipment.invalid_loadout", "loadout subject has no equipment profile"));
+    if (!item_provider_ && !loadout.desired.empty())
+        return foundation::Result<void>::Failure(Error("gameplay.equipment.item_provider_missing", "item provider is required to validate loadout items"));
+
+    std::sort(loadout.desired.begin(), loadout.desired.end(), [](const auto& a, const auto& b) {
+        if (a.first != b.first) return a.first < b.first;
+        return a.second < b.second;
+    });
+
+    std::unordered_set<EquipmentItemId, IdHash> items;
+    std::unordered_set<TypeId> conflict_groups;
+    EquipmentSlotId previous_slot{};
+    for (const auto& [slot_id, item_id] : loadout.desired)
+    {
+        if (!slot_id.IsValid() || !item_id.IsValid())
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.invalid_loadout", "loadout contains invalid slot or item id"));
+        if (previous_slot.IsValid() && previous_slot == slot_id)
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.invalid_loadout", "loadout contains duplicate desired slot"));
+        previous_slot = slot_id;
+        if (!items.insert(item_id).second)
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.invalid_loadout", "loadout uses the same item more than once"));
+
+        const auto slot = std::find_if(profile->slots.begin(), profile->slots.end(), [&](const auto& value) { return value.id == slot_id; });
+        if (slot == profile->slots.end())
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.invalid_loadout", "loadout references a slot outside the subject profile"));
+        const auto descriptor = item_provider_->Describe(item_id);
+        if (!descriptor || !SlotAccepts(*slot, *descriptor))
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.invalid_loadout", "loadout item is incompatible with the requested slot"));
+        if (slot->conflict_group.IsValid() && !conflict_groups.insert(slot->conflict_group).second)
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.invalid_loadout", "loadout contains conflicting slots"));
+    }
+    return foundation::Result<void>::Success();
+}
+
 foundation::Result<EquipmentLoadoutId> EquipmentService::SaveLoadout(EquipmentLoadout l)
 {
-    if (!l.subject.IsValid())
-        return foundation::Result<EquipmentLoadoutId>::Failure(
-            Error("gameplay.equipment.invalid_loadout", "invalid loadout"));
+    if (auto ready = EnsureMutationReady(); !ready)
+        return foundation::Result<EquipmentLoadoutId>::Failure(ready.GetError());
+    auto valid = ValidateAndCanonicalizeLoadout(l);
+    if (!valid) return foundation::Result<EquipmentLoadoutId>::Failure(valid.GetError());
     if (!l.id.IsValid()) l.id = EquipmentLoadoutId{loadout_ids_.Next()};
     if (!l.id.IsValid() || loadouts_.contains(l.id))
         return foundation::Result<EquipmentLoadoutId>::Failure(Error("gameplay.equipment.invalid_loadout", "invalid or duplicate loadout id"));
+    AdvanceGeneratorPast(loadout_ids_, l.id);
     Bump();
     l.revision = revision_;
     const auto id = l.id;
+    const auto subject = l.subject;
     loadouts_.emplace(id, std::move(l));
-    Record({0, EquipmentChangeKind::LoadoutSaved, {}, {}, {}, {}, revision_});
+    EquipmentChange change;
+    change.kind = EquipmentChangeKind::LoadoutSaved;
+    change.subject = subject;
+    change.revision = revision_;
+    Record(std::move(change));
     return foundation::Result<EquipmentLoadoutId>::Success(id);
 }
+
+EquipmentChangeBatch EquipmentService::ReadChangesSince(std::uint64_t seq) const
+{
+    EquipmentChangeBatch batch;
+    batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1;
+    batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
+    if (!changes_.empty() && seq < changes_.front().sequence - 1)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(batch.changes),
+                 [seq](const auto& c) { return c.sequence > seq; });
+    return batch;
+}
+
 std::vector<EquipmentChange> EquipmentService::ChangesSince(std::uint64_t seq) const
 {
-    std::vector<EquipmentChange> out;
-    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(out),
-                 [seq](auto &c) { return c.sequence > seq; });
-    return out;
+    return ReadChangesSince(seq).changes;
 }
 EquipmentSnapshot EquipmentService::CaptureSnapshot() const
 {
@@ -419,40 +577,50 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
 {
     std::unordered_map<EquipmentProfileId, EquipmentProfile, IdHash> profiles;
     std::unordered_map<GameplayObjectRef, EquipmentProfileId> by_subject;
+    std::uint64_t max_profile_low = 0;
+    std::uint64_t max_slot_low = 0;
+    std::uint64_t max_binding_low = 0;
+    std::uint64_t max_loadout_low = 0;
+
     for (auto &v : s.profiles)
     {
         if (!v.id.IsValid() || !v.subject.IsValid() || v.revision.value > s.revision.value || profiles.contains(v.id) || by_subject.contains(v.subject))
-            return foundation::Result<void>::Failure(
-                Error("gameplay.equipment.restore_invalid", "invalid equipment profile snapshot"));
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "invalid equipment profile snapshot"));
+        if (v.definition.IsValid() && !profile_definitions_.contains(v.definition))
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "equipment profile references an unregistered definition"));
         std::sort(v.slots.begin(), v.slots.end(), [](const auto& a, const auto& b){ return a.id < b.id; });
-        if (std::any_of(v.slots.begin(), v.slots.end(), [](const auto& slot){ return !slot.id.IsValid() || !slot.type.IsValid(); }) ||
+        if (std::any_of(v.slots.begin(), v.slots.end(), [&](const auto& slot){
+                return !slot.id.IsValid() || !slot.type.IsValid() || slot.revision.value > s.revision.value;
+            }) ||
             std::adjacent_find(v.slots.begin(), v.slots.end(), [](const auto& a, const auto& b){ return a.id == b.id; }) != v.slots.end())
             return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "invalid equipment slots in snapshot"));
-        by_subject[v.subject] = v.id;
+        if (v.id.value.High() == 0x3500) max_profile_low = std::max(max_profile_low, v.id.value.Low());
+        for (const auto& slot : v.slots)
+            if (slot.id.value.High() == 0x3501) max_slot_low = std::max(max_slot_low, slot.id.value.Low());
+        by_subject.emplace(v.subject, v.id);
         profiles.emplace(v.id, std::move(v));
     }
+
     std::unordered_map<EquipmentBindingId, EquipmentBinding, IdHash> bindings;
+    std::unordered_set<EquipmentItemId, IdHash> bound_items;
     for (auto &v : s.bindings)
     {
+        std::sort(v.slots.begin(), v.slots.end());
         if (!v.id.IsValid() || !v.item.IsValid() || !by_subject.contains(v.subject) || bindings.contains(v.id) ||
-            v.slots.empty() || v.revision.value > s.revision.value || !ValidateGrants(v.grants))
-            return foundation::Result<void>::Failure(
-                Error("gameplay.equipment.restore_invalid", "invalid equipment binding snapshot"));
+            v.slots.empty() || v.revision.value > s.revision.value ||
+            !ValidateGrants(v.grants) ||
+            std::adjacent_find(v.slots.begin(), v.slots.end()) != v.slots.end() || !bound_items.insert(v.item).second)
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "invalid equipment binding snapshot"));
+
+        const auto profile_id = by_subject.at(v.subject);
+        const auto& profile = profiles.at(profile_id);
+        for (const auto slot_id : v.slots)
+            if (std::none_of(profile.slots.begin(), profile.slots.end(), [&](const auto& slot){ return slot.id == slot_id; }))
+                return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "binding references missing slot"));
+        if (v.id.value.High() == 0x3502) max_binding_low = std::max(max_binding_low, v.id.value.Low());
         bindings.emplace(v.id, std::move(v));
     }
-    std::vector<EquipmentItemId> bound_items;
-    for (const auto& [id, binding] : bindings)
-    {
-        (void)id;
-        if (std::find(bound_items.begin(), bound_items.end(), binding.item) != bound_items.end())
-            return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "same item appears in multiple bindings"));
-        bound_items.push_back(binding.item);
-        const auto profile_id = by_subject.at(binding.subject);
-        const auto& profile = profiles.at(profile_id);
-        for (const auto slot : binding.slots)
-            if (std::none_of(profile.slots.begin(), profile.slots.end(), [&](const auto& s){ return s.id == slot; }))
-                return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "binding references missing slot"));
-    }
+
     for (auto a = bindings.begin(); a != bindings.end(); ++a)
         for (auto b = std::next(a); b != bindings.end(); ++b)
             if (a->second.subject == b->second.subject)
@@ -463,8 +631,8 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
                         for (const auto rs : right.slots)
                         {
                             if (ls == rs) return true;
-                            const auto ldef = std::find_if(profile.slots.begin(), profile.slots.end(), [&](const auto& s){ return s.id == ls; });
-                            const auto rdef = std::find_if(profile.slots.begin(), profile.slots.end(), [&](const auto& s){ return s.id == rs; });
+                            const auto ldef = std::find_if(profile.slots.begin(), profile.slots.end(), [&](const auto& slot){ return slot.id == ls; });
+                            const auto rdef = std::find_if(profile.slots.begin(), profile.slots.end(), [&](const auto& slot){ return slot.id == rs; });
                             if (ldef != profile.slots.end() && rdef != profile.slots.end() && ldef->conflict_group.IsValid() &&
                                 ldef->conflict_group == rdef->conflict_group) return true;
                         }
@@ -473,14 +641,47 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
                 if (conflicts(a->second, b->second))
                     return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "snapshot contains conflicting bindings"));
             }
+
     std::unordered_map<EquipmentLoadoutId, EquipmentLoadout, IdHash> loadouts;
     for (auto &v : s.loadouts)
     {
-        if (!v.id.IsValid())
-            return foundation::Result<void>::Failure(
-                Error("gameplay.equipment.restore_invalid", "invalid loadout snapshot"));
+        if (!v.id.IsValid() || !v.subject.IsValid() || v.revision.value > s.revision.value || loadouts.contains(v.id) || !by_subject.contains(v.subject))
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "invalid loadout snapshot"));
+        if (!item_provider_ && !v.desired.empty())
+            return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "item provider is required to validate restored loadouts"));
+        std::sort(v.desired.begin(), v.desired.end(), [](const auto& a, const auto& b) {
+            if (a.first != b.first) return a.first < b.first;
+            return a.second < b.second;
+        });
+        const auto& profile = profiles.at(by_subject.at(v.subject));
+        std::unordered_set<EquipmentItemId, IdHash> desired_items;
+        std::unordered_set<TypeId> groups;
+        EquipmentSlotId previous{};
+        for (const auto& [slot_id, item_id] : v.desired)
+        {
+            if (!slot_id.IsValid() || !item_id.IsValid() || (previous.IsValid() && previous == slot_id) || !desired_items.insert(item_id).second)
+                return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "loadout is not a canonical slot/item set"));
+            previous = slot_id;
+            const auto slot = std::find_if(profile.slots.begin(), profile.slots.end(), [&](const auto& value){ return value.id == slot_id; });
+            if (slot == profile.slots.end())
+                return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "loadout references missing slot"));
+            const auto descriptor = item_provider_->Describe(item_id);
+            if (!descriptor || !SlotAccepts(*slot, *descriptor))
+                return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "loadout item is incompatible with its slot"));
+            if (slot->conflict_group.IsValid() && !groups.insert(slot->conflict_group).second)
+                return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "loadout contains conflicting slots"));
+        }
+        if (v.id.value.High() == 0x3504) max_loadout_low = std::max(max_loadout_low, v.id.value.Low());
         loadouts.emplace(v.id, std::move(v));
     }
+
+    if (!ValidGeneratorSnapshot(s.profile_ids, 0x3500, max_profile_low) ||
+        !ValidGeneratorSnapshot(s.slot_ids, 0x3501, max_slot_low) ||
+        !ValidGeneratorSnapshot(s.binding_ids, 0x3502, max_binding_low) ||
+        !ValidGeneratorSnapshot(s.operation_ids, 0x3503, 0) ||
+        !ValidGeneratorSnapshot(s.loadout_ids, 0x3504, max_loadout_low))
+        return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "invalid equipment id generator snapshot"));
+
     profiles_ = std::move(profiles);
     profile_by_subject_ = std::move(by_subject);
     bindings_ = std::move(bindings);
@@ -493,6 +694,7 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;
+    reconciliation_state_ = bindings_.empty() ? EquipmentReconciliationState::Ready : EquipmentReconciliationState::NeedsReconciliation;
     diagnostics_ = {};
     diagnostics_.profiles = profiles_.size();
     diagnostics_.bindings = bindings_.size();
@@ -507,8 +709,12 @@ EquipmentDiagnostics EquipmentService::GetDiagnostics() const noexcept
 }
 void EquipmentService::Record(EquipmentChange c)
 {
-    c.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0) return;
+    c.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max()) next_change_sequence_ = 0;
+    else ++next_change_sequence_;
     changes_.push_back(std::move(c));
+    while (changes_.size() > change_capacity_) changes_.pop_front();
 }
 } // namespace epidemic::gameplay::equipment
 

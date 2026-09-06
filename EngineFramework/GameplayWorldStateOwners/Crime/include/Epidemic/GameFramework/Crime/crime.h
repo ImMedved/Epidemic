@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -255,7 +256,9 @@ enum class CrimeChangeKind
     CrimeRecorded,
     CrimeReported,
     WitnessAdded,
+    WitnessRemoved,
     EvidenceAdded,
+    EvidenceRemoved,
     ProofStateChanged,
     CaseStateChanged,
     BountyCreated,
@@ -263,7 +266,8 @@ enum class CrimeChangeKind
     BountyResolved,
     LawResponseGenerated,
     CrimeExpired,
-    CrimeDismissed
+    CrimeDismissed,
+    CrimePruned
 };
 enum class CrimeCandidatePolicy
 {
@@ -272,6 +276,13 @@ enum class CrimeCandidatePolicy
     IgnoreWithoutJurisdiction
 };
 
+struct LawResponseDefinition
+{
+    LawResponseTypeId id{};
+    std::uint32_t required_authority_capabilities = 0;
+    std::optional<CrimeCaseState> resulting_case_state;
+    Revision revision{};
+};
 struct LawDefinition
 {
     LawId id{};
@@ -279,6 +290,7 @@ struct LawDefinition
     GameplayTagSet tags;
     std::int64_t severity_micro = 0;
     std::int64_t default_bounty = 0;
+    GameplayDuration statute_of_limitations{};
     Revision revision{};
 };
 struct JurisdictionRecord
@@ -298,6 +310,14 @@ struct AuthorityRecord
     std::uint32_t capabilities = 0;
     Revision revision{};
 };
+struct CrimeCandidateWitness
+{
+    GameplayObjectRef witness{};
+    WitnessTypeId witness_type{};
+    std::int64_t confidence_micro = 0;
+    GameplayTimePoint observed_at{};
+    std::vector<std::byte> payload;
+};
 struct CrimeCandidate
 {
     CrimeTypeId type{};
@@ -308,6 +328,7 @@ struct CrimeCandidate
     GameplayTimePoint time{};
     GameplayContext context{};
     std::vector<std::byte> payload;
+    std::optional<CrimeCandidateWitness> initial_witness;
 };
 struct WitnessRecord
 {
@@ -343,6 +364,7 @@ struct CrimeRecord
     CrimeProofState proof_state = CrimeProofState::Unknown;
     CrimeCaseState state = CrimeCaseState::Open;
     GameplayTimePoint committed_at{};
+    std::optional<GameplayTimePoint> expires_at;
     std::vector<WitnessRecordId> witnesses;
     std::vector<EvidenceId> evidence;
     std::vector<std::byte> payload;
@@ -355,6 +377,8 @@ struct BountyRecord
     JurisdictionId jurisdiction{};
     std::int64_t amount = 0;
     BountyState state = BountyState::Active;
+    std::optional<GameplayTimePoint> expires_at;
+    std::vector<CrimeRecordId> source_crimes;
     Revision revision{};
 };
 struct LawResponseRequest
@@ -408,6 +432,7 @@ struct CrimeChange
 struct CrimeSnapshot
 {
     std::vector<LawDefinition> laws;
+    std::vector<LawResponseDefinition> response_definitions;
     std::vector<JurisdictionRecord> jurisdictions;
     std::vector<AuthorityRecord> authorities;
     std::vector<CrimeRecord> crimes;
@@ -422,6 +447,14 @@ struct CrimeSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot authority_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot response_ids{};
     Revision revision{};
+    bool definitions_frozen = false;
+};
+struct CrimeChangeBatch
+{
+    std::vector<CrimeChange> changes;
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
 };
 struct CrimeDiagnostics
 {
@@ -438,13 +471,18 @@ class CrimeService
         return GameplayDomainId::FromString("framework.crime");
     }
     [[nodiscard]] foundation::Result<void> RegisterLaw(LawDefinition law);
+    [[nodiscard]] foundation::Result<void> RegisterLawResponseDefinition(LawResponseDefinition definition);
     [[nodiscard]] foundation::Result<void> RegisterJurisdiction(JurisdictionRecord jurisdiction);
     [[nodiscard]] foundation::Result<AuthorityId> RegisterAuthority(AuthorityRecord authority);
+    [[nodiscard]] foundation::Result<void> FreezeDefinitions();
+    [[nodiscard]] bool DefinitionsFrozen() const noexcept { return definitions_frozen_; }
     [[nodiscard]] std::optional<JurisdictionRecord> GetApplicableJurisdiction(GameplayObjectRef area) const;
     [[nodiscard]] foundation::Result<CrimeEvaluationResult> EvaluateCrimeCandidate(
         CrimeCandidate candidate, CrimeCandidatePolicy policy = CrimeCandidatePolicy::RecordAlways);
-    [[nodiscard]] foundation::Result<WitnessRecordId> AddWitness(WitnessRecord witness);
-    [[nodiscard]] foundation::Result<EvidenceId> AddEvidence(EvidenceRecord evidence);
+    [[nodiscard]] foundation::Result<WitnessRecordId> AddWitness(WitnessRecord witness, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RemoveWitness(WitnessRecordId witness, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<EvidenceId> AddEvidence(EvidenceRecord evidence, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RemoveEvidence(EvidenceId evidence, GameplayContext context = {});
     [[nodiscard]] foundation::Result<BountyRecordId> CreateBounty(BountyRecord bounty);
     [[nodiscard]] foundation::Result<void> ResolveBounty(BountyRecordId id, BountyState state,
                                                          GameplayContext context = {});
@@ -454,6 +492,8 @@ class CrimeService
     [[nodiscard]] foundation::Result<void> ChangeProofState(CrimeRecordId id, CrimeProofState state,
                                                             GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> ExpireCrime(CrimeRecordId id, GameplayContext context = {});
+    [[nodiscard]] std::size_t ExpireDue(GameplayTimePoint now, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> PruneTerminalCrime(CrimeRecordId id, GameplayContext context = {});
     [[nodiscard]] LegalityPreview PreviewLegality(GameplayObjectRef offender, CrimeTypeId type,
                                                   GameplayObjectRef area) const;
     [[nodiscard]] std::vector<CrimeRecord> FindCrimesByOffender(GameplayObjectRef offender) const;
@@ -464,6 +504,13 @@ class CrimeService
     [[nodiscard]] std::vector<EvidenceRecord> FindEvidence(CrimeRecordId crime) const;
     [[nodiscard]] std::optional<BountyRecord> GetBounty(GameplayObjectRef offender, JurisdictionId jurisdiction) const;
     [[nodiscard]] std::vector<CrimeChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] CrimeChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    void PruneChangesThrough(std::uint64_t sequence);
+    void SetChangeJournalCapacity(std::size_t capacity) noexcept;
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    {
+        return next_change_sequence_ > 1 ? next_change_sequence_ - 1 : 0;
+    }
     [[nodiscard]] CrimeSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(CrimeSnapshot snapshot);
     [[nodiscard]] CrimeDiagnostics GetDiagnostics() const noexcept;
@@ -481,7 +528,12 @@ class CrimeService
     void Record(CrimeChange change);
     [[nodiscard]] CrimeRecord *FindMutableCrime(CrimeRecordId id) noexcept;
     [[nodiscard]] const LawDefinition *FindLawFor(CrimeTypeId type, JurisdictionId jurisdiction) const noexcept;
+    [[nodiscard]] const LawResponseDefinition *FindResponseDefinition(LawResponseTypeId id) const noexcept;
+    [[nodiscard]] CrimeProofState AggregateProofState(CrimeRecordId crime) const noexcept;
+    void RecalculateProofState(CrimeRecord &crime, GameplayContext context = {});
+    void RebuildDerivedIndexes();
     Revision revision_{};
+    bool definitions_frozen_ = false;
     MonotonicIdGenerator<GameplayObjectId> crime_ids_{0x2500};
     MonotonicIdGenerator<GameplayObjectId> witness_ids_{0x2501};
     MonotonicIdGenerator<GameplayObjectId> evidence_ids_{0x2502};
@@ -489,6 +541,7 @@ class CrimeService
     MonotonicIdGenerator<GameplayObjectId> authority_ids_{0x2504};
     MonotonicIdGenerator<GameplayObjectId> response_ids_{0x2505};
     std::unordered_map<LawId, LawDefinition, IdHash> laws_;
+    std::unordered_map<LawResponseTypeId, LawResponseDefinition, IdHash> response_definitions_;
     std::unordered_map<JurisdictionId, JurisdictionRecord, IdHash> jurisdictions_;
     std::unordered_map<AuthorityId, AuthorityRecord, IdHash> authorities_;
     std::unordered_map<CrimeRecordId, CrimeRecord, IdHash> crimes_;
@@ -496,7 +549,9 @@ class CrimeService
     std::unordered_map<EvidenceId, EvidenceRecord, IdHash> evidence_;
     std::unordered_map<BountyRecordId, BountyRecord, IdHash> bounties_;
     std::unordered_map<LawResponseId, LawResponseRecord, IdHash> responses_;
-    std::vector<CrimeChange> changes_;
+    std::unordered_map<GameplayObjectRef, std::unordered_map<JurisdictionId, BountyRecordId, IdHash>> active_bounty_index_;
+    std::deque<CrimeChange> changes_;
+    std::size_t change_journal_capacity_ = 4096;
     std::uint64_t next_change_sequence_ = 1;
     mutable CrimeDiagnostics diagnostics_{};
 };

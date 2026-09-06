@@ -21,6 +21,30 @@ bool CheckedAdd(Fixed a, Fixed b, Fixed &out) noexcept
     out = a + b;
     return true;
 }
+bool CheckedMultiply(Fixed a, Fixed b, Fixed &out) noexcept
+{
+    if (a < 0 || b < 0) return false;
+    if (a == 0 || b == 0) { out = 0; return true; }
+    if (a > std::numeric_limits<Fixed>::max() / b) return false;
+    out = a * b;
+    return true;
+}
+template <class TGenerator, class TId>
+void AdvanceGeneratorForExplicitId(TGenerator &generator, TId id) noexcept
+{
+    auto snapshot = generator.GetSnapshot();
+    if (!id.IsValid() || id.value.High() != snapshot.scope || snapshot.next == 0) return;
+    const auto low = id.value.Low();
+    if (low < snapshot.next) return;
+    snapshot.next = low == std::numeric_limits<std::uint64_t>::max() ? 0 : low + 1;
+    generator.Restore(snapshot);
+}
+bool ValidGeneratorSnapshot(MonotonicIdGenerator<GameplayObjectId>::Snapshot snapshot,
+                            std::uint64_t expected_scope, std::uint64_t max_low) noexcept
+{
+    if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot) || snapshot.scope != expected_scope) return false;
+    return snapshot.next == 0 || snapshot.next > max_low;
+}
 bool IsTerminalReservation(FundsReservationState s) noexcept
 {
     return s == FundsReservationState::Committed || s == FundsReservationState::Released;
@@ -39,11 +63,27 @@ bool SameObject(GameplayObjectRef a, GameplayObjectRef b) noexcept
 }
 } // namespace
 EconomyService::EconomyService() = default;
-foundation::Result<void> EconomyService::AddPriceProvider(const IPriceProvider *provider)
+void EconomyService::Freeze() noexcept
 {
-    if (frozen_ || !provider)
-        return foundation::Result<void>::Failure(Error("gameplay.economy.invalid_price_provider", "invalid price provider"));
-    price_providers_.push_back(provider);
+    std::sort(price_providers_.begin(), price_providers_.end(), [](const auto &a, const auto &b) {
+        return a.priority == b.priority ? a.id < b.id : a.priority > b.priority;
+    });
+    frozen_ = true;
+}
+foundation::Result<void> EconomyService::AddPriceProvider(PriceProviderId id, std::int32_t priority, const IPriceProvider *provider)
+{
+    if (frozen_ || !id.IsValid() || !provider ||
+        std::any_of(price_providers_.begin(), price_providers_.end(), [&](const auto &v) { return v.id == id; }))
+        return foundation::Result<void>::Failure(Error("gameplay.economy.invalid_price_provider", "invalid/duplicate price provider"));
+    price_providers_.push_back({id, priority, provider});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> EconomyService::RegisterContractTermsSchema(ContractTermsSchema schema)
+{
+    if (frozen_ || !schema.type.IsValid() || !schema.schema.IsValid() || schema.max_payload_bytes == 0 ||
+        contract_terms_schemas_.contains(schema.type))
+        return foundation::Result<void>::Failure(Error("gameplay.economy.invalid_contract_schema", "invalid/duplicate contract terms schema"));
+    contract_terms_schemas_.emplace(schema.type, schema);
     return foundation::Result<void>::Success();
 }
 foundation::Result<CurrencyId> EconomyService::RegisterCurrency(CurrencyDefinition d)
@@ -71,6 +111,7 @@ foundation::Result<EconomicAccountId> EconomyService::CreateAccount(EconomicAcco
         return foundation::Result<EconomicAccountId>::Failure(
             Error("gameplay.economy.invalid_account", "invalid account"));
     if (!a.id.IsValid()) a.id = EconomicAccountId{account_ids_.Next()};
+    else AdvanceGeneratorForExplicitId(account_ids_, a.id);
     if (!a.id.IsValid() || accounts_.contains(a.id))
         return foundation::Result<EconomicAccountId>::Failure(
             Error("gameplay.economy.duplicate_account", "duplicate account"));
@@ -241,10 +282,12 @@ foundation::Result<void> EconomyService::CommitFunds(FundsReservationId id, Econ
 }
 foundation::Result<MarketId> EconomyService::CreateMarket(MarketState m)
 {
-    if (!m.id.IsValid())
-        m.id = MarketId{market_ids_.Next()};
-    if (markets_.contains(m.id))
-        return foundation::Result<MarketId>::Failure(Error("gameplay.economy.duplicate_market", "duplicate market"));
+    if (!frozen_) return foundation::Result<MarketId>::Failure(Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
+    if (!m.area.IsValid()) return foundation::Result<MarketId>::Failure(Error("gameplay.economy.invalid_market", "market area missing"));
+    if (!m.id.IsValid()) m.id = MarketId{market_ids_.Next()};
+    else AdvanceGeneratorForExplicitId(market_ids_, m.id);
+    if (!m.id.IsValid() || markets_.contains(m.id))
+        return foundation::Result<MarketId>::Failure(Error("gameplay.economy.duplicate_market", "invalid or duplicate market"));
     Bump();
     m.revision = revision_;
     const auto id = m.id;
@@ -296,13 +339,14 @@ std::optional<PriceQuote> EconomyService::GetPriceQuote(const PriceQuoteRequest 
     if (!currencies_.contains(request.currency) || request.quantity <= 0 ||
         (request.market && !markets_.contains(*request.market)))
         return std::nullopt;
-    for (const auto *p : price_providers_)
-        if (p)
+    for (const auto &registration : price_providers_)
+        if (registration.provider)
         {
-            auto q = p->Quote(request);
+            auto q = registration.provider->Quote(request);
             if (q && q->subject.type == request.subject.type && q->subject.object == request.subject.object &&
                 q->subject.definition == request.subject.definition && q->currency == request.currency &&
-                ValidateMoneyAmount(q->currency, q->amount, false))
+                q->market == request.market && SameObject(q->buyer, request.buyer) && SameObject(q->seller, request.seller) &&
+                q->quantity == request.quantity && ValidateMoneyAmount(q->currency, q->unit_amount, true))
                 return q;
         }
     return std::nullopt;
@@ -312,8 +356,8 @@ foundation::Result<OfferId> EconomyService::CreateOffer(EconomicOffer o)
     if (!o.seller.IsValid() || !o.type.IsValid() || !o.subject.type.IsValid() || !currencies_.contains(o.currency) ||
         o.quantity <= 0 || !ValidateMoneyAmount(o.currency, o.unit_price, true))
         return foundation::Result<OfferId>::Failure(Error("gameplay.economy.invalid_offer", "invalid economic offer"));
-    if (!o.id.IsValid())
-        o.id = OfferId{offer_ids_.Next()};
+    if (!o.id.IsValid()) o.id = OfferId{offer_ids_.Next()};
+    else AdvanceGeneratorForExplicitId(offer_ids_, o.id);
     if (!o.id.IsValid() || offers_.contains(o.id))
         return foundation::Result<OfferId>::Failure(Error("gameplay.economy.duplicate_offer", "duplicate offer"));
     Bump();
@@ -342,47 +386,72 @@ foundation::Result<void> EconomyService::CancelOffer(OfferId id, GameplayContext
     Record(std::move(change));
     return foundation::Result<void>::Success();
 }
-foundation::Result<TradeTransactionId> EconomyService::AcceptOffer(OfferId id, GameplayObjectRef buyer, TradePlan p)
+foundation::Result<TradeTransactionId> EconomyService::AcceptOffer(OfferAcceptanceRequest request)
 {
-    auto offer_it = offers_.find(id);
+    auto offer_it = offers_.find(request.offer);
     if (offer_it == offers_.end())
         return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_missing", "offer missing"));
-    const auto &offer = offer_it->second;
-    if (offer.state != OfferState::Active || !buyer.IsValid() ||
-        (offer.buyer_scope.IsValid() && offer.buyer_scope != buyer))
-        return foundation::Result<TradeTransactionId>::Failure(
-            Error("gameplay.economy.offer_state", "offer cannot be accepted"));
-    if (p.buyer.IsValid() && p.buyer != buyer)
-        return foundation::Result<TradeTransactionId>::Failure(
-            Error("gameplay.economy.offer_buyer_mismatch", "trade buyer does not match offer buyer"));
-    if (p.seller.IsValid() && p.seller != offer.seller)
-        return foundation::Result<TradeTransactionId>::Failure(
-            Error("gameplay.economy.offer_seller_mismatch", "trade seller does not match offer seller"));
-    auto context = p.context;
-    auto seller = offer.seller;
-    p.buyer = buyer;
-    p.seller = seller;
-    auto prepared = PrepareTrade(std::move(p));
-    if (!prepared)
-        return prepared;
-    auto accepted_it = offers_.find(id);
-    if (accepted_it == offers_.end() || accepted_it->second.state != OfferState::Active)
+    const auto offer = offer_it->second;
+    if (offer.state != OfferState::Active || !request.buyer.IsValid() || request.accepted_quantity <= 0 ||
+        request.accepted_quantity > offer.quantity || offer.revision != request.expected_offer_revision ||
+        (offer.buyer_scope.IsValid() && offer.buyer_scope != request.buyer) ||
+        (offer.expires_at.ticks != 0 && request.context.time.ticks != 0 && offer.expires_at <= request.context.time))
+        return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_state", "offer cannot be accepted"));
+
+    Fixed total = 0;
+    if (!CheckedMultiply(offer.unit_price, request.accepted_quantity, total) || !ValidateMoneyAmount(offer.currency, total, true))
+        return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_total_overflow", "offer settlement total is invalid"));
+
+    TradePlan plan;
+    plan.buyer = request.buyer;
+    plan.seller = offer.seller;
+    plan.dependencies_revision = offer.revision;
+    plan.context = request.context;
+    if (total > 0)
     {
-        auto cancel_result = CancelTrade(prepared.Value());
-        (void)cancel_result;
-        return foundation::Result<TradeTransactionId>::Failure(
-            Error("gameplay.economy.offer_state", "offer changed while accepting"));
+        const auto *from = FindAccount(request.buyer_funding_account);
+        const auto *to = FindAccount(request.seller_destination_account);
+        if (!from || !to || !SameObject(from->owner, request.buyer) || !SameObject(to->owner, offer.seller) ||
+            from->currency != offer.currency || to->currency != offer.currency)
+            return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_accounts", "offer settlement accounts do not match parties/currency"));
+        plan.monetary_transfers.push_back({request.buyer_funding_account, request.seller_destination_account, total, offer.currency});
     }
-    const auto accepted = accepted_it->second;
+
+    auto prepared = PrepareTrade(std::move(plan));
+    if (!prepared) return prepared;
+
+    auto accepted_it = offers_.find(request.offer);
+    if (accepted_it == offers_.end() || accepted_it->second.state != OfferState::Active ||
+        accepted_it->second.revision != request.expected_offer_revision || accepted_it->second.quantity < request.accepted_quantity)
+    {
+        (void)CancelTrade(prepared.Value());
+        return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_state", "offer changed while accepting"));
+    }
+
     Bump();
-    offers_.erase(accepted_it);
-    if (diagnostics_.offers > 0) --diagnostics_.offers;
-    const auto transaction = prepared.Value();
-    EconomyChange change{0, EconomyChangeKind::OfferChanged, seller, {}, transaction, 0, context, revision_};
-    change.offer = accepted.id;
-    change.currency = accepted.currency;
+    auto tx_it = transactions_.find(prepared.Value());
+    tx_it->second.source_offer = offer.id;
+    tx_it->second.source_offer_revision = offer.revision;
+    tx_it->second.accepted_quantity = request.accepted_quantity;
+    tx_it->second.accepted_subject = offer.subject;
+    tx_it->second.revision = revision_;
+
+    accepted_it->second.quantity -= request.accepted_quantity;
+    if (accepted_it->second.quantity == 0)
+    {
+        offers_.erase(accepted_it);
+        if (diagnostics_.offers > 0) --diagnostics_.offers;
+    }
+    else
+    {
+        accepted_it->second.revision = revision_;
+    }
+    EconomyChange change{0, EconomyChangeKind::OfferChanged, offer.seller, {}, prepared.Value(), total, request.context, revision_};
+    change.offer = offer.id;
+    change.currency = offer.currency;
     Record(std::move(change));
-    return foundation::Result<TradeTransactionId>::Success(transaction);
+    Record({0, EconomyChangeKind::TradeChanged, request.buyer, {}, prepared.Value(), total, request.context, revision_});
+    return foundation::Result<TradeTransactionId>::Success(prepared.Value());
 }
 std::vector<EconomicOffer> EconomyService::FindOffers(GameplayObjectRef seller, OfferState state) const
 {
@@ -446,6 +515,7 @@ foundation::Result<TradeTransactionId> EconomyService::PrepareTrade(TradePlan p)
         if (!v) return foundation::Result<TradeTransactionId>::Failure(v.GetError());
     }
     if (!p.id.IsValid()) p.id = TradeTransactionId{transaction_ids_.Next()};
+    else AdvanceGeneratorForExplicitId(transaction_ids_, p.id);
     if (!p.id.IsValid() || transactions_.contains(p.id))
         return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.duplicate_trade", "invalid or duplicate trade transaction id"));
     TradeTransaction tx;
@@ -635,8 +705,8 @@ foundation::Result<DebtId> EconomyService::CreateDebt(DebtRecord d)
     if (!d.debtor.IsValid() || !d.creditor.IsValid() || SameObject(d.debtor, d.creditor) || !currencies_.contains(d.currency) ||
         !ValidateMoneyAmount(d.currency, d.principal, false))
         return foundation::Result<DebtId>::Failure(Error("gameplay.economy.invalid_debt", "invalid debt"));
-    if (!d.id.IsValid())
-        d.id = DebtId{debt_ids_.Next()};
+    if (!d.id.IsValid()) d.id = DebtId{debt_ids_.Next()};
+    else AdvanceGeneratorForExplicitId(debt_ids_, d.id);
     if (!d.id.IsValid() || debts_.contains(d.id))
         return foundation::Result<DebtId>::Failure(Error("gameplay.economy.duplicate_debt", "duplicate debt"));
     Bump();
@@ -664,6 +734,19 @@ foundation::Result<void> EconomyService::ResolveDebt(DebtId id, DebtState state,
     return foundation::Result<void>::Success();
 }
 
+foundation::Result<void> EconomyService::CompactDebt(DebtId id, GameplayContext c)
+{
+    auto it = debts_.find(id);
+    if (it == debts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.debt_missing", "debt missing"));
+    if (it->second.state == DebtState::Active) return foundation::Result<void>::Failure(Error("gameplay.economy.debt_state", "active debt cannot be compacted"));
+    const auto copy = it->second;
+    Bump();
+    debts_.erase(it);
+    if (diagnostics_.debts > 0) --diagnostics_.debts;
+    EconomyChange change{0, EconomyChangeKind::DebtCompacted, copy.debtor, {}, {}, copy.principal, c, revision_};
+    change.debt = id; change.currency = copy.currency; Record(std::move(change));
+    return foundation::Result<void>::Success();
+}
 std::vector<DebtRecord> EconomyService::FindDebts(GameplayObjectRef s) const
 {
     std::vector<DebtRecord> out;
@@ -680,12 +763,16 @@ foundation::Result<EconomicContractId> EconomyService::CreateContract(EconomicCo
 {
     std::unordered_set<GameplayObjectRef> unique_parties;
     const bool parties_valid = std::all_of(c.parties.begin(), c.parties.end(), [&](const auto& party){ return party.IsValid() && unique_parties.insert(party).second; });
+    const auto schema_it = contract_terms_schemas_.find(c.type);
+    const bool terms_valid = c.terms_payload.empty() && !c.terms_schema.IsValid() ? true :
+        (schema_it != contract_terms_schemas_.end() && c.terms_schema == schema_it->second.schema &&
+         c.terms_payload.size() <= schema_it->second.max_payload_bytes);
     if (c.parties.size() < 2 || !parties_valid || !c.type.IsValid() || !currencies_.contains(c.currency) ||
-        !ValidateMoneyAmount(c.currency, c.amount, true))
+        !ValidateMoneyAmount(c.currency, c.amount, true) || !terms_valid)
         return foundation::Result<EconomicContractId>::Failure(
             Error("gameplay.economy.invalid_contract", "invalid economic contract"));
-    if (!c.id.IsValid())
-        c.id = EconomicContractId{contract_ids_.Next()};
+    if (!c.id.IsValid()) c.id = EconomicContractId{contract_ids_.Next()};
+    else AdvanceGeneratorForExplicitId(contract_ids_, c.id);
     if (!c.id.IsValid() || contracts_.contains(c.id))
         return foundation::Result<EconomicContractId>::Failure(
             Error("gameplay.economy.duplicate_contract", "duplicate economic contract"));
@@ -717,12 +804,34 @@ foundation::Result<void> EconomyService::SetContractState(EconomicContractId id,
     return foundation::Result<void>::Success();
 }
 
+foundation::Result<void> EconomyService::CompactContract(EconomicContractId id, GameplayContext c)
+{
+    auto it = contracts_.find(id);
+    if (it == contracts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.contract_missing", "contract missing"));
+    if (it->second.state == ContractState::Draft || it->second.state == ContractState::Active)
+        return foundation::Result<void>::Failure(Error("gameplay.economy.contract_state", "live contract cannot be compacted"));
+    const auto copy = it->second;
+    Bump(); contracts_.erase(it);
+    EconomyChange change{0, EconomyChangeKind::ContractCompacted, {}, {}, {}, copy.amount, c, revision_};
+    change.contract = id; change.currency = copy.currency; Record(std::move(change));
+    return foundation::Result<void>::Success();
+}
+EconomyChangeBatch EconomyService::ReadChangesSince(std::uint64_t seq) const
+{
+    EconomyChangeBatch batch;
+    batch.latest_sequence = changes_.empty() ? 0 : changes_.back().sequence;
+    batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
+    if (!changes_.empty() && batch.oldest_available_sequence > 1 && seq < batch.oldest_available_sequence - 1)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(batch.changes), [seq](const auto &c) { return c.sequence > seq; });
+    return batch;
+}
 std::vector<EconomyChange> EconomyService::ChangesSince(std::uint64_t seq) const
 {
-    std::vector<EconomyChange> out;
-    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(out),
-                 [seq](auto &c) { return c.sequence > seq; });
-    return out;
+    return ReadChangesSince(seq).changes;
 }
 EconomySnapshot EconomyService::CaptureSnapshot() const
 {
@@ -813,7 +922,7 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     std::unordered_map<MarketId, MarketState, IdHash> markets;
     for (auto &v : s.markets)
     {
-        if (!v.id.IsValid() || markets.contains(v.id))
+        if (!v.id.IsValid() || !v.area.IsValid() || v.revision.value > s.revision.value || markets.contains(v.id))
             return foundation::Result<void>::Failure(
                 Error("gameplay.economy.restore_invalid", "invalid market snapshot"));
         markets.emplace(v.id, std::move(v));
@@ -843,7 +952,8 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     {
         if (!v.id.IsValid() || transactions.contains(v.id) || !IsLiveTrade(v.state) ||
             !v.plan.buyer.IsValid() || !v.plan.seller.IsValid() || SameObject(v.plan.buyer, v.plan.seller) ||
-            v.revision.value > s.revision.value)
+            v.revision.value > s.revision.value ||
+            (v.source_offer.IsValid() && (!v.source_offer_revision.value || v.accepted_quantity <= 0 || !v.accepted_subject.type.IsValid())))
             return foundation::Result<void>::Failure(
                 Error("gameplay.economy.restore_invalid", "invalid trade snapshot"));
         for (const auto& transfer : v.plan.monetary_transfers)
@@ -887,8 +997,17 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     std::unordered_map<EconomicContractId, EconomicContract, IdHash> contracts;
     for (auto &v : s.contracts)
     {
-        if (!v.id.IsValid() || !v.type.IsValid() || !currencies_.contains(v.currency) ||
-            !ValidateMoneyAmount(v.currency, v.amount, true) || v.revision.value > s.revision.value || contracts.contains(v.id))
+        std::unordered_set<GameplayObjectRef> parties;
+        const bool parties_valid = v.parties.size() >= 2 && std::all_of(v.parties.begin(), v.parties.end(), [&](const auto &party) {
+            return party.IsValid() && parties.insert(party).second;
+        });
+        const auto schema_it = contract_terms_schemas_.find(v.type);
+        const bool terms_valid = v.terms_payload.empty() && !v.terms_schema.IsValid() ? true :
+            (schema_it != contract_terms_schemas_.end() && v.terms_schema == schema_it->second.schema &&
+             v.terms_payload.size() <= schema_it->second.max_payload_bytes);
+        if (!v.id.IsValid() || !parties_valid || !v.type.IsValid() || !currencies_.contains(v.currency) ||
+            !ValidateMoneyAmount(v.currency, v.amount, true) || !terms_valid ||
+            v.revision.value > s.revision.value || contracts.contains(v.id))
             return foundation::Result<void>::Failure(
                 Error("gameplay.economy.restore_invalid", "invalid contract snapshot"));
         contracts.emplace(v.id, std::move(v));
@@ -903,6 +1022,24 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
             return foundation::Result<void>::Failure(Error("gameplay.economy.restore_invalid", "reservations exceed account balance"));
         reserved_totals[reservation.account] = total;
     }
+    auto max_low = [](const auto &map, std::uint64_t scope) {
+        std::uint64_t result = 0;
+        for (const auto &[id, value] : map)
+        {
+            (void)value;
+            if (id.value.High() == scope) result = std::max(result, id.value.Low());
+        }
+        return result;
+    };
+    if (!ValidGeneratorSnapshot(s.account_ids, 0x3700, max_low(a, 0x3700)) ||
+        !ValidGeneratorSnapshot(s.reservation_ids, 0x3701, max_low(r, 0x3701)) ||
+        !ValidGeneratorSnapshot(s.market_ids, 0x3702, max_low(markets, 0x3702)) ||
+        !ValidGeneratorSnapshot(s.offer_ids, 0x3703, max_low(offers, 0x3703)) ||
+        !ValidGeneratorSnapshot(s.transaction_ids, 0x3704, max_low(transactions, 0x3704)) ||
+        !ValidGeneratorSnapshot(s.debt_ids, 0x3705, max_low(debts, 0x3705)) ||
+        !ValidGeneratorSnapshot(s.contract_ids, 0x3706, max_low(contracts, 0x3706)))
+        return foundation::Result<void>::Failure(Error("gameplay.economy.restore_invalid", "invalid id generator snapshot"));
+
     accounts_ = std::move(a);
     reservations_ = std::move(r);
     markets_ = std::move(markets);
@@ -941,7 +1078,10 @@ EconomyDiagnostics EconomyService::GetDiagnostics() const noexcept
 }
 void EconomyService::Record(EconomyChange c)
 {
-    c.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0) return;
+    c.sequence = next_change_sequence_;
+    next_change_sequence_ = next_change_sequence_ == std::numeric_limits<std::uint64_t>::max() ? 0 : next_change_sequence_ + 1;
     changes_.push_back(std::move(c));
+    while (changes_.size() > kChangeJournalCapacity) changes_.pop_front();
 }
 } // namespace epidemic::gameplay::economy

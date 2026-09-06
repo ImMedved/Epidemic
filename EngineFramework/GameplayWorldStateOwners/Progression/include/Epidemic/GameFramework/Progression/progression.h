@@ -214,6 +214,7 @@ struct ProgressionProfileSnapshot
 enum class ProgressionChangeKind
 {
     ProfileCreated,
+    ProfileRemoved,
     AttributeChanged,
     ModifierAdded,
     ModifierRemoved,
@@ -283,6 +284,7 @@ class ProgressionService
     [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
 
     [[nodiscard]] foundation::Result<void> EnsureProfile(GameplayObjectRef subject, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RemoveProfile(GameplayObjectRef subject, GameplayContext context = {});
     [[nodiscard]] bool HasProfile(GameplayObjectRef subject) const noexcept;
     [[nodiscard]] foundation::Result<void> SetBaseAttribute(GameplayObjectRef subject, AttributeTypeId attribute, std::int64_t value_micro, GameplayContext context = {});
     [[nodiscard]] foundation::Result<std::int64_t> GetAttribute(GameplayObjectRef subject, AttributeTypeId attribute) const;
@@ -291,12 +293,19 @@ class ProgressionService
     [[nodiscard]] foundation::Result<ProgressionModifierId> AddModifier(GameplayObjectRef subject, ProgressionModifier modifier, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> RemoveModifier(GameplayObjectRef subject, ProgressionModifierId modifier, GameplayContext context = {});
     [[nodiscard]] std::uint64_t RemoveModifiersBySource(GameplayObjectRef subject, GameplayObjectRef source, GameplayContext context = {});
+    // Atomically replaces the complete derived modifier projection for one semantic source.
+    // All validation and ID allocation happen before the profile is mutated.
+    [[nodiscard]] foundation::Result<std::vector<ProgressionModifierId>> ReplaceModifiersBySource(
+        GameplayObjectRef subject, GameplayObjectRef source, std::vector<ProgressionModifier> modifiers,
+        GameplayContext context = {});
 
     [[nodiscard]] foundation::Result<ProgressionTrackState> GrantProgress(GameplayObjectRef subject, ProgressionTrackId track, std::int64_t amount_micro, GameplayContext context = {});
     [[nodiscard]] foundation::Result<ProgressionTrackState> SetProgress(GameplayObjectRef subject, ProgressionTrackId track, std::int64_t progress_micro, GameplayContext context = {});
     [[nodiscard]] foundation::Result<ProgressionTrackState> GetTrack(GameplayObjectRef subject, ProgressionTrackId track) const;
     // Transaction primitive for cross-major reward delivery. Reserve is the only fallible stage.
-    // A reservation tentatively applies the new value inside the synchronous transaction; Commit and Release are noexcept/idempotent.
+    // Reserved progress is invisible to normal queries and snapshots until Commit. A subject can have
+    // only one active progress reservation, preventing conflicting track/perk/unlock mutations.
+    // Commit and Release are noexcept/idempotent.
     [[nodiscard]] foundation::Result<ProgressionGrantReservationId> ReserveProgressGrant(
         GameplayObjectRef subject, ProgressionTrackId track, std::int64_t amount_micro, GameplayContext context = {});
     void CommitProgressGrant(ProgressionGrantReservationId reservation) noexcept;
@@ -327,8 +336,7 @@ class ProgressionService
         ProgressionTrackId track{};
         bool track_existed = false;
         ProgressionTrackState before{};
-        std::int64_t after_progress_micro = 0;
-        std::uint32_t after_rank = 0;
+        ProgressionTrackState after{};
         GameplayContext context{};
     };
     struct Profile
@@ -346,6 +354,9 @@ class ProgressionService
     [[nodiscard]] foundation::Result<std::int64_t> EvaluateAttribute(const Profile& profile, AttributeTypeId attribute, std::unordered_set<AttributeTypeId, IdHash>& visiting) const;
     [[nodiscard]] Profile* FindProfile(GameplayObjectRef subject) noexcept;
     [[nodiscard]] const Profile* FindProfile(GameplayObjectRef subject) const noexcept;
+    [[nodiscard]] bool HasPendingProgressGrant(GameplayObjectRef subject) const noexcept;
+    [[nodiscard]] foundation::Result<std::vector<MilestoneId>> EvaluateMilestonesUnlocked(
+        Profile& profile, GameplayObjectRef subject, GameplayContext context);
     void Bump(Profile& profile) noexcept;
     void Record(ProgressionChange change);
 

@@ -9,9 +9,6 @@ namespace epidemic::gameplay::time
 {
 namespace
 {
-constexpr std::int64_t kSecondsPerMinute = 60;
-constexpr std::int64_t kSecondsPerHour = 3600;
-
 [[nodiscard]] std::optional<std::int64_t> CheckedMultiply(std::int64_t left, std::int64_t right)
 {
     if (left < 0 || right < 0)
@@ -253,7 +250,18 @@ foundation::Result<void> GameplayTimeService::SynchronizeClock(ClockId clock, Ga
         return advanced;
     }
     synchronization_revisions_[clock] = source_revision;
+    synchronization_rebind_required_.erase(clock);
     return foundation::Result<void>::Success();
+}
+
+bool GameplayTimeService::NeedsSynchronizationRebind(ClockId clock) const noexcept
+{
+    return synchronization_rebind_required_.contains(clock);
+}
+
+std::vector<ClockId> GameplayTimeService::ClocksRequiringSynchronizationRebind() const
+{
+    return std::vector<ClockId>(synchronization_rebind_required_.begin(), synchronization_rebind_required_.end());
 }
 
 std::optional<ClockState> GameplayTimeService::GetClock(ClockId clock) const noexcept
@@ -298,7 +306,7 @@ foundation::Result<GameplayTimePoint> GameplayTimeService::ToGameplayTime(ClockI
         return foundation::Result<GameplayTimePoint>::Failure(valid.GetError());
     }
     const auto& calendar = *FindClockDefinition(clock)->calendar;
-    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(calendar.hours_per_day), kSecondsPerHour);
+    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(calendar.hours_per_day), kGameplayTicksPerHour);
     const auto days_per_year = CheckedMultiply(static_cast<std::int64_t>(calendar.days_per_month),
                                                 static_cast<std::int64_t>(calendar.months_per_year));
     if (!seconds_per_day || !days_per_year)
@@ -325,8 +333,8 @@ foundation::Result<GameplayTimePoint> GameplayTimeService::ToGameplayTime(ClockI
         return foundation::Result<GameplayTimePoint>::Failure(
             foundation::Error::Create("gameplay.time_overflow", "calendar date overflows gameplay time"));
     }
-    const auto second_of_day = static_cast<std::int64_t>(date.hour) * kSecondsPerHour +
-                               static_cast<std::int64_t>(date.minute) * kSecondsPerMinute + date.second;
+    const auto second_of_day = static_cast<std::int64_t>(date.hour) * kGameplayTicksPerHour +
+                               static_cast<std::int64_t>(date.minute) * kGameplayTicksPerMinute + date.second;
     const auto base = day_index * *seconds_per_day;
     if (base > std::numeric_limits<std::int64_t>::max() - second_of_day)
     {
@@ -350,7 +358,7 @@ foundation::Result<CalendarDate> GameplayTimeService::ToCalendarDate(ClockId clo
             foundation::Error::Create("gameplay.calendar_time_invalid", "negative gameplay time cannot be represented by this calendar"));
     }
     const auto& calendar = *definition->calendar;
-    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(calendar.hours_per_day), kSecondsPerHour);
+    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(calendar.hours_per_day), kGameplayTicksPerHour);
     const auto days_per_year = CheckedMultiply(static_cast<std::int64_t>(calendar.days_per_month),
                                                 static_cast<std::int64_t>(calendar.months_per_year));
     if (!seconds_per_day || !days_per_year)
@@ -371,10 +379,10 @@ foundation::Result<CalendarDate> GameplayTimeService::ToCalendarDate(ClockId clo
     date.year = year_index + 1;
     date.month = static_cast<std::uint32_t>(day_of_year / calendar.days_per_month) + 1;
     date.day = static_cast<std::uint32_t>(day_of_year % calendar.days_per_month) + 1;
-    date.hour = static_cast<std::uint32_t>(second_of_day / kSecondsPerHour);
-    const auto within_hour = second_of_day % kSecondsPerHour;
-    date.minute = static_cast<std::uint32_t>(within_hour / kSecondsPerMinute);
-    date.second = static_cast<std::uint32_t>(within_hour % kSecondsPerMinute);
+    date.hour = static_cast<std::uint32_t>(second_of_day / kGameplayTicksPerHour);
+    const auto within_hour = second_of_day % kGameplayTicksPerHour;
+    date.minute = static_cast<std::uint32_t>(within_hour / kGameplayTicksPerMinute);
+    date.second = static_cast<std::uint32_t>(within_hour % kGameplayTicksPerMinute);
     return foundation::Result<CalendarDate>::Success(date);
 }
 
@@ -471,14 +479,14 @@ foundation::Result<GameplayTimePoint> GameplayTimeService::NextCalendarDue(Clock
             foundation::Error::Create("gameplay.schedule_invalid_calendar_pattern", "calendar schedule pattern is invalid"));
     }
 
-    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(calendar.hours_per_day), kSecondsPerHour);
+    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(calendar.hours_per_day), kGameplayTicksPerHour);
     if (!seconds_per_day)
     {
         return foundation::Result<GameplayTimePoint>::Failure(
             foundation::Error::Create("gameplay.time_overflow", "calendar day length overflows gameplay time"));
     }
-    const auto target_second = static_cast<std::int64_t>(pattern.hour) * kSecondsPerHour +
-                               static_cast<std::int64_t>(pattern.minute) * kSecondsPerMinute + pattern.second;
+    const auto target_second = static_cast<std::int64_t>(pattern.hour) * kGameplayTicksPerHour +
+                               static_cast<std::int64_t>(pattern.minute) * kGameplayTicksPerMinute + pattern.second;
     const auto now = std::max<std::int64_t>(0, state->now.ticks);
     const auto day = now / *seconds_per_day;
     auto candidate = day * *seconds_per_day + target_second;
@@ -602,7 +610,7 @@ foundation::Result<std::int64_t> GameplayTimeService::RecurrenceIntervalTicks(co
         return foundation::Result<std::int64_t>::Failure(
             foundation::Error::Create("gameplay.schedule_calendar_unavailable", "calendar recurrence requires a calendar clock"));
     }
-    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(definition->calendar->hours_per_day), kSecondsPerHour);
+    const auto seconds_per_day = CheckedMultiply(static_cast<std::int64_t>(definition->calendar->hours_per_day), kGameplayTicksPerHour);
     if (!seconds_per_day)
     {
         return foundation::Result<std::int64_t>::Failure(
@@ -852,6 +860,14 @@ GameplayTimeSnapshot GameplayTimeService::CaptureSnapshot() const
     std::sort(snapshot.schedules.begin(), snapshot.schedules.end(), [](const ScheduleEntry& left, const ScheduleEntry& right) {
         return left.id < right.id;
     });
+
+    std::set<ClockId> synchronized_clocks = synchronization_rebind_required_;
+    for (const auto& [clock, _] : synchronization_revisions_)
+    {
+        synchronized_clocks.insert(clock);
+    }
+    snapshot.externally_synchronized_clocks.assign(synchronized_clocks.begin(), synchronized_clocks.end());
+
     snapshot.schedule_ids = schedule_ids_.GetSnapshot();
     return snapshot;
 }
@@ -881,6 +897,16 @@ foundation::Result<void> GameplayTimeService::RestoreSnapshot(GameplayTimeSnapsh
                 foundation::Error::Create("gameplay.clock_snapshot_invalid", "snapshot contains an invalid or duplicate clock"));
         }
         restored_clocks[clock.id] = clock;
+    }
+
+    std::set<ClockId> restored_synchronization_rebind_required;
+    for (const auto clock : snapshot.externally_synchronized_clocks)
+    {
+        if (!clock.IsValid() || !clock_definitions_.contains(clock) || !restored_synchronization_rebind_required.insert(clock).second)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("gameplay.clock_snapshot_invalid", "snapshot contains an invalid or duplicate externally synchronized clock"));
+        }
     }
 
     std::unordered_map<ScheduleId, ScheduleEntry> restored_schedules;
@@ -925,6 +951,7 @@ foundation::Result<void> GameplayTimeService::RestoreSnapshot(GameplayTimeSnapsh
     schedule_index_ = std::move(restored_index);
     schedule_ids_.Restore(snapshot.schedule_ids);
     synchronization_revisions_.clear();
+    synchronization_rebind_required_ = std::move(restored_synchronization_rebind_required);
     return foundation::Result<void>::Success();
 }
 

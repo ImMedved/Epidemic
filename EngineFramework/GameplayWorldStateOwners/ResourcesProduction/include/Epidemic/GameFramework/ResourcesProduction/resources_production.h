@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <span>
 #include <string>
@@ -273,6 +274,7 @@ enum class ResourceChangeKind
     ResourceReserved,
     ResourceReservationReleased,
     ResourceReservationConsumed,
+    StockpileStateChanged,
     NodeDepleted,
     NodeRegenerated,
     ProductionSiteCreated,
@@ -323,6 +325,8 @@ struct ResourceNode
     Fixed regeneration_rate_per_tick = 0;
     ResourceNodeState state = ResourceNodeState::Active;
     Revision revision{};
+    Fixed maximum_amount = 0;
+    GameplayTimePoint last_regenerated_at{};
 };
 struct ProductionSite
 {
@@ -355,6 +359,7 @@ struct ProductionOrder
     ProductionOrderState state = ProductionOrderState::Queued;
     GameplayTimePoint started_at{};
     GameplayTimePoint due_at{};
+    ResourceReservationId input_reservation{};
     Revision revision{};
 };
 struct ResourceReservation
@@ -408,6 +413,14 @@ struct ResourceChange
     GameplayContext context{};
     Revision revision{};
 };
+struct ResourceChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+    std::vector<ResourceChange> changes;
+};
+
 struct ResourcesSnapshot
 {
     std::vector<ResourceStockpile> stockpiles;
@@ -427,6 +440,7 @@ struct ResourcesSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot order_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot transaction_ids{};
     Revision revision{};
+    std::vector<ResourceTransaction> transactions;
 };
 struct ResourcesDiagnostics
 {
@@ -463,6 +477,8 @@ class ResourcesProductionService
     [[nodiscard]] foundation::Result<ResourceNodeId> CreateNode(ResourceNode node);
     [[nodiscard]] foundation::Result<ProductionSiteId> CreateProductionSite(ProductionSite site);
     [[nodiscard]] const ResourceStockpile *FindStockpile(ResourceStockpileId id) const noexcept;
+    [[nodiscard]] foundation::Result<void> SetStockpileState(ResourceStockpileId stockpile, StockpileState state,
+                                                             GameplayContext context = {});
     [[nodiscard]] Fixed GetAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept;
     [[nodiscard]] Fixed GetReservedAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept;
     [[nodiscard]] Fixed GetAvailableAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept;
@@ -474,7 +490,7 @@ class ResourcesProductionService
                                                                      std::vector<ResourceQuantity> quantities,
                                                                      TypeId reason = {}, GameplayContext context = {});
     [[nodiscard]] bool CanReserve(ResourceStockpileId stockpile,
-                                  std::span<const ResourceQuantity> quantities) const noexcept;
+                                  std::span<const ResourceQuantity> quantities) const;
     [[nodiscard]] foundation::Result<ResourceReservationId> Reserve(ResourceStockpileId stockpile,
                                                                     std::vector<ResourceQuantity> quantities,
                                                                     GameplayObjectRef owner = {}, TypeId reason = {},
@@ -487,6 +503,8 @@ class ResourcesProductionService
 
     [[nodiscard]] foundation::Result<void> DepleteNode(ResourceNodeId node, Fixed amount, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> RegenerateNode(ResourceNodeId node, GameplayDuration elapsed,
+                                                          GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RegenerateNode(ResourceNodeId node, GameplayTimePoint to,
                                                           GameplayContext context = {});
 
     [[nodiscard]] foundation::Result<ProductionCapabilityId> CreateProductionCapability(
@@ -508,6 +526,10 @@ class ResourcesProductionService
     [[nodiscard]] const ProductionOrder *FindProductionOrder(ProductionOrderId id) const noexcept;
 
     [[nodiscard]] std::vector<ResourceChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] ResourceChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept;
+    void PruneChangesBefore(std::uint64_t sequence) noexcept;
     [[nodiscard]] ResourcesSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(ResourcesSnapshot snapshot);
     [[nodiscard]] ResourcesDiagnostics GetDiagnostics() const noexcept;
@@ -532,14 +554,34 @@ class ResourcesProductionService
     {
         ++revision_.value;
     }
+    enum class StockpileOperation
+    {
+        Add,
+        Remove,
+        Reserve,
+        TransferSource,
+        TransferDestination
+    };
     void Record(ResourceChange change);
     [[nodiscard]] foundation::Result<void> ValidateQuantities(std::span<const ResourceQuantity> quantities) const;
+    [[nodiscard]] foundation::Result<std::vector<ResourceQuantity>> CanonicalizeQuantities(
+        std::span<const ResourceQuantity> quantities) const;
+    [[nodiscard]] foundation::Result<void> ValidateStockpileOperation(ResourceStockpileId stockpile,
+                                                                      StockpileOperation operation) const;
+    [[nodiscard]] bool CanAddToStockpile(ResourceStockpileId stockpile) const noexcept;
+    [[nodiscard]] bool CanRemoveFromStockpile(ResourceStockpileId stockpile) const noexcept;
+    [[nodiscard]] static bool IsTerminalOrderState(ProductionOrderState state) noexcept;
+    [[nodiscard]] static std::uint64_t LowPart(GameplayObjectId id) noexcept;
+    void AddReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept;
+    void RemoveReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept;
+    void RebuildDerivedState() noexcept;
 
     bool frozen_ = false;
     Revision revision_{};
     std::unordered_map<ResourceTypeId, ResourceType, IdHash> types_;
     std::unordered_map<ResourceStockpileId, ResourceStockpile, IdHash> stockpiles_;
     std::unordered_map<AmountKey, Fixed, AmountKeyHash> amounts_;
+    std::unordered_map<AmountKey, Fixed, AmountKeyHash> reserved_amounts_;
     std::unordered_map<ResourceNodeId, ResourceNode, IdHash> nodes_;
     std::unordered_map<ProductionSiteId, ProductionSite, IdHash> sites_;
     std::unordered_map<ResourceReservationId, ResourceReservation, IdHash> reservations_;
@@ -547,6 +589,7 @@ class ResourcesProductionService
     std::unordered_map<ProductionPlanId, ProductionPlan, IdHash> plans_;
     std::unordered_map<ProductionRecipeId, ProductionRecipe, IdHash> recipes_;
     std::unordered_map<ProductionOrderId, ProductionOrder, IdHash> orders_;
+    std::unordered_map<ResourceTransactionId, ResourceTransaction, IdHash> transactions_;
     MonotonicIdGenerator<GameplayObjectId> stockpile_ids_;
     MonotonicIdGenerator<GameplayObjectId> node_ids_;
     MonotonicIdGenerator<GameplayObjectId> site_ids_;
@@ -555,8 +598,9 @@ class ResourcesProductionService
     MonotonicIdGenerator<GameplayObjectId> plan_ids_{0x3112};
     MonotonicIdGenerator<GameplayObjectId> order_ids_;
     MonotonicIdGenerator<GameplayObjectId> transaction_ids_;
-    std::vector<ResourceChange> changes_;
+    std::deque<ResourceChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::size_t change_retention_ = 4096;
     ResourcesDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::resources

@@ -1,5 +1,6 @@
 #include "Epidemic/GameFramework/Materials/materials.h"
 
+#include <array>
 #include <limits>
 
 using namespace epidemic::gameplay;
@@ -70,11 +71,27 @@ int main()
 
     const auto snapshot = service.CaptureSnapshot();
     if (snapshot.states.size() != 1) return 10;
+
+    const GameplayObjectRef filtered_out_subject{GameplayDomainId::FromString("test.domain"), GameplayObjectId::FromString("test.filtered_out")};
+    if (!service.AssignComposition(filtered_out_subject, slot.Value(), composition)) return 25;
+    const std::array<GameplayObjectRef, 2> filtered_subjects{subject, subject};
+    const auto filtered_snapshot = service.CaptureSnapshot(filtered_subjects);
+    if (filtered_snapshot.states.size() != 1 || filtered_snapshot.states.front().key.subject != subject) return 26;
+    const auto full_snapshot_after_filter_setup = service.CaptureSnapshot();
+    if (full_snapshot_after_filter_setup.states.size() != 2) return 27;
+
     if (!service.RemoveSubstanceExposure(subject, slot.Value(), water_id.Value())) return 11;
     if (!service.RemoveContainedSubstance(subject, slot.Value(), water_id.Value())) return 20;
     if (!service.RestoreSnapshot(snapshot)) return 12;
     state = service.FindState(subject, slot.Value());
     if (!state || state->dynamic.temperature_micro != 120 || state->dynamic.exposures.size() != 1 || state->dynamic.contents.size() != 1) return 13;
+    if (service.FindState(filtered_out_subject, slot.Value())) return 28;
+
+    if (!service.AssignComposition(filtered_out_subject, slot.Value(), composition)) return 29;
+    const std::array<GameplayObjectRef, 1> only_subject{subject};
+    const auto partial_snapshot = service.CaptureSnapshot(only_subject);
+    if (!service.RestoreSnapshot(partial_snapshot)) return 30;
+    if (!service.FindState(subject, slot.Value()) || service.FindState(filtered_out_subject, slot.Value())) return 31;
 
     // Sparse-state stress.
     for (int i = 0; i < 10000; ++i)

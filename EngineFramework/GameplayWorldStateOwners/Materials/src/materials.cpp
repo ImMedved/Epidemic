@@ -686,6 +686,38 @@ MaterialsSnapshot MaterialService::CaptureSnapshot() const
     return snapshot;
 }
 
+MaterialsSnapshot MaterialService::CaptureSnapshot(std::span<const GameplayObjectRef> subjects) const
+{
+    MaterialsSnapshot snapshot;
+    snapshot.revision = revision_;
+
+    std::vector<GameplayObjectRef> included(subjects.begin(), subjects.end());
+    std::sort(included.begin(), included.end());
+    included.erase(std::unique(included.begin(), included.end()), included.end());
+
+    if (included.empty())
+    {
+        return snapshot;
+    }
+
+    for (const auto& [key, state] : states_)
+    {
+        if (std::binary_search(included.begin(), included.end(), key.subject))
+        {
+            snapshot.states.push_back(state);
+        }
+    }
+
+    std::sort(snapshot.states.begin(), snapshot.states.end(), [](const auto& left, const auto& right) {
+        if (left.key.subject != right.key.subject)
+        {
+            return left.key.subject < right.key.subject;
+        }
+        return left.key.slot < right.key.slot;
+    });
+    return snapshot;
+}
+
 foundation::Result<void> MaterialService::RestoreSnapshot(MaterialsSnapshot snapshot)
 {
     if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before restore"));

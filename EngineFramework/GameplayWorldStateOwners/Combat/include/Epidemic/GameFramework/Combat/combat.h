@@ -46,6 +46,12 @@ struct CombatResolutionId
     [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
     [[nodiscard]] constexpr auto operator<=>(const CombatResolutionId&) const noexcept = default;
 };
+struct CombatResourceReservationId
+{
+    GameplayObjectId value{};
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr auto operator<=>(const CombatResourceReservationId&) const noexcept = default;
+};
 struct IdHash
 {
     template <typename T> [[nodiscard]] std::size_t operator()(const T& id) const noexcept
@@ -57,13 +63,15 @@ struct IdHash
     }
 };
 
+enum class CombatResourceDepletionEffect { None, Downed, Dead };
+
 struct CombatResourceDefinition
 {
     CombatResourceTypeId id{};
     std::string canonical_name;
     std::int64_t minimum_micro = 0;
     std::int64_t default_maximum_micro = 100'000'000;
-    bool drives_life_state = false;
+    CombatResourceDepletionEffect depletion_effect = CombatResourceDepletionEffect::None;
 };
 
 struct DamageProfile
@@ -92,6 +100,15 @@ struct CombatResourceState
     CombatResourceTypeId type{};
     std::int64_t current_micro = 0;
     std::int64_t maximum_micro = 0;
+};
+
+struct CombatResourceReservation
+{
+    CombatResourceReservationId id{};
+    GameplayObjectRef subject{};
+    CombatResourceTypeId resource{};
+    std::int64_t amount_micro = 0;
+    GameplayContext context{};
 };
 
 struct CombatantRecord
@@ -143,6 +160,7 @@ enum class CombatOutcome : std::uint32_t
     Blocked = 1u << 2u,
     Critical = 1u << 3u,
     Killed = 1u << 4u,
+    Downed = 1u << 5u,
 };
 [[nodiscard]] constexpr CombatOutcome operator|(CombatOutcome a, CombatOutcome b) noexcept { return static_cast<CombatOutcome>(static_cast<std::uint32_t>(a)|static_cast<std::uint32_t>(b)); }
 [[nodiscard]] constexpr bool HasOutcome(CombatOutcome value, CombatOutcome flag) noexcept { return (static_cast<std::uint32_t>(value)&static_cast<std::uint32_t>(flag))!=0; }
@@ -158,6 +176,13 @@ struct CombatPlan
     std::int64_t requested_amount_micro = 0;
     std::int64_t final_amount_micro = 0;
     CombatOutcome outcomes = CombatOutcome::None;
+    GameplayTimePoint prepared_at{};
+    GameplayTimePoint expires_at{};
+};
+
+struct CombatPreparePolicy
+{
+    GameplayDuration lifetime{1};
 };
 
 struct CombatResult
@@ -197,7 +222,9 @@ struct CombatChangeBatch
 struct CombatSnapshot
 {
     std::vector<CombatantRecord> combatants;
+    std::vector<CombatResourceReservation> resource_reservations;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot resolution_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot resource_reservation_ids{};
     std::vector<CombatChange> journal;
     std::uint64_t next_change_sequence = 1;
 };
@@ -231,10 +258,22 @@ class CombatService
     [[nodiscard]] foundation::Result<CombatResourceState> GetResource(GameplayObjectRef subject, CombatResourceTypeId type) const;
     [[nodiscard]] foundation::Result<void> SetResourceMaximum(GameplayObjectRef subject, CombatResourceTypeId type, std::int64_t maximum_micro, bool preserve_ratio, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> ModifyResource(GameplayObjectRef subject, CombatResourceTypeId type, std::int64_t delta_micro, GameplayContext context = {});
+    // Resource reservations are authoritative Combat state. Reserve performs the tentative debit,
+    // while Commit only finalizes it and Release restores it. Active reservations are persisted.
+    [[nodiscard]] foundation::Result<CombatResourceReservationId> ReserveResource(
+        GameplayObjectRef subject, CombatResourceTypeId type, std::int64_t amount_micro, GameplayContext context = {});
+    void CommitResourceReservation(CombatResourceReservationId reservation) noexcept;
+    void ReleaseResourceReservation(CombatResourceReservationId reservation, GameplayContext context = {}) noexcept;
+    [[nodiscard]] const CombatResourceReservation* FindResourceReservation(CombatResourceReservationId reservation) const noexcept;
     [[nodiscard]] foundation::Result<void> SetEngagement(GameplayObjectRef subject, CombatEngagementState state, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> TransitionLifeState(GameplayObjectRef subject, CombatLifeState state, GameplayContext context = {});
 
+    [[nodiscard]] foundation::Result<void> SetPreparePolicy(CombatPreparePolicy policy);
+    [[nodiscard]] CombatPreparePolicy GetPreparePolicy() const noexcept { return prepare_policy_; }
     [[nodiscard]] foundation::Result<CombatPlan> PrepareDamage(DamageRequest request);
-    [[nodiscard]] foundation::Result<CombatResult> CommitDamage(const CombatPlan& plan);
+    [[nodiscard]] foundation::Result<CombatResult> CommitDamage(const CombatPlan& plan, GameplayTimePoint now);
+    [[nodiscard]] foundation::Result<void> CancelDamagePlan(CombatResolutionId id);
+    [[nodiscard]] std::size_t ExpirePreparedPlans(GameplayTimePoint now) noexcept;
 
     [[nodiscard]] std::vector<CombatChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] CombatChangeBatch ReadChangesSince(std::uint64_t sequence) const;
@@ -246,6 +285,7 @@ class CombatService
     void Bump(CombatantRecord& record) noexcept;
     void Record(CombatChange change);
     [[nodiscard]] bool ReconcileLifeState(CombatantRecord& record, CombatResourceTypeId changed_resource) noexcept;
+    [[nodiscard]] static bool IsAllowedLifeTransition(CombatLifeState from, CombatLifeState to) noexcept;
     [[nodiscard]] static std::int64_t ApplyModifiers(std::int64_t amount, std::vector<CombatModifier> modifiers) noexcept;
 
     std::unordered_map<CombatResourceTypeId, CombatResourceDefinition, IdHash> resources_;
@@ -255,7 +295,10 @@ class CombatService
     const ICombatModifierProvider* modifier_provider_ = nullptr;
     std::uint64_t modifier_provider_epoch_ = 1;
     MonotonicIdGenerator<GameplayObjectId> resolution_ids_;
+    MonotonicIdGenerator<GameplayObjectId> resource_reservation_ids_;
+    std::unordered_map<CombatResourceReservationId, CombatResourceReservation, IdHash> resource_reservations_;
     std::unordered_map<CombatResolutionId, CombatPlan, IdHash> prepared_plans_;
+    CombatPreparePolicy prepare_policy_{};
     bool frozen_ = false;
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     static constexpr std::size_t kPreparedPlanCapacity = 4096;

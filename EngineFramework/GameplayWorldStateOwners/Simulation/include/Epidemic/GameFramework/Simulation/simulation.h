@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -110,6 +111,11 @@ enum class SimulationTaskState
     Skipped,
     Deferred
 };
+enum class SimulationIntervalState
+{
+    Pending,
+    Completed
+};
 enum class SimulationMaterializationPolicy
 {
     AbstractCapable,
@@ -120,6 +126,7 @@ enum class SimulationChangeKind
 {
     RegionRegistered,
     LayerRegistered,
+    IntervalStarted,
     TaskPrepared,
     TaskCommitted,
     TaskDeferred,
@@ -129,9 +136,17 @@ enum class SimulationChangeKind
 };
 struct SimulationBudget
 {
+    // Work units processed by one SimulateInterval call. A work unit is one layer task examined
+    // for prepare/commit. Exhaustion pauses the durable interval execution and never advances the
+    // region cursor.
     std::uint32_t max_tasks = 1024;
     std::uint32_t max_layer_commits = 1024;
     std::int64_t max_interval_ticks = 86'400;
+};
+struct SimulationRetentionPolicy
+{
+    std::size_t max_completed_summaries = 1024;
+    std::size_t max_changes = 4096;
 };
 struct SimulationRegion
 {
@@ -162,12 +177,39 @@ struct SimulationTask
     SimulationDetailLevel detail = SimulationDetailLevel::Abstract;
     SimulationTaskState state = SimulationTaskState::Pending;
     Revision revision{};
+    GameplayObjectRef area{};
+};
+struct SimulationPreparedOperation
+{
+    GameplayObjectId operation{};
+    Revision expected_revision{};
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return operation.IsValid(); }
 };
 struct SimulationLayerSummary
 {
     SimulationLayerId layer{};
     SimulationTaskState state = SimulationTaskState::Completed;
     std::uint64_t operations = 0;
+    Revision revision{};
+    std::vector<SimulationPreparedOperation> prepared_operations;
+};
+struct SimulationLayerExecution
+{
+    SimulationTask task{};
+    SimulationLayerSummary prepared_summary{};
+    bool prepared = false;
+};
+struct SimulationIntervalExecution
+{
+    // The eventual summary id is allocated when the interval starts and serves as a stable
+    // interval operation identity for save/load and retry.
+    SimulationSummaryId id{};
+    SimulationRegionId region{};
+    GameplayTimePoint from{};
+    GameplayTimePoint to{};
+    SimulationDetailLevel detail = SimulationDetailLevel::Abstract;
+    SimulationIntervalState state = SimulationIntervalState::Pending;
+    std::vector<SimulationLayerExecution> layers;
     Revision revision{};
 };
 struct SimulationSummary
@@ -190,10 +232,17 @@ struct SimulationChange
     GameplayContext context{};
     Revision revision{};
 };
+struct SimulationChangeBatch
+{
+    std::vector<SimulationChange> changes;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+    bool snapshot_required = false;
+};
 struct SimulationSnapshot
 {
     std::vector<SimulationRegion> regions;
-    std::vector<SimulationTask> pending_tasks;
+    std::vector<SimulationIntervalExecution> active_intervals;
     std::vector<SimulationSummary> summaries;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot task_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot summary_ids{};
@@ -203,6 +252,7 @@ struct SimulationDiagnostics
 {
     std::uint64_t regions = 0;
     std::uint64_t layers = 0;
+    std::uint64_t active_intervals = 0;
     std::uint64_t tasks_prepared = 0;
     std::uint64_t tasks_committed = 0;
     std::uint64_t tasks_deferred = 0;
@@ -215,6 +265,10 @@ class ISimulationLayerExecutor
   public:
     virtual ~ISimulationLayerExecutor() = default;
     [[nodiscard]] virtual SimulationLayerId Layer() const noexcept = 0;
+
+    // Prepare must not commit gameplay state. Commit may be called again with the same stable
+    // SimulationTaskId after a recoverable failure or save/load boundary, therefore every
+    // executor must make Commit idempotent for a task id and the prepared summary it produced.
     [[nodiscard]] virtual foundation::Result<SimulationLayerSummary> Prepare(const SimulationTask &task) = 0;
     [[nodiscard]] virtual foundation::Result<void> Commit(const SimulationTask &task,
                                                           const SimulationLayerSummary &summary) = 0;
@@ -228,27 +282,52 @@ class SimulationService
     {
         return GameplayDomainId::FromString("framework.simulation");
     }
+
+    // Regions are runtime world state and may be created after definitions are frozen.
     [[nodiscard]] foundation::Result<SimulationRegionId> RegisterRegion(SimulationRegion region);
+    // The executor is a non-owning bootstrap dependency and must outlive the service's use of
+    // the frozen layer definition. Executor exceptions are contained at the Simulation boundary.
     [[nodiscard]] foundation::Result<SimulationLayerId> RegisterLayer(SimulationLayerDefinition layer,
                                                                       ISimulationLayerExecutor *executor);
+    void FreezeDefinitions() noexcept
+    {
+        definitions_frozen_ = true;
+    }
     void Freeze() noexcept
     {
-        frozen_ = true;
+        FreezeDefinitions();
     }
+    [[nodiscard]] bool DefinitionsFrozen() const noexcept
+    {
+        return definitions_frozen_;
+    }
+
     [[nodiscard]] const SimulationRegion *FindRegion(SimulationRegionId id) const noexcept;
     [[nodiscard]] const SimulationLayerDefinition *FindLayer(SimulationLayerId id) const noexcept;
+    [[nodiscard]] const SimulationIntervalExecution *FindActiveInterval(SimulationRegionId region) const noexcept;
     void SetBudget(SimulationBudget budget) noexcept
     {
         budget_ = budget;
     }
+    void SetRetentionPolicy(SimulationRetentionPolicy policy) noexcept;
+
+    // Mutating intervals form a strict chain per region. A new interval requires
+    // from == region.last_simulated_at and to > from. If a call stops on a budget or layer
+    // failure, repeating the exact same interval resumes its persisted execution. Already
+    // committed layer tasks are never committed again by SimulationService.
     [[nodiscard]] foundation::Result<SimulationSummaryId> SimulateInterval(SimulationRegionId region,
                                                                            GameplayTimePoint from, GameplayTimePoint to,
                                                                            GameplayContext context = {});
     [[nodiscard]] std::vector<SimulationSummary> FindSummaries(SimulationRegionId region) const;
+    [[nodiscard]] SimulationChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::vector<SimulationChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] SimulationSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(SimulationSnapshot snapshot);
     [[nodiscard]] SimulationDiagnostics GetDiagnostics() const noexcept;
+    [[nodiscard]] Revision CurrentRevision() const noexcept
+    {
+        return revision_;
+    }
 
   private:
     void Bump() noexcept
@@ -256,20 +335,26 @@ class SimulationService
         ++revision_.value;
     }
     void Record(SimulationChange change);
+    void TrimRetention() noexcept;
     [[nodiscard]] bool DetailAllows(const SimulationLayerDefinition &layer,
                                     SimulationDetailLevel detail) const noexcept;
+    [[nodiscard]] foundation::Result<void> CreateIntervalExecution(SimulationRegion &region, GameplayTimePoint from,
+                                                                   GameplayTimePoint to, GameplayContext context);
+    [[nodiscard]] foundation::Result<SimulationSummaryId> ContinueIntervalExecution(SimulationRegion &region,
+                                                                                    GameplayContext context);
 
-    bool frozen_ = false;
+    bool definitions_frozen_ = false;
     Revision revision_{};
     std::unordered_map<SimulationRegionId, SimulationRegion, IdHash> regions_;
     std::unordered_map<SimulationLayerId, SimulationLayerDefinition, IdHash> layers_;
     std::unordered_map<SimulationLayerId, ISimulationLayerExecutor *, IdHash> executors_;
-    std::vector<SimulationTask> pending_tasks_;
-    std::vector<SimulationSummary> summaries_;
+    std::unordered_map<SimulationRegionId, SimulationIntervalExecution, IdHash> active_intervals_;
+    std::deque<SimulationSummary> summaries_;
     MonotonicIdGenerator<GameplayObjectId> task_ids_;
     MonotonicIdGenerator<GameplayObjectId> summary_ids_;
     SimulationBudget budget_{};
-    std::vector<SimulationChange> changes_;
+    SimulationRetentionPolicy retention_{};
+    std::deque<SimulationChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     SimulationDiagnostics diagnostics_{};
 };

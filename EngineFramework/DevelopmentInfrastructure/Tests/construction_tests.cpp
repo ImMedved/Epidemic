@@ -78,6 +78,8 @@ int main()
     auto site = c.StartConstructionSite(plan.Value());
     if (!site)
         return 6;
+    if (!c.AdvanceConstructionProgress(site.Value(), 1'000'000))
+        return 37;
     if (!c.CompleteConstructionSite(site.Value()))
         return 7;
     const auto outputs = c.PendingOutputs();
@@ -87,6 +89,12 @@ int main()
         return 19;
     if (!outputs.front().operation.placed_record.IsValid())
         return 20;
+    if (!c.DeadLetterOutput(outputs.front().id, PlacementReasonId::FromString("test.unsupported")))
+        return 38;
+    if (!c.PruneTerminalSite(site.Value()))
+        return 39;
+    if (!c.CompactPlacementState(plan.Value().id))
+        return 40;
     if (c.CommitPlacement(plan.Value()))
         return 21;
     GameplayObjectRef wall{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("wall")};
@@ -103,11 +111,12 @@ int main()
     auto stale = c.PreparePlacementPlan(sreq);
     if (!stale)
         return 22;
-    if (!c.ReserveSocket(sock.id))
+    auto socket_reservation = c.ReserveSocket(sock.id, actor);
+    if (!socket_reservation)
         return 23;
     if (c.CommitPlacement(stale.Value()))
         return 24;
-    if (!c.ReleaseSocket(sock.id))
+    if (!c.ReleaseSocket(socket_reservation.Value()))
         return 25;
     auto spl = c.PreparePlacementPlan(sreq);
     if (!spl)
@@ -181,6 +190,23 @@ int main()
         return 35;
     if (!exhausted.PendingOutputs().empty())
         return 36;
+
+    ConstructionService expiring;
+    expiring.SetPlacementProvider(&provider);
+    if (!expiring.RegisterPlacementDefinition(free_def) || !expiring.RegisterRecipe(recipe))
+        return 41;
+    expiring.Freeze();
+    PlacementRequest expiring_req = req;
+    expiring_req.context.time = {100};
+    auto expiring_plan = expiring.PreparePlacementPlan(expiring_req);
+    if (!expiring_plan)
+        return 42;
+    if (expiring.ExpirePlacementPlans({399}) != 0)
+        return 43;
+    if (expiring.ExpirePlacementPlans({400}) != 1)
+        return 44;
+    if (expiring.CommitPlacement(expiring_plan.Value()))
+        return 45;
 
     return 0;
 }

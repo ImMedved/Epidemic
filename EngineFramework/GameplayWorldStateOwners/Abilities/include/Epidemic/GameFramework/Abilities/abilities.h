@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Epidemic/Foundation/error.h"
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 
@@ -149,6 +150,12 @@ enum class AbilityGrantPersistence
     Temporary,
     SourceBound
 };
+enum class AbilityContinuityPolicy
+{
+    ActivationOnly,
+    UntilExecute,
+    ThroughoutExecution
+};
 
 struct AbilityCostDefinition
 {
@@ -187,6 +194,7 @@ struct AbilityDefinition
     std::vector<AbilityOutputDefinition> outputs;
     bool requires_materialized_owner = false;
     bool requires_materialized_target = false;
+    AbilityContinuityPolicy continuity = AbilityContinuityPolicy::ActivationOnly;
 };
 
 struct AbilityTargetSet
@@ -211,7 +219,6 @@ struct AbilityInstance
 
 enum class AbilityExecutionState
 {
-    Preparing,
     Casting,
     Channeling,
     Executing,
@@ -232,7 +239,7 @@ struct AbilityExecution
     AbilityInstanceId ability{};
     GameplayObjectRef owner{};
     AbilityTargetSet targets;
-    AbilityExecutionState state = AbilityExecutionState::Preparing;
+    AbilityExecutionState state = AbilityExecutionState::Executing;
     GameplayTimePoint started_at{};
     GameplayTimePoint due_at{};
     GameplayTimePoint next_channel_at{};
@@ -287,11 +294,24 @@ class IAbilityResourceProvider
                                                                                  GameplayContext context) = 0;
     virtual void Commit(const AbilityResourceReservation &reservation, GameplayContext context) noexcept = 0;
     virtual void Release(const AbilityResourceReservation &reservation, GameplayContext context) noexcept = 0;
+    [[nodiscard]] virtual foundation::Result<void> ReconcileReservation(const AbilityResourceReservation &reservation,
+                                                                        GameplayObjectRef owner,
+                                                                        GameplayContext context)
+    {
+        (void)reservation;
+        (void)owner;
+        (void)context;
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.ability.resource_reconcile_unsupported",
+                                      "resource provider does not support reservation reconciliation"));
+    }
 };
 
 struct AbilityOutput
 {
     AbilityExecutionId execution{};
+    GameplayTimePoint occurrence_at{};
+    std::uint32_t output_index = 0;
     ActionTypeId action{};
     GameplayObjectRef owner{};
     AbilityTargetSet targets;
@@ -310,7 +330,8 @@ enum class AbilityChangeKind
     Interrupted,
     Failed,
     CooldownStarted,
-    CooldownFinished
+    CooldownFinished,
+    EnabledChanged
 };
 struct AbilityChange
 {
@@ -321,6 +342,7 @@ struct AbilityChange
     AbilityExecutionId execution{};
     GameplayTimePoint time{};
     GameplayContext context{};
+    TypeId reason{};
 };
 struct AbilityCooldownState
 {
@@ -381,6 +403,8 @@ class AbilityService
         GameplayObjectRef owner, AbilityDefinitionId definition, GameplayObjectRef source = {},
         AbilityGrantPersistence persistence = AbilityGrantPersistence::Permanent, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> Revoke(AbilityInstanceId instance, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> SetAbilityEnabled(AbilityInstanceId instance, bool enabled,
+                                                             GameplayContext context = {});
     [[nodiscard]] std::uint64_t RevokeBySource(GameplayObjectRef owner, GameplayObjectRef source,
                                                GameplayContext context = {});
     [[nodiscard]] const AbilityInstance *FindInstance(AbilityInstanceId id) const noexcept;
@@ -404,6 +428,12 @@ class AbilityService
 
     [[nodiscard]] GameplayDuration CooldownRemaining(GameplayObjectRef owner, CooldownGroupId group,
                                                      GameplayTimePoint now) const noexcept;
+    void SweepCooldowns(GameplayTimePoint now, GameplayContext context = {});
+    [[nodiscard]] bool NeedsResourceReconciliation() const noexcept
+    {
+        return resource_reconciliation_required_;
+    }
+    [[nodiscard]] foundation::Result<void> ReconcileRestoredReservations(GameplayContext context = {});
     [[nodiscard]] const AbilityExecution *FindExecution(AbilityExecutionId id) const noexcept;
     [[nodiscard]] std::vector<AbilityChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] AbilityChangeBatch ReadChangesSince(std::uint64_t sequence) const;
@@ -419,10 +449,18 @@ class AbilityService
     [[nodiscard]] AbilityAvailabilityResult ValidateTargets(const AbilityDefinition &definition, const AbilityInstance &instance,
                                                            const AbilityTargetSet &targets) const;
     [[nodiscard]] static bool IsTerminal(AbilityExecutionState state) noexcept;
+    [[nodiscard]] AbilityAvailabilityResult CheckContinuity(const AbilityDefinition &definition,
+                                                            const AbilityInstance &instance,
+                                                            const AbilityExecution &execution,
+                                                            GameplayTimePoint now) const;
+    void ReleaseReservations(AbilityExecution &execution, GameplayContext context) noexcept;
+    void FinalizeExecution(AbilityExecutionId id, AbilityExecutionState terminal_state, AbilityChangeKind change_kind,
+                           GameplayTimePoint now, GameplayContext context, TypeId reason = {});
     void StartCooldown(const AbilityDefinition &def, GameplayObjectRef owner, GameplayTimePoint now,
                        GameplayContext context, AbilityInstanceId ability, AbilityExecutionId execution);
     [[nodiscard]] std::vector<AbilityOutput> BuildOutputs(const AbilityDefinition &def,
-                                                          const AbilityExecution &execution) const;
+                                                          const AbilityExecution &execution,
+                                                          GameplayTimePoint occurrence_at) const;
     void Record(AbilityChange change);
 
     std::unordered_map<AbilityDefinitionId, AbilityDefinition, IdHash> definitions_;
@@ -436,6 +474,7 @@ class AbilityService
     const IAbilityMaterializationProvider *materialization_ = nullptr;
     std::unordered_map<ScheduleId, AbilityExecutionId> schedule_to_execution_;
     bool frozen_ = false;
+    bool resource_reconciliation_required_ = false;
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     static constexpr std::uint64_t kMaxChannelOccurrencesPerCall = 1024;
     std::deque<AbilityChange> changes_;

@@ -179,6 +179,21 @@ struct RuntimeBridgeBudget
     std::uint32_t max_materializations = 128;
     std::uint32_t max_observations = 8192;
 };
+struct RuntimeBridgeQueuePolicy
+{
+    std::size_t max_projection_requests = 16384;
+    std::size_t max_contact_backlog = 32768;
+};
+struct RuntimeBridgeCapabilities
+{
+    bool environment_temperature = true;
+    bool environment_humidity = true;
+    bool environment_precipitation = true;
+    bool environment_wind = true;
+    bool environment_visibility = true;
+    bool environment_light_exposure = true;
+    bool world_alteration_projection = false;
+};
 struct RuntimeBridgeProcessResult
 {
     std::uint32_t processed = 0, deferred = 0, failed = 0, materialized = 0, dematerialized = 0, destroyed = 0;
@@ -201,7 +216,9 @@ struct SemanticImpactObservation
 struct RuntimeBridgeDiagnostics
 {
     std::uint64_t active_bindings = 0, projection_requests = 0, projection_failures = 0, projection_backlog = 0,
-                  observations = 0, stale_observations = 0, materializations = 0, dematerializations = 0;
+                  observations = 0, stale_observations = 0, materializations = 0, dematerializations = 0,
+                  coalesced_projection_requests = 0, rejected_projection_requests = 0, dropped_contacts = 0,
+                  contact_backlog = 0;
 };
 
 struct RuntimeMaterializationResult
@@ -288,7 +305,8 @@ class IRuntimeBridgeBackend
     [[nodiscard]] virtual foundation::Result<void> ApplyImpulse(RuntimePhysicsBodyHandle body, RuntimeVector3 impulse) = 0;
     [[nodiscard]] virtual foundation::Result<void> ProjectEnvironment(
         RuntimeRegionHandle region, const RuntimeEnvironmentValues& values, Revision revision) = 0;
-    [[nodiscard]] virtual bool SupportsWorldAlterationProjection() const noexcept { return false; }
+    [[nodiscard]] virtual RuntimeBridgeCapabilities GetCapabilities() const noexcept { return {}; }
+    [[nodiscard]] virtual bool SupportsWorldAlterationProjection() const noexcept { return GetCapabilities().world_alteration_projection; }
     [[nodiscard]] virtual foundation::Result<void> ProjectWorldAlteration(const WorldAlterationProjectionRequest&)
     {
         return foundation::Result<void>::Failure(
@@ -358,7 +376,8 @@ class IRuntimeBridgeBackend
 class RuntimeBridgeService
 {
   public:
-    explicit RuntimeBridgeService(IRuntimeBridgeBackend& backend) : backend_(backend) {}
+    explicit RuntimeBridgeService(IRuntimeBridgeBackend& backend, RuntimeBridgeQueuePolicy queue_policy = {})
+        : backend_(backend), queue_policy_(queue_policy) {}
     [[nodiscard]] foundation::Result<void> Enqueue(RuntimeProjectionRequest request);
     [[nodiscard]] foundation::Result<void> AttachPhysicsBody(
         GameplayObjectRef object,
@@ -374,6 +393,10 @@ class RuntimeBridgeService
     [[nodiscard]] foundation::Result<std::vector<SemanticOverlapHit>> Overlap(const RuntimeOverlapQuery& query) const;
     [[nodiscard]] foundation::Result<bool> Visible(GameplayObjectRef observer, GameplayObjectRef target) const;
     [[nodiscard]] foundation::Result<RuntimeTransformObservation> ObserveTransform(GameplayObjectRef object) const;
+    [[nodiscard]] foundation::Result<void> ForgetObjectIdentity(GameplayObjectRef object);
+    [[nodiscard]] foundation::Result<void> ForgetEnvironmentProjection(RuntimeRegionHandle region);
+    [[nodiscard]] foundation::Result<void> ForgetWorldAlterationProjection(GameplayObjectId alteration);
+    [[nodiscard]] RuntimeBridgeCapabilities GetCapabilities() const noexcept { return backend_.GetCapabilities(); }
     // Reconciles bindings whose Runtime representation disappeared independently (streaming/runtime-side teardown).
     // Returned objects were removed from the active binding map and can be rematerialized by gameplay orchestration.
     [[nodiscard]] foundation::Result<std::vector<GameplayObjectRef>> ReconcileBindings();
@@ -427,6 +450,7 @@ class RuntimeBridgeService
     void RemoveBinding(GameplayObjectRef object);
 
     IRuntimeBridgeBackend& backend_;
+    RuntimeBridgeQueuePolicy queue_policy_{};
     std::unordered_map<GameplayObjectRef, RuntimeBinding, RefHash> bindings_;
     std::unordered_map<RuntimeObjectHandle, GameplayObjectRef, RuntimeHash> reverse_;
     std::unordered_map<RuntimePhysicsBodyHandle, BodyOwner, BodyHash> body_reverse_;
@@ -437,7 +461,8 @@ class RuntimeBridgeService
     std::vector<RuntimeContactObservation> contact_backlog_;
     std::uint64_t next_sequence_ = 1;
     std::uint64_t projection_requests_ = 0, projection_failures_ = 0, observations_ = 0, stale_observations_ = 0,
-                  materializations_ = 0, dematerializations_ = 0;
+                  materializations_ = 0, dematerializations_ = 0, coalesced_projection_requests_ = 0,
+                  rejected_projection_requests_ = 0, dropped_contacts_ = 0;
 };
 } // namespace epidemic::gameplay::runtime_bridge
 

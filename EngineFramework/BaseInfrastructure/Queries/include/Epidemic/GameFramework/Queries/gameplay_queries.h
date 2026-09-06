@@ -50,6 +50,9 @@ struct QueryRequirements
 
 struct QueryBudget
 {
+    // Cooperative provider budget. Providers must use these limits while doing work.
+    // GameplayQueryService validates reported metadata after execution as a defensive
+    // contract check, but cannot preempt a provider that ignores the budget.
     std::uint64_t max_results = 0;
     std::uint64_t max_work_units = 0;
 
@@ -78,6 +81,10 @@ class IQuerySnapshotCoordinator
 {
   public:
     virtual ~IQuerySnapshotCoordinator() = default;
+
+    // Implementations may be called concurrently after GameplayQueryService::Freeze().
+    // They must provide their own synchronization and must not allow exceptions to
+    // escape this interface. GameplayQueryService still guards the boundary defensively.
     [[nodiscard]] virtual foundation::Result<QuerySnapshotReadEpoch> AcquireReadEpoch(GameplayTickId tick) const = 0;
 };
 
@@ -119,6 +126,7 @@ struct QueryDiagnostics
     std::uint64_t failed = 0;
     std::uint64_t budget_exceeded = 0;
     std::uint64_t partial_results = 0;
+    std::uint64_t provider_exceptions = 0;
 };
 
 namespace detail
@@ -229,7 +237,20 @@ template <typename TQuery> class FunctionQueryProvider final : public IQueryProv
             return foundation::Result<AnyQueryResponse>::Failure(
                 foundation::Error::Create("gameplay.query_type_mismatch", "query payload C++ type does not match provider"));
         }
-        return Pack(current_handler_(std::any_cast<const TQuery&>(query), context));
+        try
+        {
+            return Pack(current_handler_(std::any_cast<const TQuery&>(query), context));
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<AnyQueryResponse>::Failure(
+                foundation::Error::Create("gameplay.query_provider_exception", "query provider threw an exception", exception.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<AnyQueryResponse>::Failure(
+                foundation::Error::Create("gameplay.query_provider_exception", "query provider threw an unknown exception"));
+        }
     }
 
     [[nodiscard]] foundation::Result<AnyProviderSnapshot> CaptureSnapshot(const QueryContext& context) const override
@@ -239,7 +260,20 @@ template <typename TQuery> class FunctionQueryProvider final : public IQueryProv
             return foundation::Result<AnyProviderSnapshot>::Failure(
                 foundation::Error::Create("gameplay.query_snapshot_unsupported", "query provider does not expose a snapshot read-view"));
         }
-        return snapshot_capture_(context);
+        try
+        {
+            return snapshot_capture_(context);
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<AnyProviderSnapshot>::Failure(
+                foundation::Error::Create("gameplay.query_provider_exception", "query snapshot capture threw an exception", exception.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<AnyProviderSnapshot>::Failure(
+                foundation::Error::Create("gameplay.query_provider_exception", "query snapshot capture threw an unknown exception"));
+        }
     }
 
     [[nodiscard]] foundation::Result<AnyQueryResponse> ExecuteSnapshot(
@@ -257,7 +291,20 @@ template <typename TQuery> class FunctionQueryProvider final : public IQueryProv
             return foundation::Result<AnyQueryResponse>::Failure(
                 foundation::Error::Create("gameplay.query_type_mismatch", "query payload C++ type does not match provider"));
         }
-        return Pack(snapshot_handler_(std::any_cast<const TQuery&>(query), context, snapshot.value));
+        try
+        {
+            return Pack(snapshot_handler_(std::any_cast<const TQuery&>(query), context, snapshot.value));
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<AnyQueryResponse>::Failure(
+                foundation::Error::Create("gameplay.query_provider_exception", "snapshot query provider threw an exception", exception.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<AnyQueryResponse>::Failure(
+                foundation::Error::Create("gameplay.query_provider_exception", "snapshot query provider threw an unknown exception"));
+        }
     }
 
   private:
@@ -297,6 +344,7 @@ struct QueryServiceState
     std::atomic<std::uint64_t> failed{0};
     std::atomic<std::uint64_t> budget_exceeded{0};
     std::atomic<std::uint64_t> partial_results{0};
+    std::atomic<std::uint64_t> provider_exceptions{0};
 };
 } // namespace detail
 
@@ -367,22 +415,25 @@ class GameplayQueryService
             std::move(execute_snapshot));
     }
 
-    [[nodiscard]] foundation::Result<void> SetSnapshotCoordinator(const IQuerySnapshotCoordinator* coordinator)
+    [[nodiscard]] foundation::Result<void> SetSnapshotCoordinator(std::shared_ptr<const IQuerySnapshotCoordinator> coordinator)
     {
         if (frozen_)
         {
             return foundation::Result<void>::Failure(
                 foundation::Error::Create("gameplay.registry_frozen", "query snapshot coordinator cannot change after Freeze"));
         }
-        if (coordinator == nullptr)
+        if (!coordinator)
         {
             return foundation::Result<void>::Failure(
                 foundation::Error::Create("gameplay.query_snapshot_coordinator_invalid", "query snapshot coordinator must be valid"));
         }
-        snapshot_coordinator_ = coordinator;
+        snapshot_coordinator_ = std::move(coordinator);
         return foundation::Result<void>::Success();
     }
 
+    // After Freeze(), provider registry and coordinator configuration are immutable.
+    // Execute() and AcquireSnapshot() may be called concurrently. Registered providers
+    // and the snapshot coordinator are responsible for thread-safe concurrent reads.
     void Freeze() noexcept
     {
         state_->provider_order.clear();
@@ -418,24 +469,48 @@ class GameplayQueryService
             }
         }
         QuerySnapshotReadEpoch epoch;
+        // Keep a strong local reference for the complete snapshot acquisition. The
+        // coordinator itself may own synchronization state associated with the lease.
+        const auto coordinator = snapshot_coordinator_;
         if (has_snapshot_provider)
         {
-            if (snapshot_coordinator_ == nullptr)
+            if (!coordinator)
             {
                 ++state_->failed;
                 return foundation::Result<QuerySnapshot>::Failure(
                     foundation::Error::Create("gameplay.query_snapshot_coordinator_missing",
                                               "coherent snapshots require a configured read-epoch coordinator"));
             }
-            auto acquired = snapshot_coordinator_->AcquireReadEpoch(context.tick);
-            if (!acquired || !acquired.Value().IsValid())
+
+            try
             {
+                auto acquired = coordinator->AcquireReadEpoch(context.tick);
+                if (!acquired || !acquired.Value().IsValid())
+                {
+                    ++state_->failed;
+                    return foundation::Result<QuerySnapshot>::Failure(
+                        acquired ? foundation::Error::Create("gameplay.query_snapshot_epoch_invalid", "snapshot coordinator returned an invalid epoch")
+                                 : acquired.GetError());
+                }
+                epoch = std::move(acquired).Value();
+            }
+            catch (const std::exception& exception)
+            {
+                ++state_->provider_exceptions;
                 ++state_->failed;
                 return foundation::Result<QuerySnapshot>::Failure(
-                    acquired ? foundation::Error::Create("gameplay.query_snapshot_epoch_invalid", "snapshot coordinator returned an invalid epoch")
-                             : acquired.GetError());
+                    foundation::Error::Create("gameplay.query_snapshot_coordinator_exception",
+                                              "snapshot coordinator threw an exception",
+                                              exception.what()));
             }
-            epoch = std::move(acquired).Value();
+            catch (...)
+            {
+                ++state_->provider_exceptions;
+                ++state_->failed;
+                return foundation::Result<QuerySnapshot>::Failure(
+                    foundation::Error::Create("gameplay.query_snapshot_coordinator_exception",
+                                              "snapshot coordinator threw an unknown exception"));
+            }
             context.snapshot_epoch = epoch.value;
         }
 
@@ -457,6 +532,10 @@ class GameplayQueryService
             if (!captured)
             {
                 ++state_->failed;
+                if (captured.GetError().HasCode("gameplay.query_provider_exception"))
+                {
+                    ++state_->provider_exceptions;
+                }
                 return foundation::Result<QuerySnapshot>::Failure(captured.GetError());
             }
             views->emplace(type, std::move(captured).Value());
@@ -495,7 +574,12 @@ class GameplayQueryService
 
     [[nodiscard]] QueryDiagnostics GetDiagnostics() const noexcept
     {
-        return QueryDiagnostics{state_->executed.load(), state_->failed.load(), state_->budget_exceeded.load(), state_->partial_results.load()};
+        return QueryDiagnostics{
+            state_->executed.load(),
+            state_->failed.load(),
+            state_->budget_exceeded.load(),
+            state_->partial_results.load(),
+            state_->provider_exceptions.load()};
     }
 
   private:
@@ -602,6 +686,10 @@ class GameplayQueryService
         if (!any_result)
         {
             ++state_->failed;
+            if (any_result.GetError().HasCode("gameplay.query_provider_exception"))
+            {
+                ++state_->provider_exceptions;
+            }
             return foundation::Result<QueryResponse<ResultType>>::Failure(any_result.GetError());
         }
 
@@ -662,7 +750,9 @@ class GameplayQueryService
     [[nodiscard]] static bool RequirementsSatisfied(QueryMetadata metadata, QueryRequirements requirements) noexcept;
 
     std::shared_ptr<detail::QueryServiceState> state_ = std::make_shared<detail::QueryServiceState>();
-    const IQuerySnapshotCoordinator* snapshot_coordinator_ = nullptr;
+    // Shared ownership makes the coordinator lifetime explicit and allows AcquireSnapshot
+    // to retain a stable coordinator for the complete epoch acquisition operation.
+    std::shared_ptr<const IQuerySnapshotCoordinator> snapshot_coordinator_{};
     bool frozen_ = false;
 };
 } // namespace epidemic::gameplay::queries

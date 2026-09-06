@@ -5,6 +5,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <deque>
+#include <map>
 #include <optional>
 #include <string_view>
 #include <unordered_map>
@@ -463,6 +465,20 @@ enum class NarrativeChoiceState
     Cancelled,
     Expired
 };
+enum class NarrativeEventExecutionState
+{
+    Pending,
+    Processing,
+    Completed,
+    FailedRetryable
+};
+enum class NarrativeEventExecutionPhase
+{
+    Beats,
+    Objectives,
+    Storylets,
+    Completed
+};
 enum class NarrativeGateState
 {
     Closed,
@@ -477,9 +493,12 @@ enum class NarrativeChangeKind
     ThreadFailed,
     ThreadSuspended,
     ThreadResumed,
+    ThreadExpired,
     ObjectiveActivated,
     ObjectiveCompleted,
     ObjectiveFailed,
+    ObjectiveCancelled,
+    ObjectiveOptionalMissed,
     ObjectiveProgressChanged,
     JournalEntryAdded,
     ClueDiscovered,
@@ -487,6 +506,8 @@ enum class NarrativeChangeKind
     RumorExpired,
     ChoiceCreated,
     ChoiceResolved,
+    ChoiceCancelled,
+    ChoiceExpired,
     StoryletActivated,
     ConsequencePlanned,
     ConsequenceApplied,
@@ -623,6 +644,22 @@ struct NarrativeConsequenceDefinition
     std::int32_t priority = 0;
     bool require_success_before_advance = false;
     std::vector<std::byte> payload;
+    struct JournalTemplate
+    {
+        JournalEntryTypeId type{};
+        JournalVisibilityState visibility = JournalVisibilityState::Discovered;
+        GameplayTagSet tags{};
+        std::vector<std::byte> payload;
+    };
+    struct RumorTemplate
+    {
+        TypeId topic{};
+        std::int64_t confidence = 0;
+        GameplayDuration lifetime{};
+        std::vector<std::byte> payload;
+    };
+    std::optional<JournalTemplate> journal_template;
+    std::optional<RumorTemplate> rumor_template;
     Revision revision{};
 };
 struct NarrativeBeatDefinition
@@ -779,6 +816,24 @@ struct NarrativeChoice
     std::vector<NarrativeChoiceOption> options;
     NarrativeChoiceState state = NarrativeChoiceState::Open;
     std::optional<NarrativeChoiceOptionId> selected_option;
+    GameplayTimePoint created_at{};
+    GameplayTimePoint closed_at{};
+    GameplayTimePoint expires_at{};
+    Revision revision{};
+};
+struct NarrativeEventExecution
+{
+    NarrativeEventKey key{};
+    NarrativeEvent event{};
+    NarrativeEventExecutionState state = NarrativeEventExecutionState::Pending;
+    NarrativeEventExecutionPhase phase = NarrativeEventExecutionPhase::Beats;
+    bool work_plan_initialized = false;
+    std::vector<NarrativeBeatId> beat_plan;
+    std::vector<NarrativeObjectiveId> objective_plan;
+    std::vector<StoryletId> storylet_plan;
+    std::size_t next_beat = 0;
+    std::size_t next_objective = 0;
+    std::size_t next_storylet = 0;
     Revision revision{};
 };
 struct StoryletRuntimeState
@@ -807,6 +862,9 @@ struct NarrativeChange
 
 struct NarrativeSnapshot
 {
+    // Definition vectors are retained for source compatibility only. Runtime saves no longer
+    // capture or restore build/content definitions. Restore validates state against the already
+    // registered and frozen current-build registry.
     std::vector<NarrativeThreadDefinition> thread_definitions;
     std::vector<NarrativeArcDefinition> arc_definitions;
     std::vector<NarrativeBeatDefinition> beat_definitions;
@@ -824,6 +882,8 @@ struct NarrativeSnapshot
     std::vector<NarrativeVariable> variables;
     std::vector<NarrativeChoice> choices;
     std::vector<StoryletRuntimeState> storylet_runtime;
+    std::vector<NarrativeEventExecution> event_executions;
+    std::vector<NarrativeBeatId> activated_beats;
     std::vector<NarrativeEventKey> processed_event_keys;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot journal_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot clue_ids{};
@@ -832,6 +892,12 @@ struct NarrativeSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot consequence_ids{};
     Revision revision{};
     bool frozen = false;
+};
+struct NarrativeChangeBatch
+{
+    std::vector<NarrativeChange> changes;
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
 };
 struct NarrativeDiagnostics
 {
@@ -887,6 +953,8 @@ class NarrativeService
     [[nodiscard]] foundation::Result<void> StartThread(NarrativeThreadId thread, GameplayObjectRef owner,
                                                        GameplayObjectRef scope, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> SuspendThread(NarrativeThreadId thread, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ResumeThread(NarrativeThreadId thread, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ExpireThread(NarrativeThreadId thread, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CompleteThread(NarrativeThreadId thread, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> FailThread(NarrativeThreadId thread, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> ActivateObjective(NarrativeObjectiveId objective,
@@ -894,6 +962,10 @@ class NarrativeService
     [[nodiscard]] foundation::Result<void> CompleteObjective(NarrativeObjectiveId objective,
                                                              GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> FailObjective(NarrativeObjectiveId objective, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CancelObjective(NarrativeObjectiveId objective,
+                                                           GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> MarkObjectiveOptionalMissed(NarrativeObjectiveId objective,
+                                                                       GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> UpdateObjectiveProgress(NarrativeObjectiveId objective,
                                                                    std::int64_t progress, GameplayContext context = {});
     [[nodiscard]] NarrativeConditionResult EvaluateCondition(NarrativeConditionId condition,
@@ -908,6 +980,9 @@ class NarrativeService
                                                                      GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> ResolveChoice(NarrativeChoiceId choice, NarrativeChoiceOptionId option,
                                                          GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CancelChoice(NarrativeChoiceId choice, GameplayContext context = {});
+    [[nodiscard]] std::vector<NarrativeChoiceId> ExpireChoices(GameplayTimePoint now,
+                                                               GameplayContext context = {});
     [[nodiscard]] std::vector<NarrativeConsequenceExecutionId> ExecutePendingConsequences(
         NarrativeExecutionContext context, std::size_t budget = 256);
     [[nodiscard]] foundation::Result<void> SetFlag(NarrativeFlag flag, GameplayContext context = {});
@@ -923,6 +998,9 @@ class NarrativeService
     [[nodiscard]] std::vector<RumorRecord> FindRumors(GameplayObjectRef scope, TypeId topic = {}) const;
     [[nodiscard]] std::vector<NarrativeConsequenceExecution> FindConsequences(ConsequenceExecutionState state) const;
     [[nodiscard]] std::vector<NarrativeChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] NarrativeChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return next_change_sequence_ - 1; }
+    [[nodiscard]] std::uint64_t CompactTerminalExecutions(GameplayTimePoint before);
     [[nodiscard]] NarrativeSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(NarrativeSnapshot snapshot);
     [[nodiscard]] NarrativeDiagnostics GetDiagnostics() const noexcept;
@@ -941,6 +1019,13 @@ class NarrativeService
                                     const NarrativeEvaluationContext &context) const;
     [[nodiscard]] bool AnySatisfied(const std::vector<NarrativeConditionId> &conditions,
                                     const NarrativeEvaluationContext &context) const;
+    [[nodiscard]] bool ValidateConditionGraphAcyclic() const;
+    [[nodiscard]] bool HasConditionCycle(NarrativeConditionId id,
+                                         std::unordered_map<NarrativeConditionId, std::uint8_t, IdHash> &marks) const;
+    [[nodiscard]] std::size_t CountUnplannedConsequences(NarrativeThreadId thread, NarrativeBeatId beat,
+                                                         NarrativeObjectiveId objective,
+                                                         const std::vector<NarrativeConsequenceId> &consequences,
+                                                         CorrelationId correlation) const;
     [[nodiscard]] foundation::Result<void> PlanConsequences(NarrativeThreadId thread, NarrativeBeatId beat,
                                                             NarrativeObjectiveId objective,
                                                             const std::vector<NarrativeConsequenceId> &consequences,
@@ -952,6 +1037,7 @@ class NarrativeService
                                                              CorrelationId correlation) const noexcept;
     [[nodiscard]] bool IsBuiltinAddJournal(NarrativeConsequenceTypeId type) const noexcept;
     [[nodiscard]] bool IsBuiltinCreateRumor(NarrativeConsequenceTypeId type) const noexcept;
+    void IndexRumorExpiry(const RumorRecord &rumor);
     [[nodiscard]] NarrativeThreadState &EnsureThreadState(NarrativeThreadId thread);
     [[nodiscard]] NarrativeObjectiveState &EnsureObjectiveState(NarrativeObjectiveId objective);
     Revision revision_{};
@@ -973,17 +1059,25 @@ class NarrativeService
     std::unordered_map<JournalEntryId, JournalEntry, IdHash> journal_;
     std::unordered_map<ClueId, ClueRecord, IdHash> clues_;
     std::unordered_map<RumorId, RumorRecord, IdHash> rumors_;
+    std::map<GameplayTimePoint, std::vector<RumorId>> rumor_expiry_index_;
     std::unordered_map<NarrativeFlagId, NarrativeFlag, IdHash> flags_;
     std::unordered_map<NarrativeVariableId, NarrativeVariable, IdHash> variables_;
     std::unordered_map<NarrativeChoiceId, NarrativeChoice, IdHash> choices_;
     std::unordered_map<StoryletId, StoryletRuntimeState, IdHash> storylet_runtime_;
     std::unordered_map<NarrativeConsequenceKey, NarrativeConsequenceExecutionId, NarrativeConsequenceKeyHash>
         consequence_idempotency_;
+    std::unordered_map<NarrativeEventKey, NarrativeEventExecution, NarrativeEventKeyHash> event_executions_;
     std::unordered_set<NarrativeEventKey, NarrativeEventKeyHash> processed_event_keys_;
     std::vector<NarrativeBeatId> activated_beats_;
-    std::vector<NarrativeChange> changes_;
+    std::deque<NarrativeChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     mutable NarrativeDiagnostics diagnostics_{};
     mutable std::size_t evaluation_counter_ = 0;
+    mutable std::size_t evaluation_limit_ = static_cast<std::size_t>(-1);
+    mutable std::size_t evaluation_depth_ = 0;
+    mutable bool evaluation_budget_exhausted_ = false;
+    static constexpr std::size_t kMaxConditionDepth = 256;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+    static constexpr std::size_t kCompletedEventRetention = 4096;
 };
 } // namespace epidemic::gameplay::narrative

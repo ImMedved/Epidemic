@@ -142,6 +142,7 @@ struct FactsDiagnostics
     std::uint64_t dispatched_events = 0;
     std::uint64_t dispatch_waves = 0;
     std::uint64_t rejected_events = 0;
+    std::uint64_t subscriber_failures = 0;
     std::uint64_t fact_count = 0;
     std::uint64_t persistent_fact_count = 0;
     std::uint64_t history_count = 0;
@@ -163,9 +164,16 @@ class GameplayEventBatch
     template <typename TPayload>
     void Publish(EventTypeId type, GameplayContext context, GameplayObjectRef subject, TPayload payload)
     {
+        Publish(type, std::move(context), GameplayObjectRef{}, subject, std::move(payload));
+    }
+
+    template <typename TPayload>
+    void Publish(EventTypeId type, GameplayContext context, GameplayObjectRef scope, GameplayObjectRef subject, TPayload payload)
+    {
         pending_.push_back(PendingEvent{type,
                                         std::move(context),
                                         subject,
+                                        scope,
                                         std::any(std::move(payload)),
                                         typeid(TPayload),
                                         producer_,
@@ -182,6 +190,7 @@ class GameplayEventBatch
         EventTypeId type{};
         GameplayContext context{};
         GameplayObjectRef subject{};
+        GameplayObjectRef scope{};
         std::any payload;
         std::type_index payload_type{typeid(void)};
         ProducerId producer{};
@@ -506,6 +515,18 @@ class GameplayFactsService
         TPayload payload,
         ProducerId producer = {})
     {
+        return Publish(type, std::move(context), GameplayObjectRef{}, subject, std::move(payload), producer);
+    }
+
+    template <typename TPayload>
+    [[nodiscard]] foundation::Result<void> Publish(
+        EventTypeId type,
+        GameplayContext context,
+        GameplayObjectRef scope,
+        GameplayObjectRef subject,
+        TPayload payload,
+        ProducerId producer = {})
+    {
         if (next_direct_order_ == std::numeric_limits<std::uint64_t>::max())
         {
             ++rejected_events_;
@@ -521,6 +542,7 @@ class GameplayFactsService
         pending_events_.push_back(PendingEvent{type,
                                                std::move(context),
                                                subject,
+                                               scope,
                                                std::any(std::move(payload)),
                                                typeid(TPayload),
                                                producer,
@@ -611,6 +633,7 @@ class GameplayFactsService
         EventTypeId type{};
         GameplayContext context{};
         GameplayObjectRef subject{};
+        GameplayObjectRef scope{};
         std::any payload;
         std::type_index payload_type{typeid(void)};
         ProducerId producer{};
@@ -652,6 +675,7 @@ class GameplayFactsService
     std::uint64_t dispatched_events_ = 0;
     std::uint64_t dispatch_waves_ = 0;
     std::atomic<std::uint64_t> rejected_events_{0};
+    std::uint64_t subscriber_failures_ = 0;
 };
 } // namespace epidemic::gameplay::facts
 

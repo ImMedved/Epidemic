@@ -8,6 +8,16 @@
 
 namespace epidemic::gameplay
 {
+// Global gameplay time contract used by Framework semantic clocks. GameplayTimePoint::ticks
+// and GameplayDuration::ticks are gameplay seconds, not simulation frame/tick counters.
+inline constexpr std::int64_t kGameplayTimeTicksPerSecond = 1;
+inline constexpr std::int64_t kGameplaySecondsPerMinute = 60;
+inline constexpr std::int64_t kGameplayMinutesPerHour = 60;
+inline constexpr std::int64_t kGameplaySecondsPerHour = kGameplaySecondsPerMinute * kGameplayMinutesPerHour;
+inline constexpr std::int64_t kGameplayTicksPerSecond = kGameplayTimeTicksPerSecond;
+inline constexpr std::int64_t kGameplayTicksPerMinute = kGameplaySecondsPerMinute * kGameplayTicksPerSecond;
+inline constexpr std::int64_t kGameplayTicksPerHour = kGameplayMinutesPerHour * kGameplayTicksPerMinute;
+
 struct GameplayDuration
 {
     std::int64_t ticks = 0;
@@ -24,6 +34,26 @@ struct GameplayTimePoint
     [[nodiscard]] constexpr bool operator==(const GameplayTimePoint&) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const GameplayTimePoint&) const noexcept = default;
 };
+
+[[nodiscard]] constexpr GameplayDuration GameplaySeconds(std::int64_t seconds) noexcept
+{
+    return GameplayDuration{seconds * kGameplayTimeTicksPerSecond};
+}
+
+[[nodiscard]] constexpr GameplayTimePoint GameplayTimeSeconds(std::int64_t seconds) noexcept
+{
+    return GameplayTimePoint{seconds * kGameplayTimeTicksPerSecond};
+}
+
+[[nodiscard]] constexpr std::int64_t ToGameplaySeconds(GameplayDuration duration) noexcept
+{
+    return duration.ticks / kGameplayTimeTicksPerSecond;
+}
+
+[[nodiscard]] constexpr std::int64_t ToGameplaySeconds(GameplayTimePoint point) noexcept
+{
+    return point.ticks / kGameplayTimeTicksPerSecond;
+}
 
 [[nodiscard]] constexpr std::optional<GameplayTimePoint> CheckedAdd(GameplayTimePoint point, GameplayDuration duration) noexcept
 {

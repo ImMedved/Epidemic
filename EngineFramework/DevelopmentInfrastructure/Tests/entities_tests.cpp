@@ -9,6 +9,7 @@ int main()
     EntityArchetypeDefinition actor;
     actor.canonical_name = "test.entity.actor";
     actor.persistence = EntityPersistencePolicy::Persistent;
+    actor.materialization = EntityMaterializationPolicy::RequireMaterialized;
     EntityPartDefinition body_part;
     body_part.id = EntityPartId::FromString("test.entity.actor.body");
     body_part.canonical_name = "test.entity.actor.body";
@@ -42,6 +43,7 @@ int main()
     const auto first_handle = created.Value().handle;
     const auto first_id = created.Value().id;
     if (!service.Resolve(first_handle).has_value() || service.HandleOf(first_id) != first_handle) return 5;
+    if (!service.RequiresMaterialization(first_id) || service.MaterializationPolicyOf(first_id) != EntityMaterializationPolicy::RequireMaterialized) return 53;
     const auto hand = service.GetPart(first_id, hand_part.id);
     const auto ancestors = hand ? service.GetPartAncestors(*hand) : std::vector<EntityPartRef>{};
     if (!hand || ancestors.size() != 1 || ancestors.front().part != body_part.id) return 51;
@@ -54,6 +56,7 @@ int main()
     if (!service.Convert(first_id, object_id.Value())) return 7;
     const auto converted = service.Find(first_id);
     if (!converted || converted->archetype != object_id.Value() || !converted->instance_tags.HasExact(living.Value())) return 8;
+    if (service.RequiresMaterialization(first_id) || service.MaterializationPolicyOf(first_id) != EntityMaterializationPolicy::AbstractAllowed) return 81;
 
     const auto snapshot = service.CaptureSnapshot();
     if (snapshot.records.size() != 1) return 9;
@@ -112,6 +115,43 @@ int main()
     const auto restored_destroy_change = service.ChangesSince(0);
     if (restored_destroy_change.empty() || restored_destroy_change.back().destroy_reason != EntityDestroyReason::Consumed) return 185;
     if (!service.RestoreSnapshot(snapshot)) return 186;
+
+
+    // Requested IDs in the service-owned scope advance the internal generator, so the next
+    // generated entity cannot collide with accepted imported identity.
+    const auto entity_scope = GameplayObjectId::FromString("framework.entities.instances").High();
+    CreateEntityRequest requested_forward;
+    requested_forward.archetype = actor_id.Value();
+    requested_forward.requested_id = EntityId::FromRaw(entity_scope, 1000000);
+    const auto own_scope_requested = service.Create(requested_forward);
+    if (!own_scope_requested) return 187;
+    CreateEntityRequest generated_after_requested;
+    generated_after_requested.archetype = actor_id.Value();
+    const auto generated_after = service.Create(generated_after_requested);
+    if (!generated_after || generated_after.Value().id.High() != entity_scope || generated_after.Value().id.Low() <= 1000000) return 188;
+    if (service.Create(requested_forward)) return 189;
+
+    CreateEntityRequest requested_behind;
+    requested_behind.archetype = actor_id.Value();
+    requested_behind.requested_id = EntityId::FromRaw(entity_scope, 42);
+    const auto own_scope_behind = service.Create(requested_behind);
+    const auto generated_after_behind = service.Create(generated_after_requested);
+    if (!own_scope_behind || !generated_after_behind || generated_after_behind.Value().id.Low() <= generated_after.Value().id.Low()) return 190;
+
+    // Removed slots may be reused, but old generation-aware handles must never resolve to the
+    // replacement entity. This exercises the Windows Debug stress failure path without changing
+    // the slot/generation design.
+    for (int i = 0; i < 256; ++i)
+    {
+        CreateEntityRequest transient_request;
+        transient_request.archetype = actor_id.Value();
+        const auto transient = service.Create(transient_request);
+        if (!transient || !service.RequestDestroy(transient.Value().id, EntityDestroyReason::Removed)) return 191;
+        const auto transient_destroyed = service.CommitPendingDestruction();
+        if (!transient_destroyed || !service.Remove(transient.Value().id)) return 192;
+        const auto replacement = service.Create(transient_request);
+        if (!replacement || service.Resolve(transient.Value().handle).has_value() || !service.Resolve(replacement.Value().handle).has_value()) return 193;
+    }
 
     // Basic capacity/stability stress.
     for (int i = 0; i < 100000; ++i)

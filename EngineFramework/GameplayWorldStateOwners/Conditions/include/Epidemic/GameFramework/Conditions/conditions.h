@@ -270,6 +270,20 @@ struct ConditionsDiagnostics
     std::uint64_t paused_for_materialization = 0;
 };
 
+enum class ConditionSubjectMaterializationState
+{
+    Unavailable,
+    Abstract,
+    Materialized,
+};
+
+class IConditionSubjectStateProvider
+{
+  public:
+    virtual ~IConditionSubjectStateProvider() = default;
+    [[nodiscard]] virtual ConditionSubjectMaterializationState GetMaterializationState(GameplayObjectRef subject) const = 0;
+};
+
 class ConditionService
 {
   public:
@@ -285,6 +299,7 @@ class ConditionService
     [[nodiscard]] foundation::Result<ConditionTypeId> RegisterCondition(
         ConditionDefinition definition,
         PayloadValidator validator = {});
+    [[nodiscard]] foundation::Result<void> SetSubjectStateProvider(const IConditionSubjectStateProvider* provider);
     void Freeze() noexcept { frozen_ = true; }
     [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
 
@@ -374,6 +389,7 @@ class ConditionService
     void BumpRevision(ConditionInstance& instance) noexcept;
 
     std::unordered_map<ConditionTypeId, DefinitionEntry, ConditionTypeIdHash> definitions_;
+    const IConditionSubjectStateProvider* subject_state_provider_ = nullptr;
     std::vector<ConditionInstance> instances_;
     std::unordered_map<ConditionInstanceId, std::size_t, ConditionInstanceIdHash> id_to_index_;
     std::unordered_map<GameplayObjectRef, std::vector<ConditionInstanceId>> subject_index_;

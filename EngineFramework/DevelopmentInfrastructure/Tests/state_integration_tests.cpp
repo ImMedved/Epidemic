@@ -292,32 +292,72 @@ int main()
     const auto* deferred_record = effects.FindDeferred(deferred.Value());
     if (deferred_record == nullptr || !deferred_record->schedule.has_value()) return 31;
 
+    const auto original_deferred_schedule = *deferred_record->schedule;
+    if (!time.Cancel(original_deferred_schedule)) return 32;
+    if (!time_adapter.SynchronizeDeferredEffects(context)) return 33;
+    deferred_record = effects.FindDeferred(deferred.Value());
+    if (deferred_record == nullptr || !deferred_record->schedule.has_value() ||
+        *deferred_record->schedule == original_deferred_schedule || !time.HasSchedule(*deferred_record->schedule)) return 34;
+    const auto peeked_deferred = effects.PeekDeferredBySchedule(*deferred_record->schedule, context);
+    if (!peeked_deferred || effects.FindDeferred(deferred.Value()) == nullptr) return 35;
+
     context.tick = GameplayTickId{3};
     context.time = GameplayTimePoint{5};
-    if (!time.SynchronizeClock(clock.Value(), context.time, Revision{3})) return 32;
+    if (!time.SynchronizeClock(clock.Value(), context.time, Revision{3})) return 36;
+    EffectExecutionBudget zero_effect_budget;
+    zero_effect_budget.max_effects = 0;
+    const auto failed_delayed_due = time_adapter.ProcessDue(clock.Value(), context, {}, zero_effect_budget);
+    const auto house_after_failed_delayed = entities.Find(house_id);
+    deferred_record = effects.FindDeferred(deferred.Value());
+    if (failed_delayed_due || deferred_record == nullptr || !deferred_record->schedule.has_value() ||
+        !time.HasSchedule(*deferred_record->schedule) || !house_after_failed_delayed ||
+        house_after_failed_delayed->instance_tags.HasExact(delayed_tag.Value())) return 37;
+
     const auto delayed_due = time_adapter.ProcessDue(clock.Value(), context);
     const auto house_after_delayed = entities.Find(house_id);
-    if (!delayed_due || delayed_due.Value().effect_executions.size() != 1 || !house_after_delayed ||
-        !house_after_delayed->instance_tags.HasExact(delayed_tag.Value())) return 33;
+    if (!delayed_due || delayed_due.Value().effect_executions.size() != 1 || effects.FindDeferred(deferred.Value()) != nullptr ||
+        !house_after_delayed || !house_after_delayed->instance_tags.HasExact(delayed_tag.Value())) return 38;
+
+    GameplayFactsService gap_facts;
+    StateFactsAdapter gap_facts_adapter(entities, materials, conditions, effects, gap_facts);
+    if (!gap_facts_adapter.RegisterContracts()) return 39;
+    gap_facts.Freeze();
+    if (!gap_facts_adapter.PublishPendingChanges(context) || !gap_facts.Dispatch()) return 40;
+    ApplyConditionRequest gap_apply_request;
+    gap_apply_request.subject = house;
+    gap_apply_request.type = burning.Value();
+    gap_apply_request.magnitude_micro = 1;
+    gap_apply_request.context = context;
+    const auto gap_applied = conditions.Apply(gap_apply_request);
+    if (!gap_applied) return 41;
+    conditions.PruneChangesBefore(conditions.LatestChangeSequence() + 1);
+    const auto gap_published = gap_facts_adapter.PublishPendingChanges(context);
+    if (!gap_published || gap_published.Value() == 0 || !gap_facts.Dispatch()) return 42;
+    const FactKey gap_fact{gap_facts_adapter.ActiveConditionFact(), house,
+                           GameplayObjectRef{ConditionService::Domain(), gap_applied.Value().instance.value}};
+    if (!gap_facts.FindFactValueCopy<ConditionFactValue>(gap_fact).has_value()) return 43;
+    if (!conditions.Remove(gap_applied.Value().instance, ConditionRemovalReason::SystemCleanup, context)) return 44;
 
     // Lifecycle cleanup is routed through the adapter; no major calls its peers directly.
     const auto cleanup_deferred = effects.Defer(MakeRequest(delayed_tag_effect.Value(), stone_ref, context), clock.Value(), GameplayTimePoint{20},
                                                 DeferredEffectPersistence::Persistent);
-    if (!cleanup_deferred || !time_adapter.SynchronizeDeferredEffects(context)) return 34;
-    if (!entities.RequestDestroy(stone_created.Value().id, EntityDestroyReason::Destroyed, context)) return 35;
+    if (!cleanup_deferred || !time_adapter.SynchronizeDeferredEffects(context)) return 45;
+    if (!entities.RequestDestroy(stone_created.Value().id, EntityDestroyReason::Destroyed, context)) return 46;
     const auto destroyed = entities.CommitPendingDestruction();
-    if (!destroyed || destroyed.Value().size() != 1 || !lifecycle_adapter.ProcessEntityChanges(context)) return 36;
+    entities.PruneChangesBefore(entities.LatestChangeSequence() + 1);
+    if (!destroyed || destroyed.Value().size() != 1 || !lifecycle_adapter.ProcessEntityChanges(context)) return 47;
     if (!materials.FindSlots(stone_ref).empty() || !conditions.GetConditions(stone_ref).empty() ||
-        effects.FindDeferred(cleanup_deferred.Value()) != nullptr) return 37;
+        effects.FindDeferred(cleanup_deferred.Value()) != nullptr) return 48;
 
-    if (!time_adapter.SynchronizeConditionSchedules(context) || !time_adapter.SynchronizeDeferredEffects(context)) return 38;
+    if (!time_adapter.SynchronizeConditionSchedules(context) || !time_adapter.SynchronizeDeferredEffects(context)) return 49;
+
 
     const auto entity_snapshot = entities.CaptureSnapshot();
     const auto material_snapshot = materials.CaptureSnapshot();
     const auto condition_snapshot = conditions.CaptureSnapshot();
     const auto effect_snapshot = effects.CaptureSnapshot();
     if (entity_snapshot.records.empty() || material_snapshot.states.empty() || condition_snapshot.instances.size() != 0 ||
-        !effect_snapshot.deferred.empty()) return 39;
+        !effect_snapshot.deferred.empty()) return 50;
 
     return 0;
 }

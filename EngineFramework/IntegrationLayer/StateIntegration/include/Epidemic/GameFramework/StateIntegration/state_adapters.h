@@ -105,6 +105,7 @@ class StateFactsAdapter
     {
         return GameplayObjectRef{conditions::ConditionService::Domain(), id.value};
     }
+    [[nodiscard]] foundation::Result<std::uint64_t> RebuildActiveConditionFacts(GameplayContext context);
 
     entities::EntityService& entities_;
     materials::MaterialService& materials_;
@@ -265,8 +266,7 @@ class ConditionEffectsAdapter
 
     [[nodiscard]] foundation::Result<void> RegisterRoute(ActionTypeId action, effects::EffectDefinitionId definition);
     [[nodiscard]] foundation::Result<std::vector<effects::EffectExecutionResult>> ProcessPending(
-        effects::EffectExecutionBudget budget = {},
-        core::tasks::ITaskScheduler* scheduler = nullptr);
+        effects::EffectExecutionBudget budget = {});
 
   private:
     conditions::ConditionService& conditions_;
@@ -301,8 +301,7 @@ class StateTimeAdapter
         ClockId clock,
         GameplayContext context = {},
         time::SchedulerBudget scheduler_budget = {},
-        effects::EffectExecutionBudget effect_budget = {},
-        core::tasks::ITaskScheduler* scheduler = nullptr);
+        effects::EffectExecutionBudget effect_budget = {});
 
     [[nodiscard]] ActionTypeId ExpireAction() const noexcept { return expire_action_; }
     [[nodiscard]] ActionTypeId PeriodicAction() const noexcept { return periodic_action_; }
@@ -312,6 +311,8 @@ class StateTimeAdapter
     [[nodiscard]] foundation::Result<void> RebuildConditionSchedules(
         const conditions::ConditionInstance& instance,
         GameplayContext context);
+    [[nodiscard]] foundation::Result<std::uint64_t> ReconcileConditionSchedules(GameplayContext context);
+    [[nodiscard]] foundation::Result<std::uint64_t> ReconcileDeferredEffectSchedules(GameplayContext context);
     [[nodiscard]] time::CatchUpPolicy MapCatchUp(conditions::PeriodicCatchUpPolicy policy) const noexcept;
     [[nodiscard]] time::SchedulePersistence MapPersistence(conditions::ConditionPersistencePolicy policy) const noexcept;
 

@@ -13,7 +13,7 @@ namespace
 {
 [[nodiscard]] foundation::Error Error(std::string_view c, std::string_view m)
 {
-    return foundation::Error::Create(c, m);
+    return foundation::Error::Create(std::string(c), std::string(m));
 }
 
 [[nodiscard]] bool CheckedAdd(Fixed a, Fixed b, Fixed& out) noexcept
@@ -41,6 +41,45 @@ namespace
     out = a * b;
     return true;
 }
+
+
+template <class TWrappedId>
+void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId>& generator, TWrappedId id) noexcept
+{
+    if (!id.IsValid()) return;
+    auto snapshot = generator.GetSnapshot();
+    if (id.value.High() != snapshot.scope || snapshot.next == 0 || id.value.Low() < snapshot.next) return;
+    snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
+    generator.Restore(snapshot);
+}
+
+template <class TWrappedId>
+void TrackMaxLowForScope(TWrappedId id, std::uint64_t scope, std::uint64_t& max_low) noexcept
+{
+    if (id.IsValid() && id.value.High() == scope && id.value.Low() > max_low)
+    {
+        max_low = id.value.Low();
+    }
+}
+
+[[nodiscard]] bool IsKnownContainerState(ContainerState state) noexcept
+{
+    switch (state)
+    {
+    case ContainerState::Active:
+    case ContainerState::Locked:
+    case ContainerState::Disabled:
+    case ContainerState::Destroyed:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsRuntimeContainerState(ContainerState state) noexcept
+{
+    return state == ContainerState::Active || state == ContainerState::Locked || state == ContainerState::Disabled;
+}
+
 } // namespace
 
 ItemsInventoryService::ItemsInventoryService() = default;
@@ -99,21 +138,36 @@ const ItemDefinition *ItemsInventoryService::FindDefinition(ItemDefinitionId id)
 foundation::Result<ContainerId> ItemsInventoryService::CreateContainer(ContainerRecord c)
 {
     if (!frozen_) return foundation::Result<ContainerId>::Failure(Error("gameplay.registry_not_frozen", "item registry must be frozen before runtime mutation"));
-    if (c.max_weight < 0 || c.max_volume < 0)
+    if (c.max_weight < 0 || c.max_volume < 0 || !IsRuntimeContainerState(c.state))
         return foundation::Result<ContainerId>::Failure(
-            Error("gameplay.items.invalid_container", "container capacities must be non-negative"));
-    if (c.parent.IsValid() && !containers_.contains(c.parent))
-        return foundation::Result<ContainerId>::Failure(
-            Error("gameplay.items.parent_missing", "parent container is missing"));
+            Error("gameplay.items.invalid_container", "container capacities or state are invalid"));
     if (c.policy.IsValid() && !container_policies_.contains(c.policy))
         return foundation::Result<ContainerId>::Failure(Error("gameplay.items.container_policy_missing", "container policy is not registered"));
-    if (!c.id.IsValid()) c.id = ContainerId{container_ids_.Next()};
+    const bool caller_supplied_id = c.id.IsValid();
+    if (!c.id.IsValid())
+    {
+        c.id = ContainerId{container_ids_.Next()};
+    }
     if (!c.id.IsValid() || containers_.contains(c.id))
         return foundation::Result<ContainerId>::Failure(
             Error("gameplay.items.duplicate_container", "duplicate container"));
-    if (c.parent == c.id)
-        return foundation::Result<ContainerId>::Failure(
-            Error("gameplay.items.container_cycle", "container cannot parent itself"));
+    if (c.parent.IsValid())
+    {
+        const auto parent = containers_.find(c.parent);
+        if (parent == containers_.end() || parent->second.state == ContainerState::Destroyed)
+            return foundation::Result<ContainerId>::Failure(
+                Error("gameplay.items.parent_missing", "parent container is missing or destroyed"));
+        if (c.parent == c.id)
+            return foundation::Result<ContainerId>::Failure(
+                Error("gameplay.items.container_cycle", "container cannot parent itself"));
+        if (ContainerDepth(c.parent) + 1u > c.max_nesting_depth)
+            return foundation::Result<ContainerId>::Failure(
+                Error("gameplay.items.container_depth", "container nesting depth exceeds maximum"));
+    }
+    if (caller_supplied_id)
+    {
+        AdvanceGeneratorPastAcceptedId(container_ids_, c.id);
+    }
     Bump();
     c.revision = revision_;
     const auto id = c.id;
@@ -122,6 +176,56 @@ foundation::Result<ContainerId> ItemsInventoryService::CreateContainer(Container
     Record({0, ItemChangeKind::ContainerCreated, {}, id, 0, {}, revision_});
     return foundation::Result<ContainerId>::Success(id);
 }
+
+foundation::Result<void> ItemsInventoryService::SetContainerState(ContainerId id, ContainerState state,
+                                                                  GameplayContext context)
+{
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "item registry must be frozen before runtime mutation"));
+    if (!IsRuntimeContainerState(state))
+        return foundation::Result<void>::Failure(Error("gameplay.items.invalid_container_state", "container state is not a runtime state"));
+    auto it = containers_.find(id);
+    if (it == containers_.end() || it->second.state == ContainerState::Destroyed)
+        return foundation::Result<void>::Failure(Error("gameplay.items.container_missing", "container missing"));
+    if (it->second.state == state) return foundation::Result<void>::Success();
+    Bump();
+    it->second.state = state;
+    it->second.revision = revision_;
+    ItemChange change{0, ItemChangeKind::ContainerStateChanged, {}, id, 0, context, revision_};
+    Record(std::move(change));
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> ItemsInventoryService::RemoveContainer(ContainerId id, GameplayContext context)
+{
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "item registry must be frozen before runtime mutation"));
+    auto it = containers_.find(id);
+    if (it == containers_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.items.container_missing", "container missing"));
+    if (auto found_items = container_items_.find(id); found_items != container_items_.end() && !found_items->second.empty())
+        return foundation::Result<void>::Failure(Error("gameplay.items.container_not_empty", "container contains items"));
+    for (const auto& [cid, container] : containers_)
+    {
+        (void)cid;
+        if (container.parent == id)
+            return foundation::Result<void>::Failure(Error("gameplay.items.container_not_empty", "container has child containers"));
+    }
+    const auto parent = it->second.parent;
+    Bump();
+    containers_.erase(it);
+    if (parent.IsValid())
+    {
+        if (auto parent_it = containers_.find(parent); parent_it != containers_.end())
+        {
+            parent_it->second.revision = revision_;
+        }
+    }
+    if (diagnostics_.containers > 0) --diagnostics_.containers;
+    RebuildIndexes();
+    ItemChange change{0, ItemChangeKind::ContainerRemoved, {}, id, 0, context, revision_};
+    Record(std::move(change));
+    return foundation::Result<void>::Success();
+}
+
 foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemInstance item, GameplayContext context)
 {
     const auto* def = FindDefinition(item.definition);
@@ -139,6 +243,30 @@ foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemInstanc
     return CreateItem(std::move(request), context);
 }
 
+bool ItemsInventoryService::CanCreateItem(ItemDefinitionId definition_id, Fixed quantity, const ItemLocation& location) const
+{
+    const auto* definition = FindDefinition(definition_id);
+    if (!definition || quantity <= 0 || !ValidateLocation(location)) return false;
+    if (definition->stack_policy == ItemStackPolicy::NonStackable && quantity != 1) return false;
+    if (location.kind == ItemLocationKind::World && IsWorldObjectBound(location.world_object)) return false;
+    if (location.kind != ItemLocationKind::Container) return location.kind != ItemLocationKind::Destroyed;
+
+    const auto* container = FindContainer(location.container);
+    if (!container || container->state != ContainerState::Active) return false;
+    auto usage = GetContainerUsage(location.container);
+    Fixed added_weight = 0, added_volume = 0, final_weight = 0, final_volume = 0;
+    if (!CheckedMul(definition->base_weight, quantity, added_weight) ||
+        !CheckedMul(definition->base_volume, quantity, added_volume) ||
+        !CheckedAdd(usage.weight, added_weight, final_weight) ||
+        !CheckedAdd(usage.volume, added_volume, final_volume) ||
+        usage.slots == std::numeric_limits<std::uint32_t>::max()) return false;
+    ++usage.slots;
+    return PolicyAllows(location.container, {}, definition_id, quantity) &&
+           (container->max_weight <= 0 || final_weight <= container->max_weight) &&
+           (container->max_volume <= 0 || final_volume <= container->max_volume) &&
+           (container->max_slots == 0 || usage.slots <= container->max_slots);
+}
+
 foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemCreateRequest request, GameplayContext context)
 {
     ItemInstance item = std::move(request.item);
@@ -149,8 +277,12 @@ foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemCreateR
             Error("gameplay.items.definition_missing", "item definition missing"));
     if (def->durability_policy == ItemDurabilityPolicy::InstanceValue)
         item.durability = request.durability_override.value_or(def->default_durability);
+    else if (item.durability != 0)
+        return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_durability", "item definition does not allow durability state"));
     if (def->charge_policy == ItemChargePolicy::InstanceValue)
         item.charges = request.charges_override.value_or(def->default_charges);
+    else if (item.charges != 0)
+        return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_charges", "item definition does not allow charge state"));
     if (item.quantity <= 0)
         return foundation::Result<ItemInstanceId>::Failure(
             Error("gameplay.items.invalid_quantity", "item quantity must be positive"));
@@ -159,12 +291,12 @@ foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemCreateR
             Error("gameplay.items.nonstackable_quantity", "non-stackable item quantity must be one"));
     if (!ValidateLocation(item.location) || !ValidateProperties(item.properties))
         return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_item_state", "item location or properties are invalid"));
-    if (item.world_entity.has_value() && *item.world_entity != item.location.world_object)
-        return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.duplicate_world_identity", "world_entity must match location.world_object"));
     if (def->durability_policy == ItemDurabilityPolicy::InstanceValue && (item.durability < 0 || item.durability > def->max_durability))
         return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_durability", "item durability is outside definition bounds"));
     if (def->charge_policy == ItemChargePolicy::InstanceValue && (item.charges < 0 || item.charges > def->max_charges))
         return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_charges", "item charges are outside definition bounds"));
+    if (item.location.kind == ItemLocationKind::World && IsWorldObjectBound(item.location.world_object))
+        return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.duplicate_world_identity", "world object is already bound to an item"));
     if (item.location.kind == ItemLocationKind::Container)
     {
         const auto *container = FindContainer(item.location.container);
@@ -174,7 +306,8 @@ foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemCreateR
         auto usage = GetContainerUsage(item.location.container);
         Fixed added_weight = 0, added_volume = 0, final_weight = 0, final_volume = 0;
         if (!CheckedMul(def->base_weight, item.quantity, added_weight) || !CheckedMul(def->base_volume, item.quantity, added_volume) ||
-            !CheckedAdd(usage.weight, added_weight, final_weight) || !CheckedAdd(usage.volume, added_volume, final_volume))
+            !CheckedAdd(usage.weight, added_weight, final_weight) || !CheckedAdd(usage.volume, added_volume, final_volume) ||
+            usage.slots == std::numeric_limits<std::uint32_t>::max())
             return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.capacity_overflow", "container usage arithmetic overflow"));
         usage.weight = final_weight;
         usage.volume = final_volume;
@@ -186,20 +319,17 @@ foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemCreateR
             return foundation::Result<ItemInstanceId>::Failure(
                 Error("gameplay.items.container_capacity", "target container capacity exceeded"));
     }
+    const bool caller_supplied_id = item.id.IsValid();
     if (!item.id.IsValid()) item.id = ItemInstanceId{item_ids_.Next()};
     if (!item.id.IsValid() || items_.contains(item.id))
         return foundation::Result<ItemInstanceId>::Failure(
             Error("gameplay.items.duplicate_item", "duplicate item instance"));
+    if (caller_supplied_id)
+    {
+        AdvanceGeneratorPastAcceptedId(item_ids_, item.id);
+    }
     Bump();
     item.revision = revision_;
-    if (!ValidateLocation(item.location) || !ValidateProperties(item.properties))
-        return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_item_state", "item location or properties are invalid"));
-    if (item.world_entity.has_value() && *item.world_entity != item.location.world_object)
-        return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.duplicate_world_identity", "world_entity must match location.world_object"));
-    if (def->durability_policy == ItemDurabilityPolicy::InstanceValue && (item.durability < 0 || item.durability > def->max_durability))
-        return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_durability", "item durability is outside definition bounds"));
-    if (def->charge_policy == ItemChargePolicy::InstanceValue && (item.charges < 0 || item.charges > def->max_charges))
-        return foundation::Result<ItemInstanceId>::Failure(Error("gameplay.items.invalid_charges", "item charges are outside definition bounds"));
     if (item.location.kind == ItemLocationKind::Container)
     {
         if (auto container = containers_.find(item.location.container); container != containers_.end())
@@ -210,6 +340,7 @@ foundation::Result<ItemInstanceId> ItemsInventoryService::CreateItem(ItemCreateR
     const auto id = item.id;
     items_.emplace(id, std::move(item));
     ++diagnostics_.items;
+    RebuildIndexes();
     Record({0, ItemChangeKind::ItemCreated, id, {}, items_.at(id).quantity, context, revision_});
     return foundation::Result<ItemInstanceId>::Success(id);
 }
@@ -238,6 +369,7 @@ foundation::Result<void> ItemsInventoryService::DestroyItem(ItemInstanceId id, G
     }
     if (diagnostics_.items > 0)
         --diagnostics_.items;
+    RebuildIndexes();
     ItemChange change{0, ItemChangeKind::ItemDestroyed, id, {}, old_quantity, context, revision_};
     change.source = old_location;
     Record(std::move(change));
@@ -268,15 +400,31 @@ bool ItemsInventoryService::ValidateLocation(const ItemLocation& location) const
     switch (location.kind)
     {
     case ItemLocationKind::None:
-        return !location.container.IsValid() && !location.world_object.IsValid();
+        return !location.container.IsValid() && !location.world_object.IsValid() && !location.area.IsValid();
     case ItemLocationKind::Container:
-        return location.container.IsValid() && containers_.contains(location.container) && !location.world_object.IsValid();
+        return location.container.IsValid() && containers_.contains(location.container) &&
+               !location.world_object.IsValid() && !location.area.IsValid();
     case ItemLocationKind::World:
         return location.world_object.IsValid() && !location.container.IsValid();
     default:
         return false;
     }
 }
+
+bool ItemsInventoryService::IsWorldObjectBound(GameplayObjectRef world_object, ItemInstanceId except) const noexcept
+{
+    if (!world_object.IsValid()) return false;
+    for (const auto& [id, item] : items_)
+    {
+        if (except.IsValid() && id == except) continue;
+        if (item.location.kind == ItemLocationKind::World && item.location.world_object == world_object)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool ItemsInventoryService::ValidateProperties(std::vector<ItemProperty>& properties) const
 {
     std::sort(properties.begin(), properties.end(), [](const auto& a, const auto& b){ return a.type < b.type; });
@@ -295,8 +443,15 @@ bool ItemsInventoryService::PolicyAllows(ContainerId container, ItemInstanceId m
     const auto c = containers_.find(container);
     if (c == containers_.end() || !c->second.policy.IsValid()) return true;
     const auto policy = container_policies_.find(c->second.policy);
-    return policy != container_policies_.end() && policy->second &&
-           policy->second->AllowsInsert(ContainerPolicyContext{container, moving, definition, quantity});
+    if (policy == container_policies_.end() || !policy->second) return false;
+    try
+    {
+        return policy->second->AllowsInsert(ContainerPolicyContext{container, moving, definition, quantity});
+    }
+    catch (...)
+    {
+        return false;
+    }
 }
 bool ItemsInventoryService::EquivalentForStack(const ItemInstance &a, const ItemInstance &b) const noexcept
 {
@@ -320,6 +475,9 @@ foundation::Result<ItemInstanceId> ItemsInventoryService::SplitStack(ItemInstanc
     if (ReservedQuantity(id) > it->second.quantity - quantity)
         return foundation::Result<ItemInstanceId>::Failure(
             Error("gameplay.items.reservation_conflict", "split would invalidate reservations"));
+    if (it->second.location.kind == ItemLocationKind::World)
+        return foundation::Result<ItemInstanceId>::Failure(
+            Error("gameplay.items.world_split_requires_target", "world item stack split requires an explicit target world object or container"));
     if (it->second.location.kind == ItemLocationKind::Container)
     {
         const auto container = containers_.find(it->second.location.container);
@@ -351,6 +509,7 @@ foundation::Result<ItemInstanceId> ItemsInventoryService::SplitStack(ItemInstanc
     const auto new_id = copy.id;
     items_.emplace(new_id, std::move(copy));
     ++diagnostics_.items;
+    RebuildIndexes();
     Record({0, ItemChangeKind::StackSplit, id, {}, quantity, context, revision_});
     return foundation::Result<ItemInstanceId>::Success(new_id);
 }
@@ -384,6 +543,7 @@ foundation::Result<void> ItemsInventoryService::MergeStacks(ItemInstanceId targe
     items_.erase(s);
     if (diagnostics_.items > 0)
         --diagnostics_.items;
+    RebuildIndexes();
     Record({0, ItemChangeKind::StacksMerged, target, {}, moved, context, revision_});
     return foundation::Result<void>::Success();
 }
@@ -404,11 +564,13 @@ std::uint32_t ItemsInventoryService::ContainerDepth(ContainerId id) const noexce
 ContainerUsage ItemsInventoryService::GetContainerUsage(ContainerId id) const noexcept
 {
     ContainerUsage out;
-    for (const auto &[iid, item] : items_)
+    const auto indexed = container_items_.find(id);
+    if (indexed == container_items_.end()) return out;
+    for (const auto item_id : indexed->second)
     {
-        (void)iid;
-        if (item.location.kind != ItemLocationKind::Container || item.location.container != id)
-            continue;
+        const auto found_item = items_.find(item_id);
+        if (found_item == items_.end()) continue;
+        const auto& item = found_item->second;
         const auto *def = FindDefinition(item.definition);
         if (!def)
             continue;
@@ -483,6 +645,13 @@ bool ItemsInventoryService::CanTransfer(ItemInstanceId id, ItemLocation target, 
     if (!ValidateLocation(target)) return false;
     if (!item || quantity <= 0 || quantity > item->quantity || quantity > item->quantity - ReservedQuantity(id))
         return false;
+    if (target.kind == ItemLocationKind::World)
+    {
+        if (item->location.kind == ItemLocationKind::World && item->location.world_object == target.world_object)
+            return false;
+        if (IsWorldObjectBound(target.world_object, id))
+            return false;
+    }
     if (target.kind == ItemLocationKind::Container)
         return ValidateContainerTarget(id, target.container, quantity);
     return target.kind != ItemLocationKind::Destroyed;
@@ -564,22 +733,65 @@ foundation::Result<void> ItemsInventoryService::CommitTransfer(const ItemTransfe
         Record({0, ItemChangeKind::TransferCommitted, p.item, p.target.container, p.quantity, p.context, revision_});
     }
     ++diagnostics_.transfers;
+    RebuildIndexes();
     return foundation::Result<void>::Success();
 }
+foundation::Result<void> ItemsInventoryService::CommitReservedTransfer(ItemReservationId reservation_id, ItemLocation target,
+                                                                               GameplayContext context)
+{
+    const auto reservation_it = reservations_.find(reservation_id);
+    if (reservation_it == reservations_.end() || reservation_it->second.state != ReservationState::Active)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.items.reservation_missing", "active reservation missing"));
+    const auto reservation = reservation_it->second;
+    auto item_it = items_.find(reservation.item);
+    if (item_it == items_.end() || reservation.quantity <= 0 || item_it->second.quantity != reservation.quantity)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.items.reserved_transfer_invalid", "reserved trade transfer requires the complete item instance"));
+    if (!ValidateLocation(target) || target == item_it->second.location || target.kind == ItemLocationKind::Destroyed)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.items.reserved_transfer_invalid", "reserved item transfer target is invalid"));
+    if (target.kind == ItemLocationKind::World)
+    {
+        if (item_it->second.location.kind == ItemLocationKind::World && item_it->second.location.world_object == target.world_object)
+            return foundation::Result<void>::Failure(
+                Error("gameplay.items.reserved_transfer_invalid", "reserved item is already bound to target world object"));
+        if (IsWorldObjectBound(target.world_object, reservation.item))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.items.duplicate_world_identity", "target world object is already bound"));
+    }
+    if (target.kind == ItemLocationKind::Container &&
+        !ValidateContainerTarget(reservation.item, target.container, reservation.quantity))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.items.container_capacity", "target container rejects reserved item transfer"));
+
+    const auto source = item_it->second.location;
+    Bump();
+    reservations_.erase(reservation_it);
+    if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
+    item_it->second.location = target;
+    item_it->second.revision = revision_;
+    if (source.kind == ItemLocationKind::Container)
+        if (auto container = containers_.find(source.container); container != containers_.end()) container->second.revision = revision_;
+    if (target.kind == ItemLocationKind::Container)
+        if (auto container = containers_.find(target.container); container != containers_.end()) container->second.revision = revision_;
+    ++diagnostics_.transfers;
+    RebuildIndexes();
+
+    ItemChange released{0, ItemChangeKind::ReservationReleased, reservation.item, {}, reservation.quantity, context, revision_};
+    released.reservation = reservation.id;
+    Record(std::move(released));
+    ItemChange moved{0, ItemChangeKind::TransferCommitted, reservation.item, target.container, reservation.quantity, context, revision_};
+    moved.source = source;
+    moved.target = target;
+    Record(std::move(moved));
+    return foundation::Result<void>::Success();
+}
+
 Fixed ItemsInventoryService::ReservedQuantity(ItemInstanceId id) const noexcept
 {
-    Fixed out = 0;
-    for (const auto &[rid, r] : reservations_)
-    {
-        (void)rid;
-        if (r.item == id && r.state == ReservationState::Active)
-        {
-            Fixed next = 0;
-            if (!CheckedAdd(out, r.quantity, next)) return std::numeric_limits<Fixed>::max();
-            out = next;
-        }
-    }
-    return out;
+    const auto found = active_reserved_quantities_.find(id);
+    return found == active_reserved_quantities_.end() ? Fixed{0} : found->second;
 }
 foundation::Result<ItemReservationId> ItemsInventoryService::ReserveItem(ItemInstanceId id, Fixed quantity,
                                                                          GameplayObjectRef owner, TypeId reason,
@@ -601,6 +813,7 @@ foundation::Result<ItemReservationId> ItemsInventoryService::ReserveItem(ItemIns
     const auto rid = r.id;
     reservations_.emplace(rid, r);
     ++diagnostics_.active_reservations;
+    RebuildIndexes();
     Record({0, ItemChangeKind::ReservationCreated, id, {}, quantity, context, revision_});
     return foundation::Result<ItemReservationId>::Success(rid);
 }
@@ -613,6 +826,7 @@ foundation::Result<void> ItemsInventoryService::ReleaseReservation(ItemReservati
     Bump();
     reservations_.erase(it);
     if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
+    RebuildIndexes();
     ItemChange change{0, ItemChangeKind::ReservationReleased, copy.item, {}, copy.quantity, context, revision_};
     change.reservation = copy.id;
     Record(std::move(change));
@@ -644,6 +858,7 @@ foundation::Result<void> ItemsInventoryService::ConsumeReservation(ItemReservati
     const auto rid = it->second.id;
     reservations_.erase(it);
     if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
+    RebuildIndexes();
     ItemChange change{0, ItemChangeKind::ReservationConsumed, iid, {}, qty, context, revision_};
     change.reservation = rid;
     Record(std::move(change));
@@ -725,6 +940,7 @@ foundation::Result<ItemReservationId> ItemsInventoryService::ExchangeReservation
     created.revision = revision_;
     reservations_.emplace(new_id, created);
     ++diagnostics_.active_reservations;
+    RebuildIndexes();
     ItemChange created_change{0, ItemChangeKind::ReservationCreated, reserve_item, {}, reserve_quantity, context, revision_};
     created_change.reservation = new_id;
     Record(std::move(created_change));
@@ -797,11 +1013,12 @@ foundation::Result<void> ItemsInventoryService::AdjustCharges(ItemInstanceId id,
 std::vector<ItemInstance> ItemsInventoryService::FindItemsInContainer(ContainerId c) const
 {
     std::vector<ItemInstance> out;
-    for (const auto &[id, i] : items_)
+    const auto indexed = container_items_.find(c);
+    if (indexed == container_items_.end()) return out;
+    out.reserve(indexed->second.size());
+    for (const auto id : indexed->second)
     {
-        (void)id;
-        if (i.location.kind == ItemLocationKind::Container && i.location.container == c)
-            out.push_back(i);
+        if (const auto item = items_.find(id); item != items_.end()) out.push_back(item->second);
     }
     std::sort(out.begin(), out.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     return out;
@@ -809,22 +1026,44 @@ std::vector<ItemInstance> ItemsInventoryService::FindItemsInContainer(ContainerI
 std::vector<ItemInstance> ItemsInventoryService::FindItemsByDefinition(ItemDefinitionId d) const
 {
     std::vector<ItemInstance> out;
-    for (const auto &[id, i] : items_)
+    const auto indexed = definition_items_.find(d);
+    if (indexed == definition_items_.end()) return out;
+    out.reserve(indexed->second.size());
+    for (const auto id : indexed->second)
     {
-        (void)id;
-        if (i.definition == d)
-            out.push_back(i);
+        if (const auto item = items_.find(id); item != items_.end()) out.push_back(item->second);
     }
     std::sort(out.begin(), out.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     return out;
 }
 std::vector<ItemChange> ItemsInventoryService::ChangesSince(std::uint64_t seq) const
 {
-    std::vector<ItemChange> out;
-    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(out),
-                 [seq](const auto &c) { return c.sequence > seq; });
-    return out;
+    return ReadChangesSince(seq).changes;
 }
+
+ItemsChangeBatch ItemsInventoryService::ReadChangesSince(std::uint64_t seq) const
+{
+    ItemsChangeBatch batch;
+    batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
+    batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1;
+    if (!changes_.empty() && seq < changes_.front().sequence - 1)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    const auto found = std::upper_bound(changes_.begin(), changes_.end(), seq,
+        [](std::uint64_t value, const ItemChange& change) { return value < change.sequence; });
+    batch.changes.assign(found, changes_.end());
+    return batch;
+}
+
+void ItemsInventoryService::PruneChangesBefore(std::uint64_t sequence)
+{
+    const auto found = std::lower_bound(changes_.begin(), changes_.end(), sequence,
+        [](const ItemChange& change, std::uint64_t value) { return change.sequence < value; });
+    changes_.erase(changes_.begin(), found);
+}
+
 ItemsSnapshot ItemsInventoryService::CaptureSnapshot() const
 {
     ItemsSnapshot s;
@@ -855,45 +1094,209 @@ ItemsSnapshot ItemsInventoryService::CaptureSnapshot() const
 }
 foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
 {
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "item registry must be frozen before restore"));
+    if (s.revision.value == 0 && (!s.items.empty() || !s.containers.empty() || !s.reservations.empty()))
+        return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "non-empty snapshot requires a non-zero revision"));
+
     std::unordered_map<ContainerId, ContainerRecord, IdHash> containers;
-    for (auto &v : s.containers)
+    containers.reserve(s.containers.size());
+    std::uint64_t max_container_low = 0;
+    for (auto& v : s.containers)
     {
-        if (!v.id.IsValid() || containers.contains(v.id))
+        if (!v.id.IsValid() || containers.contains(v.id) || v.revision.value > s.revision.value ||
+            v.max_weight < 0 || v.max_volume < 0 || !IsKnownContainerState(v.state) ||
+            (v.policy.IsValid() && !container_policies_.contains(v.policy)) || v.parent == v.id)
+        {
             return foundation::Result<void>::Failure(
                 Error("gameplay.items.restore_invalid", "invalid container snapshot"));
+        }
+        TrackMaxLowForScope(v.id, s.container_ids.scope, max_container_low);
         containers.emplace(v.id, std::move(v));
     }
-    std::unordered_map<ItemInstanceId, ItemInstance, IdHash> items;
-    for (auto &v : s.items)
+
+    for (const auto& [id, container] : containers)
     {
-        if (!v.id.IsValid() || !definitions_.contains(v.definition) || v.quantity <= 0 || items.contains(v.id) ||
-            v.revision.value > s.revision.value)
+        (void)id;
+        if (container.parent.IsValid() && !containers.contains(container.parent))
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "container parent is missing"));
+        std::unordered_set<ContainerId, IdHash> seen;
+        ContainerId cursor = container.parent;
+        std::uint32_t depth = 1;
+        while (cursor.IsValid())
+        {
+            if (!seen.insert(cursor).second)
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "container parent cycle"));
+            const auto parent = containers.find(cursor);
+            if (parent == containers.end() || parent->second.state == ContainerState::Destroyed)
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "container parent is missing or destroyed"));
+            ++depth;
+            cursor = parent->second.parent;
+            if (depth > container.max_nesting_depth || depth > 1024)
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "container nesting depth exceeds maximum"));
+        }
+    }
+
+    auto validate_location_against = [&containers](const ItemLocation& location) noexcept -> bool
+    {
+        switch (location.kind)
+        {
+        case ItemLocationKind::None:
+            return !location.container.IsValid() && !location.world_object.IsValid() && !location.area.IsValid();
+        case ItemLocationKind::Container:
+            return location.container.IsValid() && containers.contains(location.container) &&
+                   !location.world_object.IsValid() && !location.area.IsValid();
+        case ItemLocationKind::World:
+            return location.world_object.IsValid() && !location.container.IsValid();
+        default:
+            return false;
+        }
+    };
+
+    std::unordered_map<ItemInstanceId, ItemInstance, IdHash> items;
+    items.reserve(s.items.size());
+    std::unordered_set<GameplayObjectRef> world_objects;
+    std::uint64_t max_item_low = 0;
+    for (auto& v : s.items)
+    {
+        const auto* definition = FindDefinition(v.definition);
+        if (!v.id.IsValid() || definition == nullptr || v.quantity <= 0 || items.contains(v.id) ||
+            v.revision.value > s.revision.value || !validate_location_against(v.location) || !ValidateProperties(v.properties))
+        {
             return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "invalid item snapshot"));
-        if ((v.location.kind == ItemLocationKind::Container && !containers.contains(v.location.container)) ||
-            (v.location.kind == ItemLocationKind::World && !v.location.world_object.IsValid()) ||
-            (v.location.kind != ItemLocationKind::None && v.location.kind != ItemLocationKind::Container && v.location.kind != ItemLocationKind::World))
-            return foundation::Result<void>::Failure(
-                Error("gameplay.items.restore_invalid", "item references missing container"));
+        }
+        if (definition->stack_policy == ItemStackPolicy::NonStackable && v.quantity != 1)
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "non-stackable snapshot item has invalid quantity"));
+        if (definition->durability_policy == ItemDurabilityPolicy::InstanceValue)
+        {
+            if (v.durability < 0 || v.durability > definition->max_durability)
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "item durability is outside definition bounds"));
+        }
+        else if (v.durability != 0)
+        {
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "item definition does not allow durability state"));
+        }
+        if (definition->charge_policy == ItemChargePolicy::InstanceValue)
+        {
+            if (v.charges < 0 || v.charges > definition->max_charges)
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "item charges are outside definition bounds"));
+        }
+        else if (v.charges != 0)
+        {
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "item definition does not allow charge state"));
+        }
+        if (v.location.kind == ItemLocationKind::Container)
+        {
+            const auto container = containers.find(v.location.container);
+            if (container == containers.end() || container->second.state == ContainerState::Destroyed)
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "item references destroyed container"));
+        }
+        if (v.location.kind == ItemLocationKind::World)
+        {
+            if (!world_objects.insert(v.location.world_object).second)
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "world object is bound to multiple items"));
+        }
+        TrackMaxLowForScope(v.id, s.item_ids.scope, max_item_low);
         items.emplace(v.id, std::move(v));
     }
-    std::unordered_map<ItemReservationId, ItemReservation, IdHash> reservations;
-    for (auto &v : s.reservations)
+
+    std::unordered_map<ContainerId, ContainerUsage, IdHash> usage_by_container;
+    for (const auto& [item_id, item] : items)
     {
-        if (!v.id.IsValid() || !items.contains(v.item) || reservations.contains(v.id) || v.state != ReservationState::Active ||
-            v.quantity <= 0 || v.revision.value > s.revision.value)
+        if (item.location.kind != ItemLocationKind::Container) continue;
+        const auto& container = containers.at(item.location.container);
+        const auto* definition = FindDefinition(item.definition);
+        if (!definition)
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "item definition missing"));
+        Fixed item_weight = 0;
+        Fixed item_volume = 0;
+        Fixed next_weight = 0;
+        Fixed next_volume = 0;
+        auto& usage = usage_by_container[item.location.container];
+        if (!CheckedMul(definition->base_weight, item.quantity, item_weight) ||
+            !CheckedMul(definition->base_volume, item.quantity, item_volume) ||
+            !CheckedAdd(usage.weight, item_weight, next_weight) ||
+            !CheckedAdd(usage.volume, item_volume, next_volume) ||
+            usage.slots == std::numeric_limits<std::uint32_t>::max())
+        {
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "container usage arithmetic overflow"));
+        }
+        usage.weight = next_weight;
+        usage.volume = next_volume;
+        ++usage.slots;
+        if (container.policy.IsValid())
+        {
+            const auto policy = container_policies_.find(container.policy);
+            if (policy == container_policies_.end() || !policy->second)
+            {
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "container policy rejects restored item"));
+            }
+            bool allowed = false;
+            try
+            {
+                allowed = policy->second->AllowsInsert(ContainerPolicyContext{item.location.container, item_id, item.definition, item.quantity});
+            }
+            catch (...)
+            {
+                allowed = false;
+            }
+            if (!allowed)
+            {
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "container policy rejects restored item"));
+            }
+        }
+    }
+    for (const auto& [container_id, usage] : usage_by_container)
+    {
+        const auto& container = containers.at(container_id);
+        if ((container.max_weight > 0 && usage.weight > container.max_weight) ||
+            (container.max_volume > 0 && usage.volume > container.max_volume) ||
+            (container.max_slots > 0 && usage.slots > container.max_slots))
+        {
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "container capacity exceeded in snapshot"));
+        }
+    }
+    for (const auto& [container_id, container] : containers)
+    {
+        if (container.state != ContainerState::Destroyed) continue;
+        if (const auto usage = usage_by_container.find(container_id); usage != usage_by_container.end() && usage->second.slots > 0)
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "destroyed container contains items"));
+        for (const auto& [other_id, other] : containers)
+        {
+            (void)other_id;
+            if (other.parent == container_id)
+                return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "destroyed container has child containers"));
+        }
+    }
+
+    std::unordered_map<ItemReservationId, ItemReservation, IdHash> reservations;
+    reservations.reserve(s.reservations.size());
+    std::unordered_map<ItemInstanceId, Fixed, IdHash> reserved_sums;
+    std::uint64_t max_reservation_low = 0;
+    for (auto& v : s.reservations)
+    {
+        if (!v.id.IsValid() || !items.contains(v.item) || reservations.contains(v.id) ||
+            v.state != ReservationState::Active || v.quantity <= 0 || v.revision.value > s.revision.value)
+        {
             return foundation::Result<void>::Failure(
                 Error("gameplay.items.restore_invalid", "invalid reservation snapshot"));
+        }
+        Fixed next = 0;
+        if (!CheckedAdd(reserved_sums[v.item], v.quantity, next) || next > items.at(v.item).quantity)
+            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "reservation quantities exceed item quantity"));
+        reserved_sums[v.item] = next;
+        TrackMaxLowForScope(v.id, s.reservation_ids.scope, max_reservation_low);
         reservations.emplace(v.id, std::move(v));
     }
-    std::unordered_map<ItemInstanceId, Fixed, IdHash> reserved_sums;
-    for (const auto& [rid, r] : reservations)
+
+    const auto item_generator_ok = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.item_ids, item_ids_.Scope(), max_item_low);
+    const auto container_generator_ok = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.container_ids, container_ids_.Scope(), max_container_low);
+    const auto transfer_generator_ok = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.transfer_ids, transfer_ids_.Scope(), 0);
+    const auto reservation_generator_ok = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.reservation_ids, reservation_ids_.Scope(), max_reservation_low);
+    if (!item_generator_ok || !container_generator_ok || !transfer_generator_ok || !reservation_generator_ok)
     {
-        (void)rid;
-        Fixed next = 0;
-        if (!CheckedAdd(reserved_sums[r.item], r.quantity, next) || next > items.at(r.item).quantity)
-            return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "reservation quantities exceed item quantity"));
-        reserved_sums[r.item] = next;
+        return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "id generator snapshot is invalid"));
     }
+
     containers_ = std::move(containers);
     items_ = std::move(items);
     reservations_ = std::move(reservations);
@@ -913,8 +1316,10 @@ foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
         if (r.state == ReservationState::Active)
             ++diagnostics_.active_reservations;
     }
+    RebuildIndexes();
     return foundation::Result<void>::Success();
 }
+
 ItemsDiagnostics ItemsInventoryService::GetDiagnostics() const noexcept
 {
     auto d = diagnostics_;
@@ -922,10 +1327,56 @@ ItemsDiagnostics ItemsInventoryService::GetDiagnostics() const noexcept
     d.containers = containers_.size();
     return d;
 }
+void ItemsInventoryService::RebuildIndexes()
+{
+    container_items_.clear();
+    definition_items_.clear();
+    active_reserved_quantities_.clear();
+
+    for (const auto& [id, item] : items_)
+    {
+        definition_items_[item.definition].push_back(id);
+        if (item.location.kind == ItemLocationKind::Container)
+        {
+            container_items_[item.location.container].push_back(id);
+        }
+    }
+    for (auto& [container, ids] : container_items_)
+    {
+        (void)container;
+        std::sort(ids.begin(), ids.end());
+    }
+    for (auto& [definition, ids] : definition_items_)
+    {
+        (void)definition;
+        std::sort(ids.begin(), ids.end());
+    }
+
+    for (const auto& [id, reservation] : reservations_)
+    {
+        (void)id;
+        if (reservation.state != ReservationState::Active) continue;
+        Fixed next = 0;
+        auto& current = active_reserved_quantities_[reservation.item];
+        if (!CheckedAdd(current, reservation.quantity, next))
+        {
+            current = std::numeric_limits<Fixed>::max();
+        }
+        else
+        {
+            current = next;
+        }
+    }
+}
+
 void ItemsInventoryService::Record(ItemChange c)
 {
     c.sequence = next_change_sequence_++;
     changes_.push_back(std::move(c));
+    while (changes_.size() > kChangeJournalCapacity)
+    {
+        changes_.pop_front();
+    }
 }
 } // namespace epidemic::gameplay::items
 

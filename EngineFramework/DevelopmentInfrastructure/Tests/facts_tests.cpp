@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <vector>
@@ -349,5 +350,90 @@ int main()
     {
         return 31;
     }
+
+    // Event scope is preserved by direct and batched publication and is queryable from history.
+    GameplayFactsService scoped_service;
+    const auto scoped_type = scoped_service.RegisterEventType<TestEvent>(
+        "framework.test.scoped", owner, HistoryPolicy::Persistent);
+    if (!scoped_type)
+    {
+        return 32;
+    }
+    scoped_service.Freeze();
+    const GameplayObjectRef scope_a{owner, GameplayObjectId::FromString("test.scope.a")};
+    const GameplayObjectRef scope_b{owner, GameplayObjectId::FromString("test.scope.b")};
+    if (!scoped_service.Publish<TestEvent>(scoped_type.Value(), context, scope_a, subject, TestEvent{41}))
+    {
+        return 33;
+    }
+    auto scoped_batch = scoped_service.CreateBatch(ProducerId::FromString("producer.scoped"), 0);
+    scoped_batch.Publish(scoped_type.Value(), context, scope_b, subject, TestEvent{42});
+    if (!scoped_service.SubmitBatch(std::move(scoped_batch)) || !scoped_service.Dispatch())
+    {
+        return 34;
+    }
+    HistoryQuery scope_a_query;
+    scope_a_query.type = scoped_type.Value();
+    scope_a_query.scope = scope_a;
+    const auto scope_a_history = scoped_service.FindHistory(scope_a_query);
+    HistoryQuery scope_b_query;
+    scope_b_query.type = scoped_type.Value();
+    scope_b_query.scope = scope_b;
+    const auto scope_b_history = scoped_service.FindHistory(scope_b_query);
+    if (scope_a_history.size() != 1 || scope_b_history.size() != 1 ||
+        scope_a_history.front().envelope.scope != scope_a || scope_b_history.front().envelope.scope != scope_b ||
+        std::any_cast<TestEvent>(scope_a_history.front().payload).value != 41 ||
+        std::any_cast<TestEvent>(scope_b_history.front().payload).value != 42)
+    {
+        return 35;
+    }
+
+    // A failing subscriber is isolated after the event has committed to history.
+    GameplayFactsService subscriber_service;
+    const auto subscriber_type = subscriber_service.RegisterEventType<TestEvent>(
+        "framework.test.throwing_subscriber", owner, HistoryPolicy::Persistent);
+    if (!subscriber_type)
+    {
+        return 36;
+    }
+    int delivered_after_failure = 0;
+    if (!subscriber_service.Subscribe<TestEvent>(
+            subscriber_type.Value(), SubscriberId::FromString("test.throwing_subscriber"), 0,
+            [](const EventEnvelope&, const TestEvent&) { throw std::runtime_error("subscriber failure"); }) ||
+        !subscriber_service.Subscribe<TestEvent>(
+            subscriber_type.Value(), SubscriberId::FromString("test.healthy_subscriber"), 10,
+            [&delivered_after_failure](const EventEnvelope&, const TestEvent&) { ++delivered_after_failure; }))
+    {
+        return 37;
+    }
+    subscriber_service.Freeze();
+    if (!subscriber_service.Publish<TestEvent>(subscriber_type.Value(), context, subject, TestEvent{7}))
+    {
+        return 38;
+    }
+    const auto subscriber_dispatch = subscriber_service.Dispatch();
+    const auto subscriber_diagnostics = subscriber_service.GetDiagnostics();
+    if (!subscriber_dispatch || subscriber_dispatch.Value() != 1 || delivered_after_failure != 1 ||
+        subscriber_service.HistoryCount() != 1 || subscriber_diagnostics.subscriber_failures != 1)
+    {
+        return 39;
+    }
+
+    struct ThrowingCompactor final : IHistoryCompactor
+    {
+        [[nodiscard]] std::vector<EventRecord> Compact(std::span<const EventRecord>) const override
+        {
+            throw std::runtime_error("compactor failure");
+        }
+    };
+    const auto history_before_throwing_compaction = compact_service.HistoryCount();
+    const ThrowingCompactor throwing_compactor;
+    const auto throwing_compaction = compact_service.CompactHistory(compact_type.Value(), throwing_compactor);
+    if (throwing_compaction || !throwing_compaction.GetError().HasCode("gameplay.history_compactor_exception") ||
+        compact_service.HistoryCount() != history_before_throwing_compaction)
+    {
+        return 40;
+    }
+
     return 0;
 }

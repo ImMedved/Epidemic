@@ -7,7 +7,10 @@ target_include_directories(EpidemicGameFrameworkNarrativeIntegration PUBLIC
 )
 
 target_link_libraries(EpidemicGameFrameworkNarrativeIntegration
-    PUBLIC EpidemicGameFrameworkNarrative
+    PUBLIC
+        EpidemicGameFrameworkNarrative
+        EpidemicGameFrameworkKnowledge
+        EpidemicGameFrameworkSaveGame
     PRIVATE EpidemicFoundation
 )
 

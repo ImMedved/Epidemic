@@ -1,9 +1,22 @@
 #include "Epidemic/GameFramework/SupportRandom/deterministic_random.h"
 
 #include <cmath>
+#include <exception>
 
 namespace epidemic::gameplay::random
 {
+namespace
+{
+template <typename T> T RequireValue(std::optional<T> value) noexcept
+{
+    if (!value.has_value())
+    {
+        std::terminate();
+    }
+    return *value;
+}
+} // namespace
+
 std::uint64_t StableMix(std::uint64_t value) noexcept
 {
     value += 0x9E3779B97F4A7C15ull;
@@ -22,9 +35,13 @@ RandomSequence::RandomSequence(RandomSeed seed, RandomStream stream, std::uint64
 {
 }
 
-RandomSequence::RandomSequence(RandomSequenceSnapshot snapshot) noexcept
-    : seed_(snapshot.seed), stream_(snapshot.stream), sequence_(snapshot.sequence)
+std::optional<RandomSequence> RandomSequence::TryFromSnapshot(RandomSequenceSnapshot snapshot) noexcept
 {
+    if (!IsValidSnapshot(snapshot))
+    {
+        return std::nullopt;
+    }
+    return RandomSequence(snapshot.seed, snapshot.stream, snapshot.sequence);
 }
 
 std::optional<std::uint64_t> RandomSequence::TryNextU64() noexcept
@@ -36,13 +53,6 @@ std::optional<std::uint64_t> RandomSequence::TryNextU64() noexcept
     const auto counter = sequence_;
     ++sequence_;
     return StableMix(seed_.value ^ StableMix(stream_.id.Raw()) ^ StableMix(counter));
-}
-
-std::uint64_t RandomSequence::NextU64() noexcept
-{
-    const auto value = TryNextU64();
-    assert(value.has_value());
-    return value.value_or(0);
 }
 
 std::optional<std::uint64_t> RandomSequence::TryUniform(std::uint64_t exclusive_max) noexcept
@@ -71,42 +81,53 @@ std::optional<std::uint64_t> RandomSequence::TryUniform(std::uint64_t exclusive_
     }
 }
 
-std::uint64_t RandomSequence::Uniform(std::uint64_t exclusive_max) noexcept
+std::optional<std::uint64_t> RandomSequence::TryUniformRange(std::uint64_t minimum,
+                                                              std::uint64_t maximum_exclusive) noexcept
 {
-    const auto value = TryUniform(exclusive_max);
-    assert(value.has_value());
-    return value.value_or(0);
-}
-
-std::uint64_t RandomSequence::UniformRange(std::uint64_t minimum, std::uint64_t maximum_exclusive) noexcept
-{
-    assert(maximum_exclusive > minimum);
     if (maximum_exclusive <= minimum)
     {
-        return minimum;
+        return std::nullopt;
     }
-    return minimum + Uniform(maximum_exclusive - minimum);
+    const auto offset = TryUniform(maximum_exclusive - minimum);
+    if (!offset)
+    {
+        return std::nullopt;
+    }
+    return minimum + *offset;
 }
 
-double RandomSequence::Uniform01() noexcept
+std::optional<double> RandomSequence::TryUniform01() noexcept
 {
+    const auto value = TryNextU64();
+    if (!value)
+    {
+        return std::nullopt;
+    }
     constexpr double kUnit = 1.0 / static_cast<double>(std::uint64_t{1} << 53u);
-    return static_cast<double>(NextU64() >> 11u) * kUnit;
+    return static_cast<double>(*value >> 11u) * kUnit;
 }
 
-double RandomSequence::UniformReal(double minimum, double maximum) noexcept
+std::optional<double> RandomSequence::TryUniformReal(double minimum, double maximum) noexcept
 {
-    assert(std::isfinite(minimum));
-    assert(std::isfinite(maximum));
-    assert(maximum > minimum);
     if (!(maximum > minimum) || !std::isfinite(minimum) || !std::isfinite(maximum))
     {
-        return minimum;
+        return std::nullopt;
     }
-    return minimum + (maximum - minimum) * Uniform01();
+    const auto span = maximum - minimum;
+    if (!std::isfinite(span))
+    {
+        return std::nullopt;
+    }
+    const auto unit = TryUniform01();
+    if (!unit)
+    {
+        return std::nullopt;
+    }
+    const auto value = minimum + span * *unit;
+    return std::isfinite(value) ? std::optional<double>{value} : std::nullopt;
 }
 
-bool RandomSequence::RollMicro(std::uint32_t chance_micro) noexcept
+std::optional<bool> RandomSequence::TryRollMicro(std::uint32_t chance_micro) noexcept
 {
     if (chance_micro == 0)
     {
@@ -116,7 +137,43 @@ bool RandomSequence::RollMicro(std::uint32_t chance_micro) noexcept
     {
         return true;
     }
-    return Uniform(1'000'000u) < chance_micro;
+    const auto roll = TryUniform(1'000'000u);
+    if (!roll)
+    {
+        return std::nullopt;
+    }
+    return *roll < chance_micro;
+}
+
+std::uint64_t RandomSequence::NextU64Unchecked() noexcept
+{
+    return RequireValue(TryNextU64());
+}
+
+std::uint64_t RandomSequence::UniformUnchecked(std::uint64_t exclusive_max) noexcept
+{
+    return RequireValue(TryUniform(exclusive_max));
+}
+
+std::uint64_t RandomSequence::UniformRangeUnchecked(std::uint64_t minimum,
+                                                     std::uint64_t maximum_exclusive) noexcept
+{
+    return RequireValue(TryUniformRange(minimum, maximum_exclusive));
+}
+
+double RandomSequence::Uniform01Unchecked() noexcept
+{
+    return RequireValue(TryUniform01());
+}
+
+double RandomSequence::UniformRealUnchecked(double minimum, double maximum) noexcept
+{
+    return RequireValue(TryUniformReal(minimum, maximum));
+}
+
+bool RandomSequence::RollMicroUnchecked(std::uint32_t chance_micro) noexcept
+{
+    return RequireValue(TryRollMicro(chance_micro));
 }
 
 std::optional<std::size_t> RandomSequence::WeightedIndex(std::span<const std::uint64_t> weights) noexcept
@@ -136,22 +193,31 @@ std::optional<std::size_t> RandomSequence::WeightedIndex(std::span<const std::ui
         return std::nullopt;
     }
 
-    auto roll = Uniform(total);
+    auto roll = TryUniform(total);
+    if (!roll)
+    {
+        return std::nullopt;
+    }
     for (std::size_t index = 0; index < weights.size(); ++index)
     {
-        if (roll < weights[index])
+        if (*roll < weights[index])
         {
             return index;
         }
-        roll -= weights[index];
+        *roll -= weights[index];
     }
     return std::nullopt;
 }
 
-void RandomSequence::RestoreSnapshot(RandomSequenceSnapshot snapshot) noexcept
+bool RandomSequence::TryRestoreSnapshot(RandomSequenceSnapshot snapshot) noexcept
 {
+    if (!IsValidSnapshot(snapshot))
+    {
+        return false;
+    }
     seed_ = snapshot.seed;
     stream_ = snapshot.stream;
     sequence_ = snapshot.sequence;
+    return true;
 }
 } // namespace epidemic::gameplay::random

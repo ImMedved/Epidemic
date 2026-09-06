@@ -8,6 +8,7 @@
 #include "Epidemic/GameFramework/Queries/gameplay_queries.h"
 #include "Epidemic/GameFramework/World/world.h"
 
+#include <cstdint>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -54,6 +55,26 @@ struct ActiveInteractionsQuery
     }
 };
 
+struct WorldFactsCheckpoint
+{
+    static constexpr std::uint32_t kSchemaVersion = 1;
+
+    std::uint32_t schema_version = kSchemaVersion;
+    std::uint64_t world_sequence = 0;
+    std::uint64_t environment_sequence = 0;
+    std::uint64_t interaction_sequence = 0;
+    Revision world_revision{};
+    Revision environment_revision{};
+    Revision interaction_revision{};
+};
+
+[[nodiscard]] constexpr GameplayObjectRef GlobalWorldScope() noexcept
+{
+    return {world::WorldService::Domain(), GameplayObjectId::FromString("framework.world.scope.global")};
+}
+
+// Current-state providers are intended to run inside the composition gameplay read phase.
+// World/Environment/Interaction mutations must not execute concurrently with these reads.
 class WorldQueryAdapter
 {
   public:
@@ -81,6 +102,11 @@ class WorldFactsAdapter
     }
     [[nodiscard]] foundation::Result<void> RegisterContracts();
     [[nodiscard]] foundation::Result<std::uint64_t> PublishPending(GameplayContext context = {});
+    [[nodiscard]] WorldFactsCheckpoint CaptureCheckpoint() const noexcept;
+    [[nodiscard]] foundation::Result<void> RestoreCheckpoint(WorldFactsCheckpoint checkpoint);
+    // Event history cannot be reconstructed from current owner snapshots. Call this only after the
+    // composition layer has explicitly reconciled/accepted unavailable historical events.
+    void ResetCursorsToLatest() noexcept;
 
   private:
     world::WorldService &world_;

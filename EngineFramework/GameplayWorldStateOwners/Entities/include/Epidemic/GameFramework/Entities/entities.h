@@ -205,6 +205,12 @@ class EntityService
 
     [[nodiscard]] const EntityArchetypeDefinition* FindArchetype(EntityArchetypeId id) const noexcept;
     [[nodiscard]] const EntityPartDefinition* FindPartDefinition(EntityArchetypeId archetype, EntityPartId part) const noexcept;
+
+    // Entity materialization policy is an orchestration requirement declared by the archetype.
+    // Creating a RequireMaterialized entity is still a valid semantic operation that starts in
+    // Abstract state; runtime materialization is coordinated by RuntimeBridge/integration code.
+    [[nodiscard]] std::optional<EntityMaterializationPolicy> MaterializationPolicyOf(EntityId id) const noexcept;
+    [[nodiscard]] bool RequiresMaterialization(EntityId id) const noexcept;
     [[nodiscard]] std::optional<EntityPartRef> GetPart(EntityId entity, EntityPartId part) const;
     [[nodiscard]] std::vector<EntityPartRef> GetParts(EntityId entity) const;
     [[nodiscard]] std::vector<EntityPartRef> GetPartAncestors(EntityPartRef part) const;

@@ -16,11 +16,6 @@
 #include <unordered_map>
 #include <vector>
 
-namespace epidemic::core::tasks
-{
-class ITaskScheduler;
-}
-
 namespace epidemic::gameplay::effects
 {
 struct EffectTypeId
@@ -197,9 +192,11 @@ class IEffectHandler
     [[nodiscard]] virtual EffectTypeId Type() const noexcept = 0;
     [[nodiscard]] virtual EffectHandlerCapabilities Capabilities() const noexcept = 0;
     [[nodiscard]] virtual foundation::Result<EffectPrepareResult> Prepare(const EffectOperation& operation) const = 0;
+    // Commit is the no-throw stage of the two-phase effect contract. Handlers must
+    // perform all potentially throwing/fallible preparation in Prepare().
     [[nodiscard]] virtual foundation::Result<EffectCommitResult> Commit(
         const EffectOperation& operation,
-        const RegisteredEffectPayload& commit_token) = 0;
+        const RegisteredEffectPayload& commit_token) noexcept = 0;
 };
 
 struct EffectTargetState
@@ -299,6 +296,13 @@ struct DeferredEffectRecord
     DeferredEffectPersistence persistence = DeferredEffectPersistence::Session;
 };
 
+struct EffectChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<EffectChange> changes;
+};
+
 struct EffectsSnapshot
 {
     std::vector<DeferredEffectRecord> deferred;
@@ -345,8 +349,7 @@ class EffectService
 
     [[nodiscard]] foundation::Result<EffectExecutionResult> Execute(
         EffectRequest request,
-        EffectExecutionBudget budget = {},
-        core::tasks::ITaskScheduler* scheduler = nullptr);
+        EffectExecutionBudget budget = {});
 
     [[nodiscard]] foundation::Result<DeferredEffectId> Defer(
         EffectRequest request,
@@ -358,10 +361,16 @@ class EffectService
     [[nodiscard]] std::uint64_t CancelDeferredTargeting(GameplayObjectRef target, GameplayContext context = {});
     [[nodiscard]] const DeferredEffectRecord* FindDeferred(DeferredEffectId id) const noexcept;
     [[nodiscard]] std::optional<DeferredEffectRecord> FindDeferredCopy(DeferredEffectId id) const noexcept;
+    [[nodiscard]] std::vector<DeferredEffectRecord> AllDeferred() const;
     [[nodiscard]] std::vector<DeferredEffectRecord> UnscheduledDeferred() const;
+    [[nodiscard]] foundation::Result<EffectRequest> PeekDeferredBySchedule(ScheduleId schedule, GameplayContext context = {}) const;
+    [[nodiscard]] foundation::Result<void> AcknowledgeDeferredBySchedule(ScheduleId schedule, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ClearDeferredSchedule(DeferredEffectId id);
     [[nodiscard]] foundation::Result<EffectRequest> TakeDeferredBySchedule(ScheduleId schedule, GameplayContext context = {});
 
     [[nodiscard]] std::vector<EffectChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] EffectChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
     [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return next_change_sequence_ - 1; }
     void PruneChangesBefore(std::uint64_t sequence);
 
@@ -370,6 +379,8 @@ class EffectService
     [[nodiscard]] EffectsDiagnostics GetDiagnostics() const noexcept;
 
   private:
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+
     struct HandlerEntry
     {
         std::string canonical_name;
@@ -394,8 +405,7 @@ class EffectService
     [[nodiscard]] EffectOperationDisposition ValidateCapabilities(const HandlerEntry& entry, GameplayObjectRef target) const;
     [[nodiscard]] foundation::Result<std::vector<PreparedOperation>> PrepareWave(
         std::vector<EffectOperation> operations,
-        EffectExecutionPolicy policy,
-        core::tasks::ITaskScheduler* scheduler);
+        EffectExecutionPolicy policy);
     [[nodiscard]] EffectOperationDisposition MapPrepareDisposition(EffectPrepareDisposition disposition) const noexcept;
     void RecordChange(EffectChange change);
 

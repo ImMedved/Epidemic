@@ -3,10 +3,11 @@
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 
-#include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -17,132 +18,90 @@ namespace epidemic::gameplay::ai
 struct AIProfileId
 {
     TypeId value{};
-    static constexpr AIProfileId FromString(std::string_view s) noexcept
-    {
-        return {TypeId::FromString(s)};
-    }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
+    static constexpr AIProfileId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
     [[nodiscard]] constexpr bool operator==(const AIProfileId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const AIProfileId &) const noexcept = default;
 };
 struct AIGoalId
 {
     TypeId value{};
-    static constexpr AIGoalId FromString(std::string_view s) noexcept
-    {
-        return {TypeId::FromString(s)};
-    }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
+    static constexpr AIGoalId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
     [[nodiscard]] constexpr bool operator==(const AIGoalId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const AIGoalId &) const noexcept = default;
 };
 struct AIIntentTypeId
 {
     TypeId value{};
-    static constexpr AIIntentTypeId FromString(std::string_view s) noexcept
-    {
-        return {TypeId::FromString(s)};
-    }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
+    static constexpr AIIntentTypeId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
     [[nodiscard]] constexpr bool operator==(const AIIntentTypeId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const AIIntentTypeId &) const noexcept = default;
 };
 struct AIIntentId
 {
     GameplayObjectId value{};
-    static constexpr AIIntentId FromString(std::string_view s) noexcept
-    {
-        return {GameplayObjectId::FromString(s)};
-    }
+    static constexpr AIIntentId FromString(std::string_view s) noexcept { return {GameplayObjectId::FromString(s)}; }
     static constexpr AIIntentId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
     {
         return {GameplayObjectId::FromRaw(h, l)};
     }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
     [[nodiscard]] constexpr bool operator==(const AIIntentId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const AIIntentId &) const noexcept = default;
-};
-struct AIPlanId
-{
-    GameplayObjectId value{};
-    static constexpr AIPlanId FromString(std::string_view s) noexcept
-    {
-        return {GameplayObjectId::FromString(s)};
-    }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
-    [[nodiscard]] constexpr bool operator==(const AIPlanId &) const noexcept = default;
-    [[nodiscard]] constexpr auto operator<=>(const AIPlanId &) const noexcept = default;
-};
-struct AIBehaviorId
-{
-    TypeId value{};
-    static constexpr AIBehaviorId FromString(std::string_view s) noexcept
-    {
-        return {TypeId::FromString(s)};
-    }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
-    [[nodiscard]] constexpr bool operator==(const AIBehaviorId &) const noexcept = default;
-    [[nodiscard]] constexpr auto operator<=>(const AIBehaviorId &) const noexcept = default;
 };
 struct AIConsiderationId
 {
     TypeId value{};
-    static constexpr AIConsiderationId FromString(std::string_view s) noexcept
+    static constexpr AIConsiderationId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr bool operator==(const AIConsiderationId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const AIConsiderationId &) const noexcept = default;
+};
+struct AIConsiderationEvaluatorId
+{
+    TypeId value{};
+    static constexpr AIConsiderationEvaluatorId FromString(std::string_view s) noexcept
     {
         return {TypeId::FromString(s)};
     }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
-    [[nodiscard]] constexpr bool operator==(const AIConsiderationId &) const noexcept = default;
-    [[nodiscard]] constexpr auto operator<=>(const AIConsiderationId &) const noexcept = default;
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr bool operator==(const AIConsiderationEvaluatorId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const AIConsiderationEvaluatorId &) const noexcept = default;
+};
+struct AIInputKeyId
+{
+    TypeId value{};
+    static constexpr AIInputKeyId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    static constexpr AIInputKeyId FromType(TypeId value) noexcept { return {value}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr bool operator==(const AIInputKeyId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const AIInputKeyId &) const noexcept = default;
 };
 struct AIAccessPolicyId
 {
     TypeId value{};
-    static constexpr AIAccessPolicyId FromString(std::string_view s) noexcept
-    {
-        return {TypeId::FromString(s)};
-    }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
+    static constexpr AIAccessPolicyId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
     [[nodiscard]] constexpr bool operator==(const AIAccessPolicyId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const AIAccessPolicyId &) const noexcept = default;
 };
 struct BlackboardKeyId
 {
     TypeId value{};
-    static constexpr BlackboardKeyId FromString(std::string_view s) noexcept
-    {
-        return {TypeId::FromString(s)};
-    }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
+    static constexpr BlackboardKeyId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
     [[nodiscard]] constexpr bool operator==(const BlackboardKeyId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const BlackboardKeyId &) const noexcept = default;
+};
+struct AIReplanReasonId
+{
+    TypeId value{};
+    static constexpr AIReplanReasonId FromString(std::string_view s) noexcept { return {TypeId::FromString(s)}; }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr bool operator==(const AIReplanReasonId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const AIReplanReasonId &) const noexcept = default;
 };
 struct IdHash
 {
@@ -159,10 +118,10 @@ struct RefHash
     }
 };
 using Fixed = std::int64_t;
+inline constexpr Fixed kFixedOne = 1'000'000;
 
 enum class AIAgentActivity
 {
-    Inactive,
     Idle,
     Thinking,
     ExecutingIntent,
@@ -173,7 +132,7 @@ enum class AIMaterializationPolicy
 {
     AbstractCapable,
     RequiresMaterialized,
-    DisabledWhenAbstract
+    RequiresRuntimeProjection
 };
 enum class AIIntentStatus
 {
@@ -185,10 +144,58 @@ enum class AIIntentStatus
     Cancelled,
     TimedOut
 };
+enum class AITargetPolicy
+{
+    Targetless,
+    Optional,
+    Required
+};
+enum class AIConsiderationScope
+{
+    Context,
+    Target
+};
+enum class AITargetSource
+{
+    Perceived = 0,
+    Known = 1,
+    Public = 2,
+    Group = 3,
+    LastKnown = 4,
+    CurrentPerception = Perceived,
+    Knowledge = Known
+};
+enum class AIInputValueKind
+{
+    Fixed,
+    Boolean,
+    Type,
+    Object,
+    Payload
+};
+enum class BlackboardPersistencePolicy
+{
+    Session,
+    Persistent
+};
+enum class AIThinkDeferReason
+{
+    None,
+    NotDue,
+    Suspended,
+    Disabled,
+    MaterializationUnavailable,
+    ActiveIntent,
+    BudgetExceeded
+};
 enum class AIChangeKind
 {
     AgentRegistered,
     AgentUnregistered,
+    AgentEnabled,
+    AgentDisabled,
+    AgentSuspended,
+    AgentResumed,
     ThinkScheduled,
     ThinkStarted,
     ThinkCompleted,
@@ -197,9 +204,14 @@ enum class AIChangeKind
     GoalFailed,
     IntentIssued,
     IntentAccepted,
+    IntentRunning,
     IntentSucceeded,
     IntentFailed,
     IntentCancelled,
+    IntentTimedOut,
+    ReplanRequested,
+    BlackboardChanged,
+    BlackboardRemoved,
     BudgetExceeded
 };
 enum class AIAccessFlag : std::uint32_t
@@ -216,12 +228,30 @@ enum class AIAccessFlag : std::uint32_t
     return static_cast<std::uint32_t>(a) | static_cast<std::uint32_t>(b);
 }
 
+struct AIInputValue
+{
+    AIInputKeyId key{};
+    AIInputValueKind kind = AIInputValueKind::Fixed;
+    AIAccessFlag access = AIAccessFlag::SelfState;
+    Fixed fixed_value = 0;
+    bool bool_value = false;
+    TypeId type_value{};
+    GameplayObjectRef object_value{};
+    std::vector<std::byte> payload;
+};
+struct AITargetCandidate
+{
+    GameplayObjectRef target{};
+    AITargetSource source = AITargetSource::Perceived;
+    std::vector<AIInputValue> inputs;
+};
 struct AIConsideration
 {
     AIConsiderationId id{};
-    TypeId type{};
-    Fixed weight_micro = 1'000'000;
-    Fixed value_micro = 0;
+    AIConsiderationEvaluatorId evaluator{};
+    AIInputKeyId input_key{};
+    AIConsiderationScope scope = AIConsiderationScope::Context;
+    Fixed weight_micro = kFixedOne;
     std::vector<std::byte> payload;
 };
 struct AIGoalDefinition
@@ -231,7 +261,7 @@ struct AIGoalDefinition
     GameplayTagSet tags;
     Fixed base_priority_micro = 0;
     AIIntentTypeId intent_type{};
-    TypeId required_topic{};
+    AITargetPolicy target_policy = AITargetPolicy::Targetless;
     std::vector<AIConsideration> considerations;
     std::vector<std::byte> payload;
 };
@@ -251,15 +281,26 @@ struct AIProfile
     std::vector<AIGoalId> default_goals;
     AIAccessPolicyId access_policy{};
     AIMaterializationPolicy materialization_policy = AIMaterializationPolicy::AbstractCapable;
+    GameplayDuration think_interval{1};
+    GameplayDuration goal_repeat_cooldown{};
+    bool debug_profile = false;
     std::vector<std::byte> payload;
     Revision revision{};
+};
+struct BlackboardKeyDefinition
+{
+    BlackboardKeyId key{};
+    std::string canonical_name;
+    TypeId value_type{};
+    std::size_t max_payload_bytes = 4096;
+    BlackboardPersistencePolicy persistence = BlackboardPersistencePolicy::Session;
 };
 struct AIBlackboardEntry
 {
     BlackboardKeyId key{};
+    TypeId value_type{};
     std::vector<std::byte> value;
     GameplayTimePoint updated_at{};
-    bool persistent = false;
     Revision revision{};
 };
 struct AIIntent
@@ -289,14 +330,20 @@ struct AIAgentState
     std::optional<AIIntent> current_intent{};
     GameplayTimePoint next_think_at{};
     std::vector<AIBlackboardEntry> blackboard;
+    bool pending_replan = false;
+    AIReplanReasonId pending_replan_reason{};
+    GameplayTimePoint pending_replan_at{};
+    AIGoalId previous_goal{};
+    GameplayTimePoint previous_goal_terminal_at{};
     Revision revision{};
 };
 struct AIContextSnapshot
 {
-    std::vector<TypeId> known_topics;
-    std::vector<GameplayObjectRef> perceived_targets;
+    std::vector<AIInputValue> inputs;
+    std::vector<AITargetCandidate> targets;
     GameplayTimePoint now{};
-    std::vector<std::byte> payload;
+    bool materialized = false;
+    bool runtime_projection_available = false;
 };
 struct AIThinkResult
 {
@@ -304,12 +351,14 @@ struct AIThinkResult
     std::optional<AIGoalInstance> goal{};
     std::optional<AIIntent> intent{};
     bool deferred = false;
+    AIThinkDeferReason defer_reason = AIThinkDeferReason::None;
     Revision revision{};
 };
 struct AIBudget
 {
     std::uint32_t max_agents_thinking_per_tick = 256;
     std::uint32_t max_goals_evaluated = 4096;
+    std::uint32_t max_target_evaluations_per_tick = 8192;
     std::uint32_t max_intents_issued = 512;
 };
 struct AITickBudgetState
@@ -317,6 +366,7 @@ struct AITickBudgetState
     GameplayTickId tick{};
     std::uint32_t agents_thought = 0;
     std::uint32_t goals_evaluated = 0;
+    std::uint32_t target_evaluations = 0;
     std::uint32_t intents_issued = 0;
 };
 struct AIChange
@@ -327,22 +377,44 @@ struct AIChange
     AIGoalId goal{};
     AIIntentId intent{};
     AIIntentTypeId intent_type{};
+    TypeId reason{};
     GameplayContext context{};
     Revision revision{};
 };
+struct AIChangeBatch
+{
+    std::vector<AIChange> changes;
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+};
 struct AISnapshot
 {
-    std::vector<AIProfile> profiles;
-    std::vector<AIGoalDefinition> goals;
-    std::vector<AIAccessPolicy> policies;
     std::vector<AIAgentState> agents;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot intent_ids{};
     Revision revision{};
 };
 struct AIDiagnostics
 {
-    std::uint64_t profiles = 0, agents = 0, agents_thinking = 0, goals_evaluated = 0, intents_issued = 0,
-                  intents_failed = 0, budget_exhaustions = 0;
+    std::uint64_t profiles = 0;
+    std::uint64_t agents = 0;
+    std::uint64_t agents_thinking = 0;
+    std::uint64_t goals_evaluated = 0;
+    std::uint64_t target_evaluations = 0;
+    std::uint64_t intents_issued = 0;
+    std::uint64_t intents_failed = 0;
+    std::uint64_t replans_requested = 0;
+    std::uint64_t evaluator_failures = 0;
+    std::uint64_t budget_exhaustions = 0;
+};
+
+class IAIConsiderationEvaluator
+{
+  public:
+    virtual ~IAIConsiderationEvaluator() = default;
+    [[nodiscard]] virtual foundation::Result<Fixed> Evaluate(const AIConsideration &definition,
+                                                              const AIContextSnapshot &context,
+                                                              const AITargetCandidate *target) const = 0;
 };
 
 class AIService
@@ -353,69 +425,118 @@ class AIService
     {
         return GameplayDomainId::FromString("framework.ai");
     }
+    [[nodiscard]] static constexpr AIConsiderationEvaluatorId InputEvaluatorId() noexcept
+    {
+        return AIConsiderationEvaluatorId::FromString("framework.ai.evaluator.input");
+    }
+
     [[nodiscard]] foundation::Result<void> RegisterAccessPolicy(AIAccessPolicy policy);
+    [[nodiscard]] foundation::Result<void> RegisterConsiderationEvaluator(AIConsiderationEvaluatorId id,
+                                                                          const IAIConsiderationEvaluator &evaluator);
     [[nodiscard]] foundation::Result<void> RegisterGoal(AIGoalDefinition goal);
     [[nodiscard]] foundation::Result<void> RegisterProfile(AIProfile profile);
-    void Freeze() noexcept
-    {
-        frozen_ = true;
-    }
-    [[nodiscard]] bool IsFrozen() const noexcept
-    {
-        return frozen_;
-    }
+    [[nodiscard]] foundation::Result<void> RegisterBlackboardKey(BlackboardKeyDefinition definition);
+    [[nodiscard]] foundation::Result<void> Freeze();
+    [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
     [[nodiscard]] const AIAccessPolicy *FindAccessPolicy(AIAccessPolicyId id) const noexcept;
     [[nodiscard]] const AIGoalDefinition *FindGoal(AIGoalId id) const noexcept;
     [[nodiscard]] const AIProfile *FindProfile(AIProfileId id) const noexcept;
+    [[nodiscard]] const BlackboardKeyDefinition *FindBlackboardKey(BlackboardKeyId id) const noexcept;
 
     [[nodiscard]] foundation::Result<void> RegisterAgent(GameplayObjectRef subject, AIProfileId profile,
                                                          GameplayTimePoint next_think = {});
     [[nodiscard]] foundation::Result<void> UnregisterAgent(GameplayObjectRef subject, GameplayContext context = {});
     [[nodiscard]] const AIAgentState *FindAgent(GameplayObjectRef subject) const noexcept;
+    [[nodiscard]] foundation::Result<void> DisableAgent(GameplayObjectRef subject, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> EnableAgent(GameplayObjectRef subject, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> SuspendAgent(GameplayObjectRef subject, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ResumeAgent(GameplayObjectRef subject, GameplayTimePoint when,
+                                                       GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> ScheduleThink(GameplayObjectRef subject, GameplayTimePoint when,
                                                          GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RequestReplan(GameplayObjectRef subject, AIReplanReasonId reason,
+                                                         GameplayTimePoint when, GameplayContext context = {});
     [[nodiscard]] foundation::Result<AIThinkResult> Think(GameplayObjectRef subject, const AIContextSnapshot &context,
                                                           GameplayContext gameplay_context = {});
+
     [[nodiscard]] foundation::Result<void> MarkIntentAccepted(AIIntentId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> MarkIntentRunning(AIIntentId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> MarkIntentSucceeded(AIIntentId id, GameplayContext context = {});
-    [[nodiscard]] foundation::Result<void> MarkIntentFailed(AIIntentId id, GameplayContext context = {});
-    void SetBudget(AIBudget budget) noexcept
+    [[nodiscard]] foundation::Result<void> MarkIntentFailed(AIIntentId id, TypeId reason = {},
+                                                            GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CancelIntent(AIIntentId id, TypeId reason = {},
+                                                        GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> TimeoutIntent(AIIntentId id, TypeId reason = {},
+                                                         GameplayContext context = {});
+
+    [[nodiscard]] foundation::Result<void> SetBlackboard(GameplayObjectRef subject, BlackboardKeyId key,
+                                                         TypeId value_type, std::vector<std::byte> value,
+                                                         GameplayTimePoint now, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RemoveBlackboard(GameplayObjectRef subject, BlackboardKeyId key,
+                                                            GameplayContext context = {});
+    [[nodiscard]] const AIBlackboardEntry *FindBlackboard(GameplayObjectRef subject, BlackboardKeyId key) const noexcept;
+
+    void SetBudget(AIBudget budget) noexcept { budget_ = budget; }
+    void SetChangeJournalCapacity(std::size_t capacity) noexcept
     {
-        budget_ = budget;
+        change_journal_capacity_ = capacity == 0 ? 1 : capacity;
+        while (changes_.size() > change_journal_capacity_)
+            changes_.pop_front();
     }
 
     [[nodiscard]] std::vector<AIAgentState> FindAgentsByActivity(AIAgentActivity activity) const;
     [[nodiscard]] std::vector<AIAgentState> FindAgentsWithGoal(AIGoalId goal) const;
-    [[nodiscard]] std::vector<AIChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] std::vector<GameplayObjectRef> FindDueAgents(GameplayTimePoint now, std::size_t limit) const;
+    [[nodiscard]] AIChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] AISnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(AISnapshot snapshot);
     [[nodiscard]] AIDiagnostics GetDiagnostics() const noexcept;
-    [[nodiscard]] Revision CurrentRevision() const noexcept
-    {
-        return revision_;
-    }
+    [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
 
   private:
-    void Bump() noexcept
+    struct DueKey
     {
-        revision_.value++;
-    }
+        GameplayTimePoint when{};
+        GameplayObjectRef subject{};
+        [[nodiscard]] bool operator<(const DueKey &other) const noexcept
+        {
+            if (when != other.when)
+                return when < other.when;
+            return subject < other.subject;
+        }
+    };
+
+    [[nodiscard]] foundation::Result<void> RequireFrozen() const;
+    void Bump() noexcept;
     void Record(AIChange change);
     void EnsureBudgetEpoch(GameplayTickId tick) noexcept;
     [[nodiscard]] AIAgentState *FindMutableAgent(GameplayObjectRef subject) noexcept;
     [[nodiscard]] AIAgentState *FindAgentByIntent(AIIntentId id) noexcept;
     [[nodiscard]] bool AccessAllows(const AIProfile &profile, AIAccessFlag flag) const noexcept;
-    [[nodiscard]] bool TopicAvailable(TypeId topic, const AIContextSnapshot &context) const noexcept;
-    [[nodiscard]] Fixed ScoreGoal(const AIGoalDefinition &goal, const AIContextSnapshot &context) const noexcept;
+    [[nodiscard]] bool TargetSourceAllowed(const AIProfile &profile, AITargetSource source) const noexcept;
+    [[nodiscard]] foundation::Result<Fixed> ScoreGoal(const AIProfile &profile, const AIGoalDefinition &goal,
+                                                      const AIContextSnapshot &context,
+                                                      const AITargetCandidate *target);
+    [[nodiscard]] foundation::Result<void> FinalizeIntent(AIIntentId id, AIIntentStatus final_status, TypeId reason,
+                                                         GameplayContext context);
+    void RemoveDueIndex(const AIAgentState &agent) noexcept;
+    void AddDueIndex(const AIAgentState &agent);
+    void SetNextThink(AIAgentState &agent, GameplayTimePoint when);
+    [[nodiscard]] GameplayTimePoint NextThinkAfter(const AIProfile &profile, GameplayTimePoint now) const noexcept;
 
     bool frozen_ = false;
     Revision revision_{};
     MonotonicIdGenerator<GameplayObjectId> intent_ids_{0x2200};
     std::unordered_map<AIAccessPolicyId, AIAccessPolicy, IdHash> policies_;
+    std::unordered_map<AIConsiderationEvaluatorId, const IAIConsiderationEvaluator *, IdHash> evaluators_;
     std::unordered_map<AIGoalId, AIGoalDefinition, IdHash> goals_;
     std::unordered_map<AIProfileId, AIProfile, IdHash> profiles_;
+    std::unordered_map<BlackboardKeyId, BlackboardKeyDefinition, IdHash> blackboard_keys_;
     std::unordered_map<GameplayObjectRef, AIAgentState, RefHash> agents_;
-    std::vector<AIChange> changes_;
+    std::unordered_map<AIIntentId, GameplayObjectRef, IdHash> intent_to_agent_;
+    std::set<DueKey> due_agents_;
+    std::deque<AIChange> changes_;
+    std::size_t change_journal_capacity_ = 4096;
     std::uint64_t next_change_sequence_ = 1;
     AIBudget budget_{};
     AITickBudgetState tick_budget_{};

@@ -7,10 +7,45 @@
 #include "Epidemic/GameFramework/RolesJobs/roles_jobs.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <vector>
 
 namespace epidemic::gameplay::population_simulation
 {
+enum class PopulationEncounterPlanState
+{
+    AwaitingEntityBindings,
+    Completed,
+    Failed
+};
+
+struct PopulationBackedEncounterSlot
+{
+    population::PopulationAllocationId allocation{};
+    population::PopulationUnitId unit{};
+    population::PopulationTemplateId population_template{};
+    TypeId archetype{};
+    encounters::SpawnedEntityRecordId spawned_record{};
+    GameplayObjectRef entity{};
+};
+
+struct PopulationBackedEncounterPlan
+{
+    encounters::SpawnRequestId request{};
+    encounters::EncounterDefinitionId encounter{};
+    encounters::EncounterInstanceId encounter_instance{};
+    population::PopulationGroupId group{};
+    GameplayObjectRef area{};
+    random::RandomSeed seed{};
+    PopulationEncounterPlanState state = PopulationEncounterPlanState::AwaitingEntityBindings;
+    std::vector<PopulationBackedEncounterSlot> slots;
+};
+
+struct PopulationEncounterAdapterSnapshot
+{
+    std::vector<PopulationBackedEncounterPlan> plans;
+};
+
 struct PopulationBackedSpawnResult
 {
     encounters::SpawnResult spawn;
@@ -20,12 +55,37 @@ struct PopulationBackedSpawnResult
 class PopulationEncounterAdapter
 {
 public:
-    [[nodiscard]] PopulationBackedSpawnResult SpawnFromPopulation(
+    [[nodiscard]] foundation::Result<PopulationBackedSpawnResult> SpawnFromPopulation(
         population::PopulationService& population_service,
         encounters::EncountersService& encounter_service,
         population::PopulationGroupId group,
         encounters::SpawnRequest request,
-        std::size_t max_units) const;
+        std::size_t max_units);
+
+    [[nodiscard]] foundation::Result<void> BindSpawnedEntity(
+        population::PopulationService& population_service,
+        encounters::EncountersService& encounter_service,
+        encounters::SpawnRequestId request,
+        encounters::SpawnedEntityRecordId spawned_record,
+        GameplayObjectRef entity,
+        GameplayContext context = {});
+
+    [[nodiscard]] foundation::Result<void> CancelPendingSpawn(
+        population::PopulationService& population_service,
+        encounters::EncountersService& encounter_service,
+        encounters::SpawnRequestId request,
+        GameplayContext context = {});
+
+    [[nodiscard]] const PopulationBackedEncounterPlan* FindPlan(encounters::SpawnRequestId request) const noexcept;
+    [[nodiscard]] PopulationEncounterAdapterSnapshot CaptureSnapshot() const;
+    [[nodiscard]] foundation::Result<void> RestoreSnapshot(
+        PopulationEncounterAdapterSnapshot snapshot,
+        const population::PopulationService& population_service,
+        const encounters::EncountersService& encounter_service);
+
+private:
+    [[nodiscard]] PopulationBackedEncounterPlan* FindMutablePlan(encounters::SpawnRequestId request) noexcept;
+    std::vector<PopulationBackedEncounterPlan> plans_;
 };
 
 class RolesNeedsAdapter
@@ -45,6 +105,24 @@ public:
         GameplayContext context) const;
 };
 
+struct PopulationLifecycleReconciliation
+{
+    population::PopulationUnitId unit{};
+    Revision death_revision{};
+    bool roles_cleaned = false;
+    bool needs_cleaned = false;
+
+    [[nodiscard]] bool Complete() const noexcept
+    {
+        return roles_cleaned && needs_cleaned;
+    }
+};
+
+struct PopulationLifecycleAdapterSnapshot
+{
+    std::vector<PopulationLifecycleReconciliation> reconciliations;
+};
+
 class PopulationLifecycleAdapter
 {
 public:
@@ -53,7 +131,16 @@ public:
         roles_jobs::RolesJobsService& roles_service,
         needs_life::NeedsLifeService& needs_service,
         population::PopulationUnitId unit,
-        GameplayContext context) const;
+        GameplayContext context);
+
+    [[nodiscard]] PopulationLifecycleAdapterSnapshot CaptureSnapshot() const;
+    [[nodiscard]] foundation::Result<void> RestoreSnapshot(PopulationLifecycleAdapterSnapshot snapshot);
+    void PruneCompleted();
+
+private:
+    [[nodiscard]] PopulationLifecycleReconciliation* FindReconciliation(population::PopulationUnitId unit,
+                                                                        Revision death_revision) noexcept;
+    std::vector<PopulationLifecycleReconciliation> reconciliations_;
 };
 
 struct CityMorningResult

@@ -1,5 +1,7 @@
 #include "Epidemic/GameFramework/Conditions/conditions.h"
 
+#include <stdexcept>
+
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::conditions;
 
@@ -8,6 +10,22 @@ namespace
 struct Payload
 {
     int value = 0;
+};
+
+class TestSubjectStateProvider final : public IConditionSubjectStateProvider
+{
+  public:
+    ConditionSubjectMaterializationState state = ConditionSubjectMaterializationState::Materialized;
+    bool throw_on_query = false;
+
+    [[nodiscard]] ConditionSubjectMaterializationState GetMaterializationState(GameplayObjectRef) const override
+    {
+        if (throw_on_query)
+        {
+            throw std::runtime_error("subject state provider failure");
+        }
+        return state;
+    }
 };
 }
 
@@ -19,6 +37,8 @@ int main()
     tags.Freeze();
 
     ConditionService service;
+    TestSubjectStateProvider subject_state_provider;
+    if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;
     const auto clock = ClockId::FromString("test.clock");
     const auto payload_type = TypeId::FromString("test.condition.payload");
 
@@ -57,8 +77,17 @@ int main()
     materialized.clock = clock;
     const auto materialized_id = service.RegisterCondition(materialized);
 
-    if (!stacking_id || !refresh_id || !stronger_id || !materialized_id) return 2;
+    ConditionDefinition throwing_payload;
+    throwing_payload.canonical_name = "test.condition.throwing_payload";
+    throwing_payload.payload_type = TypeId::FromString("test.condition.throwing_payload.data");
+    throwing_payload.max_payload_bytes = sizeof(Payload);
+    const auto throwing_payload_id = service.RegisterCondition(throwing_payload, [](std::span<const std::byte>) -> bool {
+        throw std::runtime_error("validator failure");
+    });
+
+    if (!stacking_id || !refresh_id || !stronger_id || !materialized_id || !throwing_payload_id) return 2;
     service.Freeze();
+    if (service.SetSubjectStateProvider(&subject_state_provider)) return 202;
     ConditionDefinition late_condition;
     late_condition.canonical_name = "test.condition.late";
     if (service.RegisterCondition(late_condition)) return 3;
@@ -88,6 +117,14 @@ int main()
     bad_payload.payload.bytes.clear();
     if (service.Apply(bad_payload)) return 6;
 
+    ApplyConditionRequest throwing_request;
+    throwing_request.type = throwing_payload_id.Value();
+    throwing_request.subject = subject;
+    throwing_request.payload = RegisteredConditionPayload::FromTrivial(TypeId::FromString("test.condition.throwing_payload.data"), Payload{1});
+    throwing_request.context = context;
+    const auto before_throwing_validator = service.AllConditions().size();
+    if (service.Apply(throwing_request) || service.AllConditions().size() != before_throwing_validator) return 206;
+
     ApplyConditionRequest refresh_request;
     refresh_request.type = refresh_id.Value();
     refresh_request.subject = subject;
@@ -116,6 +153,16 @@ int main()
     mat.type = materialized_id.Value();
     mat.subject = subject;
     mat.context = context;
+
+    subject_state_provider.state = ConditionSubjectMaterializationState::Abstract;
+    if (service.Apply(mat)) return 203;
+    subject_state_provider.state = ConditionSubjectMaterializationState::Unavailable;
+    if (service.Apply(mat)) return 204;
+    subject_state_provider.state = ConditionSubjectMaterializationState::Materialized;
+    subject_state_provider.throw_on_query = true;
+    if (service.Apply(mat)) return 205;
+    subject_state_provider.throw_on_query = false;
+
     const auto m = service.Apply(mat);
     GameplayContext pause_context = context;
     pause_context.time = GameplayTimePoint{104};
@@ -144,13 +191,42 @@ int main()
     const auto harmful_conditions = service.RemoveByTag(subject, harmful.Value(), tags, ConditionRemovalReason::Dispelled, context);
     if (harmful_conditions != 0) return 17; // stacking condition already expired; others have no harmful tag.
 
+    ApplyConditionRequest persistent_again = request;
+    persistent_again.context = context;
+    persistent_again.context.time = GameplayTimePoint{130};
+    if (!service.Apply(persistent_again)) return 211;
+
     const auto snapshot = service.CaptureSnapshot();
     const auto count = snapshot.instances.size();
+    const auto current_count_before_invalid_restore = service.AllConditions().size();
+
+    auto bad_scope_snapshot = snapshot;
+    ++bad_scope_snapshot.id_generator.scope;
+    if (service.RestoreSnapshot(bad_scope_snapshot) || service.AllConditions().size() != current_count_before_invalid_restore) return 207;
+
+    auto bad_next_snapshot = snapshot;
+    bad_next_snapshot.id_generator.next = 1;
+    if (service.RestoreSnapshot(bad_next_snapshot) || service.AllConditions().size() != current_count_before_invalid_restore) return 208;
+
     if (!service.RemoveSubject(subject, ConditionRemovalReason::SystemCleanup, context) || !service.AllConditions().empty()) return 18;
     if (!service.RestoreSnapshot(snapshot) || service.AllConditions().size() != count) return 19;
 
     const auto diagnostics = service.GetDiagnostics();
     if (diagnostics.active_conditions != count) return 20;
+
+    ConditionService no_provider_service;
+    ConditionDefinition no_provider_materialized = materialized;
+    no_provider_materialized.canonical_name = "test.condition.materialized.no_provider";
+    no_provider_materialized.id = {};
+    const auto no_provider_id = no_provider_service.RegisterCondition(no_provider_materialized);
+    if (!no_provider_id) return 209;
+    no_provider_service.Freeze();
+    ApplyConditionRequest no_provider_request;
+    no_provider_request.type = no_provider_id.Value();
+    no_provider_request.subject = subject;
+    no_provider_request.context = context;
+    if (no_provider_service.Apply(no_provider_request)) return 210;
+
     return 0;
 }
 

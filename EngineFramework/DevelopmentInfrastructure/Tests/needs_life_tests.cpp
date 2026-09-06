@@ -1,72 +1,209 @@
 #include "Epidemic/GameFramework/NeedsLife/needs_life.h"
+
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::needs_life;
 
 namespace
 {
-void Check(bool value,const char* message){if(!value){std::cerr<<message<<'\n';std::exit(1);}}
-GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}
+void Check(bool value, const char *message)
+{
+    if (!value)
+    {
+        std::cerr << message << '\n';
+        std::exit(1);
+    }
 }
+GameplayObjectRef Ref(const char *domain, const char *id)
+{
+    return {GameplayDomainId::FromString(domain), GameplayObjectId::FromString(id)};
+}
+} // namespace
 
 int main()
 {
     NeedsLifeService service;
-    NeedDefinition hunger;
-    hunger.id=NeedTypeId::FromString("need.hunger");
-    hunger.default_value=100;
-    hunger.min_value=0;
-    hunger.max_value=100;
-    hunger.decay_per_tick=1;
-    Check(static_cast<bool>(service.RegisterNeedDefinition(hunger)),"register hunger");
 
-    auto npc=Ref("entities","npc.worker");
+    NeedDecayRule fast;
+    fast.id = NeedDecayRuleId::FromString("need.decay.fast");
+    fast.rate_multiplier_micro = 2'000'000;
+    Check(static_cast<bool>(service.RegisterDecayRule(fast)), "register decay rule");
+
+    LifeSimulationProfile coarse;
+    coarse.id = LifeSimulationProfileId::FromString("life.sim.coarse");
+    coarse.abstract_rate_multiplier_micro = 500'000;
+    coarse.materialized_rate_multiplier_micro = 2'000'000;
+    Check(static_cast<bool>(service.RegisterSimulationProfile(coarse)), "register simulation profile");
+
+    NeedDefinition hunger;
+    hunger.id = NeedTypeId::FromString("need.hunger");
+    hunger.default_value = 100;
+    hunger.min_value = 0;
+    hunger.max_value = 100;
+    hunger.decay_per_tick = 1;
+    hunger.decay_rule = fast.id;
+    hunger.satisfied_threshold_micro = 800'000;
+    hunger.low_threshold_micro = 600'000;
+    hunger.medium_threshold_micro = 400'000;
+    hunger.high_threshold_micro = 200'000;
+    Check(static_cast<bool>(service.RegisterNeedDefinition(hunger)), "register hunger");
+    Check(static_cast<bool>(service.FreezeDefinitions()), "freeze definitions");
+    Check(!service.RegisterNeedDefinition(hunger), "definitions immutable after freeze");
+
+    const auto npc = Ref("population", "npc.worker");
     NeedProfile profile;
-    profile.subject=npc;
+    profile.subject = npc;
     profile.active_needs.push_back(hunger.id);
-    auto profile_id=service.CreateNeedProfile(profile,{.time=GameplayTimePoint{0}});
-    Check(static_cast<bool>(profile_id),"create profile");
-    auto evaluated=service.EvaluateNeed(npc,hunger.id,GameplayTimePoint{100});
-    Check(evaluated.value==0,"lazy decay");
-    Check(evaluated.threshold==NeedThreshold::Critical,"critical threshold");
-    Check(static_cast<bool>(service.CommitNeedEvaluation(npc,hunger.id,GameplayTimePoint{100})),"commit evaluation");
-    Check(service.FindCriticalNeeds(GameplayTimePoint{100}).size()==1,"find critical");
+    profile.simulation_profile = coarse.id;
+    auto profile_id = service.CreateNeedProfile(profile, {.time = GameplayTimePoint{0}});
+    Check(static_cast<bool>(profile_id), "create profile");
+    Check(!service.CreateNeedProfile(profile), "only one active profile per subject");
+
+    // Base read-side evaluation uses the need's decay rule. 2x decay for 10 ticks -> 80.
+    auto evaluated = service.EvaluateNeed(npc, hunger.id, GameplayTimePoint{10});
+    Check(evaluated.value == 80, "decay rule applied to lazy evaluation");
+    Check(evaluated.threshold == NeedThreshold::Satisfied, "data-driven threshold applied");
+
+    // Abstract simulation applies the profile's 0.5 multiplier, cancelling the rule's 2x multiplier.
+    LifeSimulationRequest first_interval;
+    first_interval.subject = npc;
+    first_interval.from = GameplayTimePoint{0};
+    first_interval.to = GameplayTimePoint{10};
+    first_interval.context.time = GameplayTimePoint{10};
+    first_interval.materialized = false;
+    Check(static_cast<bool>(service.SimulateLifeInterval(first_interval)), "simulate first interval");
+    Check(service.GetCommittedNeedState(npc, hunger.id)->value == 90, "simulation profile applied");
+
+    // Retry/overlap is rejected by the authoritative profile cursor.
+    Check(!service.SimulateLifeInterval(first_interval), "duplicate interval rejected");
+    auto overlap = first_interval;
+    overlap.from = GameplayTimePoint{5};
+    overlap.to = GameplayTimePoint{15};
+    Check(!service.SimulateLifeInterval(overlap), "overlapping interval rejected");
+
+    auto second_interval = first_interval;
+    second_interval.from = GameplayTimePoint{10};
+    second_interval.to = GameplayTimePoint{20};
+    second_interval.context.time = GameplayTimePoint{20};
+    second_interval.materialized = true;
+    Check(static_cast<bool>(service.SimulateLifeInterval(second_interval)), "materialized interval");
+    Check(service.GetCommittedNeedState(npc, hunger.id)->value == 50, "materialized fidelity multiplier applied");
 
     SatisfyNeedRequest satisfy;
-    satisfy.subject=npc;
-    satisfy.need=hunger.id;
-    satisfy.amount=80;
-    satisfy.context.time=GameplayTimePoint{100};
-    Check(static_cast<bool>(service.SatisfyNeed(satisfy)),"satisfy need");
-    Check(service.GetCommittedNeedState(npc,hunger.id)->threshold==NeedThreshold::Satisfied,"satisfied threshold");
+    satisfy.subject = npc;
+    satisfy.need = hunger.id;
+    satisfy.amount = -1;
+    satisfy.context.time = GameplayTimePoint{20};
+    Check(!service.SatisfyNeed(satisfy), "negative satisfy rejected");
+    satisfy.amount = 40;
+    Check(static_cast<bool>(service.SatisfyNeed(satisfy)), "satisfy need");
+    Check(service.GetCommittedNeedState(npc, hunger.id)->value == 90, "satisfy increases value");
+
+    AddNeedPressureRequest pressure_delta;
+    pressure_delta.subject = npc;
+    pressure_delta.need = hunger.id;
+    pressure_delta.amount = 30;
+    pressure_delta.context.time = GameplayTimePoint{20};
+    Check(static_cast<bool>(service.AddNeedPressure(pressure_delta)), "add need pressure");
+    Check(service.GetCommittedNeedState(npc, hunger.id)->value == 60, "pressure decreases need value");
 
     LifePressure pressure;
-    pressure.subject=npc;
-    pressure.type=TypeId::FromString("pressure.safety");
-    pressure.urgency=500;
-    auto pressure_id=service.CreateLifePressure(pressure);
-    Check(static_cast<bool>(pressure_id),"create pressure");
-    Check(service.FindLifePressures(npc).size()==1,"find pressure");
-    Check(static_cast<bool>(service.ResolveLifePressure(pressure_id.Value())),"resolve pressure");
-    Check(service.FindLifePressures(npc).empty(),"pressure resolved");
+    pressure.subject = npc;
+    pressure.type = TypeId::FromString("pressure.safety");
+    pressure.source = TypeId::FromString("source.duty");
+    pressure.urgency = 500;
+    pressure.expires_at = GameplayTimePoint{30};
+    auto pressure_id = service.CreateLifePressure(pressure, {.time = GameplayTimePoint{20}});
+    Check(static_cast<bool>(pressure_id), "create pressure");
+    Check(service.FindLifePressures(npc).size() == 1, "find pressure");
+    auto expired = service.SweepExpiredPressures(GameplayTimePoint{30}, {.time = GameplayTimePoint{30}});
+    Check(static_cast<bool>(expired) && expired.Value() == 1, "expire pressure");
+    Check(service.FindLifePressures(npc).empty(), "expired pressure not active");
+    Check(service.PruneTerminalPressures(npc) == 1, "terminal pressure cleanup");
 
     LifeRoutine routine;
-    routine.subject=npc;
+    routine.subject = npc;
     RoutineEntry entry;
-    entry.start=GameplayTimePoint{800};
-    entry.duration=GameplayDuration{400};
-    entry.routine_type=TypeId::FromString("routine.work");
+    entry.start = GameplayTimePoint{800};
+    entry.duration = GameplayDuration{400};
+    entry.routine_type = TypeId::FromString("routine.work");
     routine.entries.push_back(entry);
-    auto routine_id=service.SetRoutine(routine);
-    Check(static_cast<bool>(routine_id),"set routine");
-    Check(service.GetRoutine(npc)!=nullptr,"get routine");
+    auto routine_id = service.SetRoutine(routine);
+    Check(static_cast<bool>(routine_id), "set routine");
+    routine.entries[0].start = GameplayTimePoint{900};
+    auto updated_routine = service.SetRoutine(routine);
+    Check(static_cast<bool>(updated_routine) && updated_routine.Value() == routine_id.Value(), "routine upsert by subject");
+    auto occurrences = service.FindRoutineEntriesInInterval(npc, GameplayTimePoint{850}, GameplayTimePoint{950});
+    Check(occurrences.size() == 1 && occurrences.front().routine == routine_id.Value() &&
+              occurrences.front().entry_index == 0,
+          "stable routine occurrence");
 
-    auto snapshot=service.CaptureSnapshot();
+    // MaterializedOnly has explicit behavior instead of being a decorative enum.
+    const auto npc2 = Ref("population", "npc.materialized");
+    NeedProfile materialized_profile;
+    materialized_profile.subject = npc2;
+    materialized_profile.active_needs.push_back(hunger.id);
+    materialized_profile.materialization_policy = NeedMaterializationPolicy::MaterializedOnly;
+    Check(static_cast<bool>(service.CreateNeedProfile(materialized_profile, {.time = GameplayTimePoint{0}})),
+          "create materialized profile");
+    LifeSimulationRequest materialized_request;
+    materialized_request.subject = npc2;
+    materialized_request.from = GameplayTimePoint{0};
+    materialized_request.to = GameplayTimePoint{1};
+    Check(!service.SimulateLifeInterval(materialized_request), "materialized-only rejects abstract simulation");
+    materialized_request.materialized = true;
+    Check(static_cast<bool>(service.SimulateLifeInterval(materialized_request)), "materialized-only accepts materialized");
+
+    // Journal is bounded and reports a gap instead of pretending retained changes are complete.
+    service.SetChangeJournalCapacity(2);
+    SatisfyNeedRequest small = satisfy;
+    small.amount = 1;
+    small.context.time = GameplayTimePoint{21};
+    Check(static_cast<bool>(service.SatisfyNeed(small)), "journal change 1");
+    small.context.time = GameplayTimePoint{22};
+    Check(static_cast<bool>(service.SatisfyNeed(small)), "journal change 2");
+    small.context.time = GameplayTimePoint{23};
+    Check(static_cast<bool>(service.SatisfyNeed(small)), "journal change 3");
+    Check(service.ReadChangesSince(0).snapshot_required, "journal gap requires snapshot");
+
+    const auto snapshot = service.CaptureSnapshot();
     NeedsLifeService restored;
-    Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)),"restore");
-    Check(restored.GetCommittedNeedState(npc,hunger.id)!=nullptr,"restore need state");
-    Check(static_cast<bool>(restored.SimulateLifeInterval({npc,GameplayTimePoint{100},GameplayTimePoint{110},TypeId::FromString("coarse"),{.time=GameplayTimePoint{110}}})),"simulate interval");
+    Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), "restore valid snapshot");
+    Check(restored.GetNeedProfile(npc) != nullptr, "restore profile index");
+    Check(restored.GetCommittedNeedState(npc, hunger.id) != nullptr, "restore need state");
+
+    // Restore is transactional. A broken snapshot must not erase the current service.
+    const auto before_revision = restored.CurrentRevision();
+    auto broken = snapshot;
+    auto duplicate = broken.profiles.front();
+    duplicate.id = NeedProfileId::FromRaw(0x2900, 9999);
+    broken.profiles.push_back(duplicate);
+    Check(!restored.RestoreSnapshot(broken), "duplicate subject profile rejected on restore");
+    Check(restored.CurrentRevision() == before_revision && restored.GetNeedProfile(npc) != nullptr,
+          "failed restore leaves service unchanged");
+
+    broken = snapshot;
+    broken.profile_ids.scope = 0xDEAD;
+    Check(!restored.RestoreSnapshot(broken), "wrong generator scope rejected");
+    Check(restored.CurrentRevision() == before_revision, "generator failure leaves service unchanged");
+
+    // A requested ID in the service's own scope advances the generator and cannot collide later.
+    NeedsLifeService requested_id_service;
+    Check(static_cast<bool>(requested_id_service.RegisterDecayRule(fast)), "register requested-id decay");
+    Check(static_cast<bool>(requested_id_service.RegisterNeedDefinition(hunger)), "register requested-id hunger");
+    NeedProfile requested;
+    requested.id = NeedProfileId::FromRaw(0x2900, 100);
+    requested.subject = Ref("population", "requested");
+    requested.active_needs.push_back(hunger.id);
+    Check(static_cast<bool>(requested_id_service.CreateNeedProfile(requested)), "requested own-scope profile id");
+    NeedProfile generated;
+    generated.subject = Ref("population", "generated");
+    generated.active_needs.push_back(hunger.id);
+    auto generated_id = requested_id_service.CreateNeedProfile(generated);
+    Check(static_cast<bool>(generated_id) && generated_id.Value().value.Low() > 100, "generator advanced past requested id");
+
     return 0;
 }

@@ -91,7 +91,24 @@ void ApplyCost(NavigationSemanticCost& cost, Fixed additive, Fixed multiplier) n
 [[nodiscard]] bool IsExpired(const NavigationSemanticLayer& layer, const GameplayContext& context) noexcept
 {
     return layer.lifetime == NavigationLayerLifetime::Timed && layer.expires_at &&
-           context.time.ticks != 0 && layer.expires_at->ticks <= context.time.ticks;
+           layer.expires_at->ticks <= context.time.ticks;
+}
+
+[[nodiscard]] bool IsValidLayer(const NavigationSemanticLayer& layer) noexcept
+{
+    return layer.id.IsValid() && layer.area.IsValid() && layer.type.IsValid() && layer.multiplier_micro >= 0 &&
+           layer.required_parameter_micro >= 0 &&
+           (layer.lifetime != NavigationLayerLifetime::Timed || layer.expires_at.has_value()) &&
+           ((layer.decision != NavigationDecisionKind::RequireCapability &&
+             layer.decision != NavigationDecisionKind::RequireFact) ||
+            layer.requirement.IsValid());
+}
+
+[[nodiscard]] bool IsValidLink(const NavigationSemanticLink& link) noexcept
+{
+    return link.id.IsValid() && link.from_area.IsValid() && link.to_area.IsValid() && link.type.IsValid() &&
+           link.from_area != link.to_area &&
+           (link.state != LinkState::Conditional || link.required_fact.IsValid());
 }
 }
 
@@ -151,24 +168,128 @@ foundation::Result<void> NavigationSemanticsService::SetProfile(NavigationSemant
     return foundation::Result<void>::Success();
 }
 
+foundation::Result<void> NavigationSemanticsService::ValidateAndAdvanceLayerId(NavigationLayerId id)
+{
+    if (!id.IsValid())
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.invalid_layer", "invalid navigation layer id"));
+    const auto snapshot = layer_ids_.GetSnapshot();
+    if (id.value.High() != snapshot.scope || snapshot.next == 0 || id.value.Low() < snapshot.next)
+        return foundation::Result<void>::Success();
+    auto advanced = snapshot;
+    advanced.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
+    layer_ids_.Restore(advanced);
+    return foundation::Result<void>::Success();
+}
+
+void NavigationSemanticsService::IndexLayer(const NavigationSemanticLayer& layer)
+{
+    auto& ids = layer_ids_by_area_[layer.area];
+    const auto pos = std::lower_bound(ids.begin(), ids.end(), layer.id);
+    if (pos == ids.end() || *pos != layer.id)
+        ids.insert(pos, layer.id);
+}
+
+void NavigationSemanticsService::UnindexLayer(const NavigationSemanticLayer& layer)
+{
+    const auto it = layer_ids_by_area_.find(layer.area);
+    if (it == layer_ids_by_area_.end())
+        return;
+    auto& ids = it->second;
+    const auto pos = std::lower_bound(ids.begin(), ids.end(), layer.id);
+    if (pos != ids.end() && *pos == layer.id)
+        ids.erase(pos);
+    if (ids.empty())
+        layer_ids_by_area_.erase(it);
+}
+
+void NavigationSemanticsService::IndexLink(const NavigationSemanticLink& link)
+{
+    auto& ids = link_ids_by_pair_[LinkPairKey{link.from_area, link.to_area}];
+    const auto pos = std::lower_bound(ids.begin(), ids.end(), link.id);
+    if (pos == ids.end() || *pos != link.id)
+        ids.insert(pos, link.id);
+}
+
+void NavigationSemanticsService::UnindexLink(const NavigationSemanticLink& link)
+{
+    const LinkPairKey key{link.from_area, link.to_area};
+    const auto it = link_ids_by_pair_.find(key);
+    if (it == link_ids_by_pair_.end())
+        return;
+    auto& ids = it->second;
+    const auto pos = std::lower_bound(ids.begin(), ids.end(), link.id);
+    if (pos != ids.end() && *pos == link.id)
+        ids.erase(pos);
+    if (ids.empty())
+        link_ids_by_pair_.erase(it);
+}
+
+void NavigationSemanticsService::RebuildIndexes()
+{
+    layer_ids_by_area_.clear();
+    link_ids_by_pair_.clear();
+    for (const auto& [id, layer] : layers_)
+    {
+        (void)id;
+        IndexLayer(layer);
+    }
+    for (const auto& [id, link] : links_)
+    {
+        (void)id;
+        IndexLink(link);
+    }
+}
+
 foundation::Result<NavigationLayerId> NavigationSemanticsService::AddLayer(NavigationSemanticLayer layer,
                                                                            GameplayContext context)
 {
-    if (!layer.id.IsValid())
+    const bool caller_supplied_id = layer.id.IsValid();
+    if (!caller_supplied_id)
         layer.id = NavigationLayerId{layer_ids_.Next()};
-    if (!layer.id.IsValid() || !layer.area.IsValid() || !layer.type.IsValid() || layers_.contains(layer.id) ||
-        layer.multiplier_micro < 0 || layer.required_parameter_micro < 0 ||
-        (layer.lifetime == NavigationLayerLifetime::Timed && !layer.expires_at) ||
-        ((layer.decision == NavigationDecisionKind::RequireCapability || layer.decision == NavigationDecisionKind::RequireFact) &&
-         !layer.requirement.IsValid()))
-        return foundation::Result<NavigationLayerId>::Failure(Error("gameplay.navigation.invalid_layer", "invalid navigation layer"));
+    if (!IsValidLayer(layer) || layers_.contains(layer.id))
+        return foundation::Result<NavigationLayerId>::Failure(
+            Error("gameplay.navigation.invalid_layer", "invalid navigation layer"));
+    if (caller_supplied_id)
+    {
+        auto advanced = ValidateAndAdvanceLayerId(layer.id);
+        if (!advanced)
+            return foundation::Result<NavigationLayerId>::Failure(advanced.GetError());
+    }
     Bump();
     layer.revision = revision_;
     const auto id = layer.id;
-    layers_.emplace(id, std::move(layer));
+    auto [it, inserted] = layers_.emplace(id, std::move(layer));
+    (void)inserted;
+    IndexLayer(it->second);
     ++dynamic_updates_;
     Record({0, NavigationChangeKind::LayerAdded, {}, id, {}, revision_, context});
     return foundation::Result<NavigationLayerId>::Success(id);
+}
+
+foundation::Result<void> NavigationSemanticsService::UpdateLayer(NavigationLayerId id,
+                                                                  NavigationSemanticLayer replacement,
+                                                                  Revision expected_revision,
+                                                                  GameplayContext context)
+{
+    const auto it = layers_.find(id);
+    if (it == layers_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.layer_missing", "navigation layer missing"));
+    if (it->second.revision != expected_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.layer_stale", "navigation layer revision changed"));
+    replacement.id = it->second.id;
+    replacement.source = it->second.source;
+    replacement.lifetime = it->second.lifetime;
+    if (!IsValidLayer(replacement))
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.invalid_layer", "invalid navigation layer update"));
+    const auto old = it->second;
+    Bump();
+    replacement.revision = revision_;
+    UnindexLayer(old);
+    it->second = std::move(replacement);
+    IndexLayer(it->second);
+    ++dynamic_updates_;
+    Record({0, NavigationChangeKind::LayerChanged, {}, id, {}, revision_, context});
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> NavigationSemanticsService::RemoveLayer(NavigationLayerId id, GameplayContext context)
@@ -176,11 +297,27 @@ foundation::Result<void> NavigationSemanticsService::RemoveLayer(NavigationLayer
     const auto it = layers_.find(id);
     if (it == layers_.end())
         return foundation::Result<void>::Failure(Error("gameplay.navigation.layer_missing", "navigation layer missing"));
+    UnindexLayer(it->second);
     layers_.erase(it);
     Bump();
     ++dynamic_updates_;
     Record({0, NavigationChangeKind::LayerRemoved, {}, id, {}, revision_, context});
     return foundation::Result<void>::Success();
+}
+
+std::uint64_t NavigationSemanticsService::RemoveLayersBySource(GameplayObjectRef source, GameplayContext context)
+{
+    if (!source.IsValid())
+        return 0;
+    std::vector<NavigationLayerId> ids;
+    ids.reserve(layers_.size());
+    for (const auto& [id, layer] : layers_)
+        if (layer.source == source)
+            ids.push_back(id);
+    std::sort(ids.begin(), ids.end());
+    for (const auto id : ids)
+        (void)RemoveLayer(id, context);
+    return ids.size();
 }
 
 std::uint64_t NavigationSemanticsService::ExpireLayers(GameplayTimePoint now, GameplayContext context)
@@ -198,14 +335,30 @@ std::uint64_t NavigationSemanticsService::ExpireLayers(GameplayTimePoint now, Ga
 foundation::Result<void> NavigationSemanticsService::AddOrUpdateLink(NavigationSemanticLink link,
                                                                      GameplayContext context)
 {
-    if (!link.id.IsValid() || !link.from_area.IsValid() || !link.to_area.IsValid() || !link.type.IsValid() ||
-        link.from_area == link.to_area || (link.state == LinkState::Conditional && !link.required_fact.IsValid()))
+    if (!IsValidLink(link))
         return foundation::Result<void>::Failure(Error("gameplay.navigation.invalid_link", "invalid navigation link"));
+    const auto existing = links_.find(link.id);
+    if (existing != links_.end())
+        UnindexLink(existing->second);
     Bump();
     link.revision = revision_;
     links_[link.id] = link;
+    IndexLink(links_.at(link.id));
     ++dynamic_updates_;
     Record({0, NavigationChangeKind::LinkChanged, {}, {}, link.id, revision_, context});
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> NavigationSemanticsService::RemoveLink(NavigationLinkId id, GameplayContext context)
+{
+    const auto it = links_.find(id);
+    if (it == links_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.link_missing", "navigation link missing"));
+    UnindexLink(it->second);
+    links_.erase(it);
+    Bump();
+    ++dynamic_updates_;
+    Record({0, NavigationChangeKind::LinkChanged, {}, {}, id, revision_, context});
     return foundation::Result<void>::Success();
 }
 
@@ -227,107 +380,100 @@ foundation::Result<void> NavigationSemanticsService::SetLinkState(NavigationLink
 }
 
 NavigationPermissionResult NavigationSemanticsService::CanEnterArea(GameplayObjectRef subject,
-                                                                    GameplayObjectRef area) const
+                                                                    GameplayObjectRef area,
+                                                                    TraversalModeSemanticId traversal_mode,
+                                                                    const GameplayContext& context) const
 {
-    ++permission_queries_;
-    auto result = EvaluateAreaForProfile(FindProfile(subject), {}, area, {}, {});
-    if (result.availability != NavigationAvailability::Available && result.availability != NavigationAvailability::Unsafe)
-        ++denied_queries_;
-    if (result.cost.additive_cost_micro != 0 || result.cost.base_multiplier_micro != 1'000'000)
-        ++cost_modified_queries_;
-    return result;
+    NavigationPermissionQuery query;
+    query.subject = subject;
+    query.to_area = area;
+    query.traversal_mode = traversal_mode;
+    query.context = context;
+    return EvaluatePermission(query, std::nullopt);
 }
 
 NavigationPermissionResult NavigationSemanticsService::CanUseLink(GameplayObjectRef subject,
-                                                                  NavigationLinkId link_id) const
+                                                                  NavigationLinkId link_id,
+                                                                  TraversalModeSemanticId traversal_mode,
+                                                                  const GameplayContext& context) const
 {
-    ++permission_queries_;
-    NavigationPermissionResult result;
-    result.revision = revision_;
     const auto link = links_.find(link_id);
     if (link == links_.end())
     {
+        ++permission_queries_;
+        ++denied_queries_;
+        NavigationPermissionResult result;
         result.decision = NavigationDecisionKind::Deny;
         result.availability = NavigationAvailability::PhysicallyImpossible;
+        result.revision = revision_;
         result.reasons.push_back({NavigationReasonId::FromString("navigation.link_missing"), {}, {}, link_id,
                                   NavigationDecisionKind::Deny});
-        ++denied_queries_;
         return result;
     }
-    const auto& semantic_link = link->second;
-    switch (semantic_link.state)
-    {
-    case LinkState::Open:
-        break;
-    case LinkState::Conditional:
-        if (facts_ == nullptr || !facts_->HasFact(subject, semantic_link.required_fact, {}))
-        {
-            result.decision = NavigationDecisionKind::RequireFact;
-            result.availability = NavigationAvailability::Forbidden;
-            result.reasons.push_back({NavigationReasonId::FromString("navigation.link_condition_unsatisfied"), {}, {}, link_id,
-                                      NavigationDecisionKind::RequireFact});
-            ++denied_queries_;
-            return result;
-        }
-        break;
-    case LinkState::Destroyed:
-        result.decision = NavigationDecisionKind::Deny;
-        result.availability = NavigationAvailability::PhysicallyImpossible;
-        result.reasons.push_back({NavigationReasonId::FromString("navigation.link_destroyed"), {}, {}, link_id,
-                                  NavigationDecisionKind::Deny});
-        ++denied_queries_;
-        return result;
-    case LinkState::Locked:
-        result.decision = NavigationDecisionKind::Deny;
-        result.availability = NavigationAvailability::Forbidden;
-        result.reasons.push_back({NavigationReasonId::FromString("navigation.link_locked"), {}, {}, link_id,
-                                  NavigationDecisionKind::Deny});
-        ++denied_queries_;
-        return result;
-    case LinkState::Closed:
-    case LinkState::Blocked:
-    case LinkState::Disabled:
-        result.decision = NavigationDecisionKind::Deny;
-        result.availability = NavigationAvailability::TemporarilyBlocked;
-        result.reasons.push_back({NavigationReasonId::FromString("navigation.link_blocked"), {}, {}, link_id,
-                                  NavigationDecisionKind::Deny});
-        ++denied_queries_;
-        return result;
-    }
-    result = EvaluateAreaForProfile(FindProfile(subject), semantic_link.from_area, semantic_link.to_area, {}, {});
-    return result;
+    NavigationPermissionQuery query;
+    query.subject = subject;
+    query.from_area = link->second.from_area;
+    query.to_area = link->second.to_area;
+    query.traversal_mode = traversal_mode;
+    query.context = context;
+    return EvaluatePermission(query, link_id);
 }
 
 NavigationPermissionResult NavigationSemanticsService::EvaluatePath(NavigationPermissionQuery query) const
 {
+    return EvaluatePermission(query, std::nullopt);
+}
+
+NavigationPermissionResult NavigationSemanticsService::EvaluatePermission(const NavigationPermissionQuery& query,
+                                                                            std::optional<NavigationLinkId> required_link) const
+{
     ++permission_queries_;
-    if (!query.subject.IsValid() || !query.from_area.IsValid() || !query.to_area.IsValid())
+    NavigationPermissionResult result;
+    result.revision = revision_;
+    if (!query.subject.IsValid() || !query.to_area.IsValid())
     {
-        NavigationPermissionResult invalid;
-        invalid.decision = NavigationDecisionKind::Deny;
-        invalid.availability = NavigationAvailability::PhysicallyImpossible;
-        invalid.revision = revision_;
-        invalid.reasons.push_back({NavigationReasonId::FromString("navigation.path_invalid"), {}, {}, {},
-                                   NavigationDecisionKind::Deny});
+        result.decision = NavigationDecisionKind::Deny;
+        result.availability = NavigationAvailability::PhysicallyImpossible;
+        result.reasons.push_back({NavigationReasonId::FromString("navigation.path_invalid"), {}, {}, {},
+                                  NavigationDecisionKind::Deny});
         ++denied_queries_;
-        return invalid;
+        return result;
     }
 
-    auto result = EvaluateAreaForProfile(FindProfile(query.subject), query.from_area, query.to_area,
-                                         query.traversal_mode, query.context);
+    result = EvaluateAreaForProfile(FindProfile(query.subject), query.from_area, query.to_area,
+                                    query.traversal_mode, query.context);
     if (result.availability != NavigationAvailability::Available && result.availability != NavigationAvailability::Unsafe)
     {
         ++denied_queries_;
         return result;
     }
 
-    const auto links = FindLinksBetween(query.from_area, query.to_area);
-    if (!links.empty())
+    std::vector<NavigationSemanticLink> candidates;
+    if (required_link)
+    {
+        const auto it = links_.find(*required_link);
+        if (it == links_.end() || it->second.from_area != query.from_area || it->second.to_area != query.to_area)
+        {
+            result.decision = NavigationDecisionKind::Deny;
+            result.availability = NavigationAvailability::PhysicallyImpossible;
+            result.reasons.push_back({NavigationReasonId::FromString("navigation.link_missing"), {}, {},
+                                      required_link.value_or(NavigationLinkId{}), NavigationDecisionKind::Deny});
+            ++denied_queries_;
+            return result;
+        }
+        candidates.push_back(it->second);
+    }
+    else if (query.from_area.IsValid())
+    {
+        candidates = FindLinksBetween(query.from_area, query.to_area);
+    }
+
+    if (!candidates.empty())
     {
         bool usable = false;
         NavigationAvailability strongest_failure = NavigationAvailability::PhysicallyImpossible;
         NavigationReason failure_reason{};
-        for (const auto& link : links)
+        for (const auto& link : candidates)
         {
             if (link.state == LinkState::Open ||
                 (link.state == LinkState::Conditional && facts_ != nullptr &&
@@ -340,7 +486,8 @@ NavigationPermissionResult NavigationSemanticsService::EvaluatePath(NavigationPe
             {
                 strongest_failure = NavigationAvailability::Forbidden;
                 failure_reason = {NavigationReasonId::FromString("navigation.link_forbidden"), {}, {}, link.id,
-                                  link.state == LinkState::Conditional ? NavigationDecisionKind::RequireFact : NavigationDecisionKind::Deny};
+                                  link.state == LinkState::Conditional ? NavigationDecisionKind::RequireFact
+                                                                       : NavigationDecisionKind::Deny};
             }
             else if (strongest_failure != NavigationAvailability::Forbidden && link.state != LinkState::Destroyed)
             {
@@ -363,6 +510,7 @@ NavigationPermissionResult NavigationSemanticsService::EvaluatePath(NavigationPe
             return result;
         }
     }
+
     if (result.cost.additive_cost_micro != 0 || result.cost.base_multiplier_micro != 1'000'000)
         ++cost_modified_queries_;
     return result;
@@ -478,13 +626,16 @@ NavigationPermissionResult NavigationSemanticsService::EvaluateAreaForProfile(
 std::vector<NavigationSemanticLayer> NavigationSemanticsService::FindLayersInArea(GameplayObjectRef area) const
 {
     std::vector<NavigationSemanticLayer> result;
-    for (const auto& [id, layer] : layers_)
+    const auto indexed = layer_ids_by_area_.find(area);
+    if (indexed == layer_ids_by_area_.end())
+        return result;
+    result.reserve(indexed->second.size());
+    for (const auto id : indexed->second)
     {
-        (void)id;
-        if (layer.area == area)
-            result.push_back(layer);
+        const auto it = layers_.find(id);
+        if (it != layers_.end())
+            result.push_back(it->second);
     }
-    std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
     return result;
 }
 
@@ -492,13 +643,16 @@ std::vector<NavigationSemanticLink> NavigationSemanticsService::FindLinksBetween
                                                                                  GameplayObjectRef to) const
 {
     std::vector<NavigationSemanticLink> result;
-    for (const auto& [id, link] : links_)
+    const auto indexed = link_ids_by_pair_.find(LinkPairKey{from, to});
+    if (indexed == link_ids_by_pair_.end())
+        return result;
+    result.reserve(indexed->second.size());
+    for (const auto id : indexed->second)
     {
-        (void)id;
-        if (link.from_area == from && link.to_area == to)
-            result.push_back(link);
+        const auto it = links_.find(id);
+        if (it != links_.end())
+            result.push_back(it->second);
     }
-    std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.id < b.id; });
     return result;
 }
 
@@ -529,7 +683,7 @@ NavigationSnapshot NavigationSemanticsService::CaptureSnapshot() const
     for (const auto& [id, layer] : layers_)
     {
         (void)id;
-        if (layer.lifetime != NavigationLayerLifetime::Transient)
+        if (layer.lifetime != NavigationLayerLifetime::Transient && layer.lifetime != NavigationLayerLifetime::Session)
             snapshot.layers.push_back(layer);
     }
     for (const auto& [id, link] : links_)
@@ -555,28 +709,35 @@ foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationS
     std::deque<NavigationChange> restored_changes;
     if (snapshot.journal.size() > kChangeJournalCapacity || snapshot.next_change_sequence == 0)
         return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid journal snapshot"));
+
     for (const auto& profile : snapshot.profiles)
         if (!profile.subject.IsValid() || !domains_.contains(profile.domain) ||
             !restored_profiles.emplace(profile.subject, profile).second)
             return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid profile snapshot"));
+
+    std::uint64_t max_own_layer_low = 0;
+    const auto expected_scope = TypeId::FromString("framework.navigation.layer").Raw();
     for (const auto& layer : snapshot.layers)
     {
-        if (!layer.id.IsValid() || !layer.area.IsValid() || !layer.type.IsValid() || layer.multiplier_micro < 0 ||
-            layer.lifetime == NavigationLayerLifetime::Transient ||
-            (layer.lifetime == NavigationLayerLifetime::Timed && !layer.expires_at) ||
-            ((layer.decision == NavigationDecisionKind::RequireCapability || layer.decision == NavigationDecisionKind::RequireFact) &&
-             !layer.requirement.IsValid()) || !restored_layers.emplace(layer.id, layer).second)
+        if (!IsValidLayer(layer) || layer.lifetime == NavigationLayerLifetime::Transient ||
+            layer.lifetime == NavigationLayerLifetime::Session || !restored_layers.emplace(layer.id, layer).second)
             return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid layer snapshot"));
+        if (layer.id.value.High() == expected_scope)
+            max_own_layer_low = std::max(max_own_layer_low, layer.id.value.Low());
     }
+    if (snapshot.layer_ids.scope != expected_scope ||
+        (snapshot.layer_ids.next != 0 && snapshot.layer_ids.next <= max_own_layer_low))
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid layer generator snapshot"));
+
     for (const auto& link : snapshot.links)
-        if (!link.id.IsValid() || !link.from_area.IsValid() || !link.to_area.IsValid() || !link.type.IsValid() ||
-            link.from_area == link.to_area || (link.state == LinkState::Conditional && !link.required_fact.IsValid()) ||
-            !restored_links.emplace(link.id, link).second)
+        if (!IsValidLink(link) || !restored_links.emplace(link.id, link).second)
             return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid link snapshot"));
+
     std::uint64_t previous = 0;
     for (const auto& change : snapshot.journal)
     {
-        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) || change.sequence >= snapshot.next_change_sequence)
+        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) ||
+            change.sequence >= snapshot.next_change_sequence)
             return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid journal sequence"));
         restored_changes.push_back(change);
         previous = change.sequence;
@@ -589,6 +750,7 @@ foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationS
     layer_ids_.Restore(snapshot.layer_ids);
     revision_ = snapshot.revision;
     next_change_sequence_ = snapshot.next_change_sequence;
+    RebuildIndexes();
     return foundation::Result<void>::Success();
 }
 

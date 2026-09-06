@@ -4,7 +4,9 @@
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 
 #include <cstddef>
+#include <limits>
 #include <cstdint>
+#include <deque>
 #include <functional>
 #include <optional>
 #include <span>
@@ -179,10 +181,20 @@ struct InteractionChange
     GameplayContext context{};
     Revision revision{};
     TypeId reason{};
+    std::optional<ScheduleId> completion_schedule{};
 };
+struct InteractionChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<InteractionChange> changes;
+};
+
 struct InteractionDiagnostics
 {
     std::uint64_t candidate_requests = 0, candidates = 0, sessions = 0, completed = 0, cancelled = 0, failed = 0;
+    std::uint64_t callback_failures = 0;
+    std::uint64_t dropped_changes = 0;
 };
 
 class IInteractionProvider
@@ -197,8 +209,9 @@ class IInteractionExecutor
   public:
     virtual ~IInteractionExecutor() = default;
     [[nodiscard]] virtual foundation::Result<void> Validate(const InteractionPlan &plan) const = 0;
+    // Commit is the irreversible stage. Implementations must prepare all fallible work in Validate/other preflight code.
     [[nodiscard]] virtual foundation::Result<void> Commit(const InteractionPlan &plan,
-                                                          InteractionExecutionId execution) = 0;
+                                                          InteractionExecutionId execution) noexcept = 0;
 };
 class IInteractionStateProvider
 {
@@ -217,6 +230,7 @@ class InteractionService
         return GameplayDomainId::FromString("framework.interaction");
     }
     [[nodiscard]] foundation::Result<void> RegisterDefinition(InteractionDefinition definition);
+    // Registered providers/executors are non-owning boot-time dependencies and must outlive this service.
     [[nodiscard]] foundation::Result<void> RegisterProvider(const IInteractionProvider &provider);
     [[nodiscard]] foundation::Result<void> RegisterExecutor(InteractionTypeId type, IInteractionExecutor &executor);
     void SetStateProvider(const IInteractionStateProvider *provider) noexcept
@@ -244,9 +258,18 @@ class InteractionService
     [[nodiscard]] const InteractionSession *FindSession(InteractionExecutionId id) const noexcept;
     [[nodiscard]] std::optional<InteractionSession> FindSessionCopy(InteractionExecutionId id) const noexcept;
     [[nodiscard]] std::vector<InteractionSession> FindActive(GameplayObjectRef actor) const;
+    // Persistent timed sessions restored from a snapshot intentionally have no scheduler handle.
+    // Time integration must enumerate and bind these sessions before normal timed processing resumes.
+    [[nodiscard]] std::vector<InteractionSession> SessionsRequiringSchedule() const;
     [[nodiscard]] InteractionSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(InteractionSnapshot snapshot);
     [[nodiscard]] std::vector<InteractionChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] InteractionChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    {
+        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1;
+    }
+    [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
     [[nodiscard]] InteractionDiagnostics GetDiagnostics() const noexcept;
 
   private:
@@ -288,8 +311,11 @@ class InteractionService
     bool frozen_ = false;
     mutable std::uint64_t candidate_requests_ = 0, candidates_ = 0;
     std::uint64_t completed_ = 0, cancelled_ = 0, failed_ = 0;
-    std::vector<InteractionChange> changes_;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+    std::deque<InteractionChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    mutable std::uint64_t callback_failures_ = 0;
+    std::uint64_t dropped_changes_ = 0;
 };
 } // namespace epidemic::gameplay::interaction
 

@@ -12,6 +12,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -217,10 +218,9 @@ class IRewardHandler
   public:
     virtual ~IRewardHandler() = default;
     [[nodiscard]] virtual RewardTypeId Type() const noexcept = 0;
-    [[nodiscard]] virtual foundation::Result<RewardDeliveryDisposition> Validate(
-        const RewardOperation &operation) const = 0;
-
-    // Prepare is the only fallible stage. A successful Delivered stage must reserve
+    // Prepare is the only authoritative fallible validation stage. UI/preflight checks
+    // must be treated as advisory outside LootService and must call Prepare again before commit.
+    // A successful Delivered stage must reserve
     // everything required for Commit. Commit and Cancel are infallible and idempotent.
     [[nodiscard]] virtual foundation::Result<RewardDeliveryStage> Prepare(const RewardOperation &operation) = 0;
     virtual void Commit(RewardDeliveryStage &stage) noexcept = 0;
@@ -247,6 +247,7 @@ struct PendingReward
 enum class LootChangeKind
 {
     Generated,
+    Discarded,
     Available,
     Claimed,
     Expired,
@@ -272,10 +273,18 @@ struct LootSnapshot
     std::vector<RewardBundle> generated;
     std::vector<PendingReward> pending;
     std::vector<RewardExecutionId> claimed;
+    std::uint64_t claimed_history_floor_low = 0;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot execution_ids{};
     std::vector<LootChange> journal;
     std::uint64_t next_change_sequence = 1;
 };
+enum class RewardClaimHistoryStatus
+{
+    Unknown,
+    Claimed,
+    HistoryExpired
+};
+
 struct LootDiagnostics
 {
     std::uint64_t rolls = 0, entries_evaluated = 0, bundles = 0, pending = 0, claims = 0, delivery_failures = 0,
@@ -300,9 +309,22 @@ class LootService
         conditions_ = provider;
     }
 
-    [[nodiscard]] foundation::Result<RewardBundle> Generate(LootTableId table, LootContext context);
+    // Pure deterministic resolution. The returned bundle has no tracked execution ID and
+    // does not consume generated-bundle capacity. It cannot be passed to MakePending().
+    [[nodiscard]] foundation::Result<RewardBundle> Preview(LootTableId table, LootContext context);
+    [[nodiscard]] foundation::Result<RewardBundle> GenerateTracked(LootTableId table, LootContext context);
+    // Compatibility alias for authoritative tracked generation.
+    [[nodiscard]] foundation::Result<RewardBundle> Generate(LootTableId table, LootContext context)
+    {
+        return GenerateTracked(table, std::move(context));
+    }
+    [[nodiscard]] foundation::Result<void> DiscardGenerated(RewardExecutionId reward, GameplayContext context = {});
     [[nodiscard]] foundation::Result<RewardExecutionId> MakePending(RewardBundle bundle,
                                                                     std::optional<GameplayTimePoint> expires_at = {});
+    // Idempotent transition for a tracked generated bundle. Useful for durable integration delivery.
+    [[nodiscard]] foundation::Result<RewardExecutionId> MakePending(RewardExecutionId reward,
+                                                                    std::optional<GameplayTimePoint> expires_at = {});
+    [[nodiscard]] const RewardBundle* FindGenerated(RewardExecutionId reward) const noexcept;
     [[nodiscard]] foundation::Result<void> BindSchedule(RewardExecutionId reward, ScheduleId schedule);
     [[nodiscard]] foundation::Result<void> Claim(RewardExecutionId reward, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> Expire(RewardExecutionId reward, GameplayTimePoint now,
@@ -310,6 +332,9 @@ class LootService
     [[nodiscard]] foundation::Result<void> Cancel(RewardExecutionId reward, GameplayContext context = {});
     [[nodiscard]] const PendingReward *FindPending(RewardExecutionId reward) const noexcept;
     [[nodiscard]] std::vector<PendingReward> PendingFor(GameplayObjectRef recipient) const;
+    // Stable recovery enumeration for Time/SaveGame orchestration after restore.
+    [[nodiscard]] std::vector<PendingReward> AllPending() const;
+    [[nodiscard]] RewardClaimHistoryStatus ClaimHistoryStatus(RewardExecutionId reward) const noexcept;
     [[nodiscard]] bool WasClaimed(RewardExecutionId reward) const noexcept;
 
     [[nodiscard]] std::vector<LootChange> ChangesSince(std::uint64_t sequence) const;
@@ -325,7 +350,7 @@ class LootService
     [[nodiscard]] foundation::Result<void> EmitEntry(const LootEntry &entry, const LootContext &context,
                                                      random::RandomSequence &sequence,
                                                      std::vector<RewardOperation> &out, std::uint32_t depth);
-    [[nodiscard]] bool EntryAllowed(const LootEntry &entry, const LootContext &context) const;
+    [[nodiscard]] foundation::Result<bool> EntryAllowed(const LootEntry &entry, const LootContext &context) const;
     [[nodiscard]] foundation::Result<void> ValidateNestedTables() const;
     void Record(LootChange change);
 
@@ -337,6 +362,7 @@ class LootService
     std::unordered_map<RewardExecutionId, PendingReward, IdHash> pending_;
     std::unordered_set<RewardExecutionId, IdHash> claimed_;
     std::deque<RewardExecutionId> claimed_order_;
+    std::uint64_t claimed_history_floor_low_ = 0;
     MonotonicIdGenerator<GameplayObjectId> execution_ids_;
     bool frozen_ = false;
     static constexpr std::size_t kGeneratedCapacity = 4096;

@@ -1,8 +1,8 @@
-#include "Epidemic/Core/task_scheduler.h"
 #include "Epidemic/GameFramework/Effects/effects.h"
 
 #include <unordered_map>
 #include <optional>
+#include <stdexcept>
 
 using namespace epidemic;
 using namespace epidemic::gameplay;
@@ -34,7 +34,7 @@ class CountingHandler final : public IEffectHandler
         return foundation::Result<EffectPrepareResult>::Success(
             {operation.magnitude_micro < 0 ? EffectPrepareDisposition::Rejected : EffectPrepareDisposition::Accepted, {}});
     }
-    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(const EffectOperation& operation, const RegisteredEffectPayload&) override
+    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(const EffectOperation& operation, const RegisteredEffectPayload&) noexcept override
     {
         values_[operation.target] += static_cast<int>(operation.magnitude_micro);
         if (observed_context_ != nullptr) *observed_context_ = operation.context;
@@ -69,9 +69,27 @@ class MaterializedHandler final : public IEffectHandler
     {
         return foundation::Result<EffectPrepareResult>::Success({EffectPrepareDisposition::Accepted, {}});
     }
-    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(const EffectOperation&, const RegisteredEffectPayload&) override
+    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(const EffectOperation&, const RegisteredEffectPayload&) noexcept override
     {
         return foundation::Result<EffectCommitResult>::Success({EffectCommitDisposition::Applied, {}});
+    }
+  private:
+    EffectTypeId type_{};
+};
+
+class ThrowingPrepareHandler final : public IEffectHandler
+{
+  public:
+    explicit ThrowingPrepareHandler(EffectTypeId type) : type_(type) {}
+    [[nodiscard]] EffectTypeId Type() const noexcept override { return type_; }
+    [[nodiscard]] EffectHandlerCapabilities Capabilities() const noexcept override { return {}; }
+    [[nodiscard]] foundation::Result<EffectPrepareResult> Prepare(const EffectOperation&) const override
+    {
+        throw std::runtime_error("prepare failed");
+    }
+    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(const EffectOperation&, const RegisteredEffectPayload&) noexcept override
+    {
+        return foundation::Result<EffectCommitResult>::Success({});
     }
   private:
     EffectTypeId type_{};
@@ -88,10 +106,16 @@ int main()
     const auto derived_type = EffectTypeId::FromString("test.effect.derived");
     const auto root_type = EffectTypeId::FromString("test.effect.root");
     const auto materialized_type = EffectTypeId::FromString("test.effect.materialized");
+    const auto throwing_type = EffectTypeId::FromString("test.effect.throwing_prepare");
+    const auto validated_type = EffectTypeId::FromString("test.effect.validator");
     std::optional<GameplayContext> observed_derived_context;
     if (!service.RegisterHandler("test.effect.derived", std::make_shared<CountingHandler>(derived_type, values, EffectTypeId{}, &observed_derived_context)) ||
         !service.RegisterHandler("test.effect.root", std::make_shared<CountingHandler>(root_type, values, derived_type)) ||
-        !service.RegisterHandler("test.effect.materialized", std::make_shared<MaterializedHandler>(materialized_type))) return 1;
+        !service.RegisterHandler("test.effect.materialized", std::make_shared<MaterializedHandler>(materialized_type)) ||
+        !service.RegisterHandler("test.effect.throwing_prepare", std::make_shared<ThrowingPrepareHandler>(throwing_type)) ||
+        !service.RegisterHandler("test.effect.validator", std::make_shared<CountingHandler>(validated_type, values),
+                                 TypeId::FromString("test.payload"), sizeof(std::uint32_t),
+                                 [](std::span<const std::byte>) -> bool { throw std::runtime_error("validator failed"); })) return 1;
 
     EffectDefinition definition;
     definition.canonical_name = "test.effect.bundle";
@@ -101,7 +125,18 @@ int main()
     mat_definition.canonical_name = "test.effect.mat_bundle";
     mat_definition.steps.push_back(EffectStepDefinition{materialized_type, EffectTargetSelector::AllTargets, 1, {}});
     const auto mat_id = service.RegisterDefinition(mat_definition);
-    if (!definition_id || !mat_id) return 2;
+    EffectDefinition throwing_definition;
+    throwing_definition.canonical_name = "test.effect.throwing_bundle";
+    throwing_definition.steps.push_back(EffectStepDefinition{throwing_type, EffectTargetSelector::AllTargets, 1, {}});
+    const auto throwing_id = service.RegisterDefinition(throwing_definition);
+    if (!definition_id || !mat_id || !throwing_id) return 2;
+
+    // A throwing validator must be converted into a controlled registration failure.
+    EffectDefinition validator_definition;
+    validator_definition.canonical_name = "test.effect.validator_bundle";
+    validator_definition.steps.push_back(EffectStepDefinition{validated_type, EffectTargetSelector::AllTargets, 1,
+        RegisteredEffectPayload::FromTrivial(TypeId::FromString("test.payload"), std::uint32_t{7})});
+    if (service.RegisterDefinition(std::move(validator_definition))) return 21;
     service.Freeze();
     EffectDefinition late_definition;
     late_definition.canonical_name = "test.effect.late";
@@ -125,8 +160,7 @@ int main()
     request.context.parent_operation = OperationId::FromString("test.effect.parent");
     request.context.cause_event = EventId::FromString("test.effect.event");
 
-    core::tasks::SimpleTaskScheduler scheduler(4);
-    const auto executed = service.Execute(request, {}, &scheduler);
+    const auto executed = service.Execute(request);
     if (!executed || executed.Value().disposition != EffectBatchDisposition::Succeeded || executed.Value().waves != 2) return 4;
     if (values[a] != 3 || values[b] != 3 || service.GetDiagnostics().derived_effects != 2) return 5;
     if (!observed_derived_context.has_value()) return 51;
@@ -164,7 +198,28 @@ int main()
     if (!service.RestoreSnapshot(snapshot) || service.FindDeferred(deferred.Value()) == nullptr) return 12;
     if (service.CancelDeferredTargeting(a) != 1) return 13;
 
-    scheduler.Shutdown();
+    EffectRequest throwing_request;
+    throwing_request.definition = throwing_id.Value();
+    throwing_request.targets = {a};
+    const auto throwing_result = service.Execute(throwing_request);
+    if (!throwing_result || throwing_result.Value().operations.size() != 1 ||
+        throwing_result.Value().operations.front().disposition != EffectOperationDisposition::Failed) return 14;
+
+    // Restore must reject wrong generator scopes and a deferred generator behind restored IDs without mutating service state.
+    const auto stable_snapshot = service.CaptureSnapshot();
+    auto bad_scope = stable_snapshot;
+    bad_scope.execution_ids.scope ^= 0x55u;
+    if (service.RestoreSnapshot(bad_scope)) return 15;
+    const auto after_bad_scope = service.CaptureSnapshot();
+    if (after_bad_scope.execution_ids.scope != stable_snapshot.execution_ids.scope ||
+        after_bad_scope.deferred_ids.scope != stable_snapshot.deferred_ids.scope ||
+        after_bad_scope.deferred.size() != stable_snapshot.deferred.size()) return 16;
+
+    auto behind = snapshot;
+    if (behind.deferred.empty()) return 17;
+    behind.deferred_ids.next = behind.deferred.front().id.value.Low();
+    if (service.RestoreSnapshot(std::move(behind))) return 18;
+
     return 0;
 }
 

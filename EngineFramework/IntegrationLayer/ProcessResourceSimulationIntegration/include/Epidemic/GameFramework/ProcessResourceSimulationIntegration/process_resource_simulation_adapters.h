@@ -4,6 +4,7 @@
 #include "Epidemic/GameFramework/ResourcesProduction/resources_production.h"
 #include "Epidemic/GameFramework/Simulation/simulation.h"
 
+#include <optional>
 #include <vector>
 
 namespace epidemic::gameplay::integration
@@ -17,6 +18,20 @@ struct ProcessResourceReservationPayload
 {
     resources::ResourceReservationId reservation{};
 };
+struct PreparedProcessResourceOutputPayload
+{
+    resources::ResourceStockpileId stockpile{};
+    resources::ResourceTypeId resource{};
+    processes::Fixed amount = 0;
+};
+
+[[nodiscard]] processes::RegisteredPayload EncodeProcessResourcePayload(ProcessResourcePayload payload);
+[[nodiscard]] std::optional<ProcessResourcePayload> DecodeProcessResourcePayload(
+    const processes::RegisteredPayload &payload);
+[[nodiscard]] processes::RegisteredPayload EncodeProcessResourceReservationPayload(
+    ProcessResourceReservationPayload payload);
+[[nodiscard]] std::optional<ProcessResourceReservationPayload> DecodeProcessResourceReservationPayload(
+    const processes::RegisteredPayload &payload);
 
 class ResourceProcessInputProvider final : public processes::IProcessInputProvider
 {
@@ -24,6 +39,7 @@ public:
     explicit ResourceProcessInputProvider(resources::ResourcesProductionService& resources) : resources_(resources) {}
     [[nodiscard]] static constexpr TypeId PayloadType() noexcept { return TypeId::FromString("framework.process.resource.payload"); }
     [[nodiscard]] static constexpr TypeId ReservationPayloadType() noexcept { return TypeId::FromString("framework.process.resource.reservation"); }
+    [[nodiscard]] foundation::Result<void> Validate(const processes::ProcessInputDefinition& input, const processes::StartProcessRequest& request, processes::ProcessInstanceId instance) override;
     [[nodiscard]] foundation::Result<processes::ReservedProcessInput> Reserve(const processes::ProcessInputDefinition& input, const processes::StartProcessRequest& request, processes::ProcessInstanceId instance) override;
     [[nodiscard]] foundation::Result<void> Consume(const processes::ReservedProcessInput& reservation, GameplayContext context) override;
     [[nodiscard]] foundation::Result<void> Release(const processes::ReservedProcessInput& reservation, GameplayContext context) override;
@@ -37,7 +53,9 @@ public:
     explicit ResourceProcessOutputHandler(resources::ResourcesProductionService& resources) : resources_(resources) {}
     [[nodiscard]] static constexpr processes::ProcessOutputTypeId OutputType() noexcept { return processes::ProcessOutputTypeId::FromString("framework.output.resource"); }
     [[nodiscard]] bool Supports(processes::ProcessOutputTypeId type) const noexcept override { return type == OutputType(); }
-    [[nodiscard]] foundation::Result<void> Produce(const processes::ProcessOutputDefinition& output, const processes::ProcessInstance& instance, GameplayContext context) override;
+    [[nodiscard]] foundation::Result<processes::PreparedProcessOutput> Prepare(const processes::ProcessOutputDefinition& output, const processes::ProcessInstance& instance, GameplayContext context) override;
+    [[nodiscard]] foundation::Result<void> Commit(const processes::PreparedProcessOutput& output, const processes::ProcessInstance& instance, GameplayContext context) override;
+    [[nodiscard]] foundation::Result<void> Cancel(const processes::PreparedProcessOutput& output, const processes::ProcessInstance& instance, GameplayContext context) override;
 private:
     resources::ResourcesProductionService& resources_;
 };

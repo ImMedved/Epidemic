@@ -1,6 +1,7 @@
 #include "Epidemic/GameFramework/Integration/core_adapters.h"
 
 #include <memory>
+#include <stdexcept>
 #include <vector>
 
 using namespace epidemic;
@@ -45,25 +46,28 @@ int main()
     const auto fact_type = facts.RegisterFactType<int>("framework.test.value", test_domain);
     const auto clock = time.RegisterClock("framework.clock.world", CalendarDefinition{});
     const auto action = time.RegisterAction("framework.test.scheduled", test_domain);
-    if (!fact_type || !clock || !action)
+    const auto second_action = time.RegisterAction("framework.test.second_scheduled", test_domain);
+    if (!fact_type || !clock || !action || !second_action)
     {
         return 1;
     }
 
-    TestSnapshotCoordinator snapshot_coordinator;
-    if (!queries.SetSnapshotCoordinator(&snapshot_coordinator))
+    auto snapshot_coordinator = std::make_shared<TestSnapshotCoordinator>();
+    if (!queries.SetSnapshotCoordinator(snapshot_coordinator))
     {
         return 21;
     }
 
     FactsQueryAdapter facts_query(facts, queries);
-    if (!facts_query.RegisterProviders())
+    if (!facts_query.RegisterProviders() || !facts_query.RegisterProviders() || !facts_query.IsRegistered())
     {
         return 2;
     }
-    TimeFactsAdapter time_facts(time, facts);
+
+    TimeFactsAdapter time_facts(facts);
     const auto due_event = time_facts.RegisterContracts();
-    if (!due_event)
+    const auto due_event_again = time_facts.RegisterContracts();
+    if (!due_event || !due_event_again || due_event.Value() != due_event_again.Value())
     {
         return 3;
     }
@@ -76,6 +80,50 @@ int main()
             }))
     {
         return 4;
+    }
+
+    ScheduledTriggerDispatcher dispatcher(time, ScheduledTriggerDispatcherPolicy{32, 32});
+    if (!time_facts.RegisterWithDispatcher(dispatcher) || !time_facts.RegisterWithDispatcher(dispatcher))
+    {
+        return 41;
+    }
+
+    int primary_attempts = 0;
+    if (!dispatcher.RegisterActionHandler(
+            action.Value(),
+            ScheduledTriggerHandlerId::FromString("framework.test.primary_handler"),
+            [&primary_attempts](const ScheduledTrigger&, const GameplayContext&) {
+                ++primary_attempts;
+                if (primary_attempts == 1)
+                {
+                    return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Retry);
+                }
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }))
+    {
+        return 42;
+    }
+
+    int second_deliveries = 0;
+    if (!dispatcher.RegisterActionHandler(
+            second_action.Value(),
+            ScheduledTriggerHandlerId::FromString("framework.test.second_handler"),
+            [&second_deliveries](const ScheduledTrigger&, const GameplayContext&) {
+                ++second_deliveries;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }))
+    {
+        return 43;
+    }
+
+    dispatcher.Freeze();
+    if (dispatcher.RegisterObserver(
+            ScheduledTriggerHandlerId::FromString("framework.test.late_handler"), 0,
+            [](const ScheduledTrigger&, const GameplayContext&) {
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }))
+    {
+        return 44;
     }
 
     facts.Freeze();
@@ -133,8 +181,10 @@ int main()
     {
         return 7;
     }
+
     const auto scheduled = time.Schedule(clock.Value(), GameplayTimePoint{10}, object, action.Value());
-    if (!scheduled)
+    const auto scheduled_second = time.Schedule(clock.Value(), GameplayTimePoint{10}, object, second_action.Value());
+    if (!scheduled || !scheduled_second)
     {
         return 8;
     }
@@ -147,14 +197,122 @@ int main()
     }
     context.tick = GameplayTickId{2};
     context.time = GameplayTimePoint{10};
-    const auto triggers = time_facts.CollectAndPublish(clock.Value(), context);
-    if (!triggers || triggers.Value().size() != 1)
+
+    const auto first_pump = dispatcher.Pump(clock.Value(), context);
+    if (!first_pump || first_pump.Value().collected != 2 || first_pump.Value().pending != 1 || primary_attempts != 1 ||
+        second_deliveries != 1)
     {
         return 10;
     }
-    if (!facts.Dispatch() || due_count != 1)
+    if (!facts.Dispatch() || due_count != 2)
     {
         return 11;
+    }
+
+    // TimeFacts observer already Acked the primary trigger. Retry must execute only the failed action leg,
+    // therefore the scheduled Facts event is not published twice.
+    const auto pending_snapshot = dispatcher.CaptureSnapshot();
+    if (pending_snapshot.pending.size() != 1 || pending_snapshot.pending.front().completed_handlers.size() != 1)
+    {
+        return 12;
+    }
+
+    ScheduledTriggerDispatcher restored_dispatcher(time, ScheduledTriggerDispatcherPolicy{32, 32});
+    int restored_observer_calls = 0;
+    int restored_action_calls = 0;
+    if (!restored_dispatcher.RegisterObserver(
+            ScheduledTriggerHandlerId::FromString("framework.integration.time_facts"), 0,
+            [&restored_observer_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++restored_observer_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !restored_dispatcher.RegisterActionHandler(
+            action.Value(), ScheduledTriggerHandlerId::FromString("framework.test.primary_handler"),
+            [&restored_action_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++restored_action_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }))
+    {
+        return 121;
+    }
+    restored_dispatcher.Freeze();
+    if (!restored_dispatcher.RestoreSnapshot(pending_snapshot))
+    {
+        return 122;
+    }
+    const auto restored_report = restored_dispatcher.DispatchPending();
+    if (restored_report.pending != 0 || restored_observer_calls != 0 || restored_action_calls != 1)
+    {
+        return 123;
+    }
+
+    const auto retry_report = dispatcher.DispatchPending();
+    if (retry_report.pending != 0 || retry_report.acknowledged != 1 || primary_attempts != 2)
+    {
+        return 13;
+    }
+    if (!facts.Dispatch() || due_count != 2)
+    {
+        return 14;
+    }
+
+    // A throwing action handler becomes Retry and never loses the collected occurrence.
+    const auto throwing_action = ActionTypeId::FromString("framework.test.throwing");
+    GameplayTimeService retry_time;
+    const auto retry_clock = retry_time.RegisterClock("framework.clock.retry", CalendarDefinition{});
+    const auto retry_action = retry_time.RegisterAction("framework.test.throwing", test_domain);
+    if (!retry_clock || !retry_action || retry_action.Value() != throwing_action)
+    {
+        return 15;
+    }
+    ScheduledTriggerDispatcher retry_dispatcher(retry_time, ScheduledTriggerDispatcherPolicy{4, 4});
+    int throw_attempts = 0;
+    if (!retry_dispatcher.RegisterActionHandler(
+            retry_action.Value(), ScheduledTriggerHandlerId::FromString("framework.test.throw_handler"),
+            [&throw_attempts](const ScheduledTrigger&, const GameplayContext&) -> foundation::Result<ScheduledTriggerDisposition> {
+                ++throw_attempts;
+                if (throw_attempts == 1)
+                {
+                    throw std::runtime_error("injected");
+                }
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }))
+    {
+        return 16;
+    }
+    retry_dispatcher.Freeze();
+    retry_time.Freeze();
+    if (!retry_time.AdvanceTo(retry_clock.Value(), GameplayTimePoint{20}) ||
+        !retry_time.Schedule(retry_clock.Value(), GameplayTimePoint{20}, object, retry_action.Value()))
+    {
+        return 17;
+    }
+    const auto retry_pump = retry_dispatcher.Pump(retry_clock.Value(), GameplayContext{});
+    if (!retry_pump || retry_pump.Value().pending != 1 || retry_pump.Value().handler_failures != 1)
+    {
+        return 18;
+    }
+    const auto retry_snapshot = retry_dispatcher.CaptureSnapshot();
+    if (retry_snapshot.pending.size() != 1)
+    {
+        return 19;
+    }
+    const auto final_retry = retry_dispatcher.DispatchPending();
+    if (final_retry.pending != 0 || throw_attempts != 2)
+    {
+        return 20;
+    }
+
+    // Restore is transactional and rejects duplicate/corrupt pending occurrence without replacing current state.
+    auto corrupt = retry_snapshot;
+    corrupt.pending.push_back(corrupt.pending.front());
+    if (retry_dispatcher.RestoreSnapshot(std::move(corrupt)))
+    {
+        return 22;
+    }
+    if (retry_dispatcher.PendingCount() != 0)
+    {
+        return 23;
     }
 
     return 0;

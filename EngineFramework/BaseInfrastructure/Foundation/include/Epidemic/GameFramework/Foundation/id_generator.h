@@ -17,8 +17,9 @@ template <typename TId> class MonotonicIdGenerator
         std::uint64_t next = 1;
     };
 
-    // Unscoped generator is reserved for local/session-only IDs. Persistent or globally addressable IDs
-    // must use an explicit deterministic scope (numeric, IdScopeId or FromScopeName).
+    // Scope 1 is reserved for local/session-only IDs. Persistent or globally addressable IDs
+    // must use an explicit deterministic scope (numeric, IdScopeId or FromScopeName) and validate
+    // restored snapshots with ValidateMonotonicIdGeneratorSnapshot before calling Restore().
     constexpr MonotonicIdGenerator() noexcept = default;
     explicit constexpr MonotonicIdGenerator(std::uint64_t scope) noexcept : scope_(NormalizeScope(scope)) {}
     explicit constexpr MonotonicIdGenerator(IdScopeId scope) noexcept : scope_(NormalizeScope(scope.Raw())) {}
@@ -50,6 +51,9 @@ template <typename TId> class MonotonicIdGenerator
     [[nodiscard]] constexpr IdScopeId Scope() const noexcept { return IdScopeId::FromRaw(scope_); }
     [[nodiscard]] Snapshot GetSnapshot() const noexcept { return Snapshot{scope_, next_}; }
 
+    // Low-level structural check. State owners restoring persisted IDs should use
+    // ValidateMonotonicIdGeneratorSnapshot instead, because only the owner knows the expected
+    // persistent scope and the maximum restored low-part for its records.
     [[nodiscard]] static constexpr bool IsValidSnapshot(Snapshot snapshot) noexcept { return snapshot.scope != 0; }
 
     void Restore(Snapshot snapshot) noexcept
@@ -67,4 +71,87 @@ template <typename TId> class MonotonicIdGenerator
     std::uint64_t scope_ = 1;
     std::uint64_t next_ = 1;
 };
+
+enum class MonotonicIdGeneratorSnapshotStatus
+{
+    Valid,
+    InvalidExpectedScope,
+    InvalidSnapshotScope,
+    UnexpectedScope,
+    SequenceNotAheadOfRestoredIds,
+};
+
+struct MonotonicIdGeneratorSnapshotValidation
+{
+    MonotonicIdGeneratorSnapshotStatus status = MonotonicIdGeneratorSnapshotStatus::Valid;
+    std::uint64_t expected_scope = 0;
+    std::uint64_t snapshot_scope = 0;
+    std::uint64_t snapshot_next = 0;
+    std::uint64_t max_restored_low_part = 0;
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return status == MonotonicIdGeneratorSnapshotStatus::Valid;
+    }
+
+    [[nodiscard]] constexpr explicit operator bool() const noexcept { return IsValid(); }
+
+    [[nodiscard]] constexpr std::string_view Code() const noexcept
+    {
+        switch (status)
+        {
+        case MonotonicIdGeneratorSnapshotStatus::Valid:
+            return "gameplay.id_generator_snapshot_valid";
+        case MonotonicIdGeneratorSnapshotStatus::InvalidExpectedScope:
+            return "gameplay.id_generator_expected_scope_invalid";
+        case MonotonicIdGeneratorSnapshotStatus::InvalidSnapshotScope:
+            return "gameplay.id_generator_snapshot_scope_invalid";
+        case MonotonicIdGeneratorSnapshotStatus::UnexpectedScope:
+            return "gameplay.id_generator_snapshot_scope_mismatch";
+        case MonotonicIdGeneratorSnapshotStatus::SequenceNotAheadOfRestoredIds:
+            return "gameplay.id_generator_snapshot_sequence_stale";
+        }
+        return "gameplay.id_generator_snapshot_unknown";
+    }
+};
+
+template <typename TId>
+[[nodiscard]] constexpr MonotonicIdGeneratorSnapshotValidation ValidateMonotonicIdGeneratorSnapshot(
+    typename MonotonicIdGenerator<TId>::Snapshot snapshot,
+    IdScopeId expected_scope,
+    std::uint64_t max_restored_low_part) noexcept
+{
+    MonotonicIdGeneratorSnapshotValidation result;
+    result.expected_scope = expected_scope.Raw();
+    result.snapshot_scope = snapshot.scope;
+    result.snapshot_next = snapshot.next;
+    result.max_restored_low_part = max_restored_low_part;
+
+    if (!expected_scope.IsValid())
+    {
+        result.status = MonotonicIdGeneratorSnapshotStatus::InvalidExpectedScope;
+        return result;
+    }
+    if (snapshot.scope == 0)
+    {
+        result.status = MonotonicIdGeneratorSnapshotStatus::InvalidSnapshotScope;
+        return result;
+    }
+    if (snapshot.scope != expected_scope.Raw())
+    {
+        result.status = MonotonicIdGeneratorSnapshotStatus::UnexpectedScope;
+        return result;
+    }
+
+    // next == 0 is the explicit exhausted state. Otherwise next must be strictly above every
+    // restored low-part, including the UINT64_MAX edge case where only exhausted is valid.
+    if (snapshot.next != 0 && snapshot.next <= max_restored_low_part)
+    {
+        result.status = MonotonicIdGeneratorSnapshotStatus::SequenceNotAheadOfRestoredIds;
+        return result;
+    }
+
+    result.status = MonotonicIdGeneratorSnapshotStatus::Valid;
+    return result;
+}
 } // namespace epidemic::gameplay

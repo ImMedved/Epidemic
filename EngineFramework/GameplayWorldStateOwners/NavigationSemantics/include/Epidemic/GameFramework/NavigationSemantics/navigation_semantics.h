@@ -147,6 +147,8 @@ struct RefHash
 };
 using Fixed = std::int64_t;
 
+// Composition contract: Deny is terminal. Allow does not override a Deny; it means no additional restriction.
+// Avoid/Prefer/AddCost only modify semantic cost/availability and remain order-dependent by declared priority/id.
 enum class NavigationDecisionKind
 {
     Allow,
@@ -210,6 +212,7 @@ struct NavigationSemanticLayer
 {
     NavigationLayerId id{};
     GameplayObjectRef area{};
+    GameplayObjectRef source{};
     NavigationLayerTypeId type{};
     std::int32_t priority = 0;
     NavigationLayerLifetime lifetime = NavigationLayerLifetime::Persistent;
@@ -347,13 +350,21 @@ class NavigationSemanticsService
     [[nodiscard]] foundation::Result<void> SetProfile(NavigationSemanticProfile profile, GameplayContext context = {});
     [[nodiscard]] foundation::Result<NavigationLayerId> AddLayer(NavigationSemanticLayer layer,
                                                                  GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> UpdateLayer(NavigationLayerId id, NavigationSemanticLayer replacement,
+                                                       Revision expected_revision, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> RemoveLayer(NavigationLayerId id, GameplayContext context = {});
+    [[nodiscard]] std::uint64_t RemoveLayersBySource(GameplayObjectRef source, GameplayContext context = {});
     [[nodiscard]] std::uint64_t ExpireLayers(GameplayTimePoint now, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> AddOrUpdateLink(NavigationSemanticLink link, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RemoveLink(NavigationLinkId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> SetLinkState(NavigationLinkId id, LinkState state,
                                                         GameplayContext context = {});
-    [[nodiscard]] NavigationPermissionResult CanEnterArea(GameplayObjectRef subject, GameplayObjectRef area) const;
-    [[nodiscard]] NavigationPermissionResult CanUseLink(GameplayObjectRef subject, NavigationLinkId link) const;
+    [[nodiscard]] NavigationPermissionResult CanEnterArea(GameplayObjectRef subject, GameplayObjectRef area,
+                                                            TraversalModeSemanticId traversal_mode,
+                                                            const GameplayContext &context) const;
+    [[nodiscard]] NavigationPermissionResult CanUseLink(GameplayObjectRef subject, NavigationLinkId link,
+                                                        TraversalModeSemanticId traversal_mode,
+                                                        const GameplayContext &context) const;
     [[nodiscard]] NavigationPermissionResult EvaluatePath(NavigationPermissionQuery query) const;
     [[nodiscard]] std::vector<NavigationSemanticLayer> FindLayersInArea(GameplayObjectRef area) const;
     [[nodiscard]] std::vector<NavigationSemanticLink> FindLinksBetween(GameplayObjectRef from,
@@ -381,15 +392,40 @@ class NavigationSemanticsService
         ++revision_.value;
     }
     void Record(NavigationChange change);
+    [[nodiscard]] NavigationPermissionResult EvaluatePermission(const NavigationPermissionQuery &query,
+                                                                  std::optional<NavigationLinkId> required_link) const;
     [[nodiscard]] NavigationPermissionResult EvaluateAreaForProfile(const NavigationSemanticProfile *profile,
                                                                     GameplayObjectRef from_area, GameplayObjectRef area,
                                                                     TraversalModeSemanticId traversal_mode,
                                                                     const GameplayContext &context) const;
+    void IndexLayer(const NavigationSemanticLayer &layer);
+    void UnindexLayer(const NavigationSemanticLayer &layer);
+    void IndexLink(const NavigationSemanticLink &link);
+    void UnindexLink(const NavigationSemanticLink &link);
+    void RebuildIndexes();
+    [[nodiscard]] foundation::Result<void> ValidateAndAdvanceLayerId(NavigationLayerId id);
     std::unordered_map<NavigationDomainId, NavigationDomainDefinition, IdHash> domains_;
     std::vector<NavigationRuleDefinition> rules_;
     std::unordered_map<GameplayObjectRef, NavigationSemanticProfile, RefHash> profiles_;
+    struct LinkPairKey
+    {
+        GameplayObjectRef from{};
+        GameplayObjectRef to{};
+        [[nodiscard]] bool operator==(const LinkPairKey &) const noexcept = default;
+    };
+    struct LinkPairHash
+    {
+        [[nodiscard]] std::size_t operator()(const LinkPairKey &key) const noexcept
+        {
+            const auto a = std::hash<GameplayObjectRef>{}(key.from);
+            const auto b = std::hash<GameplayObjectRef>{}(key.to);
+            return a ^ (b + 0x9e3779b97f4a7c15ULL + (a << 6U) + (a >> 2U));
+        }
+    };
     std::unordered_map<NavigationLayerId, NavigationSemanticLayer, IdHash> layers_;
     std::unordered_map<NavigationLinkId, NavigationSemanticLink, IdHash> links_;
+    std::unordered_map<GameplayObjectRef, std::vector<NavigationLayerId>, RefHash> layer_ids_by_area_;
+    std::unordered_map<LinkPairKey, std::vector<NavigationLinkId>, LinkPairHash> link_ids_by_pair_;
     MonotonicIdGenerator<GameplayObjectId> layer_ids_;
     const INavigationCapabilityProvider *capabilities_ = nullptr;
     const INavigationFactProvider *facts_ = nullptr;

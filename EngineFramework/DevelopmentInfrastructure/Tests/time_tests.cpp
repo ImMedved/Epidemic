@@ -209,6 +209,33 @@ int main()
     {
         return 31;
     }
+    if (kGameplayTicksPerSecond != 1 || kGameplayTicksPerMinute != 60 || kGameplayTicksPerHour != 3600)
+    {
+        return 32;
+    }
+
+    // External synchronization revisions are transient. The snapshot preserves only
+    // which clocks require a synchronization source to be rebound after restore.
+    const auto synchronized_snapshot = service.CaptureSnapshot();
+    if (synchronized_snapshot.externally_synchronized_clocks.size() != 1 ||
+        synchronized_snapshot.externally_synchronized_clocks.front() != clock.Value())
+    {
+        return 33;
+    }
+    if (!service.RestoreSnapshot(synchronized_snapshot) || !service.NeedsSynchronizationRebind(clock.Value()))
+    {
+        return 34;
+    }
+    const auto rebind_clocks = service.ClocksRequiringSynchronizationRebind();
+    if (rebind_clocks.size() != 1 || rebind_clocks.front() != clock.Value())
+    {
+        return 35;
+    }
+    if (!service.SynchronizeClock(clock.Value(), service.GetClock(clock.Value())->now, Revision{1}) ||
+        service.NeedsSynchronizationRebind(clock.Value()))
+    {
+        return 36;
+    }
 
     // Corrupt restore is atomic and a generator behind restored IDs is rejected.
     const auto good_snapshot = service.CaptureSnapshot();
@@ -216,7 +243,7 @@ int main()
     duplicate_snapshot.schedules.push_back(duplicate_snapshot.schedules.front());
     if (service.RestoreSnapshot(duplicate_snapshot) || !service.HasSchedule(schedule.Value()))
     {
-        return 32;
+        return 37;
     }
     auto behind_snapshot = good_snapshot;
     if (!behind_snapshot.schedules.empty())
@@ -228,8 +255,15 @@ int main()
         }
         if (service.RestoreSnapshot(behind_snapshot))
         {
-            return 33;
+            return 38;
         }
+    }
+
+    auto invalid_sync_snapshot = good_snapshot;
+    invalid_sync_snapshot.externally_synchronized_clocks = {clock.Value(), clock.Value()};
+    if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))
+    {
+        return 39;
     }
 
     return 0;

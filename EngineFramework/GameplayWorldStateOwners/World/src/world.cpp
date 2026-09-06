@@ -27,35 +27,45 @@ WorldTransaction::WorldTransaction(WorldService& owner, GameplayContext context)
 foundation::Result<WorldAlterationId> WorldTransaction::Create(WorldAlterationRecord record)
 {
     if (!owner_ || committed_ || cancelled_) return foundation::Result<WorldAlterationId>::Failure(Error("gameplay.world.transaction_closed", "world transaction is closed"));
-    if (!record.id.IsValid()) record.id = WorldAlterationId{owner_->alteration_ids_.Next()};
+    if (!record.id.IsValid())
+        record.id = WorldAlterationId{owner_->alteration_ids_.Next()};
+    else
+    {
+        if (owner_->alterations_.contains(record.id))
+            return foundation::Result<WorldAlterationId>::Failure(Error("gameplay.world.invalid_alteration", "alteration already exists"));
+        if (auto sync = owner_->SynchronizeRequestedAlterationId(record.id); !sync)
+            return foundation::Result<WorldAlterationId>::Failure(sync.GetError());
+    }
     if (!record.id.IsValid()) return foundation::Result<WorldAlterationId>::Failure(Error("gameplay.world.alteration_id_exhausted", "world alteration id generator is exhausted"));
     for (const auto& mutation : mutations_)
     {
-        const auto existing = mutation.kind == Kind::Remove ? mutation.id : mutation.record.id;
+        const auto existing = mutation.id.IsValid() ? mutation.id : mutation.record.id;
         if (existing == record.id) return foundation::Result<WorldAlterationId>::Failure(Error("gameplay.world.transaction_duplicate_target", "world transaction may mutate an alteration only once"));
     }
-    mutations_.push_back({Kind::Create, std::move(record), {}});
+    Mutation mutation; mutation.kind = Kind::Create; mutation.id = record.id; mutation.record = std::move(record);
+    mutations_.push_back(std::move(mutation));
     return foundation::Result<WorldAlterationId>::Success(mutations_.back().record.id);
 }
-foundation::Result<void> WorldTransaction::Update(WorldAlterationRecord record)
+foundation::Result<void> WorldTransaction::Update(WorldAlterationId id, WorldAlterationUpdate update)
 {
-    if (!owner_ || committed_ || cancelled_ || !record.id.IsValid()) return foundation::Result<void>::Failure(Error("gameplay.world.transaction_invalid", "world update is invalid"));
+    if (!owner_ || committed_ || cancelled_ || !id.IsValid()) return foundation::Result<void>::Failure(Error("gameplay.world.transaction_invalid", "world update is invalid"));
     for (const auto& mutation : mutations_)
     {
-        const auto existing = mutation.kind == Kind::Remove ? mutation.id : mutation.record.id;
-        if (existing == record.id) return foundation::Result<void>::Failure(Error("gameplay.world.transaction_duplicate_target", "world transaction may mutate an alteration only once"));
+        const auto existing = mutation.id.IsValid() ? mutation.id : mutation.record.id;
+        if (existing == id) return foundation::Result<void>::Failure(Error("gameplay.world.transaction_duplicate_target", "world transaction may mutate an alteration only once"));
     }
-    mutations_.push_back({Kind::Update, std::move(record), {}}); return foundation::Result<void>::Success();
+    Mutation mutation; mutation.kind = Kind::Update; mutation.id = id; mutation.update = std::move(update);
+    mutations_.push_back(std::move(mutation)); return foundation::Result<void>::Success();
 }
 foundation::Result<void> WorldTransaction::Remove(WorldAlterationId id)
 {
     if (!owner_ || committed_ || cancelled_ || !id.IsValid()) return foundation::Result<void>::Failure(Error("gameplay.world.transaction_invalid", "world remove is invalid"));
     for (const auto& mutation : mutations_)
     {
-        const auto existing = mutation.kind == Kind::Remove ? mutation.id : mutation.record.id;
+        const auto existing = mutation.id.IsValid() ? mutation.id : mutation.record.id;
         if (existing == id) return foundation::Result<void>::Failure(Error("gameplay.world.transaction_duplicate_target", "world transaction may mutate an alteration only once"));
     }
-    mutations_.push_back({Kind::Remove, {}, id}); return foundation::Result<void>::Success();
+    Mutation mutation; mutation.kind = Kind::Remove; mutation.id = id; mutations_.push_back(std::move(mutation)); return foundation::Result<void>::Success();
 }
 foundation::Result<void> WorldTransaction::Commit()
 {
@@ -99,16 +109,45 @@ void WorldService::RebuildTopologyIndexes()
     for (auto& [_, values] : locations_by_area_) Canonicalize(values);
     for (auto& [_, values] : child_locations_) Canonicalize(values);
 }
+void WorldService::IndexAlteration(const WorldAlterationRecord& alteration)
+{
+    if (alteration.state != WorldAlterationState::Active) return;
+    auto cells = CellsFor(alteration.affected_area);
+    if (cells.empty())
+    {
+        large_alterations_.push_back(alteration.id);
+        Canonicalize(large_alterations_);
+        return;
+    }
+    for (const auto& cell : cells)
+    {
+        auto& ids = alteration_index_[cell];
+        ids.push_back(alteration.id);
+        Canonicalize(ids);
+    }
+}
+void WorldService::UnindexAlteration(const WorldAlterationRecord& alteration)
+{
+    if (alteration.state != WorldAlterationState::Active) return;
+    auto cells = CellsFor(alteration.affected_area);
+    if (cells.empty())
+    {
+        std::erase(large_alterations_, alteration.id);
+        return;
+    }
+    for (const auto& cell : cells)
+    {
+        auto found = alteration_index_.find(cell);
+        if (found == alteration_index_.end()) continue;
+        std::erase(found->second, alteration.id);
+        if (found->second.empty()) alteration_index_.erase(found);
+    }
+}
 void WorldService::RebuildAlterationIndex()
 {
     alteration_index_.clear(); large_alterations_.clear();
     std::vector<WorldAlterationId> ids; for (const auto& [id, _] : alterations_) ids.push_back(id); std::sort(ids.begin(), ids.end());
-    for (const auto id : ids)
-    {
-        const auto& alteration = alterations_.at(id); if (alteration.state != WorldAlterationState::Active) continue;
-        auto cells = CellsFor(alteration.affected_area); if (cells.empty()) { large_alterations_.push_back(id); continue; }
-        for (const auto& cell : cells) alteration_index_[cell].push_back(id);
-    }
+    for (const auto id : ids) IndexAlteration(alterations_.at(id));
 }
 
 foundation::Result<Revision> WorldService::PrepareRevision() const
@@ -126,6 +165,7 @@ void WorldService::Record(WorldChange c) noexcept
     c.sequence = next_change_sequence_; last_change_sequence_ = next_change_sequence_;
     if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max()) next_change_sequence_ = 0; else ++next_change_sequence_;
     changes_.push_back(std::move(c));
+    while (changes_.size() > kChangeJournalCapacity) changes_.pop_front();
 }
 
 foundation::Result<void> WorldService::RegisterRegion(WorldRegionDefinition d)
@@ -227,9 +267,17 @@ std::vector<LocationDefinition> WorldService::FindChildLocations(LocationId pare
 }
 std::vector<WorldAlterationRecord> WorldService::FindAlterations(const WorldAabb& bounds, std::optional<WorldAlterationTypeId> type) const
 {
-    std::unordered_set<WorldAlterationId, IdHash> ids; auto cells=CellsFor(bounds);
-    if(cells.empty()) for(const auto&[id,a]:alterations_) if(a.state==WorldAlterationState::Active) ids.insert(id);
-    else { for(const auto&cell:cells) if(auto i=alteration_index_.find(cell);i!=alteration_index_.end()) ids.insert(i->second.begin(),i->second.end()); ids.insert(large_alterations_.begin(),large_alterations_.end()); }
+    std::vector<WorldAlterationId> ids; auto cells=CellsFor(bounds);
+    if(cells.empty())
+    {
+        for(const auto&[id,a]:alterations_) if(a.state==WorldAlterationState::Active) ids.push_back(id);
+    }
+    else
+    {
+        for(const auto&cell:cells) if(auto i=alteration_index_.find(cell);i!=alteration_index_.end()) ids.insert(ids.end(),i->second.begin(),i->second.end());
+        ids.insert(ids.end(),large_alterations_.begin(),large_alterations_.end());
+    }
+    Canonicalize(ids);
     std::vector<WorldAlterationRecord> out; for(auto id:ids){const auto&a=alterations_.at(id);if(a.state==WorldAlterationState::Active&&Overlaps(a.affected_area,bounds)&&(!type||a.type==*type))out.push_back(a);}
     std::sort(out.begin(),out.end(),[](const auto&a,const auto&b){return a.id<b.id;}); return out;
 }
@@ -240,6 +288,21 @@ foundation::Result<WorldFeatureId> WorldService::AddDynamicFeature(WorldFeatureR
     if (!f.id.IsValid() || !f.type.IsValid() || !f.bounds.IsValid() || !feature_types_.contains(f.type) || features_.contains(f.id)) return foundation::Result<WorldFeatureId>::Failure(Error("gameplay.world.invalid_feature", "invalid dynamic feature"));
     if (!CanRecordChanges(1)) return foundation::Result<WorldFeatureId>::Failure(Error("gameplay.change_sequence_exhausted", "world change sequence is exhausted")); auto rev=PrepareRevision(); if(!rev)return foundation::Result<WorldFeatureId>::Failure(rev.GetError());
     f.dynamic=true; f.revision=rev.Value(); revision_=rev.Value(); features_.emplace(f.id,f); Record(WorldChange{0,WorldChangeKind::FeatureChanged,{},f.id,{},revision_,{}}); return foundation::Result<WorldFeatureId>::Success(f.id);
+}
+foundation::Result<void> WorldService::UpdateDynamicFeature(WorldFeatureId id, WorldAabb bounds, GameplayTagSet tags, GameplayContext context)
+{
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "world service must be frozen before runtime operations"));
+    auto found=features_.find(id);if(found==features_.end()||!found->second.dynamic)return foundation::Result<void>::Failure(Error("gameplay.world.dynamic_feature_missing","dynamic feature is missing"));
+    if(!bounds.IsValid())return foundation::Result<void>::Failure(Error("gameplay.world.invalid_feature","dynamic feature bounds are invalid"));
+    if(!CanRecordChanges(1))return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted","world change sequence is exhausted"));auto rev=PrepareRevision();if(!rev)return foundation::Result<void>::Failure(rev.GetError());
+    found->second.bounds=bounds;found->second.tags=std::move(tags);found->second.revision=rev.Value();revision_=rev.Value();Record(WorldChange{0,WorldChangeKind::FeatureChanged,{},id,{},revision_,context});return foundation::Result<void>::Success();
+}
+foundation::Result<void> WorldService::RemoveDynamicFeature(WorldFeatureId id, GameplayContext context)
+{
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "world service must be frozen before runtime operations"));
+    auto found=features_.find(id);if(found==features_.end()||!found->second.dynamic)return foundation::Result<void>::Failure(Error("gameplay.world.dynamic_feature_missing","dynamic feature is missing"));
+    if(!CanRecordChanges(1))return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted","world change sequence is exhausted"));auto rev=PrepareRevision();if(!rev)return foundation::Result<void>::Failure(rev.GetError());
+    features_.erase(found);revision_=rev.Value();Record(WorldChange{0,WorldChangeKind::FeatureRemoved,{},id,{},revision_,context});return foundation::Result<void>::Success();
 }
 foundation::Result<void> WorldService::PlaceObject(ObjectPlacementRecord placement)
 {
@@ -262,6 +325,33 @@ foundation::Result<void> WorldService::ValidateAlteration(const WorldAlterationR
 {
     if(!record.id.IsValid()||!record.type.IsValid()||!record.affected_area.IsValid()||!alteration_types_.contains(record.type)) return foundation::Result<void>::Failure(Error("gameplay.world.invalid_alteration","world alteration is structurally invalid"));
     if(record.expires_at && record.expires_at->ticks <= record.created_at.ticks) return foundation::Result<void>::Failure(Error("gameplay.world.invalid_alteration","world alteration expiration must be later than creation"));
+    if(record.state==WorldAlterationState::Compacted) return foundation::Result<void>::Failure(Error("gameplay.world.invalid_alteration","compacted alterations are not stored records"));
+    return foundation::Result<void>::Success();
+}
+foundation::Result<WorldAlterationRecord> WorldService::ApplyAlterationUpdate(const WorldAlterationRecord& current, const WorldAlterationUpdate& update) const
+{
+    if(current.state!=WorldAlterationState::Active) return foundation::Result<WorldAlterationRecord>::Failure(Error("gameplay.world.alteration_terminal","terminal world alteration cannot be updated"));
+    auto result=current;
+    if(update.affected_area) result.affected_area=*update.affected_area;
+    if(update.update_expires_at) result.expires_at=update.expires_at;
+    if(update.payload) result.payload=*update.payload;
+    if(update.context) result.context=*update.context;
+    if(update.state)
+    {
+        if(*update.state!=WorldAlterationState::Active&&*update.state!=WorldAlterationState::Superseded&&*update.state!=WorldAlterationState::Expired)
+            return foundation::Result<WorldAlterationRecord>::Failure(Error("gameplay.world.invalid_alteration_transition","unsupported world alteration state transition"));
+        result.state=*update.state;
+    }
+    if(auto validation=ValidateAlteration(result);!validation)return foundation::Result<WorldAlterationRecord>::Failure(validation.GetError());
+    return foundation::Result<WorldAlterationRecord>::Success(std::move(result));
+}
+foundation::Result<void> WorldService::SynchronizeRequestedAlterationId(WorldAlterationId id)
+{
+    if(!id.IsValid())return foundation::Result<void>::Failure(Error("gameplay.world.invalid_alteration","requested world alteration id is invalid"));
+    auto snapshot=alteration_ids_.GetSnapshot();
+    if(id.value.High()!=snapshot.scope||snapshot.next==0||id.value.Low()<snapshot.next)return foundation::Result<void>::Success();
+    snapshot.next=id.value.Low()==std::numeric_limits<std::uint64_t>::max()?0:id.value.Low()+1;
+    alteration_ids_.Restore(snapshot);
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> WorldService::CommitMutations(std::span<const WorldTransaction::Mutation> mutations, GameplayContext context)
@@ -270,32 +360,73 @@ foundation::Result<void> WorldService::CommitMutations(std::span<const WorldTran
     if(mutations.empty())return foundation::Result<void>::Success();
     if(!CanRecordChanges(mutations.size()))return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted","world change sequence is exhausted"));
     auto rev=PrepareRevision();if(!rev)return foundation::Result<void>::Failure(rev.GetError());
-    auto rebuilt=alterations_;std::unordered_set<WorldAlterationId,IdHash> targets;
+
+    struct StagedMutation { WorldTransaction::Kind kind{}; WorldAlterationId id{}; WorldAlterationRecord before{}; WorldAlterationRecord after{}; };
+    std::vector<StagedMutation> staged;staged.reserve(mutations.size());
+    std::unordered_set<WorldAlterationId,IdHash> targets;targets.reserve(mutations.size());
     for(const auto&m:mutations)
     {
-        const auto id=m.kind==WorldTransaction::Kind::Remove?m.id:m.record.id;if(!targets.insert(id).second)return foundation::Result<void>::Failure(Error("gameplay.world.transaction_duplicate_target","world transaction may mutate an alteration only once"));
-        if(m.kind==WorldTransaction::Kind::Create){if(auto v=ValidateAlteration(m.record);!v)return v;if(rebuilt.contains(m.record.id))return foundation::Result<void>::Failure(Error("gameplay.world.invalid_alteration","alteration already exists"));auto r=m.record;r.revision=rev.Value();rebuilt.emplace(r.id,std::move(r));}
-        else if(m.kind==WorldTransaction::Kind::Update){if(!rebuilt.contains(m.record.id))return foundation::Result<void>::Failure(Error("gameplay.world.alteration_missing","alteration update target missing"));if(auto v=ValidateAlteration(m.record);!v)return v;auto r=m.record;r.revision=rev.Value();rebuilt[r.id]=std::move(r);}
-        else{auto i=rebuilt.find(m.id);if(i==rebuilt.end())return foundation::Result<void>::Failure(Error("gameplay.world.alteration_missing","alteration remove target missing"));i->second.state=WorldAlterationState::Removed;i->second.revision=rev.Value();}
+        const auto id=m.kind==WorldTransaction::Kind::Create?m.record.id:m.id;
+        if(!targets.insert(id).second)return foundation::Result<void>::Failure(Error("gameplay.world.transaction_duplicate_target","world transaction may mutate an alteration only once"));
+        if(m.kind==WorldTransaction::Kind::Create)
+        {
+            if(auto v=ValidateAlteration(m.record);!v)return v;
+            if(m.record.state!=WorldAlterationState::Active)return foundation::Result<void>::Failure(Error("gameplay.world.invalid_alteration","new world alteration must start active"));
+            if(alterations_.contains(id))return foundation::Result<void>::Failure(Error("gameplay.world.invalid_alteration","alteration already exists"));
+            auto after=m.record;after.revision=rev.Value();staged.push_back({m.kind,id,{},std::move(after)});
+        }
+        else
+        {
+            auto found=alterations_.find(id);if(found==alterations_.end())return foundation::Result<void>::Failure(Error("gameplay.world.alteration_missing",m.kind==WorldTransaction::Kind::Update?"alteration update target missing":"alteration remove target missing"));
+            if(m.kind==WorldTransaction::Kind::Update)
+            {
+                auto updated=ApplyAlterationUpdate(found->second,m.update);if(!updated)return foundation::Result<void>::Failure(updated.GetError());auto after=std::move(updated.Value());after.revision=rev.Value();staged.push_back({m.kind,id,found->second,std::move(after)});
+            }
+            else
+            {
+                if(found->second.state!=WorldAlterationState::Active)return foundation::Result<void>::Failure(Error("gameplay.world.alteration_terminal","terminal world alteration cannot be removed again"));
+                auto after=found->second;after.state=WorldAlterationState::Removed;after.revision=rev.Value();staged.push_back({m.kind,id,found->second,std::move(after)});
+            }
+        }
     }
-    revision_=rev.Value();alterations_=std::move(rebuilt);
-    for(const auto&m:mutations)
+
+    for(const auto& staged_mutation:staged)
     {
-        if(m.kind==WorldTransaction::Kind::Create)Record(WorldChange{0,WorldChangeKind::AlterationCreated,m.record.id,{},{},revision_,context});
-        else if(m.kind==WorldTransaction::Kind::Update)Record(WorldChange{0,m.record.state==WorldAlterationState::Expired?WorldChangeKind::AlterationExpired:WorldChangeKind::AlterationUpdated,m.record.id,{},{},revision_,context});
-        else Record(WorldChange{0,WorldChangeKind::AlterationRemoved,m.id,{},{},revision_,context});
+        if(staged_mutation.kind!=WorldTransaction::Kind::Create)UnindexAlteration(staged_mutation.before);
+        if(staged_mutation.kind==WorldTransaction::Kind::Create)alterations_.emplace(staged_mutation.id,staged_mutation.after);
+        else alterations_.at(staged_mutation.id)=staged_mutation.after;
+        IndexAlteration(staged_mutation.after);
     }
-    RebuildAlterationIndex();if(transactions_!=std::numeric_limits<std::uint64_t>::max())++transactions_;return foundation::Result<void>::Success();
+    revision_=rev.Value();
+    for(const auto& staged_mutation:staged)
+    {
+        auto kind=WorldChangeKind::AlterationUpdated;
+        if(staged_mutation.kind==WorldTransaction::Kind::Create)kind=WorldChangeKind::AlterationCreated;
+        else if(staged_mutation.kind==WorldTransaction::Kind::Remove)kind=WorldChangeKind::AlterationRemoved;
+        else if(staged_mutation.after.state==WorldAlterationState::Expired)kind=WorldChangeKind::AlterationExpired;
+        Record(WorldChange{0,kind,staged_mutation.id,{},{},revision_,context});
+    }
+    if(transactions_!=std::numeric_limits<std::uint64_t>::max())++transactions_;
+    return foundation::Result<void>::Success();
 }
 foundation::Result<void> WorldService::ExpireAlteration(WorldAlterationId id, GameplayTimePoint now, GameplayContext context)
 {
     auto current=FindAlteration(id);if(!current)return foundation::Result<void>::Failure(Error("gameplay.world.alteration_missing","alteration expiration target missing"));if(current->state!=WorldAlterationState::Active)return foundation::Result<void>::Success();if(!current->expires_at||current->expires_at->ticks>now.ticks)return foundation::Result<void>::Failure(Error("gameplay.world.alteration_not_due","alteration is not due to expire"));
-    auto updated=*current;updated.state=WorldAlterationState::Expired;auto tx=BeginTransaction(context);auto q=tx.Update(std::move(updated));if(!q)return q;return tx.Commit();
+    WorldAlterationUpdate update;update.state=WorldAlterationState::Expired;update.context=context;auto tx=BeginTransaction(context);auto q=tx.Update(id,std::move(update));if(!q)return q;return tx.Commit();
 }
 foundation::Result<void> WorldService::SweepExpired(GameplayTimePoint now, GameplayContext context)
 {
     auto tx=BeginTransaction(context);bool any=false;std::vector<WorldAlterationId> ids;for(const auto&[id,a]:alterations_)if(a.state==WorldAlterationState::Active&&a.expires_at&&a.expires_at->ticks<=now.ticks)ids.push_back(id);std::sort(ids.begin(),ids.end());
-    for(auto id:ids){auto r=alterations_.at(id);r.state=WorldAlterationState::Expired;auto u=tx.Update(std::move(r));if(!u)return u;any=true;}return any?tx.Commit():foundation::Result<void>::Success();
+    for(auto id:ids){WorldAlterationUpdate update;update.state=WorldAlterationState::Expired;update.context=context;auto u=tx.Update(id,std::move(update));if(!u)return u;any=true;}return any?tx.Commit():foundation::Result<void>::Success();
+}
+
+foundation::Result<void> WorldService::CompactAlteration(WorldAlterationId id, GameplayContext context)
+{
+    if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "world service must be frozen before runtime operations"));
+    auto found=alterations_.find(id);if(found==alterations_.end())return foundation::Result<void>::Failure(Error("gameplay.world.alteration_missing","alteration compaction target missing"));
+    if(found->second.state!=WorldAlterationState::Removed&&found->second.state!=WorldAlterationState::Expired)return foundation::Result<void>::Failure(Error("gameplay.world.alteration_not_compactable","only removed or expired alterations may be compacted"));
+    if(!CanRecordChanges(1))return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted","world change sequence is exhausted"));auto rev=PrepareRevision();if(!rev)return foundation::Result<void>::Failure(rev.GetError());
+    UnindexAlteration(found->second);alterations_.erase(found);revision_=rev.Value();Record(WorldChange{0,WorldChangeKind::AlterationCompacted,id,{},{},revision_,context});return foundation::Result<void>::Success();
 }
 
 WorldSnapshot WorldService::CaptureSnapshot() const
@@ -316,7 +447,17 @@ foundation::Result<void> WorldService::RestoreSnapshot(WorldSnapshot s)
     if(s.alteration_ids.next!=0&&s.alteration_ids.next<=max_generated_low)return foundation::Result<void>::Failure(Error("gameplay.world.restore_invalid","alteration id generator can reproduce a restored id"));
     features_=std::move(rebuilt_features);object_placements_=std::move(rebuilt_placements);alterations_=std::move(rebuilt_alterations);alteration_ids_.Restore(s.alteration_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;last_change_sequence_=0;RebuildAlterationIndex();return foundation::Result<void>::Success();
 }
-std::vector<WorldChange> WorldService::ChangesSince(std::uint64_t sequence) const {std::vector<WorldChange> out;std::copy_if(changes_.begin(),changes_.end(),std::back_inserter(out),[sequence](const auto&c){return c.sequence>sequence;});return out;}
+std::vector<WorldChange> WorldService::ChangesSince(std::uint64_t sequence) const {return ReadChangesSince(sequence).changes;}
+WorldChangeBatch WorldService::ReadChangesSince(std::uint64_t sequence) const
+{
+    WorldChangeBatch batch;batch.oldest_available_sequence=changes_.empty()?next_change_sequence_:changes_.front().sequence;
+    if(!changes_.empty()&&sequence<changes_.front().sequence-1){batch.snapshot_required=true;return batch;}
+    const auto found=std::upper_bound(changes_.begin(),changes_.end(),sequence,[](std::uint64_t value,const WorldChange& change){return value<change.sequence;});batch.changes.assign(found,changes_.end());return batch;
+}
+void WorldService::PruneChangesBefore(std::uint64_t sequence)
+{
+    const auto found=std::lower_bound(changes_.begin(),changes_.end(),sequence,[](const WorldChange& change,std::uint64_t value){return change.sequence<value;});changes_.erase(changes_.begin(),found);
+}
 WorldDiagnostics WorldService::GetDiagnostics() const noexcept
 {
     WorldDiagnostics d;d.regions=regions_.size();d.areas=areas_.size();d.locations=locations_.size();d.features=features_.size();d.transactions=transactions_;for(const auto&[_,a]:alterations_){if(a.state==WorldAlterationState::Active)++d.active_alterations;if(a.persistence==WorldAlterationPersistence::Persistent)++d.persistent_alterations;}return d;

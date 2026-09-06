@@ -227,8 +227,15 @@ bool DialogueService::ConditionsPass(const std::vector<TypeId> &ids, const Dialo
         auto r = condition_resolvers_.find(d->second.type);
         if (r == condition_resolvers_.end())
             return false;
-        if (r->second->Evaluate(d->second, ctx).state != DialogueConditionState::Satisfied)
+        try
+        {
+            if (r->second->Evaluate(d->second, ctx).state != DialogueConditionState::Satisfied)
+                return false;
+        }
+        catch (...)
+        {
             return false;
+        }
     }
     return true;
 }
@@ -442,7 +449,7 @@ std::vector<DialogueOptionDefinition> DialogueService::GetAvailableOptions(Conve
     auto ctx = MakeConditionContext(*s, actor);
     for (const auto &o : n->options)
         if ((o.repeat_policy == DialogueOptionRepeatPolicy::Repeatable ||
-             std::find(s->resolved_persistent_options.begin(), s->resolved_persistent_options.end(), o.id.value) == s->resolved_persistent_options.end()) &&
+             std::find(s->resolved_once_per_conversation_options.begin(), s->resolved_once_per_conversation_options.end(), o.id.value) == s->resolved_once_per_conversation_options.end()) &&
             ConditionsPass(o.conditions, ctx))
             out.push_back(o);
     std::sort(out.begin(), out.end(), [](auto &a, auto &b) { return a.id < b.id; });
@@ -465,7 +472,7 @@ foundation::Result<void> DialogueService::SelectOption(ConversationSessionId id,
     auto oit = std::find_if(n->options.begin(), n->options.end(), [option](const auto &o) { return o.id == option; });
     if (oit == n->options.end() ||
         (oit->repeat_policy == DialogueOptionRepeatPolicy::OncePerConversation &&
-         std::find(it->second.resolved_persistent_options.begin(), it->second.resolved_persistent_options.end(), option.value) != it->second.resolved_persistent_options.end()) ||
+         std::find(it->second.resolved_once_per_conversation_options.begin(), it->second.resolved_once_per_conversation_options.end(), option.value) != it->second.resolved_once_per_conversation_options.end()) ||
         !ConditionsPass(oit->conditions, MakeConditionContext(it->second, actor)))
         return foundation::Result<void>::Failure(
             Error("gameplay.dialogue.option_unavailable", "dialogue option unavailable"));
@@ -489,11 +496,12 @@ foundation::Result<void> DialogueService::SelectOption(ConversationSessionId id,
     Bump();
     if (oit->repeat_policy == DialogueOptionRepeatPolicy::OncePerConversation)
         {
-            it->second.resolved_persistent_options.push_back(option.value);
-            std::sort(it->second.resolved_persistent_options.begin(), it->second.resolved_persistent_options.end());
-            it->second.resolved_persistent_options.erase(std::unique(it->second.resolved_persistent_options.begin(),
-                                                                     it->second.resolved_persistent_options.end()),
-                                                         it->second.resolved_persistent_options.end());
+            it->second.resolved_once_per_conversation_options.push_back(option.value);
+            std::sort(it->second.resolved_once_per_conversation_options.begin(), it->second.resolved_once_per_conversation_options.end());
+            it->second.resolved_once_per_conversation_options.erase(
+                std::unique(it->second.resolved_once_per_conversation_options.begin(),
+                            it->second.resolved_once_per_conversation_options.end()),
+                it->second.resolved_once_per_conversation_options.end());
         }
     it->second.revision = revision_;
     ++diagnostics_.options_selected;
@@ -564,7 +572,7 @@ std::vector<DialogueConsequenceExecutionId> DialogueService::ExecutePendingConse
 {
     std::vector<DialogueConsequenceExecutionId> ids;
     for (const auto &[id, e] : consequences_)
-        if (IsLiveConsequence(e.state))
+        if (e.state == DialogueConsequenceState::Pending)
             ids.push_back(id);
     std::sort(ids.begin(), ids.end(), [this](auto a, auto b) {
         const auto &ea = consequences_.at(a);
@@ -589,7 +597,19 @@ std::vector<DialogueConsequenceExecutionId> DialogueService::ExecutePendingConse
         if (d != consequence_defs_.end() && s != sessions_.end())
         {
             auto h = consequence_handlers_.find(d->second.type);
-            state = h == consequence_handlers_.end() ? DialogueConsequenceState::Deferred : h->second->Execute(d->second, e, s->second);
+            if (h == consequence_handlers_.end())
+                state = DialogueConsequenceState::Deferred;
+            else
+            {
+                try
+                {
+                    state = h->second->Execute(d->second, e, s->second);
+                }
+                catch (...)
+                {
+                    state = DialogueConsequenceState::Failed;
+                }
+            }
         }
         if (state == e.state)
             continue;
@@ -609,6 +629,21 @@ std::vector<DialogueConsequenceExecutionId> DialogueService::ExecutePendingConse
         c.context = e.context;
         c.revision = revision_;
         Record(c);
+        if (state == DialogueConsequenceState::Deferred)
+        {
+            auto session = sessions_.find(e.session);
+            if (session != sessions_.end() && session->second.state != ConversationState::WaitingForExternalAction)
+            {
+                const bool was_terminal = IsTerminal(session->second.state);
+                session->second.state = ConversationState::WaitingForExternalAction;
+                session->second.revision = revision_;
+                if (was_terminal) ++diagnostics_.active_sessions;
+            }
+        }
+        else
+        {
+            RefreshExternalWaitState(e.session, e.context);
+        }
         if (state == DialogueConsequenceState::Applied)
             applied.push_back(id);
     }
@@ -625,20 +660,77 @@ std::vector<DialogueConsequenceExecutionId> DialogueService::ExecutePendingConse
     for (const auto sid : terminal_sessions) MaybeCleanupTerminalSession(sid);
     return applied;
 }
+foundation::Result<void> DialogueService::ResumeConsequence(DialogueConsequenceExecutionId id, GameplayContext context)
+{
+    auto it = consequences_.find(id);
+    if (it == consequences_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.dialogue.consequence_missing", "dialogue consequence execution missing"));
+    if (it->second.state != DialogueConsequenceState::Deferred)
+        return foundation::Result<void>::Failure(Error("gameplay.dialogue.consequence_not_deferred", "dialogue consequence is not deferred"));
+    Bump();
+    it->second.state = DialogueConsequenceState::Pending;
+    it->second.context = MergeContext(it->second.context, context);
+    it->second.revision = revision_;
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> DialogueService::FailConsequence(DialogueConsequenceExecutionId id, TypeId reason, GameplayContext context)
+{
+    auto it = consequences_.find(id);
+    if (it == consequences_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.dialogue.consequence_missing", "dialogue consequence execution missing"));
+    if (it->second.state != DialogueConsequenceState::Deferred)
+        return foundation::Result<void>::Failure(Error("gameplay.dialogue.consequence_not_deferred", "dialogue consequence is not deferred"));
+    Bump();
+    const auto session_id = it->second.session;
+    it->second.state = DialogueConsequenceState::Failed;
+    it->second.context = MergeContext(it->second.context, context);
+    it->second.revision = revision_;
+    DialogueChange c;
+    c.kind = DialogueChangeKind::ConsequenceFailed;
+    c.session = session_id;
+    c.node = it->second.source_node;
+    c.option = it->second.source_option;
+    c.consequence_execution = it->second.id;
+    c.consequence = it->second.consequence;
+    c.consequence_state = DialogueConsequenceState::Failed;
+    c.reason = reason;
+    c.context = it->second.context;
+    c.revision = revision_;
+    Record(c);
+    consequences_.erase(it);
+    diagnostics_.consequences = consequences_.size();
+    RefreshExternalWaitState(session_id, context);
+    MaybeCleanupTerminalSession(session_id);
+    return foundation::Result<void>::Success();
+}
+DialogueChangeBatch DialogueService::ReadChangesSince(std::uint64_t seq) const
+{
+    DialogueChangeBatch batch;
+    batch.latest_sequence = next_change_sequence_ > 1 ? next_change_sequence_ - 1 : 0;
+    batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
+    if (!changes_.empty() && seq < batch.oldest_available_sequence &&
+        batch.oldest_available_sequence - seq > 1)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(batch.changes),
+                 [seq](const auto &c) { return c.sequence > seq; });
+    return batch;
+}
 std::vector<DialogueChange> DialogueService::ChangesSince(std::uint64_t seq) const
 {
-    std::vector<DialogueChange> out;
-    std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(out),
-                 [seq](auto &c) { return c.sequence > seq; });
-    return out;
+    return ReadChangesSince(seq).changes;
 }
 DialogueSnapshot DialogueService::CaptureSnapshot() const
 {
     DialogueSnapshot s;
     for (const auto &[id, v] : sessions_)
     {
-        (void)id;
-        if (!IsTerminal(v.state))
+        const bool has_live_consequence = std::any_of(consequences_.begin(), consequences_.end(), [&](const auto &pair) {
+            return pair.second.session == id && IsLiveConsequence(pair.second.state);
+        });
+        if (!IsTerminal(v.state) || has_live_consequence)
             s.sessions.push_back(v);
     }
     for (const auto &[id, v] : consequences_)
@@ -661,7 +753,7 @@ foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
     {
         const auto *d = GetDefinition(v.definition);
         const auto *node = d ? FindNode(*d, v.current_node) : nullptr;
-        if (!v.id.IsValid() || !d || !node || sessions.contains(v.id) || IsTerminal(v.state) || v.revision > s.revision)
+        if (!v.id.IsValid() || !d || !node || sessions.contains(v.id) || v.revision > s.revision)
             return foundation::Result<void>::Failure(
                 Error("gameplay.dialogue.restore_invalid", "invalid dialogue session snapshot"));
         std::unordered_set<TypeId> roles;
@@ -674,8 +766,8 @@ foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
                     Error("gameplay.dialogue.restore_invalid", "invalid dialogue participant snapshot"));
             objects.push_back(p.object);
         }
-        std::sort(v.resolved_persistent_options.begin(), v.resolved_persistent_options.end());
-        if (std::adjacent_find(v.resolved_persistent_options.begin(), v.resolved_persistent_options.end()) != v.resolved_persistent_options.end())
+        std::sort(v.resolved_once_per_conversation_options.begin(), v.resolved_once_per_conversation_options.end());
+        if (std::adjacent_find(v.resolved_once_per_conversation_options.begin(), v.resolved_once_per_conversation_options.end()) != v.resolved_once_per_conversation_options.end())
             return foundation::Result<void>::Failure(Error("gameplay.dialogue.restore_invalid", "duplicate resolved dialogue option"));
         v.participants = objects;
         for (auto role : d->participant_roles)
@@ -696,6 +788,35 @@ foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
                 Error("gameplay.dialogue.restore_invalid", "invalid dialogue consequence snapshot"));
         consequences.emplace(v.id, std::move(v));
     }
+    for (const auto &[sid, session] : sessions)
+    {
+        const bool has_live = std::any_of(consequences.begin(), consequences.end(), [&](const auto &pair) {
+            return pair.second.session == sid && IsLiveConsequence(pair.second.state);
+        });
+        const bool has_deferred = std::any_of(consequences.begin(), consequences.end(), [&](const auto &pair) {
+            return pair.second.session == sid && pair.second.state == DialogueConsequenceState::Deferred;
+        });
+        if ((IsTerminal(session.state) && !has_live) ||
+            (session.state == ConversationState::WaitingForExternalAction && !has_deferred) ||
+            (has_deferred && session.state != ConversationState::WaitingForExternalAction))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.dialogue.restore_invalid", "dialogue session/consequence lifecycle mismatch"));
+    }
+    const auto valid_generator = [](MonotonicIdGenerator<GameplayObjectId>::Snapshot snapshot,
+                                    std::uint64_t expected_scope, std::uint64_t max_low) noexcept {
+        if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot) || snapshot.scope != expected_scope)
+            return false;
+        return snapshot.next == 0 || snapshot.next > max_low;
+    };
+    std::uint64_t max_session_low = 0;
+    for (const auto &[id, value] : sessions) { (void)value; max_session_low = std::max(max_session_low, id.value.Low()); }
+    std::uint64_t max_consequence_low = 0;
+    for (const auto &[id, value] : consequences) { (void)value; max_consequence_low = std::max(max_consequence_low, id.value.Low()); }
+    if (!valid_generator(s.session_ids, 0x3600, max_session_low) ||
+        !valid_generator(s.consequence_ids, 0x3601, max_consequence_low))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.dialogue.restore_invalid", "invalid dialogue id generator snapshot"));
+
     sessions_ = std::move(sessions);
     consequences_ = std::move(consequences);
     session_ids_.Restore(s.session_ids);
@@ -703,7 +824,8 @@ foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;
-    diagnostics_.active_sessions = sessions_.size();
+    diagnostics_.active_sessions = static_cast<std::uint64_t>(std::count_if(
+        sessions_.begin(), sessions_.end(), [](const auto &pair) { return !IsTerminal(pair.second.state); }));
     diagnostics_.consequences = consequences_.size();
     diagnostics_.definitions = definitions_.size();
     return foundation::Result<void>::Success();
@@ -717,6 +839,37 @@ void DialogueService::MaybeCleanupTerminalSession(ConversationSessionId id)
     });
     if (!has_live) sessions_.erase(session);
 }
+void DialogueService::RefreshExternalWaitState(ConversationSessionId id, GameplayContext context)
+{
+    auto session = sessions_.find(id);
+    if (session == sessions_.end() || session->second.state != ConversationState::WaitingForExternalAction) return;
+    const bool has_deferred = std::any_of(consequences_.begin(), consequences_.end(), [&](const auto &pair) {
+        return pair.second.session == id && pair.second.state == DialogueConsequenceState::Deferred;
+    });
+    if (has_deferred) return;
+    const auto *definition = GetDefinition(session->second.definition);
+    const auto *node = definition ? FindNode(*definition, session->second.current_node) : nullptr;
+    if (!node)
+    {
+        session->second.state = ConversationState::Failed;
+    }
+    else if (!node->options.empty())
+    {
+        session->second.state = ConversationState::WaitingForChoice;
+    }
+    else if (node->automatic_next.IsValid())
+    {
+        session->second.state = ConversationState::Active;
+    }
+    else
+    {
+        session->second.state = ConversationState::Completed;
+        if (diagnostics_.active_sessions > 0) --diagnostics_.active_sessions;
+    }
+    Bump();
+    session->second.context.gameplay = MergeContext(session->second.context.gameplay, context);
+    session->second.revision = revision_;
+}
 DialogueDiagnostics DialogueService::GetDiagnostics() const noexcept
 {
     return diagnostics_;
@@ -728,5 +881,6 @@ void DialogueService::Record(DialogueChange c)
     else
         c.sequence = next_change_sequence_;
     changes_.push_back(std::move(c));
+    while (changes_.size() > kChangeJournalCapacity) changes_.pop_front();
 }
 } // namespace epidemic::gameplay::dialogue

@@ -1,163 +1,402 @@
 #include "Epidemic/GameFramework/Perception/perception.h"
+
+#include <memory>
+#include <stdexcept>
+
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::perception;
+
+namespace
+{
+GameplayObjectRef Ref(const char *name)
+{
+    return {GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString(name)};
+}
+PerceiverEvaluationSample Sample(GameplayObjectRef subject, WorldPosition position = {}, WorldDirection forward = {})
+{
+    PerceiverEvaluationSample sample;
+    sample.subject = subject;
+    sample.position = position;
+    sample.forward = forward;
+    sample.materialized = true;
+    sample.runtime_projection_available = true;
+    return sample;
+}
+class ThrowingEvaluator final : public ISenseEvaluator
+{
+  public:
+    epidemic::foundation::Result<SenseEvaluationResult> Evaluate(const SenseEvaluationInput &) const override
+    {
+        throw std::runtime_error("test");
+    }
+};
+} // namespace
+
 int main()
 {
-    PerceptionService s;
-    auto hearing = SenseTypeId::FromString("framework.sense.hearing");
+    const auto hearing = SenseTypeId::FromString("framework.sense.hearing");
+    const auto vision = SenseTypeId::FromString("framework.sense.vision");
+    const auto custom = SenseTypeId::FromString("test.sense.custom");
+    const auto evaluator_id = SenseEvaluatorId::FromString("test.evaluator.throw");
+    const auto profile_id = PerceiverProfileId::FromString("test.npc.perception");
+    const auto npc = Ref("npc");
+    const auto player = Ref("player");
+
     SenseDefinition hear;
     hear.id = hearing;
     hear.canonical_name = "framework.sense.hearing";
-    hear.base_range_mm = 10000;
-    if (!s.RegisterSense(hear))
-        return 1;
-    GameplayObjectRef npc{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("npc")};
-    GameplayObjectRef player{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("player")};
-    PerceiverProfile p;
-    p.id = PerceiverProfileId::FromString("test.npc.perception");
-    p.subject = npc;
-    p.canonical_name = "test.npc.perception";
-    p.senses = {hearing};
-    if (!s.RegisterProfile(p))
-        return 2;
-    s.Freeze();
-    PerceptionStimulus stim;
-    stim.sense = hearing;
-    stim.source = player;
-    stim.position = {1000, 0, 0};
-    stim.strength_micro = 900000;
-    stim.created_at = {0};
-    stim.lifetime = {10};
-    auto sid = s.CreateStimulus(stim);
-    if (!sid)
-        return 3;
-    auto out = s.ProcessStimulus(sid.Value(), {1});
-    if (!out || out.Value().size() != 1)
-        return 4;
-    if (out.Value()[0].perceiver != npc)
-        return 5;
-    auto *aw = s.GetAwareness(npc, player);
-    if (!aw || aw->level < AwarenessLevel::Aware)
-        return 6;
-    if (s.FindObservationsByPerceiver(npc).size() != 1)
-        return 7;
-    auto snap = s.CaptureSnapshot();
-    PerceptionService r;
-    if (!r.RegisterSense(hear))
-        return 8;
-    r.Freeze();
-    if (!r.RestoreSnapshot(std::move(snap)))
-        return 9;
-    if (!r.GetAwareness(npc, player))
-        return 10;
-    if (!r.ExpireStimuli({20}))
-        return 11;
-    if (!r.FindStimuliInArea({}).empty())
-        return 12;
+    hear.evaluation_model = SenseEvaluationModel::Hearing;
+    hear.base_range_mm = 10'000;
 
-    PerceptionService ranged;
-    if (!ranged.RegisterSense(hear))
-        return 13;
-    if (!ranged.RegisterProfile(p))
-        return 14;
-    ranged.Freeze();
-    PerceptionStimulus far_stim = stim;
-    far_stim.position = {20000, 0, 0};
-    auto far_sid = ranged.CreateStimulus(far_stim);
-    if (!far_sid)
-        return 15;
-    auto far_out = ranged.ProcessStimulus(
-        far_sid.Value(),
-        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {{npc, {0, 0, 0}}}});
-    if (!far_out || !far_out.Value().empty())
-        return 16;
-
-    PerceptionService visual;
-    auto vision = SenseTypeId::FromString("framework.sense.vision");
     SenseDefinition see;
     see.id = vision;
     see.canonical_name = "framework.sense.vision";
-    see.base_range_mm = 10000;
-    if (!visual.RegisterSense(see))
-        return 17;
-    PerceiverProfile vp = p;
-    vp.id = PerceiverProfileId::FromString("test.npc.visual");
-    vp.senses = {vision};
-    if (!visual.RegisterProfile(vp))
-        return 18;
-    visual.Freeze();
-    PerceptionStimulus visual_stim = stim;
-    visual_stim.sense = vision;
-    visual_stim.strength_micro = 1'000'000;
-    visual_stim.position = {1000, 0, 0};
-    auto visual_sid = visual.CreateStimulus(visual_stim);
-    if (!visual_sid)
-        return 19;
-    auto visual_out = visual.ProcessStimulus(
-        visual_sid.Value(),
-        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {{npc, {0, 0, 0}}}});
-    if (!visual_out || visual_out.Value().size() != 1)
-        return 20;
-    auto visual_diag = visual.GetDiagnostics();
-    if (visual_diag.visibility_tests != 1 || visual_diag.audibility_tests != 0)
-        return 21;
+    see.evaluation_model = SenseEvaluationModel::Vision;
+    see.base_range_mm = 10'000;
+    see.field_of_view_cosine_micro = 0; // 180 degree full FOV.
 
+    PerceptionService service;
+    if (!service.RegisterSense(hear) || !service.RegisterSense(see))
+        return 1;
+
+    PerceiverProfileDefinition profile;
+    profile.id = profile_id;
+    profile.canonical_name = "test.npc.perception";
+    profile.senses = {hearing, vision};
+    if (!service.RegisterProfileDefinition(profile))
+        return 2;
+
+    service.Freeze();
+    if (!service.RegisterPerceiver(npc, profile_id))
+        return 3;
+
+    PerceptionStimulus audible;
+    audible.sense = hearing;
+    audible.source = player;
+    audible.position = {1'000, 0, 0};
+    audible.strength_micro = 900'000;
+    audible.created_at = {0};
+    audible.lifetime = {100};
+
+    auto sid = service.CreateStimulus(audible);
+    if (!sid)
+        return 4;
+    auto observations = service.ProcessStimulus(
+        sid.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {Sample(npc)}});
+    if (!observations || observations.Value().size() != 1)
+        return 5;
+    if (observations.Value()[0].perceiver != npc || observations.Value()[0].perceived_subject != player)
+        return 6;
+    if (!service.GetAwareness(npc, player))
+        return 7;
+
+    // Dynamic perceivers are runtime state and can be created after definitions are frozen.
+    const auto npc2 = Ref("npc2");
+    if (!service.RegisterPerceiver(npc2, profile_id))
+        return 8;
+    if (!service.UnregisterPerceiver(npc2))
+        return 9;
+
+    // Hearing obeys range and never falls back to origin if a sample is missing.
+    PerceptionStimulus far = audible;
+    far.id = {};
+    far.position = {20'000, 0, 0};
+    auto far_id = service.CreateStimulus(far);
+    if (!far_id)
+        return 10;
+    auto far_result = service.ProcessStimulus(
+        far_id.Value(), PerceptionProcessingContext{GameplayTickId{2}, GameplayTimePoint{2}, {}, {Sample(npc)}});
+    if (!far_result || !far_result.Value().empty())
+        return 11;
+    auto missing_sample = service.ProcessStimulus(
+        far_id.Value(), PerceptionProcessingContext{GameplayTickId{3}, GameplayTimePoint{3}, {}, {}});
+    if (!missing_sample || !missing_sample.Value().empty())
+        return 12;
+
+    // Vision uses the declared Vision model and FOV. A target behind the perceiver is hidden.
+    PerceptionStimulus visual = audible;
+    visual.id = {};
+    visual.sense = vision;
+    visual.position = {1'000, 0, 0};
+    visual.strength_micro = 1'000'000;
+    auto visual_id = service.CreateStimulus(visual);
+    if (!visual_id)
+        return 13;
+    auto front = service.ProcessStimulus(
+        visual_id.Value(),
+        PerceptionProcessingContext{GameplayTickId{4}, GameplayTimePoint{4}, {}, {Sample(npc, {}, {1'000'000, 0, 0})}});
+    if (!front || front.Value().size() != 1)
+        return 14;
+
+    PerceptionStimulus behind = visual;
+    behind.id = {};
+    behind.position = {-1'000, 0, 0};
+    auto behind_id = service.CreateStimulus(behind);
+    if (!behind_id)
+        return 15;
+    auto rear = service.ProcessStimulus(
+        behind_id.Value(),
+        PerceptionProcessingContext{GameplayTickId{5}, GameplayTimePoint{5}, {}, {Sample(npc, {}, {1'000'000, 0, 0})}});
+    if (!rear || !rear.Value().empty())
+        return 16;
+
+    PerceptionService blind;
+    SenseDefinition blind_vision = see;
+    blind_vision.acuity_micro = 0;
+    if (!blind.RegisterSense(blind_vision))
+        return 61;
+    PerceiverProfileDefinition blind_profile;
+    blind_profile.id = PerceiverProfileId::FromString("test.blind");
+    blind_profile.canonical_name = "test.blind";
+    blind_profile.senses = {vision};
+    if (!blind.RegisterProfileDefinition(blind_profile))
+        return 62;
+    blind.Freeze();
+    if (!blind.RegisterPerceiver(npc, blind_profile.id))
+        return 63;
+    auto blind_sid = blind.CreateStimulus(visual);
+    if (!blind_sid)
+        return 64;
+    auto blind_out = blind.ProcessStimulus(
+        blind_sid.Value(),
+        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {Sample(npc, {}, {1'000'000, 0, 0})}});
+    if (!blind_out || !blind_out.Value().empty())
+        return 65;
+
+    // Weak hearing creates an anonymous observation and does not create target awareness.
+    PerceptionService anonymous_service;
+    SenseDefinition weak_hearing = hear;
+    weak_hearing.base_range_mm = 10'000;
+    weak_hearing.identify_threshold_micro = 800'000;
+    weak_hearing.direction_threshold_micro = 300'000;
+    if (!anonymous_service.RegisterSense(weak_hearing))
+        return 17;
+    PerceiverProfileDefinition weak_profile;
+    weak_profile.id = PerceiverProfileId::FromString("test.weak");
+    weak_profile.canonical_name = "test.weak";
+    weak_profile.senses = {hearing};
+    if (!anonymous_service.RegisterProfileDefinition(weak_profile))
+        return 18;
+    anonymous_service.Freeze();
+    if (!anonymous_service.RegisterPerceiver(npc, weak_profile.id))
+        return 19;
+    PerceptionStimulus weak = audible;
+    weak.id = {};
+    weak.strength_micro = 500'000;
+    weak.position = {2'000, 0, 0};
+    auto weak_id = anonymous_service.CreateStimulus(weak);
+    if (!weak_id)
+        return 20;
+    auto weak_out = anonymous_service.ProcessStimulus(
+        weak_id.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {Sample(npc)}});
+    if (!weak_out || weak_out.Value().size() != 1 || weak_out.Value()[0].perceived_subject.IsValid() ||
+        weak_out.Value()[0].position_uncertainty_mm <= 0)
+        return 21;
+    if (anonymous_service.GetAwareness(npc, player))
+        return 22;
+
+    // Reaction delay parks the observation until AdvanceTime.
+    PerceptionService delayed;
+    SenseDefinition delayed_hearing = hear;
+    delayed_hearing.reaction_delay = GameplayDuration{5};
+    if (!delayed.RegisterSense(delayed_hearing))
+        return 23;
+    PerceiverProfileDefinition delayed_profile;
+    delayed_profile.id = PerceiverProfileId::FromString("test.delayed");
+    delayed_profile.canonical_name = "test.delayed";
+    delayed_profile.senses = {hearing};
+    if (!delayed.RegisterProfileDefinition(delayed_profile))
+        return 24;
+    delayed.Freeze();
+    if (!delayed.RegisterPerceiver(npc, delayed_profile.id))
+        return 25;
+    auto delayed_sid = delayed.CreateStimulus(audible);
+    if (!delayed_sid)
+        return 26;
+    auto delayed_now = delayed.ProcessStimulus(
+        delayed_sid.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{10}, {}, {Sample(npc)}});
+    if (!delayed_now || !delayed_now.Value().empty() || delayed.GetDiagnostics().pending_observations != 1)
+        return 27;
+    auto before_ready = delayed.AdvanceTime({14});
+    if (!before_ready || !before_ready.Value().empty())
+        return 28;
+    auto at_ready = delayed.AdvanceTime({15});
+    if (!at_ready || at_ready.Value().size() != 1 || delayed.GetDiagnostics().pending_observations != 0)
+        return 29;
+
+    // Materialization policy is enforced by current processing samples.
+    PerceptionService projected;
+    if (!projected.RegisterSense(hear))
+        return 30;
+    PerceiverProfileDefinition projected_profile;
+    projected_profile.id = PerceiverProfileId::FromString("test.projected");
+    projected_profile.canonical_name = "test.projected";
+    projected_profile.senses = {hearing};
+    projected_profile.materialization_policy = PerceptionMaterializationPolicy::RequiresRuntimeProjection;
+    if (!projected.RegisterProfileDefinition(projected_profile))
+        return 31;
+    projected.Freeze();
+    if (!projected.RegisterPerceiver(npc, projected_profile.id))
+        return 32;
+    auto projected_sid = projected.CreateStimulus(audible);
+    if (!projected_sid)
+        return 33;
+    auto unavailable_sample = Sample(npc);
+    unavailable_sample.runtime_projection_available = false;
+    auto projected_out = projected.ProcessStimulus(
+        projected_sid.Value(),
+        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {unavailable_sample}});
+    if (!projected_out || !projected_out.Value().empty())
+        return 34;
+
+    // Detection budget applies to all senses before evaluation.
     PerceptionService budgeted;
     if (!budgeted.RegisterSense(hear))
-        return 22;
-    if (!budgeted.RegisterProfile(p))
-        return 23;
+        return 35;
+    PerceiverProfileDefinition budget_profile;
+    budget_profile.id = PerceiverProfileId::FromString("test.budget");
+    budget_profile.canonical_name = "test.budget";
+    budget_profile.senses = {hearing};
+    if (!budgeted.RegisterProfileDefinition(budget_profile))
+        return 36;
     budgeted.Freeze();
-    budgeted.SetBudget({1, 256, 4096});
-    auto s1 = budgeted.CreateStimulus(stim);
-    auto s2 = budgeted.CreateStimulus(stim);
-    if (!s1 || !s2)
-        return 24;
-    auto bo1 =
-        budgeted.ProcessStimulus(s1.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}});
-    auto bo2 =
-        budgeted.ProcessStimulus(s2.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}});
-    auto bo3 =
-        budgeted.ProcessStimulus(s2.Value(), PerceptionProcessingContext{GameplayTickId{2}, GameplayTimePoint{2}, {}});
-    if (!bo1 || bo1.Value().empty() || !bo2 || !bo2.Value().empty() || !bo3 || bo3.Value().empty())
-        return 25;
+    if (!budgeted.RegisterPerceiver(npc, budget_profile.id) || !budgeted.RegisterPerceiver(npc2, budget_profile.id))
+        return 37;
+    budgeted.SetBudget({10, 10, 1});
+    auto budget_sid = budgeted.CreateStimulus(audible);
+    if (!budget_sid)
+        return 38;
+    auto budget_out = budgeted.ProcessStimulus(
+        budget_sid.Value(),
+        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {Sample(npc), Sample(npc2)}});
+    if (!budget_out || budgeted.GetDiagnostics().detection_tests != 1 ||
+        budgeted.GetDiagnostics().budget_exhaustions == 0)
+        return 39;
 
+    // Custom evaluator exceptions are contained at the Framework boundary.
+    PerceptionService custom_service;
+    SenseDefinition custom_def;
+    custom_def.id = custom;
+    custom_def.canonical_name = "test.sense.custom";
+    custom_def.evaluation_model = SenseEvaluationModel::Custom;
+    custom_def.evaluator = evaluator_id;
+    custom_def.requires_spatial_sample = false;
+    if (!custom_service.RegisterEvaluator(evaluator_id, std::make_shared<ThrowingEvaluator>()) ||
+        !custom_service.RegisterSense(custom_def))
+        return 40;
+    PerceiverProfileDefinition custom_profile;
+    custom_profile.id = PerceiverProfileId::FromString("test.custom.profile");
+    custom_profile.canonical_name = "test.custom.profile";
+    custom_profile.senses = {custom};
+    if (!custom_service.RegisterProfileDefinition(custom_profile))
+        return 41;
+    custom_service.Freeze();
+    if (!custom_service.RegisterPerceiver(npc, custom_profile.id))
+        return 42;
+    PerceptionStimulus custom_stim = audible;
+    custom_stim.id = {};
+    custom_stim.sense = custom;
+    auto custom_sid = custom_service.CreateStimulus(custom_stim);
+    if (!custom_sid)
+        return 43;
+    auto custom_out = custom_service.ProcessStimulus(
+        custom_sid.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {}});
+    if (!custom_out || !custom_out.Value().empty() || custom_service.GetDiagnostics().evaluator_failures != 1)
+        return 44;
+
+    // Snapshot contains runtime perceivers and pending state, not definitions, and restore is transactional.
+    PerceptionStimulus delayed_again = audible;
+    delayed_again.id = {};
+    auto delayed_again_sid = delayed.CreateStimulus(delayed_again);
+    if (!delayed_again_sid)
+        return 66;
+    auto pending_before_save = delayed.ProcessStimulus(
+        delayed_again_sid.Value(),
+        PerceptionProcessingContext{GameplayTickId{2}, GameplayTimePoint{20}, {}, {Sample(npc)}});
+    if (!pending_before_save || !pending_before_save.Value().empty() || delayed.GetDiagnostics().pending_observations != 1)
+        return 67;
+    auto snapshot = delayed.CaptureSnapshot();
+    PerceptionService restored;
+    if (!restored.RegisterSense(delayed_hearing) || !restored.RegisterProfileDefinition(delayed_profile))
+        return 45;
+    restored.Freeze();
+    if (!restored.RestoreSnapshot(snapshot))
+        return 46;
+    if (!restored.FindPerceiver(npc))
+        return 47;
+    auto restored_pending = restored.AdvanceTime({25});
+    if (!restored_pending || restored_pending.Value().size() != 1 || restored.GetDiagnostics().pending_observations != 0)
+        return 68;
+
+    auto corrupt = snapshot;
+    corrupt.stimulus_ids.scope ^= 0xFFu;
+    const auto before_revision = restored.CurrentRevision();
+    if (restored.RestoreSnapshot(corrupt))
+        return 48;
+    if (restored.CurrentRevision() != before_revision || !restored.FindPerceiver(npc))
+        return 49;
+
+    // Bounded journal reports when the caller is behind retained history.
+    restored.SetChangeJournalCapacity(2);
+    const auto another = Ref("another");
+    if (!restored.RegisterPerceiver(another, delayed_profile.id) || !restored.UnregisterPerceiver(another) ||
+        !restored.RegisterPerceiver(another, delayed_profile.id) || !restored.UnregisterPerceiver(another))
+        return 50;
+    auto batch = restored.ReadChangesSince(1);
+    if (!batch.snapshot_required)
+        return 51;
+
+    // Awareness decay reaches Unaware and is physically removed when no observation remains.
     PerceptionService temporal;
     if (!temporal.RegisterSense(hear))
-        return 26;
-    if (!temporal.RegisterProfile(p))
-        return 27;
+        return 52;
+    PerceiverProfileDefinition temporal_profile;
+    temporal_profile.id = PerceiverProfileId::FromString("test.temporal");
+    temporal_profile.canonical_name = "test.temporal";
+    temporal_profile.senses = {hearing};
+    if (!temporal.RegisterProfileDefinition(temporal_profile))
+        return 53;
     temporal.SetTemporalPolicy({GameplayDuration{5}, GameplayDuration{10}, 250'000});
     temporal.Freeze();
-    PerceptionStimulus temporal_stim = stim;
+    if (!temporal.RegisterPerceiver(npc, temporal_profile.id))
+        return 54;
+    PerceptionStimulus temporal_stim = audible;
+    temporal_stim.id = {};
     temporal_stim.strength_micro = 1'000'000;
     temporal_stim.position = {0, 0, 0};
-    temporal_stim.lifetime = GameplayDuration{100};
     auto temporal_sid = temporal.CreateStimulus(temporal_stim);
     if (!temporal_sid)
-        return 28;
+        return 55;
     auto temporal_out = temporal.ProcessStimulus(
-        temporal_sid.Value(),
-        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{10}, {}, {{npc, {0, 0, 0}}}});
+        temporal_sid.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{10}, {}, {Sample(npc)}});
     if (!temporal_out || temporal_out.Value().size() != 1)
-        return 29;
-    if (!temporal.ExpireStimuli(GameplayTimePoint{15}))
-        return 30;
-    if (!temporal.FindObservationsByPerceiver(npc).empty())
-        return 31;
-    const auto *temporal_awareness = temporal.GetAwareness(npc, player);
-    if (!temporal_awareness || temporal_awareness->level != AwarenessLevel::Aware)
-        return 32;
-    if (!temporal.ExpireStimuli(GameplayTimePoint{30}))
-        return 33;
-    temporal_awareness = temporal.GetAwareness(npc, player);
-    if (!temporal_awareness || temporal_awareness->level != AwarenessLevel::Lost ||
-        temporal_awareness->suspicion_micro != 0)
-        return 34;
-    if (!temporal.ExpireStimuli(GameplayTimePoint{40}))
-        return 35;
-    temporal_awareness = temporal.GetAwareness(npc, player);
-    if (!temporal_awareness || temporal_awareness->level != AwarenessLevel::Unaware)
-        return 36;
+        return 56;
+    if (!temporal.AdvanceTime({30}))
+        return 57;
+    const auto *lost = temporal.GetAwareness(npc, player);
+    if (!lost || lost->level != AwarenessLevel::Lost)
+        return 58;
+    if (!temporal.AdvanceTime({40}))
+        return 59;
+    if (temporal.GetAwareness(npc, player))
+        return 60;
+
+    PerceptionService requested_ids;
+    if (!requested_ids.RegisterSense(hear) || !requested_ids.RegisterProfileDefinition(temporal_profile))
+        return 69;
+    requested_ids.Freeze();
+    if (!requested_ids.RegisterPerceiver(npc, temporal_profile.id))
+        return 70;
+    PerceptionStimulus requested = audible;
+    requested.id = PerceptionStimulusId::FromRaw(0x2000, 100);
+    auto requested_id = requested_ids.CreateStimulus(requested);
+    if (!requested_id)
+        return 71;
+    PerceptionStimulus generated = audible;
+    generated.id = {};
+    auto generated_id = requested_ids.CreateStimulus(generated);
+    if (!generated_id || generated_id.Value().value.Low() <= 100)
+        return 72;
+
     return 0;
 }

@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <optional>
 #include <span>
 #include <string>
@@ -199,16 +200,30 @@ struct IdHash
 struct RegisteredPayload
 {
     TypeId type{};
+    std::uint32_t schema_version = 0;
+    bool portable = false;
     std::vector<std::byte> bytes;
     template <class T> [[nodiscard]] static RegisteredPayload FromTrivial(TypeId type_id, const T &value)
     {
         static_assert(std::is_trivially_copyable_v<T>);
         RegisteredPayload payload;
         payload.type = type_id;
+        payload.schema_version = 0;
+        payload.portable = false;
         payload.bytes.resize(sizeof(T));
         std::memcpy(payload.bytes.data(), &value, sizeof(T));
         return payload;
     }
+    [[nodiscard]] static RegisteredPayload FromVersioned(TypeId type_id, std::uint32_t version, std::vector<std::byte> encoded)
+    {
+        RegisteredPayload payload;
+        payload.type = type_id;
+        payload.schema_version = version;
+        payload.portable = true;
+        payload.bytes = std::move(encoded);
+        return payload;
+    }
+    [[nodiscard]] bool IsPortable() const noexcept { return !type.IsValid() || portable; }
     template <class T> [[nodiscard]] std::optional<T> AsTrivial(TypeId expected) const
     {
         static_assert(std::is_trivially_copyable_v<T>);
@@ -224,9 +239,6 @@ enum class ProcessTimingPolicy
 {
     Instant,
     Timed,
-    StepBased,
-    Batch,
-    Continuous,
     ExternalCompletion
 };
 enum class ProcessPersistencePolicy
@@ -247,9 +259,7 @@ enum class InputConsumptionPolicy
 enum class OutputDeliveryPolicy
 {
     Immediate,
-    OnCompletion,
-    Deferred,
-    AdapterOwned
+    OnCompletion
 };
 enum class ProcessInstanceState
 {
@@ -260,7 +270,8 @@ enum class ProcessInstanceState
     Completed,
     Failed,
     Cancelled,
-    Expired
+    Expired,
+    ReconciliationRequired
 };
 enum class StationState
 {
@@ -282,7 +293,8 @@ enum class ProcessChangeKind
     InputReserved,
     InputConsumed,
     OutputProduced,
-    QualityResolved
+    QualityResolved,
+    ReconciliationRequired
 };
 
 struct ProcessStepDefinition
@@ -349,12 +361,34 @@ struct ProcessQualityResult
     Fixed quality_score_micro = 1'000'000;
     std::vector<TypeId> reasons;
 };
+enum class ProcessInputCommitState
+{
+    Reserved,
+    Consumed,
+    Released
+};
+enum class ProcessOutputCommitState
+{
+    Prepared,
+    Committed,
+    Cancelled
+};
 struct ReservedProcessInput
 {
     ProcessReservationId id{};
     ProcessInputId input{};
     ProcessInputTypeId type{};
     Fixed amount = 0;
+    InputConsumptionPolicy consumption = InputConsumptionPolicy::ReserveThenConsume;
+    ProcessInputCommitState state = ProcessInputCommitState::Reserved;
+    RegisteredPayload provider_token;
+};
+struct PreparedProcessOutput
+{
+    ProcessOutputId output{};
+    ProcessOutputTypeId type{};
+    OutputDeliveryPolicy delivery = OutputDeliveryPolicy::OnCompletion;
+    ProcessOutputCommitState state = ProcessOutputCommitState::Prepared;
     RegisteredPayload provider_token;
 };
 struct ProcessInstance
@@ -364,12 +398,15 @@ struct ProcessInstance
     GameplayObjectRef actor{};
     GameplayObjectRef station{};
     GameplayObjectRef target{};
+    GameplayObjectRef simulation_area{};
     ProcessInstanceState state = ProcessInstanceState::Prepared;
-    Fixed progress_micro = 0;
     GameplayTimePoint started_at{};
     GameplayTimePoint due_at{};
     GameplayTimePoint last_updated_at{};
     std::vector<ReservedProcessInput> reserved_inputs;
+    std::vector<PreparedProcessOutput> prepared_outputs;
+    GameplayDuration total_duration{};
+    GameplayDuration paused_remaining{};
     ProcessQualityResult quality{};
     RegisteredPayload runtime_payload;
     Revision revision{};
@@ -383,6 +420,7 @@ struct StartProcessRequest
     GameplayTimePoint now{};
     std::uint64_t seed = 0;
     GameplayContext context{};
+    GameplayObjectRef simulation_area{};
 };
 struct ProcessChange
 {
@@ -395,6 +433,14 @@ struct ProcessChange
     GameplayContext context{};
     Revision revision{};
 };
+struct ProcessChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+    std::vector<ProcessChange> changes;
+};
+
 struct ProcessesSnapshot
 {
     std::vector<ProcessStation> stations;
@@ -418,9 +464,14 @@ class IProcessInputProvider
 {
   public:
     virtual ~IProcessInputProvider() = default;
+    [[nodiscard]] virtual foundation::Result<void> Validate(const ProcessInputDefinition &input,
+                                                            const StartProcessRequest &request,
+                                                            ProcessInstanceId instance) = 0;
     [[nodiscard]] virtual foundation::Result<ReservedProcessInput> Reserve(const ProcessInputDefinition &input,
                                                                            const StartProcessRequest &request,
                                                                            ProcessInstanceId instance) = 0;
+    // Consume and Release must be idempotent for the stable provider token. A successful call may be
+    // repeated after restore/reconciliation without applying the mutation twice.
     [[nodiscard]] virtual foundation::Result<void> Consume(const ReservedProcessInput &reservation,
                                                            GameplayContext context) = 0;
     [[nodiscard]] virtual foundation::Result<void> Release(const ReservedProcessInput &reservation,
@@ -431,9 +482,17 @@ class IProcessOutputHandler
   public:
     virtual ~IProcessOutputHandler() = default;
     [[nodiscard]] virtual bool Supports(ProcessOutputTypeId type) const noexcept = 0;
-    [[nodiscard]] virtual foundation::Result<void> Produce(const ProcessOutputDefinition &output,
-                                                           const ProcessInstance &instance,
-                                                           GameplayContext context) = 0;
+    // Prepare is the only stage allowed to fail before delivery. The returned token must be stable
+    // and Commit must be idempotent for it so a partially completed process can resume safely.
+    [[nodiscard]] virtual foundation::Result<PreparedProcessOutput> Prepare(const ProcessOutputDefinition &output,
+                                                                           const ProcessInstance &instance,
+                                                                           GameplayContext context) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Commit(const PreparedProcessOutput &output,
+                                                          const ProcessInstance &instance,
+                                                          GameplayContext context) = 0;
+    [[nodiscard]] virtual foundation::Result<void> Cancel(const PreparedProcessOutput &output,
+                                                          const ProcessInstance &instance,
+                                                          GameplayContext context) = 0;
 };
 class IProcessQualityProvider
 {
@@ -475,6 +534,7 @@ class ProcessesService
     [[nodiscard]] const ProcessRecipe *FindRecipe(ProcessRecipeId id) const noexcept;
     [[nodiscard]] const ProcessStation *FindStationByObject(GameplayObjectRef station) const noexcept;
     [[nodiscard]] const ProcessInstance *FindInstance(ProcessInstanceId id) const noexcept;
+    [[nodiscard]] Fixed EvaluateProgress(ProcessInstanceId id, GameplayTimePoint now) const noexcept;
 
     [[nodiscard]] foundation::Result<ProcessInstanceId> StartProcess(StartProcessRequest request);
     [[nodiscard]] foundation::Result<void> Pause(ProcessInstanceId id, GameplayTimePoint now,
@@ -486,10 +546,18 @@ class ProcessesService
     [[nodiscard]] foundation::Result<void> Complete(ProcessInstanceId id, GameplayTimePoint now,
                                                     GameplayContext context = {});
     [[nodiscard]] foundation::Result<std::vector<ProcessInstanceId>> CompleteDue(GameplayTimePoint now);
+    [[nodiscard]] std::vector<ProcessInstance> FindDueProcessesForSimulation(GameplayObjectRef simulation_area,
+                                                                              GameplayTimePoint from,
+                                                                              GameplayTimePoint to) const;
+    [[nodiscard]] foundation::Result<std::vector<ProcessInstanceId>> CompletePreparedDueForSimulation(
+        GameplayObjectRef simulation_area, std::span<const ProcessInstanceId> process_ids, GameplayTimePoint now,
+        GameplayContext context = {});
 
     [[nodiscard]] std::vector<ProcessInstance> FindProcessesByActor(GameplayObjectRef actor) const;
     [[nodiscard]] std::vector<ProcessInstance> FindProcessesByStation(GameplayObjectRef station) const;
     [[nodiscard]] std::vector<ProcessChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] ProcessChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] foundation::Result<void> PruneTerminalProcesses(std::size_t keep_recent = 0);
     [[nodiscard]] ProcessesSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(ProcessesSnapshot snapshot);
     [[nodiscard]] ProcessesDiagnostics GetDiagnostics() const noexcept;
@@ -502,10 +570,17 @@ class ProcessesService
     void Record(ProcessChange change);
     [[nodiscard]] foundation::Result<void> ReserveInputs(ProcessInstance &instance, const ProcessRecipe &recipe,
                                                          const StartProcessRequest &request);
-    [[nodiscard]] foundation::Result<void> ConsumeInputs(ProcessInstance &instance, GameplayContext context);
+    [[nodiscard]] foundation::Result<void> ConsumeInputs(ProcessInstance &instance, InputConsumptionPolicy phase,
+                                                         GameplayContext context);
     [[nodiscard]] foundation::Result<void> ReleaseInputs(ProcessInstance &instance, GameplayContext context);
-    [[nodiscard]] foundation::Result<void> ProduceOutputs(const ProcessInstance &instance, const ProcessRecipe &recipe,
-                                                          GameplayContext context);
+    [[nodiscard]] foundation::Result<void> PrepareOutputs(ProcessInstance &instance, const ProcessRecipe &recipe,
+                                                          OutputDeliveryPolicy phase, GameplayContext context);
+    [[nodiscard]] foundation::Result<void> CommitOutputs(ProcessInstance &instance, OutputDeliveryPolicy phase,
+                                                         GameplayContext context);
+    [[nodiscard]] foundation::Result<void> CancelPreparedOutputs(ProcessInstance &instance, GameplayContext context);
+    [[nodiscard]] foundation::Result<void> ValidateProviderInput(const ProcessInputDefinition &input,
+                                                                 const StartProcessRequest &request,
+                                                                 ProcessInstanceId instance) const;
     [[nodiscard]] GameplayDuration DurationFor(const ProcessRecipe &recipe, const ProcessDefinition &definition,
                                                const ProcessStation *station) const noexcept;
 
@@ -522,7 +597,8 @@ class ProcessesService
     IProcessInputProvider *input_provider_ = nullptr;
     std::vector<IProcessOutputHandler *> output_handlers_;
     const IProcessQualityProvider *quality_provider_ = nullptr;
-    std::vector<ProcessChange> changes_;
+    std::deque<ProcessChange> changes_;
+    std::size_t change_journal_capacity_ = 4096;
     std::uint64_t next_change_sequence_ = 1;
     ProcessesDiagnostics diagnostics_{};
 };

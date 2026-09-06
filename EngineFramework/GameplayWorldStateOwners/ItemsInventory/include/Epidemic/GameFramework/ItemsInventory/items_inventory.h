@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <deque>
 #include <optional>
 #include <span>
 #include <string>
@@ -142,6 +143,8 @@ enum class ItemChangeKind
     StacksMerged,
     TransferCommitted,
     ContainerCreated,
+    ContainerStateChanged,
+    ContainerRemoved,
     ReservationCreated,
     ReservationReleased,
     ReservationConsumed,
@@ -190,7 +193,6 @@ struct ItemInstance
     Fixed durability = 0;
     Fixed charges = 0;
     std::vector<ItemProperty> properties;
-    std::optional<GameplayObjectRef> world_entity;
     Revision revision{};
 };
 struct ItemCreateRequest
@@ -254,6 +256,14 @@ struct ItemChange
     ItemInstanceId related_item{};
     ItemReservationId reservation{};
 };
+struct ItemsChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+    std::vector<ItemChange> changes;
+};
+
 struct ItemsSnapshot
 {
     std::vector<ItemInstance> items;
@@ -317,8 +327,12 @@ class ItemsInventoryService
     [[nodiscard]] const ItemDefinition *FindDefinition(ItemDefinitionId id) const noexcept;
 
     [[nodiscard]] foundation::Result<ContainerId> CreateContainer(ContainerRecord container);
+    [[nodiscard]] foundation::Result<void> SetContainerState(ContainerId container, ContainerState state,
+                                                            GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RemoveContainer(ContainerId container, GameplayContext context = {});
     [[nodiscard]] foundation::Result<ItemInstanceId> CreateItem(ItemInstance item, GameplayContext context = {});
     [[nodiscard]] foundation::Result<ItemInstanceId> CreateItem(ItemCreateRequest request, GameplayContext context = {});
+    [[nodiscard]] bool CanCreateItem(ItemDefinitionId definition, Fixed quantity, const ItemLocation& location) const;
     [[nodiscard]] foundation::Result<void> DestroyItem(ItemInstanceId item, GameplayContext context = {});
     [[nodiscard]] const ItemInstance *FindItem(ItemInstanceId id) const noexcept;
     [[nodiscard]] const ContainerRecord *FindContainer(ContainerId id) const noexcept;
@@ -333,6 +347,11 @@ class ItemsInventoryService
     [[nodiscard]] foundation::Result<ItemTransferPlan> PrepareTransfer(ItemInstanceId item, ItemLocation target,
                                                                        Fixed quantity, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CommitTransfer(const ItemTransferPlan &plan);
+    // Commits a full-instance relocation against an active reservation. This is the
+    // owner-side primitive used by cross-owner sagas such as coordinated trade: the
+    // reservation remains authoritative until the location mutation succeeds.
+    [[nodiscard]] foundation::Result<void> CommitReservedTransfer(ItemReservationId reservation, ItemLocation target,
+                                                                  GameplayContext context = {});
     [[nodiscard]] bool CanTransfer(ItemInstanceId item, ItemLocation target, Fixed quantity) const noexcept;
 
     [[nodiscard]] foundation::Result<ItemReservationId> ReserveItem(ItemInstanceId item, Fixed quantity,
@@ -366,6 +385,8 @@ class ItemsInventoryService
     [[nodiscard]] std::vector<ItemInstance> FindItemsInContainer(ContainerId container) const;
     [[nodiscard]] std::vector<ItemInstance> FindItemsByDefinition(ItemDefinitionId definition) const;
     [[nodiscard]] std::vector<ItemChange> ChangesSince(std::uint64_t sequence) const;
+    [[nodiscard]] ItemsChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] ItemsSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(ItemsSnapshot snapshot);
@@ -381,12 +402,14 @@ class ItemsInventoryService
         ++revision_.value;
     }
     void Record(ItemChange change);
+    void RebuildIndexes();
     [[nodiscard]] bool EquivalentForStack(const ItemInstance &a, const ItemInstance &b) const noexcept;
     [[nodiscard]] bool ValidateContainerTarget(ItemInstanceId moving, ContainerId target,
                                                Fixed quantity) const noexcept;
     [[nodiscard]] std::uint32_t ContainerDepth(ContainerId id) const noexcept;
     [[nodiscard]] Revision LocationRevision(const ItemLocation &location) const noexcept;
     [[nodiscard]] bool ValidateLocation(const ItemLocation& location) const noexcept;
+    [[nodiscard]] bool IsWorldObjectBound(GameplayObjectRef world_object, ItemInstanceId except = {}) const noexcept;
     [[nodiscard]] bool ValidateProperties(std::vector<ItemProperty>& properties) const;
     [[nodiscard]] bool PolicyAllows(ContainerId container, ItemInstanceId moving, ItemDefinitionId definition, Fixed quantity) const;
 
@@ -398,12 +421,16 @@ class ItemsInventoryService
     std::unordered_map<ItemInstanceId, ItemInstance, IdHash> items_;
     std::unordered_map<ContainerId, ContainerRecord, IdHash> containers_;
     std::unordered_map<ItemReservationId, ItemReservation, IdHash> reservations_;
+    std::unordered_map<ContainerId, std::vector<ItemInstanceId>, IdHash> container_items_;
+    std::unordered_map<ItemDefinitionId, std::vector<ItemInstanceId>, IdHash> definition_items_;
+    std::unordered_map<ItemInstanceId, Fixed, IdHash> active_reserved_quantities_;
     MonotonicIdGenerator<GameplayObjectId> item_ids_{0x3400};
     MonotonicIdGenerator<GameplayObjectId> container_ids_{0x3401};
     MonotonicIdGenerator<GameplayObjectId> transfer_ids_{0x3402};
     MonotonicIdGenerator<GameplayObjectId> reservation_ids_{0x3403};
-    std::vector<ItemChange> changes_;
+    std::deque<ItemChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    static constexpr std::size_t kChangeJournalCapacity = 8192;
     ItemsDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::items

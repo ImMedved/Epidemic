@@ -1,9 +1,10 @@
 #include "Epidemic/GameFramework/Effects/effects.h"
 
-#include "Epidemic/Core/task_scheduler.h"
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
+#include <exception>
+#include <limits>
 #include <optional>
 
 namespace epidemic::gameplay::effects
@@ -197,9 +198,23 @@ foundation::Result<void> EffectService::ValidatePayload(
     {
         return foundation::Result<void>::Failure(Error("gameplay.effect_payload_invalid", "effect payload type or size is invalid"));
     }
-    if (entry.validator && !entry.validator(payload.bytes))
+    if (entry.validator)
     {
-        return foundation::Result<void>::Failure(Error("gameplay.effect_payload_rejected", "effect payload validator rejected payload"));
+        try
+        {
+            if (!entry.validator(payload.bytes))
+            {
+                return foundation::Result<void>::Failure(Error("gameplay.effect_payload_rejected", "effect payload validator rejected payload"));
+            }
+        }
+        catch (const std::exception&)
+        {
+            return foundation::Result<void>::Failure(Error("gameplay.effect_payload_validator_failed", "effect payload validator threw an exception"));
+        }
+        catch (...)
+        {
+            return foundation::Result<void>::Failure(Error("gameplay.effect_payload_validator_failed", "effect payload validator threw an unknown exception"));
+        }
     }
     return foundation::Result<void>::Success();
 }
@@ -313,8 +328,7 @@ EffectOperationDisposition EffectService::MapPrepareDisposition(EffectPrepareDis
 
 foundation::Result<std::vector<EffectService::PreparedOperation>> EffectService::PrepareWave(
     std::vector<EffectOperation> operations,
-    EffectExecutionPolicy policy,
-    core::tasks::ITaskScheduler* scheduler)
+    EffectExecutionPolicy policy)
 {
     std::sort(operations.begin(), operations.end(), [](const auto& left, const auto& right) {
         if (left.wave != right.wave) return left.wave < right.wave;
@@ -324,10 +338,6 @@ foundation::Result<std::vector<EffectService::PreparedOperation>> EffectService:
     });
 
     std::vector<PreparedOperation> prepared(operations.size());
-    std::vector<bool> ready_for_handler(operations.size(), false);
-    bool can_parallelize = scheduler != nullptr && operations.size() > 1;
-
-    // Resolve payload/capability/target state serially. IEffectTargetStateProvider has no thread-safety contract.
     for (std::size_t i = 0; i < operations.size(); ++i)
     {
         auto& output = prepared[i];
@@ -336,7 +346,6 @@ foundation::Result<std::vector<EffectService::PreparedOperation>> EffectService:
         if (handler_found == handlers_.end())
         {
             output.preflight_disposition = EffectOperationDisposition::Unsupported;
-            can_parallelize = false;
             continue;
         }
         const auto payload_result = ValidatePayload(handler_found->second, output.operation.payload);
@@ -351,37 +360,29 @@ foundation::Result<std::vector<EffectService::PreparedOperation>> EffectService:
             output.preflight_disposition = capability;
             continue;
         }
-        ready_for_handler[i] = true;
-        if (!handler_found->second.handler->Capabilities().thread_safe_prepare)
-            can_parallelize = false;
-    }
 
-    auto prepare_handler = [this, &prepared, &ready_for_handler](std::size_t index) {
-        if (!ready_for_handler[index]) return;
-        auto& output = prepared[index];
-        const auto handler_found = handlers_.find(output.operation.type);
-        const auto result = handler_found->second.handler->Prepare(output.operation);
-        if (!result)
+        try
+        {
+            const auto result = handler_found->second.handler->Prepare(output.operation);
+            if (!result)
+            {
+                output.preflight_disposition = EffectOperationDisposition::Failed;
+                continue;
+            }
+            output.prepared = result.Value();
+            output.preflight_disposition = MapPrepareDisposition(output.prepared.disposition);
+            output.commit = output.prepared.disposition == EffectPrepareDisposition::Accepted;
+        }
+        catch (const std::exception&)
         {
             output.preflight_disposition = EffectOperationDisposition::Failed;
-            return;
+            output.commit = false;
         }
-        output.prepared = result.Value();
-        output.preflight_disposition = MapPrepareDisposition(output.prepared.disposition);
-        output.commit = output.prepared.disposition == EffectPrepareDisposition::Accepted;
-    };
-
-    if (can_parallelize)
-    {
-        core::tasks::TaskGroup group;
-        for (std::size_t i = 0; i < operations.size(); ++i)
-            if (ready_for_handler[i])
-                [[maybe_unused]] const auto handle = scheduler->Schedule([prepare_handler, i]() { prepare_handler(i); }, group, "GameplayEffectPrepare");
-        scheduler->Wait(group);
-    }
-    else
-    {
-        for (std::size_t i = 0; i < operations.size(); ++i) prepare_handler(i);
+        catch (...)
+        {
+            output.preflight_disposition = EffectOperationDisposition::Failed;
+            output.commit = false;
+        }
     }
 
     if (policy == EffectExecutionPolicy::RequireAllPrepared)
@@ -405,8 +406,7 @@ foundation::Result<std::vector<EffectService::PreparedOperation>> EffectService:
 
 foundation::Result<EffectExecutionResult> EffectService::Execute(
     EffectRequest request,
-    EffectExecutionBudget budget,
-    core::tasks::ITaskScheduler* scheduler)
+    EffectExecutionBudget budget)
 {
     if (!frozen_)
     {
@@ -460,7 +460,7 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
         {
             operation.wave = wave_index;
         }
-        auto prepared_result = PrepareWave(std::move(wave), definition->policy, scheduler);
+        auto prepared_result = PrepareWave(std::move(wave), definition->policy);
         if (!prepared_result)
         {
             return foundation::Result<EffectExecutionResult>::Failure(prepared_result.GetError());
@@ -679,6 +679,18 @@ std::optional<DeferredEffectRecord> EffectService::FindDeferredCopy(DeferredEffe
     return value == nullptr ? std::nullopt : std::optional<DeferredEffectRecord>{*value};
 }
 
+std::vector<DeferredEffectRecord> EffectService::AllDeferred() const
+{
+    std::vector<DeferredEffectRecord> result;
+    result.reserve(deferred_.size());
+    for (const auto& [_, record] : deferred_)
+    {
+        result.push_back(record);
+    }
+    std::sort(result.begin(), result.end(), [](const auto& left, const auto& right) { return left.id < right.id; });
+    return result;
+}
+
 std::vector<DeferredEffectRecord> EffectService::UnscheduledDeferred() const
 {
     std::vector<DeferredEffectRecord> result;
@@ -693,37 +705,116 @@ std::vector<DeferredEffectRecord> EffectService::UnscheduledDeferred() const
     return result;
 }
 
-foundation::Result<EffectRequest> EffectService::TakeDeferredBySchedule(ScheduleId schedule, GameplayContext context)
+foundation::Result<EffectRequest> EffectService::PeekDeferredBySchedule(ScheduleId schedule, GameplayContext context) const
 {
     const auto mapped = deferred_by_schedule_.find(schedule);
     if (mapped == deferred_by_schedule_.end())
+    {
         return foundation::Result<EffectRequest>::Failure(Error("gameplay.deferred_effect_schedule_unknown", "no deferred effect bound to schedule"));
+    }
     const auto found = deferred_.find(mapped->second);
     if (found == deferred_.end())
+    {
         return foundation::Result<EffectRequest>::Failure(Error("gameplay.deferred_effect_schedule_inconsistent", "deferred schedule index is inconsistent"));
-    const auto id = found->first;
-    auto request = std::move(found->second.request);
+    }
+    auto request = found->second.request;
     request.context = MergeContext(request.context, context);
-    EffectChange change{0, EffectChangeKind::DeferredExecuted, {}, {}, {}, id, EffectOperationDisposition::Applied, request.context};
+    return foundation::Result<EffectRequest>::Success(std::move(request));
+}
+
+foundation::Result<void> EffectService::AcknowledgeDeferredBySchedule(ScheduleId schedule, GameplayContext context)
+{
+    const auto mapped = deferred_by_schedule_.find(schedule);
+    if (mapped == deferred_by_schedule_.end())
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.deferred_effect_schedule_unknown", "no deferred effect bound to schedule"));
+    }
+    const auto found = deferred_.find(mapped->second);
+    if (found == deferred_.end())
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.deferred_effect_schedule_inconsistent", "deferred schedule index is inconsistent"));
+    }
+    const auto id = found->first;
+    EffectChange change{0, EffectChangeKind::DeferredExecuted, {}, {}, {}, id, EffectOperationDisposition::Applied, context};
     change.schedule = found->second.schedule;
     deferred_by_schedule_.erase(mapped);
     RecordChange(std::move(change));
     deferred_.erase(found);
-    return foundation::Result<EffectRequest>::Success(std::move(request));
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> EffectService::ClearDeferredSchedule(DeferredEffectId id)
+{
+    const auto found = deferred_.find(id);
+    if (found == deferred_.end())
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.deferred_effect_unknown", "deferred effect does not exist"));
+    }
+    if (found->second.schedule.has_value())
+    {
+        deferred_by_schedule_.erase(*found->second.schedule);
+        found->second.schedule.reset();
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<EffectRequest> EffectService::TakeDeferredBySchedule(ScheduleId schedule, GameplayContext context)
+{
+    auto request = PeekDeferredBySchedule(schedule, context);
+    if (!request)
+    {
+        return foundation::Result<EffectRequest>::Failure(request.GetError());
+    }
+    const auto acknowledged = AcknowledgeDeferredBySchedule(schedule, request.Value().context);
+    if (!acknowledged)
+    {
+        return foundation::Result<EffectRequest>::Failure(acknowledged.GetError());
+    }
+    return request;
 }
 
 void EffectService::RecordChange(EffectChange change)
 {
     change.sequence = next_change_sequence_++;
     changes_.push_back(std::move(change));
+    while (changes_.size() > kChangeJournalCapacity)
+    {
+        changes_.erase(changes_.begin());
+    }
 }
 
 std::vector<EffectChange> EffectService::ChangesSince(std::uint64_t sequence) const
 {
+    return ReadChangesSince(sequence).changes;
+}
+
+EffectChangeBatch EffectService::ReadChangesSince(std::uint64_t sequence) const
+{
+    EffectChangeBatch batch;
+    batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
+    if (changes_.empty())
+    {
+        if (next_change_sequence_ > 1 && sequence < next_change_sequence_ - 1)
+        {
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    if (sequence < changes_.front().sequence - 1)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
     const auto found = std::upper_bound(changes_.begin(), changes_.end(), sequence, [](std::uint64_t value, const EffectChange& change) {
         return value < change.sequence;
     });
-    return std::vector<EffectChange>(found, changes_.end());
+    batch.changes.assign(found, changes_.end());
+    return batch;
+}
+
+std::uint64_t EffectService::OldestChangeSequence() const noexcept
+{
+    return changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
 }
 
 void EffectService::PruneChangesBefore(std::uint64_t sequence)
@@ -754,17 +845,38 @@ EffectsSnapshot EffectService::CaptureSnapshot() const
 
 foundation::Result<void> EffectService::RestoreSnapshot(EffectsSnapshot snapshot)
 {
+    const auto expected_execution_scope = execution_ids_.Scope().Raw();
+    const auto expected_deferred_scope = deferred_ids_.Scope().Raw();
+    if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.execution_ids) ||
+        snapshot.execution_ids.scope != expected_execution_scope ||
+        !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.deferred_ids) ||
+        snapshot.deferred_ids.scope != expected_deferred_scope)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.effects_snapshot_generator_invalid", "effects snapshot contains an invalid id generator scope"));
+    }
+
     std::unordered_map<DeferredEffectId, DeferredEffectRecord, DeferredEffectIdHash> rebuilt;
+    std::uint64_t max_deferred_low = 0;
     for (auto& record : snapshot.deferred)
     {
-        if (!record.id.IsValid() || FindDefinition(record.request.definition) == nullptr || !record.clock.IsValid() ||
+        if (!record.id.IsValid() || record.id.value.High() != expected_deferred_scope ||
+            FindDefinition(record.request.definition) == nullptr || !record.clock.IsValid() ||
             record.persistence != DeferredEffectPersistence::Persistent || rebuilt.contains(record.id) || record.request.targets.empty())
         {
             return foundation::Result<void>::Failure(Error("gameplay.effects_snapshot_invalid", "effects snapshot contains invalid deferred effect"));
         }
+        max_deferred_low = std::max(max_deferred_low, record.id.value.Low());
         record.schedule.reset();
         rebuilt.emplace(record.id, std::move(record));
     }
+
+    if (snapshot.deferred_ids.next != 0 && snapshot.deferred_ids.next <= max_deferred_low)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.effects_snapshot_generator_behind", "deferred effect id generator is not ahead of restored ids"));
+    }
+
     deferred_ = std::move(rebuilt);
     deferred_by_schedule_.clear();
     execution_ids_.Restore(snapshot.execution_ids);

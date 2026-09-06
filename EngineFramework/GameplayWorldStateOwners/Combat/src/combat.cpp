@@ -67,12 +67,10 @@ namespace
         return std::numeric_limits<std::int64_t>::min();
     return static_cast<std::int64_t>(scaled);
 }
-[[nodiscard]] bool IsTerminalLifeState(CombatLifeState state) noexcept
-{
-    return state == CombatLifeState::Dead || state == CombatLifeState::Disabled;
-}
 } // namespace
-CombatService::CombatService() : resolution_ids_(GameplayObjectId::FromString("framework.combat.resolutions").High())
+CombatService::CombatService()
+    : resolution_ids_(GameplayObjectId::FromString("framework.combat.resolutions").High()),
+      resource_reservation_ids_(GameplayObjectId::FromString("framework.combat.resource_reservations").High())
 {
 }
 void CombatService::SetModifierProvider(const ICombatModifierProvider *provider) noexcept
@@ -146,22 +144,55 @@ void CombatService::Record(CombatChange c)
 }
 bool CombatService::ReconcileLifeState(CombatantRecord &record, CombatResourceTypeId changed_resource) noexcept
 {
-    if (IsTerminalLifeState(record.life_state) || record.life_state == CombatLifeState::Downed)
+    if (record.life_state == CombatLifeState::Dead || record.life_state == CombatLifeState::Disabled)
         return false;
     if (changed_resource.IsValid())
     {
-        auto def = resources_.find(changed_resource);
-        if (def == resources_.end() || !def->second.drives_life_state)
+        const auto changed = resources_.find(changed_resource);
+        if (changed == resources_.end() || changed->second.depletion_effect == CombatResourceDepletionEffect::None)
             return false;
     }
+
+    CombatResourceDepletionEffect strongest = CombatResourceDepletionEffect::None;
     for (const auto &state : record.resources)
     {
-        auto def = resources_.find(state.type);
-        if (def != resources_.end() && def->second.drives_life_state && state.current_micro <= def->second.minimum_micro)
+        const auto def = resources_.find(state.type);
+        if (def == resources_.end() || state.current_micro > def->second.minimum_micro)
+            continue;
+        if (def->second.depletion_effect == CombatResourceDepletionEffect::Dead)
         {
-            record.life_state = CombatLifeState::Dead;
-            return true;
+            strongest = CombatResourceDepletionEffect::Dead;
+            break;
         }
+        if (def->second.depletion_effect == CombatResourceDepletionEffect::Downed)
+            strongest = CombatResourceDepletionEffect::Downed;
+    }
+
+    CombatLifeState desired = record.life_state;
+    if (strongest == CombatResourceDepletionEffect::Dead)
+        desired = CombatLifeState::Dead;
+    else if (strongest == CombatResourceDepletionEffect::Downed && record.life_state == CombatLifeState::Alive)
+        desired = CombatLifeState::Downed;
+
+    if (desired == record.life_state)
+        return false;
+    record.life_state = desired;
+    return true;
+}
+bool CombatService::IsAllowedLifeTransition(CombatLifeState from, CombatLifeState to) noexcept
+{
+    if (from == to)
+        return true;
+    switch (from)
+    {
+    case CombatLifeState::Alive:
+        return to == CombatLifeState::Downed || to == CombatLifeState::Dead || to == CombatLifeState::Disabled;
+    case CombatLifeState::Downed:
+        return to == CombatLifeState::Alive || to == CombatLifeState::Dead || to == CombatLifeState::Disabled;
+    case CombatLifeState::Disabled:
+        return to == CombatLifeState::Alive || to == CombatLifeState::Downed || to == CombatLifeState::Dead;
+    case CombatLifeState::Dead:
+        return false;
     }
     return false;
 }
@@ -188,7 +219,7 @@ foundation::Result<void> CombatService::RegisterCombatant(GameplayObjectRef subj
     const bool life_changed = ReconcileLifeState(record, {});
     combatants_.emplace(subject, record);
     ++diagnostics_.combatants;
-    if (life_changed)
+    if (life_changed && record.life_state == CombatLifeState::Dead)
         ++diagnostics_.deaths;
     Record({0, CombatChangeKind::CombatantRegistered, subject, {}, {}, record.life_state, record.revision, context});
     if (life_changed)
@@ -202,6 +233,7 @@ foundation::Result<void> CombatService::RemoveCombatant(GameplayObjectRef subjec
         return foundation::Result<void>::Failure(Error("gameplay.combat.combatant_missing", "combatant missing"));
     const auto rev = it->second.revision;
     combatants_.erase(it);
+    std::erase_if(resource_reservations_, [&](const auto &entry) { return entry.second.subject == subject; });
     std::erase_if(prepared_plans_, [&](const auto &entry) { return entry.second.request.target == subject; });
     --diagnostics_.combatants;
     Record({0, CombatChangeKind::CombatantRemoved, subject, {}, {}, CombatLifeState::Disabled, rev, context});
@@ -251,7 +283,8 @@ foundation::Result<void> CombatService::SetResourceMaximum(GameplayObjectRef sub
     Record({0, CombatChangeKind::ResourceChanged, subject, {}, type, record->life_state, record->revision, context});
     if (life_changed && before != record->life_state)
     {
-        ++diagnostics_.deaths;
+        if (record->life_state == CombatLifeState::Dead)
+            ++diagnostics_.deaths;
         Record({0, CombatChangeKind::LifeStateChanged, subject, {}, type, record->life_state, record->revision, context});
     }
     return foundation::Result<void>::Success();
@@ -274,11 +307,54 @@ foundation::Result<void> CombatService::ModifyResource(GameplayObjectRef subject
     Record({0, CombatChangeKind::ResourceChanged, subject, {}, type, record->life_state, record->revision, context});
     if (life_changed && before != record->life_state)
     {
-        ++diagnostics_.deaths;
+        if (record->life_state == CombatLifeState::Dead)
+            ++diagnostics_.deaths;
         Record({0, CombatChangeKind::LifeStateChanged, subject, {}, type, record->life_state, record->revision, context});
     }
     return foundation::Result<void>::Success();
 }
+foundation::Result<CombatResourceReservationId> CombatService::ReserveResource(
+    GameplayObjectRef subject, CombatResourceTypeId type, std::int64_t amount, GameplayContext context)
+{
+    if (amount < 0)
+        return foundation::Result<CombatResourceReservationId>::Failure(
+            Error("gameplay.combat.resource_reservation_invalid", "resource reservation amount must be non-negative"));
+    auto state = GetResource(subject, type);
+    if (!state || state.Value().current_micro - amount < resources_.at(type).minimum_micro)
+        return foundation::Result<CombatResourceReservationId>::Failure(
+            Error("gameplay.combat.resource_unavailable", "combat resource unavailable for reservation"));
+    const CombatResourceReservationId id{resource_reservation_ids_.Next()};
+    if (!id.IsValid())
+        return foundation::Result<CombatResourceReservationId>::Failure(
+            Error("gameplay.combat.resource_reservation_id_exhausted", "combat resource reservation id exhausted"));
+    auto debit = ModifyResource(subject, type, -amount, context);
+    if (!debit)
+        return foundation::Result<CombatResourceReservationId>::Failure(debit.GetError());
+    resource_reservations_.emplace(id, CombatResourceReservation{id, subject, type, amount, context});
+    return foundation::Result<CombatResourceReservationId>::Success(id);
+}
+
+void CombatService::CommitResourceReservation(CombatResourceReservationId id) noexcept
+{
+    resource_reservations_.erase(id);
+}
+
+void CombatService::ReleaseResourceReservation(CombatResourceReservationId id, GameplayContext context) noexcept
+{
+    const auto found = resource_reservations_.find(id);
+    if (found == resource_reservations_.end())
+        return;
+    const auto reservation = found->second;
+    resource_reservations_.erase(found);
+    (void)ModifyResource(reservation.subject, reservation.resource, reservation.amount_micro, context);
+}
+
+const CombatResourceReservation* CombatService::FindResourceReservation(CombatResourceReservationId id) const noexcept
+{
+    const auto found = resource_reservations_.find(id);
+    return found == resource_reservations_.end() ? nullptr : &found->second;
+}
+
 foundation::Result<void> CombatService::SetEngagement(GameplayObjectRef subject, CombatEngagementState state,
                                                       GameplayContext context)
 {
@@ -290,6 +366,58 @@ foundation::Result<void> CombatService::SetEngagement(GameplayObjectRef subject,
     r->engagement = state;
     Bump(*r);
     Record({0, CombatChangeKind::EngagementChanged, subject, {}, {}, r->life_state, r->revision, context});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> CombatService::TransitionLifeState(GameplayObjectRef subject, CombatLifeState state,
+                                                            GameplayContext context)
+{
+    auto *record = const_cast<CombatantRecord *>(FindCombatant(subject));
+    if (!record)
+        return foundation::Result<void>::Failure(Error("gameplay.combat.combatant_missing", "combatant missing"));
+    if (!IsAllowedLifeTransition(record->life_state, state))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.combat.life_transition_invalid", "requested combat life-state transition is not allowed"));
+    if (record->life_state == state)
+        return foundation::Result<void>::Success();
+
+    if (state != CombatLifeState::Disabled)
+    {
+        CombatResourceDepletionEffect strongest = CombatResourceDepletionEffect::None;
+        for (const auto &resource : record->resources)
+        {
+            const auto def = resources_.find(resource.type);
+            if (def == resources_.end() || resource.current_micro > def->second.minimum_micro)
+                continue;
+            if (def->second.depletion_effect == CombatResourceDepletionEffect::Dead)
+            {
+                strongest = CombatResourceDepletionEffect::Dead;
+                break;
+            }
+            if (def->second.depletion_effect == CombatResourceDepletionEffect::Downed)
+                strongest = CombatResourceDepletionEffect::Downed;
+        }
+        if ((state == CombatLifeState::Alive && strongest != CombatResourceDepletionEffect::None) ||
+            (state == CombatLifeState::Downed && strongest == CombatResourceDepletionEffect::Dead))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.combat.life_transition_invalid", "requested life state conflicts with depleted resources"));
+    }
+
+    const auto before = record->life_state;
+    record->life_state = state;
+    Bump(*record);
+    if (before != CombatLifeState::Dead && state == CombatLifeState::Dead)
+        ++diagnostics_.deaths;
+    Record({0, CombatChangeKind::LifeStateChanged, subject, {}, {}, state, record->revision, context});
+    return foundation::Result<void>::Success();
+}
+foundation::Result<void> CombatService::SetPreparePolicy(CombatPreparePolicy policy)
+{
+    if (frozen_)
+        return foundation::Result<void>::Failure(Error("gameplay.registry_frozen", "combat registry frozen"));
+    if (policy.lifetime.ticks <= 0)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.combat.prepare_policy_invalid", "prepared combat plan lifetime must be positive"));
+    prepare_policy_ = policy;
     return foundation::Result<void>::Success();
 }
 std::int64_t CombatService::ApplyModifiers(std::int64_t amount, std::vector<CombatModifier> mods) noexcept
@@ -329,6 +457,7 @@ std::int64_t CombatService::ApplyModifiers(std::int64_t amount, std::vector<Comb
 foundation::Result<CombatPlan> CombatService::PrepareDamage(DamageRequest request)
 {
     ++diagnostics_.damage_requests;
+    (void)ExpirePreparedPlans(request.context.time);
     if (prepared_plans_.size() >= kPreparedPlanCapacity)
         return foundation::Result<CombatPlan>::Failure(
             Error("gameplay.combat.too_many_prepared", "too many uncommitted combat plans"));
@@ -347,7 +476,12 @@ foundation::Result<CombatPlan> CombatService::PrepareDamage(DamageRequest reques
 
     CombatPlan plan;
     plan.id = {resolution_ids_.Next()};
+    if (!plan.id.IsValid())
+        return foundation::Result<CombatPlan>::Failure(
+            Error("gameplay.combat.id_exhausted", "combat resolution id generator exhausted"));
     plan.request = std::move(request);
+    plan.prepared_at = plan.request.context.time;
+    plan.expires_at = SaturatingAdd(plan.prepared_at, prepare_policy_.lifetime);
     plan.resource = profile->second.target_resource;
     plan.expected_target_revision = target->revision;
     plan.expected_modifier_revision = modifier_provider_ ? modifier_provider_->RevisionFor(plan.request) : Revision{};
@@ -358,19 +492,19 @@ foundation::Result<CombatPlan> CombatService::PrepareDamage(DamageRequest reques
     random::RandomSequence evade(plan.request.seed, random::RandomStream::FromString("combat.evade"));
     random::RandomSequence block(plan.request.seed, random::RandomStream::FromString("combat.block"));
     random::RandomSequence crit(plan.request.seed, random::RandomStream::FromString("combat.critical"));
-    if (profile->second.can_miss && !hit.RollMicro(profile->second.hit_chance_micro))
+    if (profile->second.can_miss && !hit.RollMicroUnchecked(profile->second.hit_chance_micro))
     {
         plan.outcomes = plan.outcomes | CombatOutcome::Missed;
         amount = 0;
     }
-    else if (profile->second.can_evade && evade.RollMicro(profile->second.evade_chance_micro))
+    else if (profile->second.can_evade && evade.RollMicroUnchecked(profile->second.evade_chance_micro))
     {
         plan.outcomes = plan.outcomes | CombatOutcome::Evaded;
         amount = 0;
     }
     else
     {
-        if (profile->second.can_block && block.RollMicro(profile->second.block_chance_micro))
+        if (profile->second.can_block && block.RollMicroUnchecked(profile->second.block_chance_micro))
         {
             plan.outcomes = plan.outcomes | CombatOutcome::Blocked;
             amount = MulMicro(amount, profile->second.blocked_multiplier_micro);
@@ -378,7 +512,7 @@ foundation::Result<CombatPlan> CombatService::PrepareDamage(DamageRequest reques
         amount = amount <= profile->second.flat_mitigation_micro ? 0 : amount - profile->second.flat_mitigation_micro;
         if (modifier_provider_)
             amount = ApplyModifiers(amount, modifier_provider_->Collect(plan.request));
-        if (profile->second.can_critical && crit.RollMicro(profile->second.critical_chance_micro))
+        if (profile->second.can_critical && crit.RollMicroUnchecked(profile->second.critical_chance_micro))
         {
             plan.outcomes = plan.outcomes | CombatOutcome::Critical;
             amount = MulMicro(amount, profile->second.critical_multiplier_micro);
@@ -388,13 +522,19 @@ foundation::Result<CombatPlan> CombatService::PrepareDamage(DamageRequest reques
     prepared_plans_.emplace(plan.id, plan);
     return foundation::Result<CombatPlan>::Success(plan);
 }
-foundation::Result<CombatResult> CombatService::CommitDamage(const CombatPlan &external_plan)
+foundation::Result<CombatResult> CombatService::CommitDamage(const CombatPlan &external_plan, GameplayTimePoint now)
 {
     auto prepared = prepared_plans_.find(external_plan.id);
     if (prepared == prepared_plans_.end())
         return foundation::Result<CombatResult>::Failure(
             Error("gameplay.combat.plan_unknown", "combat plan was not prepared by this service or was already consumed"));
     const CombatPlan plan = prepared->second;
+    if (plan.expires_at <= now && now >= plan.prepared_at)
+    {
+        prepared_plans_.erase(prepared);
+        return foundation::Result<CombatResult>::Failure(
+            Error("gameplay.combat.plan_expired", "combat plan expired before commit"));
+    }
     auto *record = const_cast<CombatantRecord *>(FindCombatant(plan.request.target));
     if (!record)
     {
@@ -434,8 +574,15 @@ foundation::Result<CombatResult> CombatService::CommitDamage(const CombatPlan &e
     const bool life_changed = ReconcileLifeState(*record, plan.resource);
     if (life_changed && out.before != record->life_state)
     {
-        out.outcomes = out.outcomes | CombatOutcome::Killed;
-        ++diagnostics_.deaths;
+        if (record->life_state == CombatLifeState::Dead)
+        {
+            out.outcomes = out.outcomes | CombatOutcome::Killed;
+            ++diagnostics_.deaths;
+        }
+        else if (record->life_state == CombatLifeState::Downed)
+        {
+            out.outcomes = out.outcomes | CombatOutcome::Downed;
+        }
     }
     out.after = record->life_state;
     Bump(*record);
@@ -456,6 +603,24 @@ foundation::Result<CombatResult> CombatService::CommitDamage(const CombatPlan &e
                 out.context});
     return foundation::Result<CombatResult>::Success(std::move(out));
 }
+foundation::Result<void> CombatService::CancelDamagePlan(CombatResolutionId id)
+{
+    if (!id.IsValid())
+        return foundation::Result<void>::Failure(Error("gameplay.combat.plan_invalid", "invalid combat plan id"));
+    const auto erased = prepared_plans_.erase(id);
+    if (erased == 0)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.combat.plan_unknown", "combat plan was not prepared by this service or was already consumed"));
+    return foundation::Result<void>::Success();
+}
+std::size_t CombatService::ExpirePreparedPlans(GameplayTimePoint now) noexcept
+{
+    const auto before = prepared_plans_.size();
+    std::erase_if(prepared_plans_, [&](const auto &entry) {
+        return entry.second.expires_at <= now && now >= entry.second.prepared_at;
+    });
+    return before - prepared_plans_.size();
+}
 std::vector<CombatChange> CombatService::ChangesSince(std::uint64_t sequence) const
 {
     return ReadChangesSince(sequence).changes;
@@ -475,6 +640,7 @@ CombatSnapshot CombatService::CaptureSnapshot() const
 {
     CombatSnapshot snapshot;
     snapshot.resolution_ids = resolution_ids_.GetSnapshot();
+    snapshot.resource_reservation_ids = resource_reservation_ids_.GetSnapshot();
     snapshot.next_change_sequence = next_change_sequence_;
     snapshot.journal.assign(changes_.begin(), changes_.end());
     for (const auto &[id, record] : combatants_)
@@ -483,6 +649,13 @@ CombatSnapshot CombatService::CaptureSnapshot() const
         snapshot.combatants.push_back(record);
     }
     std::sort(snapshot.combatants.begin(), snapshot.combatants.end(), [](const auto &a, const auto &b) { return a.subject < b.subject; });
+    for (const auto &[id, reservation] : resource_reservations_)
+    {
+        (void)id;
+        snapshot.resource_reservations.push_back(reservation);
+    }
+    std::sort(snapshot.resource_reservations.begin(), snapshot.resource_reservations.end(),
+              [](const auto &a, const auto &b) { return a.id < b.id; });
     return snapshot;
 }
 foundation::Result<void> CombatService::RestoreSnapshot(CombatSnapshot snapshot)
@@ -495,7 +668,7 @@ foundation::Result<void> CombatService::RestoreSnapshot(CombatSnapshot snapshot)
             return foundation::Result<void>::Failure(
                 Error("gameplay.combat.restore_invalid", "invalid or duplicate combatant in snapshot"));
         std::unordered_set<CombatResourceTypeId, IdHash> seen;
-        bool driver_depleted = false;
+        CombatResourceDepletionEffect strongest_depletion = CombatResourceDepletionEffect::None;
         for (const auto &state : record.resources)
         {
             auto def = resources_.find(state.type);
@@ -503,13 +676,51 @@ foundation::Result<void> CombatService::RestoreSnapshot(CombatSnapshot snapshot)
                 state.current_micro < def->second.minimum_micro || state.current_micro > state.maximum_micro)
                 return foundation::Result<void>::Failure(
                     Error("gameplay.combat.restore_invalid", "invalid combat resource in snapshot"));
-            driver_depleted = driver_depleted || (def->second.drives_life_state && state.current_micro <= def->second.minimum_micro);
+            if (state.current_micro <= def->second.minimum_micro)
+            {
+                if (def->second.depletion_effect == CombatResourceDepletionEffect::Dead)
+                    strongest_depletion = CombatResourceDepletionEffect::Dead;
+                else if (def->second.depletion_effect == CombatResourceDepletionEffect::Downed &&
+                         strongest_depletion == CombatResourceDepletionEffect::None)
+                    strongest_depletion = CombatResourceDepletionEffect::Downed;
+            }
         }
-        if (driver_depleted && record.life_state == CombatLifeState::Alive)
+        if (record.life_state != CombatLifeState::Disabled &&
+            ((strongest_depletion == CombatResourceDepletionEffect::Dead && record.life_state != CombatLifeState::Dead) ||
+             (strongest_depletion == CombatResourceDepletionEffect::Downed && record.life_state == CombatLifeState::Alive)))
             return foundation::Result<void>::Failure(
-                Error("gameplay.combat.restore_invalid", "alive combatant has depleted life-driving resource"));
+                Error("gameplay.combat.restore_invalid", "combatant life state is inconsistent with depleted resources"));
         restored.emplace(record.subject, std::move(record));
     }
+    std::unordered_map<CombatResourceReservationId, CombatResourceReservation, IdHash> restored_reservations;
+    restored_reservations.reserve(snapshot.resource_reservations.size());
+    std::uint64_t max_reservation_low = 0;
+    const auto reservation_scope = resource_reservation_ids_.Scope();
+    for (const auto &reservation : snapshot.resource_reservations)
+    {
+        if (!reservation.id.IsValid() || reservation.id.value.High() != reservation_scope.Raw() ||
+            !reservation.subject.IsValid() || !reservation.resource.IsValid() || reservation.amount_micro < 0 ||
+            restored_reservations.contains(reservation.id))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.combat.restore_invalid", "invalid or duplicate combat resource reservation"));
+        const auto combatant = restored.find(reservation.subject);
+        if (combatant == restored.end() || !resources_.contains(reservation.resource))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.combat.restore_invalid", "combat resource reservation references missing state"));
+        if (std::none_of(combatant->second.resources.begin(), combatant->second.resources.end(),
+                         [&](const auto &state) { return state.type == reservation.resource; }))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.combat.restore_invalid", "combat resource reservation references missing resource"));
+        if (reservation.id.value.High() == reservation_scope.Raw())
+            max_reservation_low = std::max(max_reservation_low, reservation.id.value.Low());
+        restored_reservations.emplace(reservation.id, reservation);
+    }
+    const auto reservation_generator = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(
+        snapshot.resource_reservation_ids, reservation_scope, max_reservation_low);
+    if (!reservation_generator)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.combat.restore_invalid", "invalid combat resource reservation id generator snapshot"));
+
     std::deque<CombatChange> journal;
     std::uint64_t previous = 0;
     if (snapshot.journal.size() > kChangeJournalCapacity)
@@ -524,9 +735,17 @@ foundation::Result<void> CombatService::RestoreSnapshot(CombatSnapshot snapshot)
     if (snapshot.next_change_sequence == 0 || (!journal.empty() && snapshot.next_change_sequence <= journal.back().sequence))
         return foundation::Result<void>::Failure(Error("gameplay.combat.restore_invalid", "invalid next combat change sequence"));
 
+    const auto expected_scope = resolution_ids_.Scope().Raw();
+    if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.resolution_ids) ||
+        snapshot.resolution_ids.scope != expected_scope)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.combat.restore_invalid", "invalid combat resolution id generator snapshot"));
+
     combatants_.swap(restored);
+    resource_reservations_.swap(restored_reservations);
     changes_.swap(journal);
     resolution_ids_.Restore(snapshot.resolution_ids);
+    resource_reservation_ids_.Restore(snapshot.resource_reservation_ids);
     next_change_sequence_ = snapshot.next_change_sequence;
     prepared_plans_.clear();
     diagnostics_.combatants = combatants_.size();

@@ -42,6 +42,17 @@ RuntimeWorldPosition ToWorldPosition(runtime::Vec3 value) noexcept
 {
     return RuntimeWorldPosition{Milli(value.x), Milli(value.y), Milli(value.z)};
 }
+bool TakeCounter(std::uint64_t& next, std::uint64_t& value) noexcept
+{
+    if (next == 0)
+    {
+        return false;
+    }
+    value = next;
+    next = next == std::numeric_limits<std::uint64_t>::max() ? 0 : next + 1;
+    return true;
+}
+
 RuntimeNavigationPathState ToBridge(runtime::navigation::PathQueryState state) noexcept
 {
     switch (state)
@@ -60,11 +71,12 @@ RuntimeNavigationPathState ToBridge(runtime::navigation::PathQueryState state) n
 
 RuntimePersistentObjectHandle EngineRuntimeBridgeBackend::ImportPersistentObjectId(runtime::PersistentObjectId id)
 {
-    if (!id.IsValid() || next_persistent_ == std::numeric_limits<std::uint64_t>::max())
+    std::uint64_t value = 0;
+    if (!id.IsValid() || !TakeCounter(next_persistent_, value))
     {
         return {};
     }
-    const RuntimePersistentObjectHandle handle{next_persistent_++};
+    const RuntimePersistentObjectHandle handle{value};
     persistent_objects_.emplace(handle, id);
     return handle;
 }
@@ -80,11 +92,12 @@ RuntimePhysicsBodyHandle EngineRuntimeBridgeBackend::ImportPhysicsBody(runtime::
     {
         return existing->second;
     }
-    if (next_body_ == std::numeric_limits<std::uint64_t>::max())
+    std::uint64_t value = 0;
+    if (!TakeCounter(next_body_, value))
     {
         return {};
     }
-    const RuntimePhysicsBodyHandle handle{next_body_++};
+    const RuntimePhysicsBodyHandle handle{value};
     physics_bodies_.emplace(handle, body);
     physics_body_reverse_.emplace(body, handle);
     return handle;
@@ -92,13 +105,44 @@ RuntimePhysicsBodyHandle EngineRuntimeBridgeBackend::ImportPhysicsBody(runtime::
 
 RuntimeRegionHandle EngineRuntimeBridgeBackend::ImportRegion(runtime::RegionId region)
 {
-    if (!region.IsValid() || next_region_ == std::numeric_limits<std::uint64_t>::max())
+    std::uint64_t value = 0;
+    if (!region.IsValid() || !TakeCounter(next_region_, value))
     {
         return {};
     }
-    const RuntimeRegionHandle handle{next_region_++};
+    const RuntimeRegionHandle handle{value};
     regions_.emplace(handle, region);
     return handle;
+}
+
+foundation::Result<void> EngineRuntimeBridgeBackend::ReleasePersistentObject(RuntimePersistentObjectHandle handle)
+{
+    if (!handle.IsValid() || persistent_objects_.erase(handle) == 0)
+    {
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.persistent_object_unknown", "runtime persistent object handle is unknown"));
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> EngineRuntimeBridgeBackend::ReleasePhysicsBody(RuntimePhysicsBodyHandle handle)
+{
+    const auto found = physics_bodies_.find(handle);
+    if (found == physics_bodies_.end())
+    {
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.physics_body_unknown", "runtime physics body handle is unknown"));
+    }
+    physics_body_reverse_.erase(found->second);
+    physics_bodies_.erase(found);
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> EngineRuntimeBridgeBackend::ReleaseRegion(RuntimeRegionHandle handle)
+{
+    if (!handle.IsValid() || regions_.erase(handle) == 0)
+    {
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.region_unknown", "runtime region handle is unknown"));
+    }
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<RuntimeMaterializationResult> EngineRuntimeBridgeBackend::Materialize(RuntimePersistentObjectHandle persistent_id)
@@ -114,7 +158,7 @@ foundation::Result<RuntimeMaterializationResult> EngineRuntimeBridgeBackend::Mat
         return foundation::Result<RuntimeMaterializationResult>::Failure(
             E("gameplay.runtime_bridge.world_unavailable", "runtime world materializer is unavailable"));
     }
-    if (next_object_ == std::numeric_limits<std::uint64_t>::max())
+    if (next_object_ == 0)
     {
         return foundation::Result<RuntimeMaterializationResult>::Failure(
             E("gameplay.runtime_bridge.runtime_handle_exhausted", "runtime bridge object handle space is exhausted"));
@@ -130,7 +174,13 @@ foundation::Result<RuntimeMaterializationResult> EngineRuntimeBridgeBackend::Mat
     {
         return foundation::Result<RuntimeMaterializationResult>::Success(RuntimeMaterializationResult{existing->second, false});
     }
-    const RuntimeObjectHandle handle{next_object_++};
+    std::uint64_t handle_value = 0;
+    if (!TakeCounter(next_object_, handle_value))
+    {
+        return foundation::Result<RuntimeMaterializationResult>::Failure(
+            E("gameplay.runtime_bridge.runtime_handle_exhausted", "runtime bridge object handle space is exhausted"));
+    }
+    const RuntimeObjectHandle handle{handle_value};
     runtime_objects_.emplace(handle, materialized.Value());
     runtime_object_reverse_.emplace(materialized.Value(), handle);
     return foundation::Result<RuntimeMaterializationResult>::Success(RuntimeMaterializationResult{handle, true});
@@ -460,9 +510,10 @@ foundation::Result<RuntimeNavigationQueryHandle> EngineRuntimeBridgeBackend::Req
     {
         return foundation::Result<RuntimeNavigationQueryHandle>::Failure(E("gameplay.runtime_bridge.region_unknown", "navigation region handle is unknown"));
     }
-    if (next_path_ == std::numeric_limits<std::uint64_t>::max())
+    if (next_path_ == 0)
     {
-        return foundation::Result<RuntimeNavigationQueryHandle>::Failure(E("gameplay.runtime_bridge.navigation_handle_exhausted", "navigation bridge handle space is exhausted"));
+        return foundation::Result<RuntimeNavigationQueryHandle>::Failure(
+            E("gameplay.runtime_bridge.navigation_handle_exhausted", "navigation bridge handle space is exhausted"));
     }
     runtime::navigation::PathRequest request;
     request.start = ToRuntime(query.from);
@@ -474,7 +525,13 @@ foundation::Result<RuntimeNavigationQueryHandle> EngineRuntimeBridgeBackend::Req
     {
         return foundation::Result<RuntimeNavigationQueryHandle>::Failure(actual.GetError());
     }
-    const RuntimeNavigationQueryHandle handle{next_path_++};
+    std::uint64_t handle_value = 0;
+    if (!TakeCounter(next_path_, handle_value))
+    {
+        return foundation::Result<RuntimeNavigationQueryHandle>::Failure(
+            E("gameplay.runtime_bridge.navigation_handle_exhausted", "navigation bridge handle space is exhausted"));
+    }
+    const RuntimeNavigationQueryHandle handle{handle_value};
     paths_.emplace(handle.value, actual.Value());
     return foundation::Result<RuntimeNavigationQueryHandle>::Success(handle);
 }
@@ -580,10 +637,6 @@ RuntimeProjectionPriority RuntimeBridgeService::PriorityOf(const RuntimeProjecti
 
 foundation::Result<void> RuntimeBridgeService::Enqueue(RuntimeProjectionRequest request)
 {
-    if (next_sequence_ == std::numeric_limits<std::uint64_t>::max())
-    {
-        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.sequence_exhausted", "projection queue sequence is exhausted"));
-    }
     auto valid = std::visit(
         [this](const auto& value) -> foundation::Result<void> {
             using T = std::decay_t<decltype(value)>;
@@ -616,6 +669,18 @@ foundation::Result<void> RuntimeBridgeService::Enqueue(RuntimeProjectionRequest 
                 {
                     return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.invalid_request", "environment request region is invalid"));
                 }
+                const auto capabilities = backend_.GetCapabilities();
+                if ((!capabilities.environment_temperature && value.values.temperature_milli_c != 0) ||
+                    (!capabilities.environment_humidity && value.values.humidity_milli != 0) ||
+                    (!capabilities.environment_precipitation && value.values.precipitation_milli != 0) ||
+                    (!capabilities.environment_wind && value.values.wind_strength_milli != 0) ||
+                    (!capabilities.environment_visibility && value.values.visibility_milli != 1000) ||
+                    (!capabilities.environment_light_exposure && value.values.light_exposure_milli != 1000))
+                {
+                    return foundation::Result<void>::Failure(
+                        E("gameplay.runtime_bridge.environment_projection_unsupported",
+                          "runtime backend cannot project one or more requested environment fields"));
+                }
             }
             else
             {
@@ -623,7 +688,7 @@ foundation::Result<void> RuntimeBridgeService::Enqueue(RuntimeProjectionRequest 
                 {
                     return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.invalid_request", "world alteration request is invalid"));
                 }
-                if (!backend_.SupportsWorldAlterationProjection())
+                if (!backend_.GetCapabilities().world_alteration_projection)
                 {
                     return foundation::Result<void>::Failure(
                         E("gameplay.runtime_bridge.world_projection_unsupported", "runtime backend does not support world alteration projection"));
@@ -636,7 +701,59 @@ foundation::Result<void> RuntimeBridgeService::Enqueue(RuntimeProjectionRequest 
     {
         return valid;
     }
-    queue_.push_back(Queued{next_sequence_++, PriorityOf(request), std::move(request)});
+
+    // Replaceable projections keep their original queue sequence so that coalescing cannot reorder unrelated commands.
+    for (auto& queued : queue_)
+    {
+        const bool same_environment = std::holds_alternative<EnvironmentProjectionRequest>(queued.request) &&
+                                      std::holds_alternative<EnvironmentProjectionRequest>(request) &&
+                                      std::get<EnvironmentProjectionRequest>(queued.request).region ==
+                                          std::get<EnvironmentProjectionRequest>(request).region;
+        const bool same_world = std::holds_alternative<WorldAlterationProjectionRequest>(queued.request) &&
+                                std::holds_alternative<WorldAlterationProjectionRequest>(request) &&
+                                std::get<WorldAlterationProjectionRequest>(queued.request).alteration ==
+                                    std::get<WorldAlterationProjectionRequest>(request).alteration;
+        if (same_environment || same_world)
+        {
+            const auto queued_revision = std::visit([](const auto& value) -> Revision {
+                using T = std::decay_t<decltype(value)>;
+                if constexpr (std::is_same_v<T, EnvironmentProjectionRequest> || std::is_same_v<T, WorldAlterationProjectionRequest>)
+                {
+                    return value.gameplay_revision;
+                }
+                return {};
+            }, queued.request);
+            const auto incoming_revision = std::visit([](const auto& value) -> Revision {
+                using T = std::decay_t<decltype(value)>;
+                if constexpr (std::is_same_v<T, EnvironmentProjectionRequest> || std::is_same_v<T, WorldAlterationProjectionRequest>)
+                {
+                    return value.gameplay_revision;
+                }
+                return {};
+            }, request);
+            if (incoming_revision.value == 0 || queued_revision.value == 0 || incoming_revision >= queued_revision)
+            {
+                queued.priority = PriorityOf(request);
+                queued.request = std::move(request);
+            }
+            ++projection_requests_;
+            ++coalesced_projection_requests_;
+            return foundation::Result<void>::Success();
+        }
+    }
+
+    if (queue_.size() >= queue_policy_.max_projection_requests)
+    {
+        ++rejected_projection_requests_;
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.queue_full", "runtime projection queue capacity is exhausted"));
+    }
+    std::uint64_t sequence = 0;
+    if (!TakeCounter(next_sequence_, sequence))
+    {
+        ++rejected_projection_requests_;
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.sequence_exhausted", "projection queue sequence is exhausted"));
+    }
+    queue_.push_back(Queued{sequence, PriorityOf(request), std::move(request)});
     ++projection_requests_;
     return foundation::Result<void>::Success();
 }
@@ -906,7 +1023,12 @@ RuntimeWorldPosition RuntimeBridgeService::Quantize(RuntimeVector3 point) noexce
 std::vector<SemanticImpactObservation> RuntimeBridgeService::CollectImpactObservations(GameplayTickId tick, RuntimeBridgeBudget budget)
 {
     auto fresh = backend_.ConsumeContacts();
-    contact_backlog_.insert(contact_backlog_.end(), fresh.begin(), fresh.end());
+    const auto available = queue_policy_.max_contact_backlog > contact_backlog_.size()
+                               ? queue_policy_.max_contact_backlog - contact_backlog_.size()
+                               : 0;
+    const auto accepted = std::min<std::size_t>(available, fresh.size());
+    contact_backlog_.insert(contact_backlog_.end(), fresh.begin(), fresh.begin() + static_cast<std::ptrdiff_t>(accepted));
+    dropped_contacts_ += fresh.size() - accepted;
     std::vector<SemanticImpactObservation> output;
     output.reserve(std::min<std::size_t>(contact_backlog_.size(), budget.max_observations));
     std::vector<RuntimeContactObservation> remaining;
@@ -1058,6 +1180,70 @@ foundation::Result<RuntimeTransformObservation> RuntimeBridgeService::ObserveTra
     return foundation::Result<RuntimeTransformObservation>::Success(std::move(value));
 }
 
+foundation::Result<void> RuntimeBridgeService::ForgetObjectIdentity(GameplayObjectRef object)
+{
+    if (!object.IsValid())
+    {
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.object_invalid", "gameplay object identity is invalid"));
+    }
+    if (bindings_.contains(object))
+    {
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.binding_active", "cannot forget identity while a runtime binding is active"));
+    }
+    for (const auto& queued : queue_)
+    {
+        const bool references = std::visit([object](const auto& value) {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, MaterializeRequest> || std::is_same_v<T, DematerializeRequest> ||
+                          std::is_same_v<T, DestroyRuntimeRequest> || std::is_same_v<T, ImpulseProjectionRequest>)
+            {
+                return value.object == object;
+            }
+            return false;
+        }, queued.request);
+        if (references)
+        {
+            return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.identity_in_use", "queued runtime command still references gameplay object identity"));
+        }
+    }
+    generations_.erase(object);
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> RuntimeBridgeService::ForgetEnvironmentProjection(RuntimeRegionHandle region)
+{
+    if (!region.IsValid())
+    {
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.region_invalid", "runtime region handle is invalid"));
+    }
+    for (const auto& queued : queue_)
+    {
+        if (const auto* request = std::get_if<EnvironmentProjectionRequest>(&queued.request); request && request->region == region)
+        {
+            return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.projection_in_use", "queued environment projection still references region"));
+        }
+    }
+    environment_projection_revision_.erase(region.value);
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> RuntimeBridgeService::ForgetWorldAlterationProjection(GameplayObjectId alteration)
+{
+    if (!alteration.IsValid())
+    {
+        return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.alteration_invalid", "world alteration identity is invalid"));
+    }
+    for (const auto& queued : queue_)
+    {
+        if (const auto* request = std::get_if<WorldAlterationProjectionRequest>(&queued.request); request && request->alteration == alteration)
+        {
+            return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.projection_in_use", "queued world projection still references alteration"));
+        }
+    }
+    world_projection_revision_.erase(alteration);
+    return foundation::Result<void>::Success();
+}
+
 foundation::Result<std::vector<GameplayObjectRef>> RuntimeBridgeService::ReconcileBindings()
 {
     std::vector<GameplayObjectRef> ids;
@@ -1090,6 +1276,11 @@ RuntimeBridgeDiagnostics RuntimeBridgeService::GetDiagnostics() const noexcept
                                     observations_,
                                     stale_observations_,
                                     materializations_,
-                                    dematerializations_};
+                                    dematerializations_,
+                                    coalesced_projection_requests_,
+                                    rejected_projection_requests_,
+                                    dropped_contacts_,
+                                    contact_backlog_.size()};
 }
+
 } // namespace epidemic::gameplay::runtime_bridge

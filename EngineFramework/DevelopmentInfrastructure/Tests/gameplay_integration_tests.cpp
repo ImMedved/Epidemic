@@ -37,38 +37,53 @@ int main()
     auto buff_id = conditions.RegisterCondition(buff);
     if (!buff_id) return 3;
     conditions.Freeze();
+
     ConditionProgressionAdapter condition_adapter(conditions, progression);
-    condition_adapter.AddMapping({buff_id.Value(), attack_id.Value(), ModifierOperation::FinalAdd, TypeId::FromString("game.mod.attack_buff"), 0, 1'000'000});
+    if (!condition_adapter.AddMapping({buff_id.Value(), attack_id.Value(), ModifierOperation::FinalAdd,
+                                       TypeId::FromString("game.mod.attack_buff"), 0, 1'000'000})) return 4;
+    if (condition_adapter.AddMapping({buff_id.Value(), attack_id.Value(), ModifierOperation::FinalAdd,
+                                      TypeId::FromString("game.mod.attack_buff"), 0, 1'000'000})) return 5;
+    if (!condition_adapter.FreezeMappings()) return 6;
+    if (condition_adapter.AddMapping({buff_id.Value(), attack_id.Value(), ModifierOperation::FinalAdd,
+                                      TypeId::FromString("game.mod.after_freeze"), 0, 1'000'000})) return 7;
+
     ApplyConditionRequest buff_request;
     buff_request.type = buff_id.Value();
     buff_request.subject = player;
     buff_request.magnitude_micro = 2'000'000;
-    if (!conditions.Apply(buff_request) || !condition_adapter.ProcessChanges()) return 4;
+    if (!conditions.Apply(buff_request) || !condition_adapter.ProcessChanges()) return 8;
     auto boosted = progression.GetAttribute(player, attack_id.Value());
-    if (!boosted || boosted.Value() != 7'000'000) return 5;
+    if (!boosted || boosted.Value() != 7'000'000) return 9;
 
+    // H59: an invalid replacement must not remove the already projected modifier.
     ConditionProgressionAdapter failing_condition_adapter(conditions, progression);
-    failing_condition_adapter.AddMapping(
-        {buff_id.Value(), {}, ModifierOperation::FinalAdd, TypeId::FromString("game.mod.attack_buff.invalid"), 0, 1'000'000});
+    if (!failing_condition_adapter.AddMapping(
+            {buff_id.Value(), AttributeTypeId::FromString("game.attribute.missing"), ModifierOperation::FinalAdd,
+             TypeId::FromString("game.mod.attack_buff.invalid"), 0, 1'000'000}) ||
+        !failing_condition_adapter.FreezeMappings()) return 10;
     const auto failed_checkpoint = failing_condition_adapter.CaptureCheckpoint();
-    if (failed_checkpoint.cursor != 0) return 30;
+    if (failed_checkpoint.cursor != 0 || failed_checkpoint.mapping_revision == 0) return 11;
     auto failed_apply = failing_condition_adapter.ProcessChanges();
-    if (failed_apply || failing_condition_adapter.Cursor() != 0) return 31;
-    failing_condition_adapter.RestoreCheckpoint({17});
-    if (failing_condition_adapter.Cursor() != 17) return 32;
+    if (failed_apply || failing_condition_adapter.Cursor() != 0) return 12;
+    boosted = progression.GetAttribute(player, attack_id.Value());
+    if (!boosted || boosted.Value() != 7'000'000) return 13;
+    auto restored_condition_checkpoint = failed_checkpoint;
+    restored_condition_checkpoint.cursor = 17;
+    if (!failing_condition_adapter.RestoreCheckpoint(restored_condition_checkpoint) ||
+        failing_condition_adapter.Cursor() != 17) return 14;
 
     CombatService combat;
     CombatResourceDefinition health;
     health.canonical_name = "game.health";
     health.default_maximum_micro = 100'000'000;
-    health.drives_life_state = true;
+    health.depletion_effect = CombatResourceDepletionEffect::Dead;
     auto health_id = combat.RegisterResource(health);
     CombatResourceDefinition energy;
     energy.canonical_name = "game.energy";
     energy.default_maximum_micro = 50'000'000;
     auto energy_id = combat.RegisterResource(energy);
     auto damage_type = combat.RegisterDamageType("game.damage.physical");
-    if (!health_id || !energy_id || !damage_type) return 6;
+    if (!health_id || !energy_id || !damage_type) return 15;
     DamageProfile profile;
     profile.canonical_name = "game.damage.basic";
     profile.target_resource = health_id.Value();
@@ -77,23 +92,26 @@ int main()
     profile.can_block = false;
     profile.can_critical = false;
     auto profile_id = combat.RegisterDamageProfile(profile);
-    if (!profile_id) return 7;
+    if (!profile_id) return 16;
     combat.Freeze();
-    if (!combat.RegisterCombatant(player, {{health_id.Value(), 100'000'000, 100'000'000}, {energy_id.Value(), 50'000'000, 50'000'000}})) return 8;
-    if (!combat.RegisterCombatant(enemy, {{health_id.Value(), 20'000'000, 20'000'000}})) return 9;
+    if (!combat.RegisterCombatant(player, {{health_id.Value(), 100'000'000, 100'000'000},
+                                           {energy_id.Value(), 50'000'000, 50'000'000}})) return 17;
+    if (!combat.RegisterCombatant(enemy, {{health_id.Value(), 20'000'000, 20'000'000}})) return 18;
 
     ProgressionCombatModifierProvider modifier_provider(progression);
-    modifier_provider.AddMapping({attack_id.Value(), ProgressionCombatRole::Attacker, CombatModifierPhase::Attacker, CombatModifierOperation::Add, CombatModifierTypeId::FromString("game.attack_bonus"), 0, 1'000'000});
+    if (!modifier_provider.AddMapping({attack_id.Value(), ProgressionCombatRole::Attacker,
+                                       CombatModifierPhase::Attacker, CombatModifierOperation::Add,
+                                       CombatModifierTypeId::FromString("game.attack_bonus"), 0, 1'000'000}) ||
+        !modifier_provider.FreezeMappings()) return 19;
+    if (modifier_provider.MappingRevision() == 0) return 20;
     combat.SetModifierProvider(&modifier_provider);
 
     EffectService effects;
     auto damage_handler = std::make_shared<CombatDamageEffectHandler>(combat);
     auto registered_handler = effects.RegisterHandler(
-        "framework.combat.damage",
-        damage_handler,
-        CombatDamageEffectHandler::PayloadType(),
+        "framework.combat.damage", damage_handler, CombatDamageEffectHandler::PayloadType(),
         sizeof(CombatDamageEffectPayload));
-    if (!registered_handler) return 10;
+    if (!registered_handler) return 21;
     EffectDefinition damage_effect;
     damage_effect.canonical_name = "game.effect.basic_attack";
     EffectStepDefinition damage_step;
@@ -104,38 +122,30 @@ int main()
         CombatDamageEffectPayload{damage_type.Value(), profile_id.Value(), 77});
     damage_effect.steps.push_back(damage_step);
     auto damage_effect_id = effects.RegisterDefinition(std::move(damage_effect));
-    if (!damage_effect_id) return 11;
+    if (!damage_effect_id) return 22;
     effects.Freeze();
 
     CombatAbilityResourceProvider ability_resources(combat);
     const auto mana = AbilityResourceTypeId::FromString("game.mana");
-    ability_resources.AddMapping({mana, energy_id.Value()});
+    if (!ability_resources.AddMapping({mana, energy_id.Value()}) || !ability_resources.FreezeMappings()) return 23;
+    if (ability_resources.AddMapping({AbilityResourceTypeId::FromString("game.other"), energy_id.Value()})) return 24;
 
-    AbilityService abilities;
-    abilities.SetResourceProvider(&ability_resources);
+    const auto attack_action = ActionTypeId::FromString("game.ability.attack_effect");
     AbilityDefinition ability;
     ability.canonical_name = "game.ability.power_strike";
     ability.targeting = AbilityTargetPolicy::SingleTarget;
     ability.timing.kind = AbilityTimingKind::CastTime;
     ability.timing.cast_duration = {5};
     ability.costs.push_back({mana, 10'000'000, AbilityCostPolicy::ReserveThenCommit});
-    const auto attack_action = ActionTypeId::FromString("game.ability.attack_effect");
     ability.outputs.push_back({attack_action, 1'000'000, {}});
-    auto ability_def = abilities.RegisterDefinition(std::move(ability));
-    if (!ability_def) return 12;
+
+    AbilityService abilities;
+    abilities.SetResourceProvider(&ability_resources);
+    auto ability_def = abilities.RegisterDefinition(ability);
+    if (!ability_def) return 25;
     abilities.Freeze();
     auto ability_instance = abilities.Grant(player, ability_def.Value());
-    if (!ability_instance) return 13;
-
-    GameplayTimeService gameplay_time;
-    auto clock = gameplay_time.RegisterClock("game.world");
-    auto ability_due_action = gameplay_time.RegisterAction("framework.abilities.execute", AbilityService::Domain());
-    if (!clock || !ability_due_action) return 14;
-    if (!gameplay_time.SynchronizeClock(clock.Value(), {0}, {1})) return 15;
-    gameplay_time.Freeze();
-    AbilityTimeAdapter ability_time(gameplay_time, abilities, clock.Value(), ability_due_action.Value());
-    AbilityEffectsDispatcher ability_effects(effects);
-    ability_effects.Map(attack_action, damage_effect_id.Value());
+    if (!ability_instance) return 26;
 
     AbilityTargetSet targets;
     targets.primary = enemy;
@@ -146,25 +156,127 @@ int main()
     cast_context.operation = OperationId::FromString("test.cast.1");
     cast_context.correlation = CorrelationId::FromString("test.chain.1");
     auto execution = abilities.BeginActivation({ability_instance.Value(), targets, {0}, cast_context});
-    if (!execution) return 16;
-    auto schedule = ability_time.ScheduleExecution(execution.Value());
-    if (!schedule) return 17;
+    if (!execution) return 27;
     auto energy_after_reserve = combat.GetResource(player, energy_id.Value());
-    if (!energy_after_reserve || energy_after_reserve.Value().current_micro != 40'000'000) return 18;
-    if (!gameplay_time.SynchronizeClock(clock.Value(), {5}, {2})) return 19;
+    if (!energy_after_reserve || energy_after_reserve.Value().current_micro != 40'000'000) return 28;
+
+    // C14: both the tentative debit and the reservation token survive save/load in their authoritative owners.
+    const auto combat_reserved_snapshot = combat.CaptureSnapshot();
+    const auto abilities_reserved_snapshot = abilities.CaptureSnapshot();
+    if (combat_reserved_snapshot.resource_reservations.size() != 1 ||
+        abilities_reserved_snapshot.executions.size() != 1 ||
+        abilities_reserved_snapshot.executions.front().reservations.size() != 1) return 29;
+
+    CombatService restored_combat;
+    auto restored_health = restored_combat.RegisterResource(health);
+    auto restored_energy = restored_combat.RegisterResource(energy);
+    if (!restored_health || !restored_energy) return 30;
+    restored_combat.Freeze();
+    if (!restored_combat.RestoreSnapshot(combat_reserved_snapshot)) return 31;
+    CombatAbilityResourceProvider restored_resources(restored_combat);
+    if (!restored_resources.AddMapping({mana, restored_energy.Value()}) || !restored_resources.FreezeMappings()) return 32;
+    AbilityService restored_abilities;
+    restored_abilities.SetResourceProvider(&restored_resources);
+    auto restored_definition = restored_abilities.RegisterDefinition(ability);
+    if (!restored_definition) return 33;
+    restored_abilities.Freeze();
+    if (!restored_abilities.RestoreSnapshot(abilities_reserved_snapshot) ||
+        !restored_abilities.NeedsResourceReconciliation() ||
+        !restored_abilities.ReconcileRestoredReservations()) return 34;
+    if (!restored_abilities.Cancel(execution.Value(), {1}, cast_context)) return 35;
+    auto restored_energy_state = restored_combat.GetResource(player, restored_energy.Value());
+    if (!restored_energy_state || restored_energy_state.Value().current_micro != 50'000'000) return 36;
+
+    GameplayTimeService gameplay_time;
+    auto clock = gameplay_time.RegisterClock("game.world");
+    auto ability_due_action = gameplay_time.RegisterAction("framework.abilities.execute", AbilityService::Domain());
+    if (!clock || !ability_due_action) return 37;
+    if (!gameplay_time.SynchronizeClock(clock.Value(), {0}, {1})) return 38;
+    gameplay_time.Freeze();
+    AbilityTimeAdapter ability_time(gameplay_time, abilities, clock.Value(), ability_due_action.Value());
+    AbilityEffectsDispatcher ability_effects(effects);
+    if (!ability_effects.Map(attack_action, damage_effect_id.Value()) || !ability_effects.FreezeMappings()) return 39;
+
+    auto schedule = ability_time.ScheduleExecution(execution.Value());
+    if (!schedule) return 40;
+    if (!gameplay_time.SynchronizeClock(clock.Value(), {5}, {2})) return 41;
     auto triggers = gameplay_time.CollectDue(clock.Value());
-    if (!triggers || triggers.Value().size() != 1) return 20;
+    if (!triggers || triggers.Value().size() != 1) return 42;
     auto outputs = ability_time.ProcessTrigger(triggers.Value().front());
-    if (!outputs || outputs.Value().size() != 1) return 21;
+    if (!outputs || outputs.Value().size() != 1 || outputs.Value().front().occurrence_at.ticks != 5 ||
+        outputs.Value().front().output_index != 0) return 43;
     auto effect_results = ability_effects.Dispatch(outputs.Value());
-    if (!effect_results || effect_results.Value().size() != 1) return 22;
-    const auto* enemy_state = combat.FindCombatant(enemy);
-    if (enemy_state == nullptr || enemy_state->life_state != CombatLifeState::Dead) return 23;
+    if (!effect_results || effect_results.Value().size() != 1) return 44;
+    const auto *enemy_state = combat.FindCombatant(enemy);
+    if (enemy_state == nullptr || enemy_state->life_state != CombatLifeState::Dead) return 45;
+
+    // H58: retrying the exact same output returns the same delivery without another Effect execution.
+    const auto executions_after_first_dispatch = effects.GetDiagnostics().executions;
+    auto duplicate_effect_results = ability_effects.Dispatch(outputs.Value());
+    if (!duplicate_effect_results || duplicate_effect_results.Value().size() != 1 ||
+        effects.GetDiagnostics().executions != executions_after_first_dispatch ||
+        duplicate_effect_results.Value().front().execution != effect_results.Value().front().execution) return 46;
+    const auto effects_checkpoint = ability_effects.CaptureCheckpoint();
+    AbilityEffectsDispatcher restored_effect_dispatcher(effects);
+    if (!restored_effect_dispatcher.Map(attack_action, damage_effect_id.Value()) ||
+        !restored_effect_dispatcher.FreezeMappings() ||
+        !restored_effect_dispatcher.RestoreCheckpoint(effects_checkpoint)) return 47;
+    if (!restored_effect_dispatcher.Dispatch(outputs.Value()) ||
+        effects.GetDiagnostics().executions != executions_after_first_dispatch) return 48;
+
+    // H60: if the next channel schedule cannot be created after the semantic tick, outputs remain
+    // in the adapter checkpoint and retry only repairs the missing binding.
+    AbilityService channel_abilities;
+    AbilityDefinition channel_definition;
+    channel_definition.canonical_name = "game.ability.channel";
+    channel_definition.targeting = AbilityTargetPolicy::Self;
+    channel_definition.timing.kind = AbilityTimingKind::Channel;
+    channel_definition.timing.channel_interval = {5};
+    channel_definition.timing.max_channel_duration = {15};
+    channel_definition.outputs.push_back({attack_action, 1'000'000, {}});
+    auto channel_def_id = channel_abilities.RegisterDefinition(channel_definition);
+    if (!channel_def_id) return 49;
+    channel_abilities.Freeze();
+    auto channel_instance = channel_abilities.Grant(player, channel_def_id.Value());
+    if (!channel_instance) return 50;
+    AbilityTargetSet self_targets;
+    self_targets.primary = player;
+    auto channel_execution = channel_abilities.BeginActivation({channel_instance.Value(), self_targets, {0}, cast_context});
+    if (!channel_execution) return 51;
+
+    GameplayTimeService channel_time;
+    auto channel_clock = channel_time.RegisterClock("game.channel.world");
+    auto channel_action = channel_time.RegisterAction("framework.abilities.channel.execute", AbilityService::Domain());
+    if (!channel_clock || !channel_action || !channel_time.SynchronizeClock(channel_clock.Value(), {0}, {1})) return 52;
+    channel_time.Freeze();
+    AbilityTimeAdapter channel_adapter(channel_time, channel_abilities, channel_clock.Value(), channel_action.Value());
+    auto channel_schedule = channel_adapter.ScheduleExecution(channel_execution.Value());
+    if (!channel_schedule || !channel_time.SynchronizeClock(channel_clock.Value(), {5}, {2})) return 53;
+    auto channel_triggers = channel_time.CollectDue(channel_clock.Value());
+    if (!channel_triggers || channel_triggers.Value().size() != 1) return 54;
+    auto healthy_time_snapshot = channel_time.CaptureSnapshot();
+    auto exhausted_time_snapshot = healthy_time_snapshot;
+    exhausted_time_snapshot.schedule_ids.next = 0;
+    if (!channel_time.RestoreSnapshot(exhausted_time_snapshot)) return 55;
+    auto channel_failed = channel_adapter.ProcessTrigger(channel_triggers.Value().front());
+    if (channel_failed) return 56;
+    const auto channel_checkpoint = channel_adapter.CaptureCheckpoint();
+    if (channel_checkpoint.pending.size() != 1 || channel_checkpoint.pending.front().outputs.size() != 1) return 57;
+    const auto *channel_after_failure = channel_abilities.FindExecution(channel_execution.Value());
+    if (!channel_after_failure || channel_after_failure->next_channel_at.ticks != 10 || channel_after_failure->schedule) return 58;
+    if (!channel_time.RestoreSnapshot(healthy_time_snapshot)) return 59;
+    auto channel_retry = channel_adapter.ProcessTrigger(channel_triggers.Value().front());
+    if (!channel_retry || channel_retry.Value().size() != 1 || channel_retry.Value().front().occurrence_at.ticks != 5) return 60;
+    const auto *channel_after_retry = channel_abilities.FindExecution(channel_execution.Value());
+    if (!channel_after_retry || !channel_after_retry->schedule || channel_after_retry->next_channel_at.ticks != 10) return 61;
+    auto channel_duplicate = channel_adapter.ProcessTrigger(channel_triggers.Value().front());
+    if (!channel_duplicate || !channel_duplicate.Value().empty() ||
+        channel_abilities.FindExecution(channel_execution.Value())->next_channel_at.ticks != 10) return 62;
 
     ProgressionRewardHandler progression_reward(progression);
     LootService loot;
     auto reward_type = loot.RegisterRewardHandler("framework.reward.progression", &progression_reward);
-    if (!reward_type) return 24;
+    if (!reward_type) return 63;
     RewardDefinition reward;
     reward.canonical_name = "game.reward.kill_xp";
     reward.type = reward_type.Value();
@@ -173,21 +285,31 @@ int main()
     reward.payload = RegisteredRewardPayload::FromTrivial(
         ProgressionRewardHandler::PayloadType(), ProgressionRewardPayload{xp_id.Value()});
     auto reward_id = loot.RegisterRewardDefinition(std::move(reward));
-    if (!reward_id) return 25;
+    if (!reward_id) return 64;
     LootTableDefinition table;
     table.canonical_name = "game.loot.enemy";
     table.policy = LootRollPolicy::GuaranteedAll;
     table.entries.push_back({LootEntryId::FromString("game.loot.enemy.xp"), 1, 1'000'000, reward_id.Value(), {}, {}});
     auto table_id = loot.RegisterLootTable(std::move(table));
-    if (!table_id || !loot.Freeze()) return 26;
+    if (!table_id || !loot.Freeze()) return 65;
     DeathRewardAdapter death_rewards(combat, loot);
-    death_rewards.SetTable(enemy, table_id.Value());
+    if (!death_rewards.SetTable(enemy, table_id.Value()) || !death_rewards.FreezeMappings()) return 66;
     auto generated = death_rewards.ProcessChanges();
-    if (!generated || generated.Value().size() != 1) return 27;
-    if (!loot.Claim(generated.Value().front(), cast_context)) return 28;
+    if (!generated || generated.Value().size() != 1) return 67;
+    const auto reward_execution = generated.Value().front();
+    const auto loot_bundles_after_first = loot.GetDiagnostics().bundles;
+
+    // H61: replay before cursor acknowledgement reuses the same tracked reward execution.
+    auto death_checkpoint = death_rewards.CaptureCheckpoint();
+    death_checkpoint.cursor = 0;
+    if (!death_rewards.RestoreCheckpoint(death_checkpoint)) return 68;
+    auto replayed = death_rewards.ProcessChanges();
+    if (!replayed || replayed.Value().size() != 1 || replayed.Value().front() != reward_execution ||
+        loot.GetDiagnostics().bundles != loot_bundles_after_first) return 69;
+
+    if (!loot.Claim(reward_execution, cast_context)) return 70;
     auto xp_state = progression.GetTrack(player, xp_id.Value());
-    if (!xp_state || xp_state.Value().progress_micro != 100 || xp_state.Value().rank != 1) return 29;
+    if (!xp_state || xp_state.Value().progress_micro != 100 || xp_state.Value().rank != 1) return 71;
 
     return 0;
 }
-

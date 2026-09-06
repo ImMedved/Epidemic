@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -248,6 +249,10 @@ enum class ReactionThresholdField
 
 struct MaterialReactionRule
 {
+    // Reaction rules describe discrete semantic responses to an explicitly applied
+    // stimulus. Materials intentionally does not run a continuous thermal, fluid,
+    // combustion, corrosion, or chemistry solver. Higher-level simulation/integration
+    // code is responsible for deciding when stimuli are applied over gameplay time.
     MaterialReactionId id{};
     std::string canonical_name;
     MaterialStimulusType stimulus = MaterialStimulusType::Heat;
@@ -375,6 +380,12 @@ class MaterialService
     void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] MaterialsSnapshot CaptureSnapshot() const;
+    // Captures only states owned by the supplied gameplay subjects. This overload is
+    // intended for persistence orchestration that has already decided which subjects
+    // belong to the save scope without introducing a dependency from Materials to
+    // Entities or another persistence owner. The returned snapshot is deterministic
+    // regardless of the input order and contains no state for other subjects.
+    [[nodiscard]] MaterialsSnapshot CaptureSnapshot(std::span<const GameplayObjectRef> subjects) const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(MaterialsSnapshot snapshot);
     [[nodiscard]] MaterialsDiagnostics GetDiagnostics() const noexcept;
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }

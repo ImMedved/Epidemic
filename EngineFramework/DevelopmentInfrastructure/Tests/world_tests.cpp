@@ -85,9 +85,9 @@ int main()
 
     // A transaction cannot mutate the same alteration twice in an order-dependent way.
     auto duplicate_mutation = world.BeginTransaction();
-    auto updated = *first_after_commit;
-    updated.payload.push_back(std::byte{1});
-    CHECK(duplicate_mutation.Update(updated));
+    WorldAlterationUpdate updated;
+    updated.payload = std::vector<std::byte>{std::byte{1}};
+    CHECK(duplicate_mutation.Update(first_id.Value(), updated));
     CHECK(!duplicate_mutation.Remove(first_id.Value()));
     duplicate_mutation.Cancel();
 
@@ -100,8 +100,39 @@ int main()
     CHECK(world.PlaceObject(placement));
     CHECK(world.FindObjectPlacement(placed).has_value());
 
+    // Update patches cannot rewrite immutable origin fields and update the spatial index incrementally.
+    auto patch_tx = world.BeginTransaction();
+    WorldAlterationUpdate patch;
+    patch.affected_area = WorldAabb{{5000, 0, 0}, {6000, 1000, 1000}};
+    patch.payload = std::vector<std::byte>{std::byte{2}};
+    CHECK(patch_tx.Update(first_id.Value(), patch));
+    CHECK(patch_tx.Commit());
+    const auto patched = world.FindAlteration(first_id.Value());
+    CHECK(patched && patched->type == alteration_type && patched->created_at == first_after_commit->created_at);
+    CHECK(world.FindAlterations({{5000, 0, 0}, {6000, 1000, 1000}}).size() == 1);
+    CHECK(world.FindAlterations({{0, 0, 0}, {1000, 1000, 1000}}).empty());
+
+    // Dynamic features have a complete runtime lifecycle.
+    WorldFeatureRecord dynamic_feature;
+    dynamic_feature.id = WorldFeatureId::FromString("feature.dynamic");
+    dynamic_feature.type = feature_type;
+    dynamic_feature.bounds = {{0, 0, 0}, {10, 10, 10}};
+    CHECK(world.AddDynamicFeature(dynamic_feature));
+    CHECK(world.UpdateDynamicFeature(dynamic_feature.id, {{20, 0, 0}, {30, 10, 10}}, {}));
+    CHECK(world.FindFeature(dynamic_feature.id)->bounds.min.x_mm == 20);
+    CHECK(world.RemoveDynamicFeature(dynamic_feature.id));
+    CHECK(!world.FindFeature(dynamic_feature.id));
+
+    // Terminal alterations can be compacted out of authoritative state.
+    auto remove_tx = world.BeginTransaction();
+    CHECK(remove_tx.Remove(second_id.Value()));
+    CHECK(remove_tx.Commit());
+    CHECK(world.FindAlteration(second_id.Value())->state == WorldAlterationState::Removed);
+    CHECK(world.CompactAlteration(second_id.Value()));
+    CHECK(!world.FindAlteration(second_id.Value()));
+
     const auto snapshot = world.CaptureSnapshot();
-    CHECK(snapshot.alterations.size() == 2 && snapshot.object_placements.size() == 1);
+    CHECK(snapshot.alterations.size() == 1 && snapshot.object_placements.size() == 1);
 
     WorldService restored;
     RegisterTypes(restored, alteration_type, feature_type);
@@ -120,6 +151,32 @@ int main()
     const auto revision_before_corrupt = restored.CurrentRevision();
     CHECK(!restored.RestoreSnapshot(corrupt));
     CHECK(restored.CurrentRevision() == revision_before_corrupt && restored.FindAlteration(first_id.Value()).has_value());
+
+    // Caller-supplied IDs in the service scope advance the generator and cannot be reproduced later.
+    auto id_snapshot = restored.CaptureSnapshot();
+    const auto requested_low = id_snapshot.alteration_ids.next + 100;
+    auto requested_tx = restored.BeginTransaction();
+    WorldAlterationRecord requested = first;
+    requested.id = WorldAlterationId::FromRaw(id_snapshot.alteration_ids.scope, requested_low);
+    CHECK(requested_tx.Create(requested));
+    CHECK(requested_tx.Commit());
+    auto following_tx = restored.BeginTransaction();
+    WorldAlterationRecord following = first;
+    const auto following_id = following_tx.Create(following);
+    CHECK(following_id && following_id.Value().value.Low() > requested_low);
+    CHECK(following_tx.Commit());
+
+    // The change journal is bounded and reports when a consumer must resync from a snapshot.
+    for (int i = 0; i < 4200; ++i)
+    {
+        const GameplayObjectRef object{GameplayDomainId::FromString("test.world.journal"), GameplayObjectId::FromRaw(1, static_cast<std::uint64_t>(i + 1))};
+        ObjectPlacementRecord p; p.object = object; p.area = area.id;
+        CHECK(restored.PlaceObject(p));
+    }
+    const auto stale_batch = restored.ReadChangesSince(0);
+    CHECK(stale_batch.snapshot_required);
+    const auto latest_batch = restored.ReadChangesSince(restored.LatestChangeSequence());
+    CHECK(!latest_batch.snapshot_required && latest_batch.changes.empty());
 
     // Freeze rejects missing topology references.
     WorldService missing_reference;

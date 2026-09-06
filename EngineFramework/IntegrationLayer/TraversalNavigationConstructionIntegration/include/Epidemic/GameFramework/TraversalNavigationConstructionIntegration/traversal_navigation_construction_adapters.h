@@ -6,6 +6,8 @@
 #include "Epidemic/GameFramework/Traversal/traversal.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -25,15 +27,30 @@ class TraversalNavigationCapabilityProvider final : public navigation_semantics:
 class TraversalNavigationAdapter
 {
   public:
+    // GameplayContext is mandatory: Navigation semantics may depend on gameplay time and context-bound fact providers.
     [[nodiscard]] navigation_semantics::NavigationPermissionResult CanUseLink(
         const traversal::TraversalService &traversal,
         const navigation_semantics::NavigationSemanticsService &navigation,
         GameplayObjectRef subject,
-        navigation_semantics::NavigationLinkId link) const;
+        navigation_semantics::NavigationLinkId link,
+        const GameplayContext &context) const;
 };
 
+enum class ConstructionNavigationOperation : std::uint8_t
+{
+    Add = 1,
+    Update = 2,
+    Remove = 3
+};
+
+// Durable payload schema for Construction -> Navigation outbox delivery.
+// `source_key` identifies one navigation semantic emitted by a placed construction object.
+// The final NavigationLayerId is derived from (placed_record, source_key), so Add/Update/Remove
+// operations remain idempotent across retries and save/load without an integration-side mapping table.
 struct ConstructionNavigationLayerPayload
 {
+    ConstructionNavigationOperation operation = ConstructionNavigationOperation::Add;
+    TypeId source_key{};
     navigation_semantics::NavigationLayerTypeId layer_type{};
     navigation_semantics::NavigationDecisionKind decision = navigation_semantics::NavigationDecisionKind::AddCost;
     navigation_semantics::NavigationLayerLifetime lifetime = navigation_semantics::NavigationLayerLifetime::Persistent;
@@ -42,39 +59,49 @@ struct ConstructionNavigationLayerPayload
     navigation_semantics::Fixed multiplier_micro = 1'000'000;
     TypeId requirement{};
     navigation_semantics::Fixed required_parameter_micro = 0;
+    std::optional<GameplayTimePoint> expires_at{};
 };
 
 [[nodiscard]] std::vector<std::byte> EncodeNavigationLayerPayload(const ConstructionNavigationLayerPayload &payload);
+[[nodiscard]] navigation_semantics::NavigationLayerId NavigationLayerIdFor(
+    construction::PlacedObjectId placed_object, TypeId source_key) noexcept;
 
 class ConstructionNavigationAdapter
 {
   public:
-    // Legacy immediate adapter. Prefer ProcessPendingOutputs for crash/replay safety.
-    [[nodiscard]] foundation::Result<void> ApplyPlacementOutputs(
-        const construction::PlacementCommitResult &result,
-        navigation_semantics::NavigationSemanticsService &navigation,
+    // Queue a durable Add/Update/Remove operation for an existing placed construction object.
+    [[nodiscard]] foundation::Result<construction::PlacementOutputId> QueueNavigationOperation(
+        construction::ConstructionService &construction,
+        construction::PlacedObjectId placed_object,
+        GameplayObjectRef area,
+        const ConstructionNavigationLayerPayload &payload,
         GameplayContext context = {}) const;
 
-    // Processes only navigation outputs. Other outbox entries remain pending for their owning integration adapters.
-    // A stable layer id derived from PlacementOutputId makes replay after a crash idempotent.
+    // Production delivery path. Only navigation outputs are consumed; other outbox entries remain pending
+    // for their owning integration adapters. Acknowledge happens only after the requested Navigation mutation
+    // is confirmed or an idempotent replay is proven already applied.
     [[nodiscard]] foundation::Result<std::size_t> ProcessPendingOutputs(
         construction::ConstructionService &construction,
         navigation_semantics::NavigationSemanticsService &navigation,
         GameplayContext context = {}) const;
 
   private:
-    [[nodiscard]] foundation::Result<navigation_semantics::NavigationSemanticLayer> DecodeLayer(
+    [[nodiscard]] foundation::Result<ConstructionNavigationLayerPayload> DecodePayload(
+        const construction::PlacementOutputOperation &output) const;
+    [[nodiscard]] foundation::Result<navigation_semantics::NavigationSemanticLayer> BuildLayer(
         const construction::PlacementOutputOperation &output,
-        navigation_semantics::NavigationLayerId stable_id = {}) const;
+        const ConstructionNavigationLayerPayload &payload,
+        navigation_semantics::NavigationLayerId stable_id) const;
 };
 
 class ConstructionTraversalAdapter
 {
   public:
-    [[nodiscard]] foundation::Result<void> CancelTraversalSessionsBlockedByDestroyedLink(
+    // This helper intentionally cancels exactly the supplied sessions. Traversal routes currently do not
+    // store NavigationLinkId, so inferring link membership here would be a misleading contract.
+    [[nodiscard]] foundation::Result<void> CancelTraversalSessions(
         traversal::TraversalService &traversal,
-        navigation_semantics::NavigationLinkId link,
-        std::span<const traversal::TraversalSessionId> affected_sessions,
+        std::span<const traversal::TraversalSessionId> sessions,
         GameplayContext context = {}) const;
 };
 } // namespace epidemic::gameplay::traversal_navigation_construction

@@ -66,6 +66,10 @@ int main()
     journal.id=journal_consequence;
     journal.type=NarrativeConsequenceTypeId::FromString("narrative.add_journal");
     journal.priority=10;
+    journal.journal_template = NarrativeConsequenceDefinition::JournalTemplate{
+        .type = JournalEntryTypeId::FromString("journal.narrative"),
+        .visibility = JournalVisibilityState::Discovered,
+        .payload = {}};
     Check(static_cast<bool>(service.RegisterConsequenceDefinition(journal)),"register journal consequence");
 
     NarrativeBeatDefinition b;
@@ -128,14 +132,102 @@ int main()
     Check(service.GetJournal(player).size()==1,"builtin journal consequence added entry");
 
     auto snapshot=service.CaptureSnapshot();
+    Check(snapshot.thread_definitions.empty() && snapshot.condition_definitions.empty(),
+          "runtime snapshot does not persist build definitions");
+    Check(!snapshot.activated_beats.empty(),"activated beats explicitly persisted");
     NarrativeService restored;
     Check(static_cast<bool>(restored.RegisterConditionResolver(NarrativeConditionTypeId::FromString("condition.event_tag"),tag_resolver)),"restored resolver");
     Check(static_cast<bool>(restored.RegisterConsequenceHandler(NarrativeConsequenceTypeId::FromString("narrative.reward"),reward_handler)),"restored handler");
+    Check(static_cast<bool>(restored.RegisterConditionDefinition(cond)),"restored condition definition");
+    Check(static_cast<bool>(restored.RegisterConsequenceDefinition(reward)),"restored reward definition");
+    Check(static_cast<bool>(restored.RegisterConsequenceDefinition(journal)),"restored journal definition");
+    Check(static_cast<bool>(restored.RegisterBeatDefinition(b)),"restored beat definition");
+    Check(static_cast<bool>(restored.RegisterObjectiveDefinition(obj)),"restored objective definition");
+    Check(static_cast<bool>(restored.RegisterThreadDefinition(t)),"restored thread definition");
+    Check(static_cast<bool>(restored.FreezeDefinitions()),"restored current-build definitions frozen");
     Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)),"restore snapshot");
     auto pending_after_restore=restored.FindConsequences(ConsequenceExecutionState::Pending);
     Check(pending_after_restore.empty(),"no pending reward after restore");
     Check(restored.GetJournal(player).size()==1,"journal restored");
     Check(static_cast<bool>(restored.ProcessNarrativeEvent(event)),"dedupe restored event");
     Check(restored.FindConsequences(ConsequenceExecutionState::Pending).empty(),"dedupe prevents duplicated consequences");
+    auto corrupt_snapshot = snapshot;
+    corrupt_snapshot.journal_ids.scope ^= 1u;
+    Check(!static_cast<bool>(restored.RestoreSnapshot(corrupt_snapshot)),"invalid generator scope rejected");
+    Check(restored.GetJournal(player).size()==1,"failed restore leaves current narrative state unchanged");
+
+    NarrativeService cyclic;
+    NarrativeConditionDefinition cycle_a;
+    cycle_a.id = NarrativeConditionId::FromString("condition.cycle_a");
+    cycle_a.all_of.push_back(NarrativeConditionId::FromString("condition.cycle_b"));
+    NarrativeConditionDefinition cycle_b;
+    cycle_b.id = NarrativeConditionId::FromString("condition.cycle_b");
+    cycle_b.any_of.push_back(cycle_a.id);
+    Check(static_cast<bool>(cyclic.RegisterConditionDefinition(cycle_a)),"cycle a registered");
+    Check(static_cast<bool>(cyclic.RegisterConditionDefinition(cycle_b)),"cycle b registered");
+    Check(!static_cast<bool>(cyclic.FreezeDefinitions()),"condition cycle rejected at freeze");
+
+    NarrativeService resumable;
+    Check(static_cast<bool>(resumable.RegisterConditionResolver(NarrativeConditionTypeId::FromString("condition.event_tag"),tag_resolver)),"resumable resolver");
+    Check(static_cast<bool>(resumable.RegisterConsequenceHandler(NarrativeConsequenceTypeId::FromString("narrative.reward"),reward_handler)),"resumable handler");
+    auto r_thread = NarrativeThreadId::FromString("thread.resumable");
+    auto r_beat = NarrativeBeatId::FromString("beat.resumable");
+    auto r_condition = NarrativeConditionId::FromString("condition.resumable");
+    auto r_consequence = NarrativeConsequenceId::FromString("consequence.resumable");
+    NarrativeConditionDefinition r_cond;
+    r_cond.id = r_condition;
+    r_cond.type = NarrativeConditionTypeId::FromString("condition.event_tag");
+    r_cond.payload = Bytes("world.bridge.destroyed");
+    NarrativeConsequenceDefinition r_cons;
+    r_cons.id = r_consequence;
+    r_cons.type = NarrativeConsequenceTypeId::FromString("narrative.reward");
+    NarrativeBeatDefinition r_b;
+    r_b.id = r_beat;
+    r_b.thread = r_thread;
+    r_b.activation_conditions.push_back(r_condition);
+    r_b.consequences.push_back(r_consequence);
+    NarrativeThreadDefinition r_t;
+    r_t.id = r_thread;
+    r_t.beats.push_back(r_beat);
+    Check(static_cast<bool>(resumable.RegisterConditionDefinition(r_cond)),"resumable condition");
+    Check(static_cast<bool>(resumable.RegisterConsequenceDefinition(r_cons)),"resumable consequence");
+    Check(static_cast<bool>(resumable.RegisterBeatDefinition(r_b)),"resumable beat");
+    Check(static_cast<bool>(resumable.RegisterThreadDefinition(r_t)),"resumable thread");
+    Check(static_cast<bool>(resumable.FreezeDefinitions()),"resumable freeze");
+    NarrativeEvent resumable_event = event;
+    resumable_event.correlation = CorrelationId::FromString("event.resumable");
+    Check(static_cast<bool>(resumable.ProcessNarrativeEvent(resumable_event,
+          {.max_condition_evaluations=32,.max_storylets_evaluated=8,.max_storylets_activated=8,.max_consequences_planned=0})),
+          "budget stop is resumable success");
+    Check(resumable.FindConsequences(ConsequenceExecutionState::Pending).empty(),"budget stop does not partially plan consequence");
+    auto pending_snapshot = resumable.CaptureSnapshot();
+    Check(pending_snapshot.event_executions.size()==1 &&
+          pending_snapshot.event_executions.front().state==NarrativeEventExecutionState::Pending,
+          "pending event execution persisted");
+    NarrativeService resumed;
+    Check(static_cast<bool>(resumed.RegisterConditionResolver(NarrativeConditionTypeId::FromString("condition.event_tag"),tag_resolver)),"resumed resolver");
+    Check(static_cast<bool>(resumed.RegisterConsequenceHandler(NarrativeConsequenceTypeId::FromString("narrative.reward"),reward_handler)),"resumed handler");
+    Check(static_cast<bool>(resumed.RegisterConditionDefinition(r_cond)),"resumed condition");
+    Check(static_cast<bool>(resumed.RegisterConsequenceDefinition(r_cons)),"resumed consequence");
+    Check(static_cast<bool>(resumed.RegisterBeatDefinition(r_b)),"resumed beat");
+    Check(static_cast<bool>(resumed.RegisterThreadDefinition(r_t)),"resumed thread");
+    Check(static_cast<bool>(resumed.FreezeDefinitions()),"resumed freeze");
+    Check(static_cast<bool>(resumed.RestoreSnapshot(pending_snapshot)),"restore pending event");
+    Check(static_cast<bool>(resumed.ProcessNarrativeEvent(resumable_event)),"resume event after restore");
+    Check(resumed.FindConsequences(ConsequenceExecutionState::Pending).size()==1,"resumed event plans consequence exactly once");
+    Check(static_cast<bool>(resumed.ProcessNarrativeEvent(resumable_event)),"completed event deduplicates");
+    Check(resumed.FindConsequences(ConsequenceExecutionState::Pending).size()==1,"dedupe does not duplicate resumed consequence");
+
+    Check(!static_cast<bool>(resumed.CompleteThread(NarrativeThreadId::FromString("thread.unknown"))),
+          "mutation cannot create phantom thread state");
+
+    NarrativeService bounded;
+    for (int i=0;i<4200;++i)
+    {
+        NarrativeFlag flag;
+        flag.id = NarrativeFlagId::FromRaw(0x9911, static_cast<std::uint64_t>(i+1));
+        Check(static_cast<bool>(bounded.SetFlag(flag)),"bounded journal mutation");
+    }
+    Check(bounded.ReadChangesSince(0).snapshot_required,"bounded narrative journal reports snapshot-required gap");
     return 0;
 }

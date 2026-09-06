@@ -118,6 +118,7 @@ foundation::Result<void> GameplayFactsService::MergeSubmittedBatches()
             flattened.push_back(FlattenedEvent{PendingEvent{pending.type,
                                                              std::move(pending.context),
                                                              pending.subject,
+                                                             pending.scope,
                                                              std::move(pending.payload),
                                                              pending.payload_type,
                                                              pending.producer,
@@ -214,6 +215,7 @@ foundation::Result<std::uint64_t> GameplayFactsService::Dispatch(EventDispatchLi
             record.envelope.time = pending.context.time;
             record.envelope.context = pending.context;
             record.envelope.subject = pending.subject;
+            record.envelope.scope = pending.scope;
             record.envelope.producer = pending.producer;
             record.envelope.sequence = next_event_sequence_++;
             record.payload = std::move(pending.payload);
@@ -226,7 +228,14 @@ foundation::Result<std::uint64_t> GameplayFactsService::Dispatch(EventDispatchLi
             {
                 for (const auto& subscriber : found->second)
                 {
-                    subscriber.callback(record);
+                    try
+                    {
+                        subscriber.callback(record);
+                    }
+                    catch (...)
+                    {
+                        ++subscriber_failures_;
+                    }
                 }
             }
             ++processed;
@@ -638,7 +647,16 @@ foundation::Result<void> GameplayFactsService::CompactHistory(EventTypeId type, 
         }
     }
 
-    auto compacted = compactor.Compact(selected);
+    std::vector<EventRecord> compacted;
+    try
+    {
+        compacted = compactor.Compact(selected);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.history_compactor_exception", "history compactor threw an exception"));
+    }
     for (const auto& event : compacted)
     {
         if (event.envelope.type != type)
@@ -965,6 +983,7 @@ FactsDiagnostics GameplayFactsService::GetDiagnostics() const noexcept
                             dispatched_events_,
                             dispatch_waves_,
                             rejected_events_.load(std::memory_order_relaxed),
+                            subscriber_failures_,
                             facts_.size(),
                             persistent,
                             history_.size()};

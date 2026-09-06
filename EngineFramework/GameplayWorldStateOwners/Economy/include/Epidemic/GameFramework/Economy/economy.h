@@ -2,6 +2,8 @@
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 #include <cstdint>
+#include <cstddef>
+#include <deque>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -47,6 +49,7 @@ ECO_TYPE(EconomicValueTypeId);
 ECO_TYPE(OfferTypeId);
 ECO_TYPE(ContractTypeId);
 ECO_TYPE(TaxRuleId);
+ECO_TYPE(PriceProviderId);
 ECO_OBJ(EconomicAccountId);
 ECO_OBJ(FundsReservationId);
 ECO_OBJ(MarketId);
@@ -123,7 +126,9 @@ enum class EconomyChangeKind
     OfferChanged,
     TradeChanged,
     DebtChanged,
-    ContractChanged
+    ContractChanged,
+    DebtCompacted,
+    ContractCompacted
 };
 struct CurrencyDefinition
 {
@@ -179,7 +184,11 @@ struct PriceQuote
 {
     EconomicValueRef subject{};
     CurrencyId currency{};
-    Fixed amount = 0;
+    std::optional<MarketId> market{};
+    GameplayObjectRef buyer{};
+    GameplayObjectRef seller{};
+    Fixed quantity = 1;
+    Fixed unit_amount = 0;
     Revision dependencies_revision{};
 };
 struct PriceQuoteRequest
@@ -227,8 +236,22 @@ struct TradeTransaction
     TradeTransactionId id{};
     TradePlan plan;
     std::vector<FundsReservationId> reservations;
+    OfferId source_offer{};
+    Revision source_offer_revision{};
+    Fixed accepted_quantity = 0;
+    EconomicValueRef accepted_subject{};
     TradeTransactionState state = TradeTransactionState::Prepared;
     Revision revision{};
+};
+struct OfferAcceptanceRequest
+{
+    OfferId offer{};
+    Revision expected_offer_revision{};
+    GameplayObjectRef buyer{};
+    Fixed accepted_quantity = 0;
+    EconomicAccountId buyer_funding_account{};
+    EconomicAccountId seller_destination_account{};
+    GameplayContext context{};
 };
 struct DebtRecord
 {
@@ -241,6 +264,12 @@ struct DebtRecord
     DebtState state = DebtState::Active;
     Revision revision{};
 };
+struct ContractTermsSchema
+{
+    ContractTypeId type{};
+    TypeId schema{};
+    std::size_t max_payload_bytes = 0;
+};
 struct EconomicContract
 {
     EconomicContractId id{};
@@ -249,6 +278,8 @@ struct EconomicContract
     CurrencyId currency{};
     Fixed amount = 0;
     GameplayTimePoint due_at{};
+    TypeId terms_schema{};
+    std::vector<std::byte> terms_payload;
     ContractState state = ContractState::Draft;
     Revision revision{};
 };
@@ -297,17 +328,19 @@ struct EconomyDiagnostics
     std::uint64_t transactions = 0;
     std::uint64_t debts = 0;
 };
+struct EconomyChangeBatch
+{
+    std::vector<EconomyChange> changes;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+    bool snapshot_required = false;
+};
 
 class IPriceProvider
 {
   public:
     virtual ~IPriceProvider() = default;
-    [[nodiscard]] virtual std::optional<PriceQuote> Quote(EconomicValueRef subject, CurrencyId currency,
-                                                          GameplayObjectRef buyer, GameplayObjectRef seller) const = 0;
-    [[nodiscard]] virtual std::optional<PriceQuote> Quote(const PriceQuoteRequest &request) const
-    {
-        return Quote(request.subject, request.currency, request.buyer, request.seller);
-    }
+    [[nodiscard]] virtual std::optional<PriceQuote> Quote(const PriceQuoteRequest &request) const = 0;
 };
 class EconomyService
 {
@@ -318,11 +351,9 @@ class EconomyService
         return GameplayDomainId::FromString("framework.economy");
     }
     [[nodiscard]] foundation::Result<CurrencyId> RegisterCurrency(CurrencyDefinition definition);
-    void Freeze() noexcept
-    {
-        frozen_ = true;
-    }
-    [[nodiscard]] foundation::Result<void> AddPriceProvider(const IPriceProvider *provider);
+    void Freeze() noexcept;
+    [[nodiscard]] foundation::Result<void> AddPriceProvider(PriceProviderId id, std::int32_t priority, const IPriceProvider *provider);
+    [[nodiscard]] foundation::Result<void> RegisterContractTermsSchema(ContractTermsSchema schema);
     [[nodiscard]] foundation::Result<EconomicAccountId> CreateAccount(EconomicAccount account);
     [[nodiscard]] const EconomicAccount *FindAccount(EconomicAccountId id) const noexcept;
     [[nodiscard]] std::optional<EconomicAccount> FindAccountCopy(EconomicAccountId id) const noexcept;
@@ -348,8 +379,7 @@ class EconomyService
     [[nodiscard]] std::optional<PriceQuote> GetPriceQuote(const PriceQuoteRequest &request) const;
     [[nodiscard]] foundation::Result<OfferId> CreateOffer(EconomicOffer offer);
     [[nodiscard]] foundation::Result<void> CancelOffer(OfferId offer, GameplayContext context = {});
-    [[nodiscard]] foundation::Result<TradeTransactionId> AcceptOffer(OfferId offer, GameplayObjectRef buyer,
-                                                                     TradePlan plan);
+    [[nodiscard]] foundation::Result<TradeTransactionId> AcceptOffer(OfferAcceptanceRequest request);
     [[nodiscard]] std::vector<EconomicOffer> FindOffers(GameplayObjectRef seller = {},
                                                         OfferState state = OfferState::Active) const;
     [[nodiscard]] std::vector<OfferId> ExpireOffers(GameplayTimePoint now, GameplayContext context = {});
@@ -362,10 +392,13 @@ class EconomyService
     [[nodiscard]] std::vector<EconomicAccount> FindAccounts(GameplayObjectRef owner, std::optional<CurrencyId> currency = std::nullopt) const;
     [[nodiscard]] foundation::Result<DebtId> CreateDebt(DebtRecord debt);
     [[nodiscard]] foundation::Result<void> ResolveDebt(DebtId debt, DebtState state, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CompactDebt(DebtId debt, GameplayContext context = {});
     [[nodiscard]] std::vector<DebtRecord> FindDebts(GameplayObjectRef subject) const;
     [[nodiscard]] foundation::Result<EconomicContractId> CreateContract(EconomicContract contract);
     [[nodiscard]] foundation::Result<void> SetContractState(EconomicContractId contract, ContractState state,
                                                             GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CompactContract(EconomicContractId contract, GameplayContext context = {});
+    [[nodiscard]] EconomyChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::vector<EconomyChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] EconomySnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(EconomySnapshot snapshot);
@@ -410,11 +443,19 @@ class EconomyService
     std::unordered_map<TradeTransactionId, TradeTransaction, IdHash> transactions_;
     std::unordered_map<DebtId, DebtRecord, IdHash> debts_;
     std::unordered_map<EconomicContractId, EconomicContract, IdHash> contracts_;
-    std::vector<const IPriceProvider *> price_providers_;
+    std::unordered_map<ContractTypeId, ContractTermsSchema, IdHash> contract_terms_schemas_;
+    struct PriceProviderRegistration
+    {
+        PriceProviderId id{};
+        std::int32_t priority = 0;
+        const IPriceProvider *provider = nullptr;
+    };
+    std::vector<PriceProviderRegistration> price_providers_;
     MonotonicIdGenerator<GameplayObjectId> account_ids_{0x3700}, reservation_ids_{0x3701}, market_ids_{0x3702},
         offer_ids_{0x3703}, transaction_ids_{0x3704}, debt_ids_{0x3705}, contract_ids_{0x3706};
-    std::vector<EconomyChange> changes_;
+    std::deque<EconomyChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
     EconomyDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::economy

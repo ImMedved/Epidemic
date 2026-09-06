@@ -3,11 +3,14 @@
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace epidemic::gameplay::population
@@ -112,6 +115,24 @@ struct PopulationMigrationId
     [[nodiscard]] constexpr bool operator==(const PopulationMigrationId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const PopulationMigrationId &) const noexcept = default;
 };
+struct PopulationAllocationId
+{
+    GameplayObjectId value{};
+    static constexpr PopulationAllocationId FromString(std::string_view s) noexcept
+    {
+        return {GameplayObjectId::FromString(s)};
+    }
+    static constexpr PopulationAllocationId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const PopulationAllocationId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const PopulationAllocationId &) const noexcept = default;
+};
 struct IdHash
 {
     template <class T> [[nodiscard]] std::size_t operator()(const T &id) const noexcept
@@ -131,12 +152,9 @@ enum class PopulationUnitState
 {
     Latent,
     Abstract,
-    Materializing,
     Materialized,
-    Dematerializing,
     Dead,
-    Removed,
-    Migrated
+    Removed
 };
 enum class ResidenceState
 {
@@ -153,6 +171,12 @@ enum class MigrationState
     Cancelled,
     Failed
 };
+enum class PopulationAllocationState
+{
+    Active,
+    Committed,
+    Released
+};
 enum class PopulationChangeKind
 {
     GroupCreated,
@@ -165,7 +189,14 @@ enum class PopulationChangeKind
     UnitRetired,
     ResidenceAssigned,
     MigrationStarted,
-    MigrationCompleted
+    MigrationCompleted,
+    MigrationCancelled,
+    MigrationFailed,
+    EntityBindingChanged,
+    ResidenceChanged,
+    AllocationReserved,
+    AllocationCommitted,
+    AllocationReleased
 };
 
 struct PopulationTemplate
@@ -224,6 +255,34 @@ struct PopulationMigration
     GameplayTimePoint started_at{};
     Revision revision{};
 };
+struct PopulationAllocation
+{
+    PopulationAllocationId id{};
+    PopulationUnitId unit{};
+    TypeId purpose{};
+    GameplayObjectId correlation{};
+    PopulationAllocationState state = PopulationAllocationState::Active;
+    std::optional<GameplayTimePoint> expires_at;
+    GameplayObjectRef bound_entity{};
+    Revision revision{};
+};
+struct PopulationAllocationRequest
+{
+    std::vector<PopulationUnitId> units;
+    TypeId purpose{};
+    GameplayObjectId correlation{};
+    std::optional<GameplayTimePoint> expires_at;
+};
+struct PopulationAllocationToken
+{
+    PopulationAllocationId allocation{};
+    PopulationUnitId unit{};
+};
+struct PopulationAllocationBatch
+{
+    GameplayObjectId correlation{};
+    std::vector<PopulationAllocationToken> tokens;
+};
 struct PopulationChange
 {
     std::uint64_t sequence = 0;
@@ -237,26 +296,39 @@ struct PopulationChange
 };
 struct PopulationCounts
 {
-    std::uint32_t latent = 0, abstract_units = 0, materializing = 0, materialized = 0, dematerializing = 0, dead = 0,
-                  removed = 0, migrated = 0;
+    std::uint32_t latent = 0, abstract_units = 0, materialized = 0, dead = 0, removed = 0;
 };
+struct PopulationChangeBatch
+{
+    std::vector<PopulationChange> changes;
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+};
+
 struct PopulationSnapshot
 {
+    // Definitions are build/content state and are not captured by new snapshots.
+    // The field remains for compatibility with pre-freeze snapshots and is validation-only on restore.
     std::vector<PopulationTemplate> templates;
     std::vector<PopulationGroup> groups;
     std::vector<PopulationUnit> units;
     std::vector<PopulationResidence> residences;
     std::vector<PopulationMigration> migrations;
+    std::vector<PopulationAllocation> allocations;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot group_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot unit_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot residence_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot migration_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot allocation_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot allocation_correlation_ids{};
     Revision revision{};
 };
 struct PopulationDiagnostics
 {
     std::uint64_t groups = 0, units = 0, latent = 0, abstract_units = 0, materialized = 0, migrations = 0,
-                  residences = 0, materialization_requests = 0, dematerialization_requests = 0;
+                  residences = 0, allocations = 0, active_allocations = 0, materialization_requests = 0,
+                  dematerialization_requests = 0;
 };
 
 class PopulationService
@@ -267,6 +339,8 @@ class PopulationService
         return GameplayDomainId::FromString("framework.population");
     }
     [[nodiscard]] foundation::Result<void> RegisterTemplate(PopulationTemplate definition);
+    [[nodiscard]] foundation::Result<void> FreezeDefinitions();
+    [[nodiscard]] bool DefinitionsFrozen() const noexcept { return definitions_frozen_; }
     [[nodiscard]] foundation::Result<PopulationGroupId> CreateGroup(PopulationGroup group);
     [[nodiscard]] foundation::Result<PopulationUnitId> CreateUnit(PopulationUnit unit, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> SetUnitEntity(PopulationUnitId unit, GameplayObjectRef entity,
@@ -282,16 +356,40 @@ class PopulationService
                                                                            GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CompleteMigration(PopulationMigrationId migration,
                                                              GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CancelMigration(PopulationMigrationId migration,
+                                                           GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> FailMigration(PopulationMigrationId migration,
+                                                         GameplayContext context = {});
+    [[nodiscard]] foundation::Result<PopulationAllocationBatch> ReserveAllocations(
+        PopulationAllocationRequest request, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CommitAllocation(PopulationAllocationId allocation,
+                                                            GameplayObjectRef entity,
+                                                            GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ReleaseAllocation(PopulationAllocationId allocation,
+                                                             GameplayContext context = {});
+    void PruneTerminalAllocations(GameplayObjectId correlation);
     [[nodiscard]] const PopulationGroup *GetGroup(PopulationGroupId id) const noexcept;
     [[nodiscard]] const PopulationUnit *GetUnit(PopulationUnitId id) const noexcept;
+    [[nodiscard]] const PopulationTemplate *GetTemplate(PopulationTemplateId id) const noexcept;
+    [[nodiscard]] const PopulationAllocation *GetAllocation(PopulationAllocationId id) const noexcept;
+    [[nodiscard]] const PopulationAllocation *GetActiveAllocationForUnit(PopulationUnitId unit) const noexcept;
+    [[nodiscard]] const PopulationUnit *FindUnitByEntity(GameplayObjectRef entity) const noexcept;
+    [[nodiscard]] std::vector<PopulationAllocation> FindAllocationsByCorrelation(GameplayObjectId correlation) const;
+    [[nodiscard]] static constexpr GameplayObjectRef ResidentRef(PopulationUnitId unit) noexcept
+    {
+        return {Domain(), unit.value};
+    }
     [[nodiscard]] std::vector<PopulationGroup> FindGroupsInArea(GameplayObjectRef area) const;
     [[nodiscard]] std::vector<PopulationUnit> FindUnitsByGroup(PopulationGroupId group) const;
     [[nodiscard]] std::vector<PopulationUnit> FindUnitsByState(PopulationUnitState state) const;
+    [[nodiscard]] std::vector<PopulationUnit> FindUnitsInArea(GameplayObjectRef area) const;
     [[nodiscard]] std::vector<PopulationUnit> FindResidentsOfArea(GameplayObjectRef area) const;
     [[nodiscard]] std::vector<PopulationUnit> FindMaterializationCandidates(GameplayObjectRef area,
                                                                             std::size_t limit) const;
     [[nodiscard]] PopulationCounts GetPopulationCounts(PopulationGroupId group = {}) const;
+    [[nodiscard]] PopulationChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::vector<PopulationChange> ChangesSince(std::uint64_t sequence) const;
+    void PruneChangesThrough(std::uint64_t sequence);
     [[nodiscard]] PopulationSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(PopulationSnapshot snapshot);
     [[nodiscard]] PopulationDiagnostics GetDiagnostics() const noexcept;
@@ -307,6 +405,13 @@ class PopulationService
     }
     void Record(PopulationChange change);
     void RecountGroup(PopulationGroupId group);
+    void RebuildIndexes();
+    void IndexUnit(const PopulationUnit &unit);
+    void UnindexUnit(const PopulationUnit &unit);
+    void RemoveEntityBinding(PopulationUnit &unit) noexcept;
+    [[nodiscard]] foundation::Result<void> BindEntity(PopulationUnit &unit, GameplayObjectRef entity);
+    [[nodiscard]] foundation::Result<void> FinishMigration(PopulationMigrationId migration, MigrationState state,
+                                                            GameplayContext context);
     [[nodiscard]] PopulationUnit *FindMutableUnit(PopulationUnitId id) noexcept;
     [[nodiscard]] PopulationGroup *FindMutableGroup(PopulationGroupId id) noexcept;
     Revision revision_{};
@@ -314,13 +419,27 @@ class PopulationService
     MonotonicIdGenerator<GameplayObjectId> unit_ids_{0x2601};
     MonotonicIdGenerator<GameplayObjectId> residence_ids_{0x2602};
     MonotonicIdGenerator<GameplayObjectId> migration_ids_{0x2603};
+    MonotonicIdGenerator<GameplayObjectId> allocation_ids_{0x2604};
+    MonotonicIdGenerator<GameplayObjectId> allocation_correlation_ids_{0x2605};
     std::unordered_map<PopulationTemplateId, PopulationTemplate, IdHash> templates_;
     std::unordered_map<PopulationGroupId, PopulationGroup, IdHash> groups_;
     std::unordered_map<PopulationUnitId, PopulationUnit, IdHash> units_;
     std::unordered_map<PopulationResidenceId, PopulationResidence, IdHash> residences_;
     std::unordered_map<PopulationMigrationId, PopulationMigration, IdHash> migrations_;
-    std::vector<PopulationChange> changes_;
+    std::unordered_map<PopulationAllocationId, PopulationAllocation, IdHash> allocations_;
+    std::unordered_map<GameplayObjectRef, PopulationUnitId> unit_by_entity_;
+    std::unordered_map<PopulationUnitId, PopulationMigrationId, IdHash> active_migration_by_unit_;
+    std::unordered_map<PopulationUnitId, PopulationResidenceId, IdHash> active_residence_by_unit_;
+    std::unordered_map<PopulationUnitId, PopulationAllocationId, IdHash> active_allocation_by_unit_;
+    std::unordered_map<GameplayObjectId, std::vector<PopulationAllocationId>> allocations_by_correlation_;
+    std::unordered_map<PopulationGroupId, std::unordered_set<PopulationUnitId, IdHash>, IdHash> units_by_group_;
+    std::unordered_map<GameplayObjectRef, std::unordered_set<PopulationUnitId, IdHash>> units_by_area_;
+    std::unordered_map<PopulationTemplateId, std::unordered_set<PopulationUnitId, IdHash>, IdHash> units_by_template_;
+    std::array<std::unordered_set<PopulationUnitId, IdHash>, 5> units_by_state_;
+    std::deque<PopulationChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::size_t change_journal_capacity_ = 4096;
+    bool definitions_frozen_ = false;
     mutable PopulationDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::population

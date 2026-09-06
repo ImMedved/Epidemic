@@ -49,6 +49,43 @@ int main()
     Check(named.Scope() == IdScopeId::FromString("framework.time.schedule_ids"), 8);
     Check(MonotonicIdGenerator<ScheduleId>::IsValidSnapshot(named.GetSnapshot()), 9);
 
+    const auto generator_restore_ok = ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
+        MonotonicIdGenerator<ScheduleId>::Snapshot{42, second.Low() + 1}, IdScopeId::FromRaw(42), second.Low());
+    Check(generator_restore_ok.IsValid(), 901);
+    Check(generator_restore_ok.Code() == "gameplay.id_generator_snapshot_valid", 902);
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
+               MonotonicIdGenerator<ScheduleId>::Snapshot{0, 1}, IdScopeId::FromRaw(42), 0)
+               .IsValid(),
+          903);
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
+               MonotonicIdGenerator<ScheduleId>::Snapshot{42, 1}, {}, 0)
+               .IsValid(),
+          904);
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
+               MonotonicIdGenerator<ScheduleId>::Snapshot{43, 1}, IdScopeId::FromRaw(42), 0)
+               .IsValid(),
+          905);
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
+               MonotonicIdGenerator<ScheduleId>::Snapshot{42, second.Low()}, IdScopeId::FromRaw(42), second.Low())
+               .IsValid(),
+          906);
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
+               MonotonicIdGenerator<ScheduleId>::Snapshot{42, second.Low() - 1}, IdScopeId::FromRaw(42), second.Low())
+               .IsValid(),
+          907);
+    Check(ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
+              MonotonicIdGenerator<ScheduleId>::Snapshot{42, 0},
+              IdScopeId::FromRaw(42),
+              std::numeric_limits<std::uint64_t>::max())
+              .IsValid(),
+          908);
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
+               MonotonicIdGenerator<ScheduleId>::Snapshot{42, std::numeric_limits<std::uint64_t>::max()},
+               IdScopeId::FromRaw(42),
+               std::numeric_limits<std::uint64_t>::max())
+               .IsValid(),
+          909);
+
     MonotonicIdGenerator<ScheduleId> exhausted(7);
     exhausted.Restore(MonotonicIdGenerator<ScheduleId>::Snapshot{7, std::numeric_limits<std::uint64_t>::max()});
     const auto last = exhausted.Next();
@@ -112,6 +149,12 @@ int main()
     Check((GameplayTimePoint{10} + GameplayDuration{-3}).ticks == 7, 40);
     Check((GameplayTimePoint{10} - GameplayDuration{3}).ticks == 7, 41);
     Check((GameplayTimePoint{10} - GameplayTimePoint{3}).ticks == 7, 42);
+    static_assert(kGameplayTimeTicksPerSecond == 1);
+    static_assert(kGameplaySecondsPerHour == 3600);
+    Check(GameplaySeconds(12).ticks == 12, 421);
+    Check(GameplayTimeSeconds(20).ticks == 20, 422);
+    Check(ToGameplaySeconds(GameplayDuration{33}) == 33, 423);
+    Check(ToGameplaySeconds(GameplayTimePoint{44}) == 44, 424);
 
     Check(Revision{}.Raw() == 0, 43);
     const auto next_revision = CheckedNext(Revision{41});

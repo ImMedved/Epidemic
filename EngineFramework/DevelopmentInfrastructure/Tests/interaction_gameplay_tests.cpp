@@ -32,7 +32,7 @@ struct Exec final : IInteractionExecutor
     {
         return epidemic::foundation::Result<void>::Success();
     }
-    epidemic::foundation::Result<void> Commit(const InteractionPlan &, InteractionExecutionId) override
+    epidemic::foundation::Result<void> Commit(const InteractionPlan &, InteractionExecutionId) noexcept override
     {
         ++commits;
         return epidemic::foundation::Result<void>::Success();

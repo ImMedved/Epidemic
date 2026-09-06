@@ -2,6 +2,7 @@
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -61,7 +62,6 @@ struct IdHash
 
 enum class ConversationState
 {
-    Preparing,
     Active,
     WaitingForChoice,
     WaitingForExternalAction,
@@ -169,10 +169,10 @@ struct ConversationSession
     std::vector<ConversationParticipant> participant_bindings;
     GameplayObjectRef current_speaker{};
     DialogueNodeId current_node{};
-    ConversationState state = ConversationState::Preparing;
+    ConversationState state = ConversationState::Active;
     ConversationContext context{};
     GameplayTimePoint started_at{};
-    std::vector<TypeId> resolved_persistent_options;
+    std::vector<TypeId> resolved_once_per_conversation_options;
     Revision revision{};
 };
 struct DialogueConditionContext
@@ -185,7 +185,6 @@ struct DialogueConditionContext
 struct DialogueConditionResult
 {
     DialogueConditionState state = DialogueConditionState::Unknown;
-    Revision dependencies_revision{};
 };
 struct DialogueConsequenceExecution
 {
@@ -211,6 +210,13 @@ struct DialogueChange
     TypeId reason{};
     GameplayContext context{};
     Revision revision{};
+};
+struct DialogueChangeBatch
+{
+    std::vector<DialogueChange> changes;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+    bool snapshot_required = false;
 };
 struct DialogueSnapshot
 {
@@ -276,6 +282,11 @@ class DialogueService
     [[nodiscard]] std::optional<ConversationSession> GetSession(ConversationSessionId id) const noexcept;
     [[nodiscard]] const ConversationDefinition *GetDefinition(ConversationDefinitionId id) const noexcept;
     [[nodiscard]] std::vector<DialogueConsequenceExecutionId> ExecutePendingConsequences(std::size_t budget = 128);
+    [[nodiscard]] foundation::Result<void> ResumeConsequence(DialogueConsequenceExecutionId execution,
+                                                             GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> FailConsequence(DialogueConsequenceExecutionId execution, TypeId reason,
+                                                           GameplayContext context = {});
+    [[nodiscard]] DialogueChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::vector<DialogueChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] DialogueSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(DialogueSnapshot snapshot);
@@ -301,6 +312,7 @@ class DialogueService
     [[nodiscard]] DialogueConditionContext MakeConditionContext(const ConversationSession &session,
                                                                 GameplayObjectRef actor) const noexcept;
     void MaybeCleanupTerminalSession(ConversationSessionId id);
+    void RefreshExternalWaitState(ConversationSessionId id, GameplayContext context);
     bool frozen_ = false;
     Revision revision_{};
     std::unordered_map<ConversationDefinitionId, ConversationDefinition, IdHash> definitions_;
@@ -311,7 +323,8 @@ class DialogueService
     std::unordered_map<ConversationSessionId, ConversationSession, IdHash> sessions_;
     std::unordered_map<DialogueConsequenceExecutionId, DialogueConsequenceExecution, IdHash> consequences_;
     MonotonicIdGenerator<GameplayObjectId> session_ids_{0x3600}, consequence_ids_{0x3601};
-    std::vector<DialogueChange> changes_;
+    std::deque<DialogueChange> changes_;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
     std::uint64_t next_change_sequence_ = 1;
     DialogueDiagnostics diagnostics_{};
 };

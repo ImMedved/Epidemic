@@ -47,63 +47,63 @@ int main()
 
     RandomSequence sequence({42}, combat);
     Check(sequence.Sequence() == 0, 12);
-    Check(sequence.NextU64() == 5979799565065418595ull, 13);
-    Check(sequence.NextU64() == 284422869324198993ull, 14);
-    Check(sequence.NextU64() == 217384426050393463ull, 15);
+    Check(sequence.NextU64Unchecked() == 5979799565065418595ull, 13);
+    Check(sequence.NextU64Unchecked() == 284422869324198993ull, 14);
+    Check(sequence.NextU64Unchecked() == 217384426050393463ull, 15);
     Check(sequence.Sequence() == 3, 16);
 
     RandomSequence replay({42}, combat, 3);
-    Check(replay.NextU64() == 2907130181002816261ull, 17);
-    Check(replay.NextU64() == 4593431065408583085ull, 18);
+    Check(replay.NextU64Unchecked() == 2907130181002816261ull, 17);
+    Check(replay.NextU64Unchecked() == 4593431065408583085ull, 18);
 
     RandomSequence same_a({42}, combat);
     RandomSequence same_b({42}, combat);
     for (int index = 0; index < 1000; ++index)
     {
-        Check(same_a.NextU64() == same_b.NextU64(), 19);
+        Check(same_a.NextU64Unchecked() == same_b.NextU64Unchecked(), 19);
     }
 
     RandomSequence different_seed({43}, combat);
     RandomSequence different_stream({42}, loot);
-    Check(RandomSequence({42}, combat).NextU64() != different_seed.NextU64(), 20);
-    Check(RandomSequence({42}, combat).NextU64() != different_stream.NextU64(), 21);
+    Check(RandomSequence({42}, combat).NextU64Unchecked() != different_seed.NextU64Unchecked(), 20);
+    Check(RandomSequence({42}, combat).NextU64Unchecked() != different_stream.NextU64Unchecked(), 21);
 
     RandomSequence uniform({42}, combat);
-    Check(uniform.Uniform(1) == 0, 22);
-    Check(uniform.Uniform(10) == 5, 23);
+    Check(uniform.UniformUnchecked(1) == 0, 22);
+    Check(uniform.UniformUnchecked(10) == 5, 23);
     for (int index = 0; index < 128; ++index)
     {
-        Check(uniform.Uniform(17) < 17, 24);
+        Check(uniform.UniformUnchecked(17) < 17, 24);
     }
-    Check(RandomSequence({42}, combat).Uniform(10) == RandomSequence({42}, combat).Uniform(10), 25);
-    Check(RandomSequence({42}, combat).Uniform(std::numeric_limits<std::uint64_t>::max()) <
+    Check(RandomSequence({42}, combat).UniformUnchecked(10) == RandomSequence({42}, combat).UniformUnchecked(10), 25);
+    Check(RandomSequence({42}, combat).UniformUnchecked(std::numeric_limits<std::uint64_t>::max()) <
               std::numeric_limits<std::uint64_t>::max(),
           26);
 
     RandomSequence range({42}, RandomStream::FromString("range"));
-    Check(range.UniformRange(5, 13) == 12, 27);
+    Check(range.UniformRangeUnchecked(5, 13) == 12, 27);
     for (int index = 0; index < 128; ++index)
     {
-        const auto value = range.UniformRange(100, 200);
+        const auto value = range.UniformRangeUnchecked(100, 200);
         Check(value >= 100 && value < 200, 28);
     }
 
     RandomSequence real({42}, RandomStream::FromString("real"));
-    CheckClose(real.Uniform01(), 0.77932763623837287, 0.0000000000000002, 29);
-    CheckClose(RandomSequence({42}, RandomStream::FromString("real")).UniformReal(10.0, 20.0), 17.79327636238373,
+    CheckClose(real.Uniform01Unchecked(), 0.77932763623837287, 0.0000000000000002, 29);
+    CheckClose(RandomSequence({42}, RandomStream::FromString("real")).UniformRealUnchecked(10.0, 20.0), 17.79327636238373,
                0.00000000000001, 30);
     for (int index = 0; index < 128; ++index)
     {
-        const auto value = real.UniformReal(-2.0, 3.0);
+        const auto value = real.UniformRealUnchecked(-2.0, 3.0);
         Check(value >= -2.0 && value < 3.0, 31);
     }
 
     RandomSequence chance({7}, RandomStream::FromString("chance"));
-    Check(!chance.RollMicro(0), 32);
-    Check(chance.RollMicro(1'000'000), 33);
-    Check(chance.RollMicro(1'000'001), 34);
-    Check(RandomSequence({7}, RandomStream::FromString("chance")).RollMicro(500'000) ==
-              RandomSequence({7}, RandomStream::FromString("chance")).RollMicro(500'000),
+    Check(!chance.RollMicroUnchecked(0), 32);
+    Check(chance.RollMicroUnchecked(1'000'000), 33);
+    Check(chance.RollMicroUnchecked(1'000'001), 34);
+    Check(RandomSequence({7}, RandomStream::FromString("chance")).RollMicroUnchecked(500'000) ==
+              RandomSequence({7}, RandomStream::FromString("chance")).RollMicroUnchecked(500'000),
           35);
 
     RandomSequence weighted({42}, RandomStream::FromString("weighted"));
@@ -120,38 +120,70 @@ int main()
     Check(weighted.WeightedIndex(single_weight).value_or(99) == 0, 40);
 
     std::vector<int> shuffled{1, 2, 3, 4, 5};
-    RandomSequence({42}, RandomStream::FromString("shuffle.items")).Shuffle(shuffled);
+    RandomSequence({42}, RandomStream::FromString("shuffle.items")).ShuffleUnchecked(shuffled);
     Check((shuffled == std::vector<int>{2, 5, 3, 1, 4}), 41);
     std::vector<int> sorted = shuffled;
     std::sort(sorted.begin(), sorted.end());
     Check((sorted == std::vector<int>{1, 2, 3, 4, 5}), 42);
     std::vector<int> empty;
-    RandomSequence({1}, RandomStream::FromString("shuffle.items")).Shuffle(empty);
+    RandomSequence({1}, RandomStream::FromString("shuffle.items")).ShuffleUnchecked(empty);
     Check(empty.empty(), 43);
     std::array<int, 1> one{7};
-    RandomSequence({1}, RandomStream::FromString("shuffle.items")).Shuffle(one);
+    RandomSequence({1}, RandomStream::FromString("shuffle.items")).ShuffleUnchecked(one);
     Check(one[0] == 7, 44);
 
     RandomSequence original({42}, RandomStream::FromString("snapshot"));
-    const auto before = original.NextU64();
+    const auto before = original.NextU64Unchecked();
     const auto snapshot = original.CaptureSnapshot();
-    const auto after_snapshot = original.NextU64();
-    RandomSequence restored(snapshot);
-    Check(restored.NextU64() == after_snapshot, 45);
-    restored.RestoreSnapshot({RandomSeed{42}, RandomStream::FromString("snapshot"), 0});
-    Check(restored.NextU64() == before, 46);
+    const auto after_snapshot = original.NextU64Unchecked();
+    auto restored_result = RandomSequence::TryFromSnapshot(snapshot);
+    Check(restored_result.has_value(), 45);
+    auto restored = *restored_result;
+    Check(restored.NextU64Unchecked() == after_snapshot, 46);
+    Check(restored.TryRestoreSnapshot({RandomSeed{42}, RandomStream::FromString("snapshot"), 0}), 47);
+    Check(restored.NextU64Unchecked() == before, 48);
 
     RandomSequence exhausted({42}, combat, std::numeric_limits<std::uint64_t>::max() - 1);
-    (void)exhausted.NextU64();
-    Check(exhausted.IsExhausted() && exhausted.Sequence() == std::numeric_limits<std::uint64_t>::max(), 47);
+    (void)exhausted.NextU64Unchecked();
+    Check(exhausted.IsExhausted() && exhausted.Sequence() == std::numeric_limits<std::uint64_t>::max(), 49);
     const auto exhausted_snapshot = exhausted.CaptureSnapshot();
-    RandomSequence exhausted_restore(exhausted_snapshot);
-    Check(exhausted_restore.IsExhausted(), 48);
+    auto exhausted_restore = RandomSequence::TryFromSnapshot(exhausted_snapshot);
+    Check(exhausted_restore.has_value() && exhausted_restore->IsExhausted(), 50);
 
+    const RandomSequenceSnapshot invalid_snapshot{RandomSeed{99}, RandomStream{}, 7};
+    Check(!RandomSequence::IsValidSnapshot(invalid_snapshot), 51);
+    Check(!RandomSequence::TryFromSnapshot(invalid_snapshot).has_value(), 52);
+    const auto preserved_snapshot = restored.CaptureSnapshot();
+    Check(!restored.TryRestoreSnapshot(invalid_snapshot), 53);
+    Check(restored.CaptureSnapshot().seed == preserved_snapshot.seed &&
+              restored.CaptureSnapshot().stream == preserved_snapshot.stream &&
+              restored.CaptureSnapshot().sequence == preserved_snapshot.sequence,
+          54);
 
     RandomSequence exhausted_checked({1}, RandomStream::FromString("exhausted"), std::numeric_limits<std::uint64_t>::max());
     Check(!exhausted_checked.TryNextU64().has_value(), 60);
     Check(!exhausted_checked.TryUniform(2).has_value(), 61);
     Check(!RandomSequence({1}, RandomStream::FromString("invalid.uniform")).TryUniform(0).has_value(), 62);
+    Check(!RandomSequence({1}, RandomStream::FromString("invalid.range")).TryUniformRange(9, 9).has_value(), 63);
+    Check(!RandomSequence({1}, RandomStream::FromString("invalid.range")).TryUniformRange(10, 9).has_value(), 64);
+    Check(!RandomSequence({1}, RandomStream::FromString("invalid.real")).TryUniformReal(2.0, 2.0).has_value(), 65);
+    Check(!RandomSequence({1}, RandomStream::FromString("invalid.real")).TryUniformReal(3.0, 2.0).has_value(), 66);
+    Check(!RandomSequence({1}, RandomStream::FromString("invalid.real"))
+               .TryUniformReal(std::numeric_limits<double>::infinity(), 2.0)
+               .has_value(),
+          67);
+    Check(!RandomSequence({1}, RandomStream::FromString("invalid.real"))
+               .TryUniformReal(-std::numeric_limits<double>::max(), std::numeric_limits<double>::max())
+               .has_value(),
+          71);
+    Check(RandomSequence({1}, RandomStream::FromString("safe.max"))
+              .TryUniform(std::numeric_limits<std::uint64_t>::max())
+              .has_value(),
+          68);
+    RandomSequence exhausted_weighted({1}, RandomStream::FromString("weighted.exhausted"),
+                                      std::numeric_limits<std::uint64_t>::max());
+    const std::array<std::uint64_t, 2> needs_entropy_weights{1, 1};
+    Check(!exhausted_weighted.WeightedIndex(needs_entropy_weights).has_value(), 69);
+    Check(!exhausted_checked.TryRollMicro(500'000).has_value(), 70);
     return 0;
 }

@@ -7,7 +7,7 @@ target_include_directories(EpidemicGameFrameworkEffects PUBLIC
 )
 
 target_link_libraries(EpidemicGameFrameworkEffects
-    PUBLIC EpidemicGameFrameworkFoundation EpidemicCore
+    PUBLIC EpidemicGameFrameworkFoundation
     PRIVATE EpidemicFoundation
 )
 

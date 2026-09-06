@@ -26,6 +26,9 @@ class EngineRuntimeBridgeBackend final : public IRuntimeBridgeBackend
     [[nodiscard]] RuntimePersistentObjectHandle ImportPersistentObjectId(runtime::PersistentObjectId id);
     [[nodiscard]] RuntimePhysicsBodyHandle ImportPhysicsBody(runtime::physics::PhysicsBodyHandle body);
     [[nodiscard]] RuntimeRegionHandle ImportRegion(runtime::RegionId region);
+    [[nodiscard]] foundation::Result<void> ReleasePersistentObject(RuntimePersistentObjectHandle handle);
+    [[nodiscard]] foundation::Result<void> ReleasePhysicsBody(RuntimePhysicsBodyHandle handle);
+    [[nodiscard]] foundation::Result<void> ReleaseRegion(RuntimeRegionHandle handle);
 
     [[nodiscard]] foundation::Result<RuntimeMaterializationResult> Materialize(RuntimePersistentObjectHandle persistent_id) override;
     [[nodiscard]] foundation::Result<void> Dematerialize(RuntimeObjectHandle object) override;
@@ -33,7 +36,14 @@ class EngineRuntimeBridgeBackend final : public IRuntimeBridgeBackend
     [[nodiscard]] foundation::Result<void> ApplyImpulse(RuntimePhysicsBodyHandle body, RuntimeVector3 impulse) override;
     [[nodiscard]] foundation::Result<void> ProjectEnvironment(
         RuntimeRegionHandle region, const RuntimeEnvironmentValues& values, Revision revision) override;
-    [[nodiscard]] bool SupportsWorldAlterationProjection() const noexcept override { return false; }
+    [[nodiscard]] RuntimeBridgeCapabilities GetCapabilities() const noexcept override
+    {
+        RuntimeBridgeCapabilities capabilities;
+        capabilities.environment_visibility = false;
+        capabilities.environment_light_exposure = false;
+        capabilities.world_alteration_projection = false;
+        return capabilities;
+    }
     [[nodiscard]] std::vector<RuntimeContactObservation> ConsumeContacts() override;
     [[nodiscard]] foundation::Result<std::vector<RuntimeRayHit>> Raycast(const RuntimeRayQuery& query) const override;
     [[nodiscard]] foundation::Result<std::vector<RuntimePhysicsBodyHandle>> Overlap(const RuntimeOverlapQuery& query) const override;

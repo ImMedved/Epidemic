@@ -54,7 +54,8 @@ ConstructionService::ConstructionService()
       site_ids_(TypeId::FromString("framework.construction.site").Raw()),
       placed_ids_(TypeId::FromString("framework.construction.placed").Raw()),
       execution_ids_(TypeId::FromString("framework.construction.execution").Raw()),
-      output_ids_(TypeId::FromString("framework.construction.output").Raw())
+      output_ids_(TypeId::FromString("framework.construction.output").Raw()),
+      socket_reservation_ids_(TypeId::FromString("framework.construction.socket_reservation").Raw())
 {
 }
 
@@ -198,7 +199,16 @@ foundation::Result<PlacementValidationResult> ConstructionService::ValidatePlace
         const auto socket_it = sockets_.find(*request.target.socket);
         if (socket_it == sockets_.end())
             return reject(PlacementAvailability::InvalidTarget, "construction.socket_missing");
-        if (socket_it->second.state != SocketState::Free)
+        if (socket_it->second.state == SocketState::Reserved)
+        {
+            if (!request.socket_reservation)
+                return reject(PlacementAvailability::Blocked, "construction.socket_reserved");
+            const auto reservation_it = socket_reservations_by_id_.find(*request.socket_reservation);
+            if (reservation_it == socket_reservations_by_id_.end() || reservation_it->second.socket != *request.target.socket ||
+                reservation_it->second.owner != request.actor)
+                return reject(PlacementAvailability::Blocked, "construction.socket_reservation_mismatch");
+        }
+        else if (socket_it->second.state != SocketState::Free)
             return reject(PlacementAvailability::Blocked, "construction.socket_blocked");
         if (!socket_it->second.accepted_tags.Values().empty() && !recipe.placement_tags.Values().empty() &&
             !HasAnyExact(socket_it->second.accepted_tags, recipe.placement_tags))
@@ -257,6 +267,10 @@ foundation::Result<PlacementValidationResult> ConstructionService::ValidatePlace
     result.footprint.payload = recipe.placement_payload;
     result.availability = PlacementAvailability::Available;
 
+    if (recipe.cost_policy == ConstructionCostPolicy::Free)
+    {
+        return foundation::Result<PlacementValidationResult>::Success(result);
+    }
     if (cost_provider_)
     {
         for (const auto &cost : recipe.costs)
@@ -306,9 +320,12 @@ foundation::Result<PlacementPlan> ConstructionService::PreparePlacementPlan(cons
     plan.context = request.context;
     plan.placement_provider_epoch = placement_provider_epoch_;
     plan.cost_provider_epoch = cost_provider_epoch_;
+    plan.prepared_at = request.context.time;
+    plan.expires_at = request.context.time + kDefaultPlanLifetime;
     if (request.target.socket)
     {
         plan.dependency_socket = request.target.socket;
+        plan.dependency_socket_reservation = request.socket_reservation;
         const auto *socket = FindSocket(*request.target.socket);
         if (socket)
             plan.dependency_socket_revision = socket->revision;
@@ -318,11 +335,14 @@ foundation::Result<PlacementPlan> ConstructionService::PreparePlacementPlan(cons
     return foundation::Result<PlacementPlan>::Success(plan);
 }
 
-foundation::Result<std::vector<ConstructionCostReservation>> ConstructionService::ReserveCosts(
-    const PlacementPlan &plan, ConstructionCostPolicy policy)
+foundation::Result<std::vector<ConstructionCostReservation>> ConstructionService::ReserveCosts(const PlacementPlan &plan)
 {
     std::vector<ConstructionCostReservation> reservations;
-    if (policy == ConstructionCostPolicy::Free || policy == ConstructionCostPolicy::ValidateOnly || plan.reserved_costs.empty())
+    const auto recipe_it = recipes_.find(plan.recipe);
+    if (recipe_it == recipes_.end())
+        return foundation::Result<std::vector<ConstructionCostReservation>>::Failure(
+            Error("gameplay.construction.recipe_missing", "recipe missing"));
+    if (recipe_it->second.cost_policy == ConstructionCostPolicy::Free || plan.reserved_costs.empty())
         return foundation::Result<std::vector<ConstructionCostReservation>>::Success(std::move(reservations));
     if (!cost_provider_)
         return foundation::Result<std::vector<ConstructionCostReservation>>::Failure(
@@ -433,8 +453,7 @@ void ConstructionService::QueueOutputs(std::vector<PlacementOutputEnvelope> outp
     }
 }
 
-foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(PlacementPlanId id,
-                                                                               ConstructionCostPolicy cost_policy)
+foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(PlacementPlanId id)
 {
     const auto plan_it = plans_.find(id);
     if (plan_it == plans_.end())
@@ -462,6 +481,7 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
     request.recipe = plan.recipe;
     request.placement_rule = plan.placement_rule;
     request.target = plan.target;
+    request.socket_reservation = plan.dependency_socket_reservation;
     request.context = plan.context;
     auto validation = ValidatePlacementInternal(request, false);
     if (!validation)
@@ -475,12 +495,16 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
     if (plan.dependency_socket)
     {
         socket = FindMutableSocket(*plan.dependency_socket);
-        if (!socket || socket->revision != plan.dependency_socket_revision || socket->state != SocketState::Free)
+        const bool owns_reservation = plan.dependency_socket_reservation &&
+            socket_reservation_by_socket_.contains(*plan.dependency_socket) &&
+            socket_reservation_by_socket_.at(*plan.dependency_socket) == *plan.dependency_socket_reservation;
+        const bool state_ok = socket && (socket->state == SocketState::Free || (socket->state == SocketState::Reserved && owns_reservation));
+        if (!state_ok || socket->revision != plan.dependency_socket_revision)
             return foundation::Result<PlacementCommitResult>::Failure(
                 Error("gameplay.construction.stale_plan", "placement socket dependency changed"));
     }
 
-    auto reservations = ReserveCosts(plan, cost_policy);
+    auto reservations = ReserveCosts(plan);
     if (!reservations)
         return foundation::Result<PlacementCommitResult>::Failure(reservations.GetError());
 
@@ -528,13 +552,18 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
     {
         socket->state = SocketState::Occupied;
         socket->revision = revision_;
+        if (plan.dependency_socket_reservation)
+        {
+            socket_reservations_by_id_.erase(*plan.dependency_socket_reservation);
+            socket_reservation_by_socket_.erase(*plan.dependency_socket);
+        }
         Record({0, ConstructionChangeKind::SocketOccupied, plan.id, result.execution, result.site,
                 *plan.dependency_socket, socket->owner, revision_, plan.context, {}});
     }
 
     if (definition_it->second.commit_policy == PlacementCommitPolicy::Instant)
     {
-        placed_objects_.push_back(result.placed_object);
+        placed_objects_.push_back({result.placed_object, plan.id, result.execution});
         QueueOutputs(std::move(staged_outputs), plan.id, {}, plan.actor, plan.context);
         Record({0, ConstructionChangeKind::PlacedObjectCreated, plan.id, result.execution, {}, {}, plan.actor,
                 revision_, plan.context, {}});
@@ -561,10 +590,42 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
     return foundation::Result<PlacementCommitResult>::Success(std::move(result));
 }
 
-foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(const PlacementPlan &plan,
-                                                                               ConstructionCostPolicy cost_policy)
+foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(const PlacementPlan &plan)
 {
-    return CommitPlacement(plan.id, cost_policy);
+    return CommitPlacement(plan.id);
+}
+
+foundation::Result<void> ConstructionService::CancelPlacementPlan(PlacementPlanId id, GameplayContext context)
+{
+    const auto it = plans_.find(id);
+    if (it == plans_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.construction.plan_missing", "placement plan missing"));
+    if (it->second.state == PlacementPlanState::Cancelled)
+        return foundation::Result<void>::Success();
+    if (it->second.state != PlacementPlanState::Prepared)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.plan_not_cancellable", "placement plan is not cancellable"));
+    Bump();
+    it->second.state = PlacementPlanState::Cancelled;
+    Record({0, ConstructionChangeKind::PlacementPlanCancelled, id, {}, {}, {}, it->second.actor, revision_, context, {}});
+    return foundation::Result<void>::Success();
+}
+
+std::size_t ConstructionService::ExpirePlacementPlans(GameplayTimePoint now, GameplayContext context)
+{
+    std::vector<PlacementPlanId> due;
+    for (const auto &[id, plan] : plans_)
+        if (plan.state == PlacementPlanState::Prepared && plan.expires_at.ticks != 0 && plan.expires_at <= now)
+            due.push_back(id);
+    std::sort(due.begin(), due.end());
+    for (const auto id : due)
+    {
+        auto &plan = plans_.at(id);
+        Bump();
+        plan.state = PlacementPlanState::Expired;
+        Record({0, ConstructionChangeKind::PlacementPlanExpired, id, {}, {}, {}, plan.actor, revision_, context, {}});
+    }
+    return due.size();
 }
 
 foundation::Result<ConstructionSiteId> ConstructionService::StartConstructionSite(PlacementPlanId plan_id,
@@ -642,7 +703,7 @@ foundation::Result<void> ConstructionService::CompleteConstructionSite(Construct
         return foundation::Result<void>::Failure(Error("gameplay.construction.site_missing", "construction site missing"));
     if (site->state == ConstructionSiteState::Completed)
         return foundation::Result<void>::Success();
-    if (site->state != ConstructionSiteState::UnderConstruction)
+    if (site->state != ConstructionSiteState::UnderConstruction || site->progress_micro != 1'000'000)
         return foundation::Result<void>::Failure(Error("gameplay.construction.site_not_completable", "construction site is not completable"));
     const auto plan_it = plans_.find(site->plan);
     const auto recipe_it = recipes_.find(site->recipe);
@@ -660,11 +721,10 @@ foundation::Result<void> ConstructionService::CompleteConstructionSite(Construct
 
     Bump();
     site->state = ConstructionSiteState::Completed;
-    site->progress_micro = 1'000'000;
     site->completion_execution = execution;
     site->placed_object = placed;
     site->revision = revision_;
-    placed_objects_.push_back(placed);
+    placed_objects_.push_back({placed, site->plan, execution});
     QueueOutputs(std::move(staged_outputs).Value(), site->plan, id, site->actor, context);
     ++completed_sites_;
     Record({0, ConstructionChangeKind::PlacedObjectCreated, site->plan, execution, id, {}, site->actor, revision_, context, {}});
@@ -705,39 +765,126 @@ foundation::Result<void> ConstructionService::DestroyConstructionSite(Constructi
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> ConstructionService::ReserveSocket(PlacementSocketId id, GameplayContext context)
+foundation::Result<void> ConstructionService::AdvanceConstructionProgress(ConstructionSiteId id,
+                                                                                  Fixed delta_micro,
+                                                                                  GameplayContext context)
+{
+    auto *site = FindMutableSite(id);
+    if (!site || site->state != ConstructionSiteState::UnderConstruction || delta_micro <= 0)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.site_not_progressable", "construction site is not progressable"));
+    const auto next = SaturatingAdd(site->progress_micro, delta_micro);
+    site->progress_micro = next > 1'000'000 ? 1'000'000 : next;
+    Bump();
+    site->revision = revision_;
+    Record({0, ConstructionChangeKind::SiteProgressed, site->plan, {}, id, {}, site->actor, revision_, context, {}});
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> ConstructionService::FailConstructionSite(ConstructionSiteId id,
+                                                                    PlacementReasonId reason,
+                                                                    GameplayContext context)
+{
+    auto *site = FindMutableSite(id);
+    if (!site || !IsLiveSite(site->state) || !reason.IsValid())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.site_not_failable", "construction site is not failable"));
+    Bump();
+    site->state = ConstructionSiteState::Failed;
+    site->terminal_reason = reason;
+    site->revision = revision_;
+    Record({0, ConstructionChangeKind::SiteFailed, site->plan, {}, id, {}, site->actor, revision_, context, {}});
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> ConstructionService::PruneTerminalSite(ConstructionSiteId id, GameplayContext context)
+{
+    const auto it = sites_.find(id);
+    if (it == sites_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.construction.site_missing", "construction site missing"));
+    if (IsLiveSite(it->second.state))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.site_not_terminal", "construction site is not terminal"));
+    const auto has_pending_output = std::any_of(outbox_.begin(), outbox_.end(), [&](const auto &output) {
+        return output.execution.IsValid() && output.execution == it->second.completion_execution;
+    });
+    if (has_pending_output)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.site_has_pending_outputs", "construction site still has pending outputs"));
+    Bump();
+    const auto plan = it->second.plan;
+    const auto actor = it->second.actor;
+    sites_.erase(it);
+    Record({0, ConstructionChangeKind::PlacementStateCompacted, plan, {}, id, {}, actor, revision_, context, {}});
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<ConstructionSocketReservationId> ConstructionService::ReserveSocket(
+    PlacementSocketId id, GameplayObjectRef owner, GameplayContext context)
 {
     auto *socket = FindMutableSocket(id);
-    if (!socket || socket->state != SocketState::Free)
-        return foundation::Result<void>::Failure(Error("gameplay.construction.socket_unavailable", "socket unavailable"));
+    if (!socket || socket->state != SocketState::Free || !owner.IsValid())
+        return foundation::Result<ConstructionSocketReservationId>::Failure(
+            Error("gameplay.construction.socket_unavailable", "socket unavailable"));
+    const auto reservation_id = ConstructionSocketReservationId{socket_reservation_ids_.Next()};
+    if (!reservation_id.IsValid())
+        return foundation::Result<ConstructionSocketReservationId>::Failure(
+            Error("gameplay.construction.id_exhausted", "socket reservation id exhausted"));
     Bump();
     socket->state = SocketState::Reserved;
     socket->revision = revision_;
+    ConstructionSocketReservation reservation;
+    reservation.id = reservation_id;
+    reservation.socket = id;
+    reservation.owner = owner;
+    reservation.socket_revision = revision_;
+    reservation.context = context;
+    socket_reservations_by_id_.emplace(reservation.id, reservation);
+    socket_reservation_by_socket_.emplace(id, reservation.id);
     ++socket_reservations_;
-    Record({0, ConstructionChangeKind::SocketReserved, {}, {}, {}, id, socket->owner, revision_, context, {}});
-    return foundation::Result<void>::Success();
+    Record({0, ConstructionChangeKind::SocketReserved, {}, {}, {}, id, owner, revision_, context, {}});
+    return foundation::Result<ConstructionSocketReservationId>::Success(reservation.id);
 }
 
-foundation::Result<void> ConstructionService::ReleaseSocket(PlacementSocketId id, GameplayContext context)
+foundation::Result<void> ConstructionService::ReleaseSocket(ConstructionSocketReservationId reservation_id,
+                                                             GameplayContext context)
 {
-    auto *socket = FindMutableSocket(id);
-    if (!socket || socket->state == SocketState::Occupied || socket->state == SocketState::Disabled)
+    const auto reservation_it = socket_reservations_by_id_.find(reservation_id);
+    if (reservation_it == socket_reservations_by_id_.end())
         return foundation::Result<void>::Failure(
-            Error("gameplay.construction.socket_not_releasable", "socket not releasable"));
-    if (socket->state == SocketState::Free)
-        return foundation::Result<void>::Success();
+            Error("gameplay.construction.socket_reservation_missing", "socket reservation missing"));
+    const auto reservation = reservation_it->second;
+    auto *socket = FindMutableSocket(reservation.socket);
+    if (!socket || socket->state != SocketState::Reserved ||
+        !socket_reservation_by_socket_.contains(reservation.socket) ||
+        socket_reservation_by_socket_.at(reservation.socket) != reservation_id)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.socket_not_releasable", "socket reservation is not releasable"));
     Bump();
     socket->state = SocketState::Free;
     socket->revision = revision_;
-    Record({0, ConstructionChangeKind::SocketReleased, {}, {}, {}, id, socket->owner, revision_, context, {}});
+    socket_reservation_by_socket_.erase(reservation.socket);
+    socket_reservations_by_id_.erase(reservation_id);
+    Record({0, ConstructionChangeKind::SocketReleased, {}, {}, {}, reservation.socket, reservation.owner,
+            revision_, context, {}});
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> ConstructionService::OccupySocket(PlacementSocketId id, GameplayContext context)
+foundation::Result<void> ConstructionService::OccupySocket(
+    PlacementSocketId id, std::optional<ConstructionSocketReservationId> reservation, GameplayContext context)
 {
     auto *socket = FindMutableSocket(id);
     if (!socket || socket->state == SocketState::Disabled || socket->state == SocketState::Occupied)
         return foundation::Result<void>::Failure(Error("gameplay.construction.socket_unavailable", "socket unavailable"));
+    if (socket->state == SocketState::Reserved)
+    {
+        if (!reservation || !socket_reservation_by_socket_.contains(id) ||
+            socket_reservation_by_socket_.at(id) != *reservation)
+            return foundation::Result<void>::Failure(
+                Error("gameplay.construction.socket_reservation_mismatch", "socket is reserved by another owner"));
+        socket_reservations_by_id_.erase(*reservation);
+        socket_reservation_by_socket_.erase(id);
+    }
     Bump();
     socket->state = SocketState::Occupied;
     socket->revision = revision_;
@@ -800,6 +947,47 @@ std::vector<PlacementOutputEnvelope> ConstructionService::PendingOutputs() const
     return {outbox_.begin(), outbox_.end()};
 }
 
+foundation::Result<PlacementOutputId> ConstructionService::EnqueuePlacedObjectOutput(
+    PlacedObjectId placed_object, PlacementOutputOperation operation, GameplayContext context)
+{
+    const auto placed_it = std::find_if(placed_objects_.begin(), placed_objects_.end(),
+                                        [&](const auto& placed) { return placed.id == placed_object; });
+    if (placed_it == placed_objects_.end())
+        return foundation::Result<PlacementOutputId>::Failure(
+            Error("gameplay.construction.placed_object_missing", "placed construction object is missing"));
+    if (!operation.type.IsValid())
+        return foundation::Result<PlacementOutputId>::Failure(
+            Error("gameplay.construction.output_invalid", "placed object output type is invalid"));
+    if (operation.placed_record.IsValid() && operation.placed_record != placed_object)
+        return foundation::Result<PlacementOutputId>::Failure(
+            Error("gameplay.construction.output_placed_object_mismatch",
+                  "placed object output references a different construction object"));
+
+    const auto plan_it = plans_.find(placed_it->plan);
+    if (plan_it == plans_.end())
+        return foundation::Result<PlacementOutputId>::Failure(
+            Error("gameplay.construction.plan_missing", "placed construction object references a missing plan"));
+
+    operation.placed_record = placed_object;
+    std::vector<PlacementOutputOperation> operations;
+    operations.push_back(std::move(operation));
+    auto staged = StageOutputs(placed_it->execution, operations);
+    if (!staged)
+        return foundation::Result<PlacementOutputId>::Failure(staged.GetError());
+
+    auto envelopes = std::move(staged).Value();
+    const auto output_id = envelopes.front().id;
+    ConstructionSiteId site_id{};
+    const auto site_it = std::find_if(sites_.begin(), sites_.end(),
+                                      [&](const auto& entry) { return entry.second.placed_object == placed_object; });
+    if (site_it != sites_.end())
+        site_id = site_it->first;
+
+    Bump();
+    QueueOutputs(std::move(envelopes), placed_it->plan, site_id, plan_it->second.actor, context);
+    return foundation::Result<PlacementOutputId>::Success(output_id);
+}
+
 foundation::Result<void> ConstructionService::AcknowledgeOutput(PlacementOutputId id, GameplayContext context)
 {
     const auto it = std::find_if(outbox_.begin(), outbox_.end(), [id](const auto &entry) { return entry.id == id; });
@@ -808,6 +996,54 @@ foundation::Result<void> ConstructionService::AcknowledgeOutput(PlacementOutputI
     const auto entry = *it;
     outbox_.erase(it);
     Record({0, ConstructionChangeKind::OutputAcknowledged, {}, entry.execution, {}, {}, {}, revision_, context, id});
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> ConstructionService::DeadLetterOutput(PlacementOutputId id,
+                                                                    PlacementReasonId reason,
+                                                                    GameplayContext context)
+{
+    if (!reason.IsValid())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.output_reason_invalid", "dead letter reason invalid"));
+    const auto it = std::find_if(outbox_.begin(), outbox_.end(), [id](const auto &entry) { return entry.id == id; });
+    if (it == outbox_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.construction.output_missing", "construction output missing"));
+    const auto entry = *it;
+    outbox_.erase(it);
+    dead_letters_.push_back({entry.id, entry.execution, reason, context});
+    if (dead_letters_.size() > kDeadLetterCapacity)
+        dead_letters_.pop_front();
+    Record({0, ConstructionChangeKind::OutputDeadLettered, {}, entry.execution, {}, {}, {}, revision_, context, id});
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> ConstructionService::CompactPlacementState(PlacementPlanId plan_id, GameplayContext context)
+{
+    const auto plan_it = plans_.find(plan_id);
+    if (plan_it == plans_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.construction.plan_missing", "placement plan missing"));
+    if (plan_it->second.state == PlacementPlanState::Prepared)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.plan_not_terminal", "prepared placement plan cannot be compacted"));
+    const bool has_site = std::any_of(sites_.begin(), sites_.end(), [&](const auto &entry) { return entry.second.plan == plan_id; });
+    if (has_site)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.plan_has_site", "placement plan still has a construction site"));
+    const bool has_pending = std::any_of(outbox_.begin(), outbox_.end(), [&](const auto &output) {
+        return output.operation.placed_record.IsValid() && std::any_of(placed_objects_.begin(), placed_objects_.end(),
+            [&](const auto &placed) { return placed.plan == plan_id && placed.id == output.operation.placed_record; });
+    });
+    if (has_pending)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.plan_has_pending_outputs", "placement plan still has pending outputs"));
+    const auto actor = plan_it->second.actor;
+    placed_objects_.erase(std::remove_if(placed_objects_.begin(), placed_objects_.end(),
+                                        [&](const auto &placed) { return placed.plan == plan_id; }),
+                          placed_objects_.end());
+    plans_.erase(plan_it);
+    Bump();
+    Record({0, ConstructionChangeKind::PlacementStateCompacted, plan_id, {}, {}, {}, actor, revision_, context, {}});
     return foundation::Result<void>::Success();
 }
 
@@ -822,19 +1058,28 @@ ConstructionSnapshot ConstructionService::CaptureSnapshot() const
     for (const auto &[id, site] : sites_)
     {
         (void)id;
-        snapshot.active_sites.push_back(site);
+        snapshot.sites.push_back(site);
     }
     for (const auto &[id, socket] : sockets_)
     {
         (void)id;
         snapshot.sockets.push_back(socket);
     }
+    for (const auto &[id, reservation] : socket_reservations_by_id_)
+    {
+        (void)id;
+        snapshot.socket_reservations.push_back(reservation);
+    }
     snapshot.placed_objects = placed_objects_;
     snapshot.pending_outputs.assign(outbox_.begin(), outbox_.end());
+    snapshot.dead_letters.assign(dead_letters_.begin(), dead_letters_.end());
     std::sort(snapshot.plans.begin(), snapshot.plans.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
-    std::sort(snapshot.active_sites.begin(), snapshot.active_sites.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
+    std::sort(snapshot.sites.begin(), snapshot.sites.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
+    std::sort(snapshot.socket_reservations.begin(), snapshot.socket_reservations.end(),
+              [](const auto &a, const auto &b) { return a.id < b.id; });
     std::sort(snapshot.sockets.begin(), snapshot.sockets.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
-    std::sort(snapshot.placed_objects.begin(), snapshot.placed_objects.end());
+    std::sort(snapshot.placed_objects.begin(), snapshot.placed_objects.end(),
+              [](const auto &a, const auto &b) { return a.id < b.id; });
     std::sort(snapshot.pending_outputs.begin(), snapshot.pending_outputs.end(),
               [](const auto &a, const auto &b) { return a.id < b.id; });
     snapshot.plan_ids = plan_ids_.GetSnapshot();
@@ -842,6 +1087,7 @@ ConstructionSnapshot ConstructionService::CaptureSnapshot() const
     snapshot.placed_ids = placed_ids_.GetSnapshot();
     snapshot.execution_ids = execution_ids_.GetSnapshot();
     snapshot.output_ids = output_ids_.GetSnapshot();
+    snapshot.socket_reservation_ids = socket_reservation_ids_.GetSnapshot();
     snapshot.revision = revision_;
     snapshot.journal.assign(changes_.begin(), changes_.end());
     snapshot.next_change_sequence = next_change_sequence_;
@@ -855,14 +1101,18 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
         !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.placed_ids) ||
         !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.execution_ids) ||
         !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.output_ids) ||
+        !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.socket_reservation_ids) ||
         snapshot.next_change_sequence == 0 || snapshot.journal.size() > kChangeJournalCapacity ||
-        snapshot.pending_outputs.size() > kOutboxCapacity)
+        snapshot.pending_outputs.size() > kOutboxCapacity || snapshot.dead_letters.size() > kDeadLetterCapacity)
         return foundation::Result<void>::Failure(Error("gameplay.construction.restore_invalid", "invalid construction snapshot metadata"));
 
     std::unordered_map<PlacementPlanId, PlacementPlan, IdHash> new_plans;
     std::unordered_map<ConstructionSiteId, ConstructionSite, IdHash> new_sites;
     std::unordered_map<PlacementSocketId, PlacementSocket, IdHash> new_sockets;
+    std::unordered_map<ConstructionSocketReservationId, ConstructionSocketReservation, IdHash> new_reservations;
+    std::unordered_map<PlacementSocketId, ConstructionSocketReservationId, IdHash> new_reservation_by_socket;
     std::deque<PlacementOutputEnvelope> new_outbox;
+    std::deque<PlacementOutputDeadLetter> new_dead_letters;
 
     for (const auto &plan : snapshot.plans)
     {
@@ -870,16 +1120,35 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
             !placement_definitions_.contains(plan.placement_rule) || !new_plans.emplace(plan.id, plan).second)
             return foundation::Result<void>::Failure(Error("gameplay.construction.restore_invalid", "invalid placement plan snapshot"));
     }
-    for (const auto &site : snapshot.active_sites)
+    for (const auto &site : snapshot.sites)
     {
         if (!site.id.IsValid() || !site.actor.IsValid() || !recipes_.contains(site.recipe) || !site.plan.IsValid() ||
-            !new_plans.contains(site.plan) || !new_sites.emplace(site.id, site).second)
+            !new_plans.contains(site.plan) || site.progress_micro < 0 || site.progress_micro > 1'000'000 ||
+            (site.state == ConstructionSiteState::Completed &&
+             (!site.completion_execution.IsValid() || !site.placed_object.IsValid() || site.progress_micro != 1'000'000)) ||
+            !new_sites.emplace(site.id, site).second)
             return foundation::Result<void>::Failure(Error("gameplay.construction.restore_invalid", "invalid construction site snapshot"));
     }
     for (const auto &socket : snapshot.sockets)
     {
         if (!socket.id.IsValid() || !socket.owner.IsValid() || !new_sockets.emplace(socket.id, socket).second)
             return foundation::Result<void>::Failure(Error("gameplay.construction.restore_invalid", "invalid construction socket snapshot"));
+    }
+    for (const auto &reservation : snapshot.socket_reservations)
+    {
+        const auto socket_it = new_sockets.find(reservation.socket);
+        if (!reservation.id.IsValid() || !reservation.socket.IsValid() || !reservation.owner.IsValid() ||
+            socket_it == new_sockets.end() || socket_it->second.state != SocketState::Reserved ||
+            !new_reservations.emplace(reservation.id, reservation).second ||
+            !new_reservation_by_socket.emplace(reservation.socket, reservation.id).second)
+            return foundation::Result<void>::Failure(
+                Error("gameplay.construction.restore_invalid", "invalid construction socket reservation snapshot"));
+    }
+    for (const auto &placed : snapshot.placed_objects)
+    {
+        if (!placed.id.IsValid() || !placed.plan.IsValid() || !placed.execution.IsValid() || !new_plans.contains(placed.plan))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.construction.restore_invalid", "invalid placed object snapshot"));
     }
     for (const auto &output : snapshot.pending_outputs)
     {
@@ -889,6 +1158,35 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
             return foundation::Result<void>::Failure(Error("gameplay.construction.restore_invalid", "duplicate construction output id"));
         new_outbox.push_back(output);
     }
+    for (const auto &dead : snapshot.dead_letters)
+    {
+        if (!dead.id.IsValid() || !dead.execution.IsValid() || !dead.reason.IsValid())
+            return foundation::Result<void>::Failure(
+                Error("gameplay.construction.restore_invalid", "invalid construction dead letter snapshot"));
+        new_dead_letters.push_back(dead);
+    }
+
+    const auto generator_valid = [](const auto &snapshot_value, std::uint64_t expected_scope, std::uint64_t max_low) {
+        if (snapshot_value.scope != expected_scope)
+            return false;
+        return snapshot_value.next == 0 || snapshot_value.next > max_low;
+    };
+    std::uint64_t max_plan = 0, max_site = 0, max_placed = 0, max_execution = 0, max_output = 0, max_socket_reservation = 0;
+    for (const auto &[id, plan] : new_plans) { (void)plan; max_plan = std::max(max_plan, id.value.Low()); }
+    for (const auto &[id, site] : new_sites) { max_site = std::max(max_site, id.value.Low()); max_execution = std::max(max_execution, site.completion_execution.value.Low()); max_placed = std::max(max_placed, site.placed_object.value.Low()); }
+    for (const auto &placed : snapshot.placed_objects) { max_placed = std::max(max_placed, placed.id.value.Low()); max_execution = std::max(max_execution, placed.execution.value.Low()); }
+    for (const auto &output : snapshot.pending_outputs) { max_output = std::max(max_output, output.id.value.Low()); max_execution = std::max(max_execution, output.execution.value.Low()); }
+    for (const auto &dead : snapshot.dead_letters) { max_output = std::max(max_output, dead.id.value.Low()); max_execution = std::max(max_execution, dead.execution.value.Low()); }
+    for (const auto &[id, reservation] : new_reservations) { (void)reservation; max_socket_reservation = std::max(max_socket_reservation, id.value.Low()); }
+    if (!generator_valid(snapshot.plan_ids, plan_ids_.Scope().Raw(), max_plan) ||
+        !generator_valid(snapshot.site_ids, site_ids_.Scope().Raw(), max_site) ||
+        !generator_valid(snapshot.placed_ids, placed_ids_.Scope().Raw(), max_placed) ||
+        !generator_valid(snapshot.execution_ids, execution_ids_.Scope().Raw(), max_execution) ||
+        !generator_valid(snapshot.output_ids, output_ids_.Scope().Raw(), max_output) ||
+        !generator_valid(snapshot.socket_reservation_ids, socket_reservation_ids_.Scope().Raw(), max_socket_reservation))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.restore_invalid", "invalid construction id generator snapshot"));
+
     std::uint64_t previous_sequence = 0;
     for (const auto &change : snapshot.journal)
     {
@@ -900,13 +1198,17 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
     plans_.swap(new_plans);
     sites_.swap(new_sites);
     sockets_.swap(new_sockets);
+    socket_reservations_by_id_.swap(new_reservations);
+    socket_reservation_by_socket_.swap(new_reservation_by_socket);
     placed_objects_ = std::move(snapshot.placed_objects);
     outbox_.swap(new_outbox);
+    dead_letters_.swap(new_dead_letters);
     plan_ids_.Restore(snapshot.plan_ids);
     site_ids_.Restore(snapshot.site_ids);
     placed_ids_.Restore(snapshot.placed_ids);
     execution_ids_.Restore(snapshot.execution_ids);
     output_ids_.Restore(snapshot.output_ids);
+    socket_reservation_ids_.Restore(snapshot.socket_reservation_ids);
     revision_ = snapshot.revision;
     changes_.assign(snapshot.journal.begin(), snapshot.journal.end());
     next_change_sequence_ = snapshot.next_change_sequence;
@@ -942,6 +1244,7 @@ ConstructionDiagnostics ConstructionService::GetDiagnostics() const noexcept
     diagnostics.socket_reservations = socket_reservations_;
     diagnostics.completed_sites = completed_sites_;
     diagnostics.pending_outputs = outbox_.size();
+    diagnostics.dead_lettered_outputs = dead_letters_.size();
     for (const auto &[id, site] : sites_)
     {
         (void)id;

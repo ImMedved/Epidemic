@@ -91,6 +91,17 @@ struct PlacedObjectId
     [[nodiscard]] constexpr bool operator==(const PlacedObjectId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const PlacedObjectId &) const noexcept = default;
 };
+struct ConstructionSocketReservationId
+{
+    GameplayObjectId value{};
+    static constexpr ConstructionSocketReservationId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr bool operator==(const ConstructionSocketReservationId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ConstructionSocketReservationId &) const noexcept = default;
+};
 struct PlacementOutputId
 {
     GameplayObjectId value{};
@@ -185,9 +196,7 @@ enum class PlacementCommitPolicy
 };
 enum class ConstructionCostPolicy
 {
-    ValidateOnly,
     ReserveThenCommit,
-    ConsumeOnCommit,
     Free
 };
 enum class ConstructionSiteState
@@ -232,7 +241,13 @@ enum class ConstructionChangeKind
     SiteResumed,
     SiteDestroyed,
     OutputQueued,
-    OutputAcknowledged
+    OutputAcknowledged,
+    OutputDeadLettered,
+    PlacementPlanCancelled,
+    PlacementPlanExpired,
+    PlacementStateCompacted,
+    SiteProgressed,
+    SiteFailed
 };
 
 struct PlacementDefinition
@@ -271,6 +286,7 @@ struct ConstructionRecipe
     GameplayTagSet placement_tags;
     WorldPosition footprint_size_mm{};
     std::vector<ConstructionCost> costs;
+    ConstructionCostPolicy cost_policy = ConstructionCostPolicy::ReserveThenCommit;
     std::vector<PlacementOutputTemplate> output_templates;
     std::vector<std::byte> placement_payload;
 };
@@ -323,10 +339,13 @@ struct PlacementPlan
     GameplayContext context{};
     PlacementPlanState state = PlacementPlanState::Prepared;
     std::optional<PlacementSocketId> dependency_socket{};
+    std::optional<ConstructionSocketReservationId> dependency_socket_reservation{};
     Revision dependency_socket_revision{};
     PlacementRuleId placement_rule{};
     std::uint64_t placement_provider_epoch = 0;
     std::uint64_t cost_provider_epoch = 0;
+    GameplayTimePoint prepared_at{};
+    GameplayTimePoint expires_at{};
 };
 struct PlacementOutputOperation
 {
@@ -342,6 +361,13 @@ struct PlacementOutputEnvelope
     PlacementExecutionId execution{};
     std::uint32_t ordinal = 0;
     PlacementOutputOperation operation{};
+};
+struct PlacementOutputDeadLetter
+{
+    PlacementOutputId id{};
+    PlacementExecutionId execution{};
+    PlacementReasonId reason{};
+    GameplayContext context{};
 };
 struct PlacementCommitResult
 {
@@ -359,6 +385,14 @@ struct PlacementSocket
     SocketState state = SocketState::Free;
     Revision revision{};
 };
+struct ConstructionSocketReservation
+{
+    ConstructionSocketReservationId id{};
+    PlacementSocketId socket{};
+    GameplayObjectRef owner{};
+    Revision socket_revision{};
+    GameplayContext context{};
+};
 struct ConstructionSite
 {
     ConstructionSiteId id{};
@@ -372,6 +406,13 @@ struct ConstructionSite
     PlacementPlanId plan{};
     PlacementExecutionId completion_execution{};
     PlacedObjectId placed_object{};
+    PlacementReasonId terminal_reason{};
+};
+struct PlacedObjectRecord
+{
+    PlacedObjectId id{};
+    PlacementPlanId plan{};
+    PlacementExecutionId execution{};
 };
 struct PlacementRequest
 {
@@ -379,6 +420,7 @@ struct PlacementRequest
     ConstructionRecipeId recipe{};
     PlacementRuleId placement_rule{};
     PlacementTarget target{};
+    std::optional<ConstructionSocketReservationId> socket_reservation{};
     GameplayContext context{};
 };
 struct ConstructionCostReservation
@@ -429,15 +471,18 @@ struct ConstructionChangeBatch
 struct ConstructionSnapshot
 {
     std::vector<PlacementPlan> plans;
-    std::vector<ConstructionSite> active_sites;
+    std::vector<ConstructionSite> sites;
     std::vector<PlacementSocket> sockets;
-    std::vector<PlacedObjectId> placed_objects;
+    std::vector<ConstructionSocketReservation> socket_reservations;
+    std::vector<PlacedObjectRecord> placed_objects;
     std::vector<PlacementOutputEnvelope> pending_outputs;
+    std::vector<PlacementOutputDeadLetter> dead_letters;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot plan_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot site_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot placed_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot execution_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot output_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot socket_reservation_ids{};
     Revision revision{};
     std::vector<ConstructionChange> journal;
     std::uint64_t next_change_sequence = 1;
@@ -445,7 +490,8 @@ struct ConstructionSnapshot
 struct ConstructionDiagnostics
 {
     std::uint64_t recipes = 0, placement_definitions = 0, validations = 0, rejections = 0, committed = 0,
-                  active_sites = 0, socket_reservations = 0, completed_sites = 0, pending_outputs = 0;
+                  active_sites = 0, socket_reservations = 0, completed_sites = 0, pending_outputs = 0,
+                  dead_lettered_outputs = 0;
 };
 
 class ConstructionService
@@ -468,10 +514,10 @@ class ConstructionService
     [[nodiscard]] const PlacementSocket *FindSocket(PlacementSocketId id) const noexcept;
     [[nodiscard]] foundation::Result<PlacementValidationResult> ValidatePlacement(const PlacementRequest &request) const;
     [[nodiscard]] foundation::Result<PlacementPlan> PreparePlacementPlan(const PlacementRequest &request);
-    [[nodiscard]] foundation::Result<PlacementCommitResult> CommitPlacement(
-        PlacementPlanId plan, ConstructionCostPolicy cost_policy = ConstructionCostPolicy::ConsumeOnCommit);
-    [[nodiscard]] foundation::Result<PlacementCommitResult> CommitPlacement(
-        const PlacementPlan &plan, ConstructionCostPolicy cost_policy = ConstructionCostPolicy::ConsumeOnCommit);
+    [[nodiscard]] foundation::Result<PlacementCommitResult> CommitPlacement(PlacementPlanId plan);
+    [[nodiscard]] foundation::Result<PlacementCommitResult> CommitPlacement(const PlacementPlan &plan);
+    [[nodiscard]] foundation::Result<void> CancelPlacementPlan(PlacementPlanId plan, GameplayContext context = {});
+    [[nodiscard]] std::size_t ExpirePlacementPlans(GameplayTimePoint now, GameplayContext context = {});
     [[nodiscard]] foundation::Result<ConstructionSiteId> StartConstructionSite(PlacementPlanId plan,
                                                                                GameplayTimePoint started_at = {},
                                                                                GameplayContext context = {});
@@ -480,19 +526,35 @@ class ConstructionService
                                                                                GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> PauseConstructionSite(ConstructionSiteId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> ResumeConstructionSite(ConstructionSiteId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> AdvanceConstructionProgress(ConstructionSiteId id, Fixed delta_micro,
+                                                                      GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CompleteConstructionSite(ConstructionSiteId id,
                                                                     GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CancelConstructionSite(ConstructionSiteId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> FailConstructionSite(ConstructionSiteId id, PlacementReasonId reason,
+                                                                GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> DestroyConstructionSite(ConstructionSiteId id, GameplayContext context = {});
-    [[nodiscard]] foundation::Result<void> ReserveSocket(PlacementSocketId id, GameplayContext context = {});
-    [[nodiscard]] foundation::Result<void> ReleaseSocket(PlacementSocketId id, GameplayContext context = {});
-    [[nodiscard]] foundation::Result<void> OccupySocket(PlacementSocketId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> PruneTerminalSite(ConstructionSiteId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<ConstructionSocketReservationId> ReserveSocket(
+        PlacementSocketId id, GameplayObjectRef owner, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ReleaseSocket(ConstructionSocketReservationId reservation,
+                                                         GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> OccupySocket(PlacementSocketId id,
+                                                        std::optional<ConstructionSocketReservationId> reservation = {},
+                                                        GameplayContext context = {});
     [[nodiscard]] const PlacementPlan *FindPlan(PlacementPlanId id) const noexcept;
     [[nodiscard]] const ConstructionSite *FindSite(ConstructionSiteId id) const noexcept;
     [[nodiscard]] std::vector<ConstructionSite> FindConstructionSites(GameplayObjectRef actor = {}) const;
     [[nodiscard]] std::vector<PlacementSocket> FindSocketsForObject(GameplayObjectRef owner) const;
     [[nodiscard]] std::vector<PlacementOutputEnvelope> PendingOutputs() const;
+    // Queue a durable integration output for an already placed construction object. The output inherits
+    // the original placement execution identity and is persisted in the Construction outbox until Ack.
+    [[nodiscard]] foundation::Result<PlacementOutputId> EnqueuePlacedObjectOutput(
+        PlacedObjectId placed_object, PlacementOutputOperation operation, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> AcknowledgeOutput(PlacementOutputId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> DeadLetterOutput(PlacementOutputId id, PlacementReasonId reason,
+                                                            GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CompactPlacementState(PlacementPlanId plan, GameplayContext context = {});
     [[nodiscard]] ConstructionSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(ConstructionSnapshot snapshot);
     [[nodiscard]] std::vector<ConstructionChange> ChangesSince(std::uint64_t sequence) const;
@@ -506,8 +568,7 @@ class ConstructionService
     void Record(ConstructionChange change);
     [[nodiscard]] PlacementSocket *FindMutableSocket(PlacementSocketId id) noexcept;
     [[nodiscard]] ConstructionSite *FindMutableSite(ConstructionSiteId id) noexcept;
-    [[nodiscard]] foundation::Result<std::vector<ConstructionCostReservation>> ReserveCosts(
-        const PlacementPlan &plan, ConstructionCostPolicy policy);
+    [[nodiscard]] foundation::Result<std::vector<ConstructionCostReservation>> ReserveCosts(const PlacementPlan &plan);
     void CommitCosts(const std::vector<ConstructionCostReservation> &reservations, const GameplayContext &context) noexcept;
     void ReleaseCosts(const std::vector<ConstructionCostReservation> &reservations, const GameplayContext &context) noexcept;
     [[nodiscard]] std::vector<PlacementOutputOperation> BuildOutputs(const PlacementPlan &plan,
@@ -527,9 +588,12 @@ class ConstructionService
     std::unordered_map<PlacementSocketId, PlacementSocket, IdHash> sockets_;
     std::unordered_map<PlacementPlanId, PlacementPlan, IdHash> plans_;
     std::unordered_map<ConstructionSiteId, ConstructionSite, IdHash> sites_;
-    std::vector<PlacedObjectId> placed_objects_;
+    std::unordered_map<ConstructionSocketReservationId, ConstructionSocketReservation, IdHash> socket_reservations_by_id_;
+    std::unordered_map<PlacementSocketId, ConstructionSocketReservationId, IdHash> socket_reservation_by_socket_;
+    std::vector<PlacedObjectRecord> placed_objects_;
     std::deque<PlacementOutputEnvelope> outbox_;
-    MonotonicIdGenerator<GameplayObjectId> plan_ids_, site_ids_, placed_ids_, execution_ids_, output_ids_;
+    std::deque<PlacementOutputDeadLetter> dead_letters_;
+    MonotonicIdGenerator<GameplayObjectId> plan_ids_, site_ids_, placed_ids_, execution_ids_, output_ids_, socket_reservation_ids_;
     const IConstructionPlacementProvider *placement_provider_ = nullptr;
     IConstructionCostProvider *cost_provider_ = nullptr;
     std::uint64_t placement_provider_epoch_ = 1;
@@ -538,6 +602,8 @@ class ConstructionService
     bool frozen_ = false;
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     static constexpr std::size_t kOutboxCapacity = 8192;
+    static constexpr std::size_t kDeadLetterCapacity = 1024;
+    static constexpr GameplayDuration kDefaultPlanLifetime{300};
     std::deque<ConstructionChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     mutable std::uint64_t validations_ = 0, rejections_ = 0;

@@ -130,6 +130,7 @@ struct GameplayTimeSnapshot
 {
     std::vector<ClockState> clocks;
     std::vector<ScheduleEntry> schedules;
+    std::vector<ClockId> externally_synchronized_clocks;
     MonotonicIdGenerator<ScheduleId>::Snapshot schedule_ids{};
 };
 
@@ -151,6 +152,8 @@ class GameplayTimeService
     [[nodiscard]] foundation::Result<void> SetPaused(ClockId clock, bool paused);
     [[nodiscard]] foundation::Result<void> SetTimeScale(ClockId clock, std::uint32_t milli_scale);
     [[nodiscard]] foundation::Result<void> SynchronizeClock(ClockId clock, GameplayTimePoint now, Revision source_revision);
+    [[nodiscard]] bool NeedsSynchronizationRebind(ClockId clock) const noexcept;
+    [[nodiscard]] std::vector<ClockId> ClocksRequiringSynchronizationRebind() const;
 
     [[nodiscard]] std::optional<ClockState> GetClock(ClockId clock) const noexcept;
     [[nodiscard]] std::optional<ClockDefinition> GetClockDefinition(ClockId clock) const noexcept;
@@ -224,6 +227,7 @@ class GameplayTimeService
     std::unordered_map<ClockId, ClockDefinition> clock_definitions_;
     std::unordered_map<ClockId, ClockState> clocks_;
     std::unordered_map<ClockId, Revision> synchronization_revisions_;
+    std::set<ClockId> synchronization_rebind_required_;
     std::unordered_map<ActionTypeId, ActionTypeInfo> action_types_;
     std::unordered_map<ScheduleId, ScheduleEntry> schedules_;
     std::unordered_map<ClockId, std::set<ScheduleKey>> schedule_index_;

@@ -20,13 +20,36 @@ GameplayObjectRef Ref(const char *d, const char *i)
 class Price final : public IPriceProvider
 {
   public:
-    std::optional<PriceQuote> Quote(EconomicValueRef s, CurrencyId c, GameplayObjectRef,
-                                    GameplayObjectRef) const override
+    std::optional<PriceQuote> Quote(const PriceQuoteRequest &request) const override
     {
-        return PriceQuote{s, c, 123, Revision{7}};
+        PriceQuote quote;
+        quote.subject = request.subject;
+        quote.currency = request.currency;
+        quote.market = request.market;
+        quote.buyer = request.buyer;
+        quote.seller = request.seller;
+        quote.quantity = request.quantity;
+        quote.unit_amount = 123;
+        quote.dependencies_revision = Revision{7};
+        return quote;
     }
 };
-} // namespace
+class BadPrice final : public IPriceProvider
+{
+  public:
+    std::optional<PriceQuote> Quote(const PriceQuoteRequest &request) const override
+    {
+        PriceQuote quote;
+        quote.subject = request.subject;
+        quote.currency = request.currency;
+        quote.market = request.market;
+        quote.buyer = request.buyer;
+        quote.seller = request.seller;
+        quote.quantity = request.quantity + 1; // invalid fingerprint, must be rejected
+        quote.unit_amount = 1;
+        return quote;
+    }
+};} // namespace
 int main()
 {
     EconomyService s;
@@ -35,7 +58,15 @@ int main()
     auto cid = s.RegisterCurrency(coin);
     Check(static_cast<bool>(cid), "currency");
     Price price;
-    Check(static_cast<bool>(s.AddPriceProvider(&price)), "price provider registered");
+    BadPrice bad_price;
+    Check(static_cast<bool>(s.AddPriceProvider(PriceProviderId::FromString("provider.bad"), 100, &bad_price)), "bad provider registered");
+    Check(static_cast<bool>(s.AddPriceProvider(PriceProviderId::FromString("provider.good"), 10, &price)), "price provider registered");
+    Check(!static_cast<bool>(s.AddPriceProvider(PriceProviderId::FromString("provider.good"), 0, &price)), "duplicate provider id rejected");
+    ContractTermsSchema terms_schema;
+    terms_schema.type = ContractTypeId::FromString("contract.payload");
+    terms_schema.schema = TypeId::FromString("contract.payload.v1");
+    terms_schema.max_payload_bytes = 8;
+    Check(static_cast<bool>(s.RegisterContractTermsSchema(terms_schema)), "contract terms schema");
     s.Freeze();
     EconomicAccount buyer;
     buyer.owner = Ref("actor", "buyer");
@@ -100,7 +131,7 @@ int main()
     EconomicValueRef value;
     value.type = EconomicValueTypeId::FromString("item");
     value.definition = TypeId::FromString("item.apple");
-    Check(s.GetPriceQuote(value, cid.Value())->amount == 123, "price provider");
+    Check(s.GetPriceQuote(value, cid.Value())->unit_amount == 123, "invalid higher-priority quote skipped");
     DebtRecord debt;
     debt.debtor = buyer.owner;
     debt.creditor = seller.owner;
@@ -121,6 +152,19 @@ int main()
     contract.id = contract_id.Value();
     Check(!static_cast<bool>(s.CreateContract(contract)), "duplicate contract rejected");
 
+    EconomicContract payload_contract;
+    payload_contract.parties = {buyer.owner, seller.owner};
+    payload_contract.type = terms_schema.type;
+    payload_contract.currency = cid.Value();
+    payload_contract.amount = 10;
+    payload_contract.terms_schema = terms_schema.schema;
+    payload_contract.terms_payload = {std::byte{1}, std::byte{2}};
+    auto payload_contract_id = s.CreateContract(payload_contract);
+    Check(static_cast<bool>(payload_contract_id), "typed contract terms accepted");
+    payload_contract.id = {};
+    payload_contract.terms_schema = TypeId::FromString("contract.payload.wrong");
+    Check(!static_cast<bool>(s.CreateContract(payload_contract)), "unregistered contract terms rejected");
+
     EconomicOffer cancelled_offer;
     cancelled_offer.seller = seller.owner;
     cancelled_offer.type = OfferTypeId::FromString("offer.sell");
@@ -136,16 +180,29 @@ int main()
     EconomicOffer scoped_offer = cancelled_offer;
     scoped_offer.id = {};
     scoped_offer.buyer_scope = buyer.owner;
+    scoped_offer.unit_price = 10;
     auto scoped_offer_id = s.CreateOffer(scoped_offer);
     Check(static_cast<bool>(scoped_offer_id), "scoped offer");
-    TradePlan offer_plan;
-    offer_plan.monetary_transfers.push_back({bid.Value(), sid.Value(), 25, cid.Value()});
-    Check(!static_cast<bool>(s.AcceptOffer(scoped_offer_id.Value(), Ref("actor", "stranger"), offer_plan)),
-          "buyer scope enforced");
-    auto offer_tx = s.AcceptOffer(scoped_offer_id.Value(), buyer.owner, offer_plan);
+    const auto active_offer = s.FindOffers(seller.owner).front();
+    OfferAcceptanceRequest stranger_accept;
+    stranger_accept.offer = scoped_offer_id.Value();
+    stranger_accept.expected_offer_revision = active_offer.revision;
+    stranger_accept.buyer = Ref("actor", "stranger");
+    stranger_accept.accepted_quantity = 1;
+    stranger_accept.buyer_funding_account = bid.Value();
+    stranger_accept.seller_destination_account = sid.Value();
+    Check(!static_cast<bool>(s.AcceptOffer(stranger_accept)), "buyer scope enforced");
+
+    OfferAcceptanceRequest accept = stranger_accept;
+    accept.buyer = buyer.owner;
+    auto offer_tx = s.AcceptOffer(accept);
     Check(static_cast<bool>(offer_tx), "accept offer");
     Check(s.FindOffers(seller.owner).empty(), "accepted offer removed from active query");
-    Check(s.FindTransaction(offer_tx.Value()) != nullptr, "accepted offer creates trade transaction");
+    const auto *accepted_tx = s.FindTransaction(offer_tx.Value());
+    Check(accepted_tx != nullptr, "accepted offer creates trade transaction");
+    Check(accepted_tx->source_offer == scoped_offer_id.Value() && accepted_tx->accepted_quantity == 1, "trade records offer provenance");
+    Check(accepted_tx->plan.monetary_transfers.size() == 1 && accepted_tx->plan.monetary_transfers.front().amount == 10,
+          "offer settlement amount is canonical and cannot be caller supplied");
     auto snap = s.CaptureSnapshot();
     Check(snap.offers.empty(), "terminal offers omitted from snapshot");
     Check(snap.reservations.empty(), "terminal reservations omitted from snapshot");
@@ -155,13 +212,44 @@ int main()
     duplicate_debt_snapshot.debts.push_back(duplicate_debt_snapshot.debts.front());
     EconomyService invalid_restore;
     Check(static_cast<bool>(invalid_restore.RegisterCurrency(coin)), "invalid restore currency def");
+    Check(static_cast<bool>(invalid_restore.RegisterContractTermsSchema(terms_schema)), "invalid restore contract schema");
     invalid_restore.Freeze();
     Check(!static_cast<bool>(invalid_restore.RestoreSnapshot(std::move(duplicate_debt_snapshot))), "duplicate debt snapshot rejected");
+    auto invalid_generator_snapshot = snap;
+    invalid_generator_snapshot.account_ids.scope = 0xDEAD;
+    EconomyService invalid_generator_restore;
+    Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), "generator restore currency def");
+    invalid_generator_restore.Freeze();
+    Check(!static_cast<bool>(invalid_generator_restore.RestoreSnapshot(std::move(invalid_generator_snapshot))), "foreign generator scope rejected");
+
     EconomyService restored;
     Check(static_cast<bool>(restored.RegisterCurrency(coin)), "restore currency def");
+    Check(static_cast<bool>(restored.RegisterContractTermsSchema(terms_schema)), "restore contract schema");
     restored.Freeze();
     Check(static_cast<bool>(restored.RestoreSnapshot(std::move(snap))), "restore economy");
     Check(restored.GetBalance(bid.Value()) == 700, "balance restored");
     Check(restored.FindDebts(buyer.owner).size() == 1, "debt restored");
+
+    DebtRecord terminal_debt;
+    terminal_debt.debtor = buyer.owner;
+    terminal_debt.creditor = seller.owner;
+    terminal_debt.currency = cid.Value();
+    terminal_debt.principal = 5;
+    auto terminal_debt_id = restored.CreateDebt(terminal_debt);
+    Check(static_cast<bool>(terminal_debt_id), "terminal debt created");
+    Check(!static_cast<bool>(restored.CompactDebt(terminal_debt_id.Value())), "active debt cannot compact");
+    Check(static_cast<bool>(restored.ResolveDebt(terminal_debt_id.Value(), DebtState::Paid)), "debt resolved");
+    Check(static_cast<bool>(restored.CompactDebt(terminal_debt_id.Value())), "terminal debt compacted");
+
+    EconomyService journal;
+    Check(static_cast<bool>(journal.RegisterCurrency(coin)), "journal currency");
+    journal.Freeze();
+    EconomicAccount journal_account;
+    journal_account.owner = Ref("actor", "journal");
+    journal_account.currency = cid.Value();
+    auto journal_id = journal.CreateAccount(journal_account);
+    Check(static_cast<bool>(journal_id), "journal account");
+    for (int i = 0; i < 4200; ++i) Check(static_cast<bool>(journal.Credit(journal_id.Value(), 1)), "journal credit");
+    Check(journal.ReadChangesSince(0).snapshot_required, "bounded journal requires snapshot for stale reader");
     return 0;
 }

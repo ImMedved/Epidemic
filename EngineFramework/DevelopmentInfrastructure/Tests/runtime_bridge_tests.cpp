@@ -30,6 +30,7 @@ struct Backend final : IRuntimeBridgeBackend
     std::vector<RuntimePhysicsBodyHandle> overlap_hits;
     RuntimePhysicsBodyHandle last_impulse_body{};
     std::unordered_set<std::uint64_t> dead_objects;
+    RuntimeBridgeCapabilities capabilities{};
 
     foundation::Result<RuntimeMaterializationResult> Materialize(RuntimePersistentObjectHandle) override
     {
@@ -56,6 +57,7 @@ struct Backend final : IRuntimeBridgeBackend
         ++env_calls;
         return foundation::Result<void>::Success();
     }
+    RuntimeBridgeCapabilities GetCapabilities() const noexcept override { return capabilities; }
     std::vector<RuntimeContactObservation> ConsumeContacts() override
     {
         auto result = contacts;
@@ -215,9 +217,17 @@ int main()
     environment.region = RuntimeRegionHandle{1};
     environment.gameplay_revision = Revision{5};
     CHECK(bridge.Enqueue(environment));
+    environment.gameplay_revision = Revision{6};
     CHECK(bridge.Enqueue(environment));
-    CHECK(bridge.Process().processed == 2);
+    CHECK(bridge.GetDiagnostics().coalesced_projection_requests == 1);
+    CHECK(bridge.Process().processed == 1);
     CHECK(backend.env_calls == 1);
+
+    backend.capabilities.environment_visibility = false;
+    EnvironmentProjectionRequest unsupported_environment = environment;
+    unsupported_environment.values.visibility_milli = 500;
+    CHECK(!bridge.Enqueue(unsupported_environment));
+    backend.capabilities.environment_visibility = true;
 
     backend.ray_hits = {{body, RuntimeVector3{2.0f, 0.0f, 0.0f}, RuntimeVector3{-1.0f, 0.0f, 0.0f}, 2.0f}};
     const auto ray = bridge.Raycast(RuntimeRayQuery{});
@@ -274,5 +284,38 @@ int main()
     const auto dematerialized = bridge.Process();
     CHECK(dematerialized.dematerialized == 1);
     CHECK(!bridge.GetBinding(object).has_value());
+
+    materialize.gameplay_revision = Revision{3};
+    CHECK(bridge.Enqueue(materialize));
+    CHECK(bridge.Process().materialized == 1);
+    const auto rematerialized = bridge.GetBinding(object);
+    CHECK(rematerialized && rematerialized->generation.value == generation.value + 1);
+    CHECK(!bridge.ForgetObjectIdentity(object));
+    DematerializeRequest second_dematerialize{object, rematerialized->generation};
+    CHECK(bridge.Enqueue(second_dematerialize));
+    CHECK(bridge.Process().dematerialized == 1);
+    CHECK(bridge.ForgetObjectIdentity(object));
+    materialize.gameplay_revision = Revision{4};
+    CHECK(bridge.Enqueue(materialize));
+    CHECK(bridge.Process().materialized == 1);
+    const auto after_forget = bridge.GetBinding(object);
+    CHECK(after_forget && after_forget->generation.value == 1);
+
+    Backend limited_backend;
+    RuntimeBridgeService limited(limited_backend, RuntimeBridgeQueuePolicy{1, 1});
+    MaterializeRequest q1{Object("queue.1"), RuntimePersistentObjectHandle{1}, Revision{1}};
+    MaterializeRequest q2{Object("queue.2"), RuntimePersistentObjectHandle{2}, Revision{1}};
+    CHECK(limited.Enqueue(q1));
+    CHECK(!limited.Enqueue(q2));
+    CHECK(limited.GetDiagnostics().rejected_projection_requests == 1);
+
+    limited_backend.contacts.push_back({RuntimePhysicsBodyHandle{1}, {}, RuntimeVector3{1, 0, 0}, 1.0f});
+    limited_backend.contacts.push_back({RuntimePhysicsBodyHandle{2}, {}, RuntimeVector3{2, 0, 0}, 1.0f});
+    RuntimeBridgeBudget no_observations;
+    no_observations.max_observations = 0;
+    (void)limited.CollectImpactObservations(GameplayTickId{10}, no_observations);
+    const auto limited_diag = limited.GetDiagnostics();
+    CHECK(limited_diag.contact_backlog == 1);
+    CHECK(limited_diag.dropped_contacts == 1);
     return 0;
 }

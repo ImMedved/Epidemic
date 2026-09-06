@@ -7,6 +7,7 @@
 #include <mutex>
 #include <shared_mutex>
 #include <string>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -69,6 +70,12 @@ struct BudgetViolatingQuery
 {
     using ResultType = std::vector<int>;
     [[nodiscard]] static constexpr QueryTypeId Type() noexcept { return QueryTypeId::FromString("framework.test.budget_violation"); }
+};
+
+struct ThrowingQuery
+{
+    using ResultType = int;
+    [[nodiscard]] static constexpr QueryTypeId Type() noexcept { return QueryTypeId::FromString("framework.test.throwing"); }
 };
 
 
@@ -198,8 +205,8 @@ int main()
                   return foundation::Result<QueryResponse<TextQuery::ResultType>>::Success({snapshot, MakeMetadata(Revision{20}, QueryCoverage::Complete, 1)});
               }),
           8);
-    TestSnapshotCoordinator snapshot_coordinator;
-    Check(snapshots.SetSnapshotCoordinator(&snapshot_coordinator), 9);
+    auto snapshot_coordinator = std::make_shared<TestSnapshotCoordinator>();
+    Check(snapshots.SetSnapshotCoordinator(snapshot_coordinator), 9);
     snapshots.Freeze();
 
     QueryContext snapshot_context;
@@ -247,8 +254,8 @@ int main()
     std::atomic<bool> first_capture_started{false};
     std::atomic<bool> writer_completed{false};
     GameplayQueryService coherent_service;
-    TestSnapshotCoordinator coherent_coordinator{&epoch_mutex};
-    Check(coherent_service.SetSnapshotCoordinator(&coherent_coordinator), 32);
+    auto coherent_coordinator = std::make_shared<TestSnapshotCoordinator>(&epoch_mutex);
+    Check(coherent_service.SetSnapshotCoordinator(coherent_coordinator), 32);
     Check(coherent_service.RegisterSnapshotProvider<NumberQuery, int>(
               "framework.test.numbers",
               snapshot_caps,
@@ -298,6 +305,49 @@ int main()
     auto coherent_text_result = coherent_service.Execute(TextQuery{}, coherent_snapshot.Value());
     Check(coherent_number_result && coherent_number_result.Value().value && (*coherent_number_result.Value().value)[0] == 41, 39);
     Check(coherent_text_result && coherent_text_result.Value().value && *coherent_text_result.Value().value == "epoch-41", 40);
+
+
+    GameplayQueryService throwing_service;
+    Check(throwing_service.RegisterProvider<ThrowingQuery>(
+              "framework.test.throwing",
+              {},
+              [](const ThrowingQuery&, const QueryContext&) -> foundation::Result<QueryResponse<ThrowingQuery::ResultType>> {
+                  throw std::runtime_error("provider failure");
+              }),
+          41);
+    throwing_service.Freeze();
+    auto throwing_result = throwing_service.Execute(ThrowingQuery{});
+    Check(!throwing_result && throwing_result.GetError().HasCode("gameplay.query_provider_exception"), 42);
+    Check(throwing_service.GetDiagnostics().provider_exceptions == 1, 43);
+
+    class ThrowingCoordinator final : public IQuerySnapshotCoordinator
+    {
+      public:
+        [[nodiscard]] foundation::Result<QuerySnapshotReadEpoch> AcquireReadEpoch(GameplayTickId) const override
+        {
+            throw std::runtime_error("coordinator failure");
+        }
+    };
+
+    GameplayQueryService throwing_snapshot_service;
+    Check(throwing_snapshot_service.RegisterSnapshotProvider<TextQuery, std::string>(
+              "framework.test.text",
+              snapshot_caps,
+              [](const TextQuery&, const QueryContext&) {
+                  return foundation::Result<QueryResponse<TextQuery::ResultType>>::Success({"current", MakeMetadata(Revision{1}, QueryCoverage::Complete, 1)});
+              },
+              [](const QueryContext&) {
+                  return foundation::Result<QueryProviderSnapshot<std::string>>::Success({"snapshot", Revision{1}});
+              },
+              [](const TextQuery&, const QueryContext&, const std::string& value) {
+                  return foundation::Result<QueryResponse<TextQuery::ResultType>>::Success({value, MakeMetadata(Revision{1}, QueryCoverage::Complete, 1)});
+              }),
+          44);
+    Check(throwing_snapshot_service.SetSnapshotCoordinator(std::make_shared<ThrowingCoordinator>()), 45);
+    throwing_snapshot_service.Freeze();
+    auto throwing_snapshot = throwing_snapshot_service.AcquireSnapshot();
+    Check(!throwing_snapshot && throwing_snapshot.GetError().HasCode("gameplay.query_snapshot_coordinator_exception"), 46);
+    Check(throwing_snapshot_service.GetDiagnostics().provider_exceptions == 1, 47);
 
     QueryContext partial_context;
     partial_context.requirements.require_complete = false;

@@ -3,6 +3,7 @@
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
+#include <exception>
 #include <limits>
 
 namespace epidemic::gameplay::conditions
@@ -67,6 +68,16 @@ foundation::Result<ConditionTypeId> ConditionService::RegisterCondition(
     return foundation::Result<ConditionTypeId>::Success(id);
 }
 
+foundation::Result<void> ConditionService::SetSubjectStateProvider(const IConditionSubjectStateProvider* provider)
+{
+    if (frozen_)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.registry_frozen", "condition subject state provider cannot be changed after freeze"));
+    }
+    subject_state_provider_ = provider;
+    return foundation::Result<void>::Success();
+}
+
 const ConditionDefinition* ConditionService::FindDefinition(ConditionTypeId id) const noexcept
 {
     const auto found = definitions_.find(id);
@@ -90,9 +101,23 @@ foundation::Result<void> ConditionService::ValidatePayload(
     {
         return foundation::Result<void>::Failure(Error("gameplay.condition_payload_invalid", "condition payload type or size is invalid"));
     }
-    if (definition.validator && !definition.validator(payload.bytes))
+    if (definition.validator)
     {
-        return foundation::Result<void>::Failure(Error("gameplay.condition_payload_rejected", "condition payload validator rejected payload"));
+        try
+        {
+            if (!definition.validator(payload.bytes))
+            {
+                return foundation::Result<void>::Failure(Error("gameplay.condition_payload_rejected", "condition payload validator rejected payload"));
+            }
+        }
+        catch (const std::exception&)
+        {
+            return foundation::Result<void>::Failure(Error("gameplay.condition_payload_validator_failed", "condition payload validator threw an exception"));
+        }
+        catch (...)
+        {
+            return foundation::Result<void>::Failure(Error("gameplay.condition_payload_validator_failed", "condition payload validator threw an unknown exception"));
+        }
     }
     return foundation::Result<void>::Success();
 }
@@ -250,6 +275,42 @@ foundation::Result<ApplyConditionResult> ConditionService::Apply(ApplyConditionR
     }
 
     const auto& definition = definition_found->second.definition;
+    if (definition.materialization == ConditionMaterializationPolicy::MaterializedOnly)
+    {
+        if (subject_state_provider_ == nullptr)
+        {
+            return foundation::Result<ApplyConditionResult>::Failure(
+                Error("gameplay.condition_materialization_state_unavailable", "materialized-only condition requires a subject state provider"));
+        }
+
+        ConditionSubjectMaterializationState materialization_state = ConditionSubjectMaterializationState::Unavailable;
+        try
+        {
+            materialization_state = subject_state_provider_->GetMaterializationState(request.subject);
+        }
+        catch (const std::exception&)
+        {
+            return foundation::Result<ApplyConditionResult>::Failure(
+                Error("gameplay.condition_subject_state_provider_failed", "condition subject state provider threw an exception"));
+        }
+        catch (...)
+        {
+            return foundation::Result<ApplyConditionResult>::Failure(
+                Error("gameplay.condition_subject_state_provider_failed", "condition subject state provider threw an unknown exception"));
+        }
+
+        if (materialization_state == ConditionSubjectMaterializationState::Unavailable)
+        {
+            return foundation::Result<ApplyConditionResult>::Failure(
+                Error("gameplay.condition_materialization_state_unavailable", "subject materialization state is unavailable"));
+        }
+        if (materialization_state != ConditionSubjectMaterializationState::Materialized)
+        {
+            return foundation::Result<ApplyConditionResult>::Failure(
+                Error("gameplay.condition_requires_materialized_subject", "materialized-only condition cannot be applied to an abstract subject"));
+        }
+    }
+
     auto matches = MatchingInstances(request, definition);
     if (definition.stacking == ConditionStackingPolicy::Independent || matches.empty())
     {
@@ -875,6 +936,22 @@ foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot sn
             return foundation::Result<void>::Failure(payload.GetError());
         seen.emplace(instance.id, true);
     }
+    const auto expected_scope = ids_.Scope().Raw();
+    std::uint64_t max_restored_id = 0;
+    for (const auto& instance : snapshot.instances)
+    {
+        max_restored_id = std::max(max_restored_id, instance.id.Low());
+    }
+    const auto generator = snapshot.id_generator;
+    const bool generator_scope_valid = MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(generator) && generator.scope == expected_scope;
+    const bool generator_next_valid =
+        generator.next == 0 ||
+        (max_restored_id != std::numeric_limits<std::uint64_t>::max() && generator.next > max_restored_id);
+    if (!generator_scope_valid || !generator_next_valid)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.condition_snapshot_invalid", "condition snapshot id generator is invalid"));
+    }
+
     if (snapshot.journal.size() > kChangeJournalCapacity || snapshot.next_change_sequence == 0)
         return foundation::Result<void>::Failure(Error("gameplay.condition_snapshot_invalid", "condition snapshot journal is invalid"));
     std::deque<ConditionChange> restored_changes;

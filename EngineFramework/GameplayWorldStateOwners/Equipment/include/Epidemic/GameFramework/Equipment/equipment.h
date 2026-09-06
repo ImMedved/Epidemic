@@ -4,6 +4,7 @@
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 #include <algorithm>
 #include <cstdint>
+#include <deque>
 #include <optional>
 #include <span>
 #include <string>
@@ -66,16 +67,22 @@ enum class EquipmentBindingState
 {
     Active,
     Disabled,
-    Broken,
-    PendingRemoval
+    Broken
 };
 enum class EquipmentChangeKind
 {
     ProfileCreated,
+    SlotAdded,
     BindingCreated,
     BindingRemoved,
     BindingStateChanged,
     LoadoutSaved
+};
+
+enum class EquipmentReconciliationState
+{
+    Ready,
+    NeedsReconciliation
 };
 struct EquipmentGrantDescriptor
 {
@@ -164,6 +171,14 @@ struct EquipmentChange
     EquipmentBindingState old_state = EquipmentBindingState::Active;
     EquipmentBindingState new_state = EquipmentBindingState::Active;
 };
+struct EquipmentChangeBatch
+{
+    std::vector<EquipmentChange> changes;
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+};
+
 struct EquipmentSnapshot
 {
     std::vector<EquipmentProfile> profiles;
@@ -193,6 +208,16 @@ class IEquipmentItemProvider
                                                                        GameplayContext context) = 0;
     [[nodiscard]] virtual foundation::Result<void> ReleaseFromEquipment(EquipmentItemId item, GameplayObjectRef subject,
                                                                         GameplayContext context) = 0;
+    // Restore reconciliation must be idempotent and must not create a second reservation.
+    // Providers that persist reservation state should verify that the restored binding is backed by
+    // exactly the reservation expected for this subject/item pair.
+    [[nodiscard]] virtual foundation::Result<void> ReconcileEquipmentReservation(
+        EquipmentItemId, GameplayObjectRef, EquipmentBindingId, GameplayContext)
+    {
+        return foundation::Result<void>::Failure(foundation::Error::Create(
+            "gameplay.equipment.reconciliation_unsupported",
+            "item provider does not support equipment reservation reconciliation"));
+    }
     // Override when the backing item owner can atomically exchange several equipment reservations.
     // The default path safely supports zero/one released binding and refuses larger swaps before mutation.
     [[nodiscard]] virtual foundation::Result<void> ExchangeEquipmentReservations(
@@ -214,7 +239,7 @@ class IEquipmentItemProvider
 class EquipmentService
 {
   public:
-    EquipmentService();
+    explicit EquipmentService(std::size_t change_capacity = 2048);
     [[nodiscard]] static constexpr GameplayDomainId Domain() noexcept
     {
         return GameplayDomainId::FromString("framework.equipment");
@@ -227,6 +252,12 @@ class EquipmentService
     [[nodiscard]] foundation::Result<void> RegisterGrantSchema(EquipmentGrantSchema schema);
     void Freeze() noexcept { frozen_ = true; }
     [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
+    [[nodiscard]] EquipmentReconciliationState ReconciliationState() const noexcept { return reconciliation_state_; }
+    [[nodiscard]] bool NeedsReconciliation() const noexcept
+    {
+        return reconciliation_state_ == EquipmentReconciliationState::NeedsReconciliation;
+    }
+    [[nodiscard]] foundation::Result<void> ReconcileRestoredBindings(GameplayContext context = {});
     [[nodiscard]] foundation::Result<EquipmentProfileId> CreateProfile(EquipmentProfile profile);
     [[nodiscard]] foundation::Result<EquipmentProfileId> CreateProfileFromDefinition(GameplayObjectRef subject, EquipmentProfileDefinitionId definition);
     [[nodiscard]] foundation::Result<EquipmentSlotId> AddSlot(EquipmentProfileId profile, EquipmentSlotDefinition slot);
@@ -247,6 +278,7 @@ class EquipmentService
     [[nodiscard]] bool CanEquip(GameplayObjectRef subject, EquipmentItemId item,
                                 const std::vector<EquipmentSlotId> &slots) const;
     [[nodiscard]] foundation::Result<EquipmentLoadoutId> SaveLoadout(EquipmentLoadout loadout);
+    [[nodiscard]] EquipmentChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::vector<EquipmentChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] EquipmentSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(EquipmentSnapshot snapshot);
@@ -264,6 +296,8 @@ class EquipmentService
     [[nodiscard]] std::vector<EquipmentBindingId> ComputeConflicts(const EquipmentProfile& profile, GameplayObjectRef subject,
                                                                     const std::vector<EquipmentSlotId>& slots) const;
     [[nodiscard]] bool ValidateGrants(const std::vector<EquipmentGrantDescriptor>& grants) const;
+    [[nodiscard]] foundation::Result<void> ValidateAndCanonicalizeLoadout(EquipmentLoadout& loadout) const;
+    [[nodiscard]] foundation::Result<void> EnsureMutationReady() const;
     Revision revision_{};
     bool frozen_ = false;
     std::unordered_map<EquipmentProfileDefinitionId, EquipmentProfileDefinition, IdHash> profile_definitions_;
@@ -275,8 +309,10 @@ class EquipmentService
     MonotonicIdGenerator<GameplayObjectId> profile_ids_{0x3500}, slot_ids_{0x3501}, binding_ids_{0x3502},
         operation_ids_{0x3503}, loadout_ids_{0x3504};
     IEquipmentItemProvider *item_provider_ = nullptr;
-    std::vector<EquipmentChange> changes_;
+    std::deque<EquipmentChange> changes_;
+    std::size_t change_capacity_ = 2048;
     std::uint64_t next_change_sequence_ = 1;
+    EquipmentReconciliationState reconciliation_state_ = EquipmentReconciliationState::Ready;
     EquipmentDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::equipment

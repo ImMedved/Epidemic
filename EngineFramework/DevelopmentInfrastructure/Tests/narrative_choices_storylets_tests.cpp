@@ -124,5 +124,30 @@ int main()
     auto diagnostics = service.GetDiagnostics();
     Check(diagnostics.storylets_activated == 1, "diagnostics storylet activation");
     Check(recorder.executions.size() == 2, "recorded choice and storylet effects");
+
+    NarrativeChoice invalid_choice;
+    invalid_choice.thread = thread;
+    invalid_choice.actor = player;
+    NarrativeChoiceOption invalid_option;
+    invalid_option.id = NarrativeChoiceOptionId::FromString("choice.invalid");
+    invalid_option.consequences.push_back(NarrativeConsequenceId::FromString("consequence.missing"));
+    invalid_choice.options.push_back(invalid_option);
+    auto invalid_choice_id = service.CreateChoice(invalid_choice, {.time = GameplayTimePoint{40}, .actor = player});
+    Check(static_cast<bool>(invalid_choice_id), "create invalid consequence choice for atomicity test");
+    Check(!static_cast<bool>(service.ResolveChoice(invalid_choice_id.Value(), invalid_option.id,
+                                                   {.time = GameplayTimePoint{41}, .actor = player})),
+          "choice consequence planning failure reported");
+    Check(service.GetChoice(invalid_choice_id.Value())->state == NarrativeChoiceState::Open,
+          "failed consequence planning leaves choice open");
+
+    NarrativeChoice expiring;
+    expiring.thread = thread;
+    expiring.actor = player;
+    expiring.expires_at = GameplayTimePoint{50};
+    auto expiring_id = service.CreateChoice(expiring, {.time = GameplayTimePoint{45}, .actor = player});
+    Check(static_cast<bool>(expiring_id), "create expiring choice");
+    Check(service.ExpireChoices(GameplayTimePoint{50}, {.time = GameplayTimePoint{50}, .actor = player}).size() == 1,
+          "choice expiry lifecycle");
+    Check(service.GetChoice(expiring_id.Value())->state == NarrativeChoiceState::Expired, "choice expired state");
     return 0;
 }

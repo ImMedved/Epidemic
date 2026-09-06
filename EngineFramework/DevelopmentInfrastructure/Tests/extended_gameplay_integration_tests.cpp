@@ -25,14 +25,11 @@ void Check(bool value, const char* message)
         std::exit(1);
     }
 }
-
 GameplayObjectRef Ref(const char* domain, const char* id)
 {
     return {GameplayDomainId::FromString(domain), GameplayObjectId::FromString(id)};
 }
-
-template<class T>
-std::vector<std::byte> Bytes(const T& value)
+template<class T> std::vector<std::byte> Bytes(const T& value)
 {
     static_assert(std::is_trivially_copyable_v<T>);
     std::vector<std::byte> out(sizeof(T));
@@ -45,6 +42,7 @@ int main()
 {
     const auto seller = Ref("actor", "seller");
     const auto buyer = Ref("actor", "buyer");
+    const auto third_party = Ref("actor", "third");
 
     items::ItemsInventoryService item_service;
     items::ItemDefinition sword_definition;
@@ -72,7 +70,6 @@ int main()
     seller_container.max_slots = 32;
     auto seller_container_id = item_service.CreateContainer(seller_container);
     Check(static_cast<bool>(seller_container_id), "create seller container");
-
     items::ContainerRecord buyer_container;
     buyer_container.owner_object = buyer;
     buyer_container.max_slots = 32;
@@ -107,6 +104,22 @@ int main()
     Check(static_cast<bool>(equipment_service.Unequip(binding.Value())), "unequip through Items adapter");
     Check(item_service.ReservedQuantity(sword_id.Value()) == 0, "equipment reservation released");
 
+    items::ItemInstance broken_sword;
+    broken_sword.definition = sword_definition_id.Value();
+    broken_sword.location.kind = items::ItemLocationKind::Container;
+    broken_sword.location.container = seller_container_id.Value();
+    auto broken_sword_id = item_service.CreateItem(broken_sword);
+    Check(static_cast<bool>(broken_sword_id), "create second sword");
+    auto broken_plan = equipment_service.PrepareEquip(seller, equipment::EquipmentItemId{broken_sword_id.Value().value}, {hand_id.Value()});
+    Check(static_cast<bool>(broken_plan), "prepare second equipment binding");
+    auto broken_binding = equipment_service.CommitEquip(broken_plan.Value());
+    Check(static_cast<bool>(broken_binding), "commit second equipment binding");
+    const auto backing = item_service.FindReservations(broken_sword_id.Value());
+    Check(backing.size() == 1, "second equipment binding has one backing reservation");
+    Check(static_cast<bool>(item_service.ReleaseReservation(backing.front().id)), "simulate missing backing reservation");
+    Check(!equipment_service.Unequip(broken_binding.Value()), "unequip detects missing backing reservation");
+    Check(equipment_service.FindBinding(broken_binding.Value()) != nullptr, "failed release preserves equipment binding");
+
     items::ItemInstance ore;
     ore.definition = ore_definition_id.Value();
     ore.quantity = 3;
@@ -120,13 +133,13 @@ int main()
     integration::ItemProcessOutputHandler item_output(item_service);
     process_service.SetInputProvider(&item_input);
     process_service.AddOutputHandler(&item_output);
-
     processes::ProcessDefinition process_definition;
     process_definition.canonical_name = "process.integration.smelt";
+    process_definition.kind = processes::ProcessKindId::FromString("crafting");
     process_definition.timing = processes::ProcessTimingPolicy::Instant;
+    process_definition.persistence = processes::ProcessPersistencePolicy::Persistent;
     auto process_definition_id = process_service.RegisterDefinition(process_definition);
     Check(static_cast<bool>(process_definition_id), "register item process definition");
-
     processes::ProcessRecipe process_recipe;
     process_recipe.canonical_name = "recipe.integration.smelt";
     process_recipe.process = process_definition_id.Value();
@@ -134,15 +147,13 @@ int main()
     input.id = processes::ProcessInputId::FromString("input.ore");
     input.type = processes::ProcessInputTypeId::FromString("item");
     input.amount = 2;
-    input.payload = processes::RegisteredPayload::FromTrivial(
-        integration::ItemProcessInputProvider::InputPayloadType(), integration::ProcessItemInputPayload{ore_id.Value()});
+    input.payload = integration::EncodeProcessItemInputPayload({ore_id.Value()});
     process_recipe.inputs.push_back(input);
     processes::ProcessOutputDefinition output;
     output.id = processes::ProcessOutputId::FromString("output.ingot");
     output.type = integration::ItemProcessOutputHandler::OutputType();
     output.amount = 1;
-    output.payload = processes::RegisteredPayload::FromTrivial(
-        integration::ItemProcessOutputHandler::OutputPayloadType(), integration::ProcessItemOutputPayload{ingot_definition_id.Value(), seller_container_id.Value()});
+    output.payload = integration::EncodeProcessItemOutputPayload({ingot_definition_id.Value(), seller_container_id.Value()});
     process_recipe.outputs.push_back(output);
     auto recipe_id = process_service.RegisterRecipe(process_recipe);
     Check(static_cast<bool>(recipe_id), "register item process recipe");
@@ -154,7 +165,17 @@ int main()
     auto process_id = process_service.StartProcess(start_process);
     Check(static_cast<bool>(process_id), "execute item-backed process");
     Check(item_service.FindItem(ore_id.Value())->quantity == 1, "process consumed item reservation");
-    Check(item_service.FindItemsByDefinition(ingot_definition_id.Value()).size() == 1, "process produced item output");
+    auto ingots = item_service.FindItemsByDefinition(ingot_definition_id.Value());
+    Check(ingots.size() == 1, "process produced one item output");
+    const auto* process_instance = process_service.FindInstance(process_id.Value());
+    Check(process_instance && !process_instance->prepared_outputs.empty() && process_instance->prepared_outputs.front().provider_token.IsPortable(),
+          "process output token is portable");
+    Check(process_instance && !process_instance->reserved_inputs.empty() && process_instance->reserved_inputs.front().provider_token.IsPortable(),
+          "process reservation token is portable");
+    Check(static_cast<bool>(item_output.Commit(process_instance->prepared_outputs.front(), *process_instance, {})),
+          "replaying committed process output is idempotent");
+    Check(item_service.FindItemsByDefinition(ingot_definition_id.Value()).size() == 1,
+          "idempotent process output does not duplicate item");
 
     knowledge::KnowledgeService knowledge_service;
     knowledge::KnowledgeProfile speaker_profile;
@@ -163,25 +184,46 @@ int main()
     knowledge::KnowledgeProfile listener_profile;
     listener_profile.subject = buyer;
     Check(static_cast<bool>(knowledge_service.CreateProfile(listener_profile)), "create listener knowledge profile");
+    knowledge::LearnKnowledgeRequest source_knowledge;
+    source_knowledge.learner = seller;
+    source_knowledge.type = knowledge::BeliefTypeId::FromString("observed");
+    source_knowledge.topic.id = knowledge::KnowledgeTopicId::FromString("integration.shared.secret");
+    source_knowledge.topic.primary_subject = third_party;
+    source_knowledge.source_kind = knowledge::KnowledgeSourceId::FromString("direct.observation");
+    source_knowledge.source_object = third_party;
+    source_knowledge.epistemic_state = knowledge::KnowledgeEpistemicState::Known;
+    source_knowledge.confidence = knowledge::KnowledgeConfidence::High;
+    auto source_record = knowledge_service.Learn(source_knowledge);
+    Check(static_cast<bool>(source_record), "speaker learns shareable knowledge");
+
     integration::DialogueKnowledgeConsequenceHandler knowledge_handler(knowledge_service);
     dialogue::DialogueService dialogue_service;
-    dialogue::DialogueConsequenceDefinition tell;
-    tell.id = TypeId::FromString("consequence.tell.secret");
-    tell.type = integration::DialogueKnowledgeConsequenceHandler::Type();
-    integration::DialogueKnowledgePayload tell_payload;
-    tell_payload.belief = knowledge::BeliefTypeId::FromString("reported");
-    tell_payload.topic = knowledge::KnowledgeTopicId::FromString("integration.secret");
-    tell_payload.confidence = knowledge::KnowledgeConfidence::High;
-    tell_payload.subject = seller;
-    tell.payload = Bytes(tell_payload);
-    Check(static_cast<bool>(dialogue_service.RegisterConsequence(tell)), "register knowledge dialogue consequence");
-    Check(static_cast<bool>(dialogue_service.RegisterConsequenceHandler(tell.type, knowledge_handler)), "register knowledge dialogue handler");
+    dialogue::DialogueConsequenceDefinition share;
+    share.id = TypeId::FromString("consequence.share.secret");
+    share.type = integration::DialogueKnowledgeConsequenceHandler::ShareType();
+    integration::DialogueShareKnowledgePayload share_payload;
+    share_payload.record = source_record.Value();
+    share.payload = Bytes(share_payload);
+    Check(static_cast<bool>(dialogue_service.RegisterConsequence(share)), "register share knowledge consequence");
+    dialogue::DialogueConsequenceDefinition assertion;
+    assertion.id = TypeId::FromString("consequence.assert.secret");
+    assertion.type = integration::DialogueKnowledgeConsequenceHandler::AssertType();
+    integration::DialogueAssertKnowledgePayload assertion_payload;
+    assertion_payload.belief = knowledge::BeliefTypeId::FromString("reported");
+    assertion_payload.topic = knowledge::KnowledgeTopicId::FromString("integration.asserted.secret");
+    assertion_payload.confidence = knowledge::KnowledgeConfidence::Medium;
+    assertion_payload.subject = seller;
+    assertion.payload = Bytes(assertion_payload);
+    Check(static_cast<bool>(dialogue_service.RegisterConsequence(assertion)), "register assert knowledge consequence");
+    Check(static_cast<bool>(dialogue_service.RegisterConsequenceHandler(share.type, knowledge_handler)), "register share knowledge handler");
+    Check(static_cast<bool>(dialogue_service.RegisterConsequenceHandler(assertion.type, knowledge_handler)), "register assert knowledge handler");
     dialogue::ConversationDefinition conversation;
     conversation.canonical_name = "conversation.integration.tell";
     conversation.entry_node = dialogue::DialogueNodeId::FromString("node.tell");
     dialogue::DialogueNodeDefinition tell_node;
     tell_node.id = conversation.entry_node;
-    tell_node.consequences.push_back(tell.id);
+    tell_node.consequences.push_back(share.id);
+    tell_node.consequences.push_back(assertion.id);
     conversation.nodes.push_back(tell_node);
     auto conversation_id = dialogue_service.RegisterConversation(conversation);
     Check(static_cast<bool>(conversation_id), "register knowledge conversation");
@@ -189,8 +231,11 @@ int main()
     auto session = dialogue_service.StartConversation(conversation_id.Value(), {seller, buyer});
     Check(static_cast<bool>(session), "start knowledge conversation");
     const auto executed = dialogue_service.ExecutePendingConsequences();
-    Check(executed.size() == 1, "execute knowledge transfer consequence");
-    Check(knowledge_service.FindKnowledgeByTopic(buyer, tell_payload.topic).size() == 1, "dialogue transferred knowledge");
+    Check(executed.size() == 2, "execute explicit share and assertion consequences");
+    const auto shared = knowledge_service.FindKnowledgeByTopic(buyer, source_knowledge.topic.id);
+    Check(shared.size() == 1 && shared.front().derived_from == source_record.Value(), "dialogue share preserves knowledge provenance");
+    const auto asserted = knowledge_service.FindKnowledgeByTopic(buyer, assertion_payload.topic);
+    Check(asserted.size() == 1 && asserted.front().source == seller, "dialogue assertion records speaker as authored source");
 
     ownership::OwnershipService ownership_service;
     ownership::OwnershipRecord sword_ownership;
@@ -198,6 +243,11 @@ int main()
     sword_ownership.owner = seller;
     sword_ownership.domain = ownership::PropertyDomainId::FromString("personal");
     Check(static_cast<bool>(ownership_service.AssignOwnership(sword_ownership)), "assign sword ownership");
+    ownership::OwnershipRecord ingot_ownership;
+    ingot_ownership.property = integration::ItemPropertyRef(ingots.front().id);
+    ingot_ownership.owner = seller;
+    ingot_ownership.domain = ownership::PropertyDomainId::FromString("personal");
+    Check(static_cast<bool>(ownership_service.AssignOwnership(ingot_ownership)), "assign ingot ownership");
 
     economy::EconomyService economy_service;
     economy::CurrencyDefinition coin;
@@ -223,45 +273,53 @@ int main()
     trade_plan.money.seller = seller;
     trade_plan.money.monetary_transfers.push_back({buyer_account_id.Value(), seller_account_id.Value(), 25, coin_id.Value()});
     trade_plan.goods.push_back({sword_id.Value(), buyer_container_id.Value(), seller, buyer});
-    auto trade_result = trade.Execute(std::move(trade_plan));
-    Check(static_cast<bool>(trade_result), "coordinated trade");
+    auto trade_execution = trade.Prepare(std::move(trade_plan));
+    Check(static_cast<bool>(trade_execution), "prepare coordinated trade saga");
+    Check(item_service.ReservedQuantity(sword_id.Value()) == 1, "trade preparation reserves goods in Items owner");
+    const auto trade_snapshot = trade.CaptureSnapshot();
+    integration::TradeCoordinator restored_trade(economy_service, item_service, ownership_service);
+    Check(static_cast<bool>(restored_trade.RestoreSnapshot(trade_snapshot)), "restore pending coordinated trade saga");
+    auto trade_result = restored_trade.Continue(trade_execution.Value());
+    Check(static_cast<bool>(trade_result), "continue restored coordinated trade saga");
     Check(economy_service.GetBalance(buyer_account_id.Value()) == 75, "buyer money transferred");
     Check(economy_service.GetBalance(seller_account_id.Value()) == 25, "seller money transferred");
-    Check(item_service.FindItem(sword_id.Value())->location.container == buyer_container_id.Value(), "trade moved item");
+    Check(item_service.FindItem(sword_id.Value())->location.container == buyer_container_id.Value(), "trade moved reserved item");
     const auto* new_owner = ownership_service.GetOwner(integration::ItemPropertyRef(sword_id.Value()));
     Check(new_owner && new_owner->owner == buyer, "trade transferred ownership");
+    Check(static_cast<bool>(restored_trade.Continue(trade_execution.Value())), "completed trade retry is idempotent");
+    Check(economy_service.GetBalance(buyer_account_id.Value()) == 75, "trade retry does not debit buyer twice");
 
-    ownership::OwnershipRecord ore_ownership;
-    ore_ownership.property = integration::ItemPropertyRef(ore_id.Value());
-    ore_ownership.owner = seller;
-    ore_ownership.domain = ownership::PropertyDomainId::FromString("personal");
-    Check(static_cast<bool>(ownership_service.AssignOwnership(ore_ownership)), "assign ore ownership");
-    const auto ingots = item_service.FindItemsByDefinition(ingot_definition_id.Value());
-    Check(ingots.size() == 1, "find produced ingot");
-    ownership::OwnershipRecord ingot_ownership;
-    ingot_ownership.property = integration::ItemPropertyRef(ingots.front().id);
-    ingot_ownership.owner = seller;
-    ingot_ownership.domain = ownership::PropertyDomainId::FromString("personal");
-    Check(static_cast<bool>(ownership_service.AssignOwnership(ingot_ownership)), "assign ingot ownership");
+    integration::CoordinatedTradePlan bad_parties;
+    bad_parties.money.buyer = buyer;
+    bad_parties.money.seller = seller;
+    bad_parties.money.monetary_transfers.push_back({buyer_account_id.Value(), seller_account_id.Value(), 1, coin_id.Value()});
+    bad_parties.goods.push_back({ingots.front().id, buyer_container_id.Value(), third_party, buyer});
+    Check(!restored_trade.Prepare(std::move(bad_parties)), "trade rejects third-party goods owner without explicit authorization policy");
 
-    integration::CoordinatedTradePlan multi_goods_trade;
-    multi_goods_trade.money.buyer = buyer;
-    multi_goods_trade.money.seller = seller;
-    multi_goods_trade.money.monetary_transfers.push_back({buyer_account_id.Value(), seller_account_id.Value(), 10, coin_id.Value()});
-    multi_goods_trade.goods.push_back({ore_id.Value(), buyer_container_id.Value(), seller, buyer});
-    multi_goods_trade.goods.push_back({ingots.front().id, buyer_container_id.Value(), seller, buyer});
-    auto multi_goods_result = trade.Execute(std::move(multi_goods_trade));
-    Check(static_cast<bool>(multi_goods_result), "multi-good trade to one container");
-    Check(economy_service.GetBalance(buyer_account_id.Value()) == 65, "buyer money transferred for multi-good trade");
-    Check(economy_service.GetBalance(seller_account_id.Value()) == 35, "seller money transferred for multi-good trade");
-    Check(item_service.FindItem(ore_id.Value())->location.container == buyer_container_id.Value(), "ore moved in multi-good trade");
-    Check(item_service.FindItem(ingots.front().id)->location.container == buyer_container_id.Value(), "ingot moved in multi-good trade");
-    const auto* ore_owner = ownership_service.GetOwner(integration::ItemPropertyRef(ore_id.Value()));
-    Check(ore_owner && ore_owner->owner == buyer, "ore ownership transferred");
-    const auto* ingot_owner = ownership_service.GetOwner(integration::ItemPropertyRef(ingots.front().id));
-    Check(ingot_owner && ingot_owner->owner == buyer, "ingot ownership transferred");
+    integration::CoordinatedTradePlan stale_trade;
+    stale_trade.money.buyer = buyer;
+    stale_trade.money.seller = seller;
+    stale_trade.money.monetary_transfers.push_back({buyer_account_id.Value(), seller_account_id.Value(), 5, coin_id.Value()});
+    stale_trade.goods.push_back({ingots.front().id, buyer_container_id.Value(), seller, buyer});
+    auto stale_execution = restored_trade.Prepare(std::move(stale_trade));
+    Check(static_cast<bool>(stale_execution), "prepare trade used for expected ownership revision test");
+    ownership::TransferOwnershipRequest external_transfer;
+    external_transfer.property = integration::ItemPropertyRef(ingots.front().id);
+    external_transfer.from_owner = seller;
+    external_transfer.to_owner = third_party;
+    external_transfer.reason = ownership::TransferReason::Gift;
+    external_transfer.domain = ownership::PropertyDomainId::FromString("personal");
+    Check(static_cast<bool>(ownership_service.TransferOwnership(external_transfer)),
+          "change ownership after trade prepare");
+    Check(!restored_trade.Continue(stale_execution.Value()), "stale ownership prevents trade commit");
+    Check(item_service.FindItem(ingots.front().id)->location.container == seller_container_id.Value(),
+          "stale ownership is detected before item movement");
+    const auto* stalled = restored_trade.FindExecution(stale_execution.Value());
+    Check(stalled && stalled->state == integration::CoordinatedTradeState::ReconciliationRequired,
+          "stale trade remains as durable reconciliation state");
+    Check(static_cast<bool>(restored_trade.Cancel(stale_execution.Value())),
+          "uncommitted reconciliation trade can release its reservations");
+    Check(item_service.ReservedQuantity(ingots.front().id) == 0, "cancelled stale trade releases item reservation");
 
     return 0;
 }
-
-

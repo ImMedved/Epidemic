@@ -44,19 +44,32 @@ class RandomSequence
 {
   public:
     RandomSequence(RandomSeed seed, RandomStream stream, std::uint64_t sequence = 0) noexcept;
-    explicit RandomSequence(RandomSequenceSnapshot snapshot) noexcept;
+    [[nodiscard]] static constexpr bool IsValidSnapshot(const RandomSequenceSnapshot& snapshot) noexcept
+    {
+        return snapshot.stream.IsValid();
+    }
+    [[nodiscard]] static std::optional<RandomSequence> TryFromSnapshot(RandomSequenceSnapshot snapshot) noexcept;
 
     [[nodiscard]] std::optional<std::uint64_t> TryNextU64() noexcept;
     [[nodiscard]] std::optional<std::uint64_t> TryUniform(std::uint64_t exclusive_max) noexcept;
-    [[nodiscard]] std::uint64_t NextU64() noexcept;
-    [[nodiscard]] std::uint64_t Uniform(std::uint64_t exclusive_max) noexcept;
-    [[nodiscard]] std::uint64_t UniformRange(std::uint64_t minimum, std::uint64_t maximum_exclusive) noexcept;
-    [[nodiscard]] double Uniform01() noexcept;
-    [[nodiscard]] double UniformReal(double minimum, double maximum) noexcept;
-    [[nodiscard]] bool RollMicro(std::uint32_t chance_micro) noexcept;
+    [[nodiscard]] std::optional<std::uint64_t> TryUniformRange(std::uint64_t minimum,
+                                                               std::uint64_t maximum_exclusive) noexcept;
+    [[nodiscard]] std::optional<double> TryUniform01() noexcept;
+    [[nodiscard]] std::optional<double> TryUniformReal(double minimum, double maximum) noexcept;
+    [[nodiscard]] std::optional<bool> TryRollMicro(std::uint32_t chance_micro) noexcept;
+
+    // Unchecked convenience methods are only for call sites that have already proven their preconditions.
+    // A violated precondition terminates instead of returning a plausible fallback value in release builds.
+    [[nodiscard]] std::uint64_t NextU64Unchecked() noexcept;
+    [[nodiscard]] std::uint64_t UniformUnchecked(std::uint64_t exclusive_max) noexcept;
+    [[nodiscard]] std::uint64_t UniformRangeUnchecked(std::uint64_t minimum,
+                                                      std::uint64_t maximum_exclusive) noexcept;
+    [[nodiscard]] double Uniform01Unchecked() noexcept;
+    [[nodiscard]] double UniformRealUnchecked(double minimum, double maximum) noexcept;
+    [[nodiscard]] bool RollMicroUnchecked(std::uint32_t chance_micro) noexcept;
     [[nodiscard]] std::optional<std::size_t> WeightedIndex(std::span<const std::uint64_t> weights) noexcept;
 
-    template <typename T> void Shuffle(std::span<T> values) noexcept
+    template <typename T> void ShuffleUnchecked(std::span<T> values) noexcept
     {
         if (values.size() < 2)
         {
@@ -65,19 +78,19 @@ class RandomSequence
 
         for (std::size_t index = values.size() - 1; index > 0; --index)
         {
-            const auto swap_index = static_cast<std::size_t>(Uniform(static_cast<std::uint64_t>(index + 1)));
+            const auto swap_index = static_cast<std::size_t>(UniformUnchecked(static_cast<std::uint64_t>(index + 1)));
             using std::swap;
             swap(values[index], values[swap_index]);
         }
     }
 
-    template <typename TContainer> void Shuffle(TContainer& values) noexcept
+    template <typename TContainer> void ShuffleUnchecked(TContainer& values) noexcept
     {
-        Shuffle(std::span{values.data(), values.size()});
+        ShuffleUnchecked(std::span{values.data(), values.size()});
     }
 
     [[nodiscard]] RandomSequenceSnapshot CaptureSnapshot() const noexcept { return {seed_, stream_, sequence_}; }
-    void RestoreSnapshot(RandomSequenceSnapshot snapshot) noexcept;
+    [[nodiscard]] bool TryRestoreSnapshot(RandomSequenceSnapshot snapshot) noexcept;
 
     [[nodiscard]] std::uint64_t Sequence() const noexcept { return sequence_; }
     [[nodiscard]] bool IsExhausted() const noexcept { return sequence_ == std::numeric_limits<std::uint64_t>::max(); }

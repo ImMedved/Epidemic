@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <limits>
 #include <memory>
+#include <string>
 
 namespace epidemic::gameplay::state_integration
 {
@@ -21,6 +22,38 @@ constexpr std::string_view kConditionRemoveTypePayloadName = "framework.payload.
 [[nodiscard]] foundation::Error Error(std::string code, std::string message)
 {
     return foundation::Error::Create(std::move(code), std::move(message));
+}
+
+template <typename TChange>
+[[nodiscard]] bool HasJournalGap(std::uint64_t cursor, std::uint64_t latest, const std::vector<TChange>& changes)
+{
+    if (cursor >= latest)
+    {
+        return false;
+    }
+    if (changes.empty())
+    {
+        return true;
+    }
+    if (cursor == std::numeric_limits<std::uint64_t>::max())
+    {
+        return changes.front().sequence != 0;
+    }
+    return changes.front().sequence > cursor + 1;
+}
+
+[[nodiscard]] foundation::Error JournalGapError(std::string_view stream)
+{
+    return Error("gameplay.state_integration_journal_gap", std::string(stream) + " change journal has a gap; rebuild or durable delivery is required");
+}
+
+[[nodiscard]] bool ScheduleMatches(const time::ScheduleEntry& entry,
+                                   ClockId clock,
+                                   GameplayObjectRef owner,
+                                   ActionTypeId action,
+                                   time::SchedulePersistence persistence) noexcept
+{
+    return entry.clock == clock && entry.owner == owner && entry.action == action && entry.persistence == persistence;
 }
 
 void AppendU64(std::vector<std::byte>& bytes, std::uint64_t value)
@@ -101,7 +134,7 @@ class EntityCreateHandler final : public effects::IEffectHandler
     }
     [[nodiscard]] foundation::Result<effects::EffectCommitResult> Commit(
         const effects::EffectOperation& operation,
-        const effects::RegisteredEffectPayload&) override
+        const effects::RegisteredEffectPayload&) noexcept override
     {
         const auto payload = DecodeTrivialPayload<EntityCreateEffectPayload>(operation.payload, kEntityCreatePayloadName);
         if (!payload)
@@ -142,7 +175,7 @@ class EntityDestroyHandler final : public effects::IEffectHandler
     }
     [[nodiscard]] foundation::Result<effects::EffectCommitResult> Commit(
         const effects::EffectOperation& operation,
-        const effects::RegisteredEffectPayload&) override
+        const effects::RegisteredEffectPayload&) noexcept override
     {
         const auto id = entities::EntityService::FromGameplayObjectRef(operation.target);
         const auto result = service_.RequestDestroy(id, entities::EntityDestroyReason::Destroyed, operation.context);
@@ -178,7 +211,7 @@ class EntityConvertHandler final : public effects::IEffectHandler
     }
     [[nodiscard]] foundation::Result<effects::EffectCommitResult> Commit(
         const effects::EffectOperation& operation,
-        const effects::RegisteredEffectPayload&) override
+        const effects::RegisteredEffectPayload&) noexcept override
     {
         const auto payload = DecodeTrivialPayload<EntityConvertEffectPayload>(operation.payload, kEntityConvertPayloadName);
         if (!payload)
@@ -224,7 +257,7 @@ class EntityTagHandler final : public effects::IEffectHandler
     }
     [[nodiscard]] foundation::Result<effects::EffectCommitResult> Commit(
         const effects::EffectOperation& operation,
-        const effects::RegisteredEffectPayload&) override
+        const effects::RegisteredEffectPayload&) noexcept override
     {
         const auto payload = DecodeTrivialPayload<EntityTagEffectPayload>(operation.payload, kEntityTagPayloadName);
         if (!payload)
@@ -272,7 +305,7 @@ class MaterialStimulusHandler final : public effects::IEffectHandler
     }
     [[nodiscard]] foundation::Result<effects::EffectCommitResult> Commit(
         const effects::EffectOperation& operation,
-        const effects::RegisteredEffectPayload&) override
+        const effects::RegisteredEffectPayload&) noexcept override
     {
         const auto payload = DecodeTrivialPayload<MaterialStimulusEffectPayload>(operation.payload, kMaterialStimulusPayloadName);
         if (!payload)
@@ -330,7 +363,7 @@ class SubstanceExposureHandler final : public effects::IEffectHandler
     }
     [[nodiscard]] foundation::Result<effects::EffectCommitResult> Commit(
         const effects::EffectOperation& operation,
-        const effects::RegisteredEffectPayload&) override
+        const effects::RegisteredEffectPayload&) noexcept override
     {
         const auto payload = DecodeTrivialPayload<SubstanceExposureEffectPayload>(operation.payload, kSubstanceExposurePayloadName);
         if (!payload)
@@ -386,7 +419,7 @@ class ConditionApplyHandler final : public effects::IEffectHandler
     }
     [[nodiscard]] foundation::Result<effects::EffectCommitResult> Commit(
         const effects::EffectOperation& operation,
-        const effects::RegisteredEffectPayload&) override
+        const effects::RegisteredEffectPayload&) noexcept override
     {
         auto decoded = DecodeConditionApplyEffect(operation.payload);
         if (!decoded)
@@ -439,7 +472,7 @@ class ConditionRemoveTypeHandler final : public effects::IEffectHandler
     }
     [[nodiscard]] foundation::Result<effects::EffectCommitResult> Commit(
         const effects::EffectOperation& operation,
-        const effects::RegisteredEffectPayload&) override
+        const effects::RegisteredEffectPayload&) noexcept override
     {
         const auto payload = DecodeTrivialPayload<ConditionRemoveTypeEffectPayload>(operation.payload, kConditionRemoveTypePayloadName);
         if (!payload)
@@ -593,32 +626,116 @@ foundation::Result<void> StateFactsAdapter::RegisterContracts()
     return foundation::Result<void>::Success();
 }
 
+foundation::Result<std::uint64_t> StateFactsAdapter::RebuildActiveConditionFacts(GameplayContext context)
+{
+    struct DesiredConditionFact
+    {
+        facts::FactKey key{};
+        ConditionFactValue value{};
+        facts::FactPersistence persistence = facts::FactPersistence::Session;
+        std::optional<GameplayTimePoint> expires_at{};
+    };
+
+    std::vector<DesiredConditionFact> desired;
+    for (const auto& instance : conditions_.AllConditions())
+    {
+        const auto* definition = conditions_.FindDefinition(instance.type);
+        if (definition == nullptr || !definition->publish_fact)
+        {
+            continue;
+        }
+        const auto persistence = instance.expires_at.has_value()
+                                     ? facts::FactPersistence::Timed
+                                     : (definition->persistence == conditions::ConditionPersistencePolicy::Persistent
+                                            ? facts::FactPersistence::Persistent
+                                            : facts::FactPersistence::Session);
+        desired.push_back(DesiredConditionFact{
+            facts::FactKey{active_condition_fact_, instance.subject, ConditionScope(instance.id)},
+            ConditionFactValue{instance.type, instance.magnitude_micro, instance.stacks, instance.paused_for_materialization},
+            persistence,
+            instance.expires_at});
+    }
+
+    auto transaction = facts_.BeginTransaction(conditions::ConditionService::Domain());
+    std::uint64_t planned = 0;
+
+    for (const auto& record : facts_.FindFacts(active_condition_fact_, {}, {}))
+    {
+        const bool still_desired = std::any_of(desired.begin(), desired.end(), [&record](const DesiredConditionFact& item) {
+            return item.key == record.key;
+        });
+        if (!still_desired)
+        {
+            transaction.Remove(record.key);
+            ++planned;
+        }
+    }
+
+    for (const auto& item : desired)
+    {
+        transaction.Set(item.key.type, item.key.subject, item.key.scope, item.value, item.persistence, item.expires_at);
+        ++planned;
+    }
+
+    if (transaction.Empty())
+    {
+        return foundation::Result<std::uint64_t>::Success(0);
+    }
+    const auto committed = facts_.Commit(std::move(transaction), context);
+    if (!committed)
+    {
+        return foundation::Result<std::uint64_t>::Failure(committed.GetError());
+    }
+    return foundation::Result<std::uint64_t>::Success(committed.Value().size() == 0 ? 0 : planned);
+}
+
 foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(GameplayContext context)
 {
     std::uint64_t published = 0;
     const auto producer = ProducerId::FromString("framework.state_integration");
 
-    for (const auto& change : entities_.ChangesSince(entity_cursor_))
+    const auto entity_changes = entities_.ChangesSince(entity_cursor_);
+    if (HasJournalGap(entity_cursor_, entities_.LatestChangeSequence(), entity_changes))
     {
-        auto event_context = change.context.tick.IsValid() ? change.context : context;
-        const auto result = facts_.Publish(entity_changed_, event_context, entities::EntityService::ToGameplayObjectRef(change.entity), change, producer);
-        if (!result)
-        {
-            return foundation::Result<std::uint64_t>::Failure(result.GetError());
-        }
-        entity_cursor_ = change.sequence;
-        ++published;
+        return foundation::Result<std::uint64_t>::Failure(JournalGapError("entities"));
     }
-    for (const auto& change : materials_.ChangesSince(material_cursor_))
+    if (!entity_changes.empty())
     {
-        auto event_context = change.context.tick.IsValid() ? change.context : context;
-        const auto result = facts_.Publish(material_changed_, event_context, change.key.subject, change, producer);
-        if (!result)
+        auto batch = facts_.CreateBatch(producer, entity_cursor_ + 1);
+        for (const auto& change : entity_changes)
         {
-            return foundation::Result<std::uint64_t>::Failure(result.GetError());
+            auto event_context = change.context.tick.IsValid() ? change.context : context;
+            batch.Publish(entity_changed_, event_context, entities::EntityService::ToGameplayObjectRef(change.entity), change);
         }
-        material_cursor_ = change.sequence;
-        ++published;
+        const auto submitted = facts_.SubmitBatch(std::move(batch));
+        if (!submitted)
+        {
+            return foundation::Result<std::uint64_t>::Failure(submitted.GetError());
+        }
+        entity_cursor_ = entity_changes.back().sequence;
+        published += entity_changes.size();
+    }
+
+    const auto material_changes = materials_.ChangesSince(material_cursor_);
+    if (HasJournalGap(material_cursor_, materials_.LatestChangeSequence(), material_changes))
+    {
+        return foundation::Result<std::uint64_t>::Failure(JournalGapError("materials"));
+    }
+    if (!material_changes.empty())
+    {
+        auto batch = facts_.CreateBatch(producer, material_cursor_ + 1);
+        for (const auto& change : material_changes)
+        {
+            auto event_context = change.context.tick.IsValid() ? change.context : context;
+            batch.Publish(material_changed_, event_context, change.key.subject, change);
+        }
+        const auto submitted = facts_.SubmitBatch(std::move(batch));
+        if (!submitted)
+        {
+            return foundation::Result<std::uint64_t>::Failure(submitted.GetError());
+        }
+        material_cursor_ = material_changes.back().sequence;
+        published += material_changes.size();
     }
 
     struct PendingConditionFactMutation
@@ -626,82 +743,115 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
         facts::FactKey key{};
         conditions::ConditionChange change{};
     };
-    std::vector<PendingConditionFactMutation> pending_fact_mutations;
-    std::unordered_map<facts::FactKey, std::size_t, facts::FactKeyHash> pending_fact_indices;
 
-    for (const auto& change : conditions_.ChangesSince(condition_cursor_))
+    const auto condition_batch = conditions_.ReadChangesSince(condition_cursor_);
+    const bool condition_snapshot_required = condition_batch.snapshot_required ||
+                                             (condition_cursor_ < conditions_.LatestChangeSequence() && condition_batch.changes.empty());
+    if (condition_snapshot_required)
     {
-        auto event_context = change.context.tick.IsValid() ? change.context : context;
-        const auto event_result = facts_.Publish(condition_changed_, event_context, change.subject, change, producer);
-        if (!event_result)
+        const auto rebuilt = RebuildActiveConditionFacts(context);
+        if (!rebuilt)
         {
-            return foundation::Result<std::uint64_t>::Failure(event_result.GetError());
+            return foundation::Result<std::uint64_t>::Failure(rebuilt.GetError());
         }
-        const auto* definition = conditions_.FindDefinition(change.type);
-        if (definition != nullptr && definition->publish_fact)
-        {
-            const auto key = facts::FactKey{active_condition_fact_, change.subject, ConditionScope(change.instance)};
-            const auto [found, inserted] = pending_fact_indices.emplace(key, pending_fact_mutations.size());
-            if (inserted)
-            {
-                pending_fact_mutations.push_back(PendingConditionFactMutation{key, change});
-            }
-            else
-            {
-                pending_fact_mutations[found->second].change = change;
-            }
-        }
-        condition_cursor_ = change.sequence;
-        ++published;
+        condition_cursor_ = conditions_.LatestChangeSequence();
+        published += rebuilt.Value();
     }
-
-    if (!pending_fact_mutations.empty())
+    else if (!condition_batch.changes.empty())
     {
-        auto transaction = facts_.BeginTransaction(conditions::ConditionService::Domain());
-        for (const auto& pending : pending_fact_mutations)
+        std::vector<PendingConditionFactMutation> pending_fact_mutations;
+        std::unordered_map<facts::FactKey, std::size_t, facts::FactKeyHash> pending_fact_indices;
+
+        for (const auto& change : condition_batch.changes)
         {
-            const auto& change = pending.change;
             const auto* definition = conditions_.FindDefinition(change.type);
-            if (change.kind == conditions::ConditionChangeKind::Removed || change.kind == conditions::ConditionChangeKind::Expired)
+            if (definition != nullptr && definition->publish_fact)
             {
-                transaction.Remove(pending.key);
+                const auto key = facts::FactKey{active_condition_fact_, change.subject, ConditionScope(change.instance)};
+                const auto [found, inserted] = pending_fact_indices.emplace(key, pending_fact_mutations.size());
+                if (inserted)
+                {
+                    pending_fact_mutations.push_back(PendingConditionFactMutation{key, change});
+                }
+                else
+                {
+                    pending_fact_mutations[found->second].change = change;
+                }
             }
-            else if (definition != nullptr)
+        }
+
+        if (!pending_fact_mutations.empty())
+        {
+            auto transaction = facts_.BeginTransaction(conditions::ConditionService::Domain());
+            for (const auto& pending : pending_fact_mutations)
             {
-                const auto* instance = conditions_.Find(change.instance);
-                if (instance == nullptr)
+                const auto& change = pending.change;
+                const auto* definition = conditions_.FindDefinition(change.type);
+                if (change.kind == conditions::ConditionChangeKind::Removed || change.kind == conditions::ConditionChangeKind::Expired)
                 {
                     transaction.Remove(pending.key);
-                    continue;
                 }
-                const auto persistence = instance->expires_at.has_value()
-                                             ? facts::FactPersistence::Timed
-                                             : (definition->persistence == conditions::ConditionPersistencePolicy::Persistent
-                                                    ? facts::FactPersistence::Persistent
-                                                    : facts::FactPersistence::Session);
-                transaction.Set(active_condition_fact_, change.subject, ConditionScope(change.instance),
-                                ConditionFactValue{instance->type, instance->magnitude_micro, instance->stacks,
-                                                   instance->paused_for_materialization},
-                                persistence, instance->expires_at);
+                else if (definition != nullptr)
+                {
+                    const auto* instance = conditions_.Find(change.instance);
+                    if (instance == nullptr)
+                    {
+                        transaction.Remove(pending.key);
+                        continue;
+                    }
+                    const auto persistence = instance->expires_at.has_value()
+                                                 ? facts::FactPersistence::Timed
+                                                 : (definition->persistence == conditions::ConditionPersistencePolicy::Persistent
+                                                        ? facts::FactPersistence::Persistent
+                                                        : facts::FactPersistence::Session);
+                    transaction.Set(active_condition_fact_, change.subject, ConditionScope(change.instance),
+                                    ConditionFactValue{instance->type, instance->magnitude_micro, instance->stacks,
+                                                       instance->paused_for_materialization},
+                                    persistence, instance->expires_at);
+                }
+            }
+            const auto commit = facts_.Commit(std::move(transaction), context);
+            if (!commit)
+            {
+                return foundation::Result<std::uint64_t>::Failure(commit.GetError());
             }
         }
-        const auto commit = facts_.Commit(std::move(transaction), context);
-        if (!commit)
+
+        auto batch = facts_.CreateBatch(producer, condition_cursor_ + 1);
+        for (const auto& change : condition_batch.changes)
         {
-            return foundation::Result<std::uint64_t>::Failure(commit.GetError());
+            auto event_context = change.context.tick.IsValid() ? change.context : context;
+            batch.Publish(condition_changed_, event_context, change.subject, change);
         }
+        const auto submitted = facts_.SubmitBatch(std::move(batch));
+        if (!submitted)
+        {
+            return foundation::Result<std::uint64_t>::Failure(submitted.GetError());
+        }
+        condition_cursor_ = condition_batch.changes.back().sequence;
+        published += condition_batch.changes.size();
     }
 
-    for (const auto& change : effects_.ChangesSince(effect_cursor_))
+    const auto effect_batch = effects_.ReadChangesSince(effect_cursor_);
+    if (effect_batch.snapshot_required)
     {
-        auto event_context = change.context.tick.IsValid() ? change.context : context;
-        const auto result = facts_.Publish(effect_changed_, event_context, change.target, change, producer);
-        if (!result)
+        return foundation::Result<std::uint64_t>::Failure(JournalGapError("effects"));
+    }
+    if (!effect_batch.changes.empty())
+    {
+        auto batch = facts_.CreateBatch(producer, effect_cursor_ + 1);
+        for (const auto& change : effect_batch.changes)
         {
-            return foundation::Result<std::uint64_t>::Failure(result.GetError());
+            auto event_context = change.context.tick.IsValid() ? change.context : context;
+            batch.Publish(effect_changed_, event_context, change.target, change);
         }
-        effect_cursor_ = change.sequence;
-        ++published;
+        const auto submitted = facts_.SubmitBatch(std::move(batch));
+        if (!submitted)
+        {
+            return foundation::Result<std::uint64_t>::Failure(submitted.GetError());
+        }
+        effect_cursor_ = effect_batch.changes.back().sequence;
+        published += effect_batch.changes.size();
     }
 
     return foundation::Result<std::uint64_t>::Success(published);
@@ -871,21 +1021,53 @@ foundation::Result<BuiltinEffectTypes> StateEffectAdapter::RegisterHandlers()
 
 foundation::Result<std::uint64_t> StateLifecycleAdapter::ProcessEntityChanges(GameplayContext context)
 {
+    auto cleanup_destroyed_entity = [this, context](entities::EntityId entity, GameplayContext change_context)
+        -> foundation::Result<void> {
+        const auto ref = entities::EntityService::ToGameplayObjectRef(entity);
+        const auto effective_context = change_context.tick.IsValid() ? change_context : context;
+        const auto removed_materials = materials_.RemoveSubject(ref, effective_context);
+        if (!removed_materials)
+        {
+            return foundation::Result<void>::Failure(removed_materials.GetError());
+        }
+        (void)conditions_.RemoveSubject(ref, conditions::ConditionRemovalReason::SubjectDestroyed, effective_context);
+        (void)effects_.CancelDeferredTargeting(ref, effective_context);
+        return foundation::Result<void>::Success();
+    };
+
+    const auto changes = entities_.ChangesSince(cursor_);
+    if (HasJournalGap(cursor_, entities_.LatestChangeSequence(), changes))
+    {
+        std::uint64_t reconciled = 0;
+        for (const auto& entity : entities_.AllEntities())
+        {
+            if (entity.lifecycle == entities::EntityLifecycleState::Destroyed || entity.lifecycle == entities::EntityLifecycleState::Removed)
+            {
+                const auto cleanup = cleanup_destroyed_entity(entity.id, context);
+                if (!cleanup)
+                {
+                    return foundation::Result<std::uint64_t>::Failure(cleanup.GetError());
+                }
+                ++reconciled;
+            }
+        }
+        cursor_ = entities_.LatestChangeSequence();
+        return foundation::Result<std::uint64_t>::Success(reconciled);
+    }
+
     std::uint64_t processed = 0;
-    for (const auto& change : entities_.ChangesSince(cursor_))
+    std::uint64_t next_cursor = cursor_;
+    for (const auto& change : changes)
     {
         const auto ref = entities::EntityService::ToGameplayObjectRef(change.entity);
         const auto effective_context = change.context.tick.IsValid() ? change.context : context;
-        if (change.kind == entities::EntityChangeKind::Destroyed)
+        if (change.kind == entities::EntityChangeKind::Destroyed || change.kind == entities::EntityChangeKind::Removed)
         {
-            const auto removed_materials = materials_.RemoveSubject(ref, effective_context);
-            if (!removed_materials)
+            const auto cleanup = cleanup_destroyed_entity(change.entity, effective_context);
+            if (!cleanup)
             {
-                return foundation::Result<std::uint64_t>::Failure(removed_materials.GetError());
+                return foundation::Result<std::uint64_t>::Failure(cleanup.GetError());
             }
-            [[maybe_unused]] const auto removed_conditions = conditions_.RemoveSubject(
-                ref, conditions::ConditionRemovalReason::SubjectDestroyed, effective_context);
-            [[maybe_unused]] const auto cancelled_effects = effects_.CancelDeferredTargeting(ref, effective_context);
         }
         else if (change.kind == entities::EntityChangeKind::MaterializationChanged)
         {
@@ -896,9 +1078,10 @@ foundation::Result<std::uint64_t> StateLifecycleAdapter::ProcessEntityChanges(Ga
                 return foundation::Result<std::uint64_t>::Failure(result.GetError());
             }
         }
-        cursor_ = change.sequence;
+        next_cursor = change.sequence;
         ++processed;
     }
+    cursor_ = next_cursor;
     return foundation::Result<std::uint64_t>::Success(processed);
 }
 
@@ -917,11 +1100,15 @@ foundation::Result<void> ConditionEffectsAdapter::RegisterRoute(ActionTypeId act
 }
 
 foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffectsAdapter::ProcessPending(
-    effects::EffectExecutionBudget budget,
-    core::tasks::ITaskScheduler* scheduler)
+    effects::EffectExecutionBudget budget)
 {
     std::vector<effects::EffectExecutionResult> results;
-    const auto changes = conditions_.ChangesSince(cursor_);
+    const auto batch = conditions_.ReadChangesSince(cursor_);
+    if (batch.snapshot_required || (cursor_ < conditions_.LatestChangeSequence() && batch.changes.empty()))
+    {
+        return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(JournalGapError("conditions"));
+    }
+    const auto& changes = batch.changes;
     for (const auto& change : changes)
     {
         const auto* definition = conditions_.FindDefinition(change.type);
@@ -972,7 +1159,7 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
             request.scale_micro = occurrence_count > max_scale_occurrences
                                       ? std::numeric_limits<std::int64_t>::max()
                                       : static_cast<std::int64_t>(occurrence_count * 1'000'000ull);
-            auto executed = effects_.Execute(std::move(request), budget, scheduler);
+            auto executed = effects_.Execute(std::move(request), budget);
             if (!executed)
             {
                 return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(executed.GetError());
@@ -1034,19 +1221,34 @@ foundation::Result<void> StateTimeAdapter::RebuildConditionSchedules(
     {
         return foundation::Result<void>::Failure(Error("gameplay.condition_unknown", "condition definition is missing while scheduling"));
     }
-    if (instance.expiration_schedule.has_value() && time_.HasSchedule(*instance.expiration_schedule))
+
+    auto cancel_if_present = [this](std::optional<ScheduleId> schedule) -> foundation::Result<void> {
+        if (schedule.has_value() && time_.HasSchedule(*schedule))
+        {
+            const auto cancelled = time_.Cancel(*schedule);
+            if (!cancelled)
+            {
+                return foundation::Result<void>::Failure(cancelled.GetError());
+            }
+        }
+        return foundation::Result<void>::Success();
+    };
+
+    const auto cancelled_expiration = cancel_if_present(instance.expiration_schedule);
+    if (!cancelled_expiration)
     {
-        [[maybe_unused]] const auto cancelled = time_.Cancel(*instance.expiration_schedule);
+        return foundation::Result<void>::Failure(cancelled_expiration.GetError());
     }
-    if (instance.periodic_schedule.has_value() && time_.HasSchedule(*instance.periodic_schedule))
+    const auto cancelled_periodic = cancel_if_present(instance.periodic_schedule);
+    if (!cancelled_periodic)
     {
-        [[maybe_unused]] const auto cancelled = time_.Cancel(*instance.periodic_schedule);
+        return foundation::Result<void>::Failure(cancelled_periodic.GetError());
     }
 
     std::optional<ScheduleId> expiration;
     std::optional<ScheduleId> periodic;
     const auto owner = GameplayObjectRef{conditions::ConditionService::Domain(), instance.id.value};
-    if (instance.expires_at.has_value())
+    if (instance.expires_at.has_value() && !instance.paused_for_materialization)
     {
         const auto scheduled = time_.Schedule(definition->clock, *instance.expires_at, owner, expire_action_, {},
                                               time::CatchUpPolicy::FireOnce, MapPersistence(definition->persistence));
@@ -1056,14 +1258,14 @@ foundation::Result<void> StateTimeAdapter::RebuildConditionSchedules(
         }
         expiration = scheduled.Value();
     }
-    if (definition->periodic_interval.ticks > 0)
+    if (definition->periodic_interval.ticks > 0 && !instance.paused_for_materialization)
     {
         const auto due = ::epidemic::gameplay::CheckedAdd(instance.applied_at, definition->periodic_interval);
         if (!due.has_value())
         {
             if (expiration.has_value() && time_.HasSchedule(*expiration))
             {
-                [[maybe_unused]] const auto cancelled = time_.Cancel(*expiration);
+                (void)time_.Cancel(*expiration);
             }
             return foundation::Result<void>::Failure(Error("gameplay.time_overflow", "condition periodic schedule overflows gameplay time"));
         }
@@ -1076,119 +1278,306 @@ foundation::Result<void> StateTimeAdapter::RebuildConditionSchedules(
         {
             if (expiration.has_value() && time_.HasSchedule(*expiration))
             {
-                [[maybe_unused]] const auto cancelled = time_.Cancel(*expiration);
+                (void)time_.Cancel(*expiration);
             }
             return foundation::Result<void>::Failure(scheduled.GetError());
         }
         periodic = scheduled.Value();
     }
-    return conditions_.SetScheduleLinks(instance.id, expiration, periodic, context);
+    const auto linked = conditions_.SetScheduleLinks(instance.id, expiration, periodic, context);
+    if (!linked)
+    {
+        if (expiration.has_value() && time_.HasSchedule(*expiration))
+        {
+            (void)time_.Cancel(*expiration);
+        }
+        if (periodic.has_value() && time_.HasSchedule(*periodic))
+        {
+            (void)time_.Cancel(*periodic);
+        }
+        return foundation::Result<void>::Failure(linked.GetError());
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<std::uint64_t> StateTimeAdapter::ReconcileConditionSchedules(GameplayContext context)
+{
+    std::uint64_t reconciled = 0;
+    for (const auto& instance : conditions_.AllConditions())
+    {
+        const auto* definition = conditions_.FindDefinition(instance.type);
+        if (definition == nullptr)
+        {
+            return foundation::Result<std::uint64_t>::Failure(Error("gameplay.condition_unknown", "condition definition is missing while reconciling schedules"));
+        }
+
+        const auto owner = GameplayObjectRef{conditions::ConditionService::Domain(), instance.id.value};
+        const auto persistence = MapPersistence(definition->persistence);
+        bool needs_rebuild = false;
+        auto expiration = instance.expiration_schedule;
+        auto periodic = instance.periodic_schedule;
+
+        if (instance.expires_at.has_value() && !instance.paused_for_materialization)
+        {
+            if (!expiration.has_value() || !time_.HasSchedule(*expiration))
+            {
+                needs_rebuild = true;
+            }
+            else
+            {
+                const auto entry = time_.GetSchedule(*expiration);
+                if (!entry.has_value() || !ScheduleMatches(*entry, definition->clock, owner, expire_action_, persistence) ||
+                    entry->due != *instance.expires_at || entry->recurrence.kind != time::RecurrenceKind::Once)
+                {
+                    needs_rebuild = true;
+                }
+            }
+        }
+        else if (expiration.has_value())
+        {
+            if (time_.HasSchedule(*expiration))
+            {
+                const auto cancelled = time_.Cancel(*expiration);
+                if (!cancelled)
+                {
+                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
+                }
+            }
+            expiration.reset();
+        }
+
+        if (definition->periodic_interval.ticks > 0 && !instance.paused_for_materialization)
+        {
+            if (!periodic.has_value() || !time_.HasSchedule(*periodic))
+            {
+                needs_rebuild = true;
+            }
+            else
+            {
+                const auto entry = time_.GetSchedule(*periodic);
+                const bool recurrence_matches = entry.has_value() && entry->recurrence.kind == time::RecurrenceKind::FixedInterval &&
+                                                entry->recurrence.interval == definition->periodic_interval &&
+                                                entry->catch_up == MapCatchUp(definition->periodic_catch_up);
+                if (!entry.has_value() || !ScheduleMatches(*entry, definition->clock, owner, periodic_action_, persistence) ||
+                    !recurrence_matches)
+                {
+                    needs_rebuild = true;
+                }
+            }
+        }
+        else if (periodic.has_value())
+        {
+            if (time_.HasSchedule(*periodic))
+            {
+                const auto cancelled = time_.Cancel(*periodic);
+                if (!cancelled)
+                {
+                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
+                }
+            }
+            periodic.reset();
+        }
+
+        if (needs_rebuild)
+        {
+            const auto rebuilt = RebuildConditionSchedules(instance, context);
+            if (!rebuilt)
+            {
+                return foundation::Result<std::uint64_t>::Failure(rebuilt.GetError());
+            }
+            ++reconciled;
+        }
+        else if (expiration != instance.expiration_schedule || periodic != instance.periodic_schedule)
+        {
+            const auto linked = conditions_.SetScheduleLinks(instance.id, expiration, periodic, context);
+            if (!linked)
+            {
+                return foundation::Result<std::uint64_t>::Failure(linked.GetError());
+            }
+            ++reconciled;
+        }
+    }
+    return foundation::Result<std::uint64_t>::Success(reconciled);
 }
 
 foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeConditionSchedules(GameplayContext context)
 {
     std::uint64_t processed = 0;
-    const auto changes = conditions_.ChangesSince(condition_cursor_);
-    for (const auto& change : changes)
+    const auto batch = conditions_.ReadChangesSince(condition_cursor_);
+    const bool condition_snapshot_required = batch.snapshot_required ||
+                                             (condition_cursor_ < conditions_.LatestChangeSequence() && batch.changes.empty());
+    if (condition_snapshot_required)
     {
-        if (change.kind == conditions::ConditionChangeKind::Added || change.kind == conditions::ConditionChangeKind::Refreshed)
+        const auto reconciled = ReconcileConditionSchedules(context);
+        if (!reconciled)
+        {
+            return foundation::Result<std::uint64_t>::Failure(reconciled.GetError());
+        }
+        condition_cursor_ = conditions_.LatestChangeSequence();
+        return foundation::Result<std::uint64_t>::Success(reconciled.Value());
+    }
+
+    std::uint64_t next_cursor = condition_cursor_;
+    for (const auto& change : batch.changes)
+    {
+        const auto change_context = change.context.tick.IsValid() ? change.context : context;
+        if (change.kind == conditions::ConditionChangeKind::Added || change.kind == conditions::ConditionChangeKind::Refreshed ||
+            change.kind == conditions::ConditionChangeKind::DurationExtended ||
+            change.kind == conditions::ConditionChangeKind::MaterializationPauseChanged)
         {
             if (const auto* instance = conditions_.Find(change.instance))
             {
-                const auto result = RebuildConditionSchedules(*instance, change.context.tick.IsValid() ? change.context : context);
+                const auto result = RebuildConditionSchedules(*instance, change_context);
                 if (!result)
                 {
                     return foundation::Result<std::uint64_t>::Failure(result.GetError());
                 }
             }
         }
-        else if (change.kind == conditions::ConditionChangeKind::DurationExtended)
+        else if (change.kind == conditions::ConditionChangeKind::Removed || change.kind == conditions::ConditionChangeKind::Expired)
         {
             if (change.expiration_schedule.has_value() && time_.HasSchedule(*change.expiration_schedule))
             {
-                [[maybe_unused]] const auto cancelled = time_.Cancel(*change.expiration_schedule);
-            }
-            if (const auto* instance = conditions_.Find(change.instance))
-            {
-                const auto* definition = conditions_.FindDefinition(instance->type);
-                if (definition != nullptr && instance->expires_at.has_value())
+                const auto cancelled = time_.Cancel(*change.expiration_schedule);
+                if (!cancelled)
                 {
-                    const GameplayObjectRef owner{conditions::ConditionService::Domain(), instance->id.value};
-                    const auto scheduled = time_.Schedule(definition->clock, *instance->expires_at, owner, expire_action_, {},
-                                                          time::CatchUpPolicy::FireOnce, MapPersistence(definition->persistence));
-                    if (!scheduled)
-                    {
-                        return foundation::Result<std::uint64_t>::Failure(scheduled.GetError());
-                    }
-                    const auto linked = conditions_.SetScheduleLinks(instance->id, scheduled.Value(), instance->periodic_schedule,
-                                                                     change.context.tick.IsValid() ? change.context : context);
-                    if (!linked)
-                    {
-                        [[maybe_unused]] const auto cancelled = time_.Cancel(scheduled.Value());
-                        return foundation::Result<std::uint64_t>::Failure(linked.GetError());
-                    }
+                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
                 }
-            }
-        }        else if (change.kind == conditions::ConditionChangeKind::Removed || change.kind == conditions::ConditionChangeKind::Expired)
-        {
-            if (change.expiration_schedule.has_value() && time_.HasSchedule(*change.expiration_schedule))
-            {
-                [[maybe_unused]] const auto cancelled = time_.Cancel(*change.expiration_schedule);
             }
             if (change.periodic_schedule.has_value() && time_.HasSchedule(*change.periodic_schedule))
             {
-                [[maybe_unused]] const auto cancelled = time_.Cancel(*change.periodic_schedule);
+                const auto cancelled = time_.Cancel(*change.periodic_schedule);
+                if (!cancelled)
+                {
+                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
+                }
             }
         }
-        condition_cursor_ = change.sequence;
+        next_cursor = change.sequence;
         ++processed;
     }
-    return foundation::Result<std::uint64_t>::Success(processed);
+    condition_cursor_ = next_cursor;
+
+    const auto reconciled = ReconcileConditionSchedules(context);
+    if (!reconciled)
+    {
+        return foundation::Result<std::uint64_t>::Failure(reconciled.GetError());
+    }
+    return foundation::Result<std::uint64_t>::Success(processed + reconciled.Value());
 }
 
-foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeDeferredEffects(GameplayContext)
+foundation::Result<std::uint64_t> StateTimeAdapter::ReconcileDeferredEffectSchedules(GameplayContext context)
 {
-    std::uint64_t processed = 0;
-    for (const auto& change : effects_.ChangesSince(effect_cursor_))
-    {
-        if (change.kind == effects::EffectChangeKind::DeferredCancelled && change.schedule.has_value() &&
-            time_.HasSchedule(*change.schedule))
-        {
-            [[maybe_unused]] const auto cancelled = time_.Cancel(*change.schedule);
-        }
-        effect_cursor_ = change.sequence;
-        ++processed;
-    }
-
-    for (const auto& deferred : effects_.UnscheduledDeferred())
+    (void)context;
+    std::uint64_t reconciled = 0;
+    for (const auto& deferred : effects_.AllDeferred())
     {
         const auto owner = GameplayObjectRef{effects::EffectService::Domain(), deferred.id.value};
         const auto persistence = deferred.persistence == effects::DeferredEffectPersistence::Persistent
                                      ? time::SchedulePersistence::Persistent
                                      : time::SchedulePersistence::Session;
-        const auto scheduled = time_.Schedule(deferred.clock, deferred.due, owner, deferred_effect_action_, {},
-                                              time::CatchUpPolicy::FireOnce, persistence);
-        if (!scheduled)
+        bool needs_schedule = false;
+        if (deferred.schedule.has_value() && time_.HasSchedule(*deferred.schedule))
         {
-            return foundation::Result<std::uint64_t>::Failure(scheduled.GetError());
+            const auto entry = time_.GetSchedule(*deferred.schedule);
+            if (!entry.has_value() || !ScheduleMatches(*entry, deferred.clock, owner, deferred_effect_action_, persistence) ||
+                entry->due != deferred.due || entry->recurrence.kind != time::RecurrenceKind::Once)
+            {
+                const auto cancelled = time_.Cancel(*deferred.schedule);
+                if (!cancelled)
+                {
+                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
+                }
+                const auto cleared = effects_.ClearDeferredSchedule(deferred.id);
+                if (!cleared)
+                {
+                    return foundation::Result<std::uint64_t>::Failure(cleared.GetError());
+                }
+                needs_schedule = true;
+                ++reconciled;
+            }
         }
-        const auto bind = effects_.BindDeferredSchedule(deferred.id, scheduled.Value());
-        if (!bind)
+        else
         {
-            [[maybe_unused]] const auto cancelled = time_.Cancel(scheduled.Value());
-            return foundation::Result<std::uint64_t>::Failure(bind.GetError());
+            if (deferred.schedule.has_value())
+            {
+                const auto cleared = effects_.ClearDeferredSchedule(deferred.id);
+                if (!cleared)
+                {
+                    return foundation::Result<std::uint64_t>::Failure(cleared.GetError());
+                }
+            }
+            needs_schedule = true;
         }
+
+        if (needs_schedule)
+        {
+            const auto scheduled = time_.Schedule(deferred.clock, deferred.due, owner, deferred_effect_action_, {},
+                                                  time::CatchUpPolicy::FireOnce, persistence);
+            if (!scheduled)
+            {
+                return foundation::Result<std::uint64_t>::Failure(scheduled.GetError());
+            }
+            const auto bind = effects_.BindDeferredSchedule(deferred.id, scheduled.Value());
+            if (!bind)
+            {
+                if (time_.HasSchedule(scheduled.Value()))
+                {
+                    (void)time_.Cancel(scheduled.Value());
+                }
+                return foundation::Result<std::uint64_t>::Failure(bind.GetError());
+            }
+            ++reconciled;
+        }
+    }
+    return foundation::Result<std::uint64_t>::Success(reconciled);
+}
+
+foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeDeferredEffects(GameplayContext context)
+{
+    std::uint64_t processed = 0;
+    const auto batch = effects_.ReadChangesSince(effect_cursor_);
+    if (batch.snapshot_required)
+    {
+        const auto reconciled = ReconcileDeferredEffectSchedules(context);
+        if (!reconciled)
+        {
+            return foundation::Result<std::uint64_t>::Failure(reconciled.GetError());
+        }
+        effect_cursor_ = effects_.LatestChangeSequence();
+        return foundation::Result<std::uint64_t>::Success(reconciled.Value());
+    }
+
+    std::uint64_t next_cursor = effect_cursor_;
+    for (const auto& change : batch.changes)
+    {
+        if ((change.kind == effects::EffectChangeKind::DeferredCancelled || change.kind == effects::EffectChangeKind::DeferredExecuted) &&
+            change.schedule.has_value() && time_.HasSchedule(*change.schedule))
+        {
+            const auto cancelled = time_.Cancel(*change.schedule);
+            if (!cancelled)
+            {
+                return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
+            }
+        }
+        next_cursor = change.sequence;
         ++processed;
     }
-    return foundation::Result<std::uint64_t>::Success(processed);
+    effect_cursor_ = next_cursor;
+
+    const auto reconciled = ReconcileDeferredEffectSchedules(context);
+    if (!reconciled)
+    {
+        return foundation::Result<std::uint64_t>::Failure(reconciled.GetError());
+    }
+    return foundation::Result<std::uint64_t>::Success(processed + reconciled.Value());
 }
 
 foundation::Result<StateTimeProcessResult> StateTimeAdapter::ProcessDue(
     ClockId clock,
     GameplayContext context,
     time::SchedulerBudget scheduler_budget,
-    effects::EffectExecutionBudget effect_budget,
-    core::tasks::ITaskScheduler* scheduler)
+    effects::EffectExecutionBudget effect_budget)
 {
     const auto triggers_result = time_.CollectDue(clock, scheduler_budget);
     if (!triggers_result)
@@ -1203,35 +1592,62 @@ foundation::Result<StateTimeProcessResult> StateTimeAdapter::ProcessDue(
         trigger_context.time = trigger.observed_at;
         if (trigger.action == expire_action_ && trigger.owner.domain == conditions::ConditionService::Domain())
         {
-            const auto handled = conditions_.HandleExpirationDue(conditions::ConditionInstanceId{trigger.owner.id}, trigger.observed_at, trigger_context);
-            if (handled)
+            const conditions::ConditionInstanceId instance{trigger.owner.id};
+            const auto handled = conditions_.HandleExpirationDue(instance, trigger.observed_at, trigger_context);
+            if (!handled)
             {
-                ++result.condition_expirations;
+                if (conditions_.Find(instance) != nullptr)
+                {
+                    (void)ReconcileConditionSchedules(trigger_context);
+                    return foundation::Result<StateTimeProcessResult>::Failure(handled.GetError());
+                }
+                continue;
             }
+            ++result.condition_expirations;
         }
         else if (trigger.action == periodic_action_ && trigger.owner.domain == conditions::ConditionService::Domain())
         {
-            const auto handled = conditions_.HandlePeriodicDue(conditions::ConditionInstanceId{trigger.owner.id}, trigger.occurrence_count, trigger_context);
+            const conditions::ConditionInstanceId instance{trigger.owner.id};
+            const auto handled = conditions_.HandlePeriodicDue(instance, trigger.occurrence_count, trigger_context);
             if (!handled)
             {
-                return foundation::Result<StateTimeProcessResult>::Failure(handled.GetError());
+                if (conditions_.Find(instance) != nullptr)
+                {
+                    (void)ReconcileConditionSchedules(trigger_context);
+                    return foundation::Result<StateTimeProcessResult>::Failure(handled.GetError());
+                }
+                continue;
             }
             result.condition_periodic += trigger.occurrence_count;
         }
         else if (trigger.action == deferred_effect_action_ && trigger.owner.domain == effects::EffectService::Domain())
         {
-            auto request = effects_.TakeDeferredBySchedule(trigger.schedule, trigger_context);
+            auto request = effects_.PeekDeferredBySchedule(trigger.schedule, trigger_context);
             if (!request)
             {
-                return foundation::Result<StateTimeProcessResult>::Failure(request.GetError());
+                continue;
             }
-            request.Value().context = trigger_context;
-            auto executed = effects_.Execute(std::move(request).Value(), effect_budget, scheduler);
+            auto effect_request = std::move(request).Value();
+            effect_request.context = trigger_context;
+            auto executed = effects_.Execute(std::move(effect_request), effect_budget);
             if (!executed)
             {
+                (void)ReconcileDeferredEffectSchedules(trigger_context);
                 return foundation::Result<StateTimeProcessResult>::Failure(executed.GetError());
             }
-            result.effect_executions.push_back(std::move(executed).Value());
+            auto execution = std::move(executed).Value();
+            if (execution.disposition == effects::EffectBatchDisposition::Failed)
+            {
+                (void)ReconcileDeferredEffectSchedules(trigger_context);
+                return foundation::Result<StateTimeProcessResult>::Failure(
+                    Error("gameplay.deferred_effect_execution_failed", "deferred effect execution failed and remains pending for retry"));
+            }
+            const auto acknowledged = effects_.AcknowledgeDeferredBySchedule(trigger.schedule, trigger_context);
+            if (!acknowledged)
+            {
+                return foundation::Result<StateTimeProcessResult>::Failure(acknowledged.GetError());
+            }
+            result.effect_executions.push_back(std::move(execution));
         }
         else
         {
@@ -1251,6 +1667,7 @@ foundation::Result<StateTimeProcessResult> StateTimeAdapter::ProcessDue(
     }
     return foundation::Result<StateTimeProcessResult>::Success(std::move(result));
 }
+
 } // namespace epidemic::gameplay::state_integration
 
 
