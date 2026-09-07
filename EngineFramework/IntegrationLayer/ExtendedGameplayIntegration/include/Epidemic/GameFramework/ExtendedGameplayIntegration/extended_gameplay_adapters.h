@@ -135,7 +135,8 @@ struct CoordinatedTradePlan
     economy::TradePlan money;
     std::vector<TradeGoodsLine> goods;
 };
-enum class TradeGoodsLegState { Reserved, ItemTransferred, OwnershipTransferred };
+enum class TradeGoodsLegState { NotReserved, Reserved, Released, ItemTransferred, OwnershipTransferred };
+enum class TradeMoneyLegState { NotPrepared, Prepared, Reserved, Committed, Cancelled, ReconciliationRequired };
 enum class CoordinatedTradeState { Prepared, Committing, ReconciliationRequired, Completed, Cancelled };
 struct CoordinatedTradeGoodsExecution
 {
@@ -145,12 +146,13 @@ struct CoordinatedTradeGoodsExecution
     items::ItemReservationId reservation{};
     Revision ownership_revision{};
     ownership::PropertyDomainId ownership_domain{};
-    TradeGoodsLegState state = TradeGoodsLegState::Reserved;
+    TradeGoodsLegState state = TradeGoodsLegState::NotReserved;
 };
 struct CoordinatedTradeExecution
 {
     TradeExecutionId id{};
     economy::TradeTransactionId money_transaction{};
+    TradeMoneyLegState money_state = TradeMoneyLegState::NotPrepared;
     GameplayObjectRef buyer{};
     GameplayObjectRef seller{};
     GameplayContext context{};

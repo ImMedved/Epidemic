@@ -205,8 +205,19 @@ int main()
     auto outputs = ability_time.ProcessTrigger(triggers.Value().front());
     if (!outputs || outputs.Value().size() != 1 || outputs.Value().front().occurrence_at.ticks != 5 ||
         outputs.Value().front().output_index != 0) return 43;
-    auto effect_results = ability_effects.Dispatch(outputs.Value());
+    const auto undelivered_outputs_checkpoint = ability_time.CaptureCheckpoint();
+    AbilityTimeAdapter restored_ability_time(gameplay_time, abilities, clock.Value(), ability_due_action.Value());
+    if (!restored_ability_time.RestoreCheckpoint(undelivered_outputs_checkpoint) ||
+        restored_ability_time.PendingOutputCount() != 1) return 143;
+    auto restored_time_outputs = restored_ability_time.ProcessTrigger(triggers.Value().front());
+    if (!restored_time_outputs || restored_time_outputs.Value().size() != 1 ||
+        restored_time_outputs.Value().front().execution != outputs.Value().front().execution ||
+        restored_time_outputs.Value().front().output_index != outputs.Value().front().output_index) return 144;
+    auto effect_results = ability_effects.Dispatch(restored_time_outputs.Value());
     if (!effect_results || effect_results.Value().size() != 1) return 44;
+    if (!restored_ability_time.AcknowledgeOutputs(schedule.Value()) ||
+        restored_ability_time.PendingOutputCount() != 0 ||
+        !restored_ability_time.CaptureCheckpoint().pending.empty()) return 145;
     const auto *enemy_state = combat.FindCombatant(enemy);
     if (enemy_state == nullptr || enemy_state->life_state != CombatLifeState::Dead) return 45;
 
@@ -267,6 +278,7 @@ int main()
     if (!channel_time.RestoreSnapshot(healthy_time_snapshot)) return 59;
     auto channel_retry = channel_adapter.ProcessTrigger(channel_triggers.Value().front());
     if (!channel_retry || channel_retry.Value().size() != 1 || channel_retry.Value().front().occurrence_at.ticks != 5) return 60;
+    if (!channel_adapter.AcknowledgeOutputs(channel_triggers.Value().front().schedule)) return 146;
     const auto *channel_after_retry = channel_abilities.FindExecution(channel_execution.Value());
     if (!channel_after_retry || !channel_after_retry->schedule || channel_after_retry->next_channel_at.ticks != 10) return 61;
     auto channel_duplicate = channel_adapter.ProcessTrigger(channel_triggers.Value().front());

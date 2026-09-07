@@ -193,8 +193,11 @@ class AbilityTimeAdapter
     AbilityTimeAdapter(time::GameplayTimeService& time,abilities::AbilityService& abilities,ClockId clock,ActionTypeId action) : time_(time),abilities_(abilities),clock_(clock),action_(action) {}
     [[nodiscard]] foundation::Result<ScheduleId> ScheduleExecution(abilities::AbilityExecutionId execution);
     [[nodiscard]] foundation::Result<std::vector<abilities::AbilityOutput>> ProcessTrigger(const time::ScheduledTrigger& trigger);
+    [[nodiscard]] const AbilityTimePendingTrigger* FindPendingOutputs(ScheduleId trigger) const noexcept;
+    [[nodiscard]] foundation::Result<void> AcknowledgeOutputs(ScheduleId trigger);
     [[nodiscard]] AbilityTimeCheckpoint CaptureCheckpoint() const { return {clock_, action_, pending_}; }
     [[nodiscard]] foundation::Result<void> RestoreCheckpoint(AbilityTimeCheckpoint checkpoint);
+    [[nodiscard]] std::size_t PendingOutputCount() const noexcept { return pending_.size(); }
   private:
     time::GameplayTimeService& time_;
     abilities::AbilityService& abilities_;

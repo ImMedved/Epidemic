@@ -135,8 +135,31 @@ int main()
           "population encounter plan completed after exact bindings");
     Check(restored_population.FindAllocationsByCorrelation(spawn.spawn.request_id.value).empty(),
           "terminal encounter allocations are pruned after complete binding");
-    Check(restored_adapter.CaptureSnapshot().plans.empty(),
-          "completed encounter plans are not persisted as pending orchestration state");
+    const auto completed_adapter_snapshot = restored_adapter.CaptureSnapshot();
+    Check(completed_adapter_snapshot.plans.size() == 1 &&
+              completed_adapter_snapshot.plans.front().state == PopulationEncounterPlanState::Completed,
+          "completed encounter result is persisted as an idempotency tombstone");
+    const auto completed_population_snapshot = restored_population.CaptureSnapshot();
+    const auto completed_encounters_snapshot = restored_encounters.CaptureSnapshot();
+    PopulationService replay_population;
+    RegisterBanditTemplate(replay_population);
+    Check(static_cast<bool>(replay_population.RestoreSnapshot(completed_population_snapshot)),
+          "restore population after completed encounter");
+    EncountersService replay_encounters;
+    Check(static_cast<bool>(replay_encounters.RestoreSnapshot(completed_encounters_snapshot)),
+          "restore encounters after completed encounter");
+    PopulationEncounterAdapter replay_adapter;
+    Check(static_cast<bool>(replay_adapter.RestoreSnapshot(completed_adapter_snapshot, replay_population, replay_encounters)),
+          "restore completed population encounter tombstone");
+    SpawnRequest replay_request = request;
+    replay_request.id = spawn.spawn.request_id;
+    const auto replay_spawn = replay_adapter.SpawnFromPopulation(
+        replay_population, replay_encounters, bandit_group.Value(), replay_request, 2);
+    Check(static_cast<bool>(replay_spawn) && replay_spawn.Value().allocated_units == spawn.allocated_units &&
+              replay_spawn.Value().spawn.spawned_records == spawn.spawn.spawned_records,
+          "completed spawn request remains idempotent after restore");
+    Check(replay_population.FindAllocationsByCorrelation(spawn.spawn.request_id.value).empty(),
+          "completed spawn replay does not reserve new residents");
 
     const auto resident = PopulationService::ResidentRef(spawn.allocated_units.front());
     RolesJobsService roles;

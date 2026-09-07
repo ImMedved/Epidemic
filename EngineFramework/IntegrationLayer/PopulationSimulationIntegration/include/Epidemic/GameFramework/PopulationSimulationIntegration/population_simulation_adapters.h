@@ -15,6 +15,7 @@ namespace epidemic::gameplay::population_simulation
 enum class PopulationEncounterPlanState
 {
     AwaitingEntityBindings,
+    RollbackPending,
     Completed,
     Failed
 };

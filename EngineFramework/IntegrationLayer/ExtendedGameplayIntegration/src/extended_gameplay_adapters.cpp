@@ -464,7 +464,12 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
         {
             bool rollback_ok = true;
             for (std::size_t i = 0; i < reserved_goods; ++i)
-                if (!items_.ReleaseReservation(execution.goods[i].reservation, execution.context)) rollback_ok = false;
+            {
+                if (items_.ReleaseReservation(execution.goods[i].reservation, execution.context))
+                    execution.goods[i].state = TradeGoodsLegState::Released;
+                else
+                    rollback_ok = false;
+            }
             if (!rollback_ok)
             {
                 execution.state = CoordinatedTradeState::ReconciliationRequired;
@@ -474,6 +479,7 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
             return foundation::Result<TradeExecutionId>::Failure(reservation.GetError());
         }
         good.reservation = reservation.Value();
+        good.state = TradeGoodsLegState::Reserved;
         ++reserved_goods;
     }
 
@@ -483,7 +489,13 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
     {
         bool rollback_ok = true;
         for (auto& good : execution.goods)
-            if (!items_.ReleaseReservation(good.reservation, execution.context)) rollback_ok = false;
+        {
+            if (good.state != TradeGoodsLegState::Reserved) continue;
+            if (items_.ReleaseReservation(good.reservation, execution.context))
+                good.state = TradeGoodsLegState::Released;
+            else
+                rollback_ok = false;
+        }
         if (!rollback_ok)
         {
             execution.state = CoordinatedTradeState::ReconciliationRequired;
@@ -493,12 +505,22 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
         return foundation::Result<TradeExecutionId>::Failure(transaction.GetError());
     }
     execution.money_transaction = transaction.Value();
+    execution.money_state = TradeMoneyLegState::Prepared;
     auto money_reserved = economy_.ReserveTrade(execution.money_transaction);
     if (!money_reserved)
     {
-        bool rollback_ok = static_cast<bool>(economy_.CancelTrade(execution.money_transaction));
+        const auto money_cancelled = economy_.CancelTrade(execution.money_transaction);
+        bool rollback_ok = static_cast<bool>(money_cancelled);
+        execution.money_state = money_cancelled ? TradeMoneyLegState::Cancelled
+                                                : TradeMoneyLegState::ReconciliationRequired;
         for (auto& good : execution.goods)
-            if (!items_.ReleaseReservation(good.reservation, execution.context)) rollback_ok = false;
+        {
+            if (good.state != TradeGoodsLegState::Reserved) continue;
+            if (items_.ReleaseReservation(good.reservation, execution.context))
+                good.state = TradeGoodsLegState::Released;
+            else
+                rollback_ok = false;
+        }
         if (!rollback_ok)
         {
             execution.state = CoordinatedTradeState::ReconciliationRequired;
@@ -508,6 +530,7 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
         return foundation::Result<TradeExecutionId>::Failure(money_reserved.GetError());
     }
 
+    execution.money_state = TradeMoneyLegState::Reserved;
     execution.state = CoordinatedTradeState::Prepared;
     executions_.emplace(id, std::move(execution));
     return foundation::Result<TradeExecutionId>::Success(id);
@@ -521,13 +544,20 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Continue(Trade
     auto& execution = found->second;
     if (execution.state == CoordinatedTradeState::Completed)
         return foundation::Result<economy::TradeTransactionId>::Success(execution.money_transaction);
-    if (!execution.money_transaction.IsValid())
+    if (!execution.money_transaction.IsValid() || execution.money_state != TradeMoneyLegState::Reserved)
     {
         execution.state = CoordinatedTradeState::ReconciliationRequired;
         return foundation::Result<economy::TradeTransactionId>::Failure(
             Error("gameplay.trade.reconciliation_required", "trade preparation is incomplete and requires reconciliation"));
     }
 
+    if (std::any_of(execution.goods.begin(), execution.goods.end(),
+                    [](const auto& good) { return good.state != TradeGoodsLegState::Reserved; }))
+    {
+        execution.state = CoordinatedTradeState::ReconciliationRequired;
+        return foundation::Result<economy::TradeTransactionId>::Failure(
+            Error("gameplay.trade.reconciliation_required", "trade goods preparation is incomplete"));
+    }
     execution.state = CoordinatedTradeState::Committing;
     for (auto& good : execution.goods)
     {
@@ -581,9 +611,11 @@ foundation::Result<economy::TradeTransactionId> TradeCoordinator::Continue(Trade
     auto money = economy_.CommitTrade(execution.money_transaction);
     if (!money)
     {
+        execution.money_state = TradeMoneyLegState::ReconciliationRequired;
         execution.state = CoordinatedTradeState::ReconciliationRequired;
         return foundation::Result<economy::TradeTransactionId>::Failure(money.GetError());
     }
+    execution.money_state = TradeMoneyLegState::Committed;
     execution.state = CoordinatedTradeState::Completed;
     return foundation::Result<economy::TradeTransactionId>::Success(execution.money_transaction);
 }
@@ -605,7 +637,8 @@ foundation::Result<void> TradeCoordinator::Cancel(TradeExecutionId id)
     if (execution.state == CoordinatedTradeState::Completed)
         return foundation::Result<void>::Failure(Error("gameplay.trade.already_completed", "completed trade cannot be cancelled"));
     if (std::any_of(execution.goods.begin(), execution.goods.end(),
-                    [](const auto& good) { return good.state != TradeGoodsLegState::Reserved; }))
+                    [](const auto& good) { return good.state == TradeGoodsLegState::ItemTransferred ||
+                                                   good.state == TradeGoodsLegState::OwnershipTransferred; }))
     {
         execution.state = CoordinatedTradeState::ReconciliationRequired;
         return foundation::Result<void>::Failure(
@@ -616,13 +649,24 @@ foundation::Result<void> TradeCoordinator::Cancel(TradeExecutionId id)
     for (auto& good : execution.goods)
     {
         const auto* reservation = items_.FindReservation(good.reservation);
-        if (reservation && reservation->state == items::ReservationState::Active)
-            if (!items_.ReleaseReservation(good.reservation, execution.context)) ok = false;
+        if (good.state == TradeGoodsLegState::Reserved && reservation && reservation->state == items::ReservationState::Active)
+        {
+            if (items_.ReleaseReservation(good.reservation, execution.context))
+                good.state = TradeGoodsLegState::Released;
+            else
+                ok = false;
+        }
     }
     if (execution.money_transaction.IsValid())
     {
         const auto* transaction = economy_.FindTransaction(execution.money_transaction);
-        if (transaction && !economy_.CancelTrade(execution.money_transaction)) ok = false;
+        if (transaction)
+        {
+            if (economy_.CancelTrade(execution.money_transaction))
+                execution.money_state = TradeMoneyLegState::Cancelled;
+            else
+                ok = false;
+        }
     }
     if (!ok)
     {
@@ -655,40 +699,91 @@ foundation::Result<void> TradeCoordinator::RestoreSnapshot(TradeCoordinatorSnaps
     for (auto& execution : snapshot.executions)
     {
         if (!execution.id.IsValid() || !execution.buyer.IsValid() || !execution.seller.IsValid() ||
-            execution.buyer == execution.seller || !execution.money_transaction.IsValid() || restored.contains(execution.id))
+            execution.buyer == execution.seller || restored.contains(execution.id))
             return foundation::Result<void>::Failure(Error("gameplay.trade.restore_invalid", "invalid trade execution snapshot"));
-        if (execution.id.value.High() == execution_ids_.Scope().Raw()) max_low = std::max(max_low, execution.id.value.Low());
-        if (execution.state != CoordinatedTradeState::Completed && execution.state != CoordinatedTradeState::Cancelled)
+        if (execution.id.value.High() == execution_ids_.Scope().Raw())
+            max_low = std::max(max_low, execution.id.value.Low());
+
+        const auto* transaction = execution.money_transaction.IsValid()
+                                      ? economy_.FindTransaction(execution.money_transaction)
+                                      : nullptr;
+        switch (execution.money_state)
         {
-            const auto* transaction = economy_.FindTransaction(execution.money_transaction);
+        case TradeMoneyLegState::NotPrepared:
+            if (execution.money_transaction.IsValid())
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.trade.restore_invalid", "unprepared money leg has a transaction"));
+            break;
+        case TradeMoneyLegState::Prepared:
+            if (!transaction || transaction->state != economy::TradeTransactionState::Prepared)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.trade.restore_invalid", "prepared money leg is missing"));
+            break;
+        case TradeMoneyLegState::Reserved:
             if (!transaction || transaction->state != economy::TradeTransactionState::Reserved)
                 return foundation::Result<void>::Failure(
-                    Error("gameplay.trade.restore_invalid", "active trade execution is missing reserved money transaction"));
+                    Error("gameplay.trade.restore_invalid", "reserved money leg is missing"));
+            break;
+        case TradeMoneyLegState::Committed:
+            if (!transaction || transaction->state != economy::TradeTransactionState::Committed)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.trade.restore_invalid", "committed money leg is inconsistent"));
+            break;
+        case TradeMoneyLegState::Cancelled:
+            if (execution.money_transaction.IsValid() &&
+                (!transaction || transaction->state != economy::TradeTransactionState::Cancelled))
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.trade.restore_invalid", "cancelled money leg is inconsistent"));
+            break;
+        case TradeMoneyLegState::ReconciliationRequired:
+            if (execution.money_transaction.IsValid() && transaction == nullptr)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.trade.restore_invalid", "reconciliation money transaction is missing"));
+            break;
         }
+
         std::unordered_set<items::ItemInstanceId, items::IdHash> seen;
         for (const auto& good : execution.goods)
         {
             if (!good.line.item.IsValid() || !good.line.destination.IsValid() || !seen.insert(good.line.item).second ||
-                !SameTradeParty(good.line.from_owner, execution.seller) || !SameTradeParty(good.line.to_owner, execution.buyer) ||
-                good.quantity <= 0)
-                return foundation::Result<void>::Failure(Error("gameplay.trade.restore_invalid", "invalid trade goods execution"));
-            if (good.state == TradeGoodsLegState::Reserved)
+                !SameTradeParty(good.line.from_owner, execution.seller) ||
+                !SameTradeParty(good.line.to_owner, execution.buyer) || good.quantity <= 0)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.trade.restore_invalid", "invalid trade goods execution"));
+
+            const auto* reservation = good.reservation.IsValid() ? items_.FindReservation(good.reservation) : nullptr;
+            const auto item = items_.FindItemCopy(good.line.item);
+            if (!item)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.trade.restore_invalid", "trade item is missing"));
+            switch (good.state)
             {
-                const auto* reservation = items_.FindReservation(good.reservation);
-                if (!reservation || reservation->state != items::ReservationState::Active || reservation->item != good.line.item ||
-                    reservation->quantity != good.quantity || reservation->owner != execution.seller ||
-                    reservation->reason != TypeId::FromString("trade.goods"))
+            case TradeGoodsLegState::NotReserved:
+                if (good.reservation.IsValid())
+                    return foundation::Result<void>::Failure(
+                        Error("gameplay.trade.restore_invalid", "unreserved goods leg has a reservation"));
+                break;
+            case TradeGoodsLegState::Reserved:
+                if (!reservation || reservation->state != items::ReservationState::Active ||
+                    reservation->item != good.line.item || reservation->quantity != good.quantity ||
+                    reservation->owner != execution.seller || reservation->reason != TypeId::FromString("trade.goods"))
                     return foundation::Result<void>::Failure(
                         Error("gameplay.trade.restore_invalid", "trade goods reservation is missing or mismatched"));
-            }
-            else
-            {
-                const auto item = items_.FindItemCopy(good.line.item);
-                if (!item || item->location.kind != items::ItemLocationKind::Container ||
+                break;
+            case TradeGoodsLegState::Released:
+                if (reservation && reservation->state != items::ReservationState::Released)
+                    return foundation::Result<void>::Failure(
+                        Error("gameplay.trade.restore_invalid", "released goods leg still has an active reservation"));
+                break;
+            case TradeGoodsLegState::ItemTransferred:
+            case TradeGoodsLegState::OwnershipTransferred:
+                if (item->location.kind != items::ItemLocationKind::Container ||
                     item->location.container != good.line.destination)
                     return foundation::Result<void>::Failure(
                         Error("gameplay.trade.restore_invalid", "committed trade item is not at its destination"));
+                break;
             }
+
             if (good.state == TradeGoodsLegState::OwnershipTransferred)
             {
                 const auto* owner = ownership_.GetOwner(ItemPropertyRef(good.line.item), good.ownership_domain);
@@ -697,11 +792,34 @@ foundation::Result<void> TradeCoordinator::RestoreSnapshot(TradeCoordinatorSnaps
                         Error("gameplay.trade.restore_invalid", "committed trade ownership leg is inconsistent"));
             }
         }
+
+        if (execution.state == CoordinatedTradeState::Prepared &&
+            (execution.money_state != TradeMoneyLegState::Reserved ||
+             std::any_of(execution.goods.begin(), execution.goods.end(),
+                         [](const auto& good) { return good.state != TradeGoodsLegState::Reserved; })))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.trade.restore_invalid", "prepared trade does not have fully reserved legs"));
+        if (execution.state == CoordinatedTradeState::Completed &&
+            (execution.money_state != TradeMoneyLegState::Committed ||
+             std::any_of(execution.goods.begin(), execution.goods.end(),
+                         [](const auto& good) { return good.state != TradeGoodsLegState::OwnershipTransferred; })))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.trade.restore_invalid", "completed trade has incomplete legs"));
+        if (execution.state == CoordinatedTradeState::Cancelled &&
+            std::any_of(execution.goods.begin(), execution.goods.end(), [](const auto& good) {
+                return good.state != TradeGoodsLegState::NotReserved && good.state != TradeGoodsLegState::Released;
+            }))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.trade.restore_invalid", "cancelled trade has live goods legs"));
+
         restored.emplace(execution.id, std::move(execution));
     }
-    const auto generator = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(snapshot.execution_ids, execution_ids_.Scope(), max_low);
+
+    const auto generator = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(
+        snapshot.execution_ids, execution_ids_.Scope(), max_low);
     if (!generator)
-        return foundation::Result<void>::Failure(Error("gameplay.trade.restore_invalid", "trade execution id generator snapshot is invalid"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.trade.restore_invalid", "trade execution id generator snapshot is invalid"));
     executions_ = std::move(restored);
     execution_ids_.Restore(snapshot.execution_ids);
     return foundation::Result<void>::Success();

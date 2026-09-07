@@ -18,6 +18,49 @@ constexpr std::string_view kSubstanceExposurePayloadName = "framework.payload.ma
 constexpr std::string_view kConditionRemoveTypePayloadName = "framework.payload.condition.remove_type.v1";
 constexpr std::string_view kEntityTagPayloadName = "framework.payload.entity.tag.v1";
 
+class CountingCommitHandler final : public IEffectHandler
+{
+  public:
+    CountingCommitHandler(EffectTypeId type, int& commits) : type_(type), commits_(commits) {}
+    [[nodiscard]] EffectTypeId Type() const noexcept override { return type_; }
+    [[nodiscard]] EffectHandlerCapabilities Capabilities() const noexcept override { return {true, false, false, true}; }
+    [[nodiscard]] foundation::Result<EffectPrepareResult> Prepare(const EffectOperation&) const override
+    {
+        return foundation::Result<EffectPrepareResult>::Success({EffectPrepareDisposition::Accepted, {}});
+    }
+    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(
+        const EffectOperation&, const RegisteredEffectPayload&) noexcept override
+    {
+        ++commits_;
+        return foundation::Result<EffectCommitResult>::Success({EffectCommitDisposition::Applied, {}});
+    }
+
+  private:
+    EffectTypeId type_{};
+    int& commits_;
+};
+
+class FailingCommitHandler final : public IEffectHandler
+{
+  public:
+    explicit FailingCommitHandler(EffectTypeId type) : type_(type) {}
+    [[nodiscard]] EffectTypeId Type() const noexcept override { return type_; }
+    [[nodiscard]] EffectHandlerCapabilities Capabilities() const noexcept override { return {true, false, false, true}; }
+    [[nodiscard]] foundation::Result<EffectPrepareResult> Prepare(const EffectOperation&) const override
+    {
+        return foundation::Result<EffectPrepareResult>::Success({EffectPrepareDisposition::Accepted, {}});
+    }
+    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(
+        const EffectOperation&, const RegisteredEffectPayload&) noexcept override
+    {
+        return foundation::Result<EffectCommitResult>::Failure(
+            foundation::Error::Create("test.forced_commit_failure", "forced second operation failure"));
+    }
+
+  private:
+    EffectTypeId type_{};
+};
+
 EffectRequest MakeRequest(EffectDefinitionId definition, GameplayObjectRef target, GameplayContext context)
 {
     EffectRequest request;
@@ -212,11 +255,12 @@ int main()
     StateFactsAdapter facts_adapter(entities, materials, conditions, effects, facts);
     StateQueryAdapter query_adapter(entities, materials, conditions, tags, queries);
     StateTimeAdapter time_adapter(conditions, effects, time);
+    epidemic::gameplay::integration::ScheduledTriggerDispatcher trigger_dispatcher(time);
     StateLifecycleAdapter lifecycle_adapter(entities, materials, conditions, effects);
     ConditionEffectsAdapter condition_effects(conditions, effects);
 
     if (!facts_adapter.RegisterContracts() || !query_adapter.RegisterProviders() || !time_adapter.RegisterContracts() ||
-        !condition_effects.RegisterRoute(periodic_action, periodic_tag_effect.Value())) return 10;
+        !time_adapter.RegisterWithDispatcher(trigger_dispatcher) || !condition_effects.RegisterRoute(periodic_action, periodic_tag_effect.Value())) return 10;
 
     entities.Freeze();
     materials.Freeze();
@@ -225,6 +269,7 @@ int main()
     facts.Freeze();
     queries.Freeze();
     time.Freeze();
+    trigger_dispatcher.Freeze();
 
     GameplayContext context;
     context.tick = GameplayTickId{1};
@@ -250,6 +295,18 @@ int main()
     if (active_conditions.size() != 1 || !active_conditions.front().periodic_schedule.has_value() ||
         !active_conditions.front().expiration_schedule.has_value()) return 16;
 
+    const auto restored_expiration_id = *active_conditions.front().expiration_schedule;
+    const auto restored_periodic_id = *active_conditions.front().periodic_schedule;
+    const auto conditions_before_restore = conditions.CaptureSnapshot();
+    const auto time_before_restore = time.CaptureSnapshot();
+    if (!conditions.RestoreSnapshot(conditions_before_restore) || !time.RestoreSnapshot(time_before_restore) ||
+        !time_adapter.SynchronizeConditionSchedules(context)) return 160;
+    const auto rebound_conditions = conditions.GetConditions(house);
+    if (rebound_conditions.size() != 1 ||
+        rebound_conditions.front().expiration_schedule != restored_expiration_id ||
+        rebound_conditions.front().periodic_schedule != restored_periodic_id ||
+        time.CaptureSnapshot().schedules.size() != time_before_restore.schedules.size()) return 161;
+
     const auto published = facts_adapter.PublishPendingChanges(context);
     if (!published || published.Value() == 0 || !facts.Dispatch()) return 17;
     const FactKey burning_fact{facts_adapter.ActiveConditionFact(), house,
@@ -263,12 +320,21 @@ int main()
     context.tick = GameplayTickId{2};
     context.time = GameplayTimePoint{3};
     if (!time.SynchronizeClock(clock.Value(), context.time, Revision{2})) return 20;
-    const auto due = time_adapter.ProcessDue(clock.Value(), context);
+    const auto due = time_adapter.ProcessDue(trigger_dispatcher, clock.Value(), context);
     if (!due || due.Value().condition_periodic == 0) return 21;
     const auto periodic_effects = condition_effects.ProcessPending();
     const auto house_after_periodic = entities.Find(house_id);
     if (!periodic_effects || periodic_effects.Value().empty() || !house_after_periodic ||
         !house_after_periodic->instance_tags.HasExact(periodic_tag.Value())) return 22;
+
+    const auto condition_effect_checkpoint = condition_effects.CaptureCheckpoint();
+    const auto executions_before_condition_restore = effects.GetDiagnostics().executions;
+    ConditionEffectsAdapter restored_condition_effects(conditions, effects);
+    if (!restored_condition_effects.RegisterRoute(periodic_action, periodic_tag_effect.Value()) ||
+        !restored_condition_effects.RestoreCheckpoint(condition_effect_checkpoint)) return 162;
+    const auto replayed_condition_effects = restored_condition_effects.ProcessPending();
+    if (!replayed_condition_effects || !replayed_condition_effects.Value().empty() ||
+        effects.GetDiagnostics().executions != executions_before_condition_restore) return 163;
 
     auto water_result = effects.Execute(MakeRequest(water_effect.Value(), house, context));
     if (!water_result || conditions.HasCondition(house, burning.Value())) return 23;
@@ -306,14 +372,14 @@ int main()
     if (!time.SynchronizeClock(clock.Value(), context.time, Revision{3})) return 36;
     EffectExecutionBudget zero_effect_budget;
     zero_effect_budget.max_effects = 0;
-    const auto failed_delayed_due = time_adapter.ProcessDue(clock.Value(), context, {}, zero_effect_budget);
+    const auto failed_delayed_due = time_adapter.ProcessDue(trigger_dispatcher, clock.Value(), context, {}, zero_effect_budget);
     const auto house_after_failed_delayed = entities.Find(house_id);
     deferred_record = effects.FindDeferred(deferred.Value());
-    if (failed_delayed_due || deferred_record == nullptr || !deferred_record->schedule.has_value() ||
-        !time.HasSchedule(*deferred_record->schedule) || !house_after_failed_delayed ||
+    if (!failed_delayed_due || trigger_dispatcher.PendingCount() != 1 || deferred_record == nullptr || !deferred_record->schedule.has_value() ||
+        time.HasSchedule(*deferred_record->schedule) || !house_after_failed_delayed ||
         house_after_failed_delayed->instance_tags.HasExact(delayed_tag.Value())) return 37;
 
-    const auto delayed_due = time_adapter.ProcessDue(clock.Value(), context);
+    const auto delayed_due = time_adapter.ProcessDue(trigger_dispatcher, clock.Value(), context);
     const auto house_after_delayed = entities.Find(house_id);
     if (!delayed_due || delayed_due.Value().effect_executions.size() != 1 || effects.FindDeferred(deferred.Value()) != nullptr ||
         !house_after_delayed || !house_after_delayed->instance_tags.HasExact(delayed_tag.Value())) return 38;

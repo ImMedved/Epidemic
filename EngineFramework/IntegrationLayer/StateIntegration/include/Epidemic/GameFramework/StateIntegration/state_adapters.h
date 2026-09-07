@@ -5,12 +5,14 @@
 #include "Epidemic/GameFramework/Effects/effects.h"
 #include "Epidemic/GameFramework/Entities/entities.h"
 #include "Epidemic/GameFramework/Facts/gameplay_facts.h"
+#include "Epidemic/GameFramework/Integration/core_adapters.h"
 #include "Epidemic/GameFramework/Materials/materials.h"
 #include "Epidemic/GameFramework/Queries/gameplay_queries.h"
 #include "Epidemic/GameFramework/Time/gameplay_time.h"
 
 #include <functional>
 #include <optional>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -256,6 +258,13 @@ class StateLifecycleAdapter
     std::uint64_t cursor_ = 0;
 };
 
+struct ConditionEffectsCheckpoint
+{
+    std::uint32_t schema_version = 1;
+    std::uint64_t cursor = 0;
+    std::uint64_t route_revision = 0;
+};
+
 class ConditionEffectsAdapter
 {
   public:
@@ -267,12 +276,15 @@ class ConditionEffectsAdapter
     [[nodiscard]] foundation::Result<void> RegisterRoute(ActionTypeId action, effects::EffectDefinitionId definition);
     [[nodiscard]] foundation::Result<std::vector<effects::EffectExecutionResult>> ProcessPending(
         effects::EffectExecutionBudget budget = {});
+    [[nodiscard]] ConditionEffectsCheckpoint CaptureCheckpoint() const noexcept;
+    [[nodiscard]] foundation::Result<void> RestoreCheckpoint(ConditionEffectsCheckpoint checkpoint);
 
   private:
     conditions::ConditionService& conditions_;
     effects::EffectService& effects_;
     std::unordered_map<ActionTypeId, effects::EffectDefinitionId> routes_;
     std::uint64_t cursor_ = 0;
+    [[nodiscard]] std::uint64_t RouteRevision() const noexcept;
 };
 
 struct StateTimeProcessResult
@@ -281,6 +293,22 @@ struct StateTimeProcessResult
     std::uint64_t condition_periodic = 0;
     std::vector<effects::EffectExecutionResult> effect_executions;
     std::vector<time::ScheduledTrigger> unhandled;
+};
+
+struct DeferredEffectReconciliationRecord
+{
+    effects::DeferredEffectId deferred{};
+    ScheduleId schedule{};
+    time::ScheduledTrigger trigger{};
+    effects::EffectExecutionResult execution;
+};
+
+struct StateTimeCheckpoint
+{
+    std::uint32_t schema_version = 1;
+    std::uint64_t condition_cursor = 0;
+    std::uint64_t effect_cursor = 0;
+    std::vector<DeferredEffectReconciliationRecord> deferred_reconciliations;
 };
 
 class StateTimeAdapter
@@ -295,13 +323,25 @@ class StateTimeAdapter
     }
 
     [[nodiscard]] foundation::Result<void> RegisterContracts();
+    [[nodiscard]] foundation::Result<void> RegisterWithDispatcher(
+        integration::ScheduledTriggerDispatcher& dispatcher,
+        effects::EffectExecutionBudget effect_budget = {});
     [[nodiscard]] foundation::Result<std::uint64_t> SynchronizeConditionSchedules(GameplayContext context = {});
     [[nodiscard]] foundation::Result<std::uint64_t> SynchronizeDeferredEffects(GameplayContext context = {});
     [[nodiscard]] foundation::Result<StateTimeProcessResult> ProcessDue(
+        integration::ScheduledTriggerDispatcher& dispatcher,
         ClockId clock,
         GameplayContext context = {},
         time::SchedulerBudget scheduler_budget = {},
         effects::EffectExecutionBudget effect_budget = {});
+    [[nodiscard]] StateTimeCheckpoint CaptureCheckpoint() const;
+    [[nodiscard]] foundation::Result<void> RestoreCheckpoint(StateTimeCheckpoint checkpoint);
+    [[nodiscard]] std::span<const DeferredEffectReconciliationRecord> DeferredReconciliations() const noexcept
+    {
+        return deferred_reconciliations_;
+    }
+    [[nodiscard]] foundation::Result<void> ResolveDeferredReconciliation(effects::DeferredEffectId deferred);
+
 
     [[nodiscard]] ActionTypeId ExpireAction() const noexcept { return expire_action_; }
     [[nodiscard]] ActionTypeId PeriodicAction() const noexcept { return periodic_action_; }
@@ -313,6 +353,17 @@ class StateTimeAdapter
         GameplayContext context);
     [[nodiscard]] foundation::Result<std::uint64_t> ReconcileConditionSchedules(GameplayContext context);
     [[nodiscard]] foundation::Result<std::uint64_t> ReconcileDeferredEffectSchedules(GameplayContext context);
+    [[nodiscard]] foundation::Result<integration::ScheduledTriggerDisposition> HandleExpirationTrigger(
+        const time::ScheduledTrigger& trigger,
+        const GameplayContext& context);
+    [[nodiscard]] foundation::Result<integration::ScheduledTriggerDisposition> HandlePeriodicTrigger(
+        const time::ScheduledTrigger& trigger,
+        const GameplayContext& context);
+    [[nodiscard]] foundation::Result<integration::ScheduledTriggerDisposition> HandleDeferredEffectTrigger(
+        const time::ScheduledTrigger& trigger,
+        const GameplayContext& context);
+    [[nodiscard]] bool HasPendingOccurrence(GameplayObjectRef owner, ActionTypeId action) const;
+
     [[nodiscard]] time::CatchUpPolicy MapCatchUp(conditions::PeriodicCatchUpPolicy policy) const noexcept;
     [[nodiscard]] time::SchedulePersistence MapPersistence(conditions::ConditionPersistencePolicy policy) const noexcept;
 
@@ -324,5 +375,10 @@ class StateTimeAdapter
     ActionTypeId deferred_effect_action_{};
     std::uint64_t condition_cursor_ = 0;
     std::uint64_t effect_cursor_ = 0;
+    integration::ScheduledTriggerDispatcher* dispatcher_ = nullptr;
+    effects::EffectExecutionBudget effect_budget_{};
+    StateTimeProcessResult process_result_{};
+    static constexpr std::size_t kDeferredReconciliationCapacity = 4096;
+    std::vector<DeferredEffectReconciliationRecord> deferred_reconciliations_;
 };
 } // namespace epidemic::gameplay::state_integration

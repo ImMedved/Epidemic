@@ -1171,6 +1171,36 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
     return foundation::Result<std::vector<effects::EffectExecutionResult>>::Success(std::move(results));
 }
 
+std::uint64_t ConditionEffectsAdapter::RouteRevision() const noexcept
+{
+    std::uint64_t hash = 0xCBF29CE484222325ull ^ static_cast<std::uint64_t>(routes_.size());
+    for (const auto& [action, definition] : routes_)
+    {
+        const auto pair_hash = (action.Raw() * 0x9E3779B97F4A7C15ull) ^
+                               (definition.Raw() * 0xD6E8FEB86659FD93ull);
+        hash ^= pair_hash;
+    }
+    return hash == 0 ? 1 : hash;
+}
+
+ConditionEffectsCheckpoint ConditionEffectsAdapter::CaptureCheckpoint() const noexcept
+{
+    return ConditionEffectsCheckpoint{1, cursor_, RouteRevision()};
+}
+
+foundation::Result<void> ConditionEffectsAdapter::RestoreCheckpoint(ConditionEffectsCheckpoint checkpoint)
+{
+    if (checkpoint.schema_version != 1 || checkpoint.route_revision != RouteRevision() ||
+        checkpoint.cursor > conditions_.LatestChangeSequence())
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.condition_effect_checkpoint_invalid",
+                  "condition effect checkpoint is incompatible with routes or condition journal"));
+    }
+    cursor_ = checkpoint.cursor;
+    return foundation::Result<void>::Success();
+}
+
 time::CatchUpPolicy StateTimeAdapter::MapCatchUp(conditions::PeriodicCatchUpPolicy policy) const noexcept
 {
     switch (policy)
@@ -1209,6 +1239,50 @@ foundation::Result<void> StateTimeAdapter::RegisterContracts()
         return foundation::Result<void>::Failure(deferred.GetError());
     }
     deferred_effect_action_ = deferred.Value();
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> StateTimeAdapter::RegisterWithDispatcher(
+    integration::ScheduledTriggerDispatcher& dispatcher,
+    effects::EffectExecutionBudget effect_budget)
+{
+    if (!expire_action_.IsValid() || !periodic_action_.IsValid() || !deferred_effect_action_.IsValid())
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.state_time_contracts_missing", "state time contracts must be registered before dispatcher handlers"));
+    }
+    if (dispatcher_ != nullptr)
+    {
+        return dispatcher_ == &dispatcher
+                   ? foundation::Result<void>::Success()
+                   : foundation::Result<void>::Failure(
+                         Error("gameplay.state_time_dispatcher_conflict", "state time adapter is already bound to another dispatcher"));
+    }
+
+    auto expiration = dispatcher.RegisterActionHandler(
+        expire_action_, TypeId::FromString("framework.state_time.expiration.handler"),
+        [this](const time::ScheduledTrigger& trigger, const GameplayContext& context) {
+            return HandleExpirationTrigger(trigger, context);
+        });
+    if (!expiration)
+        return expiration;
+    auto periodic = dispatcher.RegisterActionHandler(
+        periodic_action_, TypeId::FromString("framework.state_time.periodic.handler"),
+        [this](const time::ScheduledTrigger& trigger, const GameplayContext& context) {
+            return HandlePeriodicTrigger(trigger, context);
+        });
+    if (!periodic)
+        return periodic;
+    auto deferred = dispatcher.RegisterActionHandler(
+        deferred_effect_action_, TypeId::FromString("framework.state_time.deferred_effect.handler"),
+        [this](const time::ScheduledTrigger& trigger, const GameplayContext& context) {
+            return HandleDeferredEffectTrigger(trigger, context);
+        });
+    if (!deferred)
+        return deferred;
+
+    dispatcher_ = &dispatcher;
+    effect_budget_ = effect_budget;
     return foundation::Result<void>::Success();
 }
 
@@ -1302,99 +1376,138 @@ foundation::Result<void> StateTimeAdapter::RebuildConditionSchedules(
 
 foundation::Result<std::uint64_t> StateTimeAdapter::ReconcileConditionSchedules(GameplayContext context)
 {
+    const auto schedules = time_.CaptureSnapshot().schedules;
     std::uint64_t reconciled = 0;
+
+    auto adopt = [&](GameplayObjectRef owner, ActionTypeId action, auto&& predicate)
+        -> foundation::Result<std::optional<ScheduleId>> {
+        std::vector<ScheduleId> matches;
+        for (const auto& entry : schedules)
+        {
+            if (entry.owner == owner && entry.action == action && predicate(entry) && time_.HasSchedule(entry.id))
+                matches.push_back(entry.id);
+        }
+        std::sort(matches.begin(), matches.end());
+        for (std::size_t index = 1; index < matches.size(); ++index)
+        {
+            const auto cancelled = time_.Cancel(matches[index]);
+            if (!cancelled)
+                return foundation::Result<std::optional<ScheduleId>>::Failure(cancelled.GetError());
+            ++reconciled;
+        }
+        return foundation::Result<std::optional<ScheduleId>>::Success(
+            matches.empty() ? std::nullopt : std::optional<ScheduleId>{matches.front()});
+    };
+
     for (const auto& instance : conditions_.AllConditions())
     {
         const auto* definition = conditions_.FindDefinition(instance.type);
         if (definition == nullptr)
-        {
-            return foundation::Result<std::uint64_t>::Failure(Error("gameplay.condition_unknown", "condition definition is missing while reconciling schedules"));
-        }
+            return foundation::Result<std::uint64_t>::Failure(
+                Error("gameplay.condition_unknown", "condition definition is missing while reconciling schedules"));
 
         const auto owner = GameplayObjectRef{conditions::ConditionService::Domain(), instance.id.value};
         const auto persistence = MapPersistence(definition->persistence);
-        bool needs_rebuild = false;
         auto expiration = instance.expiration_schedule;
         auto periodic = instance.periodic_schedule;
 
-        if (instance.expires_at.has_value() && !instance.paused_for_materialization)
+        const bool wants_expiration = instance.expires_at.has_value() && !instance.paused_for_materialization;
+        if (expiration.has_value())
         {
-            if (!expiration.has_value() || !time_.HasSchedule(*expiration))
+            const auto entry = time_.GetSchedule(*expiration);
+            if (!wants_expiration || !entry.has_value() ||
+                !ScheduleMatches(*entry, definition->clock, owner, expire_action_, persistence) ||
+                entry->due != *instance.expires_at || entry->recurrence.kind != time::RecurrenceKind::Once)
             {
-                needs_rebuild = true;
-            }
-            else
-            {
-                const auto entry = time_.GetSchedule(*expiration);
-                if (!entry.has_value() || !ScheduleMatches(*entry, definition->clock, owner, expire_action_, persistence) ||
-                    entry->due != *instance.expires_at || entry->recurrence.kind != time::RecurrenceKind::Once)
+                if (entry.has_value())
                 {
-                    needs_rebuild = true;
+                    const auto cancelled = time_.Cancel(*expiration);
+                    if (!cancelled)
+                        return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
                 }
+                expiration.reset();
+                ++reconciled;
             }
         }
-        else if (expiration.has_value())
+        if (wants_expiration && !expiration.has_value())
         {
-            if (time_.HasSchedule(*expiration))
+            auto restored = adopt(owner, expire_action_, [&](const time::ScheduleEntry& entry) {
+                return ScheduleMatches(entry, definition->clock, owner, expire_action_, persistence) &&
+                       entry.due == *instance.expires_at && entry.recurrence.kind == time::RecurrenceKind::Once;
+            });
+            if (!restored)
+                return foundation::Result<std::uint64_t>::Failure(restored.GetError());
+            expiration = restored.Value();
+            if (expiration.has_value())
+                ++reconciled;
+            else if (!HasPendingOccurrence(owner, expire_action_))
             {
-                const auto cancelled = time_.Cancel(*expiration);
-                if (!cancelled)
-                {
-                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
-                }
+                auto scheduled = time_.Schedule(definition->clock, *instance.expires_at, owner, expire_action_, {},
+                                                time::CatchUpPolicy::FireOnce, persistence);
+                if (!scheduled)
+                    return foundation::Result<std::uint64_t>::Failure(scheduled.GetError());
+                expiration = scheduled.Value();
+                ++reconciled;
             }
-            expiration.reset();
         }
 
-        if (definition->periodic_interval.ticks > 0 && !instance.paused_for_materialization)
+        const bool wants_periodic = definition->periodic_interval.ticks > 0 && !instance.paused_for_materialization;
+        if (periodic.has_value())
         {
-            if (!periodic.has_value() || !time_.HasSchedule(*periodic))
+            const auto entry = time_.GetSchedule(*periodic);
+            const bool valid = entry.has_value() &&
+                               ScheduleMatches(*entry, definition->clock, owner, periodic_action_, persistence) &&
+                               entry->recurrence.kind == time::RecurrenceKind::FixedInterval &&
+                               entry->recurrence.interval == definition->periodic_interval &&
+                               entry->catch_up == MapCatchUp(definition->periodic_catch_up);
+            if (!wants_periodic || !valid)
             {
-                needs_rebuild = true;
-            }
-            else
-            {
-                const auto entry = time_.GetSchedule(*periodic);
-                const bool recurrence_matches = entry.has_value() && entry->recurrence.kind == time::RecurrenceKind::FixedInterval &&
-                                                entry->recurrence.interval == definition->periodic_interval &&
-                                                entry->catch_up == MapCatchUp(definition->periodic_catch_up);
-                if (!entry.has_value() || !ScheduleMatches(*entry, definition->clock, owner, periodic_action_, persistence) ||
-                    !recurrence_matches)
+                if (entry.has_value())
                 {
-                    needs_rebuild = true;
+                    const auto cancelled = time_.Cancel(*periodic);
+                    if (!cancelled)
+                        return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
                 }
+                periodic.reset();
+                ++reconciled;
             }
         }
-        else if (periodic.has_value())
+        if (wants_periodic && !periodic.has_value())
         {
-            if (time_.HasSchedule(*periodic))
+            auto restored = adopt(owner, periodic_action_, [&](const time::ScheduleEntry& entry) {
+                return ScheduleMatches(entry, definition->clock, owner, periodic_action_, persistence) &&
+                       entry.recurrence.kind == time::RecurrenceKind::FixedInterval &&
+                       entry.recurrence.interval == definition->periodic_interval &&
+                       entry.catch_up == MapCatchUp(definition->periodic_catch_up);
+            });
+            if (!restored)
+                return foundation::Result<std::uint64_t>::Failure(restored.GetError());
+            periodic = restored.Value();
+            if (periodic.has_value())
+                ++reconciled;
+            else if (!HasPendingOccurrence(owner, periodic_action_))
             {
-                const auto cancelled = time_.Cancel(*periodic);
-                if (!cancelled)
-                {
-                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
-                }
+                const auto due = CheckedAdd(instance.applied_at, definition->periodic_interval);
+                if (!due.has_value())
+                    return foundation::Result<std::uint64_t>::Failure(
+                        Error("gameplay.time_overflow", "condition periodic schedule overflows gameplay time"));
+                time::RecurrenceRule recurrence;
+                recurrence.kind = time::RecurrenceKind::FixedInterval;
+                recurrence.interval = definition->periodic_interval;
+                auto scheduled = time_.Schedule(definition->clock, *due, owner, periodic_action_, recurrence,
+                                                MapCatchUp(definition->periodic_catch_up), persistence);
+                if (!scheduled)
+                    return foundation::Result<std::uint64_t>::Failure(scheduled.GetError());
+                periodic = scheduled.Value();
+                ++reconciled;
             }
-            periodic.reset();
         }
 
-        if (needs_rebuild)
-        {
-            const auto rebuilt = RebuildConditionSchedules(instance, context);
-            if (!rebuilt)
-            {
-                return foundation::Result<std::uint64_t>::Failure(rebuilt.GetError());
-            }
-            ++reconciled;
-        }
-        else if (expiration != instance.expiration_schedule || periodic != instance.periodic_schedule)
+        if (expiration != instance.expiration_schedule || periodic != instance.periodic_schedule)
         {
             const auto linked = conditions_.SetScheduleLinks(instance.id, expiration, periodic, context);
             if (!linked)
-            {
                 return foundation::Result<std::uint64_t>::Failure(linked.GetError());
-            }
-            ++reconciled;
         }
     }
     return foundation::Result<std::uint64_t>::Success(reconciled);
@@ -1420,38 +1533,11 @@ foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeConditionSchedule
     std::uint64_t next_cursor = condition_cursor_;
     for (const auto& change : batch.changes)
     {
-        const auto change_context = change.context.tick.IsValid() ? change.context : context;
-        if (change.kind == conditions::ConditionChangeKind::Added || change.kind == conditions::ConditionChangeKind::Refreshed ||
-            change.kind == conditions::ConditionChangeKind::DurationExtended ||
-            change.kind == conditions::ConditionChangeKind::MaterializationPauseChanged)
+        if (change.kind == conditions::ConditionChangeKind::Removed ||
+            change.kind == conditions::ConditionChangeKind::Expired)
         {
-            if (const auto* instance = conditions_.Find(change.instance))
-            {
-                const auto result = RebuildConditionSchedules(*instance, change_context);
-                if (!result)
-                {
-                    return foundation::Result<std::uint64_t>::Failure(result.GetError());
-                }
-            }
-        }
-        else if (change.kind == conditions::ConditionChangeKind::Removed || change.kind == conditions::ConditionChangeKind::Expired)
-        {
-            if (change.expiration_schedule.has_value() && time_.HasSchedule(*change.expiration_schedule))
-            {
-                const auto cancelled = time_.Cancel(*change.expiration_schedule);
-                if (!cancelled)
-                {
-                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
-                }
-            }
-            if (change.periodic_schedule.has_value() && time_.HasSchedule(*change.periodic_schedule))
-            {
-                const auto cancelled = time_.Cancel(*change.periodic_schedule);
-                if (!cancelled)
-                {
-                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
-                }
-            }
+            const auto owner = GameplayObjectRef{conditions::ConditionService::Domain(), change.instance.value};
+            (void)time_.CancelOwnedBy(owner);
         }
         next_cursor = change.sequence;
         ++processed;
@@ -1469,66 +1555,114 @@ foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeConditionSchedule
 foundation::Result<std::uint64_t> StateTimeAdapter::ReconcileDeferredEffectSchedules(GameplayContext context)
 {
     (void)context;
+    const auto schedules = time_.CaptureSnapshot().schedules;
+    const auto pending = dispatcher_ == nullptr
+                             ? integration::ScheduledTriggerDispatcherSnapshot{}
+                             : dispatcher_->CaptureSnapshot();
     std::uint64_t reconciled = 0;
+
     for (const auto& deferred : effects_.AllDeferred())
     {
+        if (std::any_of(deferred_reconciliations_.begin(), deferred_reconciliations_.end(),
+                        [&](const auto& record) { return record.deferred == deferred.id; }))
+        {
+            continue;
+        }
         const auto owner = GameplayObjectRef{effects::EffectService::Domain(), deferred.id.value};
         const auto persistence = deferred.persistence == effects::DeferredEffectPersistence::Persistent
                                      ? time::SchedulePersistence::Persistent
                                      : time::SchedulePersistence::Session;
-        bool needs_schedule = false;
-        if (deferred.schedule.has_value() && time_.HasSchedule(*deferred.schedule))
+        auto bound = deferred.schedule;
+
+        auto pending_matches = [&](ScheduleId schedule) {
+            return std::any_of(pending.pending.begin(), pending.pending.end(), [&](const auto& delivery) {
+                return delivery.trigger.schedule == schedule && delivery.trigger.owner == owner &&
+                       delivery.trigger.action == deferred_effect_action_;
+            });
+        };
+        if (bound.has_value())
         {
-            const auto entry = time_.GetSchedule(*deferred.schedule);
-            if (!entry.has_value() || !ScheduleMatches(*entry, deferred.clock, owner, deferred_effect_action_, persistence) ||
-                entry->due != deferred.due || entry->recurrence.kind != time::RecurrenceKind::Once)
+            const auto entry = time_.GetSchedule(*bound);
+            const bool valid_time = entry.has_value() &&
+                                    ScheduleMatches(*entry, deferred.clock, owner, deferred_effect_action_, persistence) &&
+                                    entry->due == deferred.due && entry->recurrence.kind == time::RecurrenceKind::Once;
+            if (!valid_time && !pending_matches(*bound))
             {
-                const auto cancelled = time_.Cancel(*deferred.schedule);
-                if (!cancelled)
+                if (entry.has_value())
                 {
-                    return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
+                    const auto cancelled = time_.Cancel(*bound);
+                    if (!cancelled)
+                        return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
                 }
                 const auto cleared = effects_.ClearDeferredSchedule(deferred.id);
                 if (!cleared)
-                {
                     return foundation::Result<std::uint64_t>::Failure(cleared.GetError());
-                }
-                needs_schedule = true;
+                bound.reset();
                 ++reconciled;
             }
         }
-        else
+        if (bound.has_value())
+            continue;
+
+        std::vector<ScheduleId> candidates;
+        for (const auto& entry : schedules)
         {
-            if (deferred.schedule.has_value())
+            if (time_.HasSchedule(entry.id) &&
+                ScheduleMatches(entry, deferred.clock, owner, deferred_effect_action_, persistence) &&
+                entry.due == deferred.due && entry.recurrence.kind == time::RecurrenceKind::Once)
+                candidates.push_back(entry.id);
+        }
+        for (const auto& delivery : pending.pending)
+        {
+            if (delivery.trigger.owner == owner && delivery.trigger.action == deferred_effect_action_)
+                candidates.push_back(delivery.trigger.schedule);
+        }
+        std::sort(candidates.begin(), candidates.end());
+        candidates.erase(std::unique(candidates.begin(), candidates.end()), candidates.end());
+
+        if (candidates.size() > 1)
+        {
+            for (std::size_t index = 1; index < candidates.size(); ++index)
             {
-                const auto cleared = effects_.ClearDeferredSchedule(deferred.id);
-                if (!cleared)
+                if (time_.HasSchedule(candidates[index]))
                 {
-                    return foundation::Result<std::uint64_t>::Failure(cleared.GetError());
+                    const auto cancelled = time_.Cancel(candidates[index]);
+                    if (!cancelled)
+                        return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
+                    ++reconciled;
+                }
+                else
+                {
+                    return foundation::Result<std::uint64_t>::Failure(
+                        Error("gameplay.deferred_effect_pending_duplicate",
+                              "multiple pending dispatcher occurrences match one deferred effect"));
                 }
             }
-            needs_schedule = true;
+            candidates.resize(1);
         }
 
-        if (needs_schedule)
+        ScheduleId schedule{};
+        if (!candidates.empty())
         {
-            const auto scheduled = time_.Schedule(deferred.clock, deferred.due, owner, deferred_effect_action_, {},
-                                                  time::CatchUpPolicy::FireOnce, persistence);
-            if (!scheduled)
-            {
-                return foundation::Result<std::uint64_t>::Failure(scheduled.GetError());
-            }
-            const auto bind = effects_.BindDeferredSchedule(deferred.id, scheduled.Value());
-            if (!bind)
-            {
-                if (time_.HasSchedule(scheduled.Value()))
-                {
-                    (void)time_.Cancel(scheduled.Value());
-                }
-                return foundation::Result<std::uint64_t>::Failure(bind.GetError());
-            }
-            ++reconciled;
+            schedule = candidates.front();
         }
+        else
+        {
+            auto scheduled = time_.Schedule(deferred.clock, deferred.due, owner, deferred_effect_action_, {},
+                                            time::CatchUpPolicy::FireOnce, persistence);
+            if (!scheduled)
+                return foundation::Result<std::uint64_t>::Failure(scheduled.GetError());
+            schedule = scheduled.Value();
+        }
+
+        const auto bind = effects_.BindDeferredSchedule(deferred.id, schedule);
+        if (!bind)
+        {
+            if (time_.HasSchedule(schedule))
+                (void)time_.Cancel(schedule);
+            return foundation::Result<std::uint64_t>::Failure(bind.GetError());
+        }
+        ++reconciled;
     }
     return foundation::Result<std::uint64_t>::Success(reconciled);
 }
@@ -1573,99 +1707,211 @@ foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeDeferredEffects(G
     return foundation::Result<std::uint64_t>::Success(processed + reconciled.Value());
 }
 
+bool StateTimeAdapter::HasPendingOccurrence(GameplayObjectRef owner, ActionTypeId action) const
+{
+    if (dispatcher_ == nullptr)
+        return false;
+    const auto snapshot = dispatcher_->CaptureSnapshot();
+    return std::any_of(snapshot.pending.begin(), snapshot.pending.end(), [&](const auto& delivery) {
+        return delivery.trigger.owner == owner && delivery.trigger.action == action;
+    });
+}
+
+foundation::Result<integration::ScheduledTriggerDisposition> StateTimeAdapter::HandleExpirationTrigger(
+    const time::ScheduledTrigger& trigger,
+    const GameplayContext& context)
+{
+    if (trigger.owner.domain != conditions::ConditionService::Domain())
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::DiscardTerminal);
+    const conditions::ConditionInstanceId instance{trigger.owner.id};
+    if (conditions_.Find(instance) == nullptr)
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::DiscardTerminal);
+    const auto handled = conditions_.HandleExpirationDue(instance, trigger.observed_at, context);
+    if (!handled)
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::Retry);
+    ++process_result_.condition_expirations;
+    return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+        integration::ScheduledTriggerDisposition::Ack);
+}
+
+foundation::Result<integration::ScheduledTriggerDisposition> StateTimeAdapter::HandlePeriodicTrigger(
+    const time::ScheduledTrigger& trigger,
+    const GameplayContext& context)
+{
+    if (trigger.owner.domain != conditions::ConditionService::Domain())
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::DiscardTerminal);
+    const conditions::ConditionInstanceId instance{trigger.owner.id};
+    if (conditions_.Find(instance) == nullptr)
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::DiscardTerminal);
+    const auto handled = conditions_.HandlePeriodicDue(instance, trigger.occurrence_count, context);
+    if (!handled)
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::Retry);
+    process_result_.condition_periodic += trigger.occurrence_count;
+    return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+        integration::ScheduledTriggerDisposition::Ack);
+}
+
+foundation::Result<integration::ScheduledTriggerDisposition> StateTimeAdapter::HandleDeferredEffectTrigger(
+    const time::ScheduledTrigger& trigger,
+    const GameplayContext& context)
+{
+    if (trigger.owner.domain != effects::EffectService::Domain())
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::DiscardTerminal);
+
+    const effects::DeferredEffectId deferred{trigger.owner.id};
+    const auto uncertain = std::find_if(deferred_reconciliations_.begin(), deferred_reconciliations_.end(),
+                                        [&](const auto& record) { return record.schedule == trigger.schedule; });
+    if (uncertain != deferred_reconciliations_.end())
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::DiscardTerminal);
+
+    auto request = effects_.PeekDeferredBySchedule(trigger.schedule, context);
+    if (!request)
+    {
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            effects_.FindDeferred(deferred) == nullptr
+                ? integration::ScheduledTriggerDisposition::DiscardTerminal
+                : integration::ScheduledTriggerDisposition::Retry);
+    }
+
+    if (deferred_reconciliations_.size() >= kDeferredReconciliationCapacity)
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Failure(
+            Error("gameplay.deferred_effect_reconciliation_capacity",
+                  "deferred effect reconciliation ledger is full"));
+    deferred_reconciliations_.reserve(deferred_reconciliations_.size() + 1);
+
+    auto effect_request = std::move(request).Value();
+    effect_request.context = context;
+    auto executed = effects_.Execute(std::move(effect_request), effect_budget_);
+    if (!executed)
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::Retry);
+
+    auto execution = std::move(executed).Value();
+    process_result_.effect_executions.push_back(execution);
+    if (execution.disposition == effects::EffectBatchDisposition::Succeeded)
+    {
+        const auto acknowledged = effects_.AcknowledgeDeferredBySchedule(trigger.schedule, context);
+        if (acknowledged)
+            return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+                integration::ScheduledTriggerDisposition::Ack);
+    }
+    else if (execution.disposition == effects::EffectBatchDisposition::Rejected)
+    {
+        const auto acknowledged = effects_.AcknowledgeDeferredBySchedule(trigger.schedule, context);
+        if (acknowledged)
+            return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+                integration::ScheduledTriggerDisposition::DiscardTerminal);
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::Retry);
+    }
+
+    const bool crossed_commit_boundary = std::any_of(
+        execution.operations.begin(), execution.operations.end(), [](const auto& operation) {
+            return operation.disposition == effects::EffectOperationDisposition::Applied ||
+                   operation.disposition == effects::EffectOperationDisposition::NoOp;
+        });
+    if (execution.disposition == effects::EffectBatchDisposition::Failed && !crossed_commit_boundary)
+        return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+            integration::ScheduledTriggerDisposition::Retry);
+
+    deferred_reconciliations_.push_back(
+        DeferredEffectReconciliationRecord{deferred, trigger.schedule, trigger, std::move(execution)});
+    (void)effects_.AcknowledgeDeferredBySchedule(trigger.schedule, context);
+    return foundation::Result<integration::ScheduledTriggerDisposition>::Success(
+        integration::ScheduledTriggerDisposition::DiscardTerminal);
+}
+
 foundation::Result<StateTimeProcessResult> StateTimeAdapter::ProcessDue(
+    integration::ScheduledTriggerDispatcher& dispatcher,
     ClockId clock,
     GameplayContext context,
     time::SchedulerBudget scheduler_budget,
     effects::EffectExecutionBudget effect_budget)
 {
-    const auto triggers_result = time_.CollectDue(clock, scheduler_budget);
-    if (!triggers_result)
-    {
-        return foundation::Result<StateTimeProcessResult>::Failure(triggers_result.GetError());
-    }
-
-    StateTimeProcessResult result;
-    for (const auto& trigger : triggers_result.Value())
-    {
-        auto trigger_context = context;
-        trigger_context.time = trigger.observed_at;
-        if (trigger.action == expire_action_ && trigger.owner.domain == conditions::ConditionService::Domain())
-        {
-            const conditions::ConditionInstanceId instance{trigger.owner.id};
-            const auto handled = conditions_.HandleExpirationDue(instance, trigger.observed_at, trigger_context);
-            if (!handled)
-            {
-                if (conditions_.Find(instance) != nullptr)
-                {
-                    (void)ReconcileConditionSchedules(trigger_context);
-                    return foundation::Result<StateTimeProcessResult>::Failure(handled.GetError());
-                }
-                continue;
-            }
-            ++result.condition_expirations;
-        }
-        else if (trigger.action == periodic_action_ && trigger.owner.domain == conditions::ConditionService::Domain())
-        {
-            const conditions::ConditionInstanceId instance{trigger.owner.id};
-            const auto handled = conditions_.HandlePeriodicDue(instance, trigger.occurrence_count, trigger_context);
-            if (!handled)
-            {
-                if (conditions_.Find(instance) != nullptr)
-                {
-                    (void)ReconcileConditionSchedules(trigger_context);
-                    return foundation::Result<StateTimeProcessResult>::Failure(handled.GetError());
-                }
-                continue;
-            }
-            result.condition_periodic += trigger.occurrence_count;
-        }
-        else if (trigger.action == deferred_effect_action_ && trigger.owner.domain == effects::EffectService::Domain())
-        {
-            auto request = effects_.PeekDeferredBySchedule(trigger.schedule, trigger_context);
-            if (!request)
-            {
-                continue;
-            }
-            auto effect_request = std::move(request).Value();
-            effect_request.context = trigger_context;
-            auto executed = effects_.Execute(std::move(effect_request), effect_budget);
-            if (!executed)
-            {
-                (void)ReconcileDeferredEffectSchedules(trigger_context);
-                return foundation::Result<StateTimeProcessResult>::Failure(executed.GetError());
-            }
-            auto execution = std::move(executed).Value();
-            if (execution.disposition == effects::EffectBatchDisposition::Failed)
-            {
-                (void)ReconcileDeferredEffectSchedules(trigger_context);
-                return foundation::Result<StateTimeProcessResult>::Failure(
-                    Error("gameplay.deferred_effect_execution_failed", "deferred effect execution failed and remains pending for retry"));
-            }
-            const auto acknowledged = effects_.AcknowledgeDeferredBySchedule(trigger.schedule, trigger_context);
-            if (!acknowledged)
-            {
-                return foundation::Result<StateTimeProcessResult>::Failure(acknowledged.GetError());
-            }
-            result.effect_executions.push_back(std::move(execution));
-        }
-        else
-        {
-            result.unhandled.push_back(trigger);
-        }
-    }
+    if (dispatcher_ != &dispatcher)
+        return foundation::Result<StateTimeProcessResult>::Failure(
+            Error("gameplay.state_time_dispatcher_missing", "state time adapter is not registered with this dispatcher"));
 
     const auto condition_sync = SynchronizeConditionSchedules(context);
     if (!condition_sync)
-    {
         return foundation::Result<StateTimeProcessResult>::Failure(condition_sync.GetError());
-    }
     const auto effect_sync = SynchronizeDeferredEffects(context);
     if (!effect_sync)
-    {
         return foundation::Result<StateTimeProcessResult>::Failure(effect_sync.GetError());
-    }
+
+    effect_budget_ = effect_budget;
+    process_result_ = {};
+    const auto pumped = dispatcher.Pump(clock, context, scheduler_budget);
+    if (!pumped)
+        return foundation::Result<StateTimeProcessResult>::Failure(pumped.GetError());
+
+    auto result = std::move(process_result_);
+    process_result_ = {};
     return foundation::Result<StateTimeProcessResult>::Success(std::move(result));
+}
+
+StateTimeCheckpoint StateTimeAdapter::CaptureCheckpoint() const
+{
+    StateTimeCheckpoint checkpoint;
+    checkpoint.condition_cursor = condition_cursor_;
+    checkpoint.effect_cursor = effect_cursor_;
+    checkpoint.deferred_reconciliations = deferred_reconciliations_;
+    std::sort(checkpoint.deferred_reconciliations.begin(), checkpoint.deferred_reconciliations.end(),
+              [](const auto& left, const auto& right) { return left.deferred < right.deferred; });
+    return checkpoint;
+}
+
+foundation::Result<void> StateTimeAdapter::RestoreCheckpoint(StateTimeCheckpoint checkpoint)
+{
+    if (checkpoint.schema_version != 1 || checkpoint.condition_cursor > conditions_.LatestChangeSequence() ||
+        checkpoint.effect_cursor > effects_.LatestChangeSequence() ||
+        checkpoint.deferred_reconciliations.size() > kDeferredReconciliationCapacity)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.state_time_checkpoint_invalid", "state time checkpoint is invalid"));
+
+    std::sort(checkpoint.deferred_reconciliations.begin(), checkpoint.deferred_reconciliations.end(),
+              [](const auto& left, const auto& right) { return left.deferred < right.deferred; });
+    for (std::size_t index = 0; index < checkpoint.deferred_reconciliations.size(); ++index)
+    {
+        const auto& record = checkpoint.deferred_reconciliations[index];
+        if (!record.deferred.IsValid() || !record.schedule.IsValid() || !record.trigger.schedule.IsValid() ||
+            record.trigger.schedule != record.schedule || !record.execution.execution.IsValid() ||
+            (index != 0 && checkpoint.deferred_reconciliations[index - 1].deferred == record.deferred))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.state_time_checkpoint_invalid",
+                      "state time checkpoint contains an invalid deferred reconciliation"));
+    }
+
+    condition_cursor_ = checkpoint.condition_cursor;
+    effect_cursor_ = checkpoint.effect_cursor;
+    deferred_reconciliations_ = std::move(checkpoint.deferred_reconciliations);
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> StateTimeAdapter::ResolveDeferredReconciliation(effects::DeferredEffectId deferred)
+{
+    const auto found = std::find_if(deferred_reconciliations_.begin(), deferred_reconciliations_.end(),
+                                    [&](const auto& record) { return record.deferred == deferred; });
+    if (found == deferred_reconciliations_.end())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.deferred_effect_reconciliation_missing", "deferred effect reconciliation record is missing"));
+
+    if (effects_.FindDeferred(deferred) != nullptr)
+    {
+        const auto cancelled = effects_.CancelDeferred(deferred);
+        if (!cancelled)
+            return cancelled;
+    }
+    deferred_reconciliations_.erase(found);
+    return foundation::Result<void>::Success();
 }
 
 } // namespace epidemic::gameplay::state_integration

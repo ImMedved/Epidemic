@@ -607,9 +607,7 @@ foundation::Result<std::vector<abilities::AbilityOutput>> AbilityTimeAdapter::Pr
             if (!rebound)
                 return foundation::Result<std::vector<abilities::AbilityOutput>>::Failure(rebound.GetError());
         }
-        auto outputs = std::move(pending->outputs);
-        pending_.erase(pending);
-        return foundation::Result<std::vector<abilities::AbilityOutput>>::Success(std::move(outputs));
+        return foundation::Result<std::vector<abilities::AbilityOutput>>::Success(pending->outputs);
     }
 
     const auto *before = abilities_.FindExecution(id);
@@ -644,9 +642,25 @@ foundation::Result<std::vector<abilities::AbilityOutput>> AbilityTimeAdapter::Pr
         if (!next)
             return foundation::Result<std::vector<abilities::AbilityOutput>>::Failure(next.GetError());
     }
-    auto delivered = std::move(pending->outputs);
-    pending_.erase(pending);
-    return foundation::Result<std::vector<abilities::AbilityOutput>>::Success(std::move(delivered));
+    return foundation::Result<std::vector<abilities::AbilityOutput>>::Success(pending->outputs);
+}
+
+const AbilityTimePendingTrigger* AbilityTimeAdapter::FindPendingOutputs(ScheduleId trigger) const noexcept
+{
+    const auto found = std::find_if(pending_.begin(), pending_.end(),
+                                    [trigger](const auto& entry) { return entry.trigger == trigger; });
+    return found == pending_.end() ? nullptr : &*found;
+}
+
+foundation::Result<void> AbilityTimeAdapter::AcknowledgeOutputs(ScheduleId trigger)
+{
+    const auto found = std::find_if(pending_.begin(), pending_.end(),
+                                    [trigger](const auto& entry) { return entry.trigger == trigger; });
+    if (found == pending_.end())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.integration.ability_output_missing", "ability output delivery is not pending"));
+    pending_.erase(found);
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> AbilityTimeAdapter::RestoreCheckpoint(AbilityTimeCheckpoint checkpoint)
