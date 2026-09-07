@@ -9,6 +9,7 @@
 
 namespace
 {
+using epidemic::runtime::AllocateMonotonicId;
 using epidemic::runtime::AssetId;
 using epidemic::runtime::AsyncOperationStatus;
 using epidemic::runtime::ChunkId;
@@ -44,6 +45,18 @@ bool TestDefaultInvalidIds()
     const RuntimeObjectId runtime_object_id{};
 
     return !asset_id.IsValid() && !resource_id.IsValid() && !runtime_object_id.IsValid();
+}
+
+// Verifies monotonic allocators issue the last valid value once and never wrap to zero.
+bool TestCheckedMonotonicIdAllocatorExhaustion()
+{
+    std::uint64_t next = std::numeric_limits<std::uint64_t>::max() - 1u;
+    const auto penultimate = AllocateMonotonicId(next);
+    const auto last = AllocateMonotonicId(next);
+    const auto exhausted = AllocateMonotonicId(next);
+    return penultimate && penultimate.Value() == std::numeric_limits<std::uint64_t>::max() - 1u &&
+           last && last.Value() == std::numeric_limits<std::uint64_t>::max() && next == 0u &&
+           !exhausted && exhausted.GetError().HasCode("runtime.id_exhausted");
 }
 
 // Verifies equality.
@@ -262,6 +275,11 @@ int main()
     if (!TestEquality())
     {
         return 2;
+    }
+
+    if (!TestCheckedMonotonicIdAllocatorExhaustion())
+    {
+        return 5;
     }
 
     if (!TestHashWorksInUnorderedMap())

@@ -17,6 +17,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -108,6 +109,36 @@ class CountingLoader final : public IResourceLoader
     int load_count_ = 0;
     ResourceRequest last_request_{};
     std::vector<ResourceDependency> dependencies_;
+};
+
+
+class ThrowingLoader final : public IResourceLoader
+{
+  public:
+    explicit ThrowingLoader(ResourceType type) : type_(type)
+    {
+    }
+
+    [[nodiscard]] ResourceType GetResourceType() const override
+    {
+        return type_;
+    }
+
+    [[nodiscard]] epidemic::foundation::Result<ResourceLoadArtifact> Load(ResourceRequest request) override
+    {
+        ++load_count;
+        auto partial_payload = std::make_shared<ByteResourcePayload>(std::vector<std::byte>{std::byte{0x2a}});
+        if (throw_on_load)
+        {
+            throw std::runtime_error("loader failure");
+        }
+        return epidemic::foundation::Result<ResourceLoadArtifact>::Success(
+            ResourceLoadArtifact{request.resource_id, request.type, std::move(partial_payload), {}});
+    }
+
+    ResourceType type_{};
+    bool throw_on_load = true;
+    int load_count = 0;
 };
 
 class SizedPayload final : public IResourcePayload
@@ -775,6 +806,111 @@ class ArtifactOverrideLoader final : public IResourceLoader
            evicted && empty.ready_bytes == 0u && empty.cached_unreferenced_bytes == 0u && empty.resource_count == 1u;
 }
 
+[[nodiscard]] bool TestLoaderExceptionDoesNotPoisonRetry()
+{
+    ResourceLoaderRegistry registry;
+    ThrowingLoader loader(Type("mesh"));
+    if (!registry.RegisterLoader(loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto first = manager.RequestLease(MakeRequest("resources/throw.mesh", "mesh"));
+    const auto failed = manager.ProcessPendingLoads();
+    if (!first || !failed || failed.Value().failed_resources != 1u ||
+        manager.GetState(first.Value().resource) != ResourceState::Failed || loader.load_count != 1)
+    {
+        return false;
+    }
+
+    loader.throw_on_load = false;
+    const auto retry = manager.RequestLease(MakeRequest("resources/throw.mesh", "mesh"));
+    const auto retried = manager.ProcessPendingLoads();
+    return retry && retried && loader.load_count == 2 && manager.IsReady(retry.Value().resource) &&
+           retried.Value().loaded_resources == 1u && retried.Value().failed_resources == 0u;
+}
+
+[[nodiscard]] bool TestAttemptBudgetCountsSkippedQueueEntries()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"));
+    if (!registry.RegisterLoader(loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto stale = manager.RequestLease(MakeRequest("resources/stale-budget.mesh", "mesh"));
+    const auto valid = manager.RequestLease(MakeRequest("resources/valid-budget.mesh", "mesh"));
+    if (!stale || !valid || !manager.Release(stale.Value()))
+    {
+        return false;
+    }
+
+    RuntimeBudget budget{};
+    budget.max_items = 1;
+    const auto first_tick = manager.ProcessPendingLoads(budget);
+    if (!first_tick || first_tick.Value().attempted_jobs != 1u || first_tick.Value().skipped_jobs != 1u ||
+        first_tick.Value().processed_jobs != 0u || loader.load_count() != 0 ||
+        manager.GetState(valid.Value().resource) != ResourceState::Queued)
+    {
+        return false;
+    }
+
+    const auto second_tick = manager.ProcessPendingLoads(budget);
+    return second_tick && second_tick.Value().attempted_jobs == 1u && second_tick.Value().skipped_jobs == 0u &&
+           second_tick.Value().processed_jobs == 1u && loader.load_count() == 1 && manager.IsReady(valid.Value().resource);
+}
+
+[[nodiscard]] bool TestFailedDependencyReleasePreservesLeaseForRetry()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(Type("mesh"), 4, false, {MakeDependency("resources/release-retry.tex", "texture")});
+    CountingLoader texture_loader(Type("texture"), 4);
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto root = manager.RequestLease(MakeRequest("resources/release-retry.mesh", "mesh"));
+    if (!root || !manager.ProcessPendingLoads() || !manager.Release(root.Value()))
+    {
+        return false;
+    }
+
+    const ResourceSlot* root_slot = Slot(manager, "resources/release-retry.mesh");
+    if (root_slot == nullptr || root_slot->dependency_handles.size() != 1u)
+    {
+        return false;
+    }
+    const ResourceLease dependency_lease = root_slot->dependency_handles.front().lease;
+    if (!manager.Release(dependency_lease))
+    {
+        return false;
+    }
+
+    const auto first_evict = manager.Evict(ResourceId::FromString("resources/release-retry.mesh"));
+    root_slot = Slot(manager, "resources/release-retry.mesh");
+    if (first_evict || root_slot == nullptr || root_slot->state != ResourceState::Evicting ||
+        root_slot->dependency_handles.size() != 1u || manager.GetMemoryStatistics().invariant_failure_count == 0u)
+    {
+        return false;
+    }
+
+    // Simulate external reconciliation producing a replacement lease, then retry cleanup.
+    const auto replacement = manager.RequestLease(MakeRequest("resources/release-retry.tex", "texture"));
+    if (!replacement)
+    {
+        return false;
+    }
+    auto* mutable_root = const_cast<ResourceSlot*>(root_slot);
+    mutable_root->dependency_handles.front().lease = replacement.Value();
+    const auto second_evict = manager.Evict(ResourceId::FromString("resources/release-retry.mesh"));
+    return second_evict && manager.GetState(root.Value().resource) == ResourceState::Unknown;
+}
+
 [[nodiscard]] bool TestFactoryCreatesUsableServices()
 {
     const auto services = CreateResourceServices();
@@ -814,6 +950,7 @@ int main()
         {"LoaderRegistryNonOwningContract", TestLoaderRegistryNonOwningContract},
         {"RequestQueuesAndProcessLoadsPayload", TestRequestQueuesAndProcessLoadsPayload},
         {"ProcessBudgetLimitsJobs", TestProcessBudgetLimitsJobs},
+        {"AttemptBudgetCountsSkippedQueueEntries", TestAttemptBudgetCountsSkippedQueueEntries},
         {"RepeatedReadyRequestDoesNotReload", TestRepeatedReadyRequestDoesNotReload},
         {"TypeMismatchRejectsConflictingRequest", TestTypeMismatchRejectsConflictingRequest},
         {"DependenciesLoadAndReleaseOnlyOnEvict", TestDependenciesLoadAndReleaseOnlyOnEvict},
@@ -828,6 +965,7 @@ int main()
         {"QueueContinuesAfterIndependentFailure", TestQueueContinuesAfterIndependentFailure},
         {"InvalidLoaderArtifactsFail", TestInvalidLoaderArtifactsFail},
         {"RetryAfterFailedLoad", TestRetryAfterFailedLoad},
+        {"LoaderExceptionDoesNotPoisonRetry", TestLoaderExceptionDoesNotPoisonRetry},
         {"ByteBudgetStopsFurtherJobs", TestByteBudgetStopsFurtherJobs},
         {"ByteBudgetIsSoftForCurrentPayload", TestByteBudgetIsSoftForCurrentPayload},
         {"CancellationAfterDependencyAcquisitionReleasesDependency", TestCancellationAfterDependencyAcquisitionReleasesDependency},
@@ -835,6 +973,7 @@ int main()
         {"InFlightResourcesAreNotEvicted", TestInFlightResourcesAreNotEvicted},
         {"UnknownAndStaleHandles", TestUnknownAndStaleHandles},
         {"MemoryStatisticsTrackUnreferencedCache", TestMemoryStatisticsTrackUnreferencedCache},
+        {"FailedDependencyReleasePreservesLeaseForRetry", TestFailedDependencyReleasePreservesLeaseForRetry},
         {"FactoryCreatesUsableServices", TestFactoryCreatesUsableServices},
     };
 

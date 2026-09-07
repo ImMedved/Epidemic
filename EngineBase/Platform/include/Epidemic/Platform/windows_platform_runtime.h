@@ -29,7 +29,7 @@ class WindowsPlatformRuntime final : public IPlatformRuntime, public IWindowSyst
     // Returns the current system time.
     [[nodiscard]] epidemic::foundation::TimePoint Now() const override;
 
-    // Loads a dynamic library through Win32 LoadLibraryW.
+    // Loads a dynamic library through Win32 LoadLibraryExW using absolute-path search restrictions.
     [[nodiscard]] epidemic::foundation::Result<DynamicLibraryPtr>
     LoadDynamicLibrary(const epidemic::foundation::Path &path) override;
 

@@ -1,6 +1,7 @@
 #include "audio_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <array>
@@ -127,13 +128,22 @@ foundation::Result<BackendVoiceHandle> AudioRuntime::CreateVoice(const AudioVoic
             foundation::Error::Create("audio.invalid_gain", "audio voice gain must not be negative"));
     }
 
-    if (next_voice_value_ == std::numeric_limits<std::uint64_t>::max())
+    const auto voice_value = AllocateMonotonicId(
+        next_voice_value_,
+        "audio.voice_id_overflow",
+        "mock backend voice id allocator is exhausted");
+    if (!voice_value)
+    {
+        return foundation::Result<BackendVoiceHandle>::Failure(voice_value.GetError());
+    }
+    const BackendVoiceHandle handle{voice_value.Value()};
+    const auto [voice_iterator, inserted] = voices_.emplace(handle, MockVoiceRecord{desc, EmitterState::Stopped, desc.initial_gain, desc.spatial});
+    if (!inserted)
     {
         return foundation::Result<BackendVoiceHandle>::Failure(
-            foundation::Error::Create("audio.voice_id_overflow", "mock backend voice id allocator overflow"));
+            foundation::Error::Create("audio.duplicate_voice_id", "allocated backend voice id already exists"));
     }
-    const BackendVoiceHandle handle{next_voice_value_++};
-    voices_.emplace(handle, MockVoiceRecord{desc, EmitterState::Stopped, desc.initial_gain, desc.spatial});
+    (void)voice_iterator;
     return foundation::Result<BackendVoiceHandle>::Success(handle);
 }
 
@@ -278,14 +288,20 @@ foundation::Result<AudioEmitterHandle> AudioRuntime::CreateEmitterHandle(const A
             foundation::Error::Create("audio.invalid_gain", "audio emitter gain is outside the supported range"));
     }
 
-    if (next_emitter_value_ == std::numeric_limits<std::uint64_t>::max() ||
-        next_emitter_generation_ == std::numeric_limits<std::uint32_t>::max())
+    if (!CanAllocateMonotonicId(next_emitter_value_) || !CanAllocateMonotonicId(next_emitter_generation_))
     {
         return foundation::Result<AudioEmitterHandle>::Failure(
-            foundation::Error::Create("audio.emitter_id_overflow", "audio emitter id allocator overflow"));
+            foundation::Error::Create("audio.emitter_id_overflow", "audio emitter id allocator is exhausted"));
     }
-    const AudioEmitterId id{next_emitter_value_++};
-    const AudioEmitterHandle handle{id, next_emitter_generation_++};
+    const auto emitter_value = AllocateMonotonicId(next_emitter_value_, "audio.emitter_id_overflow", "audio emitter id allocator is exhausted");
+    const auto emitter_generation = AllocateMonotonicId(next_emitter_generation_, "audio.emitter_id_overflow", "audio emitter generation allocator is exhausted");
+    if (!emitter_value || !emitter_generation)
+    {
+        return foundation::Result<AudioEmitterHandle>::Failure(
+            foundation::Error::Create("audio.emitter_id_overflow", "audio emitter id allocator is exhausted"));
+    }
+    const AudioEmitterId id{emitter_value.Value()};
+    const AudioEmitterHandle handle{id, emitter_generation.Value()};
     EmitterRecord record{};
     record.desc = desc;
     record.handle = handle;
@@ -295,7 +311,13 @@ foundation::Result<AudioEmitterHandle> AudioRuntime::CreateEmitterHandle(const A
     record.fade_start_multiplier = 1.0f;
     record.fade_target_multiplier = 1.0f;
     record.revision = 1;
-    emitters_.emplace(id, record);
+    const auto [emitter_iterator, inserted] = emitters_.emplace(id, record);
+    if (!inserted)
+    {
+        return foundation::Result<AudioEmitterHandle>::Failure(
+            foundation::Error::Create("audio.duplicate_emitter_id", "allocated audio emitter id already exists"));
+    }
+    (void)emitter_iterator;
     return foundation::Result<AudioEmitterHandle>::Success(handle);
 }
 
@@ -949,14 +971,11 @@ foundation::Result<AudioListenerHandle> AudioRuntime::CreateListenerHandle(const
             foundation::Error::Create("audio.invalid_listener_transform", "audio listener must reference a valid scene node"));
     }
 
-    if (next_listener_value_ == std::numeric_limits<std::uint64_t>::max() ||
-        next_listener_generation_ == std::numeric_limits<std::uint32_t>::max())
+    if (!CanAllocateMonotonicId(next_listener_value_) || !CanAllocateMonotonicId(next_listener_generation_))
     {
         return foundation::Result<AudioListenerHandle>::Failure(
-            foundation::Error::Create("audio.listener_id_overflow", "audio listener id allocator overflow"));
+            foundation::Error::Create("audio.listener_id_overflow", "audio listener id allocator is exhausted"));
     }
-    const AudioListenerId id{next_listener_value_++};
-    const AudioListenerHandle handle{id, next_listener_generation_++};
     Transform transform{};
     if (Transforms() != nullptr)
     {
@@ -968,6 +987,16 @@ foundation::Result<AudioListenerHandle> AudioRuntime::CreateListenerHandle(const
         transform = read.Value();
     }
 
+    const auto listener_value = AllocateMonotonicId(next_listener_value_, "audio.listener_id_overflow", "audio listener id allocator is exhausted");
+    const auto listener_generation = AllocateMonotonicId(next_listener_generation_, "audio.listener_id_overflow", "audio listener generation allocator is exhausted");
+    if (!listener_value || !listener_generation)
+    {
+        return foundation::Result<AudioListenerHandle>::Failure(
+            foundation::Error::Create("audio.listener_id_overflow", "audio listener id allocator is exhausted"));
+    }
+    const AudioListenerId id{listener_value.Value()};
+    const AudioListenerHandle handle{id, listener_generation.Value()};
+
     IAudioBackend* backend = Backend();
     if (backend != nullptr)
     {
@@ -978,7 +1007,17 @@ foundation::Result<AudioListenerHandle> AudioRuntime::CreateListenerHandle(const
         }
     }
 
-    listeners_.emplace(id, ListenerRecord{desc, handle});
+    const auto [listener_iterator, inserted] = listeners_.emplace(id, ListenerRecord{desc, handle});
+    if (!inserted)
+    {
+        if (backend != nullptr)
+        {
+            (void)backend->DestroyBackendListener(handle);
+        }
+        return foundation::Result<AudioListenerHandle>::Failure(
+            foundation::Error::Create("audio.duplicate_listener_id", "allocated audio listener id already exists"));
+    }
+    (void)listener_iterator;
     return foundation::Result<AudioListenerHandle>::Success(handle);
 }
 

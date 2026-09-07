@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "resource_dependency_graph.h"
 
@@ -95,16 +95,16 @@ class ResourceManager final : public IResourceManager
 
   private:
     [[nodiscard]] foundation::Result<ResourceHandle> Acquire(ResourceRequest request);
-    [[nodiscard]] ResourceAcquisitionId NextAcquisitionId() noexcept;
+    [[nodiscard]] foundation::Result<ResourceAcquisitionId> NextAcquisitionId();
     [[nodiscard]] static bool IsHandleCurrent(const ResourceSlot& slot, ResourceHandle handle);
     [[nodiscard]] static ResourceGeneration NextGeneration(ResourceGeneration generation);
     [[nodiscard]] static foundation::Result<void> ValidateRequest(const ResourceRequest& request);
     static void QueueSlot(ResourceLoadQueue& queue, ResourceSlot& slot, ResourceRequest request);
 
-    void ReleaseDependencyHandles(ResourceSlot& slot);
-    void ReleaseDependencyHandles(std::vector<OwnedResourceDependency>& handles);
+    [[nodiscard]] foundation::Result<void> ReleaseDependencyHandles(ResourceSlot& slot);
+    [[nodiscard]] foundation::Result<void> ReleaseDependencyHandles(std::vector<OwnedResourceDependency>& handles);
     void RecordInvariantFailure() noexcept;
-    void RollbackLoadAttempt(ResourceSlot& slot);
+    [[nodiscard]] foundation::Result<void> RollbackLoadAttempt(ResourceSlot& slot);
     [[nodiscard]] foundation::Result<void> LoadSlot(ResourceSlot& slot, const ResourceRequest& request, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<void> FinishLoadedArtifact(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<bool> ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact);

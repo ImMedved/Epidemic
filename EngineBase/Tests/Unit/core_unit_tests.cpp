@@ -9,6 +9,7 @@
 #include <Epidemic/Core/task_scheduler.h>
 #include <Epidemic/Diagnostics/counters.h>
 
+#include <atomic>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -33,6 +34,69 @@ struct QueuedTestEvent
 struct CountingService
 {
     virtual ~CountingService() = default;
+};
+
+
+class RecordingScheduler final : public epidemic::core::tasks::ITaskScheduler
+{
+  public:
+    [[nodiscard]] epidemic::core::tasks::TaskHandle Schedule(Task, std::string = {}) override
+    {
+        throw std::runtime_error("RecordingScheduler does not run tasks");
+    }
+
+    [[nodiscard]] epidemic::core::tasks::TaskHandle Schedule(Task, epidemic::core::tasks::TaskGroup &, std::string = {}) override
+    {
+        throw std::runtime_error("RecordingScheduler does not run grouped tasks");
+    }
+
+    void Wait(const epidemic::core::tasks::TaskHandle &) override
+    {
+    }
+
+    void Wait(const epidemic::core::tasks::TaskGroup &) override
+    {
+    }
+
+    void WaitIdle() override
+    {
+        wait_idle_called = true;
+    }
+
+    void RequestStop() noexcept override
+    {
+        request_stop_called = true;
+    }
+
+    void Join() override
+    {
+        join_called = true;
+    }
+
+    void Shutdown() override
+    {
+        RequestStop();
+        Join();
+    }
+
+    [[nodiscard]] std::size_t WorkerCount() const noexcept override
+    {
+        return 0;
+    }
+
+    [[nodiscard]] epidemic::core::tasks::TaskDiagnostics GetDiagnostics() const noexcept override
+    {
+        return {};
+    }
+
+    [[nodiscard]] std::vector<std::string> WorkerThreadNames() const override
+    {
+        return {};
+    }
+
+    bool request_stop_called{false};
+    bool join_called{false};
+    bool wait_idle_called{false};
 };
 
 struct CountingServiceImpl final : CountingService
@@ -162,6 +226,78 @@ void TestTaskSchedulerAndDispatcherContracts()
     Assert(dispatcher.Drain() == 2, "Dispatcher must drain queued tasks");
     Assert(order == std::vector<int>({1, 2}), "Dispatcher must execute tasks FIFO");
 
+    epidemic::core::tasks::TaskGroup group;
+    static_cast<void>(scheduler.Schedule([] { throw std::runtime_error("group batch failure"); }, group, "group-fail"));
+    bool group_failed = false;
+    try
+    {
+        scheduler.Wait(group);
+    }
+    catch (const std::runtime_error &exception)
+    {
+        group_failed = std::string(exception.what()) == "group batch failure";
+    }
+    Assert(group_failed, "TaskGroup must propagate the first exception for the failed batch");
+
+    static_cast<void>(scheduler.Schedule([] {}, group, "group-success"));
+    bool old_group_error_rethrown = false;
+    try
+    {
+        scheduler.Wait(group);
+    }
+    catch (const std::exception &)
+    {
+        old_group_error_rethrown = true;
+    }
+    Assert(!old_group_error_rethrown, "TaskGroup must not retain an exception after Wait consumes it");
+
+    epidemic::core::tasks::SimpleTaskScheduler request_stop_scheduler(1);
+    std::atomic<bool> request_stop_completed{false};
+    const auto request_stop_handle = request_stop_scheduler.Schedule([&request_stop_scheduler, &request_stop_completed] {
+        request_stop_scheduler.RequestStop();
+        request_stop_completed.store(true, std::memory_order_relaxed);
+    }, "worker-request-stop");
+    request_stop_scheduler.Wait(request_stop_handle);
+    request_stop_scheduler.Join();
+    request_stop_scheduler.Shutdown();
+    Assert(request_stop_completed.load(std::memory_order_relaxed), "RequestStop must be safe from a worker task");
+
+    epidemic::core::tasks::SimpleTaskScheduler self_shutdown_scheduler(1);
+    const auto self_shutdown_handle = self_shutdown_scheduler.Schedule([&self_shutdown_scheduler] {
+        self_shutdown_scheduler.Shutdown();
+    }, "worker-shutdown");
+    bool self_shutdown_failed_safely = false;
+    try
+    {
+        self_shutdown_scheduler.Wait(self_shutdown_handle);
+    }
+    catch (const std::runtime_error &exception)
+    {
+        self_shutdown_failed_safely = std::string(exception.what()).find("worker thread") != std::string::npos;
+    }
+    self_shutdown_scheduler.Shutdown();
+    Assert(self_shutdown_failed_safely, "Shutdown from a worker must fail deterministically instead of self-joining");
+
+    std::vector<int> exception_order;
+    dispatcher.Post([&exception_order] { exception_order.push_back(10); }, "before-throw");
+    dispatcher.Post([&exception_order] {
+        exception_order.push_back(20);
+        throw std::runtime_error("dispatcher batch failure");
+    }, "throw-middle");
+    dispatcher.Post([&exception_order] { exception_order.push_back(30); }, "after-throw");
+    bool dispatcher_batch_failed = false;
+    try
+    {
+        static_cast<void>(dispatcher.Drain());
+    }
+    catch (const std::runtime_error &exception)
+    {
+        dispatcher_batch_failed = std::string(exception.what()) == "dispatcher batch failure";
+    }
+    Assert(dispatcher_batch_failed, "Dispatcher must still report the first task exception");
+    Assert(exception_order == std::vector<int>({10, 20, 30}),
+           "Dispatcher must continue draining later tasks after one task throws");
+
     bool empty_task_failed = false;
     try
     {
@@ -190,6 +326,59 @@ void TestModuleRegistryContracts()
     registry.TickAll(services, *logger, epidemic::core::FrameContext{});
     registry.ShutdownAll(services, *logger);
     Assert(!trace.empty(), "Module registry must execute lifecycle stages");
+
+    epidemic::core::ModuleRegistry shutdown_failure_registry;
+    std::vector<std::string> shutdown_trace;
+    shutdown_failure_registry.Register(std::make_unique<ProbeModule>("core", std::vector<std::string>{}, shutdown_trace));
+    shutdown_failure_registry.Register(
+        std::make_unique<ProbeModule>("middle", std::vector<std::string>{"core"}, shutdown_trace, false, false, false, true));
+    shutdown_failure_registry.Register(
+        std::make_unique<ProbeModule>("top", std::vector<std::string>{"middle"}, shutdown_trace));
+    shutdown_failure_registry.BootstrapAll(services, *logger);
+    shutdown_failure_registry.InitializeAll(services, *logger);
+    bool shutdown_failed = false;
+    try
+    {
+        shutdown_failure_registry.ShutdownAll(services, *logger);
+    }
+    catch (const std::runtime_error &exception)
+    {
+        shutdown_failed = std::string(exception.what()) == "shutdown failure";
+    }
+    Assert(shutdown_failed, "Module shutdown failure must be reported after best-effort shutdown");
+    Assert(shutdown_trace == std::vector<std::string>({"core:bootstrap", "middle:bootstrap", "top:bootstrap",
+                                                       "core:initialize", "middle:initialize", "top:initialize",
+                                                       "top:shutdown", "middle:shutdown", "core:shutdown"}),
+           "ModuleRegistry must continue shutting down remaining modules after one module throws");
+
+    epidemic::core::Application shutdown_failure_application(epidemic::core::ApplicationOptions{"ShutdownFailureApplication", std::nullopt});
+    auto app_logger = std::make_shared<epidemic::tests::RecordingLogger>();
+    auto app_scheduler = std::make_shared<RecordingScheduler>();
+    auto app_configuration = std::make_shared<epidemic::core::config::BasicConfiguration>();
+    app_configuration->SetRuntimeName("ShutdownFailureApplication");
+    app_configuration->SetWorkerCount(1);
+    shutdown_failure_application.Services().RegisterInstance<epidemic::diagnostics::ILogger>(app_logger);
+    shutdown_failure_application.Services().RegisterInstance<epidemic::core::config::IConfiguration>(app_configuration);
+    shutdown_failure_application.Services().Emplace<epidemic::core::events::IEventBus, epidemic::core::events::EventBus>();
+    shutdown_failure_application.Services().RegisterInstance<epidemic::core::tasks::ITaskScheduler>(app_scheduler);
+    shutdown_failure_application.Services().Emplace<epidemic::core::IMainThreadDispatcher, epidemic::core::MainThreadDispatcher>();
+    std::vector<std::string> app_shutdown_trace;
+    shutdown_failure_application.Modules().Register(
+        std::make_unique<ProbeModule>("failing", std::vector<std::string>{}, app_shutdown_trace, false, false, false, true));
+    Assert(shutdown_failure_application.Bootstrap() == 0, "Shutdown failure application bootstrap must succeed");
+    Assert(shutdown_failure_application.Initialize() == 0, "Shutdown failure application initialize must succeed");
+    bool application_shutdown_failed = false;
+    try
+    {
+        static_cast<void>(shutdown_failure_application.Shutdown());
+    }
+    catch (const std::runtime_error &exception)
+    {
+        application_shutdown_failed = std::string(exception.what()) == "shutdown failure";
+    }
+    Assert(application_shutdown_failed, "Application shutdown must preserve the first module shutdown error");
+    Assert(app_scheduler->request_stop_called && app_scheduler->join_called && app_scheduler->wait_idle_called,
+           "Application must stop and drain scheduler even after module shutdown failure");
 
     bool duplicate_failed = false;
     try

@@ -1,6 +1,8 @@
 #include "renderer_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
+#include "Epidemic/Runtime/Foundation/numeric_validation.h"
 
 #include <algorithm>
 #include <optional>
@@ -82,7 +84,16 @@ foundation::Result<RenderProxyId> RendererRuntime::RegisterProxy(const RenderPro
         return foundation::Result<RenderProxyId>::Failure(transform.GetError());
     }
 
-    const RenderProxyId proxy_id{next_proxy_value_++};
+    const auto proxy_value = AllocateMonotonicId(next_proxy_value_, "renderer.proxy_id_exhausted", "render proxy id allocator is exhausted");
+    if (!proxy_value)
+    {
+        return foundation::Result<RenderProxyId>::Failure(proxy_value.GetError());
+    }
+    const RenderProxyId proxy_id{proxy_value.Value()};
+    if (proxies_.contains(proxy_id))
+    {
+        return RendererFailureValue<RenderProxyId>("renderer.duplicate_proxy_id", "allocated render proxy id already exists");
+    }
     ProxyRecord record{};
     record.desc = desc;
     record.lifecycle = RenderProxyLifecycle::Registered;
@@ -98,7 +109,11 @@ foundation::Result<RenderProxyId> RendererRuntime::RegisterProxy(const RenderPro
     {
         record.readiness = RenderProxyReadiness::Loading;
     }
-    proxies_.emplace(proxy_id, std::move(record));
+    const auto [_, inserted] = proxies_.emplace(proxy_id, std::move(record));
+    if (!inserted)
+    {
+        return RendererFailureValue<RenderProxyId>("renderer.duplicate_proxy_id", "allocated render proxy id already exists");
+    }
     return foundation::Result<RenderProxyId>::Success(proxy_id);
 }
 
@@ -212,18 +227,30 @@ RenderProxyDirtyMask RendererRuntime::GetProxyDirtyFlags(RenderProxyId id) const
 
 foundation::Result<ViewId> RendererRuntime::CreateView(const ViewDesc& desc)
 {
+    constexpr float kMaxPerspectiveFovDegrees = 180.0f;
+    if (!IsFinitePositive(desc.vertical_fov) || desc.vertical_fov >= kMaxPerspectiveFovDegrees ||
+        !IsFinitePositive(desc.near_plane) || !IsFinitePositive(desc.far_plane) || desc.far_plane <= desc.near_plane)
+    {
+        return RendererFailureValue<ViewId>("renderer.invalid_view", "view descriptor contains invalid clip or field-of-view values");
+    }
+
     const auto transform = GetTransform(desc.transform_node);
     if (!transform)
     {
         return foundation::Result<ViewId>::Failure(transform.GetError());
     }
-    if (desc.vertical_fov <= 0.0f || desc.near_plane <= 0.0f || desc.far_plane <= desc.near_plane)
-    {
-        return RendererFailureValue<ViewId>("renderer.invalid_view", "view descriptor contains invalid clip or field-of-view values");
-    }
 
-    const ViewId view_id{next_view_value_++};
-    views_.emplace(view_id, ViewRecord{desc, ViewLifecycle::Active});
+    const auto view_value = AllocateMonotonicId(next_view_value_, "renderer.view_id_exhausted", "renderer view id allocator is exhausted");
+    if (!view_value)
+    {
+        return foundation::Result<ViewId>::Failure(view_value.GetError());
+    }
+    const ViewId view_id{view_value.Value()};
+    const auto [_, inserted] = views_.emplace(view_id, ViewRecord{desc, ViewLifecycle::Active});
+    if (!inserted)
+    {
+        return RendererFailureValue<ViewId>("renderer.duplicate_view_id", "allocated renderer view id already exists");
+    }
     return foundation::Result<ViewId>::Success(view_id);
 }
 

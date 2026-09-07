@@ -1,5 +1,6 @@
 #include "world_runtime_impl.h"
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 #include "Epidemic/Runtime/World/world_invariants.h"
 
 #include <algorithm>
@@ -210,19 +211,34 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const CreateObjectCom
             MakeWorldError("world.duplicate_persistent_object", "persistent object id is already registered"));
     }
 
-    const RuntimeObjectId runtime_id{next_runtime_object_value_++};
+    const auto runtime_value = AllocateMonotonicId(next_runtime_object_value_, "world.runtime_object_id_exhausted", "runtime object id allocator is exhausted");
+    if (!runtime_value)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(runtime_value.GetError());
+    }
+    const RuntimeObjectId runtime_id{runtime_value.Value()};
     record.runtime_id = runtime_id;
     record.revision = 1;
     const auto invariant = ValidateWorldObjectInvariant(record, *this, *this, *this);
     if (!invariant)
     {
-        --next_runtime_object_value_;
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
     }
-    world_objects_[runtime_id] = record;
+    const auto [object_iterator, object_inserted] = world_objects_.emplace(runtime_id, record);
+    if (!object_inserted)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(
+            MakeWorldError("world.duplicate_runtime_object", "allocated runtime object id already exists"));
+    }
     if (record.persistent_id.IsValid())
     {
-        persistent_to_runtime_[record.persistent_id] = runtime_id;
+        const auto [_, persistent_inserted] = persistent_to_runtime_.emplace(record.persistent_id, runtime_id);
+        if (!persistent_inserted)
+        {
+            world_objects_.erase(object_iterator);
+            return foundation::Result<WorldCommandResult>::Failure(
+                MakeWorldError("world.duplicate_persistent_object", "persistent object id is already registered"));
+        }
     }
     return foundation::Result<WorldCommandResult>::Success(WorldCommandResult{runtime_id, std::nullopt, record});
 }
@@ -695,19 +711,25 @@ foundation::Result<DemotionCommitToken> WorldRuntime::IssueDemotionCommitToken(D
     {
         return foundation::Result<DemotionCommitToken>::Failure(invariant.GetError());
     }
-    if (next_demotion_token_value_ == 0 || next_demotion_token_value_ == std::numeric_limits<std::uint64_t>::max())
+    const auto token_value = AllocateMonotonicId(next_demotion_token_value_, "world.demotion_token_exhausted", "demotion token id allocator is exhausted");
+    if (!token_value)
     {
-        return foundation::Result<DemotionCommitToken>::Failure(MakeWorldError("world.demotion_token_overflow", "demotion token id cannot advance beyond UINT64_MAX"));
+        return foundation::Result<DemotionCommitToken>::Failure(token_value.GetError());
     }
 
     DemotionCommitToken token{};
-    token.token_id = next_demotion_token_value_++;
+    token.token_id = token_value.Value();
     token.object = snapshot.object;
     token.target_reality = snapshot.target_reality;
     token.collapsed_placement = snapshot.collapsed_placement;
     token.collapse_record_id = snapshot.collapse_record_id;
     token.source_revision = snapshot.source_revision;
-    issued_demotion_tokens_[token.token_id] = token;
+    const auto [_, inserted] = issued_demotion_tokens_.emplace(token.token_id, token);
+    if (!inserted)
+    {
+        return foundation::Result<DemotionCommitToken>::Failure(
+            MakeWorldError("world.duplicate_demotion_token", "allocated demotion token id already exists"));
+    }
     return foundation::Result<DemotionCommitToken>::Success(token);
 }
 

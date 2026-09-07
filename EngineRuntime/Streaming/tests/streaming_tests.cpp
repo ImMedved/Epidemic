@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <limits>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -526,6 +527,68 @@ bool TestCommitRunsOnlyAfterCompletedStepAndOnlyOnce()
     return commit->commits == 1 && completed_commit.processed_bytes == 0 && after.processed_requests <= 1;
 }
 
+bool TestCommitBudgetValidationRunsBeforeExternalCommit()
+{
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::Commit, 100}};
+    StreamingRuntime runtime(MakeDependencies(source, commit));
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 50});
+
+    const ChunkId chunk{208};
+    const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!first)
+    {
+        return false;
+    }
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto rejected = runtime.Tick();
+    if (rejected.failures.size() != 1u || !rejected.failures.front().error.HasCode("streaming.step_budget_violation") ||
+        commit->commits != 0 || runtime.GetChunkState(chunk) != StreamingState::Failed)
+    {
+        return false;
+    }
+
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 100});
+    const auto retry = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!retry)
+    {
+        return false;
+    }
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto committed = runtime.Tick();
+    return committed.failures.empty() && commit->commits == 1;
+}
+
+bool TestByteCounterOverflowIsRejectedBeforeCommit()
+{
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::Commit, 1}};
+    source->partial_step = StreamingPlanStep::Commit;
+    source->partial_remaining = 1;
+    source->partial_processed_bytes = std::numeric_limits<std::size_t>::max() - 8u;
+    StreamingRuntime runtime(MakeDependencies(source, commit));
+
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{209}}}, StreamingPriorityClass::Normal);
+    if (!demand)
+    {
+        return false;
+    }
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto partial = runtime.Tick();
+    if (!partial.failures.empty() || commit->commits != 0)
+    {
+        return false;
+    }
+    const auto overflow = runtime.Tick();
+    return overflow.failures.size() == 1u && overflow.failures.front().error.HasCode("streaming.byte_counter_overflow") &&
+           commit->commits == 0;
+}
+
 bool TestTargetVariantsRejectUnsupportedInReference()
 {
     StreamingRuntime runtime;
@@ -946,6 +1009,8 @@ int main()
     if (!TestPartialStepUsesRemainingByteBudget()) return 16;
     if (!TestZeroProcessedIncompleteStepDoesNotAutoComplete()) return 17;
     if (!TestCommitRunsOnlyAfterCompletedStepAndOnlyOnce()) return 18;
+    if (!TestCommitBudgetValidationRunsBeforeExternalCommit()) return 29;
+    if (!TestByteCounterOverflowIsRejectedBeforeCommit()) return 30;
     if (!TestTargetVariantsRejectUnsupportedInReference()) return 8;
     if (!TestRequestGenerationAndStaleDemand()) return 9;
     if (!TestRecordCleanup()) return 10;

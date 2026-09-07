@@ -734,46 +734,59 @@ bool TestPostShutdownOperationsRejected()
 bool TestAllocatorOverflowDoesNotMutateState()
 {
     AudioRuntime runtime{AudioOptions{.enable_mock_backend = true}};
-    bool ok = Expect(SeedSound(runtime), "allocator overflow test sound should register");
+    bool ok = Expect(SeedSound(runtime), "allocator exhaustion test sound should register");
 
     runtime.SetAllocatorStateForTesting(std::numeric_limits<std::uint64_t>::max(), 1, 1, 1, 1);
+    const auto final_emitter_value = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    ok &= Expect(final_emitter_value.HasValue() &&
+                     final_emitter_value.Value().id == AudioEmitterId{std::numeric_limits<std::uint64_t>::max()},
+                 "emitter allocator should issue the last valid value exactly once");
     const auto emitter_value_overflow = runtime.CreateEmitterHandle(MakeEmitterDesc());
     ok &= Expect(!emitter_value_overflow.HasValue() &&
                      emitter_value_overflow.GetError().HasCode("audio.emitter_id_overflow"),
-                 "emitter value overflow should fail");
-    ok &= Expect(!runtime.GetEmitterState(AudioEmitterHandle{AudioEmitterId{std::numeric_limits<std::uint64_t>::max()}, 1}).HasValue(),
-                 "emitter value overflow should not insert a record");
+                 "emitter value allocator should fail after the last valid value");
 
     runtime.SetAllocatorStateForTesting(1, std::numeric_limits<std::uint32_t>::max(), 1, 1, 1);
+    const auto final_emitter_generation = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    ok &= Expect(final_emitter_generation.HasValue() &&
+                     final_emitter_generation.Value().generation == std::numeric_limits<std::uint32_t>::max(),
+                 "emitter generation allocator should issue the last valid value exactly once");
     const auto emitter_generation_overflow = runtime.CreateEmitterHandle(MakeEmitterDesc());
     ok &= Expect(!emitter_generation_overflow.HasValue() &&
                      emitter_generation_overflow.GetError().HasCode("audio.emitter_id_overflow"),
-                 "emitter generation overflow should fail");
-    ok &= Expect(!runtime.GetEmitterState(AudioEmitterHandle{AudioEmitterId{1}, std::numeric_limits<std::uint32_t>::max()}).HasValue(),
-                 "emitter generation overflow should not insert a record");
+                 "emitter generation allocator should fail after the last valid value");
 
-    runtime.SetAllocatorStateForTesting(1, 1, std::numeric_limits<std::uint64_t>::max(), 1, 1);
+    runtime.SetAllocatorStateForTesting(100, 1, std::numeric_limits<std::uint64_t>::max(), 1, 1);
+    const auto final_listener_value = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{4}});
+    ok &= Expect(final_listener_value.HasValue() &&
+                     final_listener_value.Value().id == AudioListenerId{std::numeric_limits<std::uint64_t>::max()},
+                 "listener allocator should issue the last valid value exactly once");
     const auto listener_value_overflow = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{4}});
     ok &= Expect(!listener_value_overflow.HasValue() &&
                      listener_value_overflow.GetError().HasCode("audio.listener_id_overflow"),
-                 "listener value overflow should fail");
+                 "listener value allocator should fail after the last valid value");
 
-    runtime.SetAllocatorStateForTesting(1, 1, 1, std::numeric_limits<std::uint32_t>::max(), 1);
-    const auto listener_generation_overflow = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{4}});
+    runtime.SetAllocatorStateForTesting(100, 1, 100, std::numeric_limits<std::uint32_t>::max(), 1);
+    const auto final_listener_generation = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{5}});
+    ok &= Expect(final_listener_generation.HasValue() &&
+                     final_listener_generation.Value().generation == std::numeric_limits<std::uint32_t>::max(),
+                 "listener generation allocator should issue the last valid value exactly once");
+    const auto listener_generation_overflow = runtime.CreateListenerHandle(AudioListenerDesc{AudioTransformId{5}});
     ok &= Expect(!listener_generation_overflow.HasValue() &&
                      listener_generation_overflow.GetError().HasCode("audio.listener_id_overflow"),
-                 "listener generation overflow should fail");
+                 "listener generation allocator should fail after the last valid value");
 
-    runtime.SetAllocatorStateForTesting(1, 1, 1, 1, std::numeric_limits<std::uint64_t>::max());
+    runtime.SetAllocatorStateForTesting(100, 1, 100, 1, std::numeric_limits<std::uint64_t>::max());
     AudioVoiceDesc voice_desc{};
     voice_desc.clip = AudioClipPayload{SoundId{1}, SoundState::Ready, std::make_shared<TestClipResource>()};
     voice_desc.initial_gain = 0.5f;
+    const auto final_voice = runtime.CreateVoice(voice_desc);
+    ok &= Expect(final_voice.HasValue() && final_voice.Value().value == std::numeric_limits<std::uint64_t>::max(),
+                 "voice allocator should issue the last valid value exactly once");
     const auto voice_overflow = runtime.CreateVoice(voice_desc);
     ok &= Expect(!voice_overflow.HasValue() &&
                      voice_overflow.GetError().HasCode("audio.voice_id_overflow"),
-                 "voice overflow should fail before inserting mock voice");
-    ok &= Expect(!runtime.Play(BackendVoiceHandle{std::numeric_limits<std::uint64_t>::max()}).HasValue(),
-                 "voice overflow should not insert a backend voice");
+                 "voice allocator should fail after the last valid value");
     return ok;
 }
 

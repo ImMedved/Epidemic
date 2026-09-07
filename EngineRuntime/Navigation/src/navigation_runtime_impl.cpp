@@ -1,6 +1,7 @@
 #include "navigation_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <chrono>
@@ -125,8 +126,18 @@ foundation::Result<PathQueryHandle> NavigationRuntime::RequestPathHandle(const P
             foundation::Error::Create("navigation.backend_missing", "navigation backend is required when reference queries are disabled"));
     }
 
-    const PathQueryId id{next_query_value_++};
-    const PathQueryHandle handle{id, next_generation_++};
+    const auto query_value = AllocateMonotonicId(next_query_value_, "navigation.query_id_exhausted", "path query id allocator is exhausted");
+    if (!query_value)
+    {
+        return foundation::Result<PathQueryHandle>::Failure(query_value.GetError());
+    }
+    const auto generation = AllocateMonotonicId(next_generation_, "navigation.query_generation_exhausted", "path query generation allocator is exhausted");
+    if (!generation)
+    {
+        return foundation::Result<PathQueryHandle>::Failure(generation.GetError());
+    }
+    const PathQueryId id{query_value.Value()};
+    const PathQueryHandle handle{id, generation.Value()};
     QueryRecord record{};
     record.handle = handle;
     record.request = request;
@@ -138,7 +149,12 @@ foundation::Result<PathQueryHandle> NavigationRuntime::RequestPathHandle(const P
         record.result.state = PathQueryState::Stale;
     }
     record.result.revision = 1;
-    queries_.emplace(id, record);
+    const auto [_, inserted] = queries_.emplace(id, record);
+    if (!inserted)
+    {
+        return foundation::Result<PathQueryHandle>::Failure(
+            foundation::Error::Create("navigation.duplicate_query_id", "allocated path query id already exists"));
+    }
     return foundation::Result<PathQueryHandle>::Success(handle);
 }
 

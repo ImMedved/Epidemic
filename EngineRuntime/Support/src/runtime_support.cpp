@@ -1,6 +1,7 @@
 #include "Epidemic/Runtime/Support/runtime_support.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <array>
@@ -1091,16 +1092,25 @@ class ReferenceAudioBackend final : public audio::IAudioBackend
         {
             return Failure<audio::BackendVoiceHandle>("audio.backend_disabled", "reference audio backend is disabled");
         }
-        if (next_voice_ == std::numeric_limits<std::uint64_t>::max())
+        const auto voice_value = AllocateMonotonicId(
+            next_voice_,
+            "audio.voice_id_overflow",
+            "reference audio voice id allocator is exhausted");
+        if (!voice_value)
         {
-            return Failure<audio::BackendVoiceHandle>("audio.voice_id_overflow", "reference audio voice id overflow");
+            return foundation::Result<audio::BackendVoiceHandle>::Failure(voice_value.GetError());
         }
-        const audio::BackendVoiceHandle handle{next_voice_++};
+        const audio::BackendVoiceHandle handle{voice_value.Value()};
         Voice voice{};
         voice.desc = desc;
         voice.gain = desc.initial_gain;
         voice.spatial = desc.spatial;
-        voices_.emplace(handle.value, std::move(voice));
+        const auto [voice_iterator, inserted] = voices_.emplace(handle.value, std::move(voice));
+        if (!inserted)
+        {
+            return Failure<audio::BackendVoiceHandle>("audio.duplicate_voice_id", "allocated reference audio voice id already exists");
+        }
+        (void)voice_iterator;
         return foundation::Result<audio::BackendVoiceHandle>::Success(handle);
     }
 

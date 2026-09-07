@@ -92,7 +92,13 @@ class ITaskScheduler
     // Blocks until the scheduler has no queued or active tasks.
     virtual void WaitIdle() = 0;
 
-    // Stops accepting new work and requests worker shutdown.
+    // Requests worker shutdown without joining worker threads. Safe from scheduler workers.
+    virtual void RequestStop() noexcept = 0;
+
+    // Joins worker threads after stop was requested. Must not be called from a scheduler worker.
+    virtual void Join() = 0;
+
+    // Stops accepting new work, requests worker shutdown, and joins worker threads.
     virtual void Shutdown() = 0;
 
     // Returns the number of worker threads owned by the scheduler.
@@ -129,6 +135,12 @@ class SimpleTaskScheduler final : public ITaskScheduler
     // Waits for all currently queued and active tasks and then rethrows the first scheduler-level failure.
     void WaitIdle() override;
 
+    // Requests worker stop without joining.
+    void RequestStop() noexcept override;
+
+    // Joins worker threads. Throws if called from one of the worker threads.
+    void Join() override;
+
     // Prevents new scheduling and joins worker threads.
     void Shutdown() override;
 
@@ -160,10 +172,13 @@ class SimpleTaskScheduler final : public ITaskScheduler
     std::condition_variable idle_cv_;
     std::queue<QueuedTask> tasks_;
     std::vector<std::jthread> workers_;
+    std::vector<std::thread::id> worker_thread_ids_;
     std::vector<std::string> worker_names_;
     std::size_t active_tasks_{0};
     std::size_t completed_tasks_{0};
     std::exception_ptr first_exception_;
     bool stopping_{false};
+
+    [[nodiscard]] bool IsWorkerThread(std::thread::id thread_id) const noexcept;
 };
 } // namespace epidemic::core::tasks
