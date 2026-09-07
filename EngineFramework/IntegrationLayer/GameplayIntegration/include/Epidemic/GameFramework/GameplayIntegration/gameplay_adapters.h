@@ -126,8 +126,9 @@ class AbilityEffectsDispatcher
     [[nodiscard]] foundation::Result<std::vector<effects::EffectExecutionResult>> Dispatch(std::span<const abilities::AbilityOutput> outputs);
     [[nodiscard]] AbilityEffectsCheckpoint CaptureCheckpoint() const;
     [[nodiscard]] foundation::Result<void> RestoreCheckpoint(AbilityEffectsCheckpoint checkpoint);
-    std::uint64_t PruneDeliveriesForExecution(abilities::AbilityExecutionId execution) noexcept;
   private:
+    friend class AbilityOutputDeliveryCoordinator;
+    std::uint64_t PruneDeliveriesForExecution(abilities::AbilityExecutionId execution) noexcept;
     effects::EffectService& effects_;
     std::unordered_map<ActionTypeId,effects::EffectDefinitionId> mappings_;
     bool mappings_frozen_ = false;
@@ -198,6 +199,7 @@ class AbilityTimeAdapter
     [[nodiscard]] AbilityTimeCheckpoint CaptureCheckpoint() const { return {clock_, action_, pending_}; }
     [[nodiscard]] foundation::Result<void> RestoreCheckpoint(AbilityTimeCheckpoint checkpoint);
     [[nodiscard]] std::size_t PendingOutputCount() const noexcept { return pending_.size(); }
+    [[nodiscard]] bool HasPendingOutputsForExecution(abilities::AbilityExecutionId execution) const noexcept;
   private:
     time::GameplayTimeService& time_;
     abilities::AbilityService& abilities_;
@@ -205,6 +207,24 @@ class AbilityTimeAdapter
     ActionTypeId action_{};
     static constexpr std::size_t kPendingCapacity = 4096;
     std::vector<AbilityTimePendingTrigger> pending_;
+};
+
+class AbilityOutputDeliveryCoordinator
+{
+  public:
+    AbilityOutputDeliveryCoordinator(abilities::AbilityService& abilities,
+                                     AbilityTimeAdapter& time_adapter,
+                                     AbilityEffectsDispatcher& effects_dispatcher) noexcept
+        : abilities_(abilities), time_adapter_(time_adapter), effects_dispatcher_(effects_dispatcher) {}
+
+    [[nodiscard]] foundation::Result<std::vector<effects::EffectExecutionResult>> DeliverPendingOutputs(
+        ScheduleId trigger);
+    std::uint64_t PruneSafeTerminalDeliveries(abilities::AbilityExecutionId execution) noexcept;
+
+  private:
+    abilities::AbilityService& abilities_;
+    AbilityTimeAdapter& time_adapter_;
+    AbilityEffectsDispatcher& effects_dispatcher_;
 };
 
 struct ProgressionRewardPayload { progression::ProgressionTrackId track{}; };

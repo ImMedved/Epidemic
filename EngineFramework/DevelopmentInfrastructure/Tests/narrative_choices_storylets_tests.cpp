@@ -1,6 +1,8 @@
 #include "Epidemic/GameFramework/Narrative/narrative.h"
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::narrative;
@@ -43,6 +45,49 @@ class Recorder final : public INarrativeConsequenceHandler
     mutable std::vector<GameplayObjectRef> owners;
     mutable std::vector<NarrativeConsequenceTypeId> types;
 };
+
+void ConfigureStoryletService(NarrativeService &service,
+                              AlwaysResolver &always,
+                              Recorder &recorder,
+                              StoryletId storylet_id,
+                              GameplayDuration cooldown,
+                              std::uint32_t max_activations)
+{
+    auto always_type = NarrativeConditionTypeId::FromString("condition.always");
+    auto effect_type = NarrativeConsequenceTypeId::FromString("narrative.semantic_effect");
+    Check(static_cast<bool>(service.RegisterConditionResolver(always_type, always)), "cooldown resolver");
+    Check(static_cast<bool>(service.RegisterConsequenceHandler(effect_type, recorder)), "cooldown recorder");
+
+    NarrativeConditionDefinition condition;
+    condition.id = NarrativeConditionId::FromString("condition.storylet.available");
+    condition.type = always_type;
+    Check(static_cast<bool>(service.RegisterConditionDefinition(condition)), "cooldown condition");
+
+    NarrativeConsequenceDefinition consequence;
+    consequence.id = NarrativeConsequenceId::FromString("consequence.storylet.effect");
+    consequence.type = effect_type;
+    Check(static_cast<bool>(service.RegisterConsequenceDefinition(consequence)), "cooldown consequence");
+
+    StoryletDefinition storylet;
+    storylet.id = storylet_id;
+    storylet.availability_conditions.push_back(condition.id);
+    storylet.consequences.push_back(consequence.id);
+    storylet.max_activations = max_activations;
+    storylet.cooldown = cooldown;
+    Check(static_cast<bool>(service.RegisterStoryletDefinition(storylet)), "cooldown storylet");
+    Check(static_cast<bool>(service.FreezeDefinitions()), "cooldown freeze");
+}
+
+NarrativeEvent StoryletEvent(GameplayObjectRef actor, std::int64_t time, const char *correlation)
+{
+    NarrativeEvent event;
+    event.type = NarrativeEventTypeId::FromString("storylet.cooldown.event");
+    event.instigator = actor;
+    event.subject = actor;
+    event.time = GameplayTimePoint{time};
+    event.correlation = CorrelationId::FromString(correlation);
+    return event;
+}
 } // namespace
 
 int main()
@@ -149,5 +194,59 @@ int main()
     Check(service.ExpireChoices(GameplayTimePoint{50}, {.time = GameplayTimePoint{50}, .actor = player}).size() == 1,
           "choice expiry lifecycle");
     Check(service.GetChoice(expiring_id.Value())->state == NarrativeChoiceState::Expired, "choice expired state");
+
+    {
+        NarrativeService cooldown_service;
+        AlwaysResolver cooldown_resolver;
+        Recorder cooldown_recorder;
+        ConfigureStoryletService(cooldown_service, cooldown_resolver, cooldown_recorder,
+                                 StoryletId::FromString("storylet.cooldown.normal"), GameplayDuration{10}, 3);
+        Check(static_cast<bool>(cooldown_service.ProcessNarrativeEvent(StoryletEvent(player, 100, "cooldown.normal.1"))),
+              "normal cooldown first activation");
+        Check(cooldown_service.FindConsequences(ConsequenceExecutionState::Pending).size() == 1,
+              "normal cooldown first consequence");
+        Check(static_cast<bool>(cooldown_service.ProcessNarrativeEvent(StoryletEvent(player, 105, "cooldown.normal.2"))),
+              "normal cooldown second event inside window");
+        Check(cooldown_service.FindConsequences(ConsequenceExecutionState::Pending).size() == 1,
+              "normal cooldown blocks before end");
+        Check(static_cast<bool>(cooldown_service.ProcessNarrativeEvent(StoryletEvent(player, 110, "cooldown.normal.3"))),
+              "normal cooldown event at end boundary");
+        Check(cooldown_service.FindConsequences(ConsequenceExecutionState::Pending).size() == 2,
+              "normal cooldown allows activation at end");
+    }
+
+    {
+        NarrativeService overflow_service;
+        AlwaysResolver overflow_resolver;
+        Recorder overflow_recorder;
+        ConfigureStoryletService(overflow_service, overflow_resolver, overflow_recorder,
+                                 StoryletId::FromString("storylet.cooldown.overflow"), GameplayDuration{10}, 3);
+        constexpr auto max_time = std::numeric_limits<std::int64_t>::max();
+        Check(static_cast<bool>(
+                  overflow_service.ProcessNarrativeEvent(StoryletEvent(player, max_time - 5, "cooldown.overflow.1"))),
+              "overflow cooldown first activation");
+        Check(overflow_service.FindConsequences(ConsequenceExecutionState::Pending).size() == 1,
+              "overflow cooldown first consequence");
+        Check(static_cast<bool>(
+                  overflow_service.ProcessNarrativeEvent(StoryletEvent(player, max_time - 1, "cooldown.overflow.2"))),
+              "overflow cooldown second event near max");
+        Check(overflow_service.FindConsequences(ConsequenceExecutionState::Pending).size() == 1,
+              "saturated cooldown remains active near int64 max");
+    }
+
+    {
+        NarrativeService zero_service;
+        AlwaysResolver zero_resolver;
+        Recorder zero_recorder;
+        ConfigureStoryletService(zero_service, zero_resolver, zero_recorder,
+                                 StoryletId::FromString("storylet.cooldown.zero"), GameplayDuration{0}, 2);
+        Check(static_cast<bool>(zero_service.ProcessNarrativeEvent(StoryletEvent(player, 1000, "cooldown.zero.1"))),
+              "zero cooldown first activation");
+        Check(static_cast<bool>(zero_service.ProcessNarrativeEvent(StoryletEvent(player, 1000, "cooldown.zero.2"))),
+              "zero cooldown second activation same time");
+        Check(zero_service.FindConsequences(ConsequenceExecutionState::Pending).size() == 2,
+              "zero cooldown does not block activation");
+    }
+
     return 0;
 }

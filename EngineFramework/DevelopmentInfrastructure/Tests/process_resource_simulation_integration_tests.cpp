@@ -126,24 +126,10 @@ int main()
     if (!proc_a || !proc_b)
         return 9;
 
+    // M01: there is intentionally no ResourcesProduction simulation executor. Timed
+    // production recipes are represented by Processes and execute through this real layer.
     SimulationService sim;
     ProcessesSimulationLayer process_layer(processes);
-    ProductionSimulationLayer production_layer(resources);
-
-    SimulationTask production_task;
-    production_task.area = area_a;
-    auto production_prepare = production_layer.Prepare(production_task);
-    if (!production_prepare || production_prepare.Value().state != SimulationTaskState::Skipped ||
-        production_prepare.Value().operations != 0)
-        return 10;
-    if (!production_layer.Commit(production_task, production_prepare.Value()))
-        return 11;
-    SimulationLayerSummary forged_production;
-    forged_production.layer = ProductionSimulationLayer::StaticLayer();
-    forged_production.state = SimulationTaskState::Completed;
-    forged_production.operations = 1;
-    if (production_layer.Commit(production_task, forged_production))
-        return 12;
 
     auto region_a = sim.RegisterRegion({SimulationRegionId::FromString("test.region.a"),
                                         "test.region.a",

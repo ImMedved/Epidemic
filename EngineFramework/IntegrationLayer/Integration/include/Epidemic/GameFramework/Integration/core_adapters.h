@@ -3,6 +3,7 @@
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/GameFramework/Facts/gameplay_facts.h"
 #include "Epidemic/GameFramework/Queries/gameplay_queries.h"
+#include "Epidemic/GameFramework/SaveGame/save_game.h"
 #include "Epidemic/GameFramework/Time/gameplay_time.h"
 #include "Epidemic/Runtime/Time/time_runtime.h"
 
@@ -83,6 +84,12 @@ enum class ScheduledTriggerDisposition
     DiscardTerminal,
 };
 
+enum class ScheduledTriggerActionDeliveryMode : std::uint8_t
+{
+    RequiresActionHandler = 1,
+    ObserverOnly = 2,
+};
+
 struct ScheduledTriggerDispatcherPolicy
 {
     std::size_t max_pending_deliveries = 16384;
@@ -93,11 +100,17 @@ struct ScheduledTriggerDeliveryRecord
 {
     time::ScheduledTrigger trigger{};
     GameplayContext context{};
+    bool action_declared = false;
+    ScheduledTriggerActionDeliveryMode action_mode = ScheduledTriggerActionDeliveryMode::RequiresActionHandler;
+    ScheduledTriggerHandlerId required_action_handler{};
     std::vector<ScheduledTriggerHandlerId> completed_handlers;
 };
 
 struct ScheduledTriggerDispatcherSnapshot
 {
+    // Frozen delivery registry captured with the inbox. Restore requires an exact match so a
+    // previously unknown action cannot become complete merely because the runtime manifest changed.
+    std::vector<ScheduledTriggerHandlerId> observer_handlers;
     std::vector<ScheduledTriggerDeliveryRecord> pending;
 };
 
@@ -111,6 +124,8 @@ struct ScheduledTriggerPumpReport
     std::uint64_t unhandled = 0;
     std::uint64_t pending = 0;
 };
+
+class ScheduledTriggerDispatcherSaveParticipant;
 
 class ScheduledTriggerDispatcher
 {
@@ -127,8 +142,10 @@ class ScheduledTriggerDispatcher
     // Observers receive every collected trigger. Action handlers receive only their registered action.
     // Handler registrations are immutable after Freeze(). IDs are stable delivery-leg identities used by snapshots/retries.
     [[nodiscard]] foundation::Result<void> RegisterObserver(ScheduledTriggerHandlerId id, int priority, Handler handler);
+    [[nodiscard]] foundation::Result<void> DeclareRequiresActionHandler(ActionTypeId action);
+    [[nodiscard]] foundation::Result<void> DeclareObserverOnlyAction(ActionTypeId action);
     [[nodiscard]] foundation::Result<void> RegisterActionHandler(ActionTypeId action, ScheduledTriggerHandlerId id, Handler handler);
-    void Freeze() noexcept { frozen_ = true; }
+    foundation::Result<void> Freeze();
     [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
 
     // This is the only Integration-level API that destructively collects from GameplayTimeService.
@@ -161,15 +178,45 @@ class ScheduledTriggerDispatcher
 
     [[nodiscard]] bool HandlerExists(ScheduledTriggerHandlerId id) const noexcept;
     [[nodiscard]] const RegisteredHandler* FindHandler(ScheduledTriggerHandlerId id) const noexcept;
-    [[nodiscard]] std::vector<ScheduledTriggerHandlerId> RequiredHandlersFor(ActionTypeId action) const;
+    [[nodiscard]] foundation::Result<void> DeclareActionDelivery(
+        ActionTypeId action, ScheduledTriggerActionDeliveryMode mode);
+    [[nodiscard]] std::vector<ScheduledTriggerHandlerId> RequiredHandlersFor(
+        const ScheduledTriggerDeliveryRecord& delivery) const;
     [[nodiscard]] foundation::Result<void> ValidateSnapshot(const ScheduledTriggerDispatcherSnapshot& snapshot) const;
+    void CommitRestoredSnapshot(ScheduledTriggerDispatcherSnapshot&& snapshot) noexcept;
 
     time::GameplayTimeService& time_;
     ScheduledTriggerDispatcherPolicy policy_{};
     std::vector<RegisteredHandler> observers_;
+    std::unordered_map<ActionTypeId, ScheduledTriggerActionDeliveryMode> action_manifest_;
     std::unordered_map<ActionTypeId, RegisteredHandler> action_handlers_;
     std::vector<ScheduledTriggerDeliveryRecord> pending_;
     bool frozen_ = false;
+
+    friend class ScheduledTriggerDispatcherSaveParticipant;
+};
+
+class ScheduledTriggerDispatcherSaveParticipant final : public savegame::ISaveParticipant
+{
+  public:
+    explicit ScheduledTriggerDispatcherSaveParticipant(ScheduledTriggerDispatcher& dispatcher) noexcept
+        : dispatcher_(dispatcher)
+    {
+    }
+
+    [[nodiscard]] savegame::SaveParticipantId Id() const noexcept override;
+    [[nodiscard]] savegame::SaveSchemaVersion SchemaVersion() const noexcept override { return 1; }
+    [[nodiscard]] std::vector<savegame::SaveParticipantId> Dependencies() const override { return {}; }
+    [[nodiscard]] foundation::Result<savegame::SaveSection> CaptureSnapshot(
+        const savegame::SaveContext& context) const override;
+    [[nodiscard]] foundation::Result<void> ValidateSnapshot(
+        const savegame::SaveSection& section, const savegame::RestoreContext& context) const override;
+    [[nodiscard]] foundation::Result<std::unique_ptr<savegame::IRestoreStage>> StageRestore(
+        const savegame::SaveSection& section, const savegame::RestoreContext& context) override;
+    void CommitRestore(savegame::IRestoreStage& stage) noexcept override;
+
+  private:
+    ScheduledTriggerDispatcher& dispatcher_;
 };
 
 class TimeFactsAdapter

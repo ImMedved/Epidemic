@@ -663,6 +663,50 @@ foundation::Result<void> AbilityTimeAdapter::AcknowledgeOutputs(ScheduleId trigg
     return foundation::Result<void>::Success();
 }
 
+bool AbilityTimeAdapter::HasPendingOutputsForExecution(abilities::AbilityExecutionId execution) const noexcept
+{
+    return std::any_of(pending_.begin(), pending_.end(),
+                       [execution](const AbilityTimePendingTrigger& entry) { return entry.execution == execution; });
+}
+
+foundation::Result<std::vector<effects::EffectExecutionResult>> AbilityOutputDeliveryCoordinator::DeliverPendingOutputs(
+    ScheduleId trigger)
+{
+    const auto* pending = time_adapter_.FindPendingOutputs(trigger);
+    if (!pending)
+        return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(
+            Error("gameplay.integration.ability_output_missing", "ability output delivery is not pending"));
+
+    const auto execution = pending->execution;
+    auto delivered = effects_dispatcher_.Dispatch(pending->outputs);
+    if (!delivered)
+        return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(delivered.GetError());
+
+    auto acknowledged = time_adapter_.AcknowledgeOutputs(trigger);
+    if (!acknowledged)
+        return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(acknowledged.GetError());
+
+    (void)PruneSafeTerminalDeliveries(execution);
+    return delivered;
+}
+
+std::uint64_t AbilityOutputDeliveryCoordinator::PruneSafeTerminalDeliveries(
+    abilities::AbilityExecutionId execution) noexcept
+{
+    if (time_adapter_.HasPendingOutputsForExecution(execution))
+        return 0;
+
+    const auto* state = abilities_.FindExecution(execution);
+    if (state &&
+        state->state != abilities::AbilityExecutionState::Completed &&
+        state->state != abilities::AbilityExecutionState::Cancelled &&
+        state->state != abilities::AbilityExecutionState::Interrupted &&
+        state->state != abilities::AbilityExecutionState::Failed)
+        return 0;
+
+    return effects_dispatcher_.PruneDeliveriesForExecution(execution);
+}
+
 foundation::Result<void> AbilityTimeAdapter::RestoreCheckpoint(AbilityTimeCheckpoint checkpoint)
 {
     if (checkpoint.clock != clock_ || checkpoint.action != action_ || checkpoint.pending.size() > kPendingCapacity)

@@ -267,12 +267,14 @@ KnowledgeAIAdapter::KnowledgeAIAdapter(const knowledge::KnowledgeService &knowle
 {
 }
 
-ai::AIContextSnapshot KnowledgeAIAdapter::BuildContext(GameplayObjectRef agent,
-                                                       const perception::PerceptionService *perception_service,
-                                                       GameplayTimePoint now) const
+ai::AIContextSnapshot KnowledgeAIAdapter::BuildContext(
+    GameplayObjectRef agent, AIExecutionAvailability availability,
+    const perception::PerceptionService *perception_service, GameplayTimePoint now) const
 {
     ai::AIContextSnapshot context;
     context.now = now;
+    context.materialized = availability.materialized;
+    context.runtime_projection_available = availability.runtime_projection_available;
 
     std::map<GameplayObjectRef, CandidateState> candidates;
     const auto last_known_topic = knowledge::KnowledgeTopicId::FromString("framework.knowledge.last_known_position");
@@ -346,6 +348,13 @@ ai::AIContextSnapshot KnowledgeAIAdapter::BuildContext(GameplayObjectRef agent,
     std::sort(context.targets.begin(), context.targets.end(),
               [](const auto &a, const auto &b) { return a.target < b.target; });
     return context;
+}
+
+ai::AIContextSnapshot KnowledgeAIAdapter::BuildContext(GameplayObjectRef agent,
+                                                       const perception::PerceptionService *perception_service,
+                                                       GameplayTimePoint now) const
+{
+    return BuildContext(agent, AIExecutionAvailability{}, perception_service, now);
 }
 
 AIIntentExecutionRecorder::AIIntentExecutionRecorder(std::size_t retention_capacity) noexcept

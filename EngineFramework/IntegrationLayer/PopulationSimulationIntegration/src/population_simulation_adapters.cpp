@@ -87,6 +87,18 @@ foundation::Result<PopulationBackedSpawnResult> PopulationEncounterAdapter::Spaw
     encounters::SpawnRequest request,
     std::size_t max_units)
 {
+    // Retain terminal Population-side idempotency records for as long as Encounters
+    // retains the matching encounter/request. Encounters removes its SpawnRequestId
+    // record when the terminal encounter itself is pruned, so only then may the
+    // matching Population tombstone be discarded without shortening the shared
+    // idempotency horizon.
+    plans_.erase(std::remove_if(plans_.begin(), plans_.end(), [&](const auto& plan) {
+        const bool terminal = plan.state == PopulationEncounterPlanState::Completed ||
+                              plan.state == PopulationEncounterPlanState::Failed;
+        return terminal && plan.encounter_instance.IsValid() &&
+               enc.GetEncounterInstance(plan.encounter_instance) == nullptr;
+    }), plans_.end());
+
     if (!group.IsValid() || !pop.GetGroup(group) || !request.encounter.IsValid() || !request.area.IsValid())
         return foundation::Result<PopulationBackedSpawnResult>::Failure(
             Error("gameplay.population_sim.invalid_population_spawn", "invalid population-backed encounter request"));
@@ -325,16 +337,9 @@ foundation::Result<void> PopulationEncounterAdapter::BindSpawnedEntity(
     {
         plan->state = PopulationEncounterPlanState::Completed;
         pop.PruneTerminalAllocations(request.value);
-        while (plans_.size() > 1024)
-        {
-            auto completed = std::find_if(plans_.begin(), plans_.end(), [](const auto& candidate) {
-                return candidate.state == PopulationEncounterPlanState::Completed ||
-                       candidate.state == PopulationEncounterPlanState::Failed;
-            });
-            if (completed == plans_.end())
-                break;
-            plans_.erase(completed);
-        }
+        // Do not evict this completed plan here. Encounters still owns the
+        // matching SpawnRequestId idempotency record; independent eviction would
+        // allow Population to reserve a different resident set for the same request.
     }
     return foundation::Result<void>::Success();
 }
@@ -400,10 +405,6 @@ foundation::Result<void> PopulationEncounterAdapter::RestoreSnapshot(
     std::sort(snapshot.plans.begin(), snapshot.plans.end(), [](const auto& a, const auto& b) {
         return a.request < b.request;
     });
-    if (snapshot.plans.size() > 1024)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population_sim.restore_invalid_plan", "population encounter snapshot exceeds capacity"));
-
     for (std::size_t index = 0; index < snapshot.plans.size(); ++index)
     {
         auto plan = snapshot.plans[index];

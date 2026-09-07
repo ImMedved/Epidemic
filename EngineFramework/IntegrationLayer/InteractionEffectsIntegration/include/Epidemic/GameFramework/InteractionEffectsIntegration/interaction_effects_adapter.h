@@ -17,6 +17,28 @@ enum class InteractionEffectDeliveryState
     ReconciliationRequired,
 };
 
+enum class InteractionEffectReconciliationOutcome
+{
+    None,
+    ConfirmedApplied,
+    ConfirmedNotApplied,
+    ConfirmedRejected,
+};
+
+enum class InteractionEffectReconciliationStatus
+{
+    Resolved,
+    AlreadyResolved,
+};
+
+struct InteractionEffectReconciliationRequest
+{
+    interaction::InteractionExecutionId execution{};
+    std::uint32_t effect_index = 0;
+    InteractionEffectReconciliationOutcome outcome = InteractionEffectReconciliationOutcome::None;
+    effects::EffectExecutionId effect_execution{};
+};
+
 struct InteractionEffectDeliveryRecord
 {
     interaction::InteractionExecutionId execution{};
@@ -25,6 +47,7 @@ struct InteractionEffectDeliveryRecord
     effects::EffectDefinitionId definition{};
     effects::EffectExecutionId effect_execution{};
     InteractionEffectDeliveryState state = InteractionEffectDeliveryState::Pending;
+    InteractionEffectReconciliationOutcome reconciliation = InteractionEffectReconciliationOutcome::None;
 };
 
 struct InteractionEffectsSnapshot
@@ -57,12 +80,14 @@ class InteractionEffectExecutor final : public interaction::IInteractionExecutor
 
     [[nodiscard]] InteractionEffectsSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(InteractionEffectsSnapshot snapshot);
+    [[nodiscard]] foundation::Result<InteractionEffectReconciliationStatus> ReconcileDelivery(
+        const InteractionEffectReconciliationRequest& request);
     [[nodiscard]] const InteractionEffectDeliveryRecord* FindDelivery(
         interaction::InteractionExecutionId execution,
         std::uint32_t effect_index) const noexcept;
 
     // Safe only after the source Interaction execution is terminal and can no
-    // longer be retried. This keeps retention policy outside the adapter.
+    // longer be retried. Unresolved/Pending deliveries are deliberately retained.
     void PruneTerminalExecution(interaction::InteractionExecutionId execution) noexcept;
 
   private:

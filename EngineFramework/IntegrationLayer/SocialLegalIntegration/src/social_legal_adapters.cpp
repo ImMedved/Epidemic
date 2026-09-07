@@ -290,10 +290,41 @@ foundation::Result<crime::LawResponseId> CrimeSocietyAdapter::RequestAuthorityRe
     return crime_.GenerateLawResponse({crime_id, mapping->response_type, authority, target, context});
 }
 
+foundation::Result<void> CrimeSocietyAdapter::ProcessCrimeLifecycle()
+{
+    const auto batch = crime_.ReadChangesSince(crime_cursor_);
+    if (batch.snapshot_required || crime_cursor_ > batch.latest_sequence)
+    {
+        std::erase_if(applied_relationship_penalties_, [&](const RelationshipPenaltyDelivery& delivery) {
+            return crime_.FindCrime(delivery.crime) == nullptr;
+        });
+        crime_cursor_ = batch.latest_sequence;
+        return foundation::Result<void>::Success();
+    }
+
+    for (const auto& change : batch.changes)
+    {
+        if (change.kind == crime::CrimeChangeKind::CrimePruned && change.crime.IsValid())
+            PruneDeliveriesForCrime(change.crime);
+        crime_cursor_ = change.sequence;
+    }
+    return foundation::Result<void>::Success();
+}
+
+std::uint64_t CrimeSocietyAdapter::PruneDeliveriesForCrime(crime::CrimeRecordId crime_id) noexcept
+{
+    if (!crime_id.IsValid() || crime_.FindCrime(crime_id) != nullptr)
+        return 0;
+    return std::erase_if(applied_relationship_penalties_, [&](const RelationshipPenaltyDelivery& delivery) {
+        return delivery.crime == crime_id;
+    });
+}
+
 SocialLegalCheckpoint CrimeSocietyAdapter::CaptureCheckpoint() const
 {
     SocialLegalCheckpoint checkpoint;
     checkpoint.mapping_revision = mappings_.CurrentRevision();
+    checkpoint.crime_cursor = crime_cursor_;
     checkpoint.applied_relationship_penalties.reserve(applied_relationship_penalties_.size());
     for (const auto& delivery : applied_relationship_penalties_)
         checkpoint.applied_relationship_penalties.push_back(delivery);
@@ -323,6 +354,11 @@ foundation::Result<void> CrimeSocietyAdapter::RestoreCheckpoint(SocialLegalCheck
             return foundation::Result<void>::Failure(Error("gameplay.social_legal.checkpoint_duplicate", "checkpoint contains duplicate delivery key"));
     }
     applied_relationship_penalties_ = std::move(restored);
+    std::erase_if(applied_relationship_penalties_, [&](const RelationshipPenaltyDelivery& delivery) {
+        return crime_.FindCrime(delivery.crime) == nullptr;
+    });
+    const auto latest = crime_.LatestChangeSequence();
+    crime_cursor_ = checkpoint.crime_cursor <= latest ? checkpoint.crime_cursor : latest;
     return foundation::Result<void>::Success();
 }
 

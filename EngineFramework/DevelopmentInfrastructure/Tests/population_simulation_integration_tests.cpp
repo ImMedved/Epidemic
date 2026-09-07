@@ -161,6 +161,16 @@ int main()
     Check(replay_population.FindAllocationsByCorrelation(spawn.spawn.request_id.value).empty(),
           "completed spawn replay does not reserve new residents");
 
+    Check(static_cast<bool>(replay_encounters.CompleteEncounter(spawn.spawn.encounter_instance,
+                                                            {.time = GameplayTimePoint{175}})),
+          "complete encounter before pruning its idempotency record");
+    Check(replay_encounters.PruneTerminalEncounters(1) == 1,
+          "prune encounter and its SpawnRequestId idempotency record");
+    const auto replay_after_encounter_prune = replay_adapter.SpawnFromPopulation(
+        replay_population, replay_encounters, bandit_group.Value(), replay_request, 2);
+    Check(!replay_after_encounter_prune && replay_adapter.FindPlan(spawn.spawn.request_id) == nullptr,
+          "population tombstone is pruned only after encounters drops the matching request horizon");
+
     const auto resident = PopulationService::ResidentRef(spawn.allocated_units.front());
     RolesJobsService roles;
     JobDefinition job;

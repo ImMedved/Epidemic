@@ -60,18 +60,9 @@ private:
     resources::ResourcesProductionService& resources_;
 };
 
-class ProductionSimulationLayer final : public simulation::ISimulationLayerExecutor
-{
-public:
-    explicit ProductionSimulationLayer(resources::ResourcesProductionService& resources) : resources_(resources) {}
-    [[nodiscard]] static constexpr simulation::SimulationLayerId StaticLayer() noexcept { return simulation::SimulationLayerId::FromString("framework.layer.resources.production"); }
-    [[nodiscard]] simulation::SimulationLayerId Layer() const noexcept override { return StaticLayer(); }
-    [[nodiscard]] foundation::Result<simulation::SimulationLayerSummary> Prepare(const simulation::SimulationTask& task) override;
-    [[nodiscard]] foundation::Result<void> Commit(const simulation::SimulationTask& task, const simulation::SimulationLayerSummary& summary) override;
-private:
-    resources::ResourcesProductionService& resources_;
-};
-
+// Timed production recipes execute through Processes. ResourcesProduction remains the
+// authoritative ledger/capability/plan owner; this integration intentionally exposes no
+// second aggregate ProductionOrder simulation executor.
 class ProcessesSimulationLayer final : public simulation::ISimulationLayerExecutor
 {
 public:

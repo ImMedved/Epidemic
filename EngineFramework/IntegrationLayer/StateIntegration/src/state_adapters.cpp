@@ -857,6 +857,64 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
     return foundation::Result<std::uint64_t>::Success(published);
 }
 
+std::uint64_t StateFactsAdapter::ContractRevision() const noexcept
+{
+    std::uint64_t hash = 0xCBF29CE484222325ull;
+    const std::uint64_t ids[] = {
+        entity_changed_.Raw(), material_changed_.Raw(), condition_changed_.Raw(), effect_changed_.Raw(), active_condition_fact_.Raw()};
+    for (const auto id : ids)
+    {
+        hash ^= id;
+        hash *= 0x100000001B3ull;
+    }
+    return hash == 0 ? 1 : hash;
+}
+
+StateFactsCheckpoint StateFactsAdapter::CaptureCheckpoint() const noexcept
+{
+    StateFactsCheckpoint checkpoint;
+    checkpoint.contract_revision = ContractRevision();
+    checkpoint.entity_cursor = entity_cursor_;
+    checkpoint.material_cursor = material_cursor_;
+    checkpoint.condition_cursor = condition_cursor_;
+    checkpoint.effect_cursor = effect_cursor_;
+    checkpoint.entity_latest = entities_.LatestChangeSequence();
+    checkpoint.material_latest = materials_.LatestChangeSequence();
+    checkpoint.condition_latest = conditions_.LatestChangeSequence();
+    checkpoint.effect_latest = effects_.LatestChangeSequence();
+    return checkpoint;
+}
+
+foundation::Result<void> StateFactsAdapter::ValidateCheckpoint(const StateFactsCheckpoint& checkpoint) const
+{
+    if (checkpoint.schema_version != 1 || checkpoint.contract_revision != ContractRevision() ||
+        checkpoint.entity_cursor > checkpoint.entity_latest || checkpoint.material_cursor > checkpoint.material_latest ||
+        checkpoint.condition_cursor > checkpoint.condition_latest || checkpoint.effect_cursor > checkpoint.effect_latest ||
+        checkpoint.condition_latest > conditions_.LatestChangeSequence())
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.state_facts_checkpoint_invalid", "state facts checkpoint is incompatible with the current contracts or journals"));
+    }
+    return foundation::Result<void>::Success();
+}
+
+void StateFactsAdapter::ApplyCheckpoint(StateFactsCheckpoint checkpoint) noexcept
+{
+    entity_cursor_ = entities_.LatestChangeSequence() < checkpoint.entity_latest ? 0 : checkpoint.entity_cursor;
+    material_cursor_ = materials_.LatestChangeSequence() < checkpoint.material_latest ? 0 : checkpoint.material_cursor;
+    condition_cursor_ = checkpoint.condition_cursor;
+    effect_cursor_ = effects_.LatestChangeSequence() < checkpoint.effect_latest ? 0 : checkpoint.effect_cursor;
+}
+
+foundation::Result<void> StateFactsAdapter::RestoreCheckpoint(StateFactsCheckpoint checkpoint)
+{
+    const auto valid = ValidateCheckpoint(checkpoint);
+    if (!valid)
+        return valid;
+    ApplyCheckpoint(std::move(checkpoint));
+    return foundation::Result<void>::Success();
+}
+
 effects::RegisteredEffectPayload EncodeConditionApplyEffect(const ConditionApplyEffectData& data)
 {
     effects::RegisteredEffectPayload result;
@@ -1085,6 +1143,33 @@ foundation::Result<std::uint64_t> StateLifecycleAdapter::ProcessEntityChanges(Ga
     return foundation::Result<std::uint64_t>::Success(processed);
 }
 
+StateLifecycleCheckpoint StateLifecycleAdapter::CaptureCheckpoint() const noexcept
+{
+    return StateLifecycleCheckpoint{1, cursor_, entities_.LatestChangeSequence()};
+}
+
+foundation::Result<void> StateLifecycleAdapter::ValidateCheckpoint(const StateLifecycleCheckpoint& checkpoint) const
+{
+    if (checkpoint.schema_version != 1 || checkpoint.cursor > checkpoint.entity_latest)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.state_lifecycle_checkpoint_invalid", "state lifecycle checkpoint is invalid"));
+    return foundation::Result<void>::Success();
+}
+
+void StateLifecycleAdapter::ApplyCheckpoint(StateLifecycleCheckpoint checkpoint) noexcept
+{
+    cursor_ = entities_.LatestChangeSequence() < checkpoint.entity_latest ? 0 : checkpoint.cursor;
+}
+
+foundation::Result<void> StateLifecycleAdapter::RestoreCheckpoint(StateLifecycleCheckpoint checkpoint)
+{
+    const auto valid = ValidateCheckpoint(checkpoint);
+    if (!valid)
+        return valid;
+    ApplyCheckpoint(std::move(checkpoint));
+    return foundation::Result<void>::Success();
+}
+
 foundation::Result<void> ConditionEffectsAdapter::RegisterRoute(ActionTypeId action, effects::EffectDefinitionId definition)
 {
     if (!action.IsValid() || effects_.FindDefinition(definition) == nullptr)
@@ -1108,13 +1193,15 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
     {
         return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(JournalGapError("conditions"));
     }
-    const auto& changes = batch.changes;
-    for (const auto& change : changes)
+
+    const auto route_revision = RouteRevision();
+    for (const auto& change : batch.changes)
     {
         const auto* definition = conditions_.FindDefinition(change.type);
         if (definition == nullptr)
         {
             cursor_ = change.sequence;
+            PruneTerminalDeliveries();
             continue;
         }
 
@@ -1139,34 +1226,105 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
         }
 
         const auto route = routes_.find(action);
-        if (action.IsValid() && route != routes_.end())
+        if (!action.IsValid() || route == routes_.end())
         {
-            effects::EffectRequest request;
-            request.definition = route->second;
-            request.targets = {change.subject};
-            request.context = change.context;
-            if (const auto* instance = conditions_.Find(change.instance))
-            {
-                request.source = instance->source;
-                request.instigator = instance->instigator;
-            }
-            else
-            {
-                request.source = change.source;
-                request.instigator = change.instigator;
-            }
-            const auto max_scale_occurrences = static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max() / 1'000'000);
-            request.scale_micro = occurrence_count > max_scale_occurrences
-                                      ? std::numeric_limits<std::int64_t>::max()
-                                      : static_cast<std::int64_t>(occurrence_count * 1'000'000ull);
-            auto executed = effects_.Execute(std::move(request), budget);
-            if (!executed)
-            {
-                return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(executed.GetError());
-            }
-            results.push_back(std::move(executed).Value());
+            cursor_ = change.sequence;
+            PruneTerminalDeliveries();
+            continue;
         }
-        cursor_ = change.sequence;
+
+        const ConditionEffectDeliveryKey key{change.sequence, action, route->second, route_revision};
+        auto* delivery = FindDelivery(change.sequence);
+        if (delivery == nullptr)
+        {
+            if (deliveries_.size() >= kDeliveryCapacity)
+                return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(
+                    Error("gameplay.condition_effect_delivery_capacity", "condition effect delivery ledger capacity is exhausted"));
+            deliveries_.push_back(ConditionEffectDeliveryRecord{key});
+            delivery = &deliveries_.back();
+        }
+        else if (!(delivery->key == key))
+        {
+            return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(
+                Error("gameplay.condition_effect_route_changed", "condition effect delivery route changed for an unresolved condition change"));
+        }
+
+        if (delivery->state == ConditionEffectDeliveryState::Applied ||
+            delivery->state == ConditionEffectDeliveryState::RejectedTerminal)
+        {
+            cursor_ = change.sequence;
+            PruneTerminalDeliveries();
+            continue;
+        }
+        if (delivery->state == ConditionEffectDeliveryState::ReconciliationRequired)
+        {
+            return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(
+                Error("gameplay.condition_effect_reconciliation_required", "condition effect delivery requires explicit reconciliation"));
+        }
+
+        delivery->retry_authorized = false;
+        effects::EffectRequest request;
+        request.definition = route->second;
+        request.targets = {change.subject};
+        request.context = change.context;
+        if (const auto* instance = conditions_.Find(change.instance))
+        {
+            request.source = instance->source;
+            request.instigator = instance->instigator;
+        }
+        else
+        {
+            request.source = change.source;
+            request.instigator = change.instigator;
+        }
+        const auto max_scale_occurrences = static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max() / 1'000'000);
+        request.scale_micro = occurrence_count > max_scale_occurrences
+                                  ? std::numeric_limits<std::int64_t>::max()
+                                  : static_cast<std::int64_t>(occurrence_count * 1'000'000ull);
+
+        auto executed = effects_.Execute(std::move(request), budget);
+        if (!executed)
+        {
+            delivery->state = ConditionEffectDeliveryState::ReconciliationRequired;
+            delivery->last_disposition = effects::EffectBatchDisposition::Failed;
+            delivery->had_applied_operation = false;
+            return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(executed.GetError());
+        }
+
+        auto execution = std::move(executed).Value();
+        const bool had_applied = std::any_of(execution.operations.begin(), execution.operations.end(), [](const auto& operation) {
+            return operation.disposition == effects::EffectOperationDisposition::Applied;
+        });
+        delivery->last_execution = execution.execution;
+        delivery->last_disposition = execution.disposition;
+        delivery->had_applied_operation = had_applied;
+
+        const auto disposition = execution.disposition;
+        results.push_back(std::move(execution));
+        if (disposition == effects::EffectBatchDisposition::Succeeded)
+        {
+            delivery->state = ConditionEffectDeliveryState::Applied;
+            cursor_ = change.sequence;
+            PruneTerminalDeliveries();
+            continue;
+        }
+        if (disposition == effects::EffectBatchDisposition::Rejected && !had_applied)
+        {
+            delivery->state = ConditionEffectDeliveryState::RejectedTerminal;
+            cursor_ = change.sequence;
+            PruneTerminalDeliveries();
+            continue;
+        }
+        if (disposition == effects::EffectBatchDisposition::Failed && !had_applied && !results.back().operations.empty())
+        {
+            delivery->state = ConditionEffectDeliveryState::Pending;
+            delivery->retry_authorized = true;
+            break;
+        }
+
+        delivery->state = ConditionEffectDeliveryState::ReconciliationRequired;
+        return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(
+            Error("gameplay.condition_effect_reconciliation_required", "condition effect batch crossed or may have crossed the commit boundary"));
     }
     return foundation::Result<std::vector<effects::EffectExecutionResult>>::Success(std::move(results));
 }
@@ -1183,21 +1341,144 @@ std::uint64_t ConditionEffectsAdapter::RouteRevision() const noexcept
     return hash == 0 ? 1 : hash;
 }
 
-ConditionEffectsCheckpoint ConditionEffectsAdapter::CaptureCheckpoint() const noexcept
+ConditionEffectDeliveryRecord* ConditionEffectsAdapter::FindDelivery(std::uint64_t condition_sequence) noexcept
 {
-    return ConditionEffectsCheckpoint{1, cursor_, RouteRevision()};
+    const auto found = std::find_if(deliveries_.begin(), deliveries_.end(), [condition_sequence](const auto& delivery) {
+        return delivery.key.condition_sequence == condition_sequence;
+    });
+    return found == deliveries_.end() ? nullptr : &*found;
+}
+
+const ConditionEffectDeliveryRecord* ConditionEffectsAdapter::FindDelivery(std::uint64_t condition_sequence) const noexcept
+{
+    const auto found = std::find_if(deliveries_.begin(), deliveries_.end(), [condition_sequence](const auto& delivery) {
+        return delivery.key.condition_sequence == condition_sequence;
+    });
+    return found == deliveries_.end() ? nullptr : &*found;
+}
+
+void ConditionEffectsAdapter::PruneTerminalDeliveries()
+{
+    std::erase_if(deliveries_, [this](const auto& delivery) {
+        return delivery.key.condition_sequence <= cursor_ &&
+               (delivery.state == ConditionEffectDeliveryState::Applied ||
+                delivery.state == ConditionEffectDeliveryState::RejectedTerminal);
+    });
+}
+
+ConditionEffectsCheckpoint ConditionEffectsAdapter::CaptureCheckpoint() const
+{
+    ConditionEffectsCheckpoint checkpoint;
+    checkpoint.cursor = cursor_;
+    checkpoint.condition_latest = conditions_.LatestChangeSequence();
+    checkpoint.route_revision = RouteRevision();
+    checkpoint.deliveries = deliveries_;
+    std::sort(checkpoint.deliveries.begin(), checkpoint.deliveries.end(), [](const auto& left, const auto& right) {
+        return left.key.condition_sequence < right.key.condition_sequence;
+    });
+    return checkpoint;
+}
+
+foundation::Result<void> ConditionEffectsAdapter::ValidateCheckpoint(const ConditionEffectsCheckpoint& checkpoint) const
+{
+    if (checkpoint.schema_version != 2 || checkpoint.route_revision != RouteRevision() ||
+        checkpoint.cursor > checkpoint.condition_latest || checkpoint.condition_latest > conditions_.LatestChangeSequence() ||
+        checkpoint.deliveries.size() > kDeliveryCapacity)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.condition_effect_checkpoint_invalid", "condition effect checkpoint is incompatible with routes or condition journal"));
+    }
+
+    std::uint64_t previous_sequence = 0;
+    for (const auto& delivery : checkpoint.deliveries)
+    {
+        const auto& key = delivery.key;
+        const auto route = routes_.find(key.action);
+        if (key.condition_sequence == 0 || key.condition_sequence <= checkpoint.cursor ||
+            key.condition_sequence > checkpoint.condition_latest || key.condition_sequence <= previous_sequence ||
+            key.route_revision != checkpoint.route_revision || !key.action.IsValid() || !key.definition.IsValid() ||
+            route == routes_.end() || route->second != key.definition ||
+            (delivery.retry_authorized && delivery.state != ConditionEffectDeliveryState::Pending))
+        {
+            return foundation::Result<void>::Failure(
+                Error("gameplay.condition_effect_checkpoint_invalid", "condition effect checkpoint contains an invalid delivery record"));
+        }
+        previous_sequence = key.condition_sequence;
+    }
+    return foundation::Result<void>::Success();
+}
+
+void ConditionEffectsAdapter::ApplyCheckpoint(ConditionEffectsCheckpoint checkpoint) noexcept
+{
+    cursor_ = checkpoint.cursor;
+    deliveries_ = std::move(checkpoint.deliveries);
 }
 
 foundation::Result<void> ConditionEffectsAdapter::RestoreCheckpoint(ConditionEffectsCheckpoint checkpoint)
 {
-    if (checkpoint.schema_version != 1 || checkpoint.route_revision != RouteRevision() ||
-        checkpoint.cursor > conditions_.LatestChangeSequence())
-    {
+    std::sort(checkpoint.deliveries.begin(), checkpoint.deliveries.end(), [](const auto& left, const auto& right) {
+        return left.key.condition_sequence < right.key.condition_sequence;
+    });
+    const auto valid = ValidateCheckpoint(checkpoint);
+    if (!valid)
+        return valid;
+    ApplyCheckpoint(std::move(checkpoint));
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> ConditionEffectsAdapter::ResolveReconciliation(
+    const ConditionEffectDeliveryKey& key,
+    ConditionEffectReconciliationResolution resolution)
+{
+    if (key.route_revision != RouteRevision())
         return foundation::Result<void>::Failure(
-            Error("gameplay.condition_effect_checkpoint_invalid",
-                  "condition effect checkpoint is incompatible with routes or condition journal"));
+            Error("gameplay.condition_effect_reconciliation_invalid", "condition effect reconciliation route revision is stale"));
+    const auto route = routes_.find(key.action);
+    if (route == routes_.end() || route->second != key.definition)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.condition_effect_reconciliation_invalid", "condition effect reconciliation route is invalid"));
+
+    auto* delivery = FindDelivery(key.condition_sequence);
+    if (delivery == nullptr)
+    {
+        if (key.condition_sequence <= cursor_ && resolution != ConditionEffectReconciliationResolution::ConfirmedNotApplied)
+            return foundation::Result<void>::Success();
+        return foundation::Result<void>::Failure(
+            Error("gameplay.condition_effect_reconciliation_missing", "condition effect reconciliation delivery is missing"));
     }
-    cursor_ = checkpoint.cursor;
+    if (!(delivery->key == key))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.condition_effect_reconciliation_invalid", "condition effect reconciliation key does not match delivery"));
+
+    if (delivery->state != ConditionEffectDeliveryState::ReconciliationRequired)
+    {
+        const bool idempotent_applied = resolution == ConditionEffectReconciliationResolution::ConfirmedApplied &&
+                                        delivery->state == ConditionEffectDeliveryState::Applied;
+        const bool idempotent_rejected = resolution == ConditionEffectReconciliationResolution::RejectedTerminal &&
+                                         delivery->state == ConditionEffectDeliveryState::RejectedTerminal;
+        const bool idempotent_retry = resolution == ConditionEffectReconciliationResolution::ConfirmedNotApplied &&
+                                      delivery->state == ConditionEffectDeliveryState::Pending && delivery->retry_authorized;
+        if (idempotent_applied || idempotent_rejected || idempotent_retry)
+            return foundation::Result<void>::Success();
+        return foundation::Result<void>::Failure(
+            Error("gameplay.condition_effect_reconciliation_invalid", "only reconciliation-required deliveries can be resolved"));
+    }
+
+    switch (resolution)
+    {
+    case ConditionEffectReconciliationResolution::ConfirmedApplied:
+        delivery->state = ConditionEffectDeliveryState::Applied;
+        delivery->retry_authorized = false;
+        break;
+    case ConditionEffectReconciliationResolution::ConfirmedNotApplied:
+        delivery->state = ConditionEffectDeliveryState::Pending;
+        delivery->retry_authorized = true;
+        break;
+    case ConditionEffectReconciliationResolution::RejectedTerminal:
+        delivery->state = ConditionEffectDeliveryState::RejectedTerminal;
+        delivery->retry_authorized = false;
+        break;
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -1863,22 +2144,22 @@ StateTimeCheckpoint StateTimeAdapter::CaptureCheckpoint() const
     StateTimeCheckpoint checkpoint;
     checkpoint.condition_cursor = condition_cursor_;
     checkpoint.effect_cursor = effect_cursor_;
+    checkpoint.condition_latest = conditions_.LatestChangeSequence();
+    checkpoint.effect_latest = effects_.LatestChangeSequence();
     checkpoint.deferred_reconciliations = deferred_reconciliations_;
     std::sort(checkpoint.deferred_reconciliations.begin(), checkpoint.deferred_reconciliations.end(),
               [](const auto& left, const auto& right) { return left.deferred < right.deferred; });
     return checkpoint;
 }
 
-foundation::Result<void> StateTimeAdapter::RestoreCheckpoint(StateTimeCheckpoint checkpoint)
+foundation::Result<void> StateTimeAdapter::ValidateCheckpoint(const StateTimeCheckpoint& checkpoint) const
 {
-    if (checkpoint.schema_version != 1 || checkpoint.condition_cursor > conditions_.LatestChangeSequence() ||
-        checkpoint.effect_cursor > effects_.LatestChangeSequence() ||
+    if (checkpoint.schema_version != 2 || checkpoint.condition_cursor > checkpoint.condition_latest ||
+        checkpoint.effect_cursor > checkpoint.effect_latest || checkpoint.condition_latest > conditions_.LatestChangeSequence() ||
         checkpoint.deferred_reconciliations.size() > kDeferredReconciliationCapacity)
         return foundation::Result<void>::Failure(
             Error("gameplay.state_time_checkpoint_invalid", "state time checkpoint is invalid"));
 
-    std::sort(checkpoint.deferred_reconciliations.begin(), checkpoint.deferred_reconciliations.end(),
-              [](const auto& left, const auto& right) { return left.deferred < right.deferred; });
     for (std::size_t index = 0; index < checkpoint.deferred_reconciliations.size(); ++index)
     {
         const auto& record = checkpoint.deferred_reconciliations[index];
@@ -1889,10 +2170,24 @@ foundation::Result<void> StateTimeAdapter::RestoreCheckpoint(StateTimeCheckpoint
                 Error("gameplay.state_time_checkpoint_invalid",
                       "state time checkpoint contains an invalid deferred reconciliation"));
     }
+    return foundation::Result<void>::Success();
+}
 
+void StateTimeAdapter::ApplyCheckpoint(StateTimeCheckpoint checkpoint) noexcept
+{
     condition_cursor_ = checkpoint.condition_cursor;
-    effect_cursor_ = checkpoint.effect_cursor;
+    effect_cursor_ = effects_.LatestChangeSequence() < checkpoint.effect_latest ? 0 : checkpoint.effect_cursor;
     deferred_reconciliations_ = std::move(checkpoint.deferred_reconciliations);
+}
+
+foundation::Result<void> StateTimeAdapter::RestoreCheckpoint(StateTimeCheckpoint checkpoint)
+{
+    std::sort(checkpoint.deferred_reconciliations.begin(), checkpoint.deferred_reconciliations.end(),
+              [](const auto& left, const auto& right) { return left.deferred < right.deferred; });
+    const auto valid = ValidateCheckpoint(checkpoint);
+    if (!valid)
+        return valid;
+    ApplyCheckpoint(std::move(checkpoint));
     return foundation::Result<void>::Success();
 }
 
@@ -1911,6 +2206,47 @@ foundation::Result<void> StateTimeAdapter::ResolveDeferredReconciliation(effects
             return cancelled;
     }
     deferred_reconciliations_.erase(found);
+    return foundation::Result<void>::Success();
+}
+
+StateIntegrationCheckpoint StateIntegrationPersistence::CaptureCheckpoint() const
+{
+    StateIntegrationCheckpoint checkpoint;
+    checkpoint.facts = facts_.CaptureCheckpoint();
+    checkpoint.lifecycle = lifecycle_.CaptureCheckpoint();
+    checkpoint.condition_effects = condition_effects_.CaptureCheckpoint();
+    checkpoint.time = time_.CaptureCheckpoint();
+    return checkpoint;
+}
+
+foundation::Result<void> StateIntegrationPersistence::RestoreCheckpoint(StateIntegrationCheckpoint checkpoint)
+{
+    if (checkpoint.schema_version != 1)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.state_integration_checkpoint_invalid", "state integration checkpoint schema is incompatible"));
+
+    std::sort(checkpoint.condition_effects.deliveries.begin(), checkpoint.condition_effects.deliveries.end(),
+              [](const auto& left, const auto& right) { return left.key.condition_sequence < right.key.condition_sequence; });
+    std::sort(checkpoint.time.deferred_reconciliations.begin(), checkpoint.time.deferred_reconciliations.end(),
+              [](const auto& left, const auto& right) { return left.deferred < right.deferred; });
+
+    const auto facts_valid = facts_.ValidateCheckpoint(checkpoint.facts);
+    if (!facts_valid)
+        return facts_valid;
+    const auto lifecycle_valid = lifecycle_.ValidateCheckpoint(checkpoint.lifecycle);
+    if (!lifecycle_valid)
+        return lifecycle_valid;
+    const auto condition_effects_valid = condition_effects_.ValidateCheckpoint(checkpoint.condition_effects);
+    if (!condition_effects_valid)
+        return condition_effects_valid;
+    const auto time_valid = time_.ValidateCheckpoint(checkpoint.time);
+    if (!time_valid)
+        return time_valid;
+
+    facts_.ApplyCheckpoint(std::move(checkpoint.facts));
+    lifecycle_.ApplyCheckpoint(std::move(checkpoint.lifecycle));
+    condition_effects_.ApplyCheckpoint(std::move(checkpoint.condition_effects));
+    time_.ApplyCheckpoint(std::move(checkpoint.time));
     return foundation::Result<void>::Success();
 }
 

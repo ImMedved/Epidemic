@@ -192,6 +192,14 @@ OperationId StableExternalOperation(narrative::NarrativeConsequenceExecutionId e
     return OperationId::FromRaw(execution.value.High() ^ kHighSalt, execution.value.Low() ^ kLowSalt);
 }
 
+bool DeliveryRestoreOrder(const NarrativeExternalConsequenceDelivery &a,
+                          const NarrativeExternalConsequenceDelivery &b) noexcept
+{
+    if (a.revision != b.revision)
+        return a.revision < b.revision;
+    return a.execution < b.execution;
+}
+
 std::vector<std::byte> EncodeKnowledgeReference(const knowledge::KnowledgeRecord &record)
 {
     ByteWriter writer;
@@ -690,11 +698,7 @@ NarrativeExternalConsequenceSnapshot NarrativeExternalConsequenceOutbox::Capture
 {
     NarrativeExternalConsequenceSnapshot snapshot;
     snapshot.deliveries = deliveries_;
-    std::sort(snapshot.deliveries.begin(), snapshot.deliveries.end(), [](const auto &a, const auto &b) {
-        if (a.revision != b.revision)
-            return a.revision < b.revision;
-        return a.execution < b.execution;
-    });
+    std::sort(snapshot.deliveries.begin(), snapshot.deliveries.end(), DeliveryRestoreOrder);
     snapshot.revision = revision_;
     return snapshot;
 }
@@ -721,19 +725,31 @@ foundation::Result<void> NarrativeExternalConsequenceOutbox::ValidateSnapshot(
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> NarrativeExternalConsequenceOutbox::RestoreSnapshot(
-    NarrativeExternalConsequenceSnapshot snapshot)
+foundation::Result<NarrativeExternalConsequenceSnapshot> NarrativeExternalConsequenceOutbox::PrepareSnapshotForRestore(
+    NarrativeExternalConsequenceSnapshot snapshot) const
 {
     auto valid = ValidateSnapshot(snapshot);
     if (!valid)
-        return valid;
-    std::sort(snapshot.deliveries.begin(), snapshot.deliveries.end(), [](const auto &a, const auto &b) {
-        if (a.revision != b.revision)
-            return a.revision < b.revision;
-        return a.execution < b.execution;
-    });
+        return foundation::Result<NarrativeExternalConsequenceSnapshot>::Failure(valid.GetError());
+    std::sort(snapshot.deliveries.begin(), snapshot.deliveries.end(), DeliveryRestoreOrder);
+    return foundation::Result<NarrativeExternalConsequenceSnapshot>::Success(std::move(snapshot));
+}
+
+void NarrativeExternalConsequenceOutbox::PublishPreparedSnapshot(
+    NarrativeExternalConsequenceSnapshot &&snapshot) noexcept
+{
     deliveries_.swap(snapshot.deliveries);
     revision_ = snapshot.revision;
+}
+
+foundation::Result<void> NarrativeExternalConsequenceOutbox::RestoreSnapshot(
+    NarrativeExternalConsequenceSnapshot snapshot)
+{
+    auto prepared = PrepareSnapshotForRestore(std::move(snapshot));
+    if (!prepared)
+        return foundation::Result<void>::Failure(prepared.GetError());
+    auto prepared_snapshot = std::move(prepared).Value();
+    PublishPreparedSnapshot(std::move(prepared_snapshot));
     return foundation::Result<void>::Success();
 }
 
@@ -773,16 +789,22 @@ foundation::Result<void> NarrativeExternalConsequenceSaveParticipant::ValidateSn
 
 foundation::Result<std::unique_ptr<savegame::IRestoreStage>> NarrativeExternalConsequenceSaveParticipant::StageRestore(
     const savegame::SaveSection &section,
-    const savegame::RestoreContext &context)
+    const savegame::RestoreContext &)
 {
-    auto valid = ValidateSnapshot(section, context);
-    if (!valid)
-        return foundation::Result<std::unique_ptr<savegame::IRestoreStage>>::Failure(valid.GetError());
+    if (section.participant != Id() || section.schema_version != SchemaVersion() ||
+        section.payload_hash != savegame::SaveGameOrchestrator::HashBytes(section.payload))
+    {
+        return foundation::Result<std::unique_ptr<savegame::IRestoreStage>>::Failure(
+            Error("gameplay.narrative_integration.invalid_save_section", "invalid external consequence save section"));
+    }
     auto decoded = DecodeOutboxSnapshot(section.payload);
     if (!decoded)
         return foundation::Result<std::unique_ptr<savegame::IRestoreStage>>::Failure(decoded.GetError());
+    auto prepared = outbox_.PrepareSnapshotForRestore(std::move(decoded.Value()));
+    if (!prepared)
+        return foundation::Result<std::unique_ptr<savegame::IRestoreStage>>::Failure(prepared.GetError());
     return foundation::Result<std::unique_ptr<savegame::IRestoreStage>>::Success(
-        std::make_unique<NarrativeExternalConsequenceRestoreStage>(std::move(decoded.Value())));
+        std::make_unique<NarrativeExternalConsequenceRestoreStage>(std::move(prepared.Value())));
 }
 
 void NarrativeExternalConsequenceSaveParticipant::CommitRestore(savegame::IRestoreStage &stage) noexcept
@@ -790,7 +812,7 @@ void NarrativeExternalConsequenceSaveParticipant::CommitRestore(savegame::IResto
     auto *typed = dynamic_cast<NarrativeExternalConsequenceRestoreStage *>(&stage);
     if (!typed)
         return;
-    (void)outbox_.RestoreSnapshot(std::move(typed->snapshot));
+    outbox_.PublishPreparedSnapshot(std::move(typed->snapshot));
 }
 
 foundation::Result<narrative::ClueId> KnowledgeNarrativeAdapter::CreateClueFromKnowledge(

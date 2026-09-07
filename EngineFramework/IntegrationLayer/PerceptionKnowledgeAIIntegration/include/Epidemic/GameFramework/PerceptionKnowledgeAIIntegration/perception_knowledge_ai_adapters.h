@@ -44,6 +44,12 @@ class PerceptionKnowledgeAdapter
     PerceptionKnowledgeMapping mapping_;
 };
 
+struct AIExecutionAvailability
+{
+    bool materialized = false;
+    bool runtime_projection_available = false;
+};
+
 struct KnowledgeAIInputKeys
 {
     ai::AIInputKeyId knowledge_confidence{
@@ -70,6 +76,10 @@ class KnowledgeAIAdapter
   public:
     explicit KnowledgeAIAdapter(const knowledge::KnowledgeService &knowledge_service,
                                 KnowledgeAIInputKeys input_keys = {});
+    [[nodiscard]] ai::AIContextSnapshot BuildContext(
+        GameplayObjectRef agent, AIExecutionAvailability availability,
+        const perception::PerceptionService *perception_service = nullptr, GameplayTimePoint now = {}) const;
+    // Compatibility overload: availability is conservatively unknown/unavailable.
     [[nodiscard]] ai::AIContextSnapshot BuildContext(GameplayObjectRef agent,
                                                      const perception::PerceptionService *perception_service = nullptr,
                                                      GameplayTimePoint now = {}) const;

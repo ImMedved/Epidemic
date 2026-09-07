@@ -955,7 +955,7 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
                 continue;
             }
             if (storylet.cooldown.ticks > 0 && runtime.activations > 0 &&
-                event.time.ticks < runtime.last_activated_at.ticks + storylet.cooldown.ticks)
+                event.time < SaturatingAdd(runtime.last_activated_at, storylet.cooldown))
             {
                 ++execution.next_storylet;
                 continue;

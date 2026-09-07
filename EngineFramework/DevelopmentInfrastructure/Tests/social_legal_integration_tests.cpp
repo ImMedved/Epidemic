@@ -1,5 +1,7 @@
 #include "Epidemic/GameFramework/SocialLegalIntegration/social_legal_adapters.h"
 
+#include <algorithm>
+
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::ownership;
 using namespace epidemic::gameplay::crime;
@@ -233,6 +235,48 @@ int main()
         duplicate_checkpoint.applied_relationship_penalties.push_back(duplicate_checkpoint.applied_relationship_penalties.front());
     if (restored_adapter.RestoreCheckpoint(std::move(duplicate_checkpoint)))
         return 31;
+
+    // M02: idempotency tombstones follow Crime lifecycle, never arbitrary FIFO retention.
+    auto retention_crime = ownership_crime.TryCreateCrimeFromDeniedRight(player, apple, property_mapping_id, city, context);
+    if (!retention_crime || !retention_crime.Value().crime)
+        return 35;
+    const auto retention_crime_id = *retention_crime.Value().crime;
+    if (!crime_society.ApplyRelationshipPenalty(retention_crime_id, penalty_mapping_id, context) ||
+        !crime_society.WasRelationshipPenaltyApplied(retention_crime_id, penalty_mapping_id))
+        return 36;
+    if (crime_society.PruneDeliveriesForCrime(retention_crime_id) != 0 ||
+        !crime_society.WasRelationshipPenaltyApplied(retention_crime_id, penalty_mapping_id))
+        return 37;
+    if (!crime_society.ProcessCrimeLifecycle())
+        return 44;
+
+    if (!crime.ChangeCaseState(retention_crime_id, CrimeCaseState::Dismissed, context) ||
+        !crime.PruneTerminalCrime(retention_crime_id, context))
+        return 38;
+    if (!crime_society.ProcessCrimeLifecycle() ||
+        crime_society.WasRelationshipPenaltyApplied(retention_crime_id, penalty_mapping_id))
+        return 39;
+
+    const auto pruned_checkpoint = crime_society.CaptureCheckpoint();
+    if (std::any_of(pruned_checkpoint.applied_relationship_penalties.begin(),
+                    pruned_checkpoint.applied_relationship_penalties.end(),
+                    [&](const auto& delivery) { return delivery.crime == retention_crime_id; }))
+        return 40;
+    CrimeSocietyAdapter pruned_restored(crime, society, mappings);
+    if (!pruned_restored.RestoreCheckpoint(pruned_checkpoint) ||
+        pruned_restored.WasRelationshipPenaltyApplied(retention_crime_id, penalty_mapping_id) ||
+        !pruned_restored.WasRelationshipPenaltyApplied(*made.Value().crime, penalty_mapping_id))
+        return 41;
+
+    // A journal gap falls back to current Crime state and must preserve deliveries for crimes that still exist.
+    crime.SetChangeJournalCapacity(1);
+    auto gap_crime_a = ownership_crime.TryCreateCrimeFromDeniedRight(player, apple, property_mapping_id, city, context);
+    auto gap_crime_b = ownership_crime.TryCreateCrimeFromDeniedRight(player, apple, property_mapping_id, city, context);
+    if (!gap_crime_a || !gap_crime_a.Value().crime || !gap_crime_b || !gap_crime_b.Value().crime)
+        return 42;
+    if (!crime_society.ProcessCrimeLifecycle() ||
+        !crime_society.WasRelationshipPenaltyApplied(*made.Value().crime, penalty_mapping_id))
+        return 43;
 
     // M33/M34: authority response is explicit and mapped; target defaults to the offender.
     auto response = crime_society.RequestAuthorityResponse(*made.Value().crime, response_mapping_id, guards, {}, context);

@@ -1,9 +1,12 @@
 #include "Epidemic/GameFramework/NarrativeIntegration/narrative_adapters.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <utility>
+#include <vector>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::knowledge;
@@ -48,6 +51,49 @@ bool ContainsExecution(const std::vector<NarrativeConsequenceExecution> &executi
     return std::any_of(executions.begin(), executions.end(),
                        [id](const auto &execution) { return execution.id == id; });
 }
+
+bool SameDelivery(const NarrativeExternalConsequenceDelivery &a, const NarrativeExternalConsequenceDelivery &b)
+{
+    return a.execution == b.execution && a.consequence == b.consequence && a.type == b.type &&
+           a.thread == b.thread && a.objective == b.objective && a.owner == b.owner &&
+           a.correlation == b.correlation && a.state == b.state && a.payload == b.payload &&
+           a.external_operation == b.external_operation && a.created_at == b.created_at &&
+           a.updated_at == b.updated_at && a.revision == b.revision;
+}
+
+bool SameSnapshot(const NarrativeExternalConsequenceSnapshot &a, const NarrativeExternalConsequenceSnapshot &b)
+{
+    if (a.revision != b.revision || a.deliveries.size() != b.deliveries.size())
+        return false;
+    for (std::size_t i = 0; i < a.deliveries.size(); ++i)
+    {
+        if (!SameDelivery(a.deliveries[i], b.deliveries[i]))
+            return false;
+    }
+    return true;
+}
+
+void WriteU32Le(std::vector<std::byte> &payload, std::size_t offset, std::uint32_t value)
+{
+    for (std::size_t i = 0; i < 4; ++i)
+        payload[offset + i] = static_cast<std::byte>((value >> (i * 8u)) & 0xFFu);
+}
+
+savegame::SaveSection DuplicateFirstDeliverySection(savegame::SaveSection section)
+{
+    constexpr std::size_t kOutboxHeaderBytes = 20;
+    Check(section.payload.size() > kOutboxHeaderBytes, "outbox test section has at least one delivery");
+    std::vector<std::byte> record(section.payload.begin() + static_cast<std::ptrdiff_t>(kOutboxHeaderBytes),
+                                  section.payload.end());
+    WriteU32Le(section.payload, 16, 2);
+    section.payload.insert(section.payload.end(), record.begin(), record.end());
+    section.payload_hash = savegame::SaveGameOrchestrator::HashBytes(section.payload);
+    return section;
+}
+
+class DummyRestoreStage final : public savegame::IRestoreStage
+{
+};
 } // namespace
 
 int main()
@@ -163,12 +209,14 @@ int main()
           "narrative consequence is deferred while outbox is pending");
 
     NarrativeExternalConsequenceSaveParticipant save_participant(outbox);
+    const auto captured_snapshot = outbox.CaptureSnapshot();
     auto captured = save_participant.CaptureSnapshot({});
     Check(static_cast<bool>(captured), "capture external consequence save participant");
 
     auto corrupted = captured.Value();
     corrupted.payload_hash ^= 0x55u;
     Check(!static_cast<bool>(save_participant.ValidateSnapshot(corrupted, {})), "corrupted save section rejected");
+    Check(!static_cast<bool>(save_participant.StageRestore(corrupted, {})), "corrupted save section rejected during stage");
     Check(outbox.PendingDeliveries().size() == 1, "failed save validation did not mutate outbox");
 
     NarrativeExternalConsequenceOutbox restored_outbox;
@@ -181,14 +229,67 @@ int main()
     Check(restored_outbox.PendingDeliveries().size() == 1 &&
               restored_outbox.PendingDeliveries().front().execution == execution_id,
           "pending external consequence survives save load");
+    Check(SameSnapshot(restored_outbox.CaptureSnapshot(), captured_snapshot),
+          "committed outbox restore matches captured snapshot");
+
+    DummyRestoreStage wrong_stage;
+    restored_participant.CommitRestore(wrong_stage);
+    Check(SameSnapshot(restored_outbox.CaptureSnapshot(), captured_snapshot),
+          "wrong restore stage does not publish partial state");
+
+    const auto duplicate_section = DuplicateFirstDeliverySection(captured.Value());
+    Check(!static_cast<bool>(save_participant.ValidateSnapshot(duplicate_section, {})),
+          "duplicate delivery save section rejected during validation");
+    Check(!static_cast<bool>(save_participant.StageRestore(duplicate_section, {})),
+          "duplicate delivery save section rejected during stage");
+    Check(SameSnapshot(restored_outbox.CaptureSnapshot(), captured_snapshot),
+          "failed duplicate stage did not mutate restored outbox");
 
     auto bad_snapshot = restored_outbox.CaptureSnapshot();
     bad_snapshot.deliveries.push_back(bad_snapshot.deliveries.front());
     const auto before_bad_restore = restored_outbox.CaptureSnapshot();
     Check(!static_cast<bool>(restored_outbox.RestoreSnapshot(std::move(bad_snapshot))),
           "duplicate delivery snapshot rejected");
-    Check(restored_outbox.CaptureSnapshot().deliveries.size() == before_bad_restore.deliveries.size(),
+    Check(SameSnapshot(restored_outbox.CaptureSnapshot(), before_bad_restore),
           "invalid outbox restore is transactional");
+
+    NarrativeExternalConsequenceOutbox ordered_outbox;
+    NarrativeConsequenceExecution ordered_first;
+    ordered_first.id = NarrativeConsequenceExecutionId::FromString("execution.restore.order.first");
+    ordered_first.consequence = consequence;
+    ordered_first.correlation = CorrelationId::FromString("restore.order.first");
+    NarrativeConsequenceExecution ordered_second = ordered_first;
+    ordered_second.id = NarrativeConsequenceExecutionId::FromString("execution.restore.order.second");
+    ordered_second.correlation = CorrelationId::FromString("restore.order.second");
+    Check(ordered_outbox.Execute(cons, ordered_first, {.default_owner = player, .now = GameplayTimePoint{115}}).state ==
+              ConsequenceExecutionState::Deferred,
+          "ordered outbox first delivery");
+    Check(ordered_outbox.Execute(cons, ordered_second, {.default_owner = player, .now = GameplayTimePoint{116}}).state ==
+              ConsequenceExecutionState::Deferred,
+          "ordered outbox second delivery");
+    auto unordered_snapshot = ordered_outbox.CaptureSnapshot();
+    std::reverse(unordered_snapshot.deliveries.begin(), unordered_snapshot.deliveries.end());
+    auto prepared_order = ordered_outbox.PrepareSnapshotForRestore(std::move(unordered_snapshot));
+    Check(static_cast<bool>(prepared_order), "prepare restore order snapshot");
+    Check(prepared_order.Value().deliveries.size() == 2 &&
+              prepared_order.Value().deliveries[0].revision < prepared_order.Value().deliveries[1].revision,
+          "stage restore normalizes delivery order before commit");
+
+    auto repeated_stage = restored_participant.StageRestore(captured.Value(), {});
+    Check(static_cast<bool>(repeated_stage), "repeat stage persisted outbox");
+    auto repeated = std::move(repeated_stage).Value();
+    restored_participant.CommitRestore(*repeated);
+    Check(SameSnapshot(restored_outbox.CaptureSnapshot(), captured_snapshot), "repeated restore is stable");
+
+    NarrativeExternalConsequenceOutbox empty_source;
+    NarrativeExternalConsequenceSaveParticipant empty_participant(empty_source);
+    auto empty_section = empty_participant.CaptureSnapshot({});
+    Check(static_cast<bool>(empty_section), "capture empty outbox snapshot");
+    auto empty_stage = restored_participant.StageRestore(empty_section.Value(), {});
+    Check(static_cast<bool>(empty_stage), "stage empty outbox snapshot");
+    auto empty = std::move(empty_stage).Value();
+    restored_participant.CommitRestore(*empty);
+    Check(restored_outbox.CaptureSnapshot().deliveries.empty(), "empty outbox restore publishes empty state");
 
     const auto external_operation = pending.front().external_operation;
     Check(external_operation.IsValid(), "outbox exposes stable downstream operation id");

@@ -9,6 +9,7 @@ using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::facts;
 using namespace epidemic::gameplay::integration;
 using namespace epidemic::gameplay::queries;
+using namespace epidemic::gameplay::savegame;
 using namespace epidemic::gameplay::time;
 
 namespace
@@ -33,6 +34,26 @@ class FakeGameClock final : public runtime::IGameClock
     [[nodiscard]] runtime::GameTimePoint Now() const override { return snapshot.now; }
     [[nodiscard]] runtime::GameDuration LastDelta() const override { return snapshot.last_delta; }
     [[nodiscard]] runtime::TimeSnapshot GetSnapshot() const override { return snapshot; }
+};
+
+class TestSaveBarrierLease final : public ISaveBarrierLease
+{
+};
+
+class TestSaveBarrier final : public ISaveBarrier
+{
+  public:
+    [[nodiscard]] foundation::Result<std::unique_ptr<ISaveBarrierLease>> AcquireCaptureLease() override
+    {
+        return foundation::Result<std::unique_ptr<ISaveBarrierLease>>::Success(
+            std::make_unique<TestSaveBarrierLease>());
+    }
+
+    [[nodiscard]] foundation::Result<std::unique_ptr<ISaveBarrierLease>> AcquireRestoreLease() override
+    {
+        return foundation::Result<std::unique_ptr<ISaveBarrierLease>>::Success(
+            std::make_unique<TestSaveBarrierLease>());
+    }
 };
 } // namespace
 
@@ -116,7 +137,10 @@ int main()
         return 43;
     }
 
-    dispatcher.Freeze();
+    if (!dispatcher.Freeze())
+    {
+        return 44;
+    }
     if (dispatcher.RegisterObserver(
             ScheduledTriggerHandlerId::FromString("framework.test.late_handler"), 0,
             [](const ScheduledTrigger&, const GameplayContext&) {
@@ -235,7 +259,10 @@ int main()
     {
         return 121;
     }
-    restored_dispatcher.Freeze();
+    if (!restored_dispatcher.Freeze())
+    {
+        return 122;
+    }
     if (!restored_dispatcher.RestoreSnapshot(pending_snapshot))
     {
         return 122;
@@ -280,12 +307,15 @@ int main()
     {
         return 16;
     }
-    retry_dispatcher.Freeze();
+    if (!retry_dispatcher.Freeze())
+    {
+        return 17;
+    }
     retry_time.Freeze();
     if (!retry_time.AdvanceTo(retry_clock.Value(), GameplayTimePoint{20}) ||
         !retry_time.Schedule(retry_clock.Value(), GameplayTimePoint{20}, object, retry_action.Value()))
     {
-        return 17;
+        return 171;
     }
     const auto retry_pump = retry_dispatcher.Pump(retry_clock.Value(), GameplayContext{});
     if (!retry_pump || retry_pump.Value().pending != 1 || retry_pump.Value().handler_failures != 1)
@@ -313,6 +343,274 @@ int main()
     if (retry_dispatcher.PendingCount() != 0)
     {
         return 23;
+    }
+
+    // H04: observers are independent legs. Unknown actions remain pending even after every observer Ack,
+    // while explicitly ObserverOnly actions may complete without a gameplay action handler.
+    GameplayTimeService manifest_time;
+    const auto manifest_clock = manifest_time.RegisterClock("framework.clock.manifest", CalendarDefinition{});
+    const auto unknown_action = manifest_time.RegisterAction("framework.test.unknown_manifest_action", test_domain);
+    const auto observer_only_action = manifest_time.RegisterAction("framework.test.observer_only_action", test_domain);
+    const auto missing_handler_action = manifest_time.RegisterAction("framework.test.missing_handler_action", test_domain);
+    if (!manifest_clock || !unknown_action || !observer_only_action || !missing_handler_action)
+    {
+        return 24;
+    }
+
+    ScheduledTriggerDispatcher missing_handler_dispatcher(manifest_time, ScheduledTriggerDispatcherPolicy{8, 16});
+    if (!missing_handler_dispatcher.DeclareRequiresActionHandler(missing_handler_action.Value()) ||
+        missing_handler_dispatcher.Freeze() || missing_handler_dispatcher.IsFrozen())
+    {
+        return 25;
+    }
+
+    ScheduledTriggerDispatcher manifest_dispatcher(manifest_time, ScheduledTriggerDispatcherPolicy{8, 16});
+    int manifest_observer_calls = 0;
+    const auto manifest_observer_id = ScheduledTriggerHandlerId::FromString("framework.test.manifest_observer");
+    if (!manifest_dispatcher.RegisterObserver(
+            manifest_observer_id, 0,
+            [&manifest_observer_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++manifest_observer_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !manifest_dispatcher.DeclareObserverOnlyAction(observer_only_action.Value()) ||
+        !manifest_dispatcher.Freeze())
+    {
+        return 26;
+    }
+    manifest_time.Freeze();
+    if (!manifest_time.AdvanceTo(manifest_clock.Value(), GameplayTimePoint{30}) ||
+        !manifest_time.Schedule(manifest_clock.Value(), GameplayTimePoint{30}, object, unknown_action.Value()) ||
+        !manifest_time.Schedule(manifest_clock.Value(), GameplayTimePoint{30}, object, observer_only_action.Value()))
+    {
+        return 27;
+    }
+    const auto manifest_collected = manifest_dispatcher.CollectDue(manifest_clock.Value(), GameplayContext{});
+    if (!manifest_collected || manifest_collected.Value() != 2)
+    {
+        return 28;
+    }
+    const auto manifest_report = manifest_dispatcher.DispatchPending();
+    if (manifest_report.acknowledged != 1 || manifest_report.unhandled != 1 || manifest_report.pending != 1 ||
+        manifest_observer_calls != 2)
+    {
+        return 29;
+    }
+    const auto manifest_retry = manifest_dispatcher.DispatchPending();
+    if (manifest_retry.pending != 1 || manifest_retry.unhandled != 1 || manifest_observer_calls != 2)
+    {
+        return 30;
+    }
+    const auto unknown_pending_snapshot = manifest_dispatcher.CaptureSnapshot();
+    ScheduledTriggerDispatcher changed_manifest_dispatcher(manifest_time, ScheduledTriggerDispatcherPolicy{8, 16});
+    if (!changed_manifest_dispatcher.RegisterObserver(
+            manifest_observer_id, 0,
+            [](const ScheduledTrigger&, const GameplayContext&) {
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !changed_manifest_dispatcher.DeclareObserverOnlyAction(unknown_action.Value()) ||
+        !changed_manifest_dispatcher.DeclareObserverOnlyAction(observer_only_action.Value()) ||
+        !changed_manifest_dispatcher.Freeze() || changed_manifest_dispatcher.RestoreSnapshot(unknown_pending_snapshot))
+    {
+        return 301;
+    }
+
+    // H01: save after destructive collection and before delivery. Restore keeps the occurrence in the
+    // dispatcher inbox and never requeues it into Time.
+    GameplayTimeService save_time;
+    const auto save_clock = save_time.RegisterClock("framework.clock.dispatcher_save", CalendarDefinition{});
+    const auto save_action = save_time.RegisterAction("framework.test.dispatcher_save_action", test_domain);
+    if (!save_clock || !save_action)
+    {
+        return 31;
+    }
+    const auto save_observer_id = ScheduledTriggerHandlerId::FromString("framework.test.save_observer");
+    const auto save_action_handler_id = ScheduledTriggerHandlerId::FromString("framework.test.save_action_handler");
+    ScheduledTriggerDispatcher save_dispatcher(save_time, ScheduledTriggerDispatcherPolicy{8, 16});
+    if (!save_dispatcher.RegisterObserver(
+            save_observer_id, 0,
+            [](const ScheduledTrigger&, const GameplayContext&) {
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !save_dispatcher.RegisterActionHandler(
+            save_action.Value(), save_action_handler_id,
+            [](const ScheduledTrigger&, const GameplayContext&) {
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !save_dispatcher.Freeze())
+    {
+        return 32;
+    }
+    save_time.Freeze();
+    if (!save_time.AdvanceTo(save_clock.Value(), GameplayTimePoint{40}) ||
+        !save_time.Schedule(save_clock.Value(), GameplayTimePoint{40}, object, save_action.Value()) ||
+        !save_dispatcher.CollectDue(save_clock.Value(), GameplayContext{}))
+    {
+        return 33;
+    }
+
+    TestSaveBarrier save_barrier;
+    ScheduledTriggerDispatcherSaveParticipant save_participant(save_dispatcher);
+    SaveGameOrchestrator save_orchestrator;
+    if (!save_orchestrator.SetBarrier(save_barrier) || !save_orchestrator.RegisterParticipant(save_participant) ||
+        !save_orchestrator.FreezeRegistry())
+    {
+        return 34;
+    }
+    SaveContext save_context;
+    save_context.now = GameplayTimePoint{40};
+    const auto saved_image_result = save_orchestrator.Capture(save_context);
+    if (!saved_image_result)
+    {
+        return 35;
+    }
+    const auto saved_image = saved_image_result.Value();
+
+    int restored_save_observer_calls = 0;
+    int restored_save_action_calls = 0;
+    ScheduledTriggerDispatcher loaded_dispatcher(save_time, ScheduledTriggerDispatcherPolicy{8, 16});
+    if (!loaded_dispatcher.RegisterObserver(
+            save_observer_id, 0,
+            [&restored_save_observer_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++restored_save_observer_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !loaded_dispatcher.RegisterActionHandler(
+            save_action.Value(), save_action_handler_id,
+            [&restored_save_action_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++restored_save_action_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !loaded_dispatcher.Freeze())
+    {
+        return 36;
+    }
+    ScheduledTriggerDispatcherSaveParticipant loaded_participant(loaded_dispatcher);
+    SaveGameOrchestrator load_orchestrator;
+    if (!load_orchestrator.SetBarrier(save_barrier) || !load_orchestrator.RegisterParticipant(loaded_participant) ||
+        !load_orchestrator.FreezeRegistry())
+    {
+        return 37;
+    }
+    RestoreContext restore_context;
+    if (!load_orchestrator.Restore(saved_image, restore_context) || loaded_dispatcher.PendingCount() != 1)
+    {
+        return 38;
+    }
+    const auto loaded_report = loaded_dispatcher.DispatchPending();
+    if (loaded_report.pending != 0 || restored_save_observer_calls != 1 || restored_save_action_calls != 1)
+    {
+        return 39;
+    }
+    const auto no_requeue = save_time.CollectDue(save_clock.Value(), SchedulerBudget{});
+    if (!no_requeue || !no_requeue.Value().empty())
+    {
+        return 40;
+    }
+
+    // Save after observer Ack but before action Ack. After restore only the unfinished action leg runs.
+    GameplayTimeService leg_time;
+    const auto leg_clock = leg_time.RegisterClock("framework.clock.dispatcher_leg_save", CalendarDefinition{});
+    const auto leg_action = leg_time.RegisterAction("framework.test.dispatcher_leg_action", test_domain);
+    if (!leg_clock || !leg_action)
+    {
+        return 45;
+    }
+    const auto leg_observer_id = ScheduledTriggerHandlerId::FromString("framework.test.leg_observer");
+    const auto leg_action_handler_id = ScheduledTriggerHandlerId::FromString("framework.test.leg_action_handler");
+    ScheduledTriggerDispatcher leg_dispatcher(leg_time, ScheduledTriggerDispatcherPolicy{8, 16});
+    int original_leg_observer_calls = 0;
+    int original_leg_action_calls = 0;
+    if (!leg_dispatcher.RegisterObserver(
+            leg_observer_id, 0,
+            [&original_leg_observer_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++original_leg_observer_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !leg_dispatcher.RegisterActionHandler(
+            leg_action.Value(), leg_action_handler_id,
+            [&original_leg_action_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++original_leg_action_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Retry);
+            }) ||
+        !leg_dispatcher.Freeze())
+    {
+        return 46;
+    }
+    leg_time.Freeze();
+    if (!leg_time.AdvanceTo(leg_clock.Value(), GameplayTimePoint{50}) ||
+        !leg_time.Schedule(leg_clock.Value(), GameplayTimePoint{50}, object, leg_action.Value()) ||
+        !leg_dispatcher.CollectDue(leg_clock.Value(), GameplayContext{}))
+    {
+        return 47;
+    }
+    const auto leg_first_delivery = leg_dispatcher.DispatchPending();
+    if (leg_first_delivery.pending != 1 || original_leg_observer_calls != 1 || original_leg_action_calls != 1)
+    {
+        return 48;
+    }
+
+    ScheduledTriggerDispatcherSaveParticipant leg_participant(leg_dispatcher);
+    const auto leg_section_result = leg_participant.CaptureSnapshot(SaveContext{});
+    if (!leg_section_result)
+    {
+        return 49;
+    }
+    const auto leg_section = leg_section_result.Value();
+
+    ScheduledTriggerDispatcher restored_leg_dispatcher(leg_time, ScheduledTriggerDispatcherPolicy{8, 16});
+    int restored_leg_observer_calls = 0;
+    int restored_leg_action_calls = 0;
+    if (!restored_leg_dispatcher.RegisterObserver(
+            leg_observer_id, 0,
+            [&restored_leg_observer_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++restored_leg_observer_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !restored_leg_dispatcher.RegisterActionHandler(
+            leg_action.Value(), leg_action_handler_id,
+            [&restored_leg_action_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++restored_leg_action_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !restored_leg_dispatcher.Freeze())
+    {
+        return 50;
+    }
+    ScheduledTriggerDispatcherSaveParticipant restored_leg_participant(restored_leg_dispatcher);
+    const auto staged_leg = restored_leg_participant.StageRestore(leg_section, RestoreContext{});
+    if (!staged_leg || !staged_leg.Value())
+    {
+        return 53;
+    }
+    restored_leg_participant.CommitRestore(*staged_leg.Value());
+    const auto leg_after_restore = restored_leg_dispatcher.DispatchPending();
+    if (leg_after_restore.pending != 0 || restored_leg_observer_calls != 0 || restored_leg_action_calls != 1)
+    {
+        return 54;
+    }
+
+    // The participant must reject an otherwise well-formed section whose completed-handler ID is
+    // unknown to the frozen registry. With one completed handler it is the final U64 in schema v1.
+    auto corrupt_handler_section = leg_section;
+    if (corrupt_handler_section.payload.size() < sizeof(std::uint64_t))
+    {
+        return 55;
+    }
+    const auto unknown_handler_raw = ScheduledTriggerHandlerId::FromString("framework.test.unknown_completed_handler").Raw();
+    for (std::size_t byte = 0; byte < sizeof(std::uint64_t); ++byte)
+    {
+        corrupt_handler_section.payload[corrupt_handler_section.payload.size() - sizeof(std::uint64_t) + byte] =
+            static_cast<std::byte>((unknown_handler_raw >> (byte * 8u)) & 0xffu);
+    }
+    corrupt_handler_section.payload_hash = SaveGameOrchestrator::HashBytes(corrupt_handler_section.payload);
+    if (restored_leg_participant.StageRestore(corrupt_handler_section, RestoreContext{}))
+    {
+        return 56;
+    }
+    if (restored_leg_dispatcher.PendingCount() != 0)
+    {
+        return 57;
     }
 
     return 0;

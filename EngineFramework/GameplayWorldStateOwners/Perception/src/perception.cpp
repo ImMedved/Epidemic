@@ -428,6 +428,27 @@ SenseEvaluationResult PerceptionService::EvaluateBuiltIn(const SenseDefinition &
     return result;
 }
 
+[[nodiscard]] static bool CanAttemptSenseEvaluation(const SenseDefinition &definition,
+                                             const PerceiverProfileDefinition &profile,
+                                             const PerceiverEvaluationSample *sample) noexcept
+{
+    if (definition.requires_spatial_sample && !sample)
+        return false;
+
+    if (profile.materialization_policy == PerceptionMaterializationPolicy::RequiresMaterialized &&
+        (!sample || !sample->materialized))
+        return false;
+
+    if (profile.materialization_policy == PerceptionMaterializationPolicy::RequiresRuntimeProjection &&
+        (!sample || !sample->runtime_projection_available))
+        return false;
+
+    if (definition.evaluation_model != SenseEvaluationModel::Custom && !sample)
+        return false;
+
+    return true;
+}
+
 foundation::Result<SenseEvaluationResult> PerceptionService::EvaluateSense(
     const SenseDefinition &definition, const PerceiverProfileDefinition &profile, const PerceiverRecord &perceiver,
     const PerceptionStimulus &stimulus, const PerceiverEvaluationSample *sample,
@@ -617,13 +638,20 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
     ++diagnostics_.processed_stimuli;
 
     std::vector<PerceiverRecord> candidates;
+    const auto *candidate_definition = FindSense(stimulus->sense);
     for (const auto &[subject, record] : perceivers_)
     {
         if (subject == stimulus->source)
             continue;
         const auto *profile = FindProfileDefinition(record.profile);
-        if (profile && std::binary_search(profile->senses.begin(), profile->senses.end(), stimulus->sense))
-            candidates.push_back(record);
+        if (!profile || !std::binary_search(profile->senses.begin(), profile->senses.end(), stimulus->sense))
+            continue;
+
+        const auto *sample = pc.FindPerceiver(record.subject);
+        if (candidate_definition && !CanAttemptSenseEvaluation(*candidate_definition, *profile, sample))
+            continue;
+
+        candidates.push_back(record);
     }
     std::sort(candidates.begin(), candidates.end(), [](const auto &a, const auto &b) { return a.subject < b.subject; });
     if (candidates.size() > budget_.max_perceivers_per_stimulus)

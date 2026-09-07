@@ -1,5 +1,7 @@
 #include "Epidemic/GameFramework/StateIntegration/state_adapters.h"
 
+#include <memory>
+
 using namespace epidemic;
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::conditions;
@@ -38,6 +40,34 @@ class CountingCommitHandler final : public IEffectHandler
   private:
     EffectTypeId type_{};
     int& commits_;
+};
+
+
+class FailOnceCommitHandler final : public IEffectHandler
+{
+  public:
+    explicit FailOnceCommitHandler(EffectTypeId type) : type_(type) {}
+    [[nodiscard]] EffectTypeId Type() const noexcept override { return type_; }
+    [[nodiscard]] EffectHandlerCapabilities Capabilities() const noexcept override { return {true, false, false, true}; }
+    [[nodiscard]] foundation::Result<EffectPrepareResult> Prepare(const EffectOperation&) const override
+    {
+        return foundation::Result<EffectPrepareResult>::Success({EffectPrepareDisposition::Accepted, {}});
+    }
+    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(
+        const EffectOperation&, const RegisteredEffectPayload&) noexcept override
+    {
+        if (!failed_once_)
+        {
+            failed_once_ = true;
+            return foundation::Result<EffectCommitResult>::Failure(
+                foundation::Error::Create("test.forced_retry_commit_failure", "forced retryable commit failure"));
+        }
+        return foundation::Result<EffectCommitResult>::Success({EffectCommitDisposition::Applied, {}});
+    }
+
+  private:
+    EffectTypeId type_{};
+    bool failed_once_ = false;
 };
 
 class FailingCommitHandler final : public IEffectHandler
@@ -150,6 +180,8 @@ int main()
 
     ConditionService conditions;
     const auto periodic_action = ActionTypeId::FromString("test.action.burning.periodic");
+    const auto partial_action = ActionTypeId::FromString("test.action.reconciliation.partial");
+    const auto retry_action = ActionTypeId::FromString("test.action.reconciliation.retry");
     ConditionDefinition burning_definition;
     burning_definition.canonical_name = "test.condition.burning";
     burning_definition.stacking = ConditionStackingPolicy::RefreshDuration;
@@ -161,7 +193,19 @@ int main()
     burning_definition.publish_fact = true;
     burning_definition.periodic_catch_up = PeriodicCatchUpPolicy::Aggregate;
     const auto burning = conditions.RegisterCondition(std::move(burning_definition));
-    if (!burning) return 5;
+
+    ConditionDefinition partial_condition_definition;
+    partial_condition_definition.canonical_name = "test.condition.reconciliation.partial";
+    partial_condition_definition.persistence = ConditionPersistencePolicy::Persistent;
+    partial_condition_definition.on_apply = partial_action;
+    const auto partial_condition = conditions.RegisterCondition(std::move(partial_condition_definition));
+
+    ConditionDefinition retry_condition_definition;
+    retry_condition_definition.canonical_name = "test.condition.reconciliation.retry";
+    retry_condition_definition.persistence = ConditionPersistencePolicy::Persistent;
+    retry_condition_definition.on_apply = retry_action;
+    const auto retry_condition = conditions.RegisterCondition(std::move(retry_condition_definition));
+    if (!burning || !partial_condition || !retry_condition) return 5;
 
     EffectService effects;
     EntityTargetStateProvider target_state(entities);
@@ -169,6 +213,22 @@ int main()
     StateEffectAdapter effect_adapter(entities, materials, conditions, effects, tags, target_state, material_router);
     const auto builtins = effect_adapter.RegisterHandlers();
     if (!builtins) return 6;
+
+    int partial_commits = 0;
+    int retry_commits = 0;
+    const auto partial_count_type = EffectTypeId::FromString("test.effect.partial_count");
+    const auto retry_count_type = EffectTypeId::FromString("test.effect.retry_count");
+    const auto forced_failure_type = EffectTypeId::FromString("test.effect.forced_failure");
+    const auto retry_gate_type = EffectTypeId::FromString("test.effect.retry_gate");
+    const auto partial_count_handler = effects.RegisterHandler(
+        "test.effect.partial_count", std::make_shared<CountingCommitHandler>(partial_count_type, partial_commits));
+    const auto retry_count_handler = effects.RegisterHandler(
+        "test.effect.retry_count", std::make_shared<CountingCommitHandler>(retry_count_type, retry_commits));
+    const auto forced_failure_handler = effects.RegisterHandler(
+        "test.effect.forced_failure", std::make_shared<FailingCommitHandler>(forced_failure_type));
+    const auto retry_gate_handler = effects.RegisterHandler(
+        "test.effect.retry_gate", std::make_shared<FailOnceCommitHandler>(retry_gate_type));
+    if (!partial_count_handler || !retry_count_handler || !forced_failure_handler || !retry_gate_handler) return 164;
 
     const auto condition_payload = EncodeConditionApplyEffect(ConditionApplyEffectData{burning.Value(), std::nullopt, {}});
     if (!material_router.Register(ignite_response, [condition_payload, type = builtins.Value().condition_apply](
@@ -248,7 +308,25 @@ int main()
         1,
         RegisteredEffectPayload::FromTrivial(TypeId::FromString(kEntityTagPayloadName), EntityTagEffectPayload{delayed_tag.Value()})});
     const auto delayed_tag_effect = effects.RegisterDefinition(std::move(delayed_tag_definition));
-    if (!heat || !add_oil || !water_effect || !periodic_tag_effect || !delayed_tag_effect) return 9;
+
+    EffectDefinition partial_delivery_definition;
+    partial_delivery_definition.canonical_name = "test.effect.partial_delivery";
+    partial_delivery_definition.steps.push_back(
+        EffectStepDefinition{partial_count_handler.Value(), EffectTargetSelector::AllTargets, 1, {}});
+    partial_delivery_definition.steps.push_back(
+        EffectStepDefinition{forced_failure_handler.Value(), EffectTargetSelector::AllTargets, 1, {}});
+    const auto partial_delivery_effect = effects.RegisterDefinition(std::move(partial_delivery_definition));
+
+    EffectDefinition retry_delivery_definition;
+    retry_delivery_definition.canonical_name = "test.effect.retry_delivery";
+    retry_delivery_definition.steps.push_back(
+        EffectStepDefinition{retry_count_handler.Value(), EffectTargetSelector::AllTargets, 1, {}});
+    retry_delivery_definition.steps.push_back(
+        EffectStepDefinition{retry_gate_handler.Value(), EffectTargetSelector::AllTargets, 1, {}});
+    const auto retry_delivery_effect = effects.RegisterDefinition(std::move(retry_delivery_definition));
+
+    if (!heat || !add_oil || !water_effect || !periodic_tag_effect || !delayed_tag_effect ||
+        !partial_delivery_effect || !retry_delivery_effect) return 9;
 
     GameplayFactsService facts;
     GameplayQueryService queries;
@@ -260,7 +338,10 @@ int main()
     ConditionEffectsAdapter condition_effects(conditions, effects);
 
     if (!facts_adapter.RegisterContracts() || !query_adapter.RegisterProviders() || !time_adapter.RegisterContracts() ||
-        !time_adapter.RegisterWithDispatcher(trigger_dispatcher) || !condition_effects.RegisterRoute(periodic_action, periodic_tag_effect.Value())) return 10;
+        !time_adapter.RegisterWithDispatcher(trigger_dispatcher) ||
+        !condition_effects.RegisterRoute(periodic_action, periodic_tag_effect.Value()) ||
+        !condition_effects.RegisterRoute(partial_action, partial_delivery_effect.Value()) ||
+        !condition_effects.RegisterRoute(retry_action, retry_delivery_effect.Value())) return 10;
 
     entities.Freeze();
     materials.Freeze();
@@ -331,6 +412,8 @@ int main()
     const auto executions_before_condition_restore = effects.GetDiagnostics().executions;
     ConditionEffectsAdapter restored_condition_effects(conditions, effects);
     if (!restored_condition_effects.RegisterRoute(periodic_action, periodic_tag_effect.Value()) ||
+        !restored_condition_effects.RegisterRoute(partial_action, partial_delivery_effect.Value()) ||
+        !restored_condition_effects.RegisterRoute(retry_action, retry_delivery_effect.Value()) ||
         !restored_condition_effects.RestoreCheckpoint(condition_effect_checkpoint)) return 162;
     const auto replayed_condition_effects = restored_condition_effects.ProcessPending();
     if (!replayed_condition_effects || !replayed_condition_effects.Value().empty() ||
@@ -396,9 +479,11 @@ int main()
     gap_apply_request.context = context;
     const auto gap_applied = conditions.Apply(gap_apply_request);
     if (!gap_applied) return 41;
+    const auto gap_history_before_rebuild = gap_facts.FindHistory(gap_facts_adapter.ConditionChangedEvent()).size();
     conditions.PruneChangesBefore(conditions.LatestChangeSequence() + 1);
     const auto gap_published = gap_facts_adapter.PublishPendingChanges(context);
     if (!gap_published || gap_published.Value() == 0 || !gap_facts.Dispatch()) return 42;
+    if (gap_facts.FindHistory(gap_facts_adapter.ConditionChangedEvent()).size() != gap_history_before_rebuild) return 165;
     const FactKey gap_fact{gap_facts_adapter.ActiveConditionFact(), house,
                            GameplayObjectRef{ConditionService::Domain(), gap_applied.Value().instance.value}};
     if (!gap_facts.FindFactValueCopy<ConditionFactValue>(gap_fact).has_value()) return 43;
@@ -416,6 +501,163 @@ int main()
         effects.FindDeferred(cleanup_deferred.Value()) != nullptr) return 48;
 
     if (!time_adapter.SynchronizeConditionSchedules(context) || !time_adapter.SynchronizeDeferredEffects(context)) return 49;
+
+    StateIntegrationPersistence state_persistence(facts_adapter, lifecycle_adapter, condition_effects, time_adapter);
+    const auto pre_checkpoint_reset = state_persistence.CaptureCheckpoint();
+    const auto pre_checkpoint_entities = entities.CaptureSnapshot();
+    const auto pre_checkpoint_materials = materials.CaptureSnapshot();
+    const auto pre_checkpoint_effects = effects.CaptureSnapshot();
+    if (!entities.RestoreSnapshot(pre_checkpoint_entities) || !materials.RestoreSnapshot(pre_checkpoint_materials) ||
+        !effects.RestoreSnapshot(pre_checkpoint_effects) || !state_persistence.RestoreCheckpoint(pre_checkpoint_reset)) return 199;
+    const auto reconciled_facts_before_checkpoint = facts_adapter.PublishPendingChanges(context);
+    if (!reconciled_facts_before_checkpoint || !facts.Dispatch()) return 200;
+
+    // H02: a persisted StateFacts cursor keeps delivered Condition history delivered and leaves newer changes pending.
+    ApplyConditionRequest checkpoint_apply;
+    checkpoint_apply.subject = house;
+    checkpoint_apply.type = burning.Value();
+    checkpoint_apply.magnitude_micro = 10;
+    checkpoint_apply.context = context;
+    const auto checkpoint_condition = conditions.Apply(checkpoint_apply);
+    if (!checkpoint_condition || !facts_adapter.PublishPendingChanges(context) || !facts.Dispatch()) return 166;
+    const auto delivered_history_count = facts.FindHistory(facts_adapter.ConditionChangedEvent()).size();
+    if (delivered_history_count == 0) return 202;
+
+    checkpoint_apply.magnitude_micro = 20;
+    const auto pending_condition_change = conditions.Apply(checkpoint_apply);
+    if (!pending_condition_change) return 167;
+
+    const auto technical_checkpoint = state_persistence.CaptureCheckpoint();
+    const auto saved_facts = facts.CaptureSnapshot();
+    if (!saved_facts) return 168;
+    const auto saved_entities = entities.CaptureSnapshot();
+    const auto saved_materials = materials.CaptureSnapshot();
+    const auto saved_conditions = conditions.CaptureSnapshot();
+    const auto saved_effects = effects.CaptureSnapshot();
+
+    if (!entities.RestoreSnapshot(saved_entities) || !materials.RestoreSnapshot(saved_materials) ||
+        !conditions.RestoreSnapshot(saved_conditions) || !effects.RestoreSnapshot(saved_effects) ||
+        !state_persistence.RestoreCheckpoint(technical_checkpoint)) return 169;
+
+    GameplayFactsService loaded_facts;
+    StateFactsAdapter loaded_facts_adapter(entities, materials, conditions, effects, loaded_facts);
+    if (!loaded_facts_adapter.RegisterContracts()) return 170;
+    loaded_facts.Freeze();
+    if (!loaded_facts.RestoreSnapshot(saved_facts.Value()) ||
+        !loaded_facts_adapter.RestoreCheckpoint(technical_checkpoint.facts)) return 171;
+    // Recent event history itself is intentionally not persisted by Facts. After load the only event that may
+    // appear is the pre-save Condition change that had not yet reached StateFacts.
+    if (!loaded_facts.FindHistory(loaded_facts_adapter.ConditionChangedEvent()).empty()) return 172;
+    const auto loaded_pending = loaded_facts_adapter.PublishPendingChanges(context);
+    if (!loaded_pending || !loaded_facts.Dispatch()) return 173;
+    if (loaded_facts.FindHistory(loaded_facts_adapter.ConditionChangedEvent()).size() != 1) return 174;
+    const auto loaded_second_pass = loaded_facts_adapter.PublishPendingChanges(context);
+    if (!loaded_second_pass || loaded_second_pass.Value() != 0 || !loaded_facts.Dispatch() ||
+        loaded_facts.FindHistory(loaded_facts_adapter.ConditionChangedEvent()).size() != 1) return 175;
+
+    auto incompatible_facts = technical_checkpoint.facts;
+    incompatible_facts.contract_revision ^= 0xA5A5A5A5ull;
+    const auto live_facts_before_invalid_restore = loaded_facts_adapter.CaptureCheckpoint();
+    if (loaded_facts_adapter.RestoreCheckpoint(incompatible_facts)) return 176;
+    const auto live_facts_after_invalid_restore = loaded_facts_adapter.CaptureCheckpoint();
+    if (live_facts_before_invalid_restore.condition_cursor != live_facts_after_invalid_restore.condition_cursor ||
+        live_facts_before_invalid_restore.entity_cursor != live_facts_after_invalid_restore.entity_cursor) return 177;
+
+    // The earlier journal-gap regression intentionally pruned Conditions. Align this adapter to the now-persisted
+    // checkpoint boundary before starting the independent H03 delivery tests.
+    auto condition_effect_alignment = condition_effects.CaptureCheckpoint();
+    condition_effect_alignment.cursor = condition_effect_alignment.condition_latest;
+    condition_effect_alignment.deliveries.clear();
+    if (!condition_effects.RestoreCheckpoint(std::move(condition_effect_alignment))) return 201;
+
+    // H03: partial/failed Effect batches remain explicit reconciliation state and are never blind-retried.
+    ApplyConditionRequest partial_apply;
+    partial_apply.subject = house;
+    partial_apply.type = partial_condition.Value();
+    partial_apply.magnitude_micro = 1;
+    partial_apply.context = context;
+    if (!conditions.Apply(partial_apply)) return 178;
+    const auto partial_delivery = condition_effects.ProcessPending();
+    if (partial_delivery || partial_commits != 1 || condition_effects.Deliveries().size() != 1 ||
+        condition_effects.Deliveries().front().state != ConditionEffectDeliveryState::ReconciliationRequired ||
+        !condition_effects.Deliveries().front().had_applied_operation) return 179;
+    const auto partial_key = condition_effects.Deliveries().front().key;
+    const auto partial_repeat = condition_effects.ProcessPending();
+    if (partial_repeat || partial_commits != 1) return 180;
+
+    const auto unresolved_checkpoint = state_persistence.CaptureCheckpoint();
+    if (unresolved_checkpoint.condition_effects.deliveries.size() != 1 ||
+        unresolved_checkpoint.facts.schema_version != 1 || unresolved_checkpoint.lifecycle.schema_version != 1 ||
+        unresolved_checkpoint.time.schema_version != 2) return 181;
+
+    auto incompatible_aggregate = unresolved_checkpoint;
+    incompatible_aggregate.condition_effects.route_revision ^= 0x55AA55AAull;
+    incompatible_aggregate.lifecycle.cursor = 0;
+    const auto aggregate_before_invalid = state_persistence.CaptureCheckpoint();
+    if (state_persistence.RestoreCheckpoint(std::move(incompatible_aggregate))) return 182;
+    const auto aggregate_after_invalid = state_persistence.CaptureCheckpoint();
+    if (aggregate_before_invalid.lifecycle.cursor != aggregate_after_invalid.lifecycle.cursor ||
+        aggregate_before_invalid.condition_effects.cursor != aggregate_after_invalid.condition_effects.cursor ||
+        aggregate_before_invalid.condition_effects.deliveries.size() != aggregate_after_invalid.condition_effects.deliveries.size()) return 183;
+
+    if (!condition_effects.ResolveReconciliation(partial_key, ConditionEffectReconciliationResolution::ConfirmedApplied) ||
+        !condition_effects.ResolveReconciliation(partial_key, ConditionEffectReconciliationResolution::ConfirmedApplied)) return 184;
+    const auto after_confirmed_applied = condition_effects.ProcessPending();
+    if (!after_confirmed_applied || partial_commits != 1 || !condition_effects.Deliveries().empty()) return 185;
+
+    // Aggregate restore reinstates unresolved technical delivery without replaying its already-applied leg.
+    if (!state_persistence.RestoreCheckpoint(unresolved_checkpoint)) return 186;
+    const auto replay_unresolved = condition_effects.ProcessPending();
+    if (replay_unresolved || partial_commits != 1 || condition_effects.Deliveries().size() != 1) return 187;
+    if (!condition_effects.ResolveReconciliation(partial_key, ConditionEffectReconciliationResolution::ConfirmedApplied) ||
+        !condition_effects.ProcessPending() || partial_commits != 1) return 188;
+
+    // Ambiguous zero-operation failure requires reconciliation. ConfirmedNotApplied authorizes exactly one fresh execution.
+    ApplyConditionRequest retry_apply;
+    retry_apply.subject = house;
+    retry_apply.type = retry_condition.Value();
+    retry_apply.magnitude_micro = 1;
+    retry_apply.context = context;
+    if (!conditions.Apply(retry_apply)) return 189;
+    const auto ambiguous_failure = condition_effects.ProcessPending();
+    if (ambiguous_failure || retry_commits != 1 || condition_effects.Deliveries().size() != 1 ||
+        condition_effects.Deliveries().front().state != ConditionEffectDeliveryState::ReconciliationRequired ||
+        !condition_effects.Deliveries().front().had_applied_operation) return 190;
+    const auto retry_key = condition_effects.Deliveries().front().key;
+    if (!condition_effects.ResolveReconciliation(retry_key, ConditionEffectReconciliationResolution::ConfirmedNotApplied) ||
+        !condition_effects.ResolveReconciliation(retry_key, ConditionEffectReconciliationResolution::ConfirmedNotApplied)) return 191;
+    const auto retry_success = condition_effects.ProcessPending();
+    if (!retry_success || retry_success.Value().size() != 1 || retry_commits != 2 || !condition_effects.Deliveries().empty()) return 192;
+    const auto no_second_retry = condition_effects.ProcessPending();
+    if (!no_second_retry || !no_second_retry.Value().empty() || retry_commits != 2) return 193;
+
+    // A succeeded on_apply checkpoint can be restored into a new adapter instance without re-execution.
+    const auto delivered_effect_checkpoint = condition_effects.CaptureCheckpoint();
+    ConditionEffectsAdapter loaded_condition_effects(conditions, effects);
+    if (!loaded_condition_effects.RegisterRoute(periodic_action, periodic_tag_effect.Value()) ||
+        !loaded_condition_effects.RegisterRoute(partial_action, partial_delivery_effect.Value()) ||
+        !loaded_condition_effects.RegisterRoute(retry_action, retry_delivery_effect.Value()) ||
+        !loaded_condition_effects.RestoreCheckpoint(delivered_effect_checkpoint)) return 194;
+    const auto commits_before_loaded_effect_pass = retry_commits;
+    const auto loaded_effect_pass = loaded_condition_effects.ProcessPending();
+    if (!loaded_effect_pass || !loaded_effect_pass.Value().empty() || retry_commits != commits_before_loaded_effect_pass) return 195;
+
+    // Aggregate contract is versioned and rejects incompatible schema before publishing any adapter state.
+    const auto aggregate_checkpoint = state_persistence.CaptureCheckpoint();
+    auto incompatible_schema = aggregate_checkpoint;
+    incompatible_schema.schema_version = 99;
+    if (state_persistence.RestoreCheckpoint(std::move(incompatible_schema))) return 196;
+    const auto aggregate_after_schema_failure = state_persistence.CaptureCheckpoint();
+    if (aggregate_after_schema_failure.facts.condition_cursor != aggregate_checkpoint.facts.condition_cursor ||
+        aggregate_after_schema_failure.lifecycle.cursor != aggregate_checkpoint.lifecycle.cursor ||
+        aggregate_after_schema_failure.condition_effects.cursor != aggregate_checkpoint.condition_effects.cursor ||
+        aggregate_after_schema_failure.time.condition_cursor != aggregate_checkpoint.time.condition_cursor) return 197;
+
+    // Leave the original terminal-state assertions intact.
+    for (const auto& instance : conditions.AllConditions())
+    {
+        if (!conditions.Remove(instance.id, ConditionRemovalReason::SystemCleanup, context)) return 198;
+    }
 
 
     const auto entity_snapshot = entities.CaptureSnapshot();

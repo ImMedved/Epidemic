@@ -105,6 +105,7 @@ struct RelationshipPenaltyDeliveryHash
 struct SocialLegalCheckpoint
 {
     Revision mapping_revision{};
+    std::uint64_t crime_cursor = 0;
     std::vector<RelationshipPenaltyDelivery> applied_relationship_penalties;
 };
 
@@ -175,16 +176,19 @@ public:
         GameplayObjectRef target = {},
         GameplayContext context = {});
 
+    [[nodiscard]] foundation::Result<void> ProcessCrimeLifecycle();
     [[nodiscard]] SocialLegalCheckpoint CaptureCheckpoint() const;
     [[nodiscard]] foundation::Result<void> RestoreCheckpoint(SocialLegalCheckpoint checkpoint);
     [[nodiscard]] bool WasRelationshipPenaltyApplied(crime::CrimeRecordId crime_id,
                                                       SocialLegalMappingId mapping) const noexcept;
+    std::uint64_t PruneDeliveriesForCrime(crime::CrimeRecordId crime_id) noexcept;
 
 private:
     crime::CrimeService& crime_;
     society::SocietyService& society_;
     const SocialLegalMappings& mappings_;
     std::unordered_set<RelationshipPenaltyDelivery, RelationshipPenaltyDeliveryHash> applied_relationship_penalties_;
+    std::uint64_t crime_cursor_ = 0;
 };
 } // namespace epidemic::gameplay::social_legal_integration
 

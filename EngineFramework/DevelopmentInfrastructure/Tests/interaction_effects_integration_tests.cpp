@@ -47,7 +47,10 @@ class CountingHandler final : public IEffectHandler
 class FailingCommitHandler final : public IEffectHandler
 {
   public:
-    FailingCommitHandler(EffectTypeId type, int& attempts) : type_(type), attempts_(attempts) {}
+    FailingCommitHandler(EffectTypeId type, int& attempts, bool& should_fail)
+        : type_(type), attempts_(attempts), should_fail_(should_fail)
+    {
+    }
 
     [[nodiscard]] EffectTypeId Type() const noexcept override { return type_; }
     [[nodiscard]] EffectHandlerCapabilities Capabilities() const noexcept override { return {true, false, false, true}; }
@@ -60,6 +63,10 @@ class FailingCommitHandler final : public IEffectHandler
         const RegisteredEffectPayload&) noexcept override
     {
         ++attempts_;
+        if (!should_fail_)
+        {
+            return foundation::Result<EffectCommitResult>::Success({EffectCommitDisposition::Applied, {}});
+        }
         return foundation::Result<EffectCommitResult>::Failure(
             foundation::Error::Create("test.effect.commit_failed", "injected commit failure"));
     }
@@ -67,6 +74,7 @@ class FailingCommitHandler final : public IEffectHandler
   private:
     EffectTypeId type_{};
     int& attempts_;
+    bool& should_fail_;
 };
 
 InteractionDefinition MakeInteractionDefinition(InteractionTypeId type)
@@ -101,6 +109,7 @@ int main()
     EffectService effects;
     int first_commits = 0;
     int second_attempts = 0;
+    bool second_should_fail = true;
     std::optional<GameplayContext> observed_first;
 
     const auto first_type = EffectTypeId::FromString("test.interaction_effects.first");
@@ -110,7 +119,7 @@ int main()
             std::make_shared<CountingHandler>(first_type, first_commits, &observed_first)) ||
         !effects.RegisterHandler(
             "test.interaction_effects.second",
-            std::make_shared<FailingCommitHandler>(second_type, second_attempts)))
+            std::make_shared<FailingCommitHandler>(second_type, second_attempts, second_should_fail)))
     {
         return 1;
     }
@@ -206,10 +215,16 @@ int main()
     {
         return 13;
     }
+    const auto* restored_uncertain = restored.FindDelivery(execution, 1);
+    if (restored_uncertain == nullptr ||
+        restored_uncertain->state != InteractionEffectDeliveryState::ReconciliationRequired)
+    {
+        return 14;
+    }
     const auto restored_retry = restored.Commit(plan, execution);
     if (restored_retry || first_commits != 1 || second_attempts != 1)
     {
-        return 14;
+        return 15;
     }
 
     // Snapshot restore is transactional and rejects records that do not match the
@@ -217,33 +232,195 @@ int main()
     auto corrupted = snapshot;
     if (corrupted.deliveries.empty())
     {
-        return 15;
+        return 16;
     }
     corrupted.deliveries.front().definition = EffectDefinitionId::FromString("test.interaction_effects.corrupt");
     if (restored.RestoreSnapshot(std::move(corrupted)))
     {
-        return 16;
+        return 17;
     }
     if (restored.FindDelivery(execution, 0) == nullptr ||
         restored.FindDelivery(execution, 0)->state != InteractionEffectDeliveryState::Applied)
     {
-        return 17;
-    }
-
-    // A captured in-flight delivery becomes reconciliation-required on restore;
-    // it is never replayed automatically because commit outcome is uncertain.
-    InteractionEffectsSnapshot pending_snapshot;
-    pending_snapshot.deliveries.push_back(
-        {InteractionExecutionId{GameplayObjectId::FromRaw(17, 99)}, interaction_type, 0, first_id.Value(), {},
-         InteractionEffectDeliveryState::Pending});
-    if (!restored.RestoreSnapshot(std::move(pending_snapshot)))
-    {
         return 18;
     }
-    const auto* uncertain = restored.FindDelivery(InteractionExecutionId{GameplayObjectId::FromRaw(17, 99)}, 0);
-    if (uncertain == nullptr || uncertain->state != InteractionEffectDeliveryState::ReconciliationRequired)
+
+    corrupted = snapshot;
+    corrupted.deliveries.front().effect_index = 999;
+    if (restored.RestoreSnapshot(std::move(corrupted)))
     {
         return 19;
+    }
+    corrupted = snapshot;
+    corrupted.deliveries.front().effect_execution = {};
+    if (restored.RestoreSnapshot(std::move(corrupted)))
+    {
+        return 20;
+    }
+
+    // External recovery can prove that the uncertain effect was already applied.
+    // Optional execution evidence is persisted but never invented by the adapter.
+    const auto* unresolved_with_evidence = restored.FindDelivery(execution, 1);
+    if (unresolved_with_evidence == nullptr || !unresolved_with_evidence->effect_execution.IsValid())
+    {
+        return 21;
+    }
+    const EffectExecutionId reconciled_effect_execution = unresolved_with_evidence->effect_execution;
+    const InteractionEffectReconciliationRequest confirmed_applied{
+        execution,
+        1,
+        InteractionEffectReconciliationOutcome::ConfirmedApplied,
+        reconciled_effect_execution};
+    auto resolved = restored.ReconcileDelivery(confirmed_applied);
+    if (!resolved || resolved.Value() != InteractionEffectReconciliationStatus::Resolved)
+    {
+        return 22;
+    }
+    const auto* applied_by_reconciliation = restored.FindDelivery(execution, 1);
+    if (applied_by_reconciliation == nullptr ||
+        applied_by_reconciliation->state != InteractionEffectDeliveryState::Applied ||
+        applied_by_reconciliation->effect_execution != reconciled_effect_execution)
+    {
+        return 23;
+    }
+    auto repeated_resolution = restored.ReconcileDelivery(confirmed_applied);
+    if (!repeated_resolution || repeated_resolution.Value() != InteractionEffectReconciliationStatus::AlreadyResolved)
+    {
+        return 24;
+    }
+    if (restored.ReconcileDelivery(
+            {execution, 1, InteractionEffectReconciliationOutcome::ConfirmedRejected, {}}))
+    {
+        return 25;
+    }
+    if (restored.ReconcileDelivery(
+            {execution, 99, InteractionEffectReconciliationOutcome::ConfirmedApplied, {}}))
+    {
+        return 26;
+    }
+    if (!restored.Commit(plan, execution) || first_commits != 1 || second_attempts != 1)
+    {
+        return 27;
+    }
+
+    // ConfirmedRejected is terminal and a later Commit never runs the Effect.
+    InteractionEffectExecutor rejected(effects, interaction_type);
+    if (!rejected.RegisterEffect(second_id.Value()) || !rejected.Freeze(interactions))
+    {
+        return 28;
+    }
+    const InteractionExecutionId rejected_execution{GameplayObjectId::FromRaw(17, 43)};
+    second_should_fail = true;
+    if (rejected.Commit(plan, rejected_execution) || second_attempts != 2)
+    {
+        return 29;
+    }
+    auto rejected_resolution = rejected.ReconcileDelivery(
+        {rejected_execution, 0, InteractionEffectReconciliationOutcome::ConfirmedRejected, {}});
+    if (!rejected_resolution || rejected_resolution.Value() != InteractionEffectReconciliationStatus::Resolved)
+    {
+        return 30;
+    }
+    if (rejected.Commit(plan, rejected_execution) || second_attempts != 2)
+    {
+        return 31;
+    }
+    auto repeated_rejected = rejected.ReconcileDelivery(
+        {rejected_execution, 0, InteractionEffectReconciliationOutcome::ConfirmedRejected, {}});
+    if (!repeated_rejected || repeated_rejected.Value() != InteractionEffectReconciliationStatus::AlreadyResolved)
+    {
+        return 32;
+    }
+
+    // ConfirmedNotApplied is the only transition that re-opens the normal execution
+    // path. The proof survives save/restore and exactly one safe retry is attempted.
+    InteractionEffectExecutor retry_safe(effects, interaction_type);
+    if (!retry_safe.RegisterEffect(second_id.Value()) || !retry_safe.Freeze(interactions))
+    {
+        return 33;
+    }
+    const InteractionExecutionId retry_safe_execution{GameplayObjectId::FromRaw(17, 44)};
+    if (retry_safe.Commit(plan, retry_safe_execution) || second_attempts != 3)
+    {
+        return 34;
+    }
+    auto retry_safe_resolution = retry_safe.ReconcileDelivery(
+        {retry_safe_execution, 0, InteractionEffectReconciliationOutcome::ConfirmedNotApplied, {}});
+    if (!retry_safe_resolution || retry_safe_resolution.Value() != InteractionEffectReconciliationStatus::Resolved)
+    {
+        return 35;
+    }
+    const auto* retry_pending = retry_safe.FindDelivery(retry_safe_execution, 0);
+    if (retry_pending == nullptr || retry_pending->state != InteractionEffectDeliveryState::Pending ||
+        retry_pending->effect_execution.IsValid() ||
+        retry_pending->reconciliation != InteractionEffectReconciliationOutcome::ConfirmedNotApplied)
+    {
+        return 36;
+    }
+    InteractionEffectExecutor retry_safe_restored(effects, interaction_type);
+    if (!retry_safe_restored.RegisterEffect(second_id.Value()) || !retry_safe_restored.Freeze(interactions) ||
+        !retry_safe_restored.RestoreSnapshot(retry_safe.CaptureSnapshot()))
+    {
+        return 37;
+    }
+    retry_pending = retry_safe_restored.FindDelivery(retry_safe_execution, 0);
+    if (retry_pending == nullptr || retry_pending->state != InteractionEffectDeliveryState::Pending ||
+        retry_pending->reconciliation != InteractionEffectReconciliationOutcome::ConfirmedNotApplied)
+    {
+        return 38;
+    }
+    second_should_fail = false;
+    if (!retry_safe_restored.Commit(plan, retry_safe_execution) || second_attempts != 4)
+    {
+        return 39;
+    }
+    if (!retry_safe_restored.Commit(plan, retry_safe_execution) || second_attempts != 4)
+    {
+        return 40;
+    }
+
+    // Unresolved deliveries are not terminal retention even when the source
+    // Interaction execution is terminal, and therefore cannot be pruned.
+    InteractionEffectExecutor unresolved_for_prune(effects, interaction_type);
+    if (!unresolved_for_prune.RegisterEffect(second_id.Value()) || !unresolved_for_prune.Freeze(interactions))
+    {
+        return 41;
+    }
+    const InteractionExecutionId prune_execution{GameplayObjectId::FromRaw(17, 45)};
+    second_should_fail = true;
+    if (unresolved_for_prune.Commit(plan, prune_execution) || second_attempts != 5)
+    {
+        return 42;
+    }
+    unresolved_for_prune.PruneTerminalExecution(prune_execution);
+    const auto* retained_unresolved = unresolved_for_prune.FindDelivery(prune_execution, 0);
+    if (retained_unresolved == nullptr ||
+        retained_unresolved->state != InteractionEffectDeliveryState::ReconciliationRequired)
+    {
+        return 43;
+    }
+
+    // A captured in-flight delivery without recovery proof becomes
+    // reconciliation-required on restore and is never automatically replayed.
+    InteractionEffectsSnapshot pending_snapshot;
+    const InteractionExecutionId pending_execution{GameplayObjectId::FromRaw(17, 99)};
+    pending_snapshot.deliveries.push_back(
+        {pending_execution, interaction_type, 0, first_id.Value(), {}, InteractionEffectDeliveryState::Pending});
+    InteractionEffectExecutor pending_restored(effects, interaction_type);
+    if (!pending_restored.RegisterEffect(first_id.Value()) || !pending_restored.Freeze(interactions) ||
+        !pending_restored.RestoreSnapshot(std::move(pending_snapshot)))
+    {
+        return 44;
+    }
+    const auto* uncertain = pending_restored.FindDelivery(pending_execution, 0);
+    if (uncertain == nullptr || uncertain->state != InteractionEffectDeliveryState::ReconciliationRequired)
+    {
+        return 45;
+    }
+    pending_restored.PruneTerminalExecution(pending_execution);
+    if (pending_restored.FindDelivery(pending_execution, 0) == nullptr)
+    {
+        return 46;
     }
 
     // A fully successful mapping reports success and repeated same-execution commit
@@ -251,16 +428,16 @@ int main()
     InteractionEffectExecutor successful(effects, interaction_type);
     if (!successful.RegisterEffect(first_id.Value()) || !successful.Freeze(interactions))
     {
-        return 20;
+        return 47;
     }
     const InteractionExecutionId success_execution{GameplayObjectId::FromRaw(17, 100)};
     if (!successful.Commit(plan, success_execution) || first_commits != 2)
     {
-        return 21;
+        return 48;
     }
     if (!successful.Commit(plan, success_execution) || first_commits != 2)
     {
-        return 22;
+        return 49;
     }
 
     // Wrong interaction type is a configuration/dispatch error rather than an
@@ -269,25 +446,25 @@ int main()
     wrong_plan.candidate.type = InteractionTypeId::FromString("test.interaction.other");
     if (successful.Validate(wrong_plan))
     {
-        return 23;
+        return 50;
     }
 
     // The frozen mapping can be installed as the production executor before the
     // Interaction registry itself is frozen.
     if (!interactions.RegisterExecutor(interaction_type, successful))
     {
-        return 24;
+        return 51;
     }
     interactions.Freeze();
     const auto prepared = interactions.Prepare(plan.context, plan.candidate);
     if (!prepared)
     {
-        return 25;
+        return 52;
     }
     const auto committed = interactions.Commit(prepared.Value());
     if (!committed || committed.Value().state != InteractionSessionState::Completed || first_commits != 3)
     {
-        return 26;
+        return 53;
     }
 
     return 0;

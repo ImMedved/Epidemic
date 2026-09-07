@@ -11,6 +11,7 @@ target_link_libraries(EpidemicGameFrameworkCoreIntegration
         EpidemicGameplayQueries
         EpidemicGameplayFacts
         EpidemicGameplayTime
+        EpidemicGameFrameworkSaveGame
         EpidemicRuntimeTime
     PRIVATE EpidemicFoundation
 )

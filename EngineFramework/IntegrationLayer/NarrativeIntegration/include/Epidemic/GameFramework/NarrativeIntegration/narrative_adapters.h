@@ -163,6 +163,9 @@ class NarrativeExternalConsequenceOutbox final : public narrative::INarrativeCon
 
     [[nodiscard]] NarrativeExternalConsequenceSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> ValidateSnapshot(const NarrativeExternalConsequenceSnapshot &snapshot) const;
+    [[nodiscard]] foundation::Result<NarrativeExternalConsequenceSnapshot> PrepareSnapshotForRestore(
+        NarrativeExternalConsequenceSnapshot snapshot) const;
+    void PublishPreparedSnapshot(NarrativeExternalConsequenceSnapshot &&snapshot) noexcept;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(NarrativeExternalConsequenceSnapshot snapshot);
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
     [[nodiscard]] std::size_t Capacity() const noexcept { return max_records_; }

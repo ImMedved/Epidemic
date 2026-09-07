@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <stdexcept>
+#include <utility>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::perception;
@@ -28,6 +29,20 @@ class ThrowingEvaluator final : public ISenseEvaluator
     epidemic::foundation::Result<SenseEvaluationResult> Evaluate(const SenseEvaluationInput &) const override
     {
         throw std::runtime_error("test");
+    }
+};
+
+class AbstractNoSampleEvaluator final : public ISenseEvaluator
+{
+  public:
+    epidemic::foundation::Result<SenseEvaluationResult> Evaluate(const SenseEvaluationInput &input) const override
+    {
+        SenseEvaluationResult result;
+        result.score_micro = 1'000'000;
+        result.identified_subject = true;
+        result.identity_confidence_micro = 1'000'000;
+        result.perceived_position = input.stimulus.position;
+        return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);
     }
 };
 } // namespace
@@ -272,6 +287,106 @@ int main()
     if (!budget_out || budgeted.GetDiagnostics().detection_tests != 1 ||
         budgeted.GetDiagnostics().budget_exhaustions == 0)
         return 39;
+
+    // M04: unavailable built-in candidates are filtered before the per-stimulus candidate cap.
+    PerceptionService prefiltered;
+    if (!prefiltered.RegisterSense(hear))
+        return 84;
+    PerceiverProfileDefinition prefilter_profile;
+    prefilter_profile.id = PerceiverProfileId::FromString("test.prefilter");
+    prefilter_profile.canonical_name = "test.prefilter";
+    prefilter_profile.senses = {hearing};
+    if (!prefiltered.RegisterProfileDefinition(prefilter_profile))
+        return 85;
+    prefiltered.Freeze();
+    auto lower = Ref("prefilter.a");
+    auto higher = Ref("prefilter.b");
+    if (higher < lower)
+        std::swap(lower, higher);
+    if (!prefiltered.RegisterPerceiver(lower, prefilter_profile.id) ||
+        !prefiltered.RegisterPerceiver(higher, prefilter_profile.id))
+        return 86;
+    prefiltered.SetBudget({10, 1, 10});
+    auto prefilter_sid = prefiltered.CreateStimulus(audible);
+    if (!prefilter_sid)
+        return 87;
+    auto prefilter_out = prefiltered.ProcessStimulus(
+        prefilter_sid.Value(),
+        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {Sample(higher)}});
+    if (!prefilter_out || prefilter_out.Value().size() != 1 || prefilter_out.Value().front().perceiver != higher ||
+        prefiltered.GetDiagnostics().detection_tests != 1)
+        return 88;
+
+    // RequiresMaterialized candidates with a non-materialized sample also do not consume the candidate slot.
+    PerceptionService materialized_prefilter;
+    if (!materialized_prefilter.RegisterSense(hear))
+        return 89;
+    PerceiverProfileDefinition materialized_prefilter_profile;
+    materialized_prefilter_profile.id = PerceiverProfileId::FromString("test.prefilter.materialized");
+    materialized_prefilter_profile.canonical_name = "test.prefilter.materialized";
+    materialized_prefilter_profile.senses = {hearing};
+    materialized_prefilter_profile.materialization_policy = PerceptionMaterializationPolicy::RequiresMaterialized;
+    if (!materialized_prefilter.RegisterProfileDefinition(materialized_prefilter_profile))
+        return 90;
+    materialized_prefilter.Freeze();
+    auto materialized_lower = Ref("prefilter.materialized.a");
+    auto materialized_higher = Ref("prefilter.materialized.b");
+    if (materialized_higher < materialized_lower)
+        std::swap(materialized_lower, materialized_higher);
+    if (!materialized_prefilter.RegisterPerceiver(materialized_lower, materialized_prefilter_profile.id) ||
+        !materialized_prefilter.RegisterPerceiver(materialized_higher, materialized_prefilter_profile.id))
+        return 91;
+    materialized_prefilter.SetBudget({10, 1, 10});
+    auto unavailable_materialized_sample = Sample(materialized_lower);
+    unavailable_materialized_sample.materialized = false;
+    auto materialized_prefilter_sid = materialized_prefilter.CreateStimulus(audible);
+    if (!materialized_prefilter_sid)
+        return 92;
+    auto materialized_prefilter_out = materialized_prefilter.ProcessStimulus(
+        materialized_prefilter_sid.Value(),
+        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {},
+                                    {unavailable_materialized_sample, Sample(materialized_higher)}});
+    if (!materialized_prefilter_out || materialized_prefilter_out.Value().size() != 1 ||
+        materialized_prefilter_out.Value().front().perceiver != materialized_higher ||
+        materialized_prefilter.GetDiagnostics().detection_tests != 1)
+        return 93;
+
+    // Custom AbstractCapable evaluators that do not require a sample remain eligible for prefiltering.
+    PerceptionService abstract_custom;
+    const auto abstract_custom_sense = SenseTypeId::FromString("test.sense.abstract_custom");
+    const auto abstract_custom_evaluator_id = SenseEvaluatorId::FromString("test.evaluator.abstract_custom");
+    SenseDefinition abstract_custom_definition;
+    abstract_custom_definition.id = abstract_custom_sense;
+    abstract_custom_definition.canonical_name = "test.sense.abstract_custom";
+    abstract_custom_definition.evaluation_model = SenseEvaluationModel::Custom;
+    abstract_custom_definition.evaluator = abstract_custom_evaluator_id;
+    abstract_custom_definition.requires_spatial_sample = false;
+    if (!abstract_custom.RegisterEvaluator(abstract_custom_evaluator_id, std::make_shared<AbstractNoSampleEvaluator>()) ||
+        !abstract_custom.RegisterSense(abstract_custom_definition))
+        return 94;
+    PerceiverProfileDefinition abstract_custom_profile;
+    abstract_custom_profile.id = PerceiverProfileId::FromString("test.abstract_custom.profile");
+    abstract_custom_profile.canonical_name = "test.abstract_custom.profile";
+    abstract_custom_profile.senses = {abstract_custom_sense};
+    abstract_custom_profile.materialization_policy = PerceptionMaterializationPolicy::AbstractCapable;
+    if (!abstract_custom.RegisterProfileDefinition(abstract_custom_profile))
+        return 95;
+    abstract_custom.Freeze();
+    if (!abstract_custom.RegisterPerceiver(npc, abstract_custom_profile.id))
+        return 96;
+    abstract_custom.SetBudget({10, 1, 10});
+    PerceptionStimulus abstract_custom_stimulus = audible;
+    abstract_custom_stimulus.id = {};
+    abstract_custom_stimulus.sense = abstract_custom_sense;
+    auto abstract_custom_sid = abstract_custom.CreateStimulus(abstract_custom_stimulus);
+    if (!abstract_custom_sid)
+        return 97;
+    auto abstract_custom_out = abstract_custom.ProcessStimulus(
+        abstract_custom_sid.Value(),
+        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {}});
+    if (!abstract_custom_out || abstract_custom_out.Value().size() != 1 ||
+        abstract_custom_out.Value().front().perceiver != npc || abstract_custom.GetDiagnostics().custom_tests != 1)
+        return 98;
 
     // Custom evaluator exceptions are contained at the Framework boundary.
     PerceptionService custom_service;

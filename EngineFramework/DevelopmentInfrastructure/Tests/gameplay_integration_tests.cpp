@@ -1,5 +1,6 @@
 #include "Epidemic/GameFramework/GameplayIntegration/gameplay_adapters.h"
 
+#include <algorithm>
 #include <memory>
 
 using namespace epidemic::gameplay;
@@ -11,6 +12,34 @@ using namespace epidemic::gameplay::integration;
 using namespace epidemic::gameplay::loot;
 using namespace epidemic::gameplay::progression;
 using namespace epidemic::gameplay::time;
+
+namespace
+{
+[[nodiscard]] bool IsTerminal(AbilityExecutionState state) noexcept
+{
+    return state == AbilityExecutionState::Completed || state == AbilityExecutionState::Cancelled ||
+           state == AbilityExecutionState::Interrupted || state == AbilityExecutionState::Failed;
+}
+class RetentionEffectHandler final : public IEffectHandler
+{
+public:
+    [[nodiscard]] static constexpr EffectTypeId StaticType() noexcept
+    {
+        return EffectTypeId::FromString("test.retention.effect");
+    }
+    [[nodiscard]] EffectTypeId Type() const noexcept override { return StaticType(); }
+    [[nodiscard]] EffectHandlerCapabilities Capabilities() const noexcept override { return {}; }
+    [[nodiscard]] epidemic::foundation::Result<EffectPrepareResult> Prepare(const EffectOperation&) const override
+    {
+        return epidemic::foundation::Result<EffectPrepareResult>::Success({EffectPrepareDisposition::Accepted, {}});
+    }
+    [[nodiscard]] epidemic::foundation::Result<EffectCommitResult> Commit(
+        const EffectOperation&, const RegisteredEffectPayload&) noexcept override
+    {
+        return epidemic::foundation::Result<EffectCommitResult>::Success({EffectCommitDisposition::Applied, {}});
+    }
+};
+} // namespace
 
 int main()
 {
@@ -215,9 +244,6 @@ int main()
         restored_time_outputs.Value().front().output_index != outputs.Value().front().output_index) return 144;
     auto effect_results = ability_effects.Dispatch(restored_time_outputs.Value());
     if (!effect_results || effect_results.Value().size() != 1) return 44;
-    if (!restored_ability_time.AcknowledgeOutputs(schedule.Value()) ||
-        restored_ability_time.PendingOutputCount() != 0 ||
-        !restored_ability_time.CaptureCheckpoint().pending.empty()) return 145;
     const auto *enemy_state = combat.FindCombatant(enemy);
     if (enemy_state == nullptr || enemy_state->life_state != CombatLifeState::Dead) return 45;
 
@@ -234,6 +260,18 @@ int main()
         !restored_effect_dispatcher.RestoreCheckpoint(effects_checkpoint)) return 47;
     if (!restored_effect_dispatcher.Dispatch(outputs.Value()) ||
         effects.GetDiagnostics().executions != executions_after_first_dispatch) return 48;
+
+    // M05: a terminal execution is still protected while AbilityTime can replay its pending outbox batch.
+    AbilityOutputDeliveryCoordinator ability_delivery(abilities, restored_ability_time, ability_effects);
+    if (ability_delivery.PruneSafeTerminalDeliveries(execution.Value()) != 0 ||
+        ability_effects.CaptureCheckpoint().delivered.empty()) return 147;
+
+    // Canonical delivery is Dispatch -> ACK -> safe terminal prune. Dispatch is memoized here.
+    auto canonical_effect_results = ability_delivery.DeliverPendingOutputs(schedule.Value());
+    if (!canonical_effect_results || canonical_effect_results.Value().size() != 1 ||
+        restored_ability_time.PendingOutputCount() != 0 ||
+        !restored_ability_time.CaptureCheckpoint().pending.empty() ||
+        !ability_effects.CaptureCheckpoint().delivered.empty()) return 148;
 
     // H60: if the next channel schedule cannot be created after the semantic tick, outputs remain
     // in the adapter checkpoint and retry only repairs the missing binding.
@@ -278,12 +316,90 @@ int main()
     if (!channel_time.RestoreSnapshot(healthy_time_snapshot)) return 59;
     auto channel_retry = channel_adapter.ProcessTrigger(channel_triggers.Value().front());
     if (!channel_retry || channel_retry.Value().size() != 1 || channel_retry.Value().front().occurrence_at.ticks != 5) return 60;
-    if (!channel_adapter.AcknowledgeOutputs(channel_triggers.Value().front().schedule)) return 146;
+    AbilityOutputDeliveryCoordinator channel_delivery(channel_abilities, channel_adapter, ability_effects);
+    auto channel_delivered = channel_delivery.DeliverPendingOutputs(channel_triggers.Value().front().schedule);
+    if (!channel_delivered || channel_delivered.Value().size() != 1) return 146;
+    const auto channel_effect_checkpoint = ability_effects.CaptureCheckpoint();
+    if (channel_delivery.PruneSafeTerminalDeliveries(channel_execution.Value()) != 0 ||
+        std::none_of(channel_effect_checkpoint.delivered.begin(), channel_effect_checkpoint.delivered.end(),
+                     [&](const auto& record) { return record.key.execution == channel_execution.Value(); })) return 149;
     const auto *channel_after_retry = channel_abilities.FindExecution(channel_execution.Value());
     if (!channel_after_retry || !channel_after_retry->schedule || channel_after_retry->next_channel_at.ticks != 10) return 61;
     auto channel_duplicate = channel_adapter.ProcessTrigger(channel_triggers.Value().front());
     if (!channel_duplicate || !channel_duplicate.Value().empty() ||
         channel_abilities.FindExecution(channel_execution.Value())->next_channel_at.ticks != 10) return 62;
+
+    // M05: >4096 sequential terminal executions through the canonical outbox path must not
+    // exhaust the dispatcher delivery ledger.
+    EffectService retention_effects;
+    auto retention_handler = std::make_shared<RetentionEffectHandler>();
+    auto retention_type = retention_effects.RegisterHandler("test.retention.effect", retention_handler);
+    if (!retention_type) return 150;
+    EffectDefinition retention_effect_definition;
+    retention_effect_definition.canonical_name = "test.retention.definition";
+    retention_effect_definition.steps.push_back({RetentionEffectHandler::StaticType(),
+                                                 EffectTargetSelector::FirstTarget, 1, {}});
+    auto retention_effect_id = retention_effects.RegisterDefinition(std::move(retention_effect_definition));
+    if (!retention_effect_id) return 151;
+    retention_effects.Freeze();
+
+    const auto retention_output_action = ActionTypeId::FromString("test.retention.output");
+    AbilityService retention_abilities;
+    AbilityDefinition retention_ability_definition;
+    retention_ability_definition.canonical_name = "test.retention.ability";
+    retention_ability_definition.targeting = AbilityTargetPolicy::Self;
+    retention_ability_definition.timing.kind = AbilityTimingKind::Instant;
+    retention_ability_definition.outputs.push_back({retention_output_action, 1, {}});
+    auto retention_ability_id = retention_abilities.RegisterDefinition(retention_ability_definition);
+    if (!retention_ability_id) return 152;
+    retention_abilities.Freeze();
+    auto retention_instance = retention_abilities.Grant(player, retention_ability_id.Value());
+    if (!retention_instance) return 153;
+
+    GameplayTimeService retention_time;
+    auto retention_clock = retention_time.RegisterClock("test.retention.clock");
+    auto retention_due_action =
+        retention_time.RegisterAction("test.retention.execute", AbilityService::Domain());
+    if (!retention_clock || !retention_due_action) return 154;
+    retention_time.Freeze();
+
+    AbilityTimeAdapter retention_time_adapter(
+        retention_time, retention_abilities, retention_clock.Value(), retention_due_action.Value());
+    AbilityEffectsDispatcher retention_dispatcher(retention_effects);
+    if (!retention_dispatcher.Map(retention_output_action, retention_effect_id.Value()) ||
+        !retention_dispatcher.FreezeMappings()) return 155;
+    AbilityOutputDeliveryCoordinator retention_delivery(
+        retention_abilities, retention_time_adapter, retention_dispatcher);
+
+    AbilityTargetSet retention_targets;
+    retention_targets.primary = player;
+    for (std::uint64_t i = 0; i < 4097; ++i)
+    {
+        GameplayContext retention_context;
+        retention_context.actor = player;
+        const GameplayTimePoint now{static_cast<std::int64_t>(i)};
+        auto retention_execution = retention_abilities.BeginActivation(
+            {retention_instance.Value(), retention_targets, now, retention_context});
+        if (!retention_execution) return 156;
+        auto retention_outputs = retention_abilities.CompleteExecution(retention_execution.Value(), now);
+        const auto* completed_execution = retention_abilities.FindExecution(retention_execution.Value());
+        if (!retention_outputs || retention_outputs.Value().size() != 1 ||
+            (completed_execution && !IsTerminal(completed_execution->state)))
+            return 157;
+
+        const ScheduleId retention_trigger = ScheduleId::FromRaw(1, i + 1);
+        AbilityTimeCheckpoint pending_checkpoint;
+        pending_checkpoint.clock = retention_clock.Value();
+        pending_checkpoint.action = retention_due_action.Value();
+        pending_checkpoint.pending.push_back(
+            {retention_trigger, retention_execution.Value(), now, retention_outputs.Value()});
+        if (!retention_time_adapter.RestoreCheckpoint(std::move(pending_checkpoint)))
+            return 158;
+        auto delivered = retention_delivery.DeliverPendingOutputs(retention_trigger);
+        if (!delivered || retention_time_adapter.PendingOutputCount() != 0 ||
+            !retention_dispatcher.CaptureCheckpoint().delivered.empty())
+            return 159;
+    }
 
     ProgressionRewardHandler progression_reward(progression);
     LootService loot;

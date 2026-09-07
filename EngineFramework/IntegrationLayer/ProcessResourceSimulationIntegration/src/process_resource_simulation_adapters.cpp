@@ -256,24 +256,6 @@ foundation::Result<void> ResourceProcessOutputHandler::Cancel(const processes::P
 {
     return foundation::Result<void>::Success();
 }
-foundation::Result<simulation::SimulationLayerSummary> ProductionSimulationLayer::Prepare(const simulation::SimulationTask& task)
-{
-    const auto snapshot = resources_.CaptureSnapshot();
-    simulation::SimulationLayerSummary summary;
-    summary.layer = StaticLayer();
-    summary.state = simulation::SimulationTaskState::Skipped;
-    summary.operations = 0;
-    summary.revision = snapshot.revision;
-    (void)task;
-    return foundation::Result<simulation::SimulationLayerSummary>::Success(std::move(summary));
-}
-foundation::Result<void> ProductionSimulationLayer::Commit(const simulation::SimulationTask& task, const simulation::SimulationLayerSummary& summary)
-{
-    (void)task;
-    if (summary.state == simulation::SimulationTaskState::Skipped && summary.operations == 0 && summary.prepared_operations.empty())
-        return foundation::Result<void>::Success();
-    return foundation::Result<void>::Failure(Error("gameplay.integration.aggregate_production_not_supported", "aggregate resource production layer has no committed execution contract"));
-}
 foundation::Result<simulation::SimulationLayerSummary> ProcessesSimulationLayer::Prepare(const simulation::SimulationTask& task)
 {
     simulation::SimulationLayerSummary summary;

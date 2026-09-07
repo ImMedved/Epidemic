@@ -80,6 +80,20 @@ struct ConditionFactValue
     bool paused_for_materialization = false;
 };
 
+struct StateFactsCheckpoint
+{
+    std::uint32_t schema_version = 1;
+    std::uint64_t contract_revision = 0;
+    std::uint64_t entity_cursor = 0;
+    std::uint64_t material_cursor = 0;
+    std::uint64_t condition_cursor = 0;
+    std::uint64_t effect_cursor = 0;
+    std::uint64_t entity_latest = 0;
+    std::uint64_t material_latest = 0;
+    std::uint64_t condition_latest = 0;
+    std::uint64_t effect_latest = 0;
+};
+
 class StateFactsAdapter
 {
   public:
@@ -95,6 +109,8 @@ class StateFactsAdapter
 
     [[nodiscard]] foundation::Result<void> RegisterContracts();
     [[nodiscard]] foundation::Result<std::uint64_t> PublishPendingChanges(GameplayContext context = {});
+    [[nodiscard]] StateFactsCheckpoint CaptureCheckpoint() const noexcept;
+    [[nodiscard]] foundation::Result<void> RestoreCheckpoint(StateFactsCheckpoint checkpoint);
 
     [[nodiscard]] EventTypeId EntityChangedEvent() const noexcept { return entity_changed_; }
     [[nodiscard]] EventTypeId MaterialChangedEvent() const noexcept { return material_changed_; }
@@ -108,6 +124,10 @@ class StateFactsAdapter
         return GameplayObjectRef{conditions::ConditionService::Domain(), id.value};
     }
     [[nodiscard]] foundation::Result<std::uint64_t> RebuildActiveConditionFacts(GameplayContext context);
+    [[nodiscard]] std::uint64_t ContractRevision() const noexcept;
+    [[nodiscard]] foundation::Result<void> ValidateCheckpoint(const StateFactsCheckpoint& checkpoint) const;
+    void ApplyCheckpoint(StateFactsCheckpoint checkpoint) noexcept;
+    friend class StateIntegrationPersistence;
 
     entities::EntityService& entities_;
     materials::MaterialService& materials_;
@@ -236,6 +256,13 @@ class StateEffectAdapter
     MaterialResponseEffectRouter& material_router_;
 };
 
+struct StateLifecycleCheckpoint
+{
+    std::uint32_t schema_version = 1;
+    std::uint64_t cursor = 0;
+    std::uint64_t entity_latest = 0;
+};
+
 class StateLifecycleAdapter
 {
   public:
@@ -249,8 +276,14 @@ class StateLifecycleAdapter
     }
 
     [[nodiscard]] foundation::Result<std::uint64_t> ProcessEntityChanges(GameplayContext context = {});
+    [[nodiscard]] StateLifecycleCheckpoint CaptureCheckpoint() const noexcept;
+    [[nodiscard]] foundation::Result<void> RestoreCheckpoint(StateLifecycleCheckpoint checkpoint);
 
   private:
+    [[nodiscard]] foundation::Result<void> ValidateCheckpoint(const StateLifecycleCheckpoint& checkpoint) const;
+    void ApplyCheckpoint(StateLifecycleCheckpoint checkpoint) noexcept;
+    friend class StateIntegrationPersistence;
+
     entities::EntityService& entities_;
     materials::MaterialService& materials_;
     conditions::ConditionService& conditions_;
@@ -258,11 +291,48 @@ class StateLifecycleAdapter
     std::uint64_t cursor_ = 0;
 };
 
+enum class ConditionEffectDeliveryState
+{
+    Pending,
+    Applied,
+    RejectedTerminal,
+    ReconciliationRequired,
+};
+
+enum class ConditionEffectReconciliationResolution
+{
+    ConfirmedApplied,
+    ConfirmedNotApplied,
+    RejectedTerminal,
+};
+
+struct ConditionEffectDeliveryKey
+{
+    std::uint64_t condition_sequence = 0;
+    ActionTypeId action{};
+    effects::EffectDefinitionId definition{};
+    std::uint64_t route_revision = 0;
+
+    [[nodiscard]] constexpr bool operator==(const ConditionEffectDeliveryKey&) const noexcept = default;
+};
+
+struct ConditionEffectDeliveryRecord
+{
+    ConditionEffectDeliveryKey key{};
+    ConditionEffectDeliveryState state = ConditionEffectDeliveryState::Pending;
+    bool retry_authorized = false;
+    effects::EffectExecutionId last_execution{};
+    effects::EffectBatchDisposition last_disposition = effects::EffectBatchDisposition::Failed;
+    bool had_applied_operation = false;
+};
+
 struct ConditionEffectsCheckpoint
 {
-    std::uint32_t schema_version = 1;
+    std::uint32_t schema_version = 2;
     std::uint64_t cursor = 0;
+    std::uint64_t condition_latest = 0;
     std::uint64_t route_revision = 0;
+    std::vector<ConditionEffectDeliveryRecord> deliveries;
 };
 
 class ConditionEffectsAdapter
@@ -276,15 +346,28 @@ class ConditionEffectsAdapter
     [[nodiscard]] foundation::Result<void> RegisterRoute(ActionTypeId action, effects::EffectDefinitionId definition);
     [[nodiscard]] foundation::Result<std::vector<effects::EffectExecutionResult>> ProcessPending(
         effects::EffectExecutionBudget budget = {});
-    [[nodiscard]] ConditionEffectsCheckpoint CaptureCheckpoint() const noexcept;
+    [[nodiscard]] ConditionEffectsCheckpoint CaptureCheckpoint() const;
     [[nodiscard]] foundation::Result<void> RestoreCheckpoint(ConditionEffectsCheckpoint checkpoint);
+    [[nodiscard]] std::span<const ConditionEffectDeliveryRecord> Deliveries() const noexcept { return deliveries_; }
+    [[nodiscard]] foundation::Result<void> ResolveReconciliation(
+        const ConditionEffectDeliveryKey& key,
+        ConditionEffectReconciliationResolution resolution);
 
   private:
+    [[nodiscard]] std::uint64_t RouteRevision() const noexcept;
+    [[nodiscard]] foundation::Result<void> ValidateCheckpoint(const ConditionEffectsCheckpoint& checkpoint) const;
+    void ApplyCheckpoint(ConditionEffectsCheckpoint checkpoint) noexcept;
+    [[nodiscard]] ConditionEffectDeliveryRecord* FindDelivery(std::uint64_t condition_sequence) noexcept;
+    [[nodiscard]] const ConditionEffectDeliveryRecord* FindDelivery(std::uint64_t condition_sequence) const noexcept;
+    void PruneTerminalDeliveries();
+    friend class StateIntegrationPersistence;
+
     conditions::ConditionService& conditions_;
     effects::EffectService& effects_;
     std::unordered_map<ActionTypeId, effects::EffectDefinitionId> routes_;
     std::uint64_t cursor_ = 0;
-    [[nodiscard]] std::uint64_t RouteRevision() const noexcept;
+    static constexpr std::size_t kDeliveryCapacity = 4096;
+    std::vector<ConditionEffectDeliveryRecord> deliveries_;
 };
 
 struct StateTimeProcessResult
@@ -305,9 +388,11 @@ struct DeferredEffectReconciliationRecord
 
 struct StateTimeCheckpoint
 {
-    std::uint32_t schema_version = 1;
+    std::uint32_t schema_version = 2;
     std::uint64_t condition_cursor = 0;
     std::uint64_t effect_cursor = 0;
+    std::uint64_t condition_latest = 0;
+    std::uint64_t effect_latest = 0;
     std::vector<DeferredEffectReconciliationRecord> deferred_reconciliations;
 };
 
@@ -366,6 +451,9 @@ class StateTimeAdapter
 
     [[nodiscard]] time::CatchUpPolicy MapCatchUp(conditions::PeriodicCatchUpPolicy policy) const noexcept;
     [[nodiscard]] time::SchedulePersistence MapPersistence(conditions::ConditionPersistencePolicy policy) const noexcept;
+    [[nodiscard]] foundation::Result<void> ValidateCheckpoint(const StateTimeCheckpoint& checkpoint) const;
+    void ApplyCheckpoint(StateTimeCheckpoint checkpoint) noexcept;
+    friend class StateIntegrationPersistence;
 
     conditions::ConditionService& conditions_;
     effects::EffectService& effects_;
@@ -380,5 +468,36 @@ class StateTimeAdapter
     StateTimeProcessResult process_result_{};
     static constexpr std::size_t kDeferredReconciliationCapacity = 4096;
     std::vector<DeferredEffectReconciliationRecord> deferred_reconciliations_;
+};
+
+struct StateIntegrationCheckpoint
+{
+    std::uint32_t schema_version = 1;
+    StateFactsCheckpoint facts;
+    StateLifecycleCheckpoint lifecycle;
+    ConditionEffectsCheckpoint condition_effects;
+    StateTimeCheckpoint time;
+};
+
+class StateIntegrationPersistence
+{
+  public:
+    StateIntegrationPersistence(
+        StateFactsAdapter& facts,
+        StateLifecycleAdapter& lifecycle,
+        ConditionEffectsAdapter& condition_effects,
+        StateTimeAdapter& time) noexcept
+        : facts_(facts), lifecycle_(lifecycle), condition_effects_(condition_effects), time_(time)
+    {
+    }
+
+    [[nodiscard]] StateIntegrationCheckpoint CaptureCheckpoint() const;
+    [[nodiscard]] foundation::Result<void> RestoreCheckpoint(StateIntegrationCheckpoint checkpoint);
+
+  private:
+    StateFactsAdapter& facts_;
+    StateLifecycleAdapter& lifecycle_;
+    ConditionEffectsAdapter& condition_effects_;
+    StateTimeAdapter& time_;
 };
 } // namespace epidemic::gameplay::state_integration

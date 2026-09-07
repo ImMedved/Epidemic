@@ -43,6 +43,10 @@ int main()
     const GameplayObjectRef player{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("player")};
     const GameplayObjectRef remembered{GameplayDomainId::FromString("test.entity"),
                                        GameplayObjectId::FromString("remembered")};
+    const GameplayObjectRef materialized_agent{
+        GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("materialized_agent")};
+    const GameplayObjectRef projected_agent{
+        GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("projected_agent")};
 
     PerceptionService perception;
     const auto hearing = SenseTypeId::FromString("framework.sense.hearing");
@@ -165,13 +169,74 @@ int main()
     ai_profile.default_goals = {goal};
     ai_profile.think_interval = GameplayDuration{1};
     CHECK(ai.RegisterProfile(ai_profile));
+
+    const auto availability_goal = AIGoalId::FromString("game.availability_probe");
+    AIGoalDefinition availability_goal_definition;
+    availability_goal_definition.id = availability_goal;
+    availability_goal_definition.canonical_name = "game.availability_probe";
+    availability_goal_definition.intent_type = AIIntentTypeId::FromString("game.availability_intent");
+    availability_goal_definition.target_policy = AITargetPolicy::Targetless;
+    availability_goal_definition.base_priority_micro = 1;
+    CHECK(ai.RegisterGoal(availability_goal_definition));
+
+    AIProfile materialized_profile;
+    materialized_profile.id = AIProfileId::FromString("game.requires_materialized");
+    materialized_profile.canonical_name = "game.requires_materialized";
+    materialized_profile.default_goals = {availability_goal};
+    materialized_profile.materialization_policy = AIMaterializationPolicy::RequiresMaterialized;
+    CHECK(ai.RegisterProfile(materialized_profile));
+
+    AIProfile projected_ai_profile;
+    projected_ai_profile.id = AIProfileId::FromString("game.requires_projection");
+    projected_ai_profile.canonical_name = "game.requires_projection";
+    projected_ai_profile.default_goals = {availability_goal};
+    projected_ai_profile.materialization_policy = AIMaterializationPolicy::RequiresRuntimeProjection;
+    CHECK(ai.RegisterProfile(projected_ai_profile));
+
     CHECK(ai.Freeze());
     CHECK(ai.RegisterAgent(npc, ai_profile.id));
+    CHECK(ai.RegisterAgent(materialized_agent, materialized_profile.id));
+    CHECK(ai.RegisterAgent(projected_agent, projected_ai_profile.id));
 
     KnowledgeAIInputKeys keys;
     KnowledgeAIAdapter knowledge_ai{knowledge, keys};
 
-    const auto knowledge_only_context = knowledge_ai.BuildContext(npc, nullptr, GameplayTimePoint{2});
+    // H06: composition-provided neutral availability drives AI materialization gates.
+    const auto materialized_unavailable =
+        knowledge_ai.BuildContext(materialized_agent, AIExecutionAvailability{false, false}, nullptr,
+                                  GameplayTimePoint{1});
+    CHECK(!materialized_unavailable.materialized && !materialized_unavailable.runtime_projection_available);
+    const auto materialized_blocked = ai.Think(materialized_agent, materialized_unavailable, {});
+    CHECK(materialized_blocked && materialized_blocked.Value().deferred);
+    CHECK(materialized_blocked.Value().defer_reason == AIThinkDeferReason::MaterializationUnavailable);
+
+    const auto materialized_available =
+        knowledge_ai.BuildContext(materialized_agent, AIExecutionAvailability{true, false}, nullptr,
+                                  GameplayTimePoint{1});
+    CHECK(materialized_available.materialized && !materialized_available.runtime_projection_available);
+    const auto materialized_think = ai.Think(materialized_agent, materialized_available, {});
+    CHECK(materialized_think && materialized_think.Value().intent.has_value());
+
+    const auto projection_unavailable =
+        knowledge_ai.BuildContext(projected_agent, AIExecutionAvailability{true, false}, nullptr,
+                                  GameplayTimePoint{1});
+    const auto projection_blocked = ai.Think(projected_agent, projection_unavailable, {});
+    CHECK(projection_blocked && projection_blocked.Value().deferred);
+    CHECK(projection_blocked.Value().defer_reason == AIThinkDeferReason::MaterializationUnavailable);
+
+    const auto projection_available =
+        knowledge_ai.BuildContext(projected_agent, AIExecutionAvailability{true, true}, nullptr,
+                                  GameplayTimePoint{1});
+    CHECK(projection_available.materialized && projection_available.runtime_projection_available);
+    const auto projection_think = ai.Think(projected_agent, projection_available, {});
+    CHECK(projection_think && projection_think.Value().intent.has_value());
+
+    // Compatibility overload remains conservative.
+    const auto compatibility_context = knowledge_ai.BuildContext(npc, nullptr, GameplayTimePoint{2});
+    CHECK(!compatibility_context.materialized && !compatibility_context.runtime_projection_available);
+
+    const auto knowledge_only_context = knowledge_ai.BuildContext(
+        npc, AIExecutionAvailability{}, nullptr, GameplayTimePoint{2});
     const auto *known_player = FindTarget(knowledge_only_context, player);
     const auto *last_known_target = FindTarget(knowledge_only_context, remembered);
     CHECK(known_player != nullptr && known_player->source == AITargetSource::Known);
@@ -188,7 +253,8 @@ int main()
     CHECK(recorder.Succeed(first_think.Value().intent->id, ai));
 
     // At time 3 the observation is still active and is merged with Knowledge into one candidate.
-    const auto current_context = knowledge_ai.BuildContext(npc, &perception, GameplayTimePoint{3});
+    const auto current_context = knowledge_ai.BuildContext(
+        npc, AIExecutionAvailability{true, true}, &perception, GameplayTimePoint{3});
     const auto *current_player = FindTarget(current_context, player);
     CHECK(current_player != nullptr);
     CHECK(current_player->source == AITargetSource::Perceived);
@@ -203,7 +269,8 @@ int main()
                         [&](const AITargetCandidate &candidate) { return candidate.target == player; }) == 1);
 
     // M29: read validity is evaluated against requested time even if Perception::AdvanceTime was not called.
-    const auto expired_context = knowledge_ai.BuildContext(npc, &perception, GameplayTimePoint{6});
+    const auto expired_context = knowledge_ai.BuildContext(
+        npc, AIExecutionAvailability{true, true}, &perception, GameplayTimePoint{6});
     const auto *expired_player = FindTarget(expired_context, player);
     CHECK(expired_player != nullptr);
     CHECK(expired_player->source == AITargetSource::Known);
