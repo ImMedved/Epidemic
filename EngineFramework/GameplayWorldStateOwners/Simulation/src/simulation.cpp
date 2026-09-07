@@ -447,14 +447,17 @@ SimulationChangeBatch SimulationService::ReadChangesSince(std::uint64_t sequence
     out.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
                                                      : next_change_sequence_ - 1;
     out.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
-    if (changes_.empty())
+    if (next_change_sequence_ == 0 || sequence > out.latest_sequence)
     {
-        if (sequence < out.latest_sequence)
-            out.snapshot_required = true;
+        out.snapshot_required = true;
         return out;
     }
-    if (sequence + (sequence != std::numeric_limits<std::uint64_t>::max() ? 1u : 0u) <
-        out.oldest_available_sequence)
+    if (changes_.empty())
+    {
+        out.snapshot_required = sequence < out.latest_sequence;
+        return out;
+    }
+    if (sequence < out.oldest_available_sequence && out.oldest_available_sequence - sequence > 1)
     {
         out.snapshot_required = true;
         return out;

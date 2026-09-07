@@ -1102,7 +1102,7 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
         !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.execution_ids) ||
         !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.output_ids) ||
         !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.socket_reservation_ids) ||
-        snapshot.next_change_sequence == 0 || snapshot.journal.size() > kChangeJournalCapacity ||
+        snapshot.journal.size() > kChangeJournalCapacity ||
         snapshot.pending_outputs.size() > kOutboxCapacity || snapshot.dead_letters.size() > kDeadLetterCapacity)
         return foundation::Result<void>::Failure(Error("gameplay.construction.restore_invalid", "invalid construction snapshot metadata"));
 
@@ -1187,10 +1187,16 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
         return foundation::Result<void>::Failure(
             Error("gameplay.construction.restore_invalid", "invalid construction id generator snapshot"));
 
+    if (snapshot.next_change_sequence == 0 &&
+        (snapshot.journal.empty() || snapshot.journal.back().sequence != std::numeric_limits<std::uint64_t>::max()))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.restore_invalid", "exhausted construction journal is missing terminal sequence"));
+
     std::uint64_t previous_sequence = 0;
     for (const auto &change : snapshot.journal)
     {
-        if (change.sequence == 0 || change.sequence <= previous_sequence || change.sequence >= snapshot.next_change_sequence)
+        const bool reaches_next = snapshot.next_change_sequence != 0 && change.sequence >= snapshot.next_change_sequence;
+        if (change.sequence == 0 || change.sequence <= previous_sequence || reaches_next)
             return foundation::Result<void>::Failure(Error("gameplay.construction.restore_invalid", "invalid construction journal"));
         previous_sequence = change.sequence;
     }
@@ -1223,13 +1229,26 @@ std::vector<ConstructionChange> ConstructionService::ChangesSince(std::uint64_t 
 ConstructionChangeBatch ConstructionService::ReadChangesSince(std::uint64_t sequence) const
 {
     ConstructionChangeBatch batch;
+    const auto latest = LatestChangeSequence();
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
-    if (!changes_.empty() && sequence + 1 < changes_.front().sequence)
+    if (next_change_sequence_ == 0 || sequence > latest)
+    {
         batch.snapshot_required = true;
-    if (!batch.snapshot_required)
-        for (const auto &change : changes_)
-            if (change.sequence > sequence)
-                batch.changes.push_back(change);
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < latest;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    for (const auto &change : changes_)
+        if (change.sequence > sequence)
+            batch.changes.push_back(change);
     return batch;
 }
 
@@ -1262,7 +1281,13 @@ void ConstructionService::Bump() noexcept
 
 void ConstructionService::Record(ConstructionChange change)
 {
-    change.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0)
+        return;
+    change.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(std::move(change));
     if (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();

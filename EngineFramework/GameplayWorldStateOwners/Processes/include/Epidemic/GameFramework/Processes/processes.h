@@ -375,6 +375,8 @@ enum class ProcessOutputCommitState
 };
 struct ReservedProcessInput
 {
+    // Framework-owned reservation identity. Providers must keep their own stable identity in
+    // provider_token; Processes canonicalizes id after Reserve().
     ProcessReservationId id{};
     ProcessInputId input{};
     ProcessInputTypeId type{};
@@ -448,6 +450,7 @@ struct ProcessesSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot station_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot instance_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot reservation_ids{};
+    std::uint64_t next_change_sequence = 1;
     Revision revision{};
 };
 struct ProcessesDiagnostics

@@ -1,5 +1,6 @@
 #include "Epidemic/GameFramework/Conditions/conditions.h"
 
+#include <limits>
 #include <stdexcept>
 
 using namespace epidemic::gameplay;
@@ -213,6 +214,29 @@ int main()
 
     const auto diagnostics = service.GetDiagnostics();
     if (diagnostics.active_conditions != count) return 20;
+
+    // Materialization resume rejects an unrepresentable pause interval without mutating the condition.
+    subject_state_provider.state = ConditionSubjectMaterializationState::Materialized;
+    ApplyConditionRequest overflow_pause = mat;
+    overflow_pause.context.time = GameplayTimePoint{std::numeric_limits<std::int64_t>::min()};
+    auto overflow_instance = service.Apply(overflow_pause);
+    if (!overflow_instance) return 212;
+    GameplayContext overflow_pause_context = overflow_pause.context;
+    if (!service.NotifySubjectMaterialization(subject, false, overflow_pause_context)) return 213;
+    const auto *paused_before = service.Find(overflow_instance.Value().instance);
+    if (paused_before == nullptr || !paused_before->paused_for_materialization || !paused_before->materialization_paused_at) return 214;
+    const auto before_applied = paused_before->applied_at;
+    const auto before_expires = paused_before->expires_at;
+    const auto before_paused_at = paused_before->materialization_paused_at;
+    const auto before_revision = paused_before->revision;
+    GameplayContext overflow_resume_context = context;
+    overflow_resume_context.time = GameplayTimePoint{std::numeric_limits<std::int64_t>::max()};
+    auto overflow_resume = service.NotifySubjectMaterialization(subject, true, overflow_resume_context);
+    if (overflow_resume || !overflow_resume.GetError().HasCode("gameplay.time_overflow")) return 215;
+    const auto *paused_after = service.Find(overflow_instance.Value().instance);
+    if (paused_after == nullptr || !paused_after->paused_for_materialization ||
+        paused_after->applied_at != before_applied || paused_after->expires_at != before_expires ||
+        paused_after->materialization_paused_at != before_paused_at || paused_after->revision != before_revision) return 216;
 
     ConditionService no_provider_service;
     ConditionDefinition no_provider_materialized = materialized;

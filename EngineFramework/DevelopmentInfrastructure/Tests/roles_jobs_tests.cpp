@@ -1,6 +1,7 @@
 #include "Epidemic/GameFramework/RolesJobs/roles_jobs.h"
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::roles_jobs;
@@ -119,6 +120,41 @@ int main()
     Check(missed.size() == 1, "missed occurrence is recorded");
     Check(recurrence.FindDuty(missed.front())->state == DutyState::Skipped, "missed occurrence skipped");
 
+
+    // Extreme recurrence arithmetic must not overflow or wrap gameplay time.
+    RolesJobsService extreme_time;
+    Check(static_cast<bool>(extreme_time.RegisterJobDefinition(job)), "extreme-time register job");
+    Workplace extreme_workplace = workplace;
+    extreme_workplace.id = {};
+    extreme_workplace.state = WorkplaceState::Active;
+    auto extreme_workplace_id = extreme_time.CreateWorkplace(extreme_workplace);
+    Check(static_cast<bool>(extreme_workplace_id), "extreme-time workplace");
+    JobAssignment extreme_assignment = assignment;
+    extreme_assignment.id = {};
+    extreme_assignment.worker = Ref("entities", "npc.extreme_time");
+    extreme_assignment.workplace = extreme_workplace_id.Value();
+    extreme_assignment.state = AssignmentState::Active;
+    auto extreme_assignment_id = extreme_time.AssignJob(extreme_assignment);
+    Check(static_cast<bool>(extreme_assignment_id), "extreme-time assignment");
+    WorkSchedule extreme_schedule;
+    extreme_schedule.assignment = extreme_assignment_id.Value();
+    WorkShift extreme_shift;
+    extreme_shift.start = GameplayTimePoint{std::numeric_limits<std::int64_t>::min()};
+    extreme_shift.duration = GameplayDuration{1};
+    extreme_shift.recurrence = GameplayDuration{1};
+    extreme_shift.task_type = JobTaskTypeId::FromString("task.open_shop");
+    extreme_schedule.shifts.push_back(extreme_shift);
+    WorkShift unrepresentable_end;
+    unrepresentable_end.start = GameplayTimePoint{std::numeric_limits<std::int64_t>::max()};
+    unrepresentable_end.duration = GameplayDuration{1};
+    unrepresentable_end.task_type = JobTaskTypeId::FromString("task.open_shop");
+    extreme_schedule.shifts.push_back(unrepresentable_end);
+    Check(static_cast<bool>(extreme_time.CreateSchedule(extreme_schedule)), "extreme-time schedule");
+    Check(extreme_time.ActivateDueShifts(
+              GameplayTimePoint{std::numeric_limits<std::int64_t>::max() - 1},
+              GameplayTimePoint{std::numeric_limits<std::int64_t>::max()}).empty(),
+          "unrepresentable recurrence delta stops deterministically");
+
     RolesJobsService journal;
     Check(static_cast<bool>(journal.RegisterJobDefinition(job)), "journal register job");
     workplace.id = {};
@@ -135,11 +171,28 @@ int main()
     Check(stale_batch.snapshot_required, "bounded journal requires snapshot for stale reader");
     auto latest_batch = journal.ReadChangesSince(journal.LatestChangeSequence());
     Check(!latest_batch.snapshot_required && latest_batch.changes.empty(), "latest journal cursor valid");
+    Check(journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+          "UINT64_MAX is an incompatible future roles/jobs cursor");
+    RolesJobsService empty_journal;
+    Check(empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+          "UINT64_MAX is incompatible with an empty roles/jobs journal");
 
+    const auto pre_restore_cursor = service.LatestChangeSequence();
+    Check(pre_restore_cursor >= 2, "pre-restore roles/jobs journal has multiple changes");
     auto snapshot = service.CaptureSnapshot();
     RolesJobsService restored;
     Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), "restore");
+    Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
+          "pre-restore roles/jobs cursor requires snapshot in new epoch");
     Check(restored.GetWorkplace(workplace_id.Value())->state == WorkplaceState::Active, "restore workplace state");
+    Check(static_cast<bool>(restored.SetWorkplaceState(workplace_id.Value(), WorkplaceState::Closed)),
+          "post-restore roles/jobs change");
+    Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
+          "old roles/jobs cursor remains incompatible after new changes");
+    const auto new_epoch = restored.ReadChangesSince(0);
+    Check(!new_epoch.snapshot_required && !new_epoch.changes.empty(), "new roles/jobs epoch readable from zero");
+    const auto exact_epoch = restored.ReadChangesSince(new_epoch.latest_sequence);
+    Check(!exact_epoch.snapshot_required && exact_epoch.changes.empty(), "exact roles/jobs cursor is current");
     Check(restored.FindJobsOfSubject(assignment.worker).size() == 1, "restore assignment");
 
     auto corrupt = snapshot;

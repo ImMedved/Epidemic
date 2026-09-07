@@ -147,22 +147,25 @@ int main()
     m1.type = MemoryTypeId::FromString("game.memory.one");
     m1.subject = player;
     m1.persistence = MemoryPersistencePolicy::Persistent;
+    m1.emotion = TagId::FromString("memory.emotion.alert");
     m1.context.time = GameplayTimePoint{12};
     auto mem1 = k.CreateMemory(m1);
     auto m2 = m1;
     m2.type = MemoryTypeId::FromString("game.memory.two");
     auto mem2 = k.CreateMemory(m2);
-    if (!mem1 || !mem2)
+    if (!mem1 || !mem2 || !k.FindMemory(mem1.Value()) || k.FindMemory(mem1.Value())->emotion != m1.emotion)
         return 16;
     CreateMemoryRequest summary;
     summary.owner = npc;
     summary.type = MemoryTypeId::FromString("game.memory.summary");
     summary.subject = player;
     summary.persistence = MemoryPersistencePolicy::Persistent;
+    summary.emotion = TagId::FromString("memory.emotion.reflective");
     summary.context.time = GameplayTimePoint{13};
     const MemoryRecordId compact_ids[] = {mem1.Value(), mem2.Value()};
     auto compact = k.CompactMemories(npc, compact_ids, summary, GameplayContext{.time = GameplayTimePoint{13}});
-    if (!compact || k.FindMemory(mem1.Value()) || k.FindMemory(mem2.Value()) || !k.FindMemory(compact.Value()))
+    if (!compact || k.FindMemory(mem1.Value()) || k.FindMemory(mem2.Value()) || !k.FindMemory(compact.Value()) ||
+        k.FindMemory(compact.Value())->emotion != summary.emotion)
         return 17;
 
     KnowledgeService frequent;
@@ -207,12 +210,48 @@ int main()
     if (!transient_by_profile || !retention.CaptureSnapshot().knowledge.empty())
         return 23;
 
+    const auto saved_change_cursor = k.ReadChangesSince(0).latest_sequence;
     auto snap = k.CaptureSnapshot();
     KnowledgeService restored;
     if (!restored.RegisterDecayRule(decay) || !restored.FreezeDefinitions() || !restored.RestoreSnapshot(snap))
         return 24;
-    if (restored.FindKnowledgeByOwner(npc).empty() || restored.FindKnowledgeAboutSubject(npc, player).empty())
+    if (restored.FindKnowledgeByOwner(npc).empty() || restored.FindKnowledgeAboutSubject(npc, player).empty() ||
+        !restored.FindMemory(compact.Value()) || restored.FindMemory(compact.Value())->emotion != summary.emotion)
         return 25;
+
+    CreateMemoryRequest after_restore_memory;
+    after_restore_memory.owner = npc;
+    after_restore_memory.type = MemoryTypeId::FromString("game.memory.after_restore");
+    after_restore_memory.persistence = MemoryPersistencePolicy::Persistent;
+    after_restore_memory.emotion = TagId::FromString("memory.emotion.continuity");
+    after_restore_memory.context.time = GameplayTimePoint{14};
+    if (!restored.CreateMemory(after_restore_memory))
+        return 36;
+    auto resumed_changes = restored.ReadChangesSince(saved_change_cursor);
+    if (resumed_changes.snapshot_required || resumed_changes.changes.empty() ||
+        resumed_changes.changes.front().sequence <= saved_change_cursor)
+        return 37;
+    if (saved_change_cursor > 0 && !restored.ReadChangesSince(saved_change_cursor - 1).snapshot_required)
+        return 38;
+    const auto restored_latest = resumed_changes.latest_sequence;
+    if (restored_latest != std::numeric_limits<std::uint64_t>::max() &&
+        !restored.ReadChangesSince(restored_latest + 1).snapshot_required)
+        return 39;
+
+    auto exhausted_sequence_snapshot = snap;
+    exhausted_sequence_snapshot.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
+    KnowledgeService exhausted_sequence;
+    if (!exhausted_sequence.RegisterDecayRule(decay) || !exhausted_sequence.FreezeDefinitions() ||
+        !exhausted_sequence.RestoreSnapshot(exhausted_sequence_snapshot))
+        return 40;
+    CreateMemoryRequest max_sequence_memory = after_restore_memory;
+    max_sequence_memory.type = MemoryTypeId::FromString("game.memory.max_sequence");
+    if (!exhausted_sequence.CreateMemory(max_sequence_memory))
+        return 41;
+    auto max_batch = exhausted_sequence.ReadChangesSince(std::numeric_limits<std::uint64_t>::max() - 1);
+    if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||
+        max_batch.changes.front().sequence != std::numeric_limits<std::uint64_t>::max())
+        return 42;
 
     KnowledgeService transactional;
     if (!transactional.RegisterDecayRule(decay) || !transactional.FreezeDefinitions())

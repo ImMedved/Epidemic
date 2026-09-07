@@ -1600,8 +1600,20 @@ std::vector<NarrativeChange> NarrativeService::ChangesSince(std::uint64_t sequen
 NarrativeChangeBatch NarrativeService::ReadChangesSince(std::uint64_t sequence) const
 {
     NarrativeChangeBatch batch;
+    batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                       : next_change_sequence_ - 1;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
-    if (!changes_.empty() && sequence + 1 < changes_.front().sequence)
+    if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < batch.latest_sequence;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -2063,7 +2075,13 @@ NarrativeDiagnostics NarrativeService::GetDiagnostics() const noexcept
 }
 void NarrativeService::Record(NarrativeChange c)
 {
-    c.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0)
+        return;
+    c.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(std::move(c));
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();

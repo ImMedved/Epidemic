@@ -1,6 +1,7 @@
 #include "Epidemic/GameFramework/RuntimeBridge/runtime_bridge.h"
 
 #include <cstdlib>
+#include <limits>
 #include <unordered_set>
 #include <vector>
 
@@ -23,6 +24,9 @@ struct Backend final : IRuntimeBridgeBackend
     int materialize_calls = 0;
     int dematerialize_calls = 0;
     int env_calls = 0;
+    int env_successes = 0;
+    int environment_failures_remaining = 0;
+    bool environment_always_fails = false;
     bool force_collision_object = false;
     RuntimeObjectHandle collision_object{};
     std::vector<RuntimeContactObservation> contacts;
@@ -55,6 +59,13 @@ struct Backend final : IRuntimeBridgeBackend
     foundation::Result<void> ProjectEnvironment(RuntimeRegionHandle, const RuntimeEnvironmentValues&, Revision) override
     {
         ++env_calls;
+        if (environment_always_fails || environment_failures_remaining > 0)
+        {
+            if (environment_failures_remaining > 0) --environment_failures_remaining;
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("test.environment.transient", "simulated runtime projection failure"));
+        }
+        ++env_successes;
         return foundation::Result<void>::Success();
     }
     RuntimeBridgeCapabilities GetCapabilities() const noexcept override { return capabilities; }
@@ -145,7 +156,9 @@ GameplayObjectRef Object(std::string_view name)
 int main()
 {
     Backend backend;
-    RuntimeBridgeService bridge(backend);
+    RuntimeBridgeQueuePolicy main_policy;
+    main_policy.max_projection_attempts = 1;
+    RuntimeBridgeService bridge(backend, main_policy);
     const auto object = Object("object.a");
     const auto other = Object("object.b");
 
@@ -204,6 +217,17 @@ int main()
     CHECK(observations[0].point.x_mm == 1250);
     CHECK(observations[0].impulse_milli == 4500);
 
+    const auto invalid_before = bridge.GetDiagnostics().invalid_runtime_observations;
+    backend.contacts.push_back({body, {}, RuntimeVector3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}, 1.0f});
+    backend.contacts.push_back({body, {}, RuntimeVector3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}, 1.0f});
+    backend.contacts.push_back({body, {}, RuntimeVector3{-std::numeric_limits<float>::infinity(), 0.0f, 0.0f}, 1.0f});
+    backend.contacts.push_back({body, {}, RuntimeVector3{std::numeric_limits<float>::max(), 0.0f, 0.0f}, 1.0f});
+    backend.contacts.push_back({body, {}, RuntimeVector3{1.5f, 0.0f, 0.0f}, 2.25f});
+    const auto mixed_observations = bridge.CollectImpactObservations(GameplayTickId{71});
+    CHECK(mixed_observations.size() == 1);
+    CHECK(mixed_observations.front().point.x_mm == 1500 && mixed_observations.front().impulse_milli == 2250);
+    CHECK(bridge.GetDiagnostics().invalid_runtime_observations == invalid_before + 4);
+
     backend.contacts.push_back({body, {}, RuntimeVector3{2.0f, 0.0f, 0.0f}, 1.0f});
     backend.contacts.push_back({body, {}, RuntimeVector3{3.0f, 0.0f, 0.0f}, 2.0f});
     RuntimeBridgeBudget observation_budget;
@@ -233,6 +257,15 @@ int main()
     const auto ray = bridge.Raycast(RuntimeRayQuery{});
     CHECK(ray && ray.Value().size() == 1 && ray.Value()[0].object == object && ray.Value()[0].part == part &&
           ray.Value()[0].point.x_mm == 2000);
+    backend.ray_hits = {{body, RuntimeVector3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f},
+                         RuntimeVector3{-1.0f, 0.0f, 0.0f}, 2.0f}};
+    const auto invalid_ray_point = bridge.Raycast(RuntimeRayQuery{});
+    CHECK(!invalid_ray_point && invalid_ray_point.GetError().HasCode("gameplay.runtime_bridge.invalid_runtime_observation"));
+    backend.ray_hits = {{body, RuntimeVector3{2.0f, 0.0f, 0.0f}, RuntimeVector3{-1.0f, 0.0f, 0.0f},
+                         std::numeric_limits<float>::infinity()}};
+    const auto invalid_ray_distance = bridge.Raycast(RuntimeRayQuery{});
+    CHECK(!invalid_ray_distance && invalid_ray_distance.GetError().HasCode("gameplay.runtime_bridge.invalid_runtime_observation"));
+    backend.ray_hits = {{body, RuntimeVector3{2.0f, 0.0f, 0.0f}, RuntimeVector3{-1.0f, 0.0f, 0.0f}, 2.0f}};
     backend.overlap_hits = {body};
     const auto overlap = bridge.Overlap(RuntimeOverlapQuery{{{0, 0, 0}, {1, 1, 1}}});
     CHECK(overlap && overlap.Value().size() == 1 && overlap.Value()[0].object == object && overlap.Value()[0].part == part);
@@ -261,6 +294,9 @@ int main()
     CHECK(collision_result.failed == 1);
     CHECK(!bridge.GetBinding(other).has_value());
     CHECK(backend.dematerialize_calls == dematerialize_before_collision + 1);
+    const auto collision_reconciliation = bridge.ReconciliationRequests();
+    CHECK(collision_reconciliation.size() == 1);
+    CHECK(bridge.DiscardReconciliation(collision_reconciliation.front().sequence));
     backend.force_collision_object = false;
 
     const auto vanished = Object("object.vanished");
@@ -300,6 +336,74 @@ int main()
     CHECK(bridge.Process().materialized == 1);
     const auto after_forget = bridge.GetBinding(object);
     CHECK(after_forget && after_forget->generation.value == 1);
+
+    // D1-H01: transient backend failure stays retryable and does not block neighboring commands.
+    Backend retry_backend;
+    retry_backend.environment_failures_remaining = 1;
+    RuntimeBridgeQueuePolicy retry_policy;
+    retry_policy.max_projection_requests = 8;
+    retry_policy.max_projection_attempts = 2;
+    retry_policy.max_reconciliation_requests = 2;
+    RuntimeBridgeService retry_bridge(retry_backend, retry_policy);
+    EnvironmentProjectionRequest retry_environment;
+    retry_environment.region = RuntimeRegionHandle{1};
+    retry_environment.gameplay_revision = Revision{10};
+    MaterializeRequest retry_neighbor{Object("retry.neighbor"), RuntimePersistentObjectHandle{70}, Revision{1}};
+    CHECK(retry_bridge.Enqueue(retry_environment));
+    CHECK(retry_bridge.Enqueue(retry_neighbor));
+    const auto retry_first = retry_bridge.Process();
+    CHECK(retry_first.failed == 1 && retry_first.materialized == 1);
+    CHECK(retry_bridge.GetDiagnostics().projection_backlog == 1);
+    const auto retry_second = retry_bridge.Process();
+    CHECK(retry_second.failed == 0 && retry_backend.env_calls == 2 && retry_backend.env_successes == 1);
+    CHECK(retry_bridge.GetDiagnostics().projection_backlog == 0);
+
+    // Exhausted retries enter bounded reconciliation storage and may be explicitly retried/discarded.
+    Backend dead_backend;
+    dead_backend.environment_always_fails = true;
+    RuntimeBridgeQueuePolicy dead_policy;
+    dead_policy.max_projection_requests = 4;
+    dead_policy.max_projection_attempts = 2;
+    dead_policy.max_reconciliation_requests = 1;
+    RuntimeBridgeService dead_bridge(dead_backend, dead_policy);
+    EnvironmentProjectionRequest dead_environment;
+    dead_environment.region = RuntimeRegionHandle{2};
+    dead_environment.gameplay_revision = Revision{5};
+    CHECK(dead_bridge.Enqueue(dead_environment));
+    CHECK(dead_bridge.Process().failed == 1);
+    CHECK(dead_bridge.Process().failed == 1);
+    auto dead_records = dead_bridge.ReconciliationRequests();
+    CHECK(dead_records.size() == 1 && dead_records.front().attempts == 2 && dead_records.front().last_error.has_value());
+
+    // A newer successful revision wins; retrying the older reconciliation record must not project stale state.
+    dead_backend.environment_always_fails = false;
+    EnvironmentProjectionRequest newer_environment = dead_environment;
+    newer_environment.gameplay_revision = Revision{6};
+    CHECK(dead_bridge.Enqueue(newer_environment));
+    CHECK(dead_bridge.Process().failed == 0 && dead_backend.env_successes == 1);
+    const auto stale_sequence = dead_records.front().sequence;
+    CHECK(dead_bridge.RetryReconciliation(stale_sequence));
+    const auto env_calls_before_stale_retry = dead_backend.env_calls;
+    CHECK(dead_bridge.Process().failed == 0);
+    CHECK(dead_backend.env_calls == env_calls_before_stale_retry && dead_backend.env_successes == 1);
+
+    // Reconciliation capacity creates backpressure instead of dropping exhausted commands.
+    dead_backend.environment_always_fails = true;
+    EnvironmentProjectionRequest dead_a = dead_environment;
+    dead_a.region = RuntimeRegionHandle{3};
+    EnvironmentProjectionRequest dead_b = dead_environment;
+    dead_b.region = RuntimeRegionHandle{4};
+    CHECK(dead_bridge.Enqueue(dead_a));
+    CHECK(dead_bridge.Enqueue(dead_b));
+    CHECK(dead_bridge.Process().failed == 2);
+    CHECK(dead_bridge.Process().failed == 2);
+    CHECK(dead_bridge.ReconciliationRequests().size() == 1);
+    CHECK(dead_bridge.GetDiagnostics().projection_backlog == 1);
+    const auto first_dead = dead_bridge.ReconciliationRequests().front().sequence;
+    CHECK(dead_bridge.DiscardReconciliation(first_dead));
+    CHECK(dead_bridge.Process().failed == 0);
+    CHECK(dead_bridge.ReconciliationRequests().size() == 1);
+    CHECK(dead_bridge.DiscardReconciliation(dead_bridge.ReconciliationRequests().front().sequence));
 
     Backend limited_backend;
     RuntimeBridgeService limited(limited_backend, RuntimeBridgeQueuePolicy{1, 1});

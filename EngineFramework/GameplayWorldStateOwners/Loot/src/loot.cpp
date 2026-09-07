@@ -2,6 +2,7 @@
 #include "Epidemic/Foundation/error.h"
 #include <algorithm>
 #include <iterator>
+#include <limits>
 
 namespace epidemic::gameplay::loot
 {
@@ -502,8 +503,20 @@ std::vector<LootChange> LootService::ChangesSince(std::uint64_t sequence) const
 LootChangeBatch LootService::ReadChangesSince(std::uint64_t sequence) const
 {
     LootChangeBatch batch;
+    const auto latest = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                   : next_change_sequence_ - 1;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
-    if (!changes_.empty() && sequence + 1 < changes_.front().sequence)
+    if (next_change_sequence_ == 0 || sequence > latest)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < latest;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -543,7 +556,7 @@ foundation::Result<void> LootService::RestoreSnapshot(LootSnapshot snapshot)
     std::deque<LootChange> restored_changes;
 
     if (snapshot.generated.size() > kGeneratedCapacity || snapshot.claimed.size() > kClaimedTombstoneCapacity ||
-        snapshot.journal.size() > kChangeJournalCapacity || snapshot.next_change_sequence == 0)
+        snapshot.journal.size() > kChangeJournalCapacity)
         return foundation::Result<void>::Failure(Error("gameplay.loot.restore_invalid", "snapshot capacity or sequence is invalid"));
     const auto expected_scope = GameplayObjectId::FromString("framework.loot.executions").High();
     if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.execution_ids) ||
@@ -585,11 +598,16 @@ foundation::Result<void> LootService::RestoreSnapshot(LootSnapshot snapshot)
         max_execution_low = std::max(max_execution_low, id.value.Low());
         restored_claimed_order.push_back(id);
     }
+    if (snapshot.next_change_sequence == 0 &&
+        (snapshot.journal.empty() || snapshot.journal.back().sequence != std::numeric_limits<std::uint64_t>::max()))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.loot.restore_invalid", "exhausted loot journal is missing terminal sequence"));
+
     std::uint64_t previous = 0;
     for (const auto &change : snapshot.journal)
     {
-        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) ||
-            change.sequence >= snapshot.next_change_sequence)
+        const bool reaches_next = snapshot.next_change_sequence != 0 && change.sequence >= snapshot.next_change_sequence;
+        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) || reaches_next)
             return foundation::Result<void>::Failure(Error("gameplay.loot.restore_invalid", "invalid journal sequence"));
         restored_changes.push_back(change);
         previous = change.sequence;
@@ -616,7 +634,13 @@ LootDiagnostics LootService::GetDiagnostics() const noexcept
 }
 void LootService::Record(LootChange change)
 {
-    change.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0)
+        return;
+    change.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(std::move(change));
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();

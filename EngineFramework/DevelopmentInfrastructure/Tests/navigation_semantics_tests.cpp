@@ -202,6 +202,32 @@ int main()
         return 38;
     if (restored.CurrentRevision() != previous_revision || restored.FindLayersInArea(c).size() != previous_layers)
         return 39;
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 40;
+    NavigationSemanticsService empty_journal;
+    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 47;
+
+    auto navigation_journal_seed = restored.CaptureSnapshot();
+    navigation_journal_seed.journal.clear();
+    navigation_journal_seed.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
+    if (!restored.RestoreSnapshot(navigation_journal_seed))
+        return 41;
+    if (!restored.SetLinkState(destroyed.id, LinkState::Open) ||
+        !restored.SetLinkState(destroyed.id, LinkState::Destroyed))
+        return 42;
+    const auto navigation_exhausted = restored.CaptureSnapshot();
+    if (navigation_exhausted.next_change_sequence != 0 || navigation_exhausted.journal.size() != 1 ||
+        navigation_exhausted.journal.front().sequence != std::numeric_limits<std::uint64_t>::max())
+        return 43;
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 44;
+    NavigationSemanticsService navigation_exhausted_restore;
+    if (!navigation_exhausted_restore.RegisterDomain(d) || !navigation_exhausted_restore.RegisterRule(r))
+        return 45;
+    navigation_exhausted_restore.Freeze();
+    if (!navigation_exhausted_restore.RestoreSnapshot(navigation_exhausted))
+        return 46;
 
     return 0;
 }

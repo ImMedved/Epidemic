@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Progression/progression.h"
+#include <limits>
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::progression;
 int main()
@@ -164,6 +165,28 @@ int main()
         return 34;
     if (invalid_definitions.Freeze())
         return 35;
+
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 36;
+    auto progression_journal_seed = restored.CaptureSnapshot();
+    progression_journal_seed.journal.clear();
+    progression_journal_seed.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
+    if (!restored.RestoreSnapshot(progression_journal_seed))
+        return 37;
+    if (!restored.SetBaseAttribute(actor, sid.Value(), 11'000'000) ||
+        !restored.SetBaseAttribute(actor, sid.Value(), 12'000'000))
+        return 38;
+    const auto progression_exhausted = restored.CaptureSnapshot();
+    if (progression_exhausted.next_change_sequence != 0 || progression_exhausted.journal.size() != 1 ||
+        progression_exhausted.journal.front().sequence != std::numeric_limits<std::uint64_t>::max())
+        return 39;
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 40;
+    if (!restored.RestoreSnapshot(progression_exhausted))
+        return 41;
+    ProgressionService empty_journal;
+    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 42;
 
     return 0;
 }

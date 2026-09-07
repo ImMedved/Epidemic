@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <cstring>
 #include <functional>
 #include <memory>
@@ -371,7 +372,11 @@ class EffectService
     [[nodiscard]] std::vector<EffectChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] EffectChangeBatch ReadChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return next_change_sequence_ - 1; }
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    {
+        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                          : next_change_sequence_ - 1;
+    }
     void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] EffectsSnapshot CaptureSnapshot() const;

@@ -860,11 +860,14 @@ foundation::Result<void> ResourcesProductionService::RegenerateNode(ResourceNode
     if (to.ticks == it->second.last_regenerated_at.ticks)
         return foundation::Result<void>::Success();
 
-    const auto elapsed = GameplayDuration{to.ticks - it->second.last_regenerated_at.ticks};
+    const auto elapsed = CheckedDifference(to, it->second.last_regenerated_at);
+    if (!elapsed.has_value())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.time_overflow", "resource node regeneration interval overflows gameplay time"));
     Fixed produced = 0;
-    if (elapsed.ticks > 0 && it->second.regeneration_rate_per_tick > 0 && it->second.maximum_amount > 0)
+    if (elapsed->ticks > 0 && it->second.regeneration_rate_per_tick > 0 && it->second.maximum_amount > 0)
     {
-        if (!CheckedMul(elapsed.ticks, it->second.regeneration_rate_per_tick, produced))
+        if (!CheckedMul(elapsed->ticks, it->second.regeneration_rate_per_tick, produced))
         {
             produced = std::numeric_limits<Fixed>::max();
         }
@@ -1173,7 +1176,17 @@ ResourceChangeBatch ResourcesProductionService::ReadChangesSince(std::uint64_t s
     ResourceChangeBatch batch;
     batch.oldest_available_sequence = OldestChangeSequence();
     batch.latest_sequence = LatestChangeSequence();
-    if (!changes_.empty() && sequence + 1 < batch.oldest_available_sequence)
+    if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < batch.latest_sequence;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -1497,19 +1510,15 @@ ResourcesDiagnostics ResourcesProductionService::GetDiagnostics() const noexcept
 void ResourcesProductionService::Record(ResourceChange change)
 {
     if (next_change_sequence_ == 0)
-    {
         return;
-    }
-    change.sequence = next_change_sequence_++;
+    change.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(change);
     while (changes_.size() > change_retention_)
-    {
         changes_.pop_front();
-    }
-    if (next_change_sequence_ == 0)
-    {
-        next_change_sequence_ = std::numeric_limits<std::uint64_t>::max();
-    }
 }
 
 void ResourcesProductionService::RebuildDerivedState() noexcept

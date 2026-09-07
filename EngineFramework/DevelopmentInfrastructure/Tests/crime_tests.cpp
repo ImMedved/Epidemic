@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::crime;
@@ -233,6 +234,8 @@ int main()
     const auto latest_batch = crime.ReadChangesSince(crime.LatestChangeSequence());
     Check(!latest_batch.snapshot_required && latest_batch.changes.empty(), "current journal reader is up to date");
 
+    const auto pre_restore_cursor = crime.LatestChangeSequence();
+    Check(pre_restore_cursor >= 2, "pre-restore journal has multiple changes");
     const auto snapshot = crime.CaptureSnapshot();
 
     CrimeService preserved;
@@ -265,6 +268,19 @@ int main()
 
     CrimeService restored;
     Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), "valid snapshot restore");
+    Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
+          "pre-restore crime cursor requires snapshot in new journal epoch");
+    Check(restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+          "future crime cursor is incompatible");
+    auto epoch_crime = restored.EvaluateCrimeCandidate(MakeCandidate(fixture, "epoch_apple", 170),
+                                                        CrimeCandidatePolicy::RecordAlways);
+    Check(static_cast<bool>(epoch_crime) && epoch_crime.Value().crime.has_value(), "post-restore crime change");
+    Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
+          "old crime cursor remains incompatible after new epoch changes");
+    const auto new_epoch = restored.ReadChangesSince(0);
+    Check(!new_epoch.snapshot_required && !new_epoch.changes.empty(), "new crime epoch readable from zero");
+    const auto exact_epoch = restored.ReadChangesSince(new_epoch.latest_sequence);
+    Check(!exact_epoch.snapshot_required && exact_epoch.changes.empty(), "exact crime cursor is current");
     Check(restored.DefinitionsFrozen(), "definition freeze state restored");
     Check(restored.FindCrimesByOffender(fixture.player).size() == 2, "runtime crimes restored");
     Check(!restored.GetBounty(fixture.player, fixture.jurisdiction), "terminal bounty state restored without active index");

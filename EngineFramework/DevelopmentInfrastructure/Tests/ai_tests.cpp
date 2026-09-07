@@ -1,5 +1,6 @@
 #include "Epidemic/GameFramework/AI/ai.h"
 
+#include <limits>
 #include <stdexcept>
 
 using namespace epidemic::gameplay;
@@ -319,6 +320,43 @@ int main()
     if (transactional_restore.RestoreSnapshot(std::move(live_snapshot)) ||
         !transactional_restore.FindAgent(Ref("existing")))
         return 46;
+
+    // Change sequence namespace survives restore even though the retained journal does not.
+    AIService sequence_source;
+    if (!RegisterCoreDefinitions(sequence_source, profile_id, goal_id, intent_type, score_key) ||
+        !sequence_source.Freeze() || !sequence_source.RegisterAgent(guard, profile_id) ||
+        !sequence_source.ScheduleThink(guard, {3}))
+        return 47;
+    const auto saved_change_cursor = sequence_source.ReadChangesSince(0).latest_sequence;
+    auto sequence_snapshot = sequence_source.CaptureSnapshot();
+    AIService sequence_restored;
+    if (!RegisterCoreDefinitions(sequence_restored, profile_id, goal_id, intent_type, score_key) ||
+        !sequence_restored.Freeze() || !sequence_restored.RestoreSnapshot(sequence_snapshot))
+        return 48;
+    if (!sequence_restored.RegisterAgent(Ref("sequence.other"), profile_id))
+        return 49;
+    auto resumed_changes = sequence_restored.ReadChangesSince(saved_change_cursor);
+    if (resumed_changes.snapshot_required || resumed_changes.changes.empty() ||
+        resumed_changes.changes.front().sequence <= saved_change_cursor)
+        return 50;
+    if (saved_change_cursor > 0 && !sequence_restored.ReadChangesSince(saved_change_cursor - 1).snapshot_required)
+        return 51;
+    const auto restored_latest = resumed_changes.latest_sequence;
+    if (restored_latest != std::numeric_limits<std::uint64_t>::max() &&
+        !sequence_restored.ReadChangesSince(restored_latest + 1).snapshot_required)
+        return 52;
+
+    sequence_snapshot.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
+    AIService exhausted_sequence;
+    if (!RegisterCoreDefinitions(exhausted_sequence, profile_id, goal_id, intent_type, score_key) ||
+        !exhausted_sequence.Freeze() || !exhausted_sequence.RestoreSnapshot(sequence_snapshot))
+        return 53;
+    if (!exhausted_sequence.RegisterAgent(Ref("sequence.max"), profile_id))
+        return 54;
+    auto max_batch = exhausted_sequence.ReadChangesSince(std::numeric_limits<std::uint64_t>::max() - 1);
+    if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||
+        max_batch.changes.front().sequence != std::numeric_limits<std::uint64_t>::max())
+        return 55;
 
     return 0;
 }

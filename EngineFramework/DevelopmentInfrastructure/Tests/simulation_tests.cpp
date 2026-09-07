@@ -2,6 +2,7 @@
 #include "Epidemic/Foundation/error.h"
 
 #include <cstdint>
+#include <limits>
 #include <utility>
 
 using namespace epidemic;
@@ -165,6 +166,9 @@ int main()
     before_save.SetBudget({8, 1, 1'000});
     if (before_save.SimulateInterval(save_region.Value(), GameplayTimePoint{0}, GameplayTimePoint{10}))
         return 19;
+    const auto pre_restore_cursor = before_save.ReadChangesSince(0).latest_sequence;
+    if (pre_restore_cursor < 2)
+        return 39;
     auto pending_snapshot = before_save.CaptureSnapshot();
 
     SimulationService restored;
@@ -177,9 +181,20 @@ int main()
     restored.SetBudget({8, 1, 1'000});
     if (!restored.RestoreSnapshot(pending_snapshot))
         return 21;
+    if (!restored.ReadChangesSince(pre_restore_cursor).snapshot_required ||
+        !restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 34;
     auto restored_result = restored.SimulateInterval(save_region.Value(), GameplayTimePoint{0}, GameplayTimePoint{10});
     if (!restored_result || restored_a.commits != 0 || restored_b.commits != 1)
         return 22;
+    if (!restored.ReadChangesSince(pre_restore_cursor).snapshot_required)
+        return 35;
+    const auto simulation_epoch = restored.ReadChangesSince(0);
+    if (simulation_epoch.snapshot_required || simulation_epoch.changes.empty())
+        return 36;
+    const auto simulation_current = restored.ReadChangesSince(simulation_epoch.latest_sequence);
+    if (simulation_current.snapshot_required || !simulation_current.changes.empty())
+        return 37;
 
     // Restore is transactional and validates semantic references plus generator position.
     SimulationService target;
@@ -228,6 +243,8 @@ int main()
     auto gap = retained.ReadChangesSince(0);
     if (!gap.snapshot_required)
         return 33;
+    if (!retained.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 38;
 
     return 0;
 }

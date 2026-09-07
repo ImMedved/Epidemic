@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <deque>
 #include <optional>
 #include <string>
@@ -559,7 +560,11 @@ class ConstructionService
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(ConstructionSnapshot snapshot);
     [[nodiscard]] std::vector<ConstructionChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] ConstructionChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return next_change_sequence_ - 1; }
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    {
+        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                          : next_change_sequence_ - 1;
+    }
     [[nodiscard]] ConstructionDiagnostics GetDiagnostics() const noexcept;
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
 

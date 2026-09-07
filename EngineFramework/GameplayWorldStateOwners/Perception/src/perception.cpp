@@ -487,18 +487,25 @@ foundation::Result<SenseEvaluationResult> PerceptionService::EvaluateSense(
 
     const auto evaluator = evaluators_.find(definition.evaluator);
     if (evaluator == evaluators_.end() || !evaluator->second)
+    {
+        ++diagnostics_.evaluator_failures;
         return foundation::Result<SenseEvaluationResult>::Failure(
             Error("gameplay.perception.evaluator_missing", "custom sense evaluator missing"));
+    }
     try
     {
         auto result = evaluator->second->Evaluate(
             SenseEvaluationInput{definition, profile, perceiver, stimulus, sample, context});
         if (!result)
+        {
+            ++diagnostics_.evaluator_failures;
             return result;
+        }
         const auto &value = result.Value();
         if (value.score_micro < 0 || value.score_micro > kMicro || value.identity_confidence_micro < 0 ||
             value.identity_confidence_micro > kMicro || value.position_uncertainty_mm < 0)
         {
+            ++diagnostics_.evaluator_failures;
             return foundation::Result<SenseEvaluationResult>::Failure(
                 Error("gameplay.perception.invalid_evaluator_result", "custom evaluator returned invalid result"));
         }
@@ -615,15 +622,43 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
         return foundation::Result<std::vector<PerceptionObservation>>::Failure(
             Error("gameplay.perception.registry_not_frozen", "perception definitions must be frozen"));
 
-    EnsureBudgetEpoch(pc.tick);
-    auto temporal = AdvanceTime(pc.now, pc.gameplay);
-    if (!temporal)
-        return temporal;
+    // Processing samples are snapshot-like input. Validate and index them before any temporal or awareness mutation.
+    std::unordered_map<GameplayObjectRef, const PerceiverEvaluationSample *, RefHash> sample_index;
+    sample_index.reserve(pc.perceivers.size());
+    for (const auto &sample : pc.perceivers)
+    {
+        if (!sample.subject.IsValid())
+            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
+                Error("gameplay.perception.invalid_processing_sample", "processing sample subject is invalid"));
+        if (!sample_index.emplace(sample.subject, &sample).second)
+            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
+                Error("gameplay.perception.duplicate_processing_sample", "duplicate perceiver processing sample"));
+    }
 
     const auto *stimulus = FindStimulus(sid);
     if (!stimulus)
         return foundation::Result<std::vector<PerceptionObservation>>::Failure(
             Error("gameplay.perception.stimulus_missing", "stimulus missing"));
+
+    const auto *definition = FindSense(stimulus->sense);
+    if (!definition)
+        return foundation::Result<std::vector<PerceptionObservation>>::Failure(
+            Error("gameplay.perception.invalid_sense_link", "stimulus references an unavailable sense definition"));
+    if (definition->evaluation_model == SenseEvaluationModel::Custom)
+    {
+        const auto evaluator = evaluators_.find(definition->evaluator);
+        if (evaluator == evaluators_.end() || !evaluator->second)
+        {
+            ++diagnostics_.evaluator_failures;
+            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
+                Error("gameplay.perception.evaluator_missing", "custom sense evaluator missing"));
+        }
+    }
+
+    EnsureBudgetEpoch(pc.tick);
+    auto temporal = AdvanceTime(pc.now, pc.gameplay);
+    if (!temporal)
+        return temporal;
 
     const auto event_context = EffectiveContext(pc.gameplay, stimulus->context, pc.now);
     if (tick_budget_.processed_stimuli >= budget_.max_stimuli_per_tick)
@@ -637,30 +672,42 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
     ++tick_budget_.processed_stimuli;
     ++diagnostics_.processed_stimuli;
 
-    std::vector<PerceiverRecord> candidates;
-    const auto *candidate_definition = FindSense(stimulus->sense);
+    struct Candidate
+    {
+        PerceiverRecord record{};
+        const PerceiverProfileDefinition *profile = nullptr;
+        const PerceiverEvaluationSample *sample = nullptr;
+    };
+    std::vector<Candidate> candidates;
+    candidates.reserve(std::min<std::size_t>(perceivers_.size(), budget_.max_perceivers_per_stimulus));
     for (const auto &[subject, record] : perceivers_)
     {
         if (subject == stimulus->source)
             continue;
         const auto *profile = FindProfileDefinition(record.profile);
-        if (!profile || !std::binary_search(profile->senses.begin(), profile->senses.end(), stimulus->sense))
+        if (!profile)
+            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
+                Error("gameplay.perception.invalid_profile_link", "perceiver references an unavailable profile"));
+        if (!std::binary_search(profile->senses.begin(), profile->senses.end(), stimulus->sense))
             continue;
 
-        const auto *sample = pc.FindPerceiver(record.subject);
-        if (candidate_definition && !CanAttemptSenseEvaluation(*candidate_definition, *profile, sample))
+        const auto sample_it = sample_index.find(record.subject);
+        const auto *sample = sample_it == sample_index.end() ? nullptr : sample_it->second;
+        if (!CanAttemptSenseEvaluation(*definition, *profile, sample))
             continue;
-
-        candidates.push_back(record);
+        candidates.push_back(Candidate{record, profile, sample});
     }
-    std::sort(candidates.begin(), candidates.end(), [](const auto &a, const auto &b) { return a.subject < b.subject; });
+    std::sort(candidates.begin(), candidates.end(), [](const auto &a, const auto &b) {
+        return a.record.subject < b.record.subject;
+    });
     if (candidates.size() > budget_.max_perceivers_per_stimulus)
         candidates.resize(budget_.max_perceivers_per_stimulus);
 
     std::vector<PerceptionObservation> activated = std::move(temporal.Value());
     bool budget_reported = false;
-    for (const auto &perceiver : candidates)
+    for (const auto &candidate : candidates)
     {
+        const auto &perceiver = candidate.record;
         if (tick_budget_.detection_tests >= budget_.max_detection_tests_per_tick)
         {
             ++diagnostics_.budget_exhaustions;
@@ -674,11 +721,6 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
         }
         ++tick_budget_.detection_tests;
         ++diagnostics_.detection_tests;
-
-        const auto *profile = FindProfileDefinition(perceiver.profile);
-        const auto *definition = FindSense(stimulus->sense);
-        if (!profile || !definition)
-            continue;
 
         switch (definition->evaluation_model)
         {
@@ -695,10 +737,9 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
             break;
         }
 
-        const auto *sample = pc.FindPerceiver(perceiver.subject);
-        auto evaluated = EvaluateSense(*definition, *profile, perceiver, *stimulus, sample, pc);
+        auto evaluated = EvaluateSense(*definition, *candidate.profile, perceiver, *stimulus, candidate.sample, pc);
         if (!evaluated)
-            continue;
+            return foundation::Result<std::vector<PerceptionObservation>>::Failure(evaluated.GetError());
         const auto evaluation = evaluated.Value();
         if (evaluation.score_micro <= 0)
             continue;
@@ -1061,10 +1102,21 @@ PerceptionChangeBatch PerceptionService::ReadChangesSince(std::uint64_t sequence
     PerceptionChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
                                                        : next_change_sequence_ - 1;
-    batch.oldest_available_sequence = changes_.empty() ? batch.latest_sequence + (batch.latest_sequence != std::numeric_limits<std::uint64_t>::max() ? 1 : 0)
-                                                       : changes_.front().sequence;
-    if (!changes_.empty() && sequence != 0 && sequence != std::numeric_limits<std::uint64_t>::max() &&
-        sequence + 1 < changes_.front().sequence)
+    batch.oldest_available_sequence = changes_.empty()
+                                          ? (next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                        : next_change_sequence_)
+                                          : changes_.front().sequence;
+    if (sequence > batch.latest_sequence)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < batch.latest_sequence;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -1121,6 +1173,7 @@ PerceptionSnapshot PerceptionService::CaptureSnapshot() const
 
     snapshot.stimulus_ids = stimulus_ids_.GetSnapshot();
     snapshot.observation_ids = observation_ids_.GetSnapshot();
+    snapshot.next_change_sequence = next_change_sequence_;
     snapshot.revision = revision_;
     return snapshot;
 }
@@ -1263,7 +1316,7 @@ foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot s
     observation_ids_.Restore(snapshot.observation_ids);
     revision_ = snapshot.revision;
     changes_.clear();
-    next_change_sequence_ = 1;
+    next_change_sequence_ = snapshot.next_change_sequence;
     tick_budget_ = {};
     return foundation::Result<void>::Success();
 }

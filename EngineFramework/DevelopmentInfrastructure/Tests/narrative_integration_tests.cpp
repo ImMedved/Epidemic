@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -213,6 +214,24 @@ int main()
     auto captured = save_participant.CaptureSnapshot({});
     Check(static_cast<bool>(captured), "capture external consequence save participant");
 
+    auto over_capacity = captured.Value();
+    WriteU32Le(over_capacity.payload, 16, static_cast<std::uint32_t>(outbox.Capacity() + 1));
+    over_capacity.payload_hash = savegame::SaveGameOrchestrator::HashBytes(over_capacity.payload);
+    const auto over_capacity_validation = save_participant.ValidateSnapshot(over_capacity, {});
+    Check(!static_cast<bool>(over_capacity_validation) &&
+              over_capacity_validation.GetError().HasCode("gameplay.narrative_integration.delivery_snapshot_capacity"),
+          "outbox wire count above configured capacity rejected before decode allocation");
+    Check(!static_cast<bool>(save_participant.StageRestore(over_capacity, {})),
+          "outbox stage rejects count above configured capacity");
+
+    auto huge_count = captured.Value();
+    WriteU32Le(huge_count.payload, 16, std::numeric_limits<std::uint32_t>::max());
+    huge_count.payload_hash = savegame::SaveGameOrchestrator::HashBytes(huge_count.payload);
+    const auto huge_count_validation = save_participant.ValidateSnapshot(huge_count, {});
+    Check(!static_cast<bool>(huge_count_validation) &&
+              huge_count_validation.GetError().HasCode("gameplay.narrative_integration.delivery_snapshot_capacity"),
+          "huge wire count in short payload is rejected by configured capacity");
+
     auto corrupted = captured.Value();
     corrupted.payload_hash ^= 0x55u;
     Check(!static_cast<bool>(save_participant.ValidateSnapshot(corrupted, {})), "corrupted save section rejected");
@@ -321,6 +340,19 @@ int main()
           "bounded outbox accepts first delivery");
     Check(bounded_outbox.Execute(cons, bounded_second, bounded_context).state == ConsequenceExecutionState::FailedRetryable,
           "bounded outbox applies backpressure instead of growing without limit");
+    NarrativeExternalConsequenceSaveParticipant bounded_participant(bounded_outbox);
+    const auto bounded_section = bounded_participant.CaptureSnapshot({});
+    Check(static_cast<bool>(bounded_section), "capture outbox exactly at configured capacity");
+    NarrativeExternalConsequenceOutbox bounded_restored(1);
+    NarrativeExternalConsequenceSaveParticipant bounded_restored_participant(bounded_restored);
+    Check(static_cast<bool>(bounded_restored_participant.ValidateSnapshot(bounded_section.Value(), {})),
+          "validate outbox snapshot exactly at configured capacity");
+    auto bounded_stage = bounded_restored_participant.StageRestore(bounded_section.Value(), {});
+    Check(static_cast<bool>(bounded_stage), "stage outbox snapshot exactly at configured capacity");
+    auto bounded_restore_stage = std::move(bounded_stage).Value();
+    bounded_restored_participant.CommitRestore(*bounded_restore_stage);
+    Check(bounded_restored.PendingDeliveries().size() == 1,
+          "restore outbox snapshot exactly at configured capacity");
 
     KnowledgeService knowledge_service;
     const auto speaker = Ref("game.actor", "witness");

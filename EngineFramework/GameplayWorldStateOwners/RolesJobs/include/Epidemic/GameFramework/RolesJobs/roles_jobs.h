@@ -300,7 +300,8 @@ struct RolesJobsSnapshot
 struct RolesJobsDiagnostics
 {
     std::uint64_t definitions = 0, workplaces = 0, assignments = 0, schedules = 0, active_duties = 0, shift_events = 0,
-                  duty_failures = 0, retained_changes = 0, retained_terminal_duties = 0;
+                  duty_failures = 0, automatic_suspension_failures = 0, retained_changes = 0,
+                  retained_terminal_duties = 0;
 };
 
 class RolesJobsService

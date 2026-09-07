@@ -392,6 +392,7 @@ struct AISnapshot
 {
     std::vector<AIAgentState> agents;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot intent_ids{};
+    std::uint64_t next_change_sequence = 1;
     Revision revision{};
 };
 struct AIDiagnostics

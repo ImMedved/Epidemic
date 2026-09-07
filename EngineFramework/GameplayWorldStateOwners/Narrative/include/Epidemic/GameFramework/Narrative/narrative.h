@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <deque>
 #include <map>
 #include <optional>
@@ -898,6 +899,7 @@ struct NarrativeChangeBatch
     std::vector<NarrativeChange> changes;
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
 };
 struct NarrativeDiagnostics
 {
@@ -999,7 +1001,11 @@ class NarrativeService
     [[nodiscard]] std::vector<NarrativeConsequenceExecution> FindConsequences(ConsequenceExecutionState state) const;
     [[nodiscard]] std::vector<NarrativeChange> ChangesSince(std::uint64_t sequence) const;
     [[nodiscard]] NarrativeChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return next_change_sequence_ - 1; }
+    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    {
+        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                          : next_change_sequence_ - 1;
+    }
     [[nodiscard]] std::uint64_t CompactTerminalExecutions(GameplayTimePoint before);
     [[nodiscard]] NarrativeSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(NarrativeSnapshot snapshot);

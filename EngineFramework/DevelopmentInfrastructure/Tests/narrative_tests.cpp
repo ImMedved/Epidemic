@@ -1,6 +1,7 @@
 #include "Epidemic/GameFramework/Narrative/narrative.h"
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::narrative;
@@ -200,6 +201,12 @@ int main()
           {.max_condition_evaluations=32,.max_storylets_evaluated=8,.max_storylets_activated=8,.max_consequences_planned=0})),
           "budget stop is resumable success");
     Check(resumable.FindConsequences(ConsequenceExecutionState::Pending).empty(),"budget stop does not partially plan consequence");
+    NarrativeFlag epoch_flag_a; epoch_flag_a.id = NarrativeFlagId::FromString("test.epoch.a"); epoch_flag_a.value = true;
+    NarrativeFlag epoch_flag_b; epoch_flag_b.id = NarrativeFlagId::FromString("test.epoch.b"); epoch_flag_b.value = true;
+    Check(static_cast<bool>(resumable.SetFlag(epoch_flag_a)),"first pre-restore narrative journal change");
+    Check(static_cast<bool>(resumable.SetFlag(epoch_flag_b)),"second pre-restore narrative journal change");
+    const auto pre_restore_cursor = resumable.LatestChangeSequence();
+    Check(pre_restore_cursor >= 2,"pre-restore narrative journal has multiple changes");
     auto pending_snapshot = resumable.CaptureSnapshot();
     Check(pending_snapshot.event_executions.size()==1 &&
           pending_snapshot.event_executions.front().state==NarrativeEventExecutionState::Pending,
@@ -213,10 +220,17 @@ int main()
     Check(static_cast<bool>(resumed.RegisterThreadDefinition(r_t)),"resumed thread");
     Check(static_cast<bool>(resumed.FreezeDefinitions()),"resumed freeze");
     Check(static_cast<bool>(resumed.RestoreSnapshot(pending_snapshot)),"restore pending event");
+    Check(resumed.ReadChangesSince(pre_restore_cursor).snapshot_required,"pre-restore narrative cursor requires snapshot");
+    Check(resumed.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,"future narrative cursor incompatible");
     Check(static_cast<bool>(resumed.ProcessNarrativeEvent(resumable_event)),"resume event after restore");
     Check(resumed.FindConsequences(ConsequenceExecutionState::Pending).size()==1,"resumed event plans consequence exactly once");
     Check(static_cast<bool>(resumed.ProcessNarrativeEvent(resumable_event)),"completed event deduplicates");
     Check(resumed.FindConsequences(ConsequenceExecutionState::Pending).size()==1,"dedupe does not duplicate resumed consequence");
+    Check(resumed.ReadChangesSince(pre_restore_cursor).snapshot_required,"old narrative cursor remains incompatible after new changes");
+    const auto narrative_epoch = resumed.ReadChangesSince(0);
+    Check(!narrative_epoch.snapshot_required && !narrative_epoch.changes.empty(),"new narrative epoch readable from zero");
+    const auto narrative_current = resumed.ReadChangesSince(narrative_epoch.latest_sequence);
+    Check(!narrative_current.snapshot_required && narrative_current.changes.empty(),"exact narrative cursor current");
 
     Check(!static_cast<bool>(resumed.CompleteThread(NarrativeThreadId::FromString("thread.unknown"))),
           "mutation cannot create phantom thread state");
@@ -229,5 +243,8 @@ int main()
         Check(static_cast<bool>(bounded.SetFlag(flag)),"bounded journal mutation");
     }
     Check(bounded.ReadChangesSince(0).snapshot_required,"bounded narrative journal reports snapshot-required gap");
+    Check(bounded.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,"max narrative cursor never wraps");
+    NarrativeService empty_journal;
+    Check(empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,"max narrative cursor incompatible with empty journal");
     return 0;
 }

@@ -1,5 +1,7 @@
 #include "Epidemic/GameFramework/ResourcesProduction/resources_production.h"
 
+#include <limits>
+
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::resources;
 
@@ -78,6 +80,23 @@ int main()
     if (!found_node) return 23;
     if (s.RegenerateNode(node_id.Value(), GameplayTimePoint{3})) return 24;
 
+    ResourceNode overflow_node = node;
+    overflow_node.last_regenerated_at = GameplayTimePoint{std::numeric_limits<std::int64_t>::min()};
+    overflow_node.remaining_amount = 1;
+    overflow_node.maximum_amount = 10;
+    overflow_node.regeneration_rate_per_tick = 1;
+    auto overflow_node_id = s.CreateNode(overflow_node); if (!overflow_node_id) return 46;
+    const auto overflow_before = s.CaptureSnapshot();
+    auto overflow_regen = s.RegenerateNode(overflow_node_id.Value(), GameplayTimePoint{std::numeric_limits<std::int64_t>::max()});
+    if (overflow_regen || !overflow_regen.GetError().HasCode("gameplay.time_overflow")) return 47;
+    const auto overflow_after = s.CaptureSnapshot();
+    const ResourceNode *before_node = nullptr;
+    const ResourceNode *after_node = nullptr;
+    for (const auto &entry_node : overflow_before.nodes) if (entry_node.id == overflow_node_id.Value()) before_node = &entry_node;
+    for (const auto &entry_node : overflow_after.nodes) if (entry_node.id == overflow_node_id.Value()) after_node = &entry_node;
+    if (before_node == nullptr || after_node == nullptr || before_node->remaining_amount != after_node->remaining_amount ||
+        before_node->last_regenerated_at != after_node->last_regenerated_at || before_node->revision != after_node->revision) return 48;
+
     auto recipe = ProductionRecipe{ProductionRecipeId::FromString("test.production.plank"), "test.production.plank",
                                    {{wood, 10}}, {{wood, 12}}, GameplayDuration{5}, {}};
     ResourcesProductionService p;
@@ -98,12 +117,16 @@ int main()
     if (p.GetAmount(in.Value(), pwood) != 90 || p.GetAmount(out.Value(), pwood) != 12) return 33;
     if (p.FindProductionOrder(order.Value()) != nullptr) return 34;
 
+    const auto pre_restore_cursor = p.LatestChangeSequence();
+    if (pre_restore_cursor < 2) return 57;
     auto snap = p.CaptureSnapshot();
     ResourcesProductionService restored;
     ResourceTypeId restored_wood;
     if (!RegisterWood(restored, restored_wood)) return 35;
     auto rr = restored.RegisterProductionRecipe(recipe); if (!rr) return 36;
     if (!restored.RestoreSnapshot(snap)) return 37;
+    if (!restored.ReadChangesSince(pre_restore_cursor).snapshot_required) return 49;
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 50;
     if (restored.GetAmount(in.Value(), restored_wood) != 90) return 38;
 
     auto before_bad_restore = restored.GetDiagnostics();
@@ -113,6 +136,12 @@ int main()
     auto after_bad_restore = restored.GetDiagnostics();
     if (before_bad_restore.stockpiles != after_bad_restore.stockpiles ||
         restored.GetAmount(in.Value(), restored_wood) != 90) return 40;
+    if (!restored.Add(in.Value(), {restored_wood, 1})) return 51;
+    if (!restored.ReadChangesSince(pre_restore_cursor).snapshot_required) return 52;
+    const auto resources_epoch = restored.ReadChangesSince(0);
+    if (resources_epoch.snapshot_required || resources_epoch.changes.empty()) return 53;
+    const auto resources_current = restored.ReadChangesSince(resources_epoch.latest_sequence);
+    if (resources_current.snapshot_required || !resources_current.changes.empty()) return 54;
 
     ResourcesProductionService journal;
     ResourceTypeId jwood;
@@ -125,6 +154,9 @@ int main()
     }
     auto batch = journal.ReadChangesSince(0);
     if (!batch.snapshot_required) return 44;
+    if (!journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 55;
+    ResourcesProductionService empty_journal;
+    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 56;
     if (journal.ChangesSince(journal.LatestChangeSequence()).size() != 0) return 45;
 
     return 0;

@@ -1,8 +1,12 @@
 #include "Epidemic/GameFramework/Perception/perception.h"
+#include "Epidemic/Foundation/error.h"
 
+#include <limits>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <utility>
+#include <vector>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::perception;
@@ -42,6 +46,38 @@ class AbstractNoSampleEvaluator final : public ISenseEvaluator
         result.identified_subject = true;
         result.identity_confidence_micro = 1'000'000;
         result.perceived_position = input.stimulus.position;
+        return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);
+    }
+};
+
+class ZeroEvaluator final : public ISenseEvaluator
+{
+  public:
+    epidemic::foundation::Result<SenseEvaluationResult> Evaluate(const SenseEvaluationInput &) const override
+    {
+        SenseEvaluationResult result;
+        return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);
+    }
+};
+
+class FailingEvaluator final : public ISenseEvaluator
+{
+  public:
+    epidemic::foundation::Result<SenseEvaluationResult> Evaluate(const SenseEvaluationInput &) const override
+    {
+        return epidemic::foundation::Result<SenseEvaluationResult>::Failure(
+            epidemic::foundation::Error::Create("test.perception.evaluator_failure", "expected evaluator failure"));
+    }
+};
+
+class CountingEvaluator final : public ISenseEvaluator
+{
+  public:
+    mutable std::vector<GameplayObjectRef> subjects;
+    epidemic::foundation::Result<SenseEvaluationResult> Evaluate(const SenseEvaluationInput &input) const override
+    {
+        subjects.push_back(input.perceiver.subject);
+        SenseEvaluationResult result;
         return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);
     }
 };
@@ -416,8 +452,152 @@ int main()
         return 43;
     auto custom_out = custom_service.ProcessStimulus(
         custom_sid.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {}});
-    if (!custom_out || !custom_out.Value().empty() || custom_service.GetDiagnostics().evaluator_failures != 1)
+    if (custom_out || custom_service.GetDiagnostics().evaluator_failures != 1)
         return 44;
+
+    // A normal zero-score custom evaluation is successful non-detection, while evaluator failures propagate.
+    const auto zero_sense = SenseTypeId::FromString("test.sense.zero");
+    const auto zero_evaluator_id = SenseEvaluatorId::FromString("test.evaluator.zero");
+    PerceptionService zero_service;
+    SenseDefinition zero_definition;
+    zero_definition.id = zero_sense;
+    zero_definition.canonical_name = "test.sense.zero";
+    zero_definition.evaluation_model = SenseEvaluationModel::Custom;
+    zero_definition.evaluator = zero_evaluator_id;
+    zero_definition.requires_spatial_sample = false;
+    if (!zero_service.RegisterEvaluator(zero_evaluator_id, std::make_shared<ZeroEvaluator>()) ||
+        !zero_service.RegisterSense(zero_definition))
+        return 100;
+    PerceiverProfileDefinition zero_profile;
+    zero_profile.id = PerceiverProfileId::FromString("test.zero.profile");
+    zero_profile.canonical_name = "test.zero.profile";
+    zero_profile.senses = {zero_sense};
+    if (!zero_service.RegisterProfileDefinition(zero_profile))
+        return 101;
+    zero_service.Freeze();
+    if (!zero_service.RegisterPerceiver(npc, zero_profile.id))
+        return 102;
+    PerceptionStimulus zero_stimulus = audible;
+    zero_stimulus.id = {};
+    zero_stimulus.sense = zero_sense;
+    auto zero_sid = zero_service.CreateStimulus(zero_stimulus);
+    if (!zero_sid)
+        return 103;
+    auto zero_out = zero_service.ProcessStimulus(
+        zero_sid.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {}});
+    if (!zero_out || !zero_out.Value().empty() || zero_service.GetDiagnostics().evaluator_failures != 0)
+        return 104;
+
+    const auto failing_sense = SenseTypeId::FromString("test.sense.failure");
+    const auto failing_evaluator_id = SenseEvaluatorId::FromString("test.evaluator.failure");
+    PerceptionService failing_service;
+    SenseDefinition failing_definition = zero_definition;
+    failing_definition.id = failing_sense;
+    failing_definition.canonical_name = "test.sense.failure";
+    failing_definition.evaluator = failing_evaluator_id;
+    if (!failing_service.RegisterEvaluator(failing_evaluator_id, std::make_shared<FailingEvaluator>()) ||
+        !failing_service.RegisterSense(failing_definition))
+        return 105;
+    PerceiverProfileDefinition failing_profile = zero_profile;
+    failing_profile.id = PerceiverProfileId::FromString("test.failure.profile");
+    failing_profile.canonical_name = "test.failure.profile";
+    failing_profile.senses = {failing_sense};
+    if (!failing_service.RegisterProfileDefinition(failing_profile))
+        return 106;
+    failing_service.Freeze();
+    if (!failing_service.RegisterPerceiver(npc, failing_profile.id))
+        return 107;
+    PerceptionStimulus failing_stimulus = audible;
+    failing_stimulus.id = {};
+    failing_stimulus.sense = failing_sense;
+    auto failing_sid = failing_service.CreateStimulus(failing_stimulus);
+    if (!failing_sid)
+        return 108;
+    auto failing_out = failing_service.ProcessStimulus(
+        failing_sid.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {}, {}});
+    if (failing_out || failing_service.GetDiagnostics().evaluator_failures != 1)
+        return 109;
+
+    // Missing custom evaluator is rejected structurally rather than becoming a successful non-detection path.
+    PerceptionService missing_evaluator_service;
+    SenseDefinition missing_definition = zero_definition;
+    missing_definition.id = SenseTypeId::FromString("test.sense.missing_evaluator");
+    missing_definition.canonical_name = "test.sense.missing_evaluator";
+    missing_definition.evaluator = SenseEvaluatorId::FromString("test.evaluator.missing");
+    if (missing_evaluator_service.RegisterSense(missing_definition))
+        return 110;
+
+    // Processing input rejects duplicate samples before any temporal or awareness mutation.
+    PerceptionService duplicate_samples;
+    if (!duplicate_samples.RegisterSense(hear))
+        return 111;
+    PerceiverProfileDefinition duplicate_profile;
+    duplicate_profile.id = PerceiverProfileId::FromString("test.duplicate.profile");
+    duplicate_profile.canonical_name = "test.duplicate.profile";
+    duplicate_profile.senses = {hearing};
+    if (!duplicate_samples.RegisterProfileDefinition(duplicate_profile))
+        return 112;
+    duplicate_samples.Freeze();
+    if (!duplicate_samples.RegisterPerceiver(npc, duplicate_profile.id))
+        return 113;
+    auto duplicate_sid = duplicate_samples.CreateStimulus(audible);
+    if (!duplicate_sid)
+        return 114;
+    const auto duplicate_revision = duplicate_samples.CurrentRevision();
+    auto duplicate_out = duplicate_samples.ProcessStimulus(
+        duplicate_sid.Value(),
+        PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{50}, {},
+                                    {Sample(npc, {0, 0, 0}), Sample(npc, {9'000, 0, 0})}});
+    if (duplicate_out || duplicate_samples.CurrentRevision() != duplicate_revision ||
+        duplicate_samples.GetAwareness(npc, player) || !duplicate_samples.FindObservationsByPerceiver(npc).empty())
+        return 115;
+
+    // Candidate discovery indexes supplied samples once and preserves canonical evaluation order.
+    const auto counted_sense = SenseTypeId::FromString("test.sense.counted");
+    const auto counted_evaluator_id = SenseEvaluatorId::FromString("test.evaluator.counted");
+    auto counted_evaluator = std::make_shared<CountingEvaluator>();
+    PerceptionService indexed_candidates;
+    SenseDefinition counted_definition;
+    counted_definition.id = counted_sense;
+    counted_definition.canonical_name = "test.sense.counted";
+    counted_definition.evaluation_model = SenseEvaluationModel::Custom;
+    counted_definition.evaluator = counted_evaluator_id;
+    counted_definition.requires_spatial_sample = true;
+    if (!indexed_candidates.RegisterEvaluator(counted_evaluator_id, counted_evaluator) ||
+        !indexed_candidates.RegisterSense(counted_definition))
+        return 116;
+    PerceiverProfileDefinition counted_profile;
+    counted_profile.id = PerceiverProfileId::FromString("test.counted.profile");
+    counted_profile.canonical_name = "test.counted.profile";
+    counted_profile.senses = {counted_sense};
+    if (!indexed_candidates.RegisterProfileDefinition(counted_profile))
+        return 117;
+    indexed_candidates.Freeze();
+    std::vector<GameplayObjectRef> many_perceivers;
+    for (int i = 0; i < 256; ++i)
+    {
+        const auto name = "indexed_" + std::to_string(i);
+        many_perceivers.push_back(Ref(name.c_str()));
+        if (!indexed_candidates.RegisterPerceiver(many_perceivers.back(), counted_profile.id))
+            return 118;
+    }
+    PerceptionStimulus counted_stimulus = audible;
+    counted_stimulus.id = {};
+    counted_stimulus.sense = counted_sense;
+    auto counted_sid = indexed_candidates.CreateStimulus(counted_stimulus);
+    if (!counted_sid)
+        return 119;
+    const auto indexed_lower =
+        many_perceivers[17] < many_perceivers[201] ? many_perceivers[17] : many_perceivers[201];
+    const auto indexed_higher =
+        many_perceivers[17] < many_perceivers[201] ? many_perceivers[201] : many_perceivers[17];
+    auto counted_out = indexed_candidates.ProcessStimulus(
+        counted_sid.Value(), PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{1}, {},
+                                                         {Sample(indexed_higher), Sample(indexed_lower)}});
+    if (!counted_out || counted_evaluator->subjects.size() != 2 ||
+        counted_evaluator->subjects[0] != indexed_lower || counted_evaluator->subjects[1] != indexed_higher ||
+        indexed_candidates.GetDiagnostics().detection_tests != 2)
+        return 120;
 
     // Snapshot contains runtime perceivers and pending state, not definitions, and restore is transactional.
     PerceptionStimulus delayed_again = audible;
@@ -430,6 +610,7 @@ int main()
         PerceptionProcessingContext{GameplayTickId{2}, GameplayTimePoint{20}, {}, {Sample(npc)}});
     if (!pending_before_save || !pending_before_save.Value().empty() || delayed.GetDiagnostics().pending_observations != 1)
         return 67;
+    const auto saved_change_cursor = delayed.ReadChangesSince(0).latest_sequence;
     auto snapshot = delayed.CaptureSnapshot();
     PerceptionService restored;
     if (!restored.RegisterSense(delayed_hearing) || !restored.RegisterProfileDefinition(delayed_profile))
@@ -442,6 +623,33 @@ int main()
     auto restored_pending = restored.AdvanceTime({25});
     if (!restored_pending || restored_pending.Value().size() != 1 || restored.GetDiagnostics().pending_observations != 0)
         return 68;
+    const auto resumed_changes = restored.ReadChangesSince(saved_change_cursor);
+    if (resumed_changes.snapshot_required || resumed_changes.changes.empty() ||
+        resumed_changes.changes.front().sequence <= saved_change_cursor)
+        return 121;
+    if (saved_change_cursor > 0 && !restored.ReadChangesSince(saved_change_cursor - 1).snapshot_required)
+        return 122;
+    const auto restored_latest = restored.ReadChangesSince(saved_change_cursor).latest_sequence;
+    if (restored_latest != std::numeric_limits<std::uint64_t>::max() &&
+        !restored.ReadChangesSince(restored_latest + 1).snapshot_required)
+        return 123;
+
+    auto exhausted_sequence_snapshot = snapshot;
+    exhausted_sequence_snapshot.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
+    PerceptionService exhausted_sequence;
+    if (!exhausted_sequence.RegisterSense(delayed_hearing) ||
+        !exhausted_sequence.RegisterProfileDefinition(delayed_profile))
+        return 124;
+    exhausted_sequence.Freeze();
+    if (!exhausted_sequence.RestoreSnapshot(exhausted_sequence_snapshot))
+        return 125;
+    const auto exhausted_subject = Ref("sequence.max");
+    if (!exhausted_sequence.RegisterPerceiver(exhausted_subject, delayed_profile.id))
+        return 126;
+    auto max_batch = exhausted_sequence.ReadChangesSince(std::numeric_limits<std::uint64_t>::max() - 1);
+    if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||
+        max_batch.changes.front().sequence != std::numeric_limits<std::uint64_t>::max())
+        return 127;
 
     auto corrupt = snapshot;
     corrupt.stimulus_ids.scope ^= 0xFFu;

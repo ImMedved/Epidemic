@@ -2,6 +2,7 @@
 
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::population;
@@ -130,6 +131,8 @@ int main()
     auto transient_id = service.CreateUnit(transient_unit);
     Check(static_cast<bool>(transient_id), "create transient unit");
 
+    const auto pre_restore_cursor = service.ReadChangesSince(0).latest_sequence;
+    Check(pre_restore_cursor >= 2, "pre-restore population journal has multiple changes");
     auto snapshot = service.CaptureSnapshot();
     bool transient_in_snapshot = false;
     for (const auto &saved : snapshot.units)
@@ -142,6 +145,10 @@ int main()
     Check(static_cast<bool>(restored.RegisterTemplate(transient_templ)), "restore register transient template");
     Check(static_cast<bool>(restored.FreezeDefinitions()), "restore freeze definitions");
     Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), "restore");
+    Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
+          "pre-restore population cursor requires snapshot in new journal epoch");
+    Check(restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+          "future population cursor is incompatible");
     Check(restored.GetUnit(unit_id.Value())->current_area == migration.to, "restore unit");
     Check(restored.GetUnit(transient_id.Value()) == nullptr, "transient unit not restored");
     Check(restored.ChangesSince(0).empty(), "restore no events");
@@ -161,6 +168,12 @@ int main()
     collision_probe.state = PopulationUnitState::Abstract;
     auto collision_probe_id = restored.CreateUnit(collision_probe);
     Check(static_cast<bool>(collision_probe_id), "generator continues after restore");
+    Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
+          "old population cursor remains incompatible after new epoch change");
+    const auto new_epoch = restored.ReadChangesSince(0);
+    Check(!new_epoch.snapshot_required && !new_epoch.changes.empty(), "new population epoch readable from zero");
+    const auto current_epoch = restored.ReadChangesSince(new_epoch.latest_sequence);
+    Check(!current_epoch.snapshot_required && current_epoch.changes.empty(), "exact population cursor is current");
 
     for (int i = 0; i < 4200; ++i)
     {

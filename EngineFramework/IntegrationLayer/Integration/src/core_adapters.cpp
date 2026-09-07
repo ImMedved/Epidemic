@@ -19,12 +19,44 @@ namespace
     return std::find(handlers.begin(), handlers.end(), id) != handlers.end();
 }
 
-[[nodiscard]] bool SameTriggerIdentity(
-    const time::ScheduledTrigger& left,
-    const time::ScheduledTrigger& right) noexcept
+struct TriggerIdentityKey
 {
-    return left.schedule == right.schedule && left.clock == right.clock && left.action == right.action &&
-           left.scheduled_for == right.scheduled_for;
+    std::uint64_t schedule_high = 0;
+    std::uint64_t schedule_low = 0;
+    std::uint64_t clock = 0;
+    std::uint64_t action = 0;
+    std::int64_t scheduled_for = 0;
+
+    [[nodiscard]] bool operator==(const TriggerIdentityKey&) const noexcept = default;
+};
+
+struct TriggerIdentityHash
+{
+    [[nodiscard]] std::size_t operator()(const TriggerIdentityKey& key) const noexcept
+    {
+        auto mix = [](std::uint64_t value) noexcept {
+            value ^= value >> 30u;
+            value *= 0xBF58476D1CE4E5B9ull;
+            value ^= value >> 27u;
+            value *= 0x94D049BB133111EBull;
+            value ^= value >> 31u;
+            return value;
+        };
+        std::uint64_t hash = mix(key.schedule_high) ^ mix(key.schedule_low + 0x9E3779B97F4A7C15ull);
+        hash ^= mix(key.clock + 0xD1B54A32D192ED03ull);
+        hash ^= mix(key.action + 0x94D049BB133111EBull);
+        hash ^= mix(std::bit_cast<std::uint64_t>(key.scheduled_for));
+        return static_cast<std::size_t>(hash);
+    }
+};
+
+[[nodiscard]] TriggerIdentityKey TriggerIdentity(const time::ScheduledTrigger& trigger) noexcept
+{
+    return TriggerIdentityKey{trigger.schedule.High(),
+                              trigger.schedule.Low(),
+                              trigger.clock.Raw(),
+                              trigger.action.Raw(),
+                              trigger.scheduled_for.ticks};
 }
 
 [[nodiscard]] OperationId DeliveryOperationId(const time::ScheduledTrigger& trigger) noexcept
@@ -867,9 +899,10 @@ foundation::Result<void> ScheduledTriggerDispatcher::ValidateSnapshot(
             foundation::Error::Create("integration.trigger_snapshot_manifest_mismatch", "pending trigger snapshot does not match the frozen observer manifest"));
     }
 
-    for (std::size_t index = 0; index < snapshot.pending.size(); ++index)
+    std::unordered_set<TriggerIdentityKey, TriggerIdentityHash> trigger_identities;
+    trigger_identities.reserve(snapshot.pending.size());
+    for (const auto& delivery : snapshot.pending)
     {
-        const auto& delivery = snapshot.pending[index];
         const auto& trigger = delivery.trigger;
         if (!trigger.schedule.IsValid() || !trigger.clock.IsValid() || !trigger.owner.IsValid() || !trigger.action.IsValid() ||
             trigger.occurrence_count == 0 || delivery.context.time != trigger.observed_at)
@@ -878,13 +911,10 @@ foundation::Result<void> ScheduledTriggerDispatcher::ValidateSnapshot(
                 foundation::Error::Create("integration.trigger_snapshot_invalid", "pending scheduled trigger snapshot record is invalid"));
         }
 
-        for (std::size_t other = 0; other < index; ++other)
+        if (!trigger_identities.insert(TriggerIdentity(trigger)).second)
         {
-            if (SameTriggerIdentity(snapshot.pending[other].trigger, trigger))
-            {
-                return foundation::Result<void>::Failure(
-                    foundation::Error::Create("integration.trigger_snapshot_duplicate", "pending scheduled trigger snapshot contains duplicate occurrence"));
-            }
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("integration.trigger_snapshot_duplicate", "pending scheduled trigger snapshot contains duplicate occurrence"));
         }
 
         const auto current_manifest = action_manifest_.find(trigger.action);

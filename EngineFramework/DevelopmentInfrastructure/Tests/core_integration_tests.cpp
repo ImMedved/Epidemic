@@ -613,5 +613,44 @@ int main()
         return 57;
     }
 
+    // D1-M02: duplicate validation remains correct near the configured pending capacity without a nested scan.
+    GameplayTimeService scale_time;
+    ScheduledTriggerDispatcher scale_dispatcher(scale_time, ScheduledTriggerDispatcherPolicy{16384, 16384});
+    if (!scale_dispatcher.Freeze())
+    {
+        return 58;
+    }
+    ScheduledTriggerDispatcherSnapshot scale_snapshot;
+    scale_snapshot.pending.reserve(16000);
+    const auto scale_clock = ClockId::FromString("framework.clock.trigger_scale");
+    const auto scale_action = ActionTypeId::FromString("framework.test.trigger_scale");
+    for (std::uint64_t index = 0; index < 16000; ++index)
+    {
+        ScheduledTriggerDeliveryRecord delivery;
+        delivery.trigger.schedule = ScheduleId::FromRaw(1, index + 1);
+        delivery.trigger.clock = scale_clock;
+        delivery.trigger.owner = object;
+        delivery.trigger.action = scale_action;
+        delivery.trigger.scheduled_for = GameplayTimePoint{static_cast<std::int64_t>(index + 1)};
+        delivery.trigger.observed_at = delivery.trigger.scheduled_for;
+        delivery.trigger.occurrence_count = 1;
+        delivery.context.time = delivery.trigger.observed_at;
+        scale_snapshot.pending.push_back(std::move(delivery));
+    }
+    if (!scale_dispatcher.RestoreSnapshot(scale_snapshot) || scale_dispatcher.PendingCount() != scale_snapshot.pending.size())
+    {
+        return 59;
+    }
+    auto scale_duplicate = scale_snapshot;
+    scale_duplicate.pending.push_back(scale_duplicate.pending.front());
+    if (scale_dispatcher.RestoreSnapshot(std::move(scale_duplicate)))
+    {
+        return 60;
+    }
+    if (scale_dispatcher.PendingCount() != scale_snapshot.pending.size())
+    {
+        return 61;
+    }
+
     return 0;
 }

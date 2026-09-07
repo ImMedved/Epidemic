@@ -198,10 +198,33 @@ int main()
     if (s.RegisterRoute(exhausted_route))
         return 35;
 
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 38;
+    auto traversal_journal_seed = restored.CaptureSnapshot();
+    traversal_journal_seed.journal.clear();
+    traversal_journal_seed.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
+    if (!restored.RestoreSnapshot(traversal_journal_seed))
+        return 39;
+    if (!restored.AssignProfile(actor, profile) || !restored.AssignProfile(actor, profile))
+        return 40;
+    const auto traversal_exhausted = restored.CaptureSnapshot();
+    if (traversal_exhausted.next_change_sequence != 0 || traversal_exhausted.journal.size() != 1 ||
+        traversal_exhausted.journal.front().sequence != std::numeric_limits<std::uint64_t>::max())
+        return 41;
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 42;
+    TraversalService traversal_exhausted_restore = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!traversal_exhausted_restore.RestoreSnapshot(traversal_exhausted))
+        return 43;
+
     if (!restored.RemoveState(actor))
         return 36;
     if (restored.FindState(actor))
         return 37;
+
+    TraversalService empty_journal = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 44;
 
     return 0;
 }

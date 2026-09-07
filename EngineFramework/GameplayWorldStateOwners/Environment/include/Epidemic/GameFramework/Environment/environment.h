@@ -190,6 +190,7 @@ struct EnvironmentChangeBatch
 {
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
     std::vector<EnvironmentChange> changes;
 };
 

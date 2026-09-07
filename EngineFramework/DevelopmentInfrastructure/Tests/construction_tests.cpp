@@ -1,4 +1,6 @@
 #include "Epidemic/GameFramework/Construction/construction.h"
+
+#include <limits>
 using namespace epidemic;
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::construction;
@@ -138,6 +140,38 @@ int main()
         return 13;
     if (restored.FindSocket(sock.id)->state != SocketState::Occupied)
         return 14;
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 46;
+    ConstructionService empty_journal;
+    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 53;
+
+    auto construction_journal_seed = restored.CaptureSnapshot();
+    construction_journal_seed.journal.clear();
+    construction_journal_seed.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
+    if (!restored.RestoreSnapshot(construction_journal_seed))
+        return 47;
+    PlacementSocket journal_socket_a = sock;
+    journal_socket_a.id = PlacementSocketId::FromString("test.journal.socket.a");
+    journal_socket_a.state = SocketState::Free;
+    PlacementSocket journal_socket_b = journal_socket_a;
+    journal_socket_b.id = PlacementSocketId::FromString("test.journal.socket.b");
+    if (!restored.RegisterSocket(journal_socket_a) || !restored.RegisterSocket(journal_socket_b))
+        return 48;
+    const auto construction_exhausted = restored.CaptureSnapshot();
+    if (construction_exhausted.next_change_sequence != 0 || construction_exhausted.journal.size() != 1 ||
+        construction_exhausted.journal.front().sequence != std::numeric_limits<std::uint64_t>::max())
+        return 49;
+    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+        return 50;
+    ConstructionService construction_exhausted_restore;
+    if (!construction_exhausted_restore.RegisterPlacementDefinition(free_def) ||
+        !construction_exhausted_restore.RegisterPlacementDefinition(socket_def) ||
+        !construction_exhausted_restore.RegisterRecipe(recipe))
+        return 51;
+    construction_exhausted_restore.Freeze();
+    if (!construction_exhausted_restore.RestoreSnapshot(construction_exhausted))
+        return 52;
 
     ConstructionService staged;
     if (!staged.RegisterPlacementDefinition(free_def))

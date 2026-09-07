@@ -186,10 +186,12 @@ Fixed ProcessesService::EvaluateProgress(ProcessInstanceId id, GameplayTimePoint
         return 1'000'000;
     if (instance->total_duration.ticks <= 0)
         return 0;
-    const auto remaining = instance->state == ProcessInstanceState::Paused
-                               ? instance->paused_remaining.ticks
-                               : std::max<std::int64_t>(0, instance->due_at.ticks - now.ticks);
-    const auto elapsed = std::clamp<std::int64_t>(instance->total_duration.ticks - remaining, 0, instance->total_duration.ticks);
+
+    const auto raw_remaining = instance->state == ProcessInstanceState::Paused
+                                   ? instance->paused_remaining.ticks
+                                   : SaturatingDifference(instance->due_at, now).ticks;
+    const auto remaining = std::clamp<std::int64_t>(raw_remaining, 0, instance->total_duration.ticks);
+    const auto elapsed = instance->total_duration.ticks - remaining;
     const long double ratio = static_cast<long double>(elapsed) / static_cast<long double>(instance->total_duration.ticks);
     return static_cast<Fixed>(std::clamp<long double>(ratio * 1'000'000.0L, 0.0L, 1'000'000.0L));
 }
@@ -262,6 +264,14 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
     if (recipe.inputs.empty())
         return foundation::Result<void>::Success();
 
+    std::size_t reservation_count = 0;
+    for (const auto &input : recipe.inputs)
+        if (NeedsReservation(input.consumption))
+            ++reservation_count;
+    // All vector allocation is completed before the first external Reserve(), so a successful
+    // provider token can be staged without any subsequent allocation window.
+    instance.reserved_inputs.reserve(instance.reserved_inputs.size() + reservation_count);
+
     for (const auto &input : recipe.inputs)
     {
         auto validated = ValidateProviderInput(input, request, instance.id);
@@ -269,6 +279,17 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
             return validated;
         if (!NeedsReservation(input.consumption))
             continue;
+
+        // Prepare the Framework-owned identity before the external call. Work on a staged copy so
+        // a provider failure does not consume a sequence value, while exhaustion is still detected
+        // before external state can be created.
+        auto staged_ids = reservation_ids_;
+        const auto generated = staged_ids.Next();
+        if (!generated.IsValid())
+            return foundation::Result<void>::Failure(
+                Error("gameplay.processes.id_exhausted", "process reservation id generator is exhausted"));
+        const ProcessReservationId framework_reservation_id{generated};
+
         try
         {
             auto reserved = input_provider_->Reserve(input, request, instance.id);
@@ -283,42 +304,51 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
                 }
                 return foundation::Result<void>::Failure(reserved.GetError());
             }
+
             auto value = std::move(reserved).Value();
-            if (!value.id.IsValid())
-            {
-                const auto generated = reservation_ids_.Next();
-                if (!generated.IsValid())
-                    return foundation::Result<void>::Failure(
-                        Error("gameplay.processes.id_exhausted", "process reservation id generator is exhausted"));
-                value.id = ProcessReservationId{generated};
-            }
-            if (!value.input.IsValid())
-                value.input = input.id;
-            if (!value.type.IsValid())
-                value.type = input.type;
+            // Provider-returned id is intentionally not authoritative. The provider's stable
+            // identity belongs in provider_token; the Framework id is globally canonical here.
+            value.id = framework_reservation_id;
+            value.input = input.id;
+            value.type = input.type;
             value.amount = input.amount;
             value.consumption = input.consumption;
             value.state = ProcessInputCommitState::Reserved;
+
+            instance.reserved_inputs.push_back(std::move(value));
+            reservation_ids_.Restore(staged_ids.GetSnapshot());
+            auto &stored = instance.reserved_inputs.back();
+
             const auto *definition = FindDefinition(recipe.process);
             if (definition && definition->persistence == ProcessPersistencePolicy::Persistent &&
-                !value.provider_token.IsPortable())
+                !stored.provider_token.IsPortable())
             {
+                foundation::Result<void> released = foundation::Result<void>::Failure(
+                    Error("gameplay.processes.reconciliation_required", "input token compensation was not attempted"));
                 try
                 {
-                    auto released = input_provider_->Release(value, request.context);
-                    (void)released;
+                    released = input_provider_->Release(stored, request.context);
+                }
+                catch (const std::exception &)
+                {
+                    instance.state = ProcessInstanceState::ReconciliationRequired;
+                    return foundation::Result<void>::Failure(CallbackError("input release callback threw"));
                 }
                 catch (...)
                 {
+                    instance.state = ProcessInstanceState::ReconciliationRequired;
+                    return foundation::Result<void>::Failure(CallbackError("input release callback threw unknown exception"));
                 }
+                if (!released)
+                {
+                    instance.state = ProcessInstanceState::ReconciliationRequired;
+                    return foundation::Result<void>::Failure(released.GetError());
+                }
+                stored.state = ProcessInputCommitState::Released;
                 return foundation::Result<void>::Failure(
                     Error("gameplay.processes.nonportable_token", "persistent process input token must use versioned encoding"));
             }
-            if (std::any_of(instance.reserved_inputs.begin(), instance.reserved_inputs.end(),
-                            [&](const auto &current) { return current.id == value.id; }))
-                return foundation::Result<void>::Failure(
-                    Error("gameplay.processes.duplicate_reservation", "provider returned duplicate reservation id"));
-            instance.reserved_inputs.push_back(std::move(value));
+
             Record({0, ProcessChangeKind::InputReserved, instance.id, instance.recipe, instance.actor, request.now,
                     request.context, revision_});
         }
@@ -419,6 +449,14 @@ foundation::Result<void> ProcessesService::ReleaseInputs(ProcessInstance &instan
 foundation::Result<void> ProcessesService::PrepareOutputs(ProcessInstance &instance, const ProcessRecipe &recipe,
                                                           OutputDeliveryPolicy phase, GameplayContext context)
 {
+    std::size_t phase_outputs = 0;
+    for (const auto &output : recipe.outputs)
+        if (output.delivery == phase)
+            ++phase_outputs;
+    // Prepare all local storage before invoking an external handler. Once Prepare succeeds the
+    // returned provider token can therefore be staged immediately with no allocation gap.
+    instance.prepared_outputs.reserve(instance.prepared_outputs.size() + phase_outputs);
+
     for (const auto &output : recipe.outputs)
     {
         if (output.delivery != phase)
@@ -442,27 +480,28 @@ foundation::Result<void> ProcessesService::PrepareOutputs(ProcessInstance &insta
                     instance.state = ProcessInstanceState::ReconciliationRequired;
                 return foundation::Result<void>::Failure(prepared.GetError());
             }
+
             auto token = std::move(prepared).Value();
             token.output = output.id;
             token.type = output.type;
             token.delivery = output.delivery;
             token.state = ProcessOutputCommitState::Prepared;
+            instance.prepared_outputs.push_back(std::move(token));
+            auto &stored = instance.prepared_outputs.back();
+
             const auto *definition = FindDefinition(recipe.process);
             if (definition && definition->persistence == ProcessPersistencePolicy::Persistent &&
-                !token.provider_token.IsPortable())
+                !stored.provider_token.IsPortable())
             {
-                try
+                auto cancelled = CancelPreparedOutputs(instance, context);
+                if (!cancelled)
                 {
-                    auto ignored = (*it)->Cancel(token, instance, context);
-                    (void)ignored;
-                }
-                catch (...)
-                {
+                    instance.state = ProcessInstanceState::ReconciliationRequired;
+                    return foundation::Result<void>::Failure(cancelled.GetError());
                 }
                 return foundation::Result<void>::Failure(
                     Error("gameplay.processes.nonportable_token", "persistent process output token must use versioned encoding"));
             }
-            instance.prepared_outputs.push_back(std::move(token));
         }
         catch (const std::exception &)
         {
@@ -582,85 +621,110 @@ foundation::Result<ProcessInstanceId> ProcessesService::StartProcess(StartProces
     if (!generated.IsValid())
         return foundation::Result<ProcessInstanceId>::Failure(
             Error("gameplay.processes.id_exhausted", "process instance id generator is exhausted"));
-    ProcessInstance instance;
-    instance.id = ProcessInstanceId{generated};
-    instance.recipe = recipe->id;
-    instance.actor = request.actor;
-    instance.station = request.station;
-    instance.target = request.target;
-    instance.simulation_area = request.simulation_area;
-    instance.state = ProcessInstanceState::Prepared;
-    instance.started_at = request.now;
-    instance.last_updated_at = request.now;
+    ProcessInstance staged;
+    staged.id = ProcessInstanceId{generated};
+    staged.recipe = recipe->id;
+    staged.actor = request.actor;
+    staged.station = request.station;
+    staged.target = request.target;
+    staged.simulation_area = request.simulation_area;
+    staged.state = ProcessInstanceState::Prepared;
+    staged.started_at = request.now;
+    staged.last_updated_at = request.now;
     try
     {
-        instance.quality = quality_provider_
-                               ? quality_provider_->Resolve(*recipe, request)
-                               : ProcessQualityResult{ProcessQualityId::FromString("framework.quality.normal"), 1'000'000, {}};
+        staged.quality = quality_provider_
+                             ? quality_provider_->Resolve(*recipe, request)
+                             : ProcessQualityResult{ProcessQualityId::FromString("framework.quality.normal"), 1'000'000, {}};
     }
     catch (...)
     {
         return foundation::Result<ProcessInstanceId>::Failure(CallbackError("quality provider threw"));
     }
     const auto duration = DurationFor(*recipe, *definition, station);
-    instance.total_duration = duration;
-    instance.paused_remaining = duration;
-    instance.due_at = definition->timing == ProcessTimingPolicy::ExternalCompletion
-                          ? GameplayTimePoint{}
-                          : SaturatingAdd(request.now, duration);
+    staged.total_duration = duration;
+    staged.paused_remaining = duration;
+    staged.due_at = definition->timing == ProcessTimingPolicy::ExternalCompletion
+                        ? GameplayTimePoint{}
+                        : SaturatingAdd(request.now, duration);
 
     Bump();
-    instance.revision = revision_;
+    staged.revision = revision_;
+    const auto id = staged.id;
+    auto [instance_it, inserted] = instances_.emplace(id, std::move(staged));
+    if (!inserted)
+        return foundation::Result<ProcessInstanceId>::Failure(
+            Error("gameplay.processes.duplicate_instance", "process instance id already exists"));
+    auto &instance = instance_it->second;
+
+    const auto has_unresolved_legs = [&]() noexcept {
+        return std::any_of(instance.reserved_inputs.begin(), instance.reserved_inputs.end(),
+                           [](const auto &leg) { return leg.state == ProcessInputCommitState::Reserved; }) ||
+               std::any_of(instance.prepared_outputs.begin(), instance.prepared_outputs.end(),
+                           [](const auto &leg) { return leg.state == ProcessOutputCommitState::Prepared; });
+    };
+    const auto mark_reconciliation = [&]() {
+        Bump();
+        instance.state = ProcessInstanceState::ReconciliationRequired;
+        instance.last_updated_at = request.now;
+        instance.revision = revision_;
+        Record({0, ProcessChangeKind::ReconciliationRequired, id, recipe->id, request.actor, request.now,
+                request.context, revision_});
+        return foundation::Result<ProcessInstanceId>::Success(id);
+    };
+
     auto reserve = ReserveInputs(instance, *recipe, request);
     if (!reserve)
     {
-        if (instance.state == ProcessInstanceState::ReconciliationRequired)
-        {
-            const auto id = instance.id;
-            instances_.emplace(id, std::move(instance));
-            Record({0, ProcessChangeKind::ReconciliationRequired, id, recipe->id, request.actor, request.now,
-                    request.context, revision_});
-        }
+        if (instance.state == ProcessInstanceState::ReconciliationRequired || has_unresolved_legs())
+            return mark_reconciliation();
+        instances_.erase(id);
         return foundation::Result<ProcessInstanceId>::Failure(reserve.GetError());
     }
+
     auto prepared_immediate = PrepareOutputs(instance, *recipe, OutputDeliveryPolicy::Immediate, request.context);
     if (!prepared_immediate)
     {
         auto released = ReleaseInputs(instance, request.context);
-        (void)released;
+        if (!released || instance.state == ProcessInstanceState::ReconciliationRequired || has_unresolved_legs())
+            return mark_reconciliation();
+        instances_.erase(id);
         return foundation::Result<ProcessInstanceId>::Failure(prepared_immediate.GetError());
     }
 
     auto start_consumed = ConsumeInputs(instance, InputConsumptionPolicy::ConsumeOnStart, request.context);
     if (!start_consumed)
-    {
-        const auto id = instance.id;
-        instance.state = ProcessInstanceState::ReconciliationRequired;
-        instances_.emplace(id, std::move(instance));
-        Record({0, ProcessChangeKind::ReconciliationRequired, id, recipe->id, request.actor, request.now,
-                request.context, revision_});
-        return foundation::Result<ProcessInstanceId>::Success(id);
-    }
+        return mark_reconciliation();
+
     auto immediate = CommitOutputs(instance, OutputDeliveryPolicy::Immediate, request.context);
     if (!immediate)
-    {
-        const auto id = instance.id;
-        instance.state = ProcessInstanceState::ReconciliationRequired;
-        instances_.emplace(id, std::move(instance));
-        Record({0, ProcessChangeKind::ReconciliationRequired, id, recipe->id, request.actor, request.now,
-                request.context, revision_});
-        return foundation::Result<ProcessInstanceId>::Success(id);
-    }
+        return mark_reconciliation();
 
+    Bump();
     instance.state = ProcessInstanceState::Running;
-    const auto id = instance.id;
-    instances_.emplace(id, std::move(instance));
+    instance.revision = revision_;
     Record({0, ProcessChangeKind::Started, id, recipe->id, request.actor, request.now, request.context, revision_});
     if (definition->timing == ProcessTimingPolicy::Instant)
     {
         auto completed = Complete(id, request.now, request.context);
         if (!completed)
+        {
+            auto current = instances_.find(id);
+            if (current != instances_.end() && !IsTerminal(current->second.state))
+            {
+                if (current->second.state != ProcessInstanceState::ReconciliationRequired)
+                {
+                    Bump();
+                    current->second.state = ProcessInstanceState::ReconciliationRequired;
+                    current->second.last_updated_at = request.now;
+                    current->second.revision = revision_;
+                    Record({0, ProcessChangeKind::ReconciliationRequired, id, recipe->id, request.actor, request.now,
+                            request.context, revision_});
+                }
+                return foundation::Result<ProcessInstanceId>::Success(id);
+            }
             return foundation::Result<ProcessInstanceId>::Failure(completed.GetError());
+        }
     }
     return foundation::Result<ProcessInstanceId>::Success(id);
 }
@@ -676,7 +740,8 @@ foundation::Result<void> ProcessesService::Pause(ProcessInstanceId id, GameplayT
     const auto *definition = recipe ? FindDefinition(recipe->process) : nullptr;
     if (!definition || definition->timing != ProcessTimingPolicy::Timed)
         return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state", "only timed process can be paused"));
-    it->second.paused_remaining = GameplayDuration{std::max<std::int64_t>(0, it->second.due_at.ticks - now.ticks)};
+    const auto remaining = SaturatingDifference(it->second.due_at, now).ticks;
+    it->second.paused_remaining = GameplayDuration{std::max<std::int64_t>(0, remaining)};
     Bump();
     it->second.state = ProcessInstanceState::Paused;
     it->second.last_updated_at = now;
@@ -904,9 +969,21 @@ std::vector<ProcessChange> ProcessesService::ChangesSince(std::uint64_t sequence
 ProcessChangeBatch ProcessesService::ReadChangesSince(std::uint64_t sequence) const
 {
     ProcessChangeBatch batch;
-    batch.latest_sequence = next_change_sequence_ > 0 ? next_change_sequence_ - 1 : 0;
+    const auto latest = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                    : next_change_sequence_ - 1;
+    batch.latest_sequence = latest;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
-    if (!changes_.empty() && sequence + 1 < changes_.front().sequence)
+
+    if (changes_.empty())
+    {
+        // A restored snapshot intentionally does not carry the journal body. Any consumer behind
+        // the captured sequence must rebuild from the authoritative snapshot instead of silently
+        // assuming that no changes occurred.
+        if (sequence < latest)
+            batch.snapshot_required = true;
+        return batch;
+    }
+    if (sequence < changes_.front().sequence - 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -955,6 +1032,7 @@ ProcessesSnapshot ProcessesService::CaptureSnapshot() const
     snapshot.station_ids = station_ids_.GetSnapshot();
     snapshot.instance_ids = instance_ids_.GetSnapshot();
     snapshot.reservation_ids = reservation_ids_.GetSnapshot();
+    snapshot.next_change_sequence = next_change_sequence_;
     snapshot.revision = revision_;
     return snapshot;
 }
@@ -1052,7 +1130,7 @@ foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot sna
     reservation_ids_.Restore(snapshot.reservation_ids);
     revision_ = snapshot.revision;
     changes_.clear();
-    next_change_sequence_ = 1;
+    next_change_sequence_ = snapshot.next_change_sequence;
     diagnostics_ = {};
     diagnostics_.stations = stations_.size();
     for (const auto &[id, instance] : instances_)

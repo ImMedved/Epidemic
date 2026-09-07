@@ -871,13 +871,18 @@ CrimeChangeBatch CrimeService::ReadChangesSince(std::uint64_t sequence) const
 {
     CrimeChangeBatch batch;
     batch.latest_sequence = LatestChangeSequence();
-    batch.oldest_available_sequence = changes_.empty() ? 0 : changes_.front().sequence;
+    batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
+    if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
     if (changes_.empty())
     {
         batch.snapshot_required = sequence < batch.latest_sequence;
         return batch;
     }
-    if (changes_.front().sequence > 1 && sequence < changes_.front().sequence - 1)
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -1313,7 +1318,13 @@ CrimeDiagnostics CrimeService::GetDiagnostics() const noexcept
 
 void CrimeService::Record(CrimeChange change)
 {
-    change.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0)
+        return;
+    change.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(std::move(change));
     while (changes_.size() > change_journal_capacity_)
         changes_.pop_front();

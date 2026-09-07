@@ -953,14 +953,21 @@ AIChangeBatch AIService::ReadChangesSince(std::uint64_t sequence) const
     AIChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
                                                        : next_change_sequence_ - 1;
-    if (changes_.empty())
+    batch.oldest_available_sequence = changes_.empty()
+                                          ? (next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                        : next_change_sequence_)
+                                          : changes_.front().sequence;
+    if (sequence > batch.latest_sequence)
     {
-        batch.oldest_available_sequence = batch.latest_sequence;
+        batch.snapshot_required = true;
         return batch;
     }
-    batch.oldest_available_sequence = changes_.front().sequence;
-    if (sequence != std::numeric_limits<std::uint64_t>::max() &&
-        sequence + 1 < batch.oldest_available_sequence)
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < batch.latest_sequence;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -991,6 +998,7 @@ AISnapshot AIService::CaptureSnapshot() const
     std::sort(snapshot.agents.begin(), snapshot.agents.end(),
               [](const auto &a, const auto &b) { return a.subject < b.subject; });
     snapshot.intent_ids = intent_ids_.GetSnapshot();
+    snapshot.next_change_sequence = next_change_sequence_;
     snapshot.revision = revision_;
     return snapshot;
 }
@@ -1074,7 +1082,7 @@ foundation::Result<void> AIService::RestoreSnapshot(AISnapshot snapshot)
     intent_ids_.Restore(snapshot.intent_ids);
     revision_ = snapshot.revision;
     changes_.clear();
-    next_change_sequence_ = 1;
+    next_change_sequence_ = snapshot.next_change_sequence;
     tick_budget_ = {};
     diagnostics_ = {};
     return foundation::Result<void>::Success();

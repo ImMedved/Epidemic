@@ -361,6 +361,7 @@ struct PerceptionSnapshot
     std::vector<AwarenessRecord> awareness;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot stimulus_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot observation_ids{};
+    std::uint64_t next_change_sequence = 1;
     Revision revision{};
 };
 struct PerceptionDiagnostics

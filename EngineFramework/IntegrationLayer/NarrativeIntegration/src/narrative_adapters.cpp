@@ -220,7 +220,9 @@ std::vector<std::byte> EncodeKnowledgeReference(const knowledge::KnowledgeRecord
     return std::move(writer).Take();
 }
 
-foundation::Result<NarrativeExternalConsequenceSnapshot> DecodeOutboxSnapshot(std::span<const std::byte> payload)
+foundation::Result<NarrativeExternalConsequenceSnapshot> DecodeOutboxSnapshot(
+    std::span<const std::byte> payload,
+    std::size_t max_records)
 {
     ByteReader reader(payload);
     std::uint32_t magic = 0, version = 0, count = 0;
@@ -230,6 +232,11 @@ foundation::Result<NarrativeExternalConsequenceSnapshot> DecodeOutboxSnapshot(st
     {
         return foundation::Result<NarrativeExternalConsequenceSnapshot>::Failure(
             Error("gameplay.narrative_integration.invalid_delivery_snapshot", "invalid external consequence snapshot header"));
+    }
+    if (static_cast<std::size_t>(count) > max_records)
+    {
+        return foundation::Result<NarrativeExternalConsequenceSnapshot>::Failure(
+            Error("gameplay.narrative_integration.delivery_snapshot_capacity", "external consequence snapshot exceeds configured capacity"));
     }
     NarrativeExternalConsequenceSnapshot snapshot;
     snapshot.revision = Revision{revision};
@@ -781,7 +788,7 @@ foundation::Result<void> NarrativeExternalConsequenceSaveParticipant::ValidateSn
         section.payload_hash != savegame::SaveGameOrchestrator::HashBytes(section.payload))
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative_integration.invalid_save_section", "invalid external consequence save section"));
-    auto decoded = DecodeOutboxSnapshot(section.payload);
+    auto decoded = DecodeOutboxSnapshot(section.payload, outbox_.Capacity());
     if (!decoded)
         return foundation::Result<void>::Failure(decoded.GetError());
     return outbox_.ValidateSnapshot(decoded.Value());
@@ -797,7 +804,7 @@ foundation::Result<std::unique_ptr<savegame::IRestoreStage>> NarrativeExternalCo
         return foundation::Result<std::unique_ptr<savegame::IRestoreStage>>::Failure(
             Error("gameplay.narrative_integration.invalid_save_section", "invalid external consequence save section"));
     }
-    auto decoded = DecodeOutboxSnapshot(section.payload);
+    auto decoded = DecodeOutboxSnapshot(section.payload, outbox_.Capacity());
     if (!decoded)
         return foundation::Result<std::unique_ptr<savegame::IRestoreStage>>::Failure(decoded.GetError());
     auto prepared = outbox_.PrepareSnapshotForRestore(std::move(decoded.Value()));

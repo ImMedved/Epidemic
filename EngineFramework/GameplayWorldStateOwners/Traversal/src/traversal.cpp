@@ -674,8 +674,19 @@ std::vector<TraversalChange> TraversalService::ChangesSince(std::uint64_t sequen
 TraversalChangeBatch TraversalService::ReadChangesSince(std::uint64_t sequence) const
 {
     TraversalChangeBatch batch;
+    const auto latest = LatestChangeSequence();
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
-    if (!changes_.empty() && sequence + 1 < changes_.front().sequence)
+    if (next_change_sequence_ == 0 || sequence > latest)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < latest;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -748,7 +759,7 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     std::unordered_map<GameplayObjectRef, TraversalCarrierBinding, RefHash> restored_bindings;
     std::deque<TraversalChange> restored_changes;
 
-    if (snapshot.journal.size() > kChangeJournalCapacity || snapshot.next_change_sequence == 0)
+    if (snapshot.journal.size() > kChangeJournalCapacity)
         return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid snapshot journal"));
 
     std::uint64_t max_session_low = 0;
@@ -804,10 +815,16 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
             !restored_bindings.emplace(binding.passenger, binding).second)
             return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid carrier binding"));
     }
+    if (snapshot.next_change_sequence == 0 &&
+        (snapshot.journal.empty() || snapshot.journal.back().sequence != std::numeric_limits<std::uint64_t>::max()))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.restore_invalid", "exhausted traversal journal is missing terminal sequence"));
+
     std::uint64_t previous = 0;
     for (const auto& change : snapshot.journal)
     {
-        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) || change.sequence >= snapshot.next_change_sequence)
+        const bool reaches_next = snapshot.next_change_sequence != 0 && change.sequence >= snapshot.next_change_sequence;
+        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) || reaches_next)
             return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid journal sequence"));
         restored_changes.push_back(change);
         previous = change.sequence;
@@ -857,7 +874,13 @@ TraversalDiagnostics TraversalService::GetDiagnostics() const noexcept
 
 void TraversalService::Record(TraversalChange change)
 {
-    change.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0)
+        return;
+    change.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(std::move(change));
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();

@@ -139,7 +139,7 @@ foundation::Result<MemoryRecordId> KnowledgeService::CreateMemory(CreateMemoryRe
         return foundation::Result<MemoryRecordId>::Failure(Error("gameplay.knowledge.invalid_memory","invalid memory request"));
     const auto persistence=r.persistence.value_or(pit->second.retention); if(!EnumInRange(persistence,MemoryPersistencePolicy::Timed))return foundation::Result<MemoryRecordId>::Failure(Error("gameplay.knowledge.invalid_memory","invalid memory persistence"));
     auto id=MemoryRecordId{memory_ids_.Next()};if(!id.IsValid())return foundation::Result<MemoryRecordId>::Failure(Error("gameplay.knowledge.id_exhausted","memory id generator exhausted"));
-    Bump();MemoryRecord m; m.id=id;m.owner=r.owner;m.type=r.type;m.time=r.context.time;m.subject=r.subject;m.area=r.area;m.importance=r.importance;m.persistence=persistence;m.decay_after=r.decay_after;m.payload=std::move(r.payload);m.revision=revision_;
+    Bump();MemoryRecord m; m.id=id;m.owner=r.owner;m.type=r.type;m.time=r.context.time;m.subject=r.subject;m.area=r.area;m.importance=r.importance;m.emotion=r.emotion;m.persistence=persistence;m.decay_after=r.decay_after;m.payload=std::move(r.payload);m.revision=revision_;
     memories_.emplace(id,m);IndexMemory(m);Record({0,KnowledgeChangeKind::MemoryCreated,r.owner,r.subject,{},id,{},r.context,revision_});return foundation::Result<MemoryRecordId>::Success(id);
 }
 
@@ -152,7 +152,7 @@ foundation::Result<MemoryRecordId> KnowledgeService::CompactMemories(GameplayObj
     const auto persistence=summary.persistence.value_or(pit->second.retention);if(summary.decay_after.ticks<0||!EnumInRange(persistence,MemoryPersistencePolicy::Timed))return foundation::Result<MemoryRecordId>::Failure(Error("gameplay.knowledge.invalid_compaction","invalid summary memory"));
     auto new_id=MemoryRecordId{memory_ids_.Next()};if(!new_id.IsValid())return foundation::Result<MemoryRecordId>::Failure(Error("gameplay.knowledge.id_exhausted","memory id generator exhausted"));
     if(context.time.ticks!=0||summary.context.time.ticks==0)summary.context=context;
-    Bump();MemoryRecord m; m.id=new_id;m.owner=owner;m.type=summary.type;m.time=summary.context.time;m.subject=summary.subject;m.area=summary.area;m.importance=summary.importance;m.persistence=persistence;m.decay_after=summary.decay_after;m.payload=std::move(summary.payload);m.revision=revision_;
+    Bump();MemoryRecord m; m.id=new_id;m.owner=owner;m.type=summary.type;m.time=summary.context.time;m.subject=summary.subject;m.area=summary.area;m.importance=summary.importance;m.emotion=summary.emotion;m.persistence=persistence;m.decay_after=summary.decay_after;m.payload=std::move(summary.payload);m.revision=revision_;
     for(auto id:ids){auto it=memories_.find(id);UnindexMemory(it->second);memories_.erase(it);}memories_.emplace(new_id,m);IndexMemory(m);++diagnostics_.compacted_memories;
     Record({0,KnowledgeChangeKind::MemoryCompacted,owner,summary.subject,{},new_id,{},context,revision_});return foundation::Result<MemoryRecordId>::Success(new_id);
 }
@@ -257,8 +257,12 @@ std::vector<MemoryRecord> KnowledgeService::FindImportantMemories(GameplayObject
 
 KnowledgeChangeBatch KnowledgeService::ReadChangesSince(std::uint64_t seq)const
 {
-    KnowledgeChangeBatch b;b.latest_sequence=next_change_sequence_==0?std::numeric_limits<std::uint64_t>::max():next_change_sequence_-1;b.oldest_available_sequence=changes_.empty()?b.latest_sequence+static_cast<std::uint64_t>(b.latest_sequence!=std::numeric_limits<std::uint64_t>::max()):changes_.front().sequence;
-    if(!changes_.empty()&&seq+static_cast<std::uint64_t>(seq!=std::numeric_limits<std::uint64_t>::max())<changes_.front().sequence){b.snapshot_required=true;return b;}
+    KnowledgeChangeBatch b;
+    b.latest_sequence=next_change_sequence_==0?std::numeric_limits<std::uint64_t>::max():next_change_sequence_-1;
+    b.oldest_available_sequence=changes_.empty()?(next_change_sequence_==0?std::numeric_limits<std::uint64_t>::max():next_change_sequence_):changes_.front().sequence;
+    if(seq>b.latest_sequence){b.snapshot_required=true;return b;}
+    if(changes_.empty()){b.snapshot_required=seq<b.latest_sequence;return b;}
+    if(seq<b.oldest_available_sequence&&b.oldest_available_sequence-seq>1){b.snapshot_required=true;return b;}
     for(const auto& c:changes_)
     {
         if(c.sequence>seq)
@@ -270,7 +274,7 @@ KnowledgeChangeBatch KnowledgeService::ReadChangesSince(std::uint64_t seq)const
 KnowledgeSnapshot KnowledgeService::CaptureSnapshot()const
 {
     KnowledgeSnapshot s;for(const auto& [o,p]:profiles_){(void)o;s.profiles.push_back(p);}for(const auto& [id,k]:knowledge_){(void)id;if(k.persistence==MemoryPersistencePolicy::Persistent||k.persistence==MemoryPersistencePolicy::Timed)s.knowledge.push_back(k);}for(const auto& [id,m]:memories_){(void)id;if(m.persistence==MemoryPersistencePolicy::Persistent||m.persistence==MemoryPersistencePolicy::Timed)s.memories.push_back(m);}
-    std::sort(s.profiles.begin(),s.profiles.end(),[](const auto&a,const auto&b){return a.subject<b.subject;});std::sort(s.knowledge.begin(),s.knowledge.end(),[](const auto&a,const auto&b){return a.id<b.id;});std::sort(s.memories.begin(),s.memories.end(),[](const auto&a,const auto&b){return a.id<b.id;});s.knowledge_ids=knowledge_ids_.GetSnapshot();s.memory_ids=memory_ids_.GetSnapshot();s.revision=revision_;return s;
+    std::sort(s.profiles.begin(),s.profiles.end(),[](const auto&a,const auto&b){return a.subject<b.subject;});std::sort(s.knowledge.begin(),s.knowledge.end(),[](const auto&a,const auto&b){return a.id<b.id;});std::sort(s.memories.begin(),s.memories.end(),[](const auto&a,const auto&b){return a.id<b.id;});s.knowledge_ids=knowledge_ids_.GetSnapshot();s.memory_ids=memory_ids_.GetSnapshot();s.next_change_sequence=next_change_sequence_;s.revision=revision_;return s;
 }
 
 foundation::Result<void> KnowledgeService::RestoreSnapshot(KnowledgeSnapshot s)
@@ -297,7 +301,7 @@ foundation::Result<void> KnowledgeService::RestoreSnapshot(KnowledgeSnapshot s)
     }
     if(!ValidateGenerator(s.knowledge_ids,knowledge_ids_.GetSnapshot().scope,max_k)||!ValidateGenerator(s.memory_ids,memory_ids_.GetSnapshot().scope,max_m))
         return foundation::Result<void>::Failure(Error("gameplay.knowledge.restore_invalid","invalid id generator snapshot"));
-    profiles_=std::move(new_profiles);knowledge_=std::move(new_knowledge);memories_=std::move(new_memories);knowledge_ids_.Restore(s.knowledge_ids);memory_ids_.Restore(s.memory_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;definitions_frozen_=true;RebuildIndexes();return foundation::Result<void>::Success();
+    profiles_=std::move(new_profiles);knowledge_=std::move(new_knowledge);memories_=std::move(new_memories);knowledge_ids_.Restore(s.knowledge_ids);memory_ids_.Restore(s.memory_ids);revision_=s.revision;changes_.clear();next_change_sequence_=s.next_change_sequence;definitions_frozen_=true;RebuildIndexes();return foundation::Result<void>::Success();
 }
 
 KnowledgeDiagnostics KnowledgeService::GetDiagnostics()const noexcept{auto d=diagnostics_;d.profiles=profiles_.size();d.knowledge_records=knowledge_.size();d.memory_records=memories_.size();return d;}

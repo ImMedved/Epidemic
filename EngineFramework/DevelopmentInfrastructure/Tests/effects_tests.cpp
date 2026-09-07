@@ -1,5 +1,6 @@
 #include "Epidemic/GameFramework/Effects/effects.h"
 
+#include <limits>
 #include <unordered_map>
 #include <optional>
 #include <stdexcept>
@@ -206,6 +207,10 @@ int main()
         throwing_result.Value().operations.front().disposition != EffectOperationDisposition::Failed) return 14;
 
     // Restore must reject wrong generator scopes and a deferred generator behind restored IDs without mutating service state.
+    if (!service.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 19;
+    EffectService empty_journal;
+    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 20;
+
     const auto stable_snapshot = service.CaptureSnapshot();
     auto bad_scope = stable_snapshot;
     bad_scope.execution_ids.scope ^= 0x55u;

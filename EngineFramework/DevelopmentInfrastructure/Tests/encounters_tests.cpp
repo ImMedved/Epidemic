@@ -1,6 +1,7 @@
 #include "Epidemic/GameFramework/Encounters/encounters.h"
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::encounters;
@@ -93,7 +94,16 @@ int main()
     auto stale=journal.ReadChangesSince(0); Check(stale.snapshot_required,"journal gap requires snapshot");
 
     // Restore is transactional and validates generator scopes/references before swap.
+    const auto pre_restore_cursor = service.ReadChangesSince(0).latest_sequence;
+    Check(pre_restore_cursor >= 2, "pre-restore encounter journal has multiple changes");
     auto snapshot=service.CaptureSnapshot(); EncountersService restored; Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)),"restore"); Check(restored.GetEncounterInstance(first.encounter_instance)!=nullptr,"restore encounter");
+    Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,"pre-restore encounter cursor requires snapshot");
+    Check(restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,"future encounter cursor incompatible");
+    SpawnPoint epoch_point; epoch_point.area=forest; epoch_point.position=Ref("world.position","forest.epoch");
+    Check(static_cast<bool>(restored.AddSpawnPoint(epoch_point)),"post-restore encounter change");
+    Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,"old encounter cursor remains incompatible");
+    auto epoch_batch=restored.ReadChangesSince(0); Check(!epoch_batch.snapshot_required&&!epoch_batch.changes.empty(),"new encounter epoch readable");
+    auto epoch_current=restored.ReadChangesSince(epoch_batch.latest_sequence); Check(!epoch_current.snapshot_required&&epoch_current.changes.empty(),"exact encounter cursor current");
     auto corrupted=snapshot; corrupted.instance_ids.scope=0xDEAD; const auto before=restored.CaptureSnapshot(); Check(!restored.RestoreSnapshot(corrupted),"reject invalid generator scope"); Check(restored.CaptureSnapshot().instances.size()==before.instances.size(),"failed restore leaves state intact");
 
     // Caller supplied IDs from the service scope advance the matching generator.

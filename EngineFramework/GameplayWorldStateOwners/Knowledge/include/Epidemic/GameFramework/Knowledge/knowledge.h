@@ -73,7 +73,7 @@ struct LearnKnowledgeRequest
 };
 struct CreateMemoryRequest
 {
-    GameplayObjectRef owner{}; MemoryTypeId type{}; GameplayObjectRef subject{}; GameplayObjectRef area{}; MemoryImportance importance=MemoryImportance::Normal;
+    GameplayObjectRef owner{}; MemoryTypeId type{}; GameplayObjectRef subject{}; GameplayObjectRef area{}; MemoryImportance importance=MemoryImportance::Normal; TagId emotion{};
     std::optional<MemoryPersistencePolicy> persistence; GameplayDuration decay_after{}; std::vector<std::byte> payload; GameplayContext context{};
 };
 struct ShareKnowledgeRequest { GameplayObjectRef speaker{}; GameplayObjectRef listener{}; KnowledgeRecordId record{}; KnowledgeShareMode mode=KnowledgeShareMode::Tell; GameplayContext context{}; };
@@ -95,7 +95,7 @@ struct KnowledgeChangeBatch
 struct KnowledgeSnapshot
 {
     std::vector<KnowledgeProfile> profiles; std::vector<KnowledgeRecord> knowledge; std::vector<MemoryRecord> memories;
-    MonotonicIdGenerator<GameplayObjectId>::Snapshot knowledge_ids{}; MonotonicIdGenerator<GameplayObjectId>::Snapshot memory_ids{}; Revision revision{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot knowledge_ids{}; MonotonicIdGenerator<GameplayObjectId>::Snapshot memory_ids{}; std::uint64_t next_change_sequence=1; Revision revision{};
 };
 struct KnowledgeDiagnostics
 {

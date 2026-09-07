@@ -732,17 +732,23 @@ foundation::Result<void> ConditionService::NotifySubjectMaterialization(
             {
                 if (current.materialization_paused_at.has_value() && context.time >= *current.materialization_paused_at)
                 {
-                    const GameplayDuration paused_for{context.time.ticks - current.materialization_paused_at->ticks};
+                    const auto paused_for = ::epidemic::gameplay::CheckedDifference(
+                        context.time, *current.materialization_paused_at);
+                    if (!paused_for.has_value())
+                    {
+                        return foundation::Result<void>::Failure(
+                            Error("gameplay.time_overflow", "condition materialization pause interval overflows gameplay time"));
+                    }
                     std::optional<GameplayTimePoint> shifted_expiration;
                     if (current.expires_at.has_value())
                     {
-                        shifted_expiration = ::epidemic::gameplay::CheckedAdd(*current.expires_at, paused_for);
+                        shifted_expiration = ::epidemic::gameplay::CheckedAdd(*current.expires_at, *paused_for);
                         if (!shifted_expiration.has_value())
                         {
                             return foundation::Result<void>::Failure(Error("gameplay.time_overflow", "condition resume expiration overflows gameplay time"));
                         }
                     }
-                    const auto shifted_applied = ::epidemic::gameplay::CheckedAdd(current.applied_at, paused_for);
+                    const auto shifted_applied = ::epidemic::gameplay::CheckedAdd(current.applied_at, *paused_for);
                     if (!shifted_applied.has_value())
                     {
                         return foundation::Result<void>::Failure(Error("gameplay.time_overflow", "condition resume phase overflows gameplay time"));

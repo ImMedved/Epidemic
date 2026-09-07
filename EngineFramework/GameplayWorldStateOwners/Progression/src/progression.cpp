@@ -330,7 +330,13 @@ void ProgressionService::Bump(Profile& profile) noexcept
 
 void ProgressionService::Record(ProgressionChange change)
 {
-    change.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0)
+        return;
+    change.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(std::move(change));
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();
@@ -1086,8 +1092,20 @@ std::vector<ProgressionChange> ProgressionService::ChangesSince(std::uint64_t se
 ProgressionChangeBatch ProgressionService::ReadChangesSince(std::uint64_t sequence) const
 {
     ProgressionChangeBatch batch;
+    const auto latest = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                   : next_change_sequence_ - 1;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
-    if (!changes_.empty() && sequence + 1 < changes_.front().sequence)
+    if (next_change_sequence_ == 0 || sequence > latest)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < latest;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -1181,19 +1199,21 @@ foundation::Result<void> ProgressionService::RestoreSnapshot(ProgressionSnapshot
     if (snapshot.journal.size() > kChangeJournalCapacity)
         return foundation::Result<void>::Failure(
             Error("gameplay.progression.restore_invalid", "change journal exceeds capacity"));
+    if (snapshot.next_change_sequence == 0 &&
+        (snapshot.journal.empty() || snapshot.journal.back().sequence != std::numeric_limits<std::uint64_t>::max()))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.progression.restore_invalid", "exhausted progression journal is missing terminal sequence"));
+
     std::uint64_t previous = 0;
     for (const auto& change : snapshot.journal)
     {
-        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) ||
-            change.sequence >= snapshot.next_change_sequence)
+        const bool reaches_next = snapshot.next_change_sequence != 0 && change.sequence >= snapshot.next_change_sequence;
+        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) || reaches_next)
             return foundation::Result<void>::Failure(
                 Error("gameplay.progression.restore_invalid", "invalid change journal sequence"));
         restored_changes.push_back(change);
         previous = change.sequence;
     }
-    if (snapshot.next_change_sequence == 0)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.progression.restore_invalid", "invalid next change sequence"));
     if (!ValidGeneratorSnapshot(snapshot.modifier_ids, modifier_scope, max_modifier_low))
         return foundation::Result<void>::Failure(
             Error("gameplay.progression.restore_invalid", "invalid progression modifier id generator snapshot"));

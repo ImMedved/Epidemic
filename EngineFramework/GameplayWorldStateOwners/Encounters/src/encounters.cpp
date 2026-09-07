@@ -521,10 +521,28 @@ std::vector<SpawnPoint> EncountersService::FindSpawnPointsInArea(GameplayObjectR
 
 EncounterChangeBatch EncountersService::ReadChangesSince(std::uint64_t sequence) const
 {
-    EncounterChangeBatch batch; batch.latest_sequence = next_change_sequence_ > 0 ? next_change_sequence_ - 1 : std::numeric_limits<std::uint64_t>::max();
-    batch.oldest_available_sequence = changes_.empty() ? 0 : changes_.front().sequence;
-    if (!changes_.empty() && sequence < changes_.front().sequence - 1) { batch.snapshot_required = true; return batch; }
-    for (const auto& change : changes_) if (change.sequence > sequence) batch.changes.push_back(change);
+    EncounterChangeBatch batch;
+    batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                        : next_change_sequence_ - 1;
+    batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
+    if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < batch.latest_sequence;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    for (const auto& change : changes_)
+        if (change.sequence > sequence)
+            batch.changes.push_back(change);
     return batch;
 }
 

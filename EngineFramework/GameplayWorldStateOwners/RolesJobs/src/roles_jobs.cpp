@@ -636,7 +636,8 @@ std::vector<DutyId> RolesJobsService::ActivateDueShifts(GameplayTimePoint from, 
         if (!IsWorkplaceOperational(assignment_it->second.workplace))
         {
             const auto suspended = SuspendAssignment(schedule.assignment, context);
-            (void)suspended;
+            if (!suspended)
+                ++diagnostics_.automatic_suspension_failures;
             continue;
         }
         const auto definition_it = definitions_.find(assignment_it->second.job);
@@ -658,22 +659,33 @@ std::vector<DutyId> RolesJobsService::ActivateDueShifts(GameplayTimePoint from, 
             auto occurrence_start = shift.start;
             if (shift.recurrence.ticks > 0)
             {
-                const auto base_end = shift.start + shift.duration;
-                if (base_end.ticks <= from.ticks)
+                const auto base_end = CheckedAdd(shift.start, shift.duration);
+                if (!base_end.has_value())
+                    continue;
+                if (base_end->ticks <= from.ticks)
                 {
-                    const auto delta = from.ticks - base_end.ticks;
-                    const auto skip_count = delta / shift.recurrence.ticks + 1;
-                    if (skip_count > 0 && shift.recurrence.ticks > 0 &&
-                        skip_count > std::numeric_limits<std::int64_t>::max() / shift.recurrence.ticks)
+                    const auto delta = CheckedDifference(from, *base_end);
+                    if (!delta.has_value())
                         continue;
-                    occurrence_start = shift.start + GameplayDuration{skip_count * shift.recurrence.ticks};
+                    const auto skipped_occurrences = delta->ticks / shift.recurrence.ticks;
+                    if (skipped_occurrences == std::numeric_limits<std::int64_t>::max())
+                        continue;
+                    const auto skip_count = skipped_occurrences + 1;
+                    if (skip_count > std::numeric_limits<std::int64_t>::max() / shift.recurrence.ticks)
+                        continue;
+                    const auto advanced = CheckedAdd(shift.start, GameplayDuration{skip_count * shift.recurrence.ticks});
+                    if (!advanced.has_value())
+                        continue;
+                    occurrence_start = *advanced;
                 }
             }
 
             while (occurrence_start.ticks <= to.ticks)
             {
-                const auto occurrence_end = occurrence_start + shift.duration;
-                if (!IntersectsOpenClosed(from, to, occurrence_start, occurrence_end))
+                const auto occurrence_end = CheckedAdd(occurrence_start, shift.duration);
+                if (!occurrence_end.has_value())
+                    break;
+                if (!IntersectsOpenClosed(from, to, occurrence_start, *occurrence_end))
                     break;
 
                 if (!HasDutyOccurrence(schedule.assignment, shift.id, occurrence_start))
@@ -683,11 +695,11 @@ std::vector<DutyId> RolesJobsService::ActivateDueShifts(GameplayTimePoint from, 
                     duty.type = shift.task_type.IsValid() ? TypeId{shift.task_type.value}
                                                           : TypeId{definition_it->second.default_tasks.front().value};
                     duty.priority = schedule.priority;
-                    duty.state = IsMissedAt(to, occurrence_end) ? DutyState::Skipped : DutyState::Active;
+                    duty.state = IsMissedAt(to, *occurrence_end) ? DutyState::Skipped : DutyState::Active;
                     duty.assignment = schedule.assignment;
                     duty.shift = shift.id;
                     duty.scheduled_start = occurrence_start;
-                    duty.scheduled_end = occurrence_end;
+                    duty.scheduled_end = *occurrence_end;
                     duty.payload = shift.payload;
                     if (shift.task_type.IsValid())
                         duty.tasks.push_back(shift.task_type);
@@ -696,7 +708,7 @@ std::vector<DutyId> RolesJobsService::ActivateDueShifts(GameplayTimePoint from, 
 
                     const auto created_duty = CreateDutyInternal(
                         std::move(duty),
-                        IsMissedAt(to, occurrence_end) ? RolesJobsChangeKind::DutySkipped
+                        IsMissedAt(to, *occurrence_end) ? RolesJobsChangeKind::DutySkipped
                                                        : RolesJobsChangeKind::ShiftStarted,
                         context);
                     if (created_duty)
@@ -705,9 +717,10 @@ std::vector<DutyId> RolesJobsService::ActivateDueShifts(GameplayTimePoint from, 
 
                 if (shift.recurrence.ticks <= 0)
                     break;
-                if (occurrence_start.ticks > std::numeric_limits<std::int64_t>::max() - shift.recurrence.ticks)
+                const auto next_occurrence = CheckedAdd(occurrence_start, shift.recurrence);
+                if (!next_occurrence.has_value())
                     break;
-                occurrence_start = occurrence_start + shift.recurrence;
+                occurrence_start = *next_occurrence;
             }
         }
     }
@@ -913,7 +926,17 @@ RolesJobsChangeBatch RolesJobsService::ReadChangesSince(std::uint64_t sequence) 
     RolesJobsChangeBatch batch;
     batch.latest_sequence = LatestChangeSequence();
     batch.oldest_available_sequence = OldestChangeSequence();
-    if (!changes_.empty() && sequence + 1 < changes_.front().sequence)
+    if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < batch.latest_sequence;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;
@@ -1176,7 +1199,11 @@ void RolesJobsService::Record(RolesJobsChange change)
 {
     if (next_change_sequence_ == 0)
         return;
-    change.sequence = next_change_sequence_++;
+    change.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(change);
     while (changes_.size() > change_retention_capacity_)
         changes_.pop_front();

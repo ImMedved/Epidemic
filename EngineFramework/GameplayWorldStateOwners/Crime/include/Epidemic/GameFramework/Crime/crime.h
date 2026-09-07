@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <deque>
 #include <optional>
 #include <string>
@@ -509,7 +510,8 @@ class CrimeService
     void SetChangeJournalCapacity(std::size_t capacity) noexcept;
     [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
     {
-        return next_change_sequence_ > 1 ? next_change_sequence_ - 1 : 0;
+        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                          : next_change_sequence_ - 1;
     }
     [[nodiscard]] CrimeSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(CrimeSnapshot snapshot);

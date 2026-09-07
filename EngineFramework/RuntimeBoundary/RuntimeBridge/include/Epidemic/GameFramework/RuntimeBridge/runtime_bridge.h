@@ -183,6 +183,8 @@ struct RuntimeBridgeQueuePolicy
 {
     std::size_t max_projection_requests = 16384;
     std::size_t max_contact_backlog = 32768;
+    std::uint32_t max_projection_attempts = 3;
+    std::size_t max_reconciliation_requests = 4096;
 };
 struct RuntimeBridgeCapabilities
 {
@@ -218,7 +220,16 @@ struct RuntimeBridgeDiagnostics
     std::uint64_t active_bindings = 0, projection_requests = 0, projection_failures = 0, projection_backlog = 0,
                   observations = 0, stale_observations = 0, materializations = 0, dematerializations = 0,
                   coalesced_projection_requests = 0, rejected_projection_requests = 0, dropped_contacts = 0,
-                  contact_backlog = 0;
+                  contact_backlog = 0, reconciliation_requests = 0, invalid_runtime_observations = 0;
+};
+
+struct RuntimeProjectionReconciliationRecord
+{
+    std::uint64_t sequence = 0;
+    RuntimeProjectionPriority priority = RuntimeProjectionPriority::Normal;
+    RuntimeProjectionRequest request;
+    std::uint32_t attempts = 0;
+    std::optional<foundation::Error> last_error;
 };
 
 struct RuntimeMaterializationResult
@@ -418,6 +429,9 @@ class RuntimeBridgeService
     {
         return backend_.SampleEnvironment(region);
     }
+    [[nodiscard]] std::vector<RuntimeProjectionReconciliationRecord> ReconciliationRequests() const;
+    [[nodiscard]] foundation::Result<void> RetryReconciliation(std::uint64_t sequence);
+    [[nodiscard]] foundation::Result<void> DiscardReconciliation(std::uint64_t sequence);
     [[nodiscard]] RuntimeBridgeDiagnostics GetDiagnostics() const noexcept;
 
   private:
@@ -443,10 +457,11 @@ class RuntimeBridgeService
         std::uint64_t sequence = 0;
         RuntimeProjectionPriority priority = RuntimeProjectionPriority::Normal;
         RuntimeProjectionRequest request;
+        std::uint32_t attempts = 0;
+        std::optional<foundation::Error> last_error;
     };
     [[nodiscard]] foundation::Result<void> ProcessOne(const RuntimeProjectionRequest& request, RuntimeBridgeProcessResult& result);
     static RuntimeProjectionPriority PriorityOf(const RuntimeProjectionRequest& request);
-    static RuntimeWorldPosition Quantize(RuntimeVector3 p) noexcept;
     void RemoveBinding(GameplayObjectRef object);
 
     IRuntimeBridgeBackend& backend_;
@@ -458,11 +473,12 @@ class RuntimeBridgeService
     std::unordered_map<std::uint64_t, Revision> environment_projection_revision_;
     std::unordered_map<GameplayObjectId, Revision> world_projection_revision_;
     std::vector<Queued> queue_;
+    std::vector<RuntimeProjectionReconciliationRecord> reconciliation_;
     std::vector<RuntimeContactObservation> contact_backlog_;
     std::uint64_t next_sequence_ = 1;
     std::uint64_t projection_requests_ = 0, projection_failures_ = 0, observations_ = 0, stale_observations_ = 0,
                   materializations_ = 0, dematerializations_ = 0, coalesced_projection_requests_ = 0,
-                  rejected_projection_requests_ = 0, dropped_contacts_ = 0;
+                  rejected_projection_requests_ = 0, dropped_contacts_ = 0, invalid_runtime_observations_ = 0;
 };
 } // namespace epidemic::gameplay::runtime_bridge
 

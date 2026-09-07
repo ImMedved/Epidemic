@@ -775,7 +775,13 @@ foundation::Result<EffectRequest> EffectService::TakeDeferredBySchedule(Schedule
 
 void EffectService::RecordChange(EffectChange change)
 {
-    change.sequence = next_change_sequence_++;
+    if (next_change_sequence_ == 0)
+        return;
+    change.sequence = next_change_sequence_;
+    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        next_change_sequence_ = 0;
+    else
+        ++next_change_sequence_;
     changes_.push_back(std::move(change));
     while (changes_.size() > kChangeJournalCapacity)
     {
@@ -791,16 +797,19 @@ std::vector<EffectChange> EffectService::ChangesSince(std::uint64_t sequence) co
 EffectChangeBatch EffectService::ReadChangesSince(std::uint64_t sequence) const
 {
     EffectChangeBatch batch;
+    const auto latest = LatestChangeSequence();
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
-    if (changes_.empty())
+    if (next_change_sequence_ == 0 || sequence > latest)
     {
-        if (next_change_sequence_ > 1 && sequence < next_change_sequence_ - 1)
-        {
-            batch.snapshot_required = true;
-        }
+        batch.snapshot_required = true;
         return batch;
     }
-    if (sequence < changes_.front().sequence - 1)
+    if (changes_.empty())
+    {
+        batch.snapshot_required = sequence < latest;
+        return batch;
+    }
+    if (sequence < batch.oldest_available_sequence && batch.oldest_available_sequence - sequence > 1)
     {
         batch.snapshot_required = true;
         return batch;

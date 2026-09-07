@@ -16,9 +16,24 @@ foundation::Error E(std::string_view code, std::string_view message)
 {
     return foundation::Error::Create(code, message);
 }
-std::int64_t Milli(float value) noexcept
+template <typename Integer>
+foundation::Result<Integer> CheckedScaledInteger(float value)
 {
-    return static_cast<std::int64_t>(std::llround(static_cast<double>(value) * 1000.0));
+    if (!std::isfinite(value))
+    {
+        return foundation::Result<Integer>::Failure(
+            E("gameplay.runtime_bridge.invalid_runtime_observation", "runtime observation contains a non-finite numeric value"));
+    }
+    const long double scaled = static_cast<long double>(value) * 1000.0L;
+    const long double rounded = std::round(scaled);
+    const long double minimum = static_cast<long double>(std::numeric_limits<Integer>::min());
+    const long double maximum = static_cast<long double>(std::numeric_limits<Integer>::max());
+    if (!std::isfinite(scaled) || rounded < minimum || rounded > maximum)
+    {
+        return foundation::Result<Integer>::Failure(
+            E("gameplay.runtime_bridge.invalid_runtime_observation", "runtime observation is outside the semantic numeric range"));
+    }
+    return foundation::Result<Integer>::Success(static_cast<Integer>(rounded));
 }
 RuntimeVector3 ToBridge(runtime::Vec3 value) noexcept
 {
@@ -38,9 +53,26 @@ runtime::Vec3 ToRuntime(RuntimeWorldPosition value) noexcept
                          static_cast<float>(value.y_mm) / 1000.0f,
                          static_cast<float>(value.z_mm) / 1000.0f};
 }
-RuntimeWorldPosition ToWorldPosition(runtime::Vec3 value) noexcept
+foundation::Result<RuntimeWorldPosition> ToWorldPosition(runtime::Vec3 value)
 {
-    return RuntimeWorldPosition{Milli(value.x), Milli(value.y), Milli(value.z)};
+    auto x = CheckedScaledInteger<std::int64_t>(value.x);
+    auto y = CheckedScaledInteger<std::int64_t>(value.y);
+    auto z = CheckedScaledInteger<std::int64_t>(value.z);
+    if (!x) return foundation::Result<RuntimeWorldPosition>::Failure(x.GetError());
+    if (!y) return foundation::Result<RuntimeWorldPosition>::Failure(y.GetError());
+    if (!z) return foundation::Result<RuntimeWorldPosition>::Failure(z.GetError());
+    return foundation::Result<RuntimeWorldPosition>::Success({x.Value(), y.Value(), z.Value()});
+}
+
+foundation::Result<RuntimeWorldPosition> ToWorldPosition(RuntimeVector3 value)
+{
+    auto x = CheckedScaledInteger<std::int64_t>(value.x);
+    auto y = CheckedScaledInteger<std::int64_t>(value.y);
+    auto z = CheckedScaledInteger<std::int64_t>(value.z);
+    if (!x) return foundation::Result<RuntimeWorldPosition>::Failure(x.GetError());
+    if (!y) return foundation::Result<RuntimeWorldPosition>::Failure(y.GetError());
+    if (!z) return foundation::Result<RuntimeWorldPosition>::Failure(z.GetError());
+    return foundation::Result<RuntimeWorldPosition>::Success({x.Value(), y.Value(), z.Value()});
 }
 bool TakeCounter(std::uint64_t& next, std::uint64_t& value) noexcept
 {
@@ -475,8 +507,13 @@ foundation::Result<RuntimeTransformObservation> EngineRuntimeBridgeBackend::Obse
             break;
         }
     }
+    auto semantic_position = ToWorldPosition(placement->transform.position);
+    if (!semantic_position)
+    {
+        return foundation::Result<RuntimeTransformObservation>::Failure(semantic_position.GetError());
+    }
     RuntimeTransformObservation observation;
-    observation.position = ToWorldPosition(placement->transform.position);
+    observation.position = semantic_position.Value();
     observation.rotation = ToBridge(placement->transform.rotation);
     observation.scale = ToBridge(placement->transform.scale);
     observation.region = region;
@@ -570,7 +607,12 @@ foundation::Result<RuntimeNavigationPath> EngineRuntimeBridgeBackend::GetPathRes
     output.points.reserve(result.Value().points.size());
     for (const auto point : result.Value().points)
     {
-        output.points.push_back(ToWorldPosition(point));
+        auto semantic_point = ToWorldPosition(point);
+        if (!semantic_point)
+        {
+            return foundation::Result<RuntimeNavigationPath>::Failure(semantic_point.GetError());
+        }
+        output.points.push_back(semantic_point.Value());
     }
     return foundation::Result<RuntimeNavigationPath>::Success(std::move(output));
 }
@@ -622,11 +664,19 @@ foundation::Result<RuntimeEnvironmentSample> EngineRuntimeBridgeBackend::SampleE
     {
         return foundation::Result<RuntimeEnvironmentSample>::Failure(revision.GetError());
     }
+    auto temperature = CheckedScaledInteger<std::int32_t>(weather.Value().current_temperature);
+    auto humidity = CheckedScaledInteger<std::int32_t>(weather.Value().current_humidity);
+    auto precipitation = CheckedScaledInteger<std::int32_t>(weather.Value().precipitation);
+    auto wind = CheckedScaledInteger<std::int32_t>(weather.Value().wind_speed);
+    if (!temperature) return foundation::Result<RuntimeEnvironmentSample>::Failure(temperature.GetError());
+    if (!humidity) return foundation::Result<RuntimeEnvironmentSample>::Failure(humidity.GetError());
+    if (!precipitation) return foundation::Result<RuntimeEnvironmentSample>::Failure(precipitation.GetError());
+    if (!wind) return foundation::Result<RuntimeEnvironmentSample>::Failure(wind.GetError());
     RuntimeEnvironmentValues values;
-    values.temperature_milli_c = static_cast<std::int32_t>(Milli(weather.Value().current_temperature));
-    values.humidity_milli = static_cast<std::int32_t>(Milli(weather.Value().current_humidity));
-    values.precipitation_milli = static_cast<std::int32_t>(Milli(weather.Value().precipitation));
-    values.wind_strength_milli = static_cast<std::int32_t>(Milli(weather.Value().wind_speed));
+    values.temperature_milli_c = temperature.Value();
+    values.humidity_milli = humidity.Value();
+    values.precipitation_milli = precipitation.Value();
+    values.wind_strength_milli = wind.Value();
     return foundation::Result<RuntimeEnvironmentSample>::Success({values, Revision{revision.Value()}});
 }
 
@@ -735,6 +785,8 @@ foundation::Result<void> RuntimeBridgeService::Enqueue(RuntimeProjectionRequest 
             {
                 queued.priority = PriorityOf(request);
                 queued.request = std::move(request);
+                queued.attempts = 0;
+                queued.last_error.reset();
             }
             ++projection_requests_;
             ++coalesced_projection_requests_;
@@ -753,7 +805,7 @@ foundation::Result<void> RuntimeBridgeService::Enqueue(RuntimeProjectionRequest 
         ++rejected_projection_requests_;
         return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.sequence_exhausted", "projection queue sequence is exhausted"));
     }
-    queue_.push_back(Queued{sequence, PriorityOf(request), std::move(request)});
+    queue_.push_back(Queued{sequence, PriorityOf(request), std::move(request), 0, std::nullopt});
     ++projection_requests_;
     return foundation::Result<void>::Success();
 }
@@ -989,9 +1041,26 @@ RuntimeBridgeProcessResult RuntimeBridgeService::Process(RuntimeBridgeBudget bud
     });
     RuntimeBridgeProcessResult output;
     std::vector<Queued> remaining;
+    remaining.reserve(queue_.size());
     std::uint32_t materializations = 0;
+    const auto max_attempts = std::max<std::uint32_t>(1, queue_policy_.max_projection_attempts);
     for (auto& queued : queue_)
     {
+        if (queued.attempts >= max_attempts)
+        {
+            if (reconciliation_.size() < queue_policy_.max_reconciliation_requests)
+            {
+                reconciliation_.push_back(RuntimeProjectionReconciliationRecord{
+                    queued.sequence, queued.priority, std::move(queued.request), queued.attempts, std::move(queued.last_error)});
+            }
+            else
+            {
+                remaining.push_back(std::move(queued));
+                ++output.deferred;
+            }
+            continue;
+        }
+
         const bool is_materialization = std::holds_alternative<MaterializeRequest>(queued.request);
         if (output.processed >= budget.max_commands || (is_materialization && materializations >= budget.max_materializations))
         {
@@ -1009,15 +1078,21 @@ RuntimeBridgeProcessResult RuntimeBridgeService::Process(RuntimeBridgeBudget bud
         {
             ++output.failed;
             ++projection_failures_;
+            ++queued.attempts;
+            queued.last_error = result.GetError();
+            if (queued.attempts >= max_attempts && reconciliation_.size() < queue_policy_.max_reconciliation_requests)
+            {
+                reconciliation_.push_back(RuntimeProjectionReconciliationRecord{
+                    queued.sequence, queued.priority, std::move(queued.request), queued.attempts, std::move(queued.last_error)});
+            }
+            else
+            {
+                remaining.push_back(std::move(queued));
+            }
         }
     }
     queue_ = std::move(remaining);
     return output;
-}
-
-RuntimeWorldPosition RuntimeBridgeService::Quantize(RuntimeVector3 point) noexcept
-{
-    return RuntimeWorldPosition{Milli(point.x), Milli(point.y), Milli(point.z)};
 }
 
 std::vector<SemanticImpactObservation> RuntimeBridgeService::CollectImpactObservations(GameplayTickId tick, RuntimeBridgeBudget budget)
@@ -1046,10 +1121,17 @@ std::vector<SemanticImpactObservation> RuntimeBridgeService::CollectImpactObserv
             ++stale_observations_;
             continue;
         }
+        auto semantic_point = ToWorldPosition(contact.point);
+        auto semantic_impulse = CheckedScaledInteger<std::int64_t>(contact.impulse);
+        if (!semantic_point || !semantic_impulse)
+        {
+            ++invalid_runtime_observations_;
+            continue;
+        }
         SemanticImpactObservation observation;
         observation.observed_tick = tick;
-        observation.point = Quantize(contact.point);
-        observation.impulse_milli = Milli(contact.impulse);
+        observation.point = semantic_point.Value();
+        observation.impulse_milli = semantic_impulse.Value();
         if (a != body_reverse_.end())
         {
             observation.subject = a->second.object;
@@ -1095,7 +1177,15 @@ foundation::Result<std::vector<SemanticRayHit>> RuntimeBridgeService::Raycast(co
         {
             continue;
         }
-        output.push_back(SemanticRayHit{owner->second.object, owner->second.part, binding->generation, Quantize(hit.point), Milli(hit.distance)});
+        auto semantic_point = ToWorldPosition(hit.point);
+        auto semantic_distance = CheckedScaledInteger<std::int64_t>(hit.distance);
+        if (!semantic_point) return foundation::Result<std::vector<SemanticRayHit>>::Failure(semantic_point.GetError());
+        if (!semantic_distance) return foundation::Result<std::vector<SemanticRayHit>>::Failure(semantic_distance.GetError());
+        output.push_back(SemanticRayHit{owner->second.object,
+                                        owner->second.part,
+                                        binding->generation,
+                                        semantic_point.Value(),
+                                        semantic_distance.Value()});
     }
     std::sort(output.begin(), output.end(), [](const auto& left, const auto& right) {
         if (left.distance_milli != right.distance_milli)
@@ -1244,6 +1334,45 @@ foundation::Result<void> RuntimeBridgeService::ForgetWorldAlterationProjection(G
     return foundation::Result<void>::Success();
 }
 
+std::vector<RuntimeProjectionReconciliationRecord> RuntimeBridgeService::ReconciliationRequests() const
+{
+    auto records = reconciliation_;
+    std::sort(records.begin(), records.end(), [](const auto& left, const auto& right) { return left.sequence < right.sequence; });
+    return records;
+}
+
+foundation::Result<void> RuntimeBridgeService::RetryReconciliation(std::uint64_t sequence)
+{
+    const auto found = std::find_if(reconciliation_.begin(), reconciliation_.end(),
+                                    [sequence](const auto& record) { return record.sequence == sequence; });
+    if (found == reconciliation_.end())
+    {
+        return foundation::Result<void>::Failure(
+            E("gameplay.runtime_bridge.reconciliation_missing", "runtime projection reconciliation record is unknown"));
+    }
+    if (queue_.size() >= queue_policy_.max_projection_requests)
+    {
+        return foundation::Result<void>::Failure(
+            E("gameplay.runtime_bridge.queue_full", "runtime projection queue capacity is exhausted"));
+    }
+    queue_.push_back(Queued{found->sequence, found->priority, found->request, 0, std::nullopt});
+    reconciliation_.erase(found);
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> RuntimeBridgeService::DiscardReconciliation(std::uint64_t sequence)
+{
+    const auto found = std::find_if(reconciliation_.begin(), reconciliation_.end(),
+                                    [sequence](const auto& record) { return record.sequence == sequence; });
+    if (found == reconciliation_.end())
+    {
+        return foundation::Result<void>::Failure(
+            E("gameplay.runtime_bridge.reconciliation_missing", "runtime projection reconciliation record is unknown"));
+    }
+    reconciliation_.erase(found);
+    return foundation::Result<void>::Success();
+}
+
 foundation::Result<std::vector<GameplayObjectRef>> RuntimeBridgeService::ReconcileBindings()
 {
     std::vector<GameplayObjectRef> ids;
@@ -1280,7 +1409,9 @@ RuntimeBridgeDiagnostics RuntimeBridgeService::GetDiagnostics() const noexcept
                                     coalesced_projection_requests_,
                                     rejected_projection_requests_,
                                     dropped_contacts_,
-                                    contact_backlog_.size()};
+                                    contact_backlog_.size(),
+                                    reconciliation_.size(),
+                                    invalid_runtime_observations_};
 }
 
 } // namespace epidemic::gameplay::runtime_bridge
