@@ -1,0 +1,10 @@
+add_library(EpidemicGameFrameworkInteractionTimeIntegration STATIC src/interaction_time_adapter.cpp)
+target_include_directories(EpidemicGameFrameworkInteractionTimeIntegration PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(EpidemicGameFrameworkInteractionTimeIntegration
+    PUBLIC
+        EpidemicGameFrameworkInteraction
+        EpidemicGameplayTime
+        EpidemicGameFrameworkCoreIntegration
+    PRIVATE EpidemicFoundation
+)
+epidemic_configure_target(EpidemicGameFrameworkInteractionTimeIntegration)

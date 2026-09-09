@@ -1,6 +1,7 @@
 #include "simulation_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <cmath>
@@ -42,20 +43,33 @@ foundation::Result<SimulationJobHandle> SimulationRuntime::SubmitJob(
         return foundation::Result<SimulationJobHandle>::Failure(
             foundation::Error::Create("simulation.job_missing", "simulation job executable must be provided"));
     }
-    if (next_job_value_ == std::numeric_limits<std::uint64_t>::max() || next_job_generation_ == std::numeric_limits<std::uint32_t>::max())
+    if (!CanAllocateMonotonicId(next_job_value_) || !CanAllocateMonotonicId(next_job_generation_))
     {
         return foundation::Result<SimulationJobHandle>::Failure(
-            foundation::Error::Create("simulation.job_id_overflow", "simulation job id allocator overflow"));
+            foundation::Error::Create("simulation.job_id_overflow", "simulation job id allocator is exhausted"));
     }
 
-    const SimulationJobId id{next_job_value_++};
-    const SimulationJobHandle handle{id, next_job_generation_++};
+    const auto job_value = AllocateMonotonicId(next_job_value_, "simulation.job_id_overflow", "simulation job id allocator is exhausted");
+    const auto job_generation = AllocateMonotonicId(next_job_generation_, "simulation.job_id_overflow", "simulation job generation allocator is exhausted");
+    if (!job_value || !job_generation)
+    {
+        return foundation::Result<SimulationJobHandle>::Failure(
+            foundation::Error::Create("simulation.job_id_overflow", "simulation job id allocator is exhausted"));
+    }
+    const SimulationJobId id{job_value.Value()};
+    const SimulationJobHandle handle{id, job_generation.Value()};
     JobRecord record{};
     record.desc = metadata;
     record.handle = handle;
     record.state = SimulationJobState::Pending;
     record.executable = std::move(job);
-    jobs_.emplace(id, std::move(record));
+    const auto [job_iterator, inserted] = jobs_.emplace(id, std::move(record));
+    if (!inserted)
+    {
+        return foundation::Result<SimulationJobHandle>::Failure(
+            foundation::Error::Create("simulation.duplicate_job_id", "allocated simulation job id already exists"));
+    }
+    (void)job_iterator;
     return foundation::Result<SimulationJobHandle>::Success(handle);
 }
 
@@ -380,29 +394,37 @@ foundation::Result<WorldMemoryEventId> SimulationRuntime::RecordEvent(const Worl
             foundation::Error::Create("simulation.memory_store_full", "world memory event store capacity is exhausted"));
     }
 
-    if (!event.id.IsValid() && next_memory_value_ == std::numeric_limits<std::uint64_t>::max())
+    WorldMemoryEventId id = event.id;
+    if (!id.IsValid())
     {
-        return foundation::Result<WorldMemoryEventId>::Failure(
-            foundation::Error::Create("simulation.memory_event_id_overflow", "memory event id allocator overflow"));
+        const auto allocated = AllocateMonotonicId(
+            next_memory_value_,
+            "simulation.memory_event_id_overflow",
+            "memory event id allocator is exhausted");
+        if (!allocated)
+        {
+            return foundation::Result<WorldMemoryEventId>::Failure(allocated.GetError());
+        }
+        id = WorldMemoryEventId{allocated.Value()};
     }
-    const WorldMemoryEventId id = event.id.IsValid() ? event.id : WorldMemoryEventId{next_memory_value_++};
     if (memory_events_.contains(id))
     {
         return foundation::Result<WorldMemoryEventId>::Failure(
             foundation::Error::Create("simulation.memory_event_already_exists", "memory event id already exists"));
     }
-    if (event.id.IsValid())
+    if (event.id.IsValid() && next_memory_value_ != 0 && event.id.value >= next_memory_value_)
     {
-        if (event.id.value == std::numeric_limits<std::uint64_t>::max())
-        {
-            return foundation::Result<WorldMemoryEventId>::Failure(
-                foundation::Error::Create("simulation.memory_event_id_overflow", "memory event id cannot advance allocator"));
-        }
-        next_memory_value_ = std::max(next_memory_value_, event.id.value + 1);
+        next_memory_value_ = event.id.value == std::numeric_limits<std::uint64_t>::max() ? 0 : event.id.value + 1;
     }
     WorldMemoryEvent stored = event;
     stored.id = id;
-    memory_events_[id] = stored;
+    const auto [memory_iterator, inserted] = memory_events_.emplace(id, std::move(stored));
+    if (!inserted)
+    {
+        return foundation::Result<WorldMemoryEventId>::Failure(
+            foundation::Error::Create("simulation.memory_event_already_exists", "memory event id already exists"));
+    }
+    (void)memory_iterator;
     return foundation::Result<WorldMemoryEventId>::Success(id);
 }
 
@@ -605,15 +627,24 @@ foundation::Result<ScheduledSimulationTaskId> SimulationRuntime::Schedule(Schedu
         return foundation::Result<ScheduledSimulationTaskId>::Failure(
             foundation::Error::Create("simulation.job_already_scheduled", "simulation job already has an active scheduled task"));
     }
-    if (next_task_value_ == std::numeric_limits<std::uint64_t>::max())
+    const auto task_value = AllocateMonotonicId(
+        next_task_value_,
+        "simulation.task_id_overflow",
+        "scheduled simulation task id allocator is exhausted");
+    if (!task_value)
     {
-        return foundation::Result<ScheduledSimulationTaskId>::Failure(
-            foundation::Error::Create("simulation.task_id_overflow", "scheduled simulation task id allocator overflow"));
+        return foundation::Result<ScheduledSimulationTaskId>::Failure(task_value.GetError());
     }
 
-    const ScheduledSimulationTaskId id{next_task_value_++};
+    const ScheduledSimulationTaskId id{task_value.Value()};
     task.id = id;
-    scheduled_tasks_[id] = task;
+    const auto [task_iterator, inserted] = scheduled_tasks_.emplace(id, task);
+    if (!inserted)
+    {
+        return foundation::Result<ScheduledSimulationTaskId>::Failure(
+            foundation::Error::Create("simulation.duplicate_task_id", "allocated scheduled simulation task id already exists"));
+    }
+    (void)task_iterator;
     job->state = SimulationJobState::Scheduled;
     job->active_schedule = id;
     return foundation::Result<ScheduledSimulationTaskId>::Success(id);

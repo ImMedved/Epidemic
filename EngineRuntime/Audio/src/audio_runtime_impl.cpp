@@ -1,6 +1,7 @@
 #include "audio_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <array>
@@ -127,13 +128,22 @@ foundation::Result<BackendVoiceHandle> AudioRuntime::CreateVoice(const AudioVoic
             foundation::Error::Create("audio.invalid_gain", "audio voice gain must not be negative"));
     }
 
-    if (next_voice_value_ == std::numeric_limits<std::uint64_t>::max())
+    const auto voice_value = AllocateMonotonicId(
+        next_voice_value_,
+        "audio.voice_id_overflow",
+        "mock backend voice id allocator is exhausted");
+    if (!voice_value)
+    {
+        return foundation::Result<BackendVoiceHandle>::Failure(voice_value.GetError());
+    }
+    const BackendVoiceHandle handle{voice_value.Value()};
+    const auto [voice_iterator, inserted] = voices_.emplace(handle, MockVoiceRecord{desc, EmitterState::Stopped, desc.initial_gain, desc.spatial});
+    if (!inserted)
     {
         return foundation::Result<BackendVoiceHandle>::Failure(
-            foundation::Error::Create("audio.voice_id_overflow", "mock backend voice id allocator overflow"));
+            foundation::Error::Create("audio.duplicate_voice_id", "allocated backend voice id already exists"));
     }
-    const BackendVoiceHandle handle{next_voice_value_++};
-    voices_.emplace(handle, MockVoiceRecord{desc, EmitterState::Stopped, desc.initial_gain, desc.spatial});
+    (void)voice_iterator;
     return foundation::Result<BackendVoiceHandle>::Success(handle);
 }
 
@@ -278,14 +288,20 @@ foundation::Result<AudioEmitterHandle> AudioRuntime::CreateEmitterHandle(const A
             foundation::Error::Create("audio.invalid_gain", "audio emitter gain is outside the supported range"));
     }
 
-    if (next_emitter_value_ == std::numeric_limits<std::uint64_t>::max() ||
-        next_emitter_generation_ == std::numeric_limits<std::uint32_t>::max())
+    if (!CanAllocateMonotonicId(next_emitter_value_) || !CanAllocateMonotonicId(next_emitter_generation_))
     {
         return foundation::Result<AudioEmitterHandle>::Failure(
-            foundation::Error::Create("audio.emitter_id_overflow", "audio emitter id allocator overflow"));
+            foundation::Error::Create("audio.emitter_id_overflow", "audio emitter id allocator is exhausted"));
     }
-    const AudioEmitterId id{next_emitter_value_++};
-    const AudioEmitterHandle handle{id, next_emitter_generation_++};
+    const auto emitter_value = AllocateMonotonicId(next_emitter_value_, "audio.emitter_id_overflow", "audio emitter id allocator is exhausted");
+    const auto emitter_generation = AllocateMonotonicId(next_emitter_generation_, "audio.emitter_id_overflow", "audio emitter generation allocator is exhausted");
+    if (!emitter_value || !emitter_generation)
+    {
+        return foundation::Result<AudioEmitterHandle>::Failure(
+            foundation::Error::Create("audio.emitter_id_overflow", "audio emitter id allocator is exhausted"));
+    }
+    const AudioEmitterId id{emitter_value.Value()};
+    const AudioEmitterHandle handle{id, emitter_generation.Value()};
     EmitterRecord record{};
     record.desc = desc;
     record.handle = handle;
@@ -295,7 +311,13 @@ foundation::Result<AudioEmitterHandle> AudioRuntime::CreateEmitterHandle(const A
     record.fade_start_multiplier = 1.0f;
     record.fade_target_multiplier = 1.0f;
     record.revision = 1;
-    emitters_.emplace(id, record);
+    const auto [emitter_iterator, inserted] = emitters_.emplace(id, record);
+    if (!inserted)
+    {
+        return foundation::Result<AudioEmitterHandle>::Failure(
+            foundation::Error::Create("audio.duplicate_emitter_id", "allocated audio emitter id already exists"));
+    }
+    (void)emitter_iterator;
     return foundation::Result<AudioEmitterHandle>::Success(handle);
 }
 
@@ -387,6 +409,7 @@ foundation::Result<void> AudioRuntime::Play(AudioEmitterHandle handle)
             return foundation::Result<void>::Failure(voice.GetError());
         }
         emitter->voice = voice.Value();
+        emitter->clip_resource = payload.Value().resource;
         created_voice = true;
     }
 
@@ -588,6 +611,7 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
                 return foundation::Result<void>::Failure(voice.GetError());
             }
             emitter->voice = voice.Value();
+            emitter->clip_resource = payload.Value().resource;
             created_voice = true;
         }
         emitter->fade_multiplier = 0.0f;
@@ -598,8 +622,9 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
         {
             if (created_voice)
             {
-                RollbackCreatedVoice(*backend, emitter->voice);
+                RollbackCreatedVoice(*backend, emitter->voice, emitter->clip_resource);
                 emitter->voice = {};
+                emitter->clip_resource.reset();
             }
             return spatial;
         }
@@ -608,8 +633,9 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
         {
             if (created_voice)
             {
-                RollbackCreatedVoice(*backend, emitter->voice);
+                RollbackCreatedVoice(*backend, emitter->voice, emitter->clip_resource);
                 emitter->voice = {};
+                emitter->clip_resource.reset();
             }
             return foundation::Result<void>::Failure(gain.GetError());
         }
@@ -618,8 +644,9 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
         {
             if (created_voice)
             {
-                RollbackCreatedVoice(*backend, emitter->voice);
+                RollbackCreatedVoice(*backend, emitter->voice, emitter->clip_resource);
                 emitter->voice = {};
+                emitter->clip_resource.reset();
             }
             return foundation::Result<void>::Failure(played.GetError());
         }
@@ -657,6 +684,7 @@ foundation::Result<void> AudioRuntime::Virtualize(AudioEmitterHandle handle)
                 }
             }
             emitter->voice = {};
+            emitter->clip_resource.reset();
         }
         emitter->state = EmitterState::Virtualized;
         ResetFade(*emitter);
@@ -862,6 +890,7 @@ foundation::Result<void> AudioRuntime::Shutdown()
             if (destroyed)
             {
                 emitter.voice = {};
+                emitter.clip_resource.reset();
                 emitter.state = EmitterState::Stopped;
                 ++emitter.revision;
             }
@@ -892,25 +921,25 @@ foundation::Result<void> AudioRuntime::Shutdown()
 
     if (backend != nullptr)
     {
-        auto write = one_shot_voices_.begin();
-        for (auto read = one_shot_voices_.begin(); read != one_shot_voices_.end(); ++read)
+        std::vector<VoiceOwnership> survivors;
+        survivors.reserve(one_shot_voices_.size());
+        for (auto& owned : one_shot_voices_)
         {
-            const BackendVoiceHandle voice = *read;
-            if (!voice.IsValid())
+            if (!owned.voice.IsValid())
             {
                 continue;
             }
-            const auto destroyed = backend->DestroyVoice(voice);
-            if (!destroyed && !first_error.has_value())
-            {
-                first_error = destroyed.GetError();
-            }
+            const auto destroyed = backend->DestroyVoice(owned.voice);
             if (!destroyed)
             {
-                *write++ = voice;
+                if (!first_error.has_value())
+                {
+                    first_error = destroyed.GetError();
+                }
+                survivors.push_back(std::move(owned));
             }
         }
-        one_shot_voices_.erase(write, one_shot_voices_.end());
+        one_shot_voices_ = std::move(survivors);
     }
 
     if (first_error.has_value())
@@ -942,14 +971,11 @@ foundation::Result<AudioListenerHandle> AudioRuntime::CreateListenerHandle(const
             foundation::Error::Create("audio.invalid_listener_transform", "audio listener must reference a valid scene node"));
     }
 
-    if (next_listener_value_ == std::numeric_limits<std::uint64_t>::max() ||
-        next_listener_generation_ == std::numeric_limits<std::uint32_t>::max())
+    if (!CanAllocateMonotonicId(next_listener_value_) || !CanAllocateMonotonicId(next_listener_generation_))
     {
         return foundation::Result<AudioListenerHandle>::Failure(
-            foundation::Error::Create("audio.listener_id_overflow", "audio listener id allocator overflow"));
+            foundation::Error::Create("audio.listener_id_overflow", "audio listener id allocator is exhausted"));
     }
-    const AudioListenerId id{next_listener_value_++};
-    const AudioListenerHandle handle{id, next_listener_generation_++};
     Transform transform{};
     if (Transforms() != nullptr)
     {
@@ -961,6 +987,16 @@ foundation::Result<AudioListenerHandle> AudioRuntime::CreateListenerHandle(const
         transform = read.Value();
     }
 
+    const auto listener_value = AllocateMonotonicId(next_listener_value_, "audio.listener_id_overflow", "audio listener id allocator is exhausted");
+    const auto listener_generation = AllocateMonotonicId(next_listener_generation_, "audio.listener_id_overflow", "audio listener generation allocator is exhausted");
+    if (!listener_value || !listener_generation)
+    {
+        return foundation::Result<AudioListenerHandle>::Failure(
+            foundation::Error::Create("audio.listener_id_overflow", "audio listener id allocator is exhausted"));
+    }
+    const AudioListenerId id{listener_value.Value()};
+    const AudioListenerHandle handle{id, listener_generation.Value()};
+
     IAudioBackend* backend = Backend();
     if (backend != nullptr)
     {
@@ -971,7 +1007,17 @@ foundation::Result<AudioListenerHandle> AudioRuntime::CreateListenerHandle(const
         }
     }
 
-    listeners_.emplace(id, ListenerRecord{desc, handle});
+    const auto [listener_iterator, inserted] = listeners_.emplace(id, ListenerRecord{desc, handle});
+    if (!inserted)
+    {
+        if (backend != nullptr)
+        {
+            (void)backend->DestroyBackendListener(handle);
+        }
+        return foundation::Result<AudioListenerHandle>::Failure(
+            foundation::Error::Create("audio.duplicate_listener_id", "allocated audio listener id already exists"));
+    }
+    (void)listener_iterator;
     return foundation::Result<AudioListenerHandle>::Success(handle);
 }
 
@@ -1273,10 +1319,10 @@ foundation::Result<void> AudioRuntime::ProcessOneShot(const AudioEvent& event)
     const auto played = backend->Play(voice.Value());
     if (!played)
     {
-        RollbackCreatedVoice(*backend, voice.Value());
+        RollbackCreatedVoice(*backend, voice.Value(), payload.Value().resource);
         return foundation::Result<void>::Failure(played.GetError());
     }
-    one_shot_voices_.push_back(voice.Value());
+    one_shot_voices_.push_back(VoiceOwnership{voice.Value(), payload.Value().resource});
     return foundation::Result<void>::Success();
 }
 
@@ -1289,24 +1335,24 @@ foundation::Result<void> AudioRuntime::CleanupFinishedOneShots()
     }
 
     std::optional<foundation::Error> first_error;
-    std::vector<BackendVoiceHandle> survivors;
+    std::vector<VoiceOwnership> survivors;
     survivors.reserve(one_shot_voices_.size());
-    for (BackendVoiceHandle voice : one_shot_voices_)
+    for (auto& owned : one_shot_voices_)
     {
-        if (!voice.IsValid() || !backend->IsVoiceFinished(voice))
+        if (!owned.voice.IsValid() || !backend->IsVoiceFinished(owned.voice))
         {
-            survivors.push_back(voice);
+            survivors.push_back(std::move(owned));
             continue;
         }
 
-        const auto destroyed = backend->DestroyVoice(voice);
+        const auto destroyed = backend->DestroyVoice(owned.voice);
         if (!destroyed)
         {
             if (!first_error.has_value())
             {
                 first_error = destroyed.GetError();
             }
-            survivors.push_back(voice);
+            survivors.push_back(std::move(owned));
         }
     }
     one_shot_voices_ = std::move(survivors);
@@ -1326,18 +1372,18 @@ foundation::Result<void> AudioRuntime::CleanupPendingVoices()
     }
 
     std::optional<foundation::Error> first_error;
-    std::vector<BackendVoiceHandle> survivors;
+    std::vector<VoiceOwnership> survivors;
     survivors.reserve(pending_voice_cleanups_.size());
-    for (BackendVoiceHandle voice : pending_voice_cleanups_)
+    for (auto& owned : pending_voice_cleanups_)
     {
-        const auto destroyed = backend->DestroyVoice(voice);
+        const auto destroyed = backend->DestroyVoice(owned.voice);
         if (!destroyed)
         {
             if (!first_error.has_value())
             {
                 first_error = destroyed.GetError();
             }
-            survivors.push_back(voice);
+            survivors.push_back(std::move(owned));
         }
     }
     pending_voice_cleanups_ = std::move(survivors);
@@ -1363,7 +1409,9 @@ void AudioRuntime::RecordCleanupFailure(const foundation::Error&)
     ++cleanup_failures_;
 }
 
-void AudioRuntime::RollbackCreatedVoice(IAudioBackend& backend, BackendVoiceHandle voice)
+void AudioRuntime::RollbackCreatedVoice(IAudioBackend& backend,
+                                        BackendVoiceHandle voice,
+                                        std::shared_ptr<const IAudioClipResource> clip_resource)
 {
     if (!voice.IsValid())
     {
@@ -1374,7 +1422,7 @@ void AudioRuntime::RollbackCreatedVoice(IAudioBackend& backend, BackendVoiceHand
     if (!destroyed)
     {
         RecordCleanupFailure(destroyed.GetError());
-        pending_voice_cleanups_.push_back(voice);
+        pending_voice_cleanups_.push_back(VoiceOwnership{voice, std::move(clip_resource)});
     }
 }
 

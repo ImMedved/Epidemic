@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <cstddef>
+#include <limits>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -48,6 +49,26 @@ using epidemic::runtime::streaming::StreamingRuntime;
 using epidemic::runtime::streaming::StreamingState;
 using epidemic::runtime::streaming::StreamingStepResult;
 using epidemic::runtime::streaming::StreamingTarget;
+
+StreamingDependencies MakeDependencies(
+    std::shared_ptr<IStreamingDataSource> data_source = {},
+    std::shared_ptr<IStreamingCommitTarget> commit_target = {},
+    std::shared_ptr<IStreamingPriorityProvider> priority_provider = {},
+    std::shared_ptr<IResidencyController> residency_controller = {},
+    std::shared_ptr<IStreamingWorldSource> world_source = {},
+    std::shared_ptr<IStreamingPersistenceSource> persistence_source = {},
+    std::shared_ptr<IStreamingResourceSource> resource_source = {})
+{
+    StreamingDependencies dependencies{};
+    dependencies.data_source = std::move(data_source);
+    dependencies.commit_target = std::move(commit_target);
+    dependencies.priority_provider = std::move(priority_provider);
+    dependencies.residency_controller = std::move(residency_controller);
+    dependencies.world_source = std::move(world_source);
+    dependencies.persistence_source = std::move(persistence_source);
+    dependencies.resource_source = std::move(resource_source);
+    return dependencies;
+}
 
 class FixedPriorityResolver final : public IStreamingPriorityResolver
 {
@@ -301,7 +322,7 @@ bool TestLastConsumerReleaseCancelsBeforeLoad()
 bool TestLastConsumerReleaseUnloadsResident()
 {
     auto controller = std::make_shared<InMemoryResidencyController>();
-    StreamingRuntime runtime(StreamingDependencies{.residency_controller = controller});
+    StreamingRuntime runtime(MakeDependencies({}, {}, {}, controller));
     const ChunkId chunk{104};
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!demand || !AdvanceTo(runtime, chunk, StreamingState::Active))
@@ -319,7 +340,7 @@ bool TestCancelDuringPartialLoadRollsBack()
 {
     auto source = std::make_shared<PlanSource>();
     auto commit = std::make_shared<CommitTarget>();
-    StreamingDependencies dependencies{source, commit, nullptr};
+    StreamingDependencies dependencies = MakeDependencies(source, commit);
     StreamingRuntime runtime(dependencies);
     const ChunkId chunk{105};
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
@@ -339,7 +360,7 @@ bool TestRollbackOnFailedStep()
     auto source = std::make_shared<PlanSource>();
     source->fail_step = StreamingPlanStep::PrepareResources;
     auto commit = std::make_shared<CommitTarget>();
-    StreamingRuntime runtime(StreamingDependencies{source, commit, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source, commit));
     const ChunkId chunk{106};
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!demand)
@@ -358,7 +379,7 @@ bool TestRollbackOnFailedStep()
 bool TestBudgetsLimitItemsAndBytes()
 {
     auto source = std::make_shared<PlanSource>();
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source));
     runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 1});
     const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{201}}}, StreamingPriorityClass::Normal);
     const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{202}}}, StreamingPriorityClass::Normal);
@@ -378,7 +399,7 @@ bool TestBudgetsLimitItemsAndBytes()
 bool TestByteBudgetUsesEstimatedBytes()
 {
     auto source = std::make_shared<PlanSource>();
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source));
     runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 15});
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{203}}}, StreamingPriorityClass::Normal);
     if (!demand)
@@ -403,7 +424,7 @@ bool TestIncompleteStepDoesNotAdvanceCursor()
     source->partial_step = StreamingPlanStep::PrepareData;
     source->partial_remaining = 1;
     source->partial_processed_bytes = 7;
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source));
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{204}}}, StreamingPriorityClass::Normal);
     if (!demand)
     {
@@ -430,7 +451,7 @@ bool TestPartialStepUsesRemainingByteBudget()
     source->partial_step = StreamingPlanStep::PrepareData;
     source->partial_remaining = 1;
     source->partial_processed_bytes = 60;
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source));
     runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 100});
     source->plan.steps[1].estimated_bytes = 100;
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{205}}}, StreamingPriorityClass::Normal);
@@ -458,7 +479,7 @@ bool TestZeroProcessedIncompleteStepDoesNotAutoComplete()
     source->partial_step = StreamingPlanStep::PrepareData;
     source->partial_remaining = 1;
     source->partial_processed_bytes = 0;
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source));
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{206}}}, StreamingPriorityClass::Normal);
     if (!demand)
     {
@@ -484,7 +505,7 @@ bool TestCommitRunsOnlyAfterCompletedStepAndOnlyOnce()
     source->partial_step = StreamingPlanStep::Commit;
     source->partial_remaining = 1;
     source->partial_processed_bytes = 0;
-    StreamingRuntime runtime(StreamingDependencies{source, commit, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source, commit));
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{207}}}, StreamingPriorityClass::Normal);
     if (!demand)
     {
@@ -504,6 +525,68 @@ bool TestCommitRunsOnlyAfterCompletedStepAndOnlyOnce()
     const auto completed_commit = runtime.Tick();
     const auto after = runtime.Tick();
     return commit->commits == 1 && completed_commit.processed_bytes == 0 && after.processed_requests <= 1;
+}
+
+bool TestCommitBudgetValidationRunsBeforeExternalCommit()
+{
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::Commit, 100}};
+    StreamingRuntime runtime(MakeDependencies(source, commit));
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 50});
+
+    const ChunkId chunk{208};
+    const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!first)
+    {
+        return false;
+    }
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto rejected = runtime.Tick();
+    if (rejected.failures.size() != 1u || !rejected.failures.front().error.HasCode("streaming.step_budget_violation") ||
+        commit->commits != 0 || runtime.GetChunkState(chunk) != StreamingState::Failed)
+    {
+        return false;
+    }
+
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 100});
+    const auto retry = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!retry)
+    {
+        return false;
+    }
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto committed = runtime.Tick();
+    return committed.failures.empty() && commit->commits == 1;
+}
+
+bool TestByteCounterOverflowIsRejectedBeforeCommit()
+{
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::Commit, 1}};
+    source->partial_step = StreamingPlanStep::Commit;
+    source->partial_remaining = 1;
+    source->partial_processed_bytes = std::numeric_limits<std::size_t>::max() - 8u;
+    StreamingRuntime runtime(MakeDependencies(source, commit));
+
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{209}}}, StreamingPriorityClass::Normal);
+    if (!demand)
+    {
+        return false;
+    }
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto partial = runtime.Tick();
+    if (!partial.failures.empty() || commit->commits != 0)
+    {
+        return false;
+    }
+    const auto overflow = runtime.Tick();
+    return overflow.failures.size() == 1u && overflow.failures.front().error.HasCode("streaming.byte_counter_overflow") &&
+           commit->commits == 0;
 }
 
 bool TestTargetVariantsRejectUnsupportedInReference()
@@ -557,7 +640,7 @@ bool TestRollbackFailureMarksRollbackFailed()
     auto source = std::make_shared<PlanSource>();
     auto commit = std::make_shared<CommitTarget>();
     commit->fail_rollback = true;
-    StreamingRuntime runtime(StreamingDependencies{source, commit, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source, commit));
     const ChunkId chunk{601};
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!demand)
@@ -578,7 +661,7 @@ bool TestServicesFactoryUsesDependencies()
     auto source = std::make_shared<PlanSource>();
     auto commit = std::make_shared<CommitTarget>();
     auto priority = std::make_shared<PriorityProvider>();
-    const auto services = CreateStreamingServices(StreamingDependencies{source, commit, priority});
+    const auto services = CreateStreamingServices(MakeDependencies(source, commit, priority));
     if (!services || !services.Value().runtime || !services.Value().query)
     {
         return false;
@@ -594,14 +677,7 @@ bool TestServicesFactoryPassesAllDependencies()
     auto resources = std::make_shared<ResourceTracker>();
     auto residency = std::make_shared<ResidencyTracker>();
     auto priority = std::make_shared<PriorityProvider>();
-    const auto services = CreateStreamingServices(StreamingDependencies{
-        nullptr,
-        nullptr,
-        priority,
-        residency,
-        world,
-        persistence,
-        resources});
+    const auto services = CreateStreamingServices(MakeDependencies({}, {}, priority, residency, world, persistence, resources));
     if (!services || !services.Value().runtime)
     {
         return false;
@@ -635,7 +711,7 @@ bool TestResolvedPriorityPersistsAcrossDemands()
 {
     auto source = std::make_shared<PlanSource>();
     auto priority = std::make_shared<PriorityProvider>();
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, priority});
+    StreamingRuntime runtime(MakeDependencies(source, {}, priority));
     runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 0});
     priority->priority = StreamingPriorityClass::High;
     const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{701}}}, StreamingPriorityClass::Normal);
@@ -653,7 +729,7 @@ bool TestResolvedPriorityPersistsAcrossDemands()
 bool TestDemandDuringUnloadReactivatesExistingRequest()
 {
     auto controller = std::make_shared<InMemoryResidencyController>();
-    StreamingRuntime runtime(StreamingDependencies{.residency_controller = controller});
+    StreamingRuntime runtime(MakeDependencies({}, {}, {}, controller));
     const ChunkId chunk{702};
     const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!first || !AdvanceTo(runtime, chunk, StreamingState::Active))
@@ -676,7 +752,7 @@ bool TestDemandDuringUnloadingWaitsForPredecessor()
     auto source = std::make_shared<PlanSource>();
     auto resources = std::make_shared<ResourceTracker>();
     auto residency = std::make_shared<ResidencyTracker>();
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr, residency, nullptr, nullptr, resources});
+    StreamingRuntime runtime(MakeDependencies(source, {}, {}, residency, {}, {}, resources));
     const ChunkId chunk{214};
     const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!first || !AdvanceTo(runtime, chunk, StreamingState::Active))
@@ -715,7 +791,7 @@ bool TestMultipleDemandsShareOneUnloadingSuccessor()
     auto source = std::make_shared<PlanSource>();
     auto resources = std::make_shared<ResourceTracker>();
     auto residency = std::make_shared<ResidencyTracker>();
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr, residency, nullptr, nullptr, resources});
+    StreamingRuntime runtime(MakeDependencies(source, {}, {}, residency, {}, {}, resources));
     const ChunkId chunk{215};
     const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!first || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(first.Value()))
@@ -749,7 +825,7 @@ bool TestLastWaitingDemandCancelsSuccessor()
     auto source = std::make_shared<PlanSource>();
     auto resources = std::make_shared<ResourceTracker>();
     auto residency = std::make_shared<ResidencyTracker>();
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr, residency, nullptr, nullptr, resources});
+    StreamingRuntime runtime(MakeDependencies(source, {}, {}, residency, {}, {}, resources));
     const ChunkId chunk{219};
     const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!first || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(first.Value()))
@@ -778,7 +854,7 @@ bool TestHistoryCleanupPreservesSuccessorMapping()
     auto source = std::make_shared<PlanSource>();
     auto resources = std::make_shared<ResourceTracker>();
     auto residency = std::make_shared<ResidencyTracker>();
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr, residency, nullptr, nullptr, resources});
+    StreamingRuntime runtime(MakeDependencies(source, {}, {}, residency, {}, {}, resources));
     const ChunkId chunk{220};
     const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!first || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(first.Value()))
@@ -808,7 +884,7 @@ bool TestRollbackFailedRequestIsNotReused()
     auto source = std::make_shared<PlanSource>();
     auto commit = std::make_shared<CommitTarget>();
     commit->fail_rollback = true;
-    StreamingRuntime runtime(StreamingDependencies{source, commit, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source, commit));
     const ChunkId chunk{703};
     const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
     if (!first)
@@ -830,7 +906,7 @@ bool TestShutdownRetriesRollbackAndUnloadCleanup()
         auto source = std::make_shared<PlanSource>();
         auto commit = std::make_shared<CommitTarget>();
         commit->fail_rollback = true;
-        StreamingRuntime runtime(StreamingDependencies{source, commit, nullptr});
+        StreamingRuntime runtime(MakeDependencies(source, commit));
         const ChunkId chunk{216};
         const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
         if (!demand)
@@ -865,7 +941,7 @@ bool TestShutdownRetriesRollbackAndUnloadCleanup()
         auto resources = std::make_shared<ResourceTracker>();
         auto residency = std::make_shared<ResidencyTracker>();
         resources->fail_release_once = true;
-        StreamingRuntime runtime(StreamingDependencies{.residency_controller = residency, .resource_source = resources});
+        StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency, {}, {}, resources));
         const ChunkId chunk{218};
         const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
         if (!demand || !AdvanceTo(runtime, chunk, StreamingState::Active))
@@ -891,7 +967,7 @@ bool TestLargeStepReceivesAvailableBudget()
     auto source = std::make_shared<PlanSource>();
     source->respect_budget = true;
     source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::PrepareData, 1000}};
-    StreamingRuntime runtime(StreamingDependencies{source, nullptr, nullptr});
+    StreamingRuntime runtime(MakeDependencies(source));
     runtime.SetBudget(StreamingBudget{std::chrono::microseconds{100}, 1, 100});
     const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{704}}}, StreamingPriorityClass::Normal);
     if (!demand)
@@ -933,6 +1009,8 @@ int main()
     if (!TestPartialStepUsesRemainingByteBudget()) return 16;
     if (!TestZeroProcessedIncompleteStepDoesNotAutoComplete()) return 17;
     if (!TestCommitRunsOnlyAfterCompletedStepAndOnlyOnce()) return 18;
+    if (!TestCommitBudgetValidationRunsBeforeExternalCommit()) return 29;
+    if (!TestByteCounterOverflowIsRejectedBeforeCommit()) return 30;
     if (!TestTargetVariantsRejectUnsupportedInReference()) return 8;
     if (!TestRequestGenerationAndStaleDemand()) return 9;
     if (!TestRecordCleanup()) return 10;

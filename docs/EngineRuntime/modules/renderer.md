@@ -2,29 +2,22 @@
 
 ## Назначение
 
-RendererFoundation хранит render proxies и views, отслеживает готовность resources, обновляет transforms и формирует backend-neutral submissions. Он не является готовым D3D renderer и не владеет asset loading.
+Renderer хранит render proxies и views, проверяет готовность resources, получает world transforms и формирует backend-neutral submissions. Он не является D3D11 implementation и не знает Scene, Animation или ResourceManager напрямую.
 
 ## Контракты
 
-`IRenderScene` регистрирует proxies, меняет visibility и dirty state. `IViewSystem` управляет views. `IRendererRuntime` готовит и отправляет frame, abort-ит незавершенный frame и выполняет explicit shutdown. `IRenderResourceBridge` предоставляет typed mesh/material resources, `IRenderSceneSource` — transforms, а `IRenderCommandSink` принимает submissions.
+`IRenderScene` регистрирует proxies и их visibility/dirty state. `IViewSystem` управляет views. `IRendererRuntime` готовит и отправляет frame. `IRenderResourceBridge` предоставляет mesh/material payloads, `IRenderSceneSource` — transforms, `IRenderCommandSink` принимает готовые submissions.
 
-Proxy может быть Loading, Ready или Failed. Отсутствующий resource не останавливает весь frame. Submission order детерминирован по layer и ID.
+Для анимированных объектов существует нейтральный `IRenderPoseSource`. Renderer запрашивает `RenderPoseBuffer` по `RuntimeObjectId owner`. `RenderPoseBuffer` содержит только owner, bone transforms и revision и не зависит от Animation types. `RenderProxySubmission::pose` может быть пустым для static object.
 
 ## Владение
 
-Renderer удерживает resource leases через bridge и освобождает их best-effort при удалении proxy или shutdown. Dependencies имеют shared ownership. Failed cleanup сохраняется для диагностики и retry согласно lifecycle.
+Renderer удерживает resource ownership через bridge только пока proxy действительно нуждается в payloads. Deferred destroy и shutdown освобождают retained resources best-effort с сохранением failed cleanup для retry согласно runtime lifecycle.
 
-## Ограничения и стабильность
+## Граница
 
-Нет shaders, render graph, lighting, shadows или D3D command implementation. Это frozen foundation port для будущего Renderer backend.
+Renderer не содержит gameplay visibility, actor animation state или конкретный D3D backend. Scene/Resources/Animation подключаются только adapters в Support.
 
-## Карта публичных заголовков
+## Стабильность
 
-Этот раздел служит быстрым индексом объявлений. Семантика и инварианты описаны выше; точные сигнатуры остаются источником истины в public headers.
-
-- `render_resource_bridge.h`: `RenderTransformSnapshot`, `IRenderResourceBridge`, `IRenderSceneSource`, `RenderProxySubmission`, `RenderFrameContext`, `IRenderCommandSink`.
-- `render_scene.h`: `IRenderScene`.
-- `render_types.h`: `RenderProxyId`, `ViewId`, `IRenderMeshResource`, `IRenderMaterialResource`, `RenderProxyLifecycle`, `RenderProxyReadiness`, `RenderProxyVisibility`, `RenderProxyDirtyFlags`, `RenderLayer`, `RenderFrameState`, `ViewLifecycle`, `RenderProxyDesc`, `ViewDesc`, `RenderResourcePayloads`.
-- `renderer_runtime.h`: `IRendererRuntime`.
-- `renderer_services.h`: `RendererOptions`, `RendererDependencies`, `RendererServices`.
-- `view_system.h`: `IViewSystem`.
+Foundation contract Renderer считается frozen. Production rendering backend реализуется поверх существующих ports.

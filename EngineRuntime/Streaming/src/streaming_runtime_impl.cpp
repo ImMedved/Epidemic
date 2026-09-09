@@ -1,6 +1,7 @@
 #include "streaming_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <chrono>
@@ -136,15 +137,19 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
 
     if (record == nullptr)
     {
-        if (next_request_value_ == std::numeric_limits<std::uint64_t>::max() ||
-            next_request_generation_ == std::numeric_limits<std::uint32_t>::max() ||
-            next_demand_value_ == std::numeric_limits<std::uint64_t>::max() ||
-            next_demand_generation_ == std::numeric_limits<std::uint32_t>::max())
+        if (!CanAllocateMonotonicId(next_request_value_) || !CanAllocateMonotonicId(next_request_generation_) ||
+            !CanAllocateMonotonicId(next_demand_value_) || !CanAllocateMonotonicId(next_demand_generation_))
         {
-            return StreamingFailureValue<StreamingDemandHandle>("streaming.id_overflow", "streaming id allocator overflow");
+            return StreamingFailureValue<StreamingDemandHandle>("streaming.id_overflow", "streaming id allocator is exhausted");
         }
-        const StreamingRequestId request_id{next_request_value_++};
-        const StreamingRequestHandle request_handle{request_id, next_request_generation_++};
+        const auto request_value = AllocateMonotonicId(next_request_value_, "streaming.id_overflow", "streaming request id allocator is exhausted");
+        const auto request_generation = AllocateMonotonicId(next_request_generation_, "streaming.id_overflow", "streaming request generation allocator is exhausted");
+        if (!request_value || !request_generation)
+        {
+            return StreamingFailureValue<StreamingDemandHandle>("streaming.id_overflow", "streaming request id allocator is exhausted");
+        }
+        const StreamingRequestId request_id{request_value.Value()};
+        const StreamingRequestHandle request_handle{request_id, request_generation.Value()};
 
         StreamingRequest request{};
         request.id = request_id;
@@ -174,7 +179,12 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
         new_record.revision = 1;
         new_record.max_priority = resolved_priority;
         new_record.predecessor = predecessor;
-        requests_.emplace(request_id, std::move(new_record));
+        const auto [request_iterator, inserted] = requests_.emplace(request_id, std::move(new_record));
+        if (!inserted)
+        {
+            return StreamingFailureValue<StreamingDemandHandle>("streaming.duplicate_request_id", "allocated streaming request id already exists");
+        }
+        (void)request_iterator;
         if (predecessor)
         {
             if (RequestRecord* predecessor_record = FindRequest(*predecessor))
@@ -191,11 +201,17 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
         ++statistics_.requested;
     }
 
-    if (next_demand_value_ == std::numeric_limits<std::uint64_t>::max() || next_demand_generation_ == std::numeric_limits<std::uint32_t>::max())
+    if (!CanAllocateMonotonicId(next_demand_value_) || !CanAllocateMonotonicId(next_demand_generation_))
     {
-        return StreamingFailureValue<StreamingDemandHandle>("streaming.id_overflow", "streaming demand id allocator overflow");
+        return StreamingFailureValue<StreamingDemandHandle>("streaming.id_overflow", "streaming demand id allocator is exhausted");
     }
-    StreamingDemandHandle demand{StreamingDemandId{next_demand_value_++}, record->request.handle, next_demand_generation_++};
+    const auto demand_value = AllocateMonotonicId(next_demand_value_, "streaming.id_overflow", "streaming demand id allocator is exhausted");
+    const auto demand_generation = AllocateMonotonicId(next_demand_generation_, "streaming.id_overflow", "streaming demand generation allocator is exhausted");
+    if (!demand_value || !demand_generation)
+    {
+        return StreamingFailureValue<StreamingDemandHandle>("streaming.id_overflow", "streaming demand id allocator is exhausted");
+    }
+    StreamingDemandHandle demand{StreamingDemandId{demand_value.Value()}, record->request.handle, demand_generation.Value()};
     if (record->state == StreamingState::Deactivating)
     {
         if (IResidencyController* controller = ResidencyController())
@@ -210,7 +226,12 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
         record->request.cancellation.requested = false;
         chunk_states_[chunk] = record->state;
     }
-    record->demands.emplace(demand.id, DemandRecord{demand, resolved_priority, true});
+    const auto [demand_iterator, demand_inserted] = record->demands.emplace(demand.id, DemandRecord{demand, resolved_priority, true});
+    if (!demand_inserted)
+    {
+        return StreamingFailureValue<StreamingDemandHandle>("streaming.duplicate_demand_id", "allocated streaming demand id already exists");
+    }
+    (void)demand_iterator;
     ++record->active_demands;
     record->request.demand_count = record->active_demands;
     UpdatePriority(*record);
@@ -481,10 +502,7 @@ StreamingTickResult StreamingRuntime::Tick()
             continue;
         }
         RuntimeBudget available_budget{};
-        if (max_bytes != std::numeric_limits<std::size_t>::max())
-        {
-            available_budget.max_bytes = static_cast<std::uint64_t>(max_bytes - bytes);
-        }
+        available_budget.max_bytes = static_cast<std::uint64_t>(max_bytes - bytes);
         const std::size_t before_bytes = record->processed_bytes;
         const auto advanced = AdvanceRequest(*record, available_budget);
         const std::size_t request_bytes = record->processed_bytes - before_bytes;
@@ -825,6 +843,31 @@ foundation::Result<void> StreamingRuntime::ExecutePlanStep(RequestRecord& record
             }
         }
     }
+    if (!dependencies_.data_source && step.processed_bytes == 0)
+    {
+        step.processed_bytes = step.estimated_bytes;
+    }
+
+    // Every recoverable validation must happen before the irreversible external commit.
+    if (available_budget.HasByteLimit() && step.processed_bytes > available_budget.max_bytes)
+    {
+        ++statistics_.budget_violations;
+        return StreamingFailure("streaming.step_budget_violation", "streaming plan step exceeded the available byte budget");
+    }
+    if (step.processed_bytes > std::numeric_limits<std::size_t>::max() - record.processed_bytes ||
+        step.processed_bytes > std::numeric_limits<std::size_t>::max() - record.request.load_plan.steps[cursor].processed_bytes)
+    {
+        ++statistics_.budget_violations;
+        return StreamingFailure("streaming.byte_counter_overflow", "streaming request byte counter overflowed");
+    }
+
+    const std::uint64_t revision_increments =
+        1u + ((step_completed && cursor + 1u >= record.request.load_plan.steps.size()) ? 1u : 0u);
+    if (record.revision > std::numeric_limits<std::uint64_t>::max() - revision_increments)
+    {
+        return StreamingFailure("streaming.revision_overflow", "streaming request revision cannot advance beyond UINT64_MAX");
+    }
+
     if (step_completed && step.step == StreamingPlanStep::Commit && !record.commit_completed && dependencies_.commit_target)
     {
         const auto committed = dependencies_.commit_target->Commit(record.request);
@@ -834,20 +877,7 @@ foundation::Result<void> StreamingRuntime::ExecutePlanStep(RequestRecord& record
         }
         record.commit_completed = true;
     }
-    if (!dependencies_.data_source && step.processed_bytes == 0)
-    {
-        step.processed_bytes = step.estimated_bytes;
-    }
-    if (available_budget.HasByteLimit() && step.processed_bytes > available_budget.max_bytes)
-    {
-        ++statistics_.budget_violations;
-        return StreamingFailure("streaming.step_budget_violation", "streaming plan step exceeded the available byte budget");
-    }
-    if (step.processed_bytes > std::numeric_limits<std::size_t>::max() - record.processed_bytes)
-    {
-        ++statistics_.budget_violations;
-        return StreamingFailure("streaming.byte_counter_overflow", "streaming request byte counter overflowed");
-    }
+
     record.processed_bytes += step.processed_bytes;
     record.request.load_plan.steps[cursor].processed_bytes += step.processed_bytes;
     if (step_completed)
@@ -913,11 +943,10 @@ foundation::Result<void> StreamingRuntime::BeginUnload(RequestRecord& record)
 
 foundation::Result<std::uint64_t> StreamingRuntime::AllocateCompletionSequence()
 {
-    if (next_completion_sequence_ == std::numeric_limits<std::uint64_t>::max())
-    {
-        return StreamingFailureValue<std::uint64_t>("streaming.completion_sequence_overflow", "streaming completion sequence overflow");
-    }
-    return foundation::Result<std::uint64_t>::Success(next_completion_sequence_++);
+    return AllocateMonotonicId(
+        next_completion_sequence_,
+        "streaming.completion_sequence_overflow",
+        "streaming completion sequence allocator is exhausted");
 }
 
 foundation::Result<void> StreamingRuntime::CompleteTerminal(RequestRecord& record, StreamingState state)

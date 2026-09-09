@@ -1,0 +1,6 @@
+add_library(EpidemicGameFrameworkRuntimeBridge STATIC src/runtime_bridge.cpp)
+target_include_directories(EpidemicGameFrameworkRuntimeBridge PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
+target_link_libraries(EpidemicGameFrameworkRuntimeBridge
+    PUBLIC EpidemicGameFrameworkFoundation
+    PRIVATE EpidemicFoundation EpidemicRuntimeWorld EpidemicRuntimePhysics EpidemicRuntimeEnvironment EpidemicRuntimeNavigation)
+epidemic_configure_target(EpidemicGameFrameworkRuntimeBridge)

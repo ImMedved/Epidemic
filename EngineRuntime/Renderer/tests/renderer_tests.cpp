@@ -1,10 +1,11 @@
-﻿#include "Epidemic/Runtime/Renderer/render_resource_bridge.h"
+#include "Epidemic/Runtime/Renderer/render_resource_bridge.h"
 #include "Epidemic/Runtime/Renderer/render_scene.h"
 #include "Epidemic/Runtime/Renderer/renderer_runtime.h"
 #include "Epidemic/Runtime/Renderer/renderer_services.h"
 #include "Epidemic/Runtime/Renderer/view_system.h"
 #include "renderer_runtime_impl.h"
 
+#include <limits>
 #include <memory>
 #include <type_traits>
 #include <unordered_set>
@@ -283,6 +284,42 @@ class TestCommandSink final : public IRenderCommandSink
     return destroy && pending && flush && runtime.GetViewLifecycle(view.Value()) == ViewLifecycle::Destroyed && !runtime.GetMainView().IsValid();
 }
 
+[[nodiscard]] bool TestViewRejectsNonFiniteCameraParameters()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    scene.AddNode(RenderTransformId{55});
+    RendererRuntime runtime(&bridge, &scene);
+
+    const float nan = std::numeric_limits<float>::quiet_NaN();
+    const float inf = std::numeric_limits<float>::infinity();
+    const ViewDesc cases[] = {
+        ViewDesc{RenderTransformId{55}, nan, 0.1f, 1000.0f},
+        ViewDesc{RenderTransformId{55}, inf, 0.1f, 1000.0f},
+        ViewDesc{RenderTransformId{55}, -inf, 0.1f, 1000.0f},
+        ViewDesc{RenderTransformId{55}, 60.0f, nan, 1000.0f},
+        ViewDesc{RenderTransformId{55}, 60.0f, inf, 1000.0f},
+        ViewDesc{RenderTransformId{55}, 60.0f, 0.1f, nan},
+        ViewDesc{RenderTransformId{55}, 60.0f, 0.1f, inf},
+        ViewDesc{RenderTransformId{55}, 60.0f, 0.1f, -inf},
+        ViewDesc{RenderTransformId{55}, 0.0f, 0.1f, 1000.0f},
+        ViewDesc{RenderTransformId{55}, 180.0f, 0.1f, 1000.0f},
+        ViewDesc{RenderTransformId{55}, 60.0f, 0.0f, 1000.0f},
+        ViewDesc{RenderTransformId{55}, 60.0f, 1.0f, 1.0f},
+    };
+    for (const ViewDesc& desc : cases)
+    {
+        const auto view = runtime.CreateView(desc);
+        if (view || !view.GetError().HasCode("renderer.invalid_view"))
+        {
+            return false;
+        }
+    }
+
+    const auto valid = runtime.CreateView(ViewDesc{RenderTransformId{55}, 179.999f, std::numeric_limits<float>::min(), 1.0f});
+    return valid && valid.Value().value == 1u;
+}
+
 [[nodiscard]] bool TestFrameFlowEndsSubmittedAndClearsDirty()
 {
     TestResourceBridge bridge;
@@ -477,7 +514,10 @@ class TestCommandSink final : public IRenderCommandSink
     }
     auto bridge = std::make_shared<TestResourceBridge>();
     auto scene = std::make_shared<TestSceneSource>();
-    const auto missing_sink = CreateRendererServices({}, RendererDependencies{bridge, scene, nullptr});
+    RendererDependencies missing_sink_dependencies{};
+    missing_sink_dependencies.resource_bridge = bridge;
+    missing_sink_dependencies.scene_source = scene;
+    const auto missing_sink = CreateRendererServices({}, missing_sink_dependencies);
     if (missing_sink || !missing_sink.GetError().HasCode("renderer.command_sink_missing"))
     {
         return false;
@@ -509,6 +549,7 @@ int main()
     if (!TestDirtyAndVisibilityFlags()) return 3;
     if (!TestDeferredProxyDestroy()) return 4;
     if (!TestViewLifecycleAndMainView()) return 5;
+    if (!TestViewRejectsNonFiniteCameraParameters()) return 15;
     if (!TestFrameFlowEndsSubmittedAndClearsDirty()) return 6;
     if (!TestPrepareFrameRefreshesDirtyTransformBeforeSubmit()) return 7;
     if (!TestPrepareFrameSkipsMissingResourceAndContinues()) return 8;

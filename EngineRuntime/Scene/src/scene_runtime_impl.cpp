@@ -1,6 +1,7 @@
-﻿#include "scene_runtime_impl.h"
+#include "scene_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <cmath>
@@ -38,11 +39,21 @@ namespace
 
 foundation::Result<SceneNodeId> SceneRuntime::CreateNode()
 {
-    const SceneNodeId node_id{next_node_value_++};
+    const auto node_value = AllocateMonotonicId(next_node_value_, "scene.node_id_exhausted", "scene node id allocator is exhausted");
+    if (!node_value)
+    {
+        return foundation::Result<SceneNodeId>::Failure(node_value.GetError());
+    }
+    const SceneNodeId node_id{node_value.Value()};
     SceneNodeRecord record{};
     record.node.id = node_id;
     BumpRevision(record, 0);
-    nodes_.emplace(node_id, record);
+    const auto [_, inserted] = nodes_.emplace(node_id, record);
+    if (!inserted)
+    {
+        return foundation::Result<SceneNodeId>::Failure(
+            foundation::Error::Create("scene.duplicate_node_id", "allocated scene node id already exists"));
+    }
     return foundation::Result<SceneNodeId>::Success(node_id);
 }
 

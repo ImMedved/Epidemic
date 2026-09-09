@@ -1,0 +1,576 @@
+#pragma once
+
+#include "Epidemic/Foundation/result.h"
+#include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+namespace epidemic::gameplay::resources
+{
+using Fixed = std::int64_t;
+struct ResourceTypeId
+{
+    TypeId value{};
+    static constexpr ResourceTypeId FromString(std::string_view s) noexcept
+    {
+        return {TypeId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ResourceTypeId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ResourceTypeId &) const noexcept = default;
+};
+struct ResourceUnitId
+{
+    TypeId value{};
+    static constexpr ResourceUnitId FromString(std::string_view s) noexcept
+    {
+        return {TypeId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ResourceUnitId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ResourceUnitId &) const noexcept = default;
+};
+struct ResourceStockpileId
+{
+    GameplayObjectId value{};
+    static constexpr ResourceStockpileId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ResourceStockpileId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ResourceStockpileId &) const noexcept = default;
+};
+struct ResourceNodeId
+{
+    GameplayObjectId value{};
+    static constexpr ResourceNodeId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ResourceNodeId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ResourceNodeId &) const noexcept = default;
+};
+struct ProductionSiteId
+{
+    GameplayObjectId value{};
+    static constexpr ProductionSiteId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ProductionSiteId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ProductionSiteId &) const noexcept = default;
+};
+struct ProductionRecipeId
+{
+    TypeId value{};
+    static constexpr ProductionRecipeId FromString(std::string_view s) noexcept
+    {
+        return {TypeId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ProductionRecipeId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ProductionRecipeId &) const noexcept = default;
+};
+struct ResourceTransactionId
+{
+    GameplayObjectId value{};
+    static constexpr ResourceTransactionId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ResourceTransactionId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ResourceTransactionId &) const noexcept = default;
+};
+struct ResourceSourceId
+{
+    GameplayObjectId value{};
+    static constexpr ResourceSourceId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ResourceSourceId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ResourceSourceId &) const noexcept = default;
+};
+struct ResourceSinkId
+{
+    GameplayObjectId value{};
+    static constexpr ResourceSinkId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ResourceSinkId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ResourceSinkId &) const noexcept = default;
+};
+struct ResourceReservationId
+{
+    GameplayObjectId value{};
+    static constexpr ResourceReservationId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ResourceReservationId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ResourceReservationId &) const noexcept = default;
+};
+struct ProductionCapabilityId
+{
+    GameplayObjectId value{};
+    static constexpr ProductionCapabilityId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ProductionCapabilityId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ProductionCapabilityId &) const noexcept = default;
+};
+struct ProductionPlanId
+{
+    GameplayObjectId value{};
+    static constexpr ProductionPlanId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const ProductionPlanId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const ProductionPlanId &) const noexcept = default;
+};
+struct IdHash
+{
+    template <class T> [[nodiscard]] std::size_t operator()(const T &id) const noexcept
+    {
+        return std::hash<decltype(id.value)>{}(id.value);
+    }
+};
+
+enum class ResourceStoragePolicy
+{
+    Abstract,
+    Stockpile,
+    Node,
+    Virtual
+};
+enum class ResourceDecayPolicy
+{
+    None,
+    Linear,
+    External
+};
+enum class StockpileState
+{
+    Active,
+    Locked,
+    Disabled,
+    Destroyed
+};
+enum class ResourceNodeState
+{
+    Active,
+    Depleted,
+    Disabled,
+    Regenerating
+};
+enum class ProductionSiteState
+{
+    Active,
+    Paused,
+    Disabled,
+    Destroyed
+};
+enum class ResourceReservationState
+{
+    Active,
+    Consumed,
+    Released
+};
+enum class ProductionPlanState
+{
+    Planned,
+    Active,
+    Satisfied,
+    Paused,
+    Cancelled
+};
+enum class ResourceChangeKind
+{
+    StockpileCreated,
+    ResourceAdded,
+    ResourceRemoved,
+    ResourceTransferred,
+    ResourceReserved,
+    ResourceReservationReleased,
+    ResourceReservationConsumed,
+    StockpileStateChanged,
+    NodeCreated,
+    NodeDepleted,
+    NodeRegenerated,
+    ProductionSiteCreated,
+    ProductionCapabilityCreated,
+    ProductionPlanCreated,
+    ProductionPlanChanged,
+    ShortageDetected,
+    SurplusDetected
+};
+
+struct ResourceType
+{
+    ResourceTypeId id{};
+    std::string canonical_name;
+    GameplayTagSet tags;
+    ResourceUnitId unit{};
+    ResourceStoragePolicy storage_policy = ResourceStoragePolicy::Stockpile;
+    ResourceDecayPolicy decay_policy = ResourceDecayPolicy::None;
+    Revision revision{};
+};
+struct ResourceQuantity
+{
+    ResourceTypeId type{};
+    Fixed amount = 0;
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return type.IsValid() && amount >= 0;
+    }
+};
+struct ResourceStockpile
+{
+    ResourceStockpileId id{};
+    GameplayObjectRef owner{};
+    GameplayObjectRef location_object{};
+    GameplayObjectRef area{};
+    StockpileState state = StockpileState::Active;
+    Revision revision{};
+};
+struct ResourceNode
+{
+    ResourceNodeId id{};
+    ResourceTypeId type{};
+    GameplayObjectRef area{};
+    Fixed remaining_amount = 0;
+    Fixed regeneration_rate_per_tick = 0;
+    ResourceNodeState state = ResourceNodeState::Active;
+    Revision revision{};
+    Fixed maximum_amount = 0;
+    GameplayTimePoint last_regenerated_at{};
+};
+struct ProductionSite
+{
+    ProductionSiteId id{};
+    GameplayObjectRef site_object{};
+    GameplayObjectRef area{};
+    GameplayTagSet capabilities;
+    ProductionSiteState state = ProductionSiteState::Active;
+    Fixed efficiency_micro = 1'000'000;
+    Revision revision{};
+};
+struct ProductionRecipe
+{
+    ProductionRecipeId id{};
+    std::string canonical_name;
+    std::vector<ResourceQuantity> inputs;
+    std::vector<ResourceQuantity> outputs;
+    GameplayDuration duration{};
+    Revision revision{};
+};
+struct ResourceReservation
+{
+    ResourceReservationId id{};
+    ResourceStockpileId stockpile{};
+    std::vector<ResourceQuantity> quantities;
+    GameplayObjectRef owner{};
+    TypeId reason{};
+    ResourceReservationState state = ResourceReservationState::Active;
+    Revision revision{};
+};
+struct ProductionCapability
+{
+    ProductionCapabilityId id{};
+    GameplayObjectRef site{};
+    GameplayTagSet process_tags;
+    Fixed capacity = 0;
+    Revision revision{};
+};
+struct ProductionPlan
+{
+    ProductionPlanId id{};
+    GameplayObjectRef owner{};
+    ResourceTypeId desired_output{};
+    Fixed target_quantity = 0;
+    std::int32_t priority = 0;
+    ProductionPlanState state = ProductionPlanState::Planned;
+    Revision revision{};
+};
+struct ResourceTransaction
+{
+    ResourceTransactionId id{};
+    ResourceStockpileId from{};
+    ResourceStockpileId to{};
+    std::vector<ResourceQuantity> quantities;
+    TypeId reason{};
+    GameplayTimePoint time{};
+    GameplayContext context{};
+    Revision revision{};
+};
+struct ResourceChange
+{
+    std::uint64_t sequence = 0;
+    ResourceChangeKind kind = ResourceChangeKind::ResourceAdded;
+    ResourceStockpileId stockpile{};
+    ResourceTypeId resource{};
+    ResourceReservationId reservation{};
+    Fixed amount = 0;
+    GameplayTimePoint time{};
+    GameplayContext context{};
+    Revision revision{};
+    ResourceNodeId node{};
+};
+struct ResourceChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::uint64_t latest_sequence = 0;
+    std::vector<ResourceChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
+};
+
+struct ResourcesSnapshot
+{
+    std::vector<ResourceStockpile> stockpiles;
+    std::vector<std::pair<ResourceStockpileId, ResourceQuantity>> amounts;
+    std::vector<ResourceNode> nodes;
+    std::vector<ProductionSite> sites;
+    std::vector<ResourceReservation> reservations;
+    std::vector<ProductionCapability> capabilities;
+    std::vector<ProductionPlan> plans;
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot stockpile_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot node_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot site_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot reservation_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot capability_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot plan_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot transaction_ids{};
+    Revision revision{};
+    std::vector<ResourceTransaction> transactions;
+
+    std::uint64_t change_epoch = 1;
+};
+struct ResourcesDiagnostics
+{
+    std::uint64_t stockpiles = 0;
+    std::uint64_t resource_records = 0;
+    std::uint64_t nodes = 0;
+    std::uint64_t production_sites = 0;
+    std::uint64_t active_reservations = 0;
+    std::uint64_t production_capabilities = 0;
+    std::uint64_t production_plans = 0;
+    std::uint64_t transactions = 0;
+    std::uint64_t shortages = 0;
+};
+
+class ResourcesProductionService
+{
+  public:
+    ResourcesProductionService();
+    [[nodiscard]] static constexpr GameplayDomainId Domain() noexcept
+    {
+        return GameplayDomainId::FromString("framework.resources_production");
+    }
+    [[nodiscard]] foundation::Result<ResourceTypeId> RegisterResourceType(ResourceType type);
+    [[nodiscard]] foundation::Result<ProductionRecipeId> RegisterProductionRecipe(ProductionRecipe recipe);
+    void Freeze() noexcept
+    {
+        frozen_ = true;
+    }
+    [[nodiscard]] const ResourceType *FindResourceType(ResourceTypeId id) const noexcept;
+    [[nodiscard]] const ProductionRecipe *FindProductionRecipe(ProductionRecipeId id) const noexcept;
+
+    [[nodiscard]] foundation::Result<ResourceStockpileId> CreateStockpile(ResourceStockpile stockpile);
+    [[nodiscard]] foundation::Result<ResourceNodeId> CreateNode(ResourceNode node);
+    [[nodiscard]] foundation::Result<ProductionSiteId> CreateProductionSite(ProductionSite site);
+    [[nodiscard]] const ResourceStockpile *FindStockpile(ResourceStockpileId id) const noexcept;
+    [[nodiscard]] foundation::Result<void> SetStockpileState(ResourceStockpileId stockpile, StockpileState state,
+                                                             GameplayContext context = {});
+    [[nodiscard]] Fixed GetAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept;
+    [[nodiscard]] Fixed GetReservedAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept;
+    [[nodiscard]] Fixed GetAvailableAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept;
+    [[nodiscard]] foundation::Result<void> Add(ResourceStockpileId stockpile, ResourceQuantity quantity,
+                                               GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> Remove(ResourceStockpileId stockpile, ResourceQuantity quantity,
+                                                  GameplayContext context = {});
+    [[nodiscard]] foundation::Result<ResourceTransactionId> Transfer(ResourceStockpileId from, ResourceStockpileId to,
+                                                                     std::vector<ResourceQuantity> quantities,
+                                                                     TypeId reason = {}, GameplayContext context = {});
+    [[nodiscard]] bool CanReserve(ResourceStockpileId stockpile,
+                                  std::span<const ResourceQuantity> quantities) const;
+    [[nodiscard]] foundation::Result<ResourceReservationId> Reserve(ResourceStockpileId stockpile,
+                                                                    std::vector<ResourceQuantity> quantities,
+                                                                    GameplayObjectRef owner = {}, TypeId reason = {},
+                                                                    GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ReleaseReservation(ResourceReservationId reservation,
+                                                              GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ConsumeReservation(ResourceReservationId reservation,
+                                                              GameplayContext context = {});
+    [[nodiscard]] const ResourceReservation *FindReservation(ResourceReservationId reservation) const noexcept;
+
+    [[nodiscard]] foundation::Result<void> DepleteNode(ResourceNodeId node, Fixed amount, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RegenerateNode(ResourceNodeId node, GameplayDuration elapsed,
+                                                          GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RegenerateNode(ResourceNodeId node, GameplayTimePoint to,
+                                                          GameplayContext context = {});
+
+    [[nodiscard]] foundation::Result<ProductionCapabilityId> CreateProductionCapability(
+        ProductionCapability capability);
+    [[nodiscard]] const ProductionCapability *FindProductionCapability(ProductionCapabilityId id) const noexcept;
+    [[nodiscard]] foundation::Result<ProductionPlanId> CreateProductionPlan(ProductionPlan plan);
+    [[nodiscard]] foundation::Result<void> SetProductionPlanState(ProductionPlanId plan, ProductionPlanState state,
+                                                                  GameplayContext context = {});
+    [[nodiscard]] const ProductionPlan *FindProductionPlan(ProductionPlanId id) const noexcept;
+    [[nodiscard]] std::vector<ProductionPlan> FindProductionPlans(GameplayObjectRef owner = {}) const;
+
+    private:
+        [[nodiscard]] std::vector<ResourceChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] ResourceChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] ResourceChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
+    [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
+    void PruneChangesBefore(std::uint64_t sequence) noexcept;
+    [[nodiscard]] ResourcesSnapshot CaptureSnapshot() const;
+    [[nodiscard]] foundation::Result<void> RestoreSnapshot(ResourcesSnapshot snapshot);
+    [[nodiscard]] ResourcesDiagnostics GetDiagnostics() const noexcept;
+
+  private:
+    struct AmountKey
+    {
+        ResourceStockpileId stockpile{};
+        ResourceTypeId type{};
+        [[nodiscard]] constexpr bool operator==(const AmountKey &) const noexcept = default;
+    };
+    struct AmountKeyHash
+    {
+        [[nodiscard]] std::size_t operator()(const AmountKey &k) const noexcept
+        {
+            const auto a = std::hash<GameplayObjectId>{}(k.stockpile.value);
+            const auto b = std::hash<TypeId>{}(k.type.value);
+            return a ^ (b + 0x9E3779B97F4A7C15ull + (a << 6u) + (a >> 2u));
+        }
+    };
+    void Bump() noexcept
+    {
+        ++revision_.value;
+    }
+    enum class StockpileOperation
+    {
+        Add,
+        Remove,
+        Reserve,
+        TransferSource,
+        TransferDestination
+    };
+    void Record(ResourceChange change);
+    [[nodiscard]] foundation::Result<void> ValidateQuantities(std::span<const ResourceQuantity> quantities) const;
+    [[nodiscard]] foundation::Result<std::vector<ResourceQuantity>> CanonicalizeQuantities(
+        std::span<const ResourceQuantity> quantities) const;
+    [[nodiscard]] foundation::Result<void> ValidateStockpileOperation(ResourceStockpileId stockpile,
+                                                                      StockpileOperation operation) const;
+    [[nodiscard]] bool CanAddToStockpile(ResourceStockpileId stockpile) const noexcept;
+    [[nodiscard]] bool CanRemoveFromStockpile(ResourceStockpileId stockpile) const noexcept;
+    [[nodiscard]] static std::uint64_t LowPart(GameplayObjectId id) noexcept;
+    void AddReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept;
+    void RemoveReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept;
+    void RebuildDerivedState() noexcept;
+
+    bool frozen_ = false;
+    Revision revision_{};
+    std::unordered_map<ResourceTypeId, ResourceType, IdHash> types_;
+    std::unordered_map<ResourceStockpileId, ResourceStockpile, IdHash> stockpiles_;
+    std::unordered_map<AmountKey, Fixed, AmountKeyHash> amounts_;
+    std::unordered_map<AmountKey, Fixed, AmountKeyHash> reserved_amounts_;
+    std::unordered_map<ResourceNodeId, ResourceNode, IdHash> nodes_;
+    std::unordered_map<ProductionSiteId, ProductionSite, IdHash> sites_;
+    std::unordered_map<ResourceReservationId, ResourceReservation, IdHash> reservations_;
+    std::unordered_map<ProductionCapabilityId, ProductionCapability, IdHash> capabilities_;
+    std::unordered_map<ProductionPlanId, ProductionPlan, IdHash> plans_;
+    std::unordered_map<ProductionRecipeId, ProductionRecipe, IdHash> recipes_;
+    std::unordered_map<ResourceTransactionId, ResourceTransaction, IdHash> transactions_;
+    MonotonicIdGenerator<GameplayObjectId> stockpile_ids_;
+    MonotonicIdGenerator<GameplayObjectId> node_ids_;
+    MonotonicIdGenerator<GameplayObjectId> site_ids_;
+    MonotonicIdGenerator<GameplayObjectId> reservation_ids_{0x3110};
+    MonotonicIdGenerator<GameplayObjectId> capability_ids_{0x3111};
+    MonotonicIdGenerator<GameplayObjectId> plan_ids_{0x3112};
+    MonotonicIdGenerator<GameplayObjectId> transaction_ids_;
+    std::deque<ResourceChange> changes_;
+    std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
+    std::size_t change_retention_ = 4096;
+    ResourcesDiagnostics diagnostics_{};
+};
+} // namespace epidemic::gameplay::resources

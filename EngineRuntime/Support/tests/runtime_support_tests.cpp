@@ -1,5 +1,6 @@
 #include "Epidemic/Runtime/Support/runtime_support.h"
 
+#include <algorithm>
 #include <chrono>
 #include <iostream>
 #include <memory>
@@ -88,6 +89,30 @@ bool TestAtomicDefaultCompositionAndTypedOwnership()
                  "scene projection queue is not the physics sink instance");
     ok &= Expect(SameOwner(integrations.animation_pose_sink, integrations.animation_pose_cache),
                  "animation pose sink/cache ownership differs");
+    ok &= Expect(SameOwner(integrations.animation_pose_sink, integrations.render_pose_source),
+                 "animation pose sink/render pose source ownership differs");
+
+    // Replacing an animator for the same runtime object must replace the owner's pose even
+    // when the new animator starts its own revision sequence from a lower value.
+    auto first_pose = std::make_shared<animation::PoseBuffer>();
+    first_pose->animator = animation::AnimatorHandle{animation::AnimatorInstanceId{41}, 1};
+    first_pose->owner = RuntimeObjectId{77};
+    first_pose->revision = 9;
+    ok &= Expect(integrations.animation_pose_sink->Publish(first_pose).HasValue(),
+                 "initial animation pose publication failed");
+
+    auto replacement_pose = std::make_shared<animation::PoseBuffer>();
+    replacement_pose->animator = animation::AnimatorHandle{animation::AnimatorInstanceId{42}, 1};
+    replacement_pose->owner = RuntimeObjectId{77};
+    replacement_pose->revision = 1;
+    ok &= Expect(integrations.animation_pose_sink->Publish(replacement_pose).HasValue(),
+                 "replacement animator pose must be allowed to restart its revision sequence");
+
+    const auto rendered_pose = integrations.render_pose_source->GetPose(RuntimeObjectId{77});
+    ok &= Expect(rendered_pose.HasValue() && rendered_pose.Value() && rendered_pose.Value()->revision == 1,
+                 "render pose source did not replace the previous animator pose for the owner");
+    ok &= Expect(!integrations.animation_pose_cache->GetPose(first_pose->animator).HasValue(),
+                 "replaced animator pose remained reachable after owner replacement");
     return ok;
 }
 
@@ -104,14 +129,44 @@ bool TestProductionPreflightIsAtomic()
     ok &= Expect(!app.Services().Contains<RuntimeFoundationRegistration>(),
                  "failed production composition registered a partial runtime");
 
-    EngineRuntimeDependencies manifest_only_dependencies{};
-    manifest_only_dependencies.chunk_manifests = std::make_shared<EmptyChunkManifestSource>();
-    const auto manifest_only_failed =
-        RegisterDefaultEngineRuntime(app, options, std::move(manifest_only_dependencies));
-    ok &= Expect(!manifest_only_failed.HasValue(),
-                 "production streaming must require external roles, not only a chunk manifest");
+    // Production is allowed to use the standard Support Streaming adapter. In that mode
+    // the application supplies only the real chunk manifest source; Support wires World,
+    // Resources and Persistence itself.
+    EngineRuntimeOptions streaming_only{};
+    streaming_only.profile = RuntimeProfile::Production;
+    streaming_only.enable_assets = false;
+    streaming_only.enable_serialization = false;
+    streaming_only.enable_resources = true;
+    streaming_only.enable_persistence = true;
+    streaming_only.enable_time = false;
+    streaming_only.enable_environment = false;
+    streaming_only.enable_scene = false;
+    streaming_only.enable_world = true;
+    streaming_only.enable_streaming = true;
+    streaming_only.enable_simulation = false;
+    streaming_only.enable_navigation = false;
+    streaming_only.enable_animation = false;
+    streaming_only.enable_physics = false;
+    streaming_only.enable_audio = false;
+    streaming_only.enable_renderer = false;
+
+    EngineRuntimeDependencies manifest_dependencies{};
+    manifest_dependencies.chunk_manifests = std::make_shared<EmptyChunkManifestSource>();
+    const auto prepared = PrepareEngineRuntime(streaming_only, std::move(manifest_dependencies));
+    ok &= Expect(prepared.HasValue(),
+                 "production standard Streaming composition should accept a chunk manifest source");
+    if (prepared)
+    {
+        ok &= Expect(prepared.Value().services.streaming != nullptr,
+                     "production standard Streaming composition did not create Streaming services");
+        ok &= Expect(prepared.Value().services.integrations->streaming_prepared_data != nullptr,
+                     "production standard Streaming composition did not expose prepared-data query");
+        ok &= Expect(SameOwner(prepared.Value().services.integrations->streaming_data_source,
+                               prepared.Value().services.integrations->streaming_commit_target),
+                     "production standard Streaming roles do not share one Support adapter");
+    }
     ok &= Expect(!app.Services().Contains<EngineRuntimeServices>(),
-                 "manifest-only production failure changed the application");
+                 "PrepareEngineRuntime must not mutate Application");
     return ok;
 }
 
@@ -242,6 +297,10 @@ bool TestFullTickAndTerminalShutdown()
     ok &= Expect(runtime.Value().coordinator->Shutdown().HasValue(), "second shutdown was not idempotent");
     ok &= Expect(!runtime.Value().coordinator->Tick(input).HasValue(), "coordinator accepted a frame after shutdown");
     ok &= Expect(runtime.Value().integrations->owned_adapters.empty(), "shutdown retained adapter ownership metadata");
+    ok &= Expect(runtime.Value().integrations->render_pose_source == nullptr,
+                 "shutdown retained Animation-to-Renderer pose adapter");
+    ok &= Expect(runtime.Value().integrations->streaming_prepared_data == nullptr,
+                 "shutdown retained Streaming prepared-data adapter");
     return ok;
 }
 }

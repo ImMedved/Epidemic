@@ -1,0 +1,495 @@
+#pragma once
+
+#include "Epidemic/Foundation/result.h"
+#include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
+
+#include <algorithm>
+#include <cstddef>
+#include <cstdint>
+#include <limits>
+#include <deque>
+#include <optional>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+namespace epidemic::gameplay::traversal
+{
+struct TraversalModeId
+{
+    TypeId value{};
+    static constexpr TraversalModeId FromString(std::string_view s) noexcept
+    {
+        return {TypeId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const TraversalModeId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const TraversalModeId &) const noexcept = default;
+};
+struct TraversalProfileId
+{
+    TypeId value{};
+    static constexpr TraversalProfileId FromString(std::string_view s) noexcept
+    {
+        return {TypeId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const TraversalProfileId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const TraversalProfileId &) const noexcept = default;
+};
+struct TraversalSessionId
+{
+    GameplayObjectId value{};
+    static constexpr TraversalSessionId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
+    {
+        return {GameplayObjectId::FromRaw(h, l)};
+    }
+    static constexpr TraversalSessionId FromString(std::string_view s) noexcept
+    {
+        return {GameplayObjectId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const TraversalSessionId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const TraversalSessionId &) const noexcept = default;
+};
+struct TraversalRouteId
+{
+    GameplayObjectId value{};
+    static constexpr TraversalRouteId FromString(std::string_view s) noexcept
+    {
+        return {GameplayObjectId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const TraversalRouteId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const TraversalRouteId &) const noexcept = default;
+};
+struct TraversalCapabilityId
+{
+    TypeId value{};
+    static constexpr TraversalCapabilityId FromString(std::string_view s) noexcept
+    {
+        return {TypeId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const TraversalCapabilityId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const TraversalCapabilityId &) const noexcept = default;
+};
+struct TraversalCapabilityGrantId
+{
+    GameplayObjectId value{};
+    [[nodiscard]] constexpr bool IsValid() const noexcept { return value.IsValid(); }
+    [[nodiscard]] constexpr auto operator<=>(const TraversalCapabilityGrantId &) const noexcept = default;
+};
+
+struct TraversalCarrierRoleId
+{
+    TypeId value{};
+    static constexpr TraversalCarrierRoleId FromString(std::string_view s) noexcept
+    {
+        return {TypeId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const TraversalCarrierRoleId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const TraversalCarrierRoleId &) const noexcept = default;
+};
+struct TraversalReasonId
+{
+    TypeId value{};
+    static constexpr TraversalReasonId FromString(std::string_view s) noexcept
+    {
+        return {TypeId::FromString(s)};
+    }
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return value.IsValid();
+    }
+    [[nodiscard]] constexpr bool operator==(const TraversalReasonId &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const TraversalReasonId &) const noexcept = default;
+};
+
+struct IdHash
+{
+    template <class T> [[nodiscard]] std::size_t operator()(const T &id) const noexcept
+    {
+        return std::hash<decltype(id.value)>{}(id.value);
+    }
+};
+struct RefHash
+{
+    [[nodiscard]] std::size_t operator()(GameplayObjectRef ref) const noexcept
+    {
+        return std::hash<GameplayObjectRef>{}(ref);
+    }
+};
+
+using Fixed = std::int64_t;
+struct WorldPosition
+{
+    Fixed x_mm = 0, y_mm = 0, z_mm = 0;
+    [[nodiscard]] constexpr bool operator==(const WorldPosition &) const noexcept = default;
+};
+
+enum class TraversalMaterializationPolicy
+{
+    AbstractCapable,
+    RequiresMaterialized,
+    RequiresRuntimeProjection
+};
+enum class TraversalRouteLifetime
+{
+    Persistent,
+    Session,
+    Transient
+};
+enum class TraversalSessionState
+{
+    Active,
+    Suspended,
+    Completed,
+    Cancelled,
+    Failed
+};
+enum class TraversalChangeKind
+{
+    ProfileAssigned,
+    ModeChanged,
+    RequestRejected,
+    SessionStarted,
+    SessionCompleted,
+    SessionCancelled,
+    CarrierBoarded,
+    CarrierDisembarked,
+    CapabilityGranted,
+    CapabilityRevoked,
+    SessionSuspended,
+    SessionResumed,
+    SessionFailed,
+    RouteRegistered,
+    RouteRemoved,
+    StateRemoved
+};
+
+enum class TraversalResultKind
+{
+    Accepted,
+    Rejected,
+    NoOp
+};
+
+struct TraversalModeDefinition
+{
+    TraversalModeId id{};
+    std::string canonical_name;
+    GameplayTagSet tags;
+    TraversalCapabilityId required_capability{};
+    Fixed required_capability_parameter_micro = 0;
+    TraversalMaterializationPolicy materialization_policy = TraversalMaterializationPolicy::AbstractCapable;
+    Fixed base_speed_micro = 1'000'000;
+    Fixed acceleration_modifier_micro = 1'000'000;
+};
+
+struct TraversalCapabilityValue
+{
+    TraversalCapabilityId id{};
+    Fixed parameter_micro = 1'000'000;
+
+    constexpr TraversalCapabilityValue() noexcept = default;
+    constexpr TraversalCapabilityValue(TraversalCapabilityId capability, Fixed parameter = 1'000'000) noexcept
+        : id(capability), parameter_micro(parameter)
+    {
+    }
+
+    [[nodiscard]] constexpr bool IsValid() const noexcept
+    {
+        return id.IsValid() && parameter_micro >= 0;
+    }
+
+    [[nodiscard]] constexpr bool operator==(const TraversalCapabilityValue &) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const TraversalCapabilityValue &) const noexcept = default;
+};
+
+struct TraversalCapabilityGrant
+{
+    TraversalCapabilityGrantId id{};
+    GameplayObjectRef subject{};
+    TraversalCapabilityId capability{};
+    GameplayObjectRef source{};
+    Fixed parameter_micro = 1'000'000;
+    std::optional<GameplayTimePoint> expires_at{};
+    bool persistent = true;
+    Revision revision{};
+};
+
+class ITraversalMaterializationProvider
+{
+  public:
+    virtual ~ITraversalMaterializationProvider() = default;
+    [[nodiscard]] virtual bool IsMaterialized(GameplayObjectRef subject) const noexcept = 0;
+    [[nodiscard]] virtual bool HasRuntimeProjection(GameplayObjectRef subject) const noexcept = 0;
+};
+
+struct TraversalProfile
+{
+    TraversalProfileId id{};
+    std::string canonical_name;
+    GameplayTagSet tags;
+    TraversalModeId default_mode{};
+    std::vector<TraversalModeId> allowed_modes;
+    std::vector<TraversalCapabilityValue> capabilities;
+    Revision revision{};
+};
+
+struct TraversalState
+{
+    GameplayObjectRef subject{};
+    TraversalModeId current_mode{};
+    TraversalProfileId profile{};
+    std::optional<TraversalSessionId> active_session{};
+    Revision revision{};
+};
+
+struct TraversalRoute
+{
+    TraversalRouteId id{};
+    GameplayObjectRef subject{};
+    GameplayObjectRef from_area{};
+    GameplayObjectRef to_area{};
+    TraversalModeId mode{};
+    TraversalRouteLifetime lifetime = TraversalRouteLifetime::Persistent;
+    GameplayObjectRef source{};
+    std::vector<std::byte> payload;
+    Revision revision{};
+};
+
+struct TraversalSession
+{
+    TraversalSessionId id{};
+    GameplayObjectRef subject{};
+    TraversalModeId mode{};
+    TraversalRouteId route{};
+    TraversalSessionState state = TraversalSessionState::Active;
+    GameplayTimePoint started_at{};
+    Revision revision{};
+};
+
+struct TraversalCarrierBinding
+{
+    GameplayObjectRef passenger{};
+    GameplayObjectRef carrier{};
+    TraversalModeId carrier_mode{};
+    TraversalModeId previous_mode{};
+    TraversalCarrierRoleId role{};
+    Revision revision{};
+};
+
+struct ChangeTraversalModeRequest
+{
+    GameplayObjectRef subject{};
+    TraversalModeId target_mode{};
+    GameplayContext context{};
+};
+struct TraversalRequest
+{
+    GameplayObjectRef subject{};
+    TraversalModeId mode{};
+    std::optional<WorldPosition> target_position{};
+    std::optional<GameplayObjectRef> target_area{};
+    std::optional<GameplayObjectRef> target_object{};
+    GameplayContext context{};
+};
+struct TraversalResult
+{
+    TraversalResultKind kind = TraversalResultKind::Rejected;
+    TraversalReasonId reason{};
+    Revision revision{};
+};
+struct TraversalChange
+{
+    std::uint64_t sequence = 0;
+    TraversalChangeKind kind = TraversalChangeKind::ProfileAssigned;
+    GameplayObjectRef subject{};
+    TraversalModeId mode{};
+    TraversalSessionId session{};
+    GameplayObjectRef carrier{};
+    TraversalReasonId reason{};
+    GameplayContext context{};
+    Revision revision{};
+    TraversalCapabilityId capability{};
+    TraversalCapabilityGrantId capability_grant{};
+};
+struct TraversalChangeBatch
+{
+    bool snapshot_required = false;
+    std::uint64_t oldest_available_sequence = 0;
+    std::vector<TraversalChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
+};
+struct TraversalSnapshot
+{
+    std::vector<TraversalState> states;
+    std::vector<TraversalSession> sessions;
+    std::vector<TraversalRoute> routes;
+    std::vector<TraversalCapabilityGrant> capability_grants;
+    std::vector<TraversalCarrierBinding> carrier_bindings;
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot session_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot route_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot capability_grant_ids{};
+    Revision revision{};
+    std::vector<TraversalChange> journal;
+    std::uint64_t next_change_sequence = 1;
+
+    std::uint64_t change_epoch = 1;
+};
+struct TraversalDiagnostics
+{
+    std::uint64_t profiles = 0, modes = 0, states = 0, active_sessions = 0, carrier_bindings = 0, mode_changes = 0,
+                  rejected_mode_changes = 0, boarding_ops = 0;
+};
+
+class TraversalService
+{
+  public:
+    TraversalService();
+    [[nodiscard]] static constexpr GameplayDomainId Domain() noexcept
+    {
+        return GameplayDomainId::FromString("framework.traversal");
+    }
+    [[nodiscard]] foundation::Result<void> RegisterMode(TraversalModeDefinition definition);
+    [[nodiscard]] foundation::Result<void> RegisterProfile(TraversalProfile profile);
+    void Freeze() noexcept
+    {
+        frozen_ = true;
+    }
+    [[nodiscard]] bool IsFrozen() const noexcept
+    {
+        return frozen_;
+    }
+    [[nodiscard]] const TraversalModeDefinition *FindMode(TraversalModeId id) const noexcept;
+    [[nodiscard]] const TraversalProfile *FindProfile(TraversalProfileId id) const noexcept;
+    void SetMaterializationProvider(const ITraversalMaterializationProvider *provider) noexcept { materialization_ = provider; }
+
+    [[nodiscard]] foundation::Result<TraversalCapabilityGrantId> GrantCapability(TraversalCapabilityGrant grant, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RevokeCapability(TraversalCapabilityGrantId grant, GameplayContext context = {});
+    [[nodiscard]] std::uint64_t RevokeCapabilitiesBySource(GameplayObjectRef subject, GameplayObjectRef source, GameplayContext context = {});
+    [[nodiscard]] std::uint64_t ExpireCapabilities(GameplayTimePoint now, GameplayContext context = {});
+    [[nodiscard]] bool HasCapability(GameplayObjectRef subject, TraversalCapabilityId capability, Fixed min_parameter_micro = 0) const noexcept;
+    [[nodiscard]] Fixed EffectiveCapabilityParameter(GameplayObjectRef subject, TraversalCapabilityId capability) const noexcept;
+
+    [[nodiscard]] foundation::Result<void> AssignProfile(GameplayObjectRef subject, TraversalProfileId profile,
+                                                         GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RemoveState(GameplayObjectRef subject, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<TraversalResult> ChangeMode(ChangeTraversalModeRequest request);
+    [[nodiscard]] TraversalResult CanUseMode(GameplayObjectRef subject, TraversalModeId mode) const;
+
+    [[nodiscard]] foundation::Result<TraversalRouteId> RegisterRoute(TraversalRoute route);
+    [[nodiscard]] foundation::Result<void> RemoveRoute(TraversalRouteId route, GameplayContext context = {});
+    [[nodiscard]] std::uint64_t RemoveRoutesBySource(GameplayObjectRef source, GameplayContext context = {});
+    [[nodiscard]] const TraversalRoute *FindRoute(TraversalRouteId id) const noexcept;
+    [[nodiscard]] foundation::Result<TraversalSessionId> StartSession(GameplayObjectRef subject, TraversalModeId mode,
+                                                                      TraversalRouteId route = {},
+                                                                      GameplayTimePoint started_at = {},
+                                                                      GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> SuspendSession(TraversalSessionId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ResumeSession(TraversalSessionId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CompleteSession(TraversalSessionId id, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> CancelSession(TraversalSessionId id, TraversalReasonId reason = {},
+                                                         GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> FailSession(TraversalSessionId id, TraversalReasonId reason = {},
+                                                       GameplayContext context = {});
+
+    [[nodiscard]] foundation::Result<void> BoardCarrier(GameplayObjectRef passenger, GameplayObjectRef carrier,
+                                                        TraversalModeId mode, TraversalCarrierRoleId role,
+                                                        GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> Disembark(GameplayObjectRef passenger, GameplayContext context = {});
+
+    [[nodiscard]] const TraversalState *FindState(GameplayObjectRef subject) const noexcept;
+    [[nodiscard]] const TraversalSession *FindSession(TraversalSessionId id) const noexcept;
+    [[nodiscard]] std::vector<TraversalState> FindSubjectsUsingMode(TraversalModeId mode) const;
+    [[nodiscard]] std::vector<TraversalCarrierBinding> FindCarrierPassengers(GameplayObjectRef carrier) const;
+    private:
+        [[nodiscard]] std::vector<TraversalChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] TraversalChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] TraversalChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
+    [[nodiscard]] TraversalSnapshot CaptureSnapshot() const;
+    [[nodiscard]] foundation::Result<void> RestoreSnapshot(TraversalSnapshot snapshot);
+    [[nodiscard]] TraversalDiagnostics GetDiagnostics() const noexcept;
+    [[nodiscard]] Revision CurrentRevision() const noexcept
+    {
+        return revision_;
+    }
+
+  private:
+    [[nodiscard]] TraversalState *FindMutableState(GameplayObjectRef subject) noexcept;
+    [[nodiscard]] TraversalSession *FindMutableSession(TraversalSessionId id) noexcept;
+    [[nodiscard]] bool ProfileAllows(const TraversalProfile &profile, TraversalModeId mode) const noexcept;
+    [[nodiscard]] Fixed ProfileCapabilityParameter(const TraversalProfile &profile, TraversalCapabilityId capability) const noexcept;
+    [[nodiscard]] bool IsLiveSession(TraversalSessionState state) const noexcept;
+    [[nodiscard]] bool IsRouteInUse(TraversalRouteId route) const noexcept;
+    [[nodiscard]] foundation::Result<void> FinalizeSession(TraversalSessionId id, TraversalSessionState terminal_state,
+                                                           TraversalChangeKind change_kind, TraversalReasonId reason,
+                                                           GameplayContext context);
+    void Bump() noexcept
+    {
+        ++revision_.value;
+    }
+    void Record(TraversalChange change);
+
+    std::unordered_map<TraversalModeId, TraversalModeDefinition, IdHash> modes_;
+    std::unordered_map<TraversalProfileId, TraversalProfile, IdHash> profiles_;
+    std::unordered_map<GameplayObjectRef, TraversalState, RefHash> states_;
+    std::unordered_map<TraversalSessionId, TraversalSession, IdHash> sessions_;
+    std::unordered_map<TraversalRouteId, TraversalRoute, IdHash> routes_;
+    std::unordered_map<TraversalCapabilityGrantId, TraversalCapabilityGrant, IdHash> capability_grants_;
+    std::unordered_map<GameplayObjectRef, TraversalCarrierBinding, RefHash> carrier_by_passenger_;
+    MonotonicIdGenerator<GameplayObjectId> session_ids_;
+    MonotonicIdGenerator<GameplayObjectId> route_ids_;
+    MonotonicIdGenerator<GameplayObjectId> capability_grant_ids_;
+    const ITraversalMaterializationProvider *materialization_ = nullptr;
+    Revision revision_{};
+    bool frozen_ = false;
+    static constexpr std::size_t kChangeJournalCapacity = 4096;
+    std::deque<TraversalChange> changes_;
+    std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
+    std::uint64_t mode_changes_ = 0, rejected_mode_changes_ = 0, boarding_ops_ = 0;
+};
+} // namespace epidemic::gameplay::traversal

@@ -53,6 +53,7 @@ class ModuleRegistry
 
     std::vector<std::unique_ptr<IModule>> modules_;
     std::unordered_map<foundation::ModuleId, std::size_t> module_index_by_id_;
+    std::unordered_map<foundation::ModuleId, std::string> canonical_module_name_by_id_;
     std::vector<std::size_t> execution_plan_;
     std::size_t bootstrapped_count_{0};
     LifecycleState state_{LifecycleState::Empty};

@@ -1,71 +1,49 @@
-# Epidemic Engine v1.0
+# Epidemic Engine
 
-`EngineBase` is the stable low-level engine base of the repository. It contains the engine contracts and the minimal executable baseline needed to bootstrap the engine, open a native window, process input, run a frame loop, and present through a minimal RHI boundary.
+Epidemic Engine — Windows-only C++20 движок, построенный как несколько строго направленных слоев. Нижние слои предоставляют стабильные механизмы, верхние добавляют игровое значение и никогда не протягивают зависимости обратно вниз.
 
-`EngineRuntime` is the modular runtime layer above EngineBase. It owns runtime systems, shared runtime state, backend-facing contracts and Support composition, but it does not contain gameplay rules or concrete game content.
+Текущая структура проекта:
 
-`EngineBase/` includes:
+```text
+EngineBase
+    ↓
+EngineRuntime
+    ↓
+GameFramework
+    ↓
+Game
+```
 
-- `Foundation`
-- `Memory`
-- `Diagnostics`
-- `Core`
-- `Platform`
-- `Input`
-- `RHI`
-- `RHI_D3D11`
-- `Support`
-- smoke apps and grouped tests
+`EngineBase` содержит минимальную платформу исполнения: общие типы, память и диагностику, microkernel и lifecycle приложения, Win32 platform/windowing, raw input и минимальный RHI с D3D11 backend. `EngineRuntime` содержит независимые engine majors: assets/resources, persistence, time/environment, scene/world/streaming, renderer, physics, navigation, animation, audio и simulation. Между Runtime majors нет прямых зависимостей; их технические связи собирает только `EngineRuntime/Support`.
 
-`EngineRuntime/` includes:
+`GameFramework` должен содержать переиспользуемые gameplay-системы, а `Game` — конкретные правила, контент и конечный composition root.
 
-- `RuntimeFoundation`
-- `Assets`
-- `Resources`
-- `Serialization`
-- `Persistence`
-- `Time`
-- `Environment`
-- `Scene`
-- `World`
-- `Streaming`
-- `Renderer`
-- `Physics`
-- `Navigation`
-- `Animation`
-- `Audio`
-- `Simulation`
-- `Support`
+Подробное устройство слоев описано в [`docs/architecture.md`](docs/architecture.md). Документация EngineBase находится в [`docs/EngineBase/README.md`](docs/EngineBase/README.md), практическое использование — в [`docs/EngineBase/using_enginebase.md`](docs/EngineBase/using_enginebase.md). Для Runtime аналогичные документы находятся в [`docs/EngineRuntime/README.md`](docs/EngineRuntime/README.md) и [`docs/EngineRuntime/using_engineruntime.md`](docs/EngineRuntime/using_engineruntime.md).
 
-Gameplay and final product behavior belong above these layers:
+## Сборка
 
-- `GameFramework`
-- `Game`
-
-## Build
-
-From the repository root:
+Из корня репозитория:
 
 ```powershell
 cmake -S . -B build
 cmake --build build --config Debug
 ```
 
-## Tests
+## Тесты
 
 ```powershell
 ctest --test-dir build -C Debug --output-on-failure
 ```
 
-Runtime-focused tests can be filtered with:
+Только Runtime:
 
 ```powershell
-ctest --test-dir build -R EpidemicRuntime --output-on-failure
+ctest --test-dir build -C Debug -R EpidemicRuntime --output-on-failure
 ```
 
-## Smoke Apps
+## Smoke-приложения EngineBase
 
-After a Debug build, the required smoke apps are available under `build/EngineBase/Apps/`:
+После Debug-сборки:
 
 ```powershell
 .\build\EngineBase\Apps\HeadlessCoreApp\EpidemicHeadlessCoreApp.exe
@@ -74,26 +52,91 @@ After a Debug build, the required smoke apps are available under `build/EngineBa
 .\build\EngineBase\Apps\RhiClearScreenApp\EpidemicRhiClearScreenApp.exe
 ```
 
-Logs are written to `logs/epidemic.log`.
+Логи записываются в `logs/epidemic.log`.
 
-## Dependency Direction
+## Главное правило зависимостей
 
-When adding a new low-level module, dependencies must still flow downward toward `Foundation`. Composition and runtime wiring belong in `EngineBase/Support`, smoke apps, tests, or future upper executable layers, not in lower engine modules.
+Нижний слой никогда не зависит от верхнего. Внутри `EngineRuntime` один major не включает и не линкует другой major; взаимодействие между ними осуществляется через public contracts и adapters в `Support`. Gameplay-смысл не добавляется в EngineBase или Runtime ради удобства верхнего кода.
 
-## Windows-only Status
+Текущая базовая платформа — Windows 11 / Win32 / D3D11.
 
-The current validated baseline is Windows-only. `Platform` is implemented through Win32, and the shipping graphics backend in this stage is `RHI_D3D11`.
+## TODO
 
-## More Documentation
-
-Detailed `EngineBase` module documentation lives in:
-
-- `EngineBase/README.md`
-- `EngineBase/API_STABILITY.md`
-- `docs/base/README.md`
-
-Detailed `EngineRuntime` documentation lives in:
-
-- `docs/runtime/README.md`
-- `docs/runtime/api_stability.md`
-- `docs/runtime/using_runtime.md`
+- [ ] Framework Freeze
+  -   [ ] Foudation
+  -   [ ] SupportRandom
+  -   [ ] Queries
+  -   [ ] Facts
+  -   [ ] Time
+  -   [ ] Мир и основные объекты
+      -   [ ] RuntimeBridge
+      -   [ ] Entities
+      -   [ ] World
+      -   [ ] Environment
+      -   [ ] Materials
+  -   [ ] Состояния и воздействия
+      -   [ ] Conditions
+      -   [ ] Effects
+  -   [ ] Базовая деятельность
+      -   [ ] Interaction
+      -   [ ] ItemsInventory
+      -   [ ] Equipment
+      -   [ ] Dialogue
+      -   [ ] Economy
+  -   [ ] Combat loop
+      -   [ ] Combat
+      -   [ ] Abilities
+      -   [ ] Progression
+      -   [ ] Loot
+  -   [ ] Перемещение и строительство
+      -   [ ] Traversal
+      -   [ ] NavigationSemantics
+      -   [ ] Construction
+  -   [ ] Восприятие и интеллект
+      -   [ ] Perception
+      -   [ ] Knowledge
+      -   [ ] AI
+  -   [ ] Социальный слой
+      -   [ ] Ownership
+      -   [ ] Society
+      -   [ ] Crime
+  -   [ ] Массовая симуляция NPC
+      -   [ ] Population
+      -   [ ] Encounters
+      -   [ ] RolesJobs
+      -   [ ] NeedsLife
+  -   [ ] Производство и симуляция
+      -   [ ] Processes
+      -   [ ] ResourcesProduction
+      -   [ ] Simulation
+      -   [ ] SaveGame
+  -   [ ] Narrative
+      -   [ ] Narrative
+  -   [ ] Integration-слой
+      -   [ ] Integration
+      -   [ ] StateIntegration
+      -   [ ] GameplayIntegration
+      -   [ ] ExtendedGameplayIntegration
+      -   [ ] WorldIntegration
+      -   [ ] InteractionEffectsIntegration
+      -   [ ] InteractionTimeIntegration
+      -   [ ] TraversalNavigationConstructionIntegration
+      -   [ ] PerceptionKnowledgeAIIntegration
+      -   [ ] PopulationSimulationIntegration
+      -   [ ] ProcessResourceSimulationIntegration
+      -   [ ] SocialLegalIntegration
+      -   [ ] NarrativeIntegration
+  -   [ ] Служебные директории
+      -   [ ] Tests
+- [ ] Code cleanup
+- [ ] Framework Documentation
+- [ ] Base and Runtime checkup
+- [ ] Комментарии
+  -   [ ] Base перевод комментариев на русский
+  -   [ ] Runtime добавить комментарии в код на английском и русском
+  -   [ ] Framework добавить комментарии в код на английском и русском
+  -   [ ] Переписать документацию из ии-слопа в нормальный текст
+- [ ] Добавление заготовки под DX11/12/Vulacan/Metal для мультиплатформенности
+- [ ] Интеграция Angel Script
+- [ ] Добавление инструментов мониторинга и контроля ресурсов приложения
+- [ ] Добавление дефолтного проекта

@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <string_view>
 #include <type_traits>
@@ -39,6 +40,7 @@ struct TestResourceSource final : IAnimationResourceSource
 {
     bool fail_clip = false;
     bool fail_skeleton = false;
+    float clip_duration = 2.0f;
 
     epidemic::foundation::Result<SkeletonDesc> LoadSkeleton(SkeletonId id) const override
     {
@@ -57,7 +59,7 @@ struct TestResourceSource final : IAnimationResourceSource
             return epidemic::foundation::Result<AnimationClipDesc>::Failure(
                 epidemic::foundation::Error::Create("animation.clip_not_found", "test clip missing"));
         }
-        return epidemic::foundation::Result<AnimationClipDesc>::Success(AnimationClipDesc{id, SkeletonId{1}, 2.0f});
+        return epidemic::foundation::Result<AnimationClipDesc>::Success(AnimationClipDesc{id, SkeletonId{1}, clip_duration});
     }
 };
 
@@ -83,7 +85,7 @@ struct TestEvaluatorBackend final : IAnimationEvaluatorBackend
     epidemic::foundation::Result<PoseBuffer> EvaluatePose(const AnimationEvaluationRequest& request) const override
     {
         ++evaluations;
-        PoseBuffer pose{request.animator, std::vector<epidemic::runtime::Transform>(request.skeleton.joint_count), request.revision};
+        PoseBuffer pose{request.animator, request.owner, std::vector<epidemic::runtime::Transform>(request.skeleton.joint_count), request.revision};
         for (std::size_t index = 0; index < pose.bone_transforms.size(); ++index)
         {
             pose.bone_transforms[index].position.x = static_cast<float>(request.target_time.value.count()) / 1000000.0f;
@@ -226,6 +228,46 @@ bool TestValidationFailures()
     ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{99}, 1.0f}).HasValue(), "clip with missing skeleton should fail");
     ok &= Expect(runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{1}, 1.0f}).HasValue(), "valid clip should register");
     ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{1}, 1.0f}).HasValue(), "duplicate clip should fail");
+    return ok;
+}
+
+bool TestNonFiniteNumericInputsAreRejected()
+{
+    const float nan_f = std::numeric_limits<float>::quiet_NaN();
+    const float inf_f = std::numeric_limits<float>::infinity();
+    const double nan_d = std::numeric_limits<double>::quiet_NaN();
+    const double inf_d = std::numeric_limits<double>::infinity();
+
+    AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}};
+    bool ok = Expect(runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{1}, 1}).HasValue(), "skeleton should register");
+    ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{1}, nan_f}).HasValue(), "NaN clip duration should fail");
+    ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{2}, SkeletonId{1}, inf_f}).HasValue(), "+infinity clip duration should fail");
+    ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{3}, SkeletonId{1}, -inf_f}).HasValue(), "-infinity clip duration should fail");
+    ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{4}, SkeletonId{1}, 0.0f}).HasValue(), "zero clip duration should fail");
+    ok &= Expect(runtime.RegisterClip(AnimationClipDesc{AnimationClipId{5}, SkeletonId{1}, std::numeric_limits<float>::min()}).HasValue(),
+                 "smallest positive finite clip duration should pass");
+
+    const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{77}, SkeletonId{1}, AnimationLodLevel::Full});
+    ok &= Expect(animator.HasValue(), "animator should create for playback validation");
+    if (!animator)
+    {
+        return false;
+    }
+    ok &= Expect(!runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{5}, false, nan_d}).HasValue(), "NaN playback rate should fail");
+    ok &= Expect(!runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{5}, false, inf_d}).HasValue(), "+infinity playback rate should fail");
+    ok &= Expect(!runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{5}, false, -inf_d}).HasValue(), "-infinity playback rate should fail");
+    ok &= Expect(runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{5}, false, 0.0}).HasValue(), "zero playback rate should remain valid");
+
+    auto resources = std::make_shared<TestResourceSource>();
+    resources->clip_duration = nan_f;
+    AnimationRuntime resource_runtime{AnimationOptions{.enable_mock_pose_evaluation = true}, AnimationDependencies{resources, {}, std::make_shared<TestEvaluatorBackend>()}};
+    const auto resource_animator = resource_runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{88}, SkeletonId{1}, AnimationLodLevel::Full});
+    ok &= Expect(resource_animator.HasValue(), "resource-backed animator should create");
+    if (resource_animator)
+    {
+        ok &= Expect(!resource_runtime.Play(AnimationPlaybackCommand{resource_animator.Value(), AnimationClipId{10}}).HasValue(),
+                     "resource source must not inject non-finite clip duration");
+    }
     return ok;
 }
 
@@ -440,7 +482,7 @@ bool TestFactoryProfilesSeparateMockEvaluation()
     auto evaluator = std::make_shared<TestEvaluatorBackend>();
     const auto missing_evaluator = CreateAnimationServices(
         AnimationOptions{.enable_mock_pose_evaluation = true},
-        AnimationDependencies{resources, sink});
+        AnimationDependencies{resources, sink, {}});
     if (!Expect(!missing_evaluator.HasValue() && missing_evaluator.GetError().HasCode("animation.evaluator_missing"),
                 "production animation factory should require evaluator backend"))
     {
@@ -483,6 +525,7 @@ int main()
     ok &= TestTickOrderIsDeterministic();
     ok &= TestLodPlaceholderChangesPoseState();
     ok &= TestValidationFailures();
+    ok &= TestNonFiniteNumericInputsAreRejected();
     ok &= TestHandlePlaybackPoseBufferAndFactory();
     ok &= TestPoseQueriesRejectStaleHandle();
     ok &= TestPauseRejectsStoppedAndFinished();

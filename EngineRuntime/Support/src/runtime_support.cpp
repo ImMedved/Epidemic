@@ -1,6 +1,7 @@
 #include "Epidemic/Runtime/Support/runtime_support.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <array>
@@ -472,15 +473,17 @@ class RuntimeAnimationEvaluator final : public animation::IAnimationEvaluatorBac
     {
         animation::PoseBuffer pose{};
         pose.animator = request.animator;
+        pose.owner = request.owner;
         pose.bone_transforms.resize(request.skeleton.joint_count);
         pose.revision = request.revision;
         return foundation::Result<animation::PoseBuffer>::Success(std::move(pose));
     }
 };
 
-class RuntimeAnimationPoseCache final : public animation::IAnimationPoseSink,
-                                        public IRuntimePoseCache,
-                                        public IRuntimeAdapterLifecycle
+class RuntimeAnimationPoseBridge final : public animation::IAnimationPoseSink,
+                                         public renderer::IRenderPoseSource,
+                                         public IRuntimePoseCache,
+                                         public IRuntimeAdapterLifecycle
 {
   public:
     [[nodiscard]] foundation::Result<void>
@@ -488,27 +491,64 @@ class RuntimeAnimationPoseCache final : public animation::IAnimationPoseSink,
     {
         if (shutdown_started_)
         {
-            return FailureVoid("runtime_support.adapter_shutdown", "animation pose cache is shutting down");
+            return FailureVoid("runtime_support.adapter_shutdown", "animation pose bridge is shutting down");
         }
-        if (!pose || !pose->animator.IsValid())
+        if (!pose || !pose->animator.IsValid() || !pose->owner.IsValid())
         {
-            return FailureVoid("runtime_support.invalid_pose", "published animation pose must be valid");
+            return FailureVoid("runtime_support.invalid_pose", "published animation pose must have valid animator and owner");
         }
-        const auto iterator = poses_.find(pose->animator.id.value);
-        if (iterator != poses_.end() && iterator->second->animator.generation == pose->animator.generation &&
-            iterator->second->revision > pose->revision)
+        const auto animator_iterator = poses_by_animator_.find(pose->animator.id.value);
+        if (animator_iterator != poses_by_animator_.end())
         {
-            return FailureVoid("runtime_support.stale_pose", "animation pose revision moved backwards");
+            const auto& previous = animator_iterator->second;
+            if (previous->animator.generation == pose->animator.generation)
+            {
+                if (previous->revision > pose->revision)
+                {
+                    return FailureVoid("runtime_support.stale_pose", "animation pose revision moved backwards");
+                }
+            }
+            else
+            {
+                const auto old_owner = poses_by_owner_.find(previous->owner.Raw());
+                if (old_owner != poses_by_owner_.end() && old_owner->second->animator == previous->animator)
+                {
+                    poses_by_owner_.erase(old_owner);
+                }
+            }
         }
-        poses_[pose->animator.id.value] = std::move(pose);
+
+        const auto owner_iterator = poses_by_owner_.find(pose->owner.Raw());
+        if (owner_iterator != poses_by_owner_.end())
+        {
+            const auto& previous = owner_iterator->second;
+            if (previous->animator == pose->animator)
+            {
+                if (previous->revision > pose->revision)
+                {
+                    return FailureVoid("runtime_support.stale_pose", "animation pose owner revision moved backwards");
+                }
+            }
+            else
+            {
+                const auto old_animator = poses_by_animator_.find(previous->animator.id.value);
+                if (old_animator != poses_by_animator_.end() && old_animator->second->animator == previous->animator)
+                {
+                    poses_by_animator_.erase(old_animator);
+                }
+            }
+        }
+
+        poses_by_animator_[pose->animator.id.value] = pose;
+        poses_by_owner_[pose->owner.Raw()] = pose;
         return foundation::Result<void>::Success();
     }
 
     [[nodiscard]] foundation::Result<std::shared_ptr<const animation::PoseBuffer>>
         GetPose(animation::AnimatorHandle animator) const override
     {
-        const auto iterator = poses_.find(animator.id.value);
-        if (iterator == poses_.end() || iterator->second->animator.generation != animator.generation)
+        const auto iterator = poses_by_animator_.find(animator.id.value);
+        if (iterator == poses_by_animator_.end() || iterator->second->animator.generation != animator.generation)
         {
             return Failure<std::shared_ptr<const animation::PoseBuffer>>(
                 "runtime_support.pose_not_found", "animation pose is not available for this handle");
@@ -516,17 +556,40 @@ class RuntimeAnimationPoseCache final : public animation::IAnimationPoseSink,
         return foundation::Result<std::shared_ptr<const animation::PoseBuffer>>::Success(iterator->second);
     }
 
-    [[nodiscard]] std::size_t PoseCount() const noexcept override { return poses_.size(); }
+    [[nodiscard]] foundation::Result<std::shared_ptr<const renderer::RenderPoseBuffer>>
+        GetPose(RuntimeObjectId owner) const override
+    {
+        if (!owner.IsValid())
+        {
+            return Failure<std::shared_ptr<const renderer::RenderPoseBuffer>>(
+                "runtime_support.invalid_pose_owner", "render pose owner must be valid");
+        }
+        const auto iterator = poses_by_owner_.find(owner.Raw());
+        if (iterator == poses_by_owner_.end())
+        {
+            return foundation::Result<std::shared_ptr<const renderer::RenderPoseBuffer>>::Success({});
+        }
+        const auto& pose = iterator->second;
+        auto rendered = std::make_shared<renderer::RenderPoseBuffer>();
+        rendered->owner = pose->owner;
+        rendered->bone_transforms = pose->bone_transforms;
+        rendered->revision = pose->revision;
+        return foundation::Result<std::shared_ptr<const renderer::RenderPoseBuffer>>::Success(std::move(rendered));
+    }
+
+    [[nodiscard]] std::size_t PoseCount() const noexcept override { return poses_by_animator_.size(); }
 
     [[nodiscard]] foundation::Result<void> Shutdown() override
     {
         shutdown_started_ = true;
-        poses_.clear();
+        poses_by_animator_.clear();
+        poses_by_owner_.clear();
         return foundation::Result<void>::Success();
     }
 
   private:
-    std::map<std::uint64_t, std::shared_ptr<const animation::PoseBuffer>> poses_;
+    std::map<std::uint64_t, std::shared_ptr<const animation::PoseBuffer>> poses_by_animator_;
+    std::map<std::uint64_t, std::shared_ptr<const animation::PoseBuffer>> poses_by_owner_;
     bool shutdown_started_ = false;
 };
 
@@ -571,6 +634,10 @@ class RuntimeAnimationResourceSource final : public animation::IAnimationResourc
     [[nodiscard]] foundation::Result<animation::SkeletonDesc>
         LoadSkeleton(animation::SkeletonId id) const override
     {
+        if (const auto cached = skeleton_cache_.find(id.value); cached != skeleton_cache_.end())
+        {
+            return foundation::Result<animation::SkeletonDesc>::Success(cached->second);
+        }
         const auto request = mapper_->ResolveSkeleton(id);
         if (!request)
         {
@@ -584,21 +651,29 @@ class RuntimeAnimationResourceSource final : public animation::IAnimationResourc
         const auto typed = std::dynamic_pointer_cast<const IAnimationSkeletonResourcePayload>(payload.Value());
         if (!typed)
         {
+            TryRelease(request.Value().resource_id, skeleton_leases_);
             return Failure<animation::SkeletonDesc>("animation.resource_payload_unsupported",
                                                     "resource payload does not expose a skeleton descriptor");
         }
         const animation::SkeletonDesc desc = typed->GetSkeleton();
         if (desc.id != id || desc.joint_count == 0)
         {
+            TryRelease(request.Value().resource_id, skeleton_leases_);
             return Failure<animation::SkeletonDesc>("animation.invalid_skeleton",
                                                     "resource payload returned an invalid skeleton descriptor");
         }
+        skeleton_cache_[id.value] = desc;
+        TryRelease(request.Value().resource_id, skeleton_leases_);
         return foundation::Result<animation::SkeletonDesc>::Success(desc);
     }
 
     [[nodiscard]] foundation::Result<animation::AnimationClipDesc>
         LoadClip(animation::AnimationClipId id) const override
     {
+        if (const auto cached = clip_cache_.find(id.value); cached != clip_cache_.end())
+        {
+            return foundation::Result<animation::AnimationClipDesc>::Success(cached->second);
+        }
         const auto request = mapper_->ResolveClip(id);
         if (!request)
         {
@@ -612,15 +687,19 @@ class RuntimeAnimationResourceSource final : public animation::IAnimationResourc
         const auto typed = std::dynamic_pointer_cast<const IAnimationClipResourcePayload>(payload.Value());
         if (!typed)
         {
+            TryRelease(request.Value().resource_id, clip_leases_);
             return Failure<animation::AnimationClipDesc>("animation.resource_payload_unsupported",
                                                          "resource payload does not expose an animation clip descriptor");
         }
         const animation::AnimationClipDesc desc = typed->GetClip();
         if (desc.id != id || !desc.skeleton.IsValid() || desc.duration_seconds <= 0.0f)
         {
+            TryRelease(request.Value().resource_id, clip_leases_);
             return Failure<animation::AnimationClipDesc>("animation.invalid_clip",
                                                          "resource payload returned an invalid animation clip descriptor");
         }
+        clip_cache_[id.value] = desc;
+        TryRelease(request.Value().resource_id, clip_leases_);
         return foundation::Result<animation::AnimationClipDesc>::Success(desc);
     }
 
@@ -630,7 +709,13 @@ class RuntimeAnimationResourceSource final : public animation::IAnimationResourc
         std::optional<foundation::Error> first;
         ReleaseMap(skeleton_leases_, first);
         ReleaseMap(clip_leases_, first);
-        return first ? foundation::Result<void>::Failure(*first) : foundation::Result<void>::Success();
+        if (first)
+        {
+            return foundation::Result<void>::Failure(*first);
+        }
+        skeleton_cache_.clear();
+        clip_cache_.clear();
+        return foundation::Result<void>::Success();
     }
 
   private:
@@ -661,11 +746,16 @@ class RuntimeAnimationResourceSource final : public animation::IAnimationResourc
             }
             iterator = held.emplace(key, HeldResource{lease.Value(), {}}).first;
         }
+
         const ResourceState state = manager_->GetState(iterator->second.lease.resource);
         if (state != ResourceState::Ready)
         {
             const bool permanent = state == ResourceState::Failed || state == ResourceState::Evicted ||
                                    state == ResourceState::Unknown;
+            if (permanent)
+            {
+                TryRelease(request.resource_id, held);
+            }
             return Failure<ResourcePayloadPtr>(permanent ? "animation.resource_failed" : "animation.resource_not_ready",
                                                permanent ? "animation resource failed" : "animation resource is loading");
         }
@@ -675,9 +765,24 @@ class RuntimeAnimationResourceSource final : public animation::IAnimationResourc
         }
         if (!iterator->second.payload)
         {
+            TryRelease(request.resource_id, held);
             return Failure<ResourcePayloadPtr>("animation.resource_failed", "ready animation resource has no payload");
         }
         return foundation::Result<ResourcePayloadPtr>::Success(iterator->second.payload);
+    }
+
+    void TryRelease(ResourceId resource, HeldMap& held) const
+    {
+        const auto iterator = held.find(resource.Raw());
+        if (iterator == held.end())
+        {
+            return;
+        }
+        const auto released = manager_->Release(iterator->second.lease);
+        if (released)
+        {
+            held.erase(iterator);
+        }
     }
 
     void ReleaseMap(HeldMap& held, std::optional<foundation::Error>& first)
@@ -704,6 +809,8 @@ class RuntimeAnimationResourceSource final : public animation::IAnimationResourc
     std::shared_ptr<IAnimationResourceMapper> mapper_;
     mutable HeldMap skeleton_leases_;
     mutable HeldMap clip_leases_;
+    mutable std::map<std::uint64_t, animation::SkeletonDesc> skeleton_cache_;
+    mutable std::map<std::uint64_t, animation::AnimationClipDesc> clip_cache_;
     mutable bool shutdown_started_ = false;
 };
 
@@ -722,13 +829,117 @@ class DefaultAudioResourceMapper final : public IAudioResourceMapper
     }
 };
 
+class RuntimeAudioLeaseState
+{
+  public:
+    explicit RuntimeAudioLeaseState(std::shared_ptr<IResourceManager> manager)
+        : manager_(std::move(manager))
+    {
+    }
+
+    void AddWrapper() noexcept { ++active_wrappers_; }
+
+    void ReleaseWrapper(ResourceLease lease) noexcept
+    {
+        if (lease.IsValid())
+        {
+            const auto released = manager_->Release(lease);
+            if (!released)
+            {
+                pending_releases_.push_back(lease);
+            }
+        }
+        if (active_wrappers_ > 0)
+        {
+            --active_wrappers_;
+        }
+    }
+
+    void ReleaseOrQueue(ResourceLease lease) noexcept
+    {
+        if (!lease.IsValid())
+        {
+            return;
+        }
+        const auto released = manager_->Release(lease);
+        if (!released)
+        {
+            pending_releases_.push_back(lease);
+        }
+    }
+
+    [[nodiscard]] foundation::Result<void> Drain()
+    {
+        std::optional<foundation::Error> first;
+        std::vector<ResourceLease> retry;
+        retry.reserve(pending_releases_.size());
+        for (const ResourceLease& lease : pending_releases_)
+        {
+            const auto released = manager_->Release(lease);
+            if (!released)
+            {
+                if (!first)
+                {
+                    first = released.GetError();
+                }
+                retry.push_back(lease);
+            }
+        }
+        pending_releases_.swap(retry);
+        if (first)
+        {
+            return foundation::Result<void>::Failure(*first);
+        }
+        return foundation::Result<void>::Success();
+    }
+
+    [[nodiscard]] std::size_t ActiveWrappers() const noexcept { return active_wrappers_; }
+
+  private:
+    std::shared_ptr<IResourceManager> manager_;
+    std::vector<ResourceLease> pending_releases_;
+    std::size_t active_wrappers_ = 0;
+};
+
+class LeasedAudioClipResource final : public audio::IAudioClipResource
+{
+  public:
+    LeasedAudioClipResource(std::shared_ptr<const audio::IAudioClipResource> resource,
+                            ResourceLease lease,
+                            std::shared_ptr<RuntimeAudioLeaseState> lease_state)
+        : resource_(std::move(resource)), lease_(lease), lease_state_(std::move(lease_state))
+    {
+        lease_state_->AddWrapper();
+    }
+
+    ~LeasedAudioClipResource() override
+    {
+        lease_state_->ReleaseWrapper(lease_);
+    }
+
+    [[nodiscard]] audio::AudioClipFormat GetFormat() const override { return resource_->GetFormat(); }
+    [[nodiscard]] audio::AudioClipStorage GetStorage() const override { return resource_->GetStorage(); }
+    [[nodiscard]] std::span<const std::byte> GetEncodedData() const override { return resource_->GetEncodedData(); }
+    [[nodiscard]] std::shared_ptr<audio::IAudioStreamSource> GetStreamSource() const override
+    {
+        return resource_->GetStreamSource();
+    }
+
+  private:
+    std::shared_ptr<const audio::IAudioClipResource> resource_;
+    ResourceLease lease_{};
+    std::shared_ptr<RuntimeAudioLeaseState> lease_state_;
+};
+
 class RuntimeAudioResourceSource final : public audio::IAudioResourceSource,
                                          public IRuntimeAdapterLifecycle
 {
   public:
     RuntimeAudioResourceSource(std::shared_ptr<IResourceManager> manager,
                                std::shared_ptr<IAudioResourceMapper> mapper)
-        : manager_(std::move(manager)), mapper_(std::move(mapper))
+        : manager_(std::move(manager)),
+          mapper_(std::move(mapper)),
+          lease_state_(std::make_shared<RuntimeAudioLeaseState>(manager_))
     {
     }
 
@@ -751,15 +962,20 @@ class RuntimeAudioResourceSource final : public audio::IAudioResourceSource,
             {
                 return audio::SoundState::Failed;
             }
-            iterator = held_.emplace(id.value, HeldResource{lease.Value(), {}, {}}).first;
+            iterator = held_.emplace(id.value, lease.Value()).first;
         }
-        switch (manager_->GetState(iterator->second.lease.resource))
+
+        switch (manager_->GetState(iterator->second.resource))
         {
         case ResourceState::Ready:
+            lease_state_->ReleaseOrQueue(iterator->second);
+            held_.erase(iterator);
             return audio::SoundState::Ready;
         case ResourceState::Failed:
         case ResourceState::Evicted:
         case ResourceState::Unknown:
+            lease_state_->ReleaseOrQueue(iterator->second);
+            held_.erase(iterator);
             return audio::SoundState::Failed;
         default:
             return audio::SoundState::Loading;
@@ -786,71 +1002,74 @@ class RuntimeAudioResourceSource final : public audio::IAudioResourceSource,
             {
                 return foundation::Result<audio::AudioClipPayload>::Failure(lease.GetError());
             }
-            iterator = held_.emplace(id.value, HeldResource{lease.Value(), {}, {}}).first;
+            iterator = held_.emplace(id.value, lease.Value()).first;
         }
-        const ResourceState state = manager_->GetState(iterator->second.lease.resource);
+
+        const ResourceState state = manager_->GetState(iterator->second.resource);
         if (state != ResourceState::Ready)
         {
             const bool permanent = state == ResourceState::Failed || state == ResourceState::Evicted ||
                                    state == ResourceState::Unknown;
+            if (permanent)
+            {
+                lease_state_->ReleaseOrQueue(iterator->second);
+                held_.erase(iterator);
+            }
             return Failure<audio::AudioClipPayload>(permanent ? "audio.resource_failed" : "audio.resource_not_ready",
                                                     permanent ? "audio resource failed" : "audio resource is loading");
         }
-        if (!iterator->second.payload)
+
+        const ResourcePayloadPtr payload = manager_->GetPayload(iterator->second.resource);
+        if (!payload)
         {
-            iterator->second.payload = manager_->GetPayload(iterator->second.lease.resource);
-        }
-        if (!iterator->second.payload)
-        {
+            lease_state_->ReleaseOrQueue(iterator->second);
+            held_.erase(iterator);
             return Failure<audio::AudioClipPayload>("audio.resource_failed", "ready audio resource has no payload");
         }
-        if (!iterator->second.clip)
+        const auto clip = std::dynamic_pointer_cast<const audio::IAudioClipResource>(payload);
+        if (!clip)
         {
-            iterator->second.clip = std::dynamic_pointer_cast<const audio::IAudioClipResource>(iterator->second.payload);
-        }
-        if (!iterator->second.clip)
-        {
+            lease_state_->ReleaseOrQueue(iterator->second);
+            held_.erase(iterator);
             return Failure<audio::AudioClipPayload>("audio.resource_payload_unsupported",
                                                     "resource payload does not implement IAudioClipResource");
         }
+
+        const ResourceLease transferred = iterator->second;
+        held_.erase(iterator);
+        auto leased_clip = std::make_shared<LeasedAudioClipResource>(clip, transferred, lease_state_);
         return foundation::Result<audio::AudioClipPayload>::Success(
-            audio::AudioClipPayload{id, audio::SoundState::Ready, iterator->second.clip});
+            audio::AudioClipPayload{id, audio::SoundState::Ready, std::move(leased_clip)});
     }
 
     [[nodiscard]] foundation::Result<void> Shutdown() override
     {
         shutdown_started_ = true;
-        std::optional<foundation::Error> first;
-        for (auto iterator = held_.begin(); iterator != held_.end();)
+        for (const auto& [id, lease] : held_)
         {
-            const auto released = manager_->Release(iterator->second.lease);
-            if (released)
-            {
-                iterator = held_.erase(iterator);
-            }
-            else
-            {
-                if (!first)
-                {
-                    first = released.GetError();
-                }
-                ++iterator;
-            }
+            (void)id;
+            lease_state_->ReleaseOrQueue(lease);
         }
-        return first ? foundation::Result<void>::Failure(*first) : foundation::Result<void>::Success();
+        held_.clear();
+
+        const auto drained = lease_state_->Drain();
+        if (!drained)
+        {
+            return drained;
+        }
+        if (lease_state_->ActiveWrappers() != 0)
+        {
+            return FailureVoid("runtime_support.audio_resource_in_use",
+                               "audio resource leases are still owned by active clip consumers");
+        }
+        return foundation::Result<void>::Success();
     }
 
   private:
-    struct HeldResource
-    {
-        ResourceLease lease{};
-        ResourcePayloadPtr payload{};
-        std::shared_ptr<const audio::IAudioClipResource> clip{};
-    };
-
     std::shared_ptr<IResourceManager> manager_;
     std::shared_ptr<IAudioResourceMapper> mapper_;
-    mutable std::map<std::uint64_t, HeldResource> held_;
+    std::shared_ptr<RuntimeAudioLeaseState> lease_state_;
+    mutable std::map<std::uint64_t, ResourceLease> held_;
     mutable bool shutdown_started_ = false;
 };
 
@@ -873,16 +1092,25 @@ class ReferenceAudioBackend final : public audio::IAudioBackend
         {
             return Failure<audio::BackendVoiceHandle>("audio.backend_disabled", "reference audio backend is disabled");
         }
-        if (next_voice_ == std::numeric_limits<std::uint64_t>::max())
+        const auto voice_value = AllocateMonotonicId(
+            next_voice_,
+            "audio.voice_id_overflow",
+            "reference audio voice id allocator is exhausted");
+        if (!voice_value)
         {
-            return Failure<audio::BackendVoiceHandle>("audio.voice_id_overflow", "reference audio voice id overflow");
+            return foundation::Result<audio::BackendVoiceHandle>::Failure(voice_value.GetError());
         }
-        const audio::BackendVoiceHandle handle{next_voice_++};
+        const audio::BackendVoiceHandle handle{voice_value.Value()};
         Voice voice{};
         voice.desc = desc;
         voice.gain = desc.initial_gain;
         voice.spatial = desc.spatial;
-        voices_.emplace(handle.value, std::move(voice));
+        const auto [voice_iterator, inserted] = voices_.emplace(handle.value, std::move(voice));
+        if (!inserted)
+        {
+            return Failure<audio::BackendVoiceHandle>("audio.duplicate_voice_id", "allocated reference audio voice id already exists");
+        }
+        (void)voice_iterator;
         return foundation::Result<audio::BackendVoiceHandle>::Success(handle);
     }
 
@@ -1099,6 +1327,7 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
                                       public streaming::IStreamingWorldSource,
                                       public streaming::IStreamingPersistenceSource,
                                       public streaming::IStreamingResourceSource,
+                                      public IStreamingPreparedChunkDataQuery,
                                       public IRuntimeAdapterLifecycle
 {
   public:
@@ -1253,46 +1482,13 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
         {
             return foundation::Result<void>::Success();
         }
-        std::optional<foundation::Error> first;
-        ReleaseLeases(record->temporary_leases, first);
-        ReleaseLeases(record->active_leases, first);
-        if (first)
+
+        const auto cleaned = CleanupRecord(*record);
+        if (!cleaned)
         {
-            return foundation::Result<void>::Failure(*first);
+            return cleaned;
         }
-        const auto snapshot = world_->chunks->GetChunkSnapshot(record->chunk);
-        if (snapshot)
-        {
-            if (snapshot.Value().state == ChunkState::Resident || snapshot.Value().state == ChunkState::Active ||
-                snapshot.Value().state == ChunkState::Sleeping)
-            {
-                const auto unloading = world_->chunks->SetChunkState(
-                    ChangeChunkStateCommand{record->chunk, snapshot.Value().revision, ChunkState::Unloading});
-                if (!unloading)
-                {
-                    return unloading;
-                }
-            }
-            const auto current = world_->chunks->GetChunkSnapshot(record->chunk);
-            if (current && current.Value().state == ChunkState::Loading)
-            {
-                const auto unloaded = world_->chunks->SetChunkState(
-                    ChangeChunkStateCommand{record->chunk, current.Value().revision, ChunkState::Unloaded});
-                if (!unloaded)
-                {
-                    return unloaded;
-                }
-            }
-            else if (current && current.Value().state == ChunkState::Unloading)
-            {
-                const auto unloaded = world_->chunks->SetChunkState(
-                    ChangeChunkStateCommand{record->chunk, current.Value().revision, ChunkState::Unloaded});
-                if (!unloaded)
-                {
-                    return unloaded;
-                }
-            }
-        }
+
         active_by_chunk_.erase(record->chunk.Raw());
         records_.erase(request.id.value);
         return foundation::Result<void>::Success();
@@ -1408,74 +1604,45 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
         return first ? foundation::Result<void>::Failure(*first) : foundation::Result<void>::Success();
     }
 
+    [[nodiscard]] foundation::Result<PreparedChunkDataSnapshot>
+        GetPreparedData(ChunkId chunk) const override
+    {
+        for (const auto& [id, record] : records_)
+        {
+            (void)id;
+            if (record.chunk == chunk)
+            {
+                return foundation::Result<PreparedChunkDataSnapshot>::Success(
+                    PreparedChunkDataSnapshot{record.chunk,
+                                              record.manifest.persistence_location,
+                                              record.persisted,
+                                              record.prepared_revision});
+            }
+        }
+        return Failure<PreparedChunkDataSnapshot>("runtime_support.prepared_chunk_missing",
+                                                  "prepared streaming data is not available for this chunk");
+    }
+
     [[nodiscard]] foundation::Result<void> Shutdown() override
     {
         shutdown_started_ = true;
         std::optional<foundation::Error> first;
 
-        for (auto& [id, record] : records_)
+        for (auto iterator = records_.begin(); iterator != records_.end();)
         {
-            (void)id;
-            ReleaseLeases(record.temporary_leases, first);
-            ReleaseLeases(record.active_leases, first);
-        }
-        if (first)
-        {
-            return foundation::Result<void>::Failure(*first);
-        }
-
-        for (auto& [id, record] : records_)
-        {
-            (void)id;
-            const auto snapshot = world_->chunks->GetChunkSnapshot(record.chunk);
-            if (!snapshot)
+            const auto cleaned = CleanupRecord(iterator->second);
+            if (cleaned)
+            {
+                active_by_chunk_.erase(iterator->second.chunk.Raw());
+                iterator = records_.erase(iterator);
+            }
+            else
             {
                 if (!first)
                 {
-                    first = snapshot.GetError();
+                    first = cleaned.GetError();
                 }
-                continue;
-            }
-
-            ChunkSnapshot current = snapshot.Value();
-            if (current.state == ChunkState::Resident || current.state == ChunkState::Active ||
-                current.state == ChunkState::Sleeping)
-            {
-                const auto unloading = world_->chunks->SetChunkState(
-                    ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloading});
-                if (!unloading)
-                {
-                    if (!first)
-                    {
-                        first = unloading.GetError();
-                    }
-                    continue;
-                }
-                const auto refreshed = world_->chunks->GetChunkSnapshot(record.chunk);
-                if (!refreshed)
-                {
-                    if (!first)
-                    {
-                        first = refreshed.GetError();
-                    }
-                    continue;
-                }
-                current = refreshed.Value();
-            }
-
-            if (current.state == ChunkState::Loading || current.state == ChunkState::Unloading)
-            {
-                const auto unloaded = world_->chunks->SetChunkState(
-                    ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloaded});
-                if (!unloaded && !first)
-                {
-                    first = unloaded.GetError();
-                }
-            }
-            else if (current.state != ChunkState::Unloaded && !first)
-            {
-                first = SupportError("runtime_support.streaming_shutdown_state",
-                                     "streaming adapter cannot finalize a chunk from its current World state");
+                ++iterator;
             }
         }
 
@@ -1483,8 +1650,6 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
         {
             return foundation::Result<void>::Failure(*first);
         }
-
-        records_.clear();
         active_by_chunk_.clear();
         return foundation::Result<void>::Success();
     }
@@ -1503,6 +1668,7 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
         std::size_t accounted_resource_bytes = 0;
         bool world_loading = false;
         bool committed = false;
+        std::uint64_t prepared_revision = 0;
     };
 
     [[nodiscard]] static std::optional<ChunkId> ChunkFrom(const streaming::StreamingRequest& request)
@@ -1531,11 +1697,6 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
         {
             return foundation::Result<void>::Failure(snapshot.GetError());
         }
-        if (snapshot.Value().state == ChunkState::Loading)
-        {
-            record.world_loading = true;
-            return foundation::Result<void>::Success();
-        }
         if (snapshot.Value().state != ChunkState::Unloaded)
         {
             return FailureVoid("runtime_support.invalid_chunk_state",
@@ -1554,6 +1715,7 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
     [[nodiscard]] foundation::Result<void> PrepareData(PreparedRecord& record)
     {
         record.persisted = persistence_->query->FindZoneOverride(record.manifest.persistence_location);
+        ++record.prepared_revision;
         return foundation::Result<void>::Success();
     }
 
@@ -1614,6 +1776,89 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
                                         : remaining;
         return foundation::Result<streaming::StreamingStepResult>::Success(
             streaming::StreamingStepResult{allowed, allowed >= remaining});
+    }
+
+    [[nodiscard]] foundation::Result<void> CleanupRecord(PreparedRecord& record)
+    {
+        auto snapshot = world_->chunks->GetChunkSnapshot(record.chunk);
+        if (!snapshot)
+        {
+            return foundation::Result<void>::Failure(snapshot.GetError());
+        }
+
+        ChunkSnapshot current = snapshot.Value();
+        if (current.state == ChunkState::Resident || current.state == ChunkState::Active ||
+            current.state == ChunkState::Sleeping)
+        {
+            const auto unloading = world_->chunks->SetChunkState(
+                ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloading});
+            if (!unloading)
+            {
+                return unloading;
+            }
+            snapshot = world_->chunks->GetChunkSnapshot(record.chunk);
+            if (!snapshot)
+            {
+                return foundation::Result<void>::Failure(snapshot.GetError());
+            }
+            current = snapshot.Value();
+        }
+
+        std::optional<foundation::Error> first;
+        if (current.state == ChunkState::Loading)
+        {
+            if (!record.world_loading)
+            {
+                return FailureVoid("runtime_support.streaming_ownership_mismatch",
+                                   "streaming adapter does not own the existing Loading transition");
+            }
+            ReleaseLeases(record.temporary_leases, first);
+            if (first)
+            {
+                return foundation::Result<void>::Failure(*first);
+            }
+            const auto unloaded = world_->chunks->SetChunkState(
+                ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloaded});
+            if (!unloaded)
+            {
+                return unloaded;
+            }
+            record.persisted.reset();
+            return foundation::Result<void>::Success();
+        }
+
+        if (current.state == ChunkState::Unloading)
+        {
+            ReleaseLeases(record.active_leases, first);
+            ReleaseLeases(record.temporary_leases, first);
+            if (first)
+            {
+                return foundation::Result<void>::Failure(*first);
+            }
+            const auto unloaded = world_->chunks->SetChunkState(
+                ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloaded});
+            if (!unloaded)
+            {
+                return unloaded;
+            }
+            record.persisted.reset();
+            return foundation::Result<void>::Success();
+        }
+
+        if (current.state == ChunkState::Unloaded)
+        {
+            ReleaseLeases(record.temporary_leases, first);
+            ReleaseLeases(record.active_leases, first);
+            if (first)
+            {
+                return foundation::Result<void>::Failure(*first);
+            }
+            record.persisted.reset();
+            return foundation::Result<void>::Success();
+        }
+
+        return FailureVoid("runtime_support.streaming_cleanup_state",
+                           "streaming adapter cannot clean a chunk from its current World state");
     }
 
     [[nodiscard]] foundation::Result<void>
@@ -2220,6 +2465,7 @@ class EngineRuntimeCoordinator final : public IEngineRuntimeCoordinator
         integrations_->owned_adapters.clear();
         integrations_->render_resources.reset();
         integrations_->render_scene.reset();
+        integrations_->render_pose_source.reset();
         integrations_->render_commands.reset();
         integrations_->physics_transform_source.reset();
         integrations_->physics_transform_sink.reset();
@@ -2238,6 +2484,7 @@ class EngineRuntimeCoordinator final : public IEngineRuntimeCoordinator
         integrations_->streaming_world_source.reset();
         integrations_->streaming_persistence_source.reset();
         integrations_->streaming_resource_source.reset();
+        integrations_->streaming_prepared_data.reset();
         integrations_->simulation_clock.reset();
         integrations_->simulation_commit_target.reset();
         integrations_->simulation_commit_log.reset();
@@ -2360,10 +2607,11 @@ class EngineRuntimeCoordinator final : public IEngineRuntimeCoordinator
         return FailureVoid("runtime_support.production_dependency_missing",
                            "Production Audio requires an external backend");
     }
-    if (options.enable_streaming && !HasAllStreamingCoreDependencies(dependencies.streaming))
+    if (options.enable_streaming && !HasAllStreamingCoreDependencies(dependencies.streaming) &&
+        !dependencies.chunk_manifests)
     {
         return FailureVoid("runtime_support.production_dependency_missing",
-                           "Production Streaming requires external data, commit, residency, world, persistence and resource roles");
+                           "Production Streaming standard composition requires a chunk manifest source");
     }
     if (options.enable_simulation && !dependencies.simulation.commit_target)
     {
@@ -2529,6 +2777,7 @@ foundation::Result<PreparedEngineRuntime> PrepareEngineRuntime(const EngineRunti
 #undef EPIDEMIC_CREATE_MAJOR
 
     std::shared_ptr<RuntimeSceneTransformAdapter> scene_transform_adapter;
+    std::shared_ptr<RuntimeAnimationPoseBridge> animation_pose_bridge;
     if (services.scene && (options.enable_physics || options.enable_audio))
     {
         scene_transform_adapter =
@@ -2545,6 +2794,12 @@ foundation::Result<PreparedEngineRuntime> PrepareEngineRuntime(const EngineRunti
             std::shared_ptr<IChunkStreamingManifestSource> manifests = dependencies.chunk_manifests;
             if (!manifests)
             {
+                if (options.profile == RuntimeProfile::Production)
+                {
+                    return foundation::Result<PreparedEngineRuntime>::Failure(
+                        SupportError("runtime_support.production_dependency_missing",
+                                     "Production Streaming standard composition requires a chunk manifest source"));
+                }
                 manifests = std::make_shared<ReferenceChunkStreamingManifestSource>(services.world->chunks);
             }
             support_streaming = std::make_shared<RuntimeStreamingAdapter>(
@@ -2586,7 +2841,11 @@ foundation::Result<PreparedEngineRuntime> PrepareEngineRuntime(const EngineRunti
         integrations->streaming_world_source = streaming_dependencies.world_source;
         integrations->streaming_persistence_source = streaming_dependencies.persistence_source;
         integrations->streaming_resource_source = streaming_dependencies.resource_source;
-        AddAdapter(*integrations, RuntimeAdapterKind::WorldResourcesPersistenceToStreaming);
+        if (support_streaming)
+        {
+            integrations->streaming_prepared_data = support_streaming;
+            AddAdapter(*integrations, RuntimeAdapterKind::WorldResourcesPersistenceToStreaming);
+        }
         add_major("Streaming");
     }
 
@@ -2695,11 +2954,12 @@ foundation::Result<PreparedEngineRuntime> PrepareEngineRuntime(const EngineRunti
 
         if (!animation_dependencies.pose_sink)
         {
-            auto cache = std::make_shared<RuntimeAnimationPoseCache>();
-            animation_dependencies.pose_sink = cache;
-            integrations->animation_pose_sink = cache;
-            integrations->animation_pose_cache = cache;
-            AddAdapter(*integrations, RuntimeAdapterKind::AnimationPoseCache);
+            animation_pose_bridge = std::make_shared<RuntimeAnimationPoseBridge>();
+            animation_dependencies.pose_sink = animation_pose_bridge;
+            integrations->animation_pose_sink = animation_pose_bridge;
+            integrations->animation_pose_cache = animation_pose_bridge;
+            integrations->render_pose_source = animation_pose_bridge;
+            AddAdapter(*integrations, RuntimeAdapterKind::AnimationToRenderer);
         }
         else
         {
@@ -2834,6 +3094,17 @@ foundation::Result<PreparedEngineRuntime> PrepareEngineRuntime(const EngineRunti
         else
         {
             integrations->render_scene = renderer_dependencies.scene_source;
+        }
+
+        if (!renderer_dependencies.pose_source && animation_pose_bridge)
+        {
+            renderer_dependencies.pose_source = animation_pose_bridge;
+            integrations->render_pose_source = animation_pose_bridge;
+            AddAdapter(*integrations, RuntimeAdapterKind::AnimationToRenderer);
+        }
+        else if (renderer_dependencies.pose_source)
+        {
+            integrations->render_pose_source = renderer_dependencies.pose_source;
         }
 
         if (!renderer_dependencies.command_sink)
@@ -3086,7 +3357,7 @@ foundation::Result<void> RegisterAnimation(core::Application& app,
     auto resources = std::make_shared<RuntimeAnimationResourceSource>(
         app.Services().Get<ResourceServices>()->manager,
         mapper);
-    auto poses = std::make_shared<RuntimeAnimationPoseCache>();
+    auto poses = std::make_shared<RuntimeAnimationPoseBridge>();
     auto evaluator = std::make_shared<RuntimeAnimationEvaluator>();
     animation::AnimationDependencies dependencies{};
     dependencies.resources = resources;
@@ -3189,7 +3460,7 @@ std::vector<RuntimeAdapterKind> GetAllowedRuntimeAdapters()
         RuntimeAdapterKind::SceneToPhysics,
         RuntimeAdapterKind::SceneToAudio,
         RuntimeAdapterKind::ResourcesToAnimation,
-        RuntimeAdapterKind::AnimationPoseCache,
+        RuntimeAdapterKind::AnimationToRenderer,
         RuntimeAdapterKind::ResourcesToAudio,
         RuntimeAdapterKind::WorldResourcesPersistenceToStreaming,
         RuntimeAdapterKind::TimeToSimulation,

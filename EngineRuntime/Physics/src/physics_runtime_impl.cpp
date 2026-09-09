@@ -1,6 +1,7 @@
 #include "physics_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
 
 #include <algorithm>
 #include <cmath>
@@ -123,13 +124,26 @@ foundation::Result<void> PhysicsRuntime::RegisterShape(const CollisionShapeDesc&
     }
     else
     {
-        if (next_backend_shape_value_ == std::numeric_limits<std::uint64_t>::max())
+        const auto allocated = AllocateMonotonicId(
+            next_backend_shape_value_,
+            "physics.backend_shape_id_overflow",
+            "backend shape id allocator is exhausted");
+        if (!allocated)
         {
-            return PhysicsFailure("physics.backend_shape_id_overflow", "backend shape id allocator overflow");
+            return foundation::Result<void>::Failure(allocated.GetError());
         }
-        backend_shape = BackendShapeHandle{next_backend_shape_value_++};
+        backend_shape = BackendShapeHandle{allocated.Value()};
     }
-    shapes_.emplace(desc.id, ShapeRecord{desc, backend_shape});
+    const auto [shape_iterator, inserted] = shapes_.emplace(desc.id, ShapeRecord{desc, backend_shape});
+    if (!inserted)
+    {
+        if (backend_ && backend_.get() != this)
+        {
+            (void)backend_->DestroyShape(backend_shape);
+        }
+        return PhysicsFailure("physics.duplicate_shape", "collision shape id is already registered");
+    }
+    (void)shape_iterator;
     return foundation::Result<void>::Success();
 }
 
@@ -203,14 +217,16 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
 
     PhysicsBodyDesc backend_desc = desc;
     backend_desc.initial_transform = initial_transform;
-    if (next_body_value_ == std::numeric_limits<std::uint64_t>::max() || next_body_generation_ == std::numeric_limits<std::uint32_t>::max() ||
-        next_backend_body_value_ == std::numeric_limits<std::uint64_t>::max() || revision_ == std::numeric_limits<std::uint64_t>::max())
+    const bool uses_external_backend = backend_ && backend_.get() != this;
+    if (!CanAllocateMonotonicId(next_body_value_) || !CanAllocateMonotonicId(next_body_generation_) ||
+        (!uses_external_backend && !CanAllocateMonotonicId(next_backend_body_value_)) ||
+        revision_ == std::numeric_limits<std::uint64_t>::max())
     {
-        return PhysicsFailureValue<PhysicsBodyHandle>("physics.body_id_overflow", "physics body id allocator overflow");
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.body_id_overflow", "physics body id allocator is exhausted");
     }
 
-    BackendBodyHandle backend_handle{next_backend_body_value_++};
-    if (backend_ && backend_.get() != this)
+    BackendBodyHandle backend_handle{};
+    if (uses_external_backend)
     {
         const auto backend_body = backend_->CreateBody(backend_desc, shape_it->second.backend_handle);
         if (!backend_body)
@@ -223,8 +239,30 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
         }
         backend_handle = backend_body.Value();
     }
+    else
+    {
+        const auto backend_value = AllocateMonotonicId(
+            next_backend_body_value_,
+            "physics.backend_body_id_overflow",
+            "backend body id allocator is exhausted");
+        if (!backend_value)
+        {
+            return foundation::Result<PhysicsBodyHandle>::Failure(backend_value.GetError());
+        }
+        backend_handle = BackendBodyHandle{backend_value.Value()};
+    }
 
-    const PhysicsBodyHandle handle{PhysicsBodyId{next_body_value_++}, next_body_generation_++};
+    const auto body_value = AllocateMonotonicId(next_body_value_, "physics.body_id_overflow", "physics body id allocator is exhausted");
+    const auto body_generation = AllocateMonotonicId(next_body_generation_, "physics.body_id_overflow", "physics body generation allocator is exhausted");
+    if (!body_value || !body_generation)
+    {
+        if (uses_external_backend)
+        {
+            (void)backend_->DestroyBody(backend_handle);
+        }
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.body_id_overflow", "physics body id allocator is exhausted");
+    }
+    const PhysicsBodyHandle handle{PhysicsBodyId{body_value.Value()}, body_generation.Value()};
     BodyRecord record{};
     record.handle = handle;
     record.backend_handle = backend_handle;
@@ -234,8 +272,35 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     record.world_transform = initial_transform;
     record.bounds = TransformAabb(record.world_transform, shape_it->second.desc.local_bounds);
     record.revision = ++revision_;
-    backend_to_body_[backend_handle] = handle.id;
-    bodies_.emplace(handle.id, record);
+    if (backend_to_body_.contains(backend_handle))
+    {
+        if (uses_external_backend)
+        {
+            (void)backend_->DestroyBody(backend_handle);
+        }
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_backend_body_handle", "physics backend returned a duplicate body handle");
+    }
+    const auto [body_iterator, body_inserted] = bodies_.emplace(handle.id, record);
+    if (!body_inserted)
+    {
+        if (uses_external_backend)
+        {
+            (void)backend_->DestroyBody(backend_handle);
+        }
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_body_id", "allocated physics body id already exists");
+    }
+    (void)body_iterator;
+    const auto [backend_iterator, backend_inserted] = backend_to_body_.emplace(backend_handle, handle.id);
+    if (!backend_inserted)
+    {
+        bodies_.erase(handle.id);
+        if (uses_external_backend)
+        {
+            (void)backend_->DestroyBody(backend_handle);
+        }
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_backend_body_handle", "physics backend returned a duplicate body handle");
+    }
+    (void)backend_iterator;
     return foundation::Result<PhysicsBodyHandle>::Success(handle);
 }
 
@@ -372,11 +437,15 @@ foundation::Result<BackendShapeHandle> PhysicsRuntime::CreateShape(const Collisi
     {
         return PhysicsFailureValue<BackendShapeHandle>("physics.invalid_shape", "backend shape requires valid id and bounds");
     }
-    if (next_backend_shape_value_ == std::numeric_limits<std::uint64_t>::max())
+    const auto allocated = AllocateMonotonicId(
+        next_backend_shape_value_,
+        "physics.backend_shape_id_overflow",
+        "backend shape id allocator is exhausted");
+    if (!allocated)
     {
-        return PhysicsFailureValue<BackendShapeHandle>("physics.backend_shape_id_overflow", "backend shape id allocator overflow");
+        return foundation::Result<BackendShapeHandle>::Failure(allocated.GetError());
     }
-    return foundation::Result<BackendShapeHandle>::Success(BackendShapeHandle{next_backend_shape_value_++});
+    return foundation::Result<BackendShapeHandle>::Success(BackendShapeHandle{allocated.Value()});
 }
 
 foundation::Result<void> PhysicsRuntime::DestroyShape(BackendShapeHandle handle)
@@ -394,11 +463,15 @@ foundation::Result<BackendBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     {
         return PhysicsFailureValue<BackendBodyHandle>("physics.invalid_body", "backend body requires valid shape and owner");
     }
-    if (next_backend_body_value_ == std::numeric_limits<std::uint64_t>::max())
+    const auto allocated = AllocateMonotonicId(
+        next_backend_body_value_,
+        "physics.backend_body_id_overflow",
+        "backend body id allocator is exhausted");
+    if (!allocated)
     {
-        return PhysicsFailureValue<BackendBodyHandle>("physics.backend_body_id_overflow", "backend body id allocator overflow");
+        return foundation::Result<BackendBodyHandle>::Failure(allocated.GetError());
     }
-    return foundation::Result<BackendBodyHandle>::Success(BackendBodyHandle{next_backend_body_value_++});
+    return foundation::Result<BackendBodyHandle>::Success(BackendBodyHandle{allocated.Value()});
 }
 
 foundation::Result<void> PhysicsRuntime::DestroyBody(BackendBodyHandle handle)

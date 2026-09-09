@@ -3,6 +3,7 @@
 #include <Epidemic/Diagnostics/profiling.h>
 
 #include <algorithm>
+#include <exception>
 #include <functional>
 #include <sstream>
 #include <stdexcept>
@@ -54,12 +55,19 @@ void ModuleRegistry::Register(std::unique_ptr<IModule> module)
         throw std::runtime_error("Module id must not be empty");
     }
 
-    if (module_index_by_id_.contains(module_id))
+    if (const auto existing_name = canonical_module_name_by_id_.find(module_id); existing_name != canonical_module_name_by_id_.end())
     {
-        throw std::runtime_error("Module id already registered: " + manifest.id);
+        if (existing_name->second == manifest.id)
+        {
+            throw std::runtime_error("Module id already registered: " + manifest.id);
+        }
+
+        throw std::runtime_error("Module id hash collision between '" + existing_name->second + "' and '" +
+                                 manifest.id + "'");
     }
 
     module_index_by_id_.emplace(module_id, modules_.size());
+    canonical_module_name_by_id_.emplace(module_id, manifest.id);
     modules_.push_back(std::move(module));
     execution_plan_.clear();
     state_ = LifecycleState::Registered;
@@ -166,23 +174,41 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
     EnsureExecutionPlan(logger);
     const auto shutdown_count = std::min(bootstrapped_count_, execution_plan_.size());
 
-    try
+    std::exception_ptr first_error;
+    for (std::size_t reverse_index = shutdown_count; reverse_index > 0; --reverse_index)
     {
-        for (std::size_t reverse_index = shutdown_count; reverse_index > 0; --reverse_index)
+        const auto execution_index = execution_plan_[reverse_index - 1];
+        const auto &module = modules_[execution_index];
+        logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Shutting down", module->Manifest()));
+        try
         {
-            const auto execution_index = execution_plan_[reverse_index - 1];
-            const auto &module = modules_[execution_index];
-            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Shutting down", module->Manifest()));
             module->Shutdown(services);
         }
-
-        bootstrapped_count_ = 0;
-        state_ = LifecycleState::ShutDown;
+        catch (const std::exception &exception)
+        {
+            logger.Error("Core", "Lifecycle", "Module shutdown failed for '" + module->Manifest().id + "': " +
+                                                 std::string(exception.what()));
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
+        }
+        catch (...)
+        {
+            logger.Error("Core", "Lifecycle", "Module shutdown failed for '" + module->Manifest().id +
+                                                 "' with unknown exception");
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
+        }
     }
-    catch (...)
+
+    bootstrapped_count_ = 0;
+    state_ = LifecycleState::ShutDown;
+    if (first_error)
     {
-        state_ = LifecycleState::Failed;
-        throw;
+        std::rethrow_exception(first_error);
     }
 }
 
@@ -236,6 +262,13 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
             if (dependency_it == module_index_by_id_.end())
             {
                 throw std::runtime_error("Missing module dependency '" + dependency_id_text + "' for module '" + manifest.id + "'");
+            }
+
+            const auto canonical_dependency = canonical_module_name_by_id_.find(dependency_id);
+            if (canonical_dependency == canonical_module_name_by_id_.end() || canonical_dependency->second != dependency_id_text)
+            {
+                throw std::runtime_error("Module dependency id hash collision for '" + dependency_id_text +
+                                         "' in module '" + manifest.id + "'");
             }
 
             visit(dependency_it->second);

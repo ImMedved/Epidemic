@@ -16,4 +16,4 @@
 - [Animation](animation.md)
 - [Audio](audio.md)
 - [Simulation](simulation.md)
-- [Support — предварительно](support.md)
+- [Support](support.md)

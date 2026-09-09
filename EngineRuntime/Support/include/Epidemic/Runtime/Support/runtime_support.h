@@ -38,7 +38,6 @@ enum class RuntimeProfile
 {
     Reference,
     Production,
-    Tests,
 };
 
 enum class RuntimeAdapterKind
@@ -48,7 +47,7 @@ enum class RuntimeAdapterKind
     SceneToPhysics,
     SceneToAudio,
     ResourcesToAnimation,
-    AnimationPoseCache,
+    AnimationToRenderer,
     ResourcesToAudio,
     WorldResourcesPersistenceToStreaming,
     TimeToSimulation,
@@ -115,6 +114,23 @@ class IChunkStreamingManifestSource
     virtual ~IChunkStreamingManifestSource() = default;
 
     [[nodiscard]] virtual foundation::Result<ChunkStreamingManifest> GetManifest(ChunkId chunk) const = 0;
+};
+
+struct PreparedChunkDataSnapshot
+{
+    ChunkId chunk{};
+    PersistenceLocation persistence_location{};
+    std::optional<ZoneOverrideSnapshot> persisted_state{};
+    std::uint64_t revision = 0;
+};
+
+class IStreamingPreparedChunkDataQuery
+{
+  public:
+    virtual ~IStreamingPreparedChunkDataQuery() = default;
+
+    [[nodiscard]] virtual foundation::Result<PreparedChunkDataSnapshot>
+        GetPreparedData(ChunkId chunk) const = 0;
 };
 
 class IAnimationResourceMapper
@@ -285,6 +301,7 @@ struct RuntimeIntegrationServices
 {
     std::shared_ptr<renderer::IRenderResourceBridge> render_resources;
     std::shared_ptr<renderer::IRenderSceneSource> render_scene;
+    std::shared_ptr<renderer::IRenderPoseSource> render_pose_source;
     std::shared_ptr<renderer::IRenderCommandSink> render_commands;
 
     std::shared_ptr<physics::IPhysicsTransformSource> physics_transform_source;
@@ -307,6 +324,7 @@ struct RuntimeIntegrationServices
     std::shared_ptr<streaming::IStreamingWorldSource> streaming_world_source;
     std::shared_ptr<streaming::IStreamingPersistenceSource> streaming_persistence_source;
     std::shared_ptr<streaming::IStreamingResourceSource> streaming_resource_source;
+    std::shared_ptr<IStreamingPreparedChunkDataQuery> streaming_prepared_data;
 
     std::shared_ptr<simulation::ISimulationClock> simulation_clock;
     std::shared_ptr<simulation::ISimulationCommitTarget> simulation_commit_target;

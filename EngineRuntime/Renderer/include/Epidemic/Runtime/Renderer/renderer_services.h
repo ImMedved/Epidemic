@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/Runtime/Renderer/render_resource_bridge.h"
@@ -19,6 +19,7 @@ struct RendererDependencies
 {
     std::shared_ptr<IRenderResourceBridge> resource_bridge;
     std::shared_ptr<IRenderSceneSource> scene_source;
+    std::shared_ptr<IRenderPoseSource> pose_source;
     std::shared_ptr<IRenderCommandSink> command_sink;
 };
 
@@ -26,6 +27,7 @@ struct RendererServices
 {
     std::shared_ptr<IRenderResourceBridge> resource_bridge;
     std::shared_ptr<IRenderSceneSource> scene_source;
+    std::shared_ptr<IRenderPoseSource> pose_source;
     std::shared_ptr<IRenderCommandSink> command_sink;
     std::shared_ptr<IRenderScene> scene;
     std::shared_ptr<IViewSystem> views;

@@ -53,12 +53,14 @@ class ProbeModule final : public epidemic::core::IModule
   public:
     // Creates a module probe that appends lifecycle markers into trace and can fail selected phases on demand.
     ProbeModule(std::string id, std::vector<std::string> dependencies, std::vector<std::string> &trace,
-                bool throw_on_bootstrap = false, bool throw_on_initialize = false, bool throw_on_tick = false)
+                bool throw_on_bootstrap = false, bool throw_on_initialize = false, bool throw_on_tick = false,
+                bool throw_on_shutdown = false)
         : manifest_{std::move(id), "ProbeModule", std::move(dependencies)},
           trace_(trace),
           throw_on_bootstrap_(throw_on_bootstrap),
           throw_on_initialize_(throw_on_initialize),
-          throw_on_tick_(throw_on_tick)
+          throw_on_tick_(throw_on_tick),
+          throw_on_shutdown_(throw_on_shutdown)
     {
     }
 
@@ -98,10 +100,14 @@ class ProbeModule final : public epidemic::core::IModule
         }
     }
 
-    // Appends a shutdown trace marker.
+    // Appends a shutdown trace marker and optionally throws.
     void Shutdown(epidemic::core::ServiceContainer &) override
     {
         trace_.push_back(manifest_.id + ":shutdown");
+        if (throw_on_shutdown_)
+        {
+            throw std::runtime_error("shutdown failure");
+        }
     }
 
   private:
@@ -110,6 +116,7 @@ class ProbeModule final : public epidemic::core::IModule
     bool throw_on_bootstrap_{false};
     bool throw_on_initialize_{false};
     bool throw_on_tick_{false};
+    bool throw_on_shutdown_{false};
 };
 
 // Registers the minimal core services directly into a standalone ServiceContainer for low-level tests.

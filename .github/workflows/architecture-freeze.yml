@@ -1,0 +1,37 @@
+name: Architecture freeze
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  layer-matrix:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: base
+            runtime: OFF
+            framework: OFF
+          - name: runtime
+            runtime: ON
+            framework: OFF
+          - name: full
+            runtime: ON
+            framework: ON
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        shell: pwsh
+        run: >
+          cmake -S . -B build/${{ matrix.name }}
+          -G "Visual Studio 17 2022" -A x64
+          -DBUILD_TESTING=ON
+          -DEPIDEMIC_BUILD_RUNTIME=${{ matrix.runtime }}
+          -DEPIDEMIC_BUILD_FRAMEWORK=${{ matrix.framework }}
+          -DEPIDEMIC_ARCHITECTURE_FREEZE_CHECKS=ON
+      - name: Build
+        run: cmake --build build/${{ matrix.name }} --config Debug --parallel
+      - name: Test
+        run: ctest --test-dir build/${{ matrix.name }} -C Debug --output-on-failure

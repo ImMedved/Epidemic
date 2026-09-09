@@ -1,6 +1,8 @@
 #include "animation_runtime_impl.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "Epidemic/Runtime/Foundation/checked_id_allocator.h"
+#include "Epidemic/Runtime/Foundation/numeric_validation.h"
 
 #include <algorithm>
 #include <cmath>
@@ -66,7 +68,7 @@ foundation::Result<void> AnimationRuntime::RegisterClip(AnimationClipDesc desc)
             foundation::Error::Create("animation.skeleton_not_found", "clip must reference a registered skeleton"));
     }
 
-    if (desc.duration_seconds <= 0.0f)
+    if (!IsFinitePositive(desc.duration_seconds))
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("animation.invalid_clip_duration", "clip duration must be positive"));
@@ -93,7 +95,7 @@ bool AnimationRuntime::HasClip(AnimationClipId id) const
     }
 
     const auto loaded = dependencies_.resources->LoadClip(id);
-    return loaded && loaded.Value().id == id && loaded.Value().skeleton.IsValid() && loaded.Value().duration_seconds > 0.0f;
+    return loaded && loaded.Value().id == id && loaded.Value().skeleton.IsValid() && IsFinitePositive(loaded.Value().duration_seconds);
 }
 
 foundation::Result<AnimatorHandle> AnimationRuntime::CreateAnimatorHandle(const AnimatorDesc& desc)
@@ -111,8 +113,25 @@ foundation::Result<AnimatorHandle> AnimationRuntime::CreateAnimatorHandle(const 
             skeleton.GetError());
     }
 
-    const AnimatorInstanceId id{next_animator_value_++};
-    const AnimatorHandle handle{id, next_generation_++};
+    const auto id_value = AllocateMonotonicId(next_animator_value_, "animation.animator_id_exhausted", "animator id allocator is exhausted");
+    if (!id_value)
+    {
+        return foundation::Result<AnimatorHandle>::Failure(id_value.GetError());
+    }
+    const auto generation = AllocateMonotonicId(next_generation_, "animation.animator_generation_exhausted", "animator generation allocator is exhausted");
+    if (!generation)
+    {
+        return foundation::Result<AnimatorHandle>::Failure(generation.GetError());
+    }
+
+    const AnimatorInstanceId id{id_value.Value()};
+    const AnimatorHandle handle{id, generation.Value()};
+    if (animators_.contains(id))
+    {
+        return foundation::Result<AnimatorHandle>::Failure(
+            foundation::Error::Create("animation.duplicate_animator_id", "allocated animator id already exists"));
+    }
+
     AnimatorRecord record{};
     record.desc = desc;
     record.handle = handle;
@@ -121,8 +140,13 @@ foundation::Result<AnimatorHandle> AnimationRuntime::CreateAnimatorHandle(const 
     record.playback_state = AnimatorPlaybackState::Stopped;
     record.pose_state = PoseState::Clean;
     record.revision = 1;
-    record.cached_pose = PoseBuffer{handle, std::vector<Transform>(skeleton.Value().joint_count), record.revision};
-    animators_.emplace(id, record);
+    record.cached_pose = PoseBuffer{handle, desc.owner, std::vector<Transform>(skeleton.Value().joint_count), record.revision};
+    const auto [_, inserted] = animators_.emplace(id, record);
+    if (!inserted)
+    {
+        return foundation::Result<AnimatorHandle>::Failure(
+            foundation::Error::Create("animation.duplicate_animator_id", "allocated animator id already exists"));
+    }
     return foundation::Result<AnimatorHandle>::Success(handle);
 }
 
@@ -148,7 +172,7 @@ foundation::Result<void> AnimationRuntime::Play(const AnimationPlaybackCommand& 
             foundation::Error::Create("animation.animator_not_found", "animator handle was not found for playback"));
     }
 
-    if (command.playback_rate < 0.0)
+    if (!IsFiniteNonNegative(command.playback_rate))
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("animation.invalid_playback", "animation playback rate must be non-negative"));
@@ -466,7 +490,7 @@ foundation::Result<AnimationClipDesc> AnimationRuntime::ResolveClip(AnimationCli
     {
         return loaded;
     }
-    if (loaded.Value().id != id || !loaded.Value().skeleton.IsValid() || loaded.Value().duration_seconds <= 0.0f)
+    if (loaded.Value().id != id || !loaded.Value().skeleton.IsValid() || !IsFinitePositive(loaded.Value().duration_seconds))
     {
         return foundation::Result<AnimationClipDesc>::Failure(
             foundation::Error::Create("animation.invalid_clip", "resource source returned invalid animation clip descriptor"));
@@ -542,7 +566,7 @@ PoseBuffer AnimationRuntime::BuildPoseBuffer(const AnimatorRecord& animator) con
         }
     }
 
-    PoseBuffer pose{animator.handle, std::vector<Transform>(bone_count), animator.revision};
+    PoseBuffer pose{animator.handle, animator.desc.owner, std::vector<Transform>(bone_count), animator.revision};
     const float sample = static_cast<float>(animator.playback.local_time.value.count()) / 1000000.0f;
     for (std::size_t index = 0; index < pose.bone_transforms.size(); ++index)
     {
@@ -576,6 +600,7 @@ foundation::Result<PoseBuffer> AnimationRuntime::EvaluatePose(const AnimatorReco
 
     AnimationEvaluationRequest request{};
     request.animator = animator.handle;
+    request.owner = animator.desc.owner;
     request.skeleton = skeleton.Value();
     request.source_clip = source_clip.Value();
     request.target_clip = target_clip.Value();

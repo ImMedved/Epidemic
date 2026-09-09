@@ -75,6 +75,7 @@ private:
         AudioEmitterDesc desc{};
         AudioEmitterHandle handle{};
         BackendVoiceHandle voice{};
+        std::shared_ptr<const IAudioClipResource> clip_resource{};
         EmitterState state = EmitterState::Stopped;
         RuntimeFrameDuration fade_duration{};
         float fade_progress = 0.0f;
@@ -108,6 +109,12 @@ private:
         RuntimeFrameDuration elapsed{};
     };
 
+    struct VoiceOwnership
+    {
+        BackendVoiceHandle voice{};
+        std::shared_ptr<const IAudioClipResource> clip_resource{};
+    };
+
     [[nodiscard]] IAudioBackend* Backend() const noexcept;
     [[nodiscard]] IAudioResourceSource* Resources() const noexcept;
     [[nodiscard]] IAudioTransformSource* Transforms() const noexcept;
@@ -119,7 +126,9 @@ private:
     [[nodiscard]] foundation::Result<void> CleanupPendingVoices();
     [[nodiscard]] foundation::Result<void> EnsureCanStartWork() const;
     void RecordCleanupFailure(const foundation::Error& error);
-    void RollbackCreatedVoice(IAudioBackend& backend, BackendVoiceHandle voice);
+    void RollbackCreatedVoice(IAudioBackend& backend,
+                              BackendVoiceHandle voice,
+                              std::shared_ptr<const IAudioClipResource> clip_resource = {});
     void AdvanceMixerFades(RuntimeFrameDuration delta);
     void ResetFade(EmitterRecord& emitter);
     [[nodiscard]] foundation::Result<void> BeginFade(EmitterRecord& emitter, EmitterState target_state, RuntimeFrameDuration duration);
@@ -152,8 +161,8 @@ private:
     std::unordered_map<MixerGroupId, MixerFadeRecord> mixer_fades_;
     std::optional<AudioListenerHandle> main_listener_;
     std::vector<AudioEvent> events_;
-    std::vector<BackendVoiceHandle> one_shot_voices_;
-    std::vector<BackendVoiceHandle> pending_voice_cleanups_;
+    std::vector<VoiceOwnership> one_shot_voices_;
+    std::vector<VoiceOwnership> pending_voice_cleanups_;
     std::uint64_t cleanup_failures_ = 0;
     bool shutdown_started_ = false;
     bool shutdown_complete_ = false;

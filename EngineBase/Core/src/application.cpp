@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -247,22 +248,46 @@ int Application::Shutdown()
         auto logger = Logger();
         logger->Info("Application", "Lifecycle", "Shutdown started");
 
-        modules_.ShutdownAll(services_, *logger);
+        std::exception_ptr first_error;
+        try
+        {
+            modules_.ShutdownAll(services_, *logger);
+        }
+        catch (const std::exception &exception)
+        {
+            logger->Error("Application", "Shutdown",
+                          "Module shutdown reported an error: " + std::string(exception.what()));
+            first_error = std::current_exception();
+        }
+        catch (...)
+        {
+            logger->Error("Application", "Shutdown", "Module shutdown reported an unknown error");
+            first_error = std::current_exception();
+        }
 
         const auto scheduler = services_.Get<tasks::ITaskScheduler>();
         try
         {
-            scheduler->Shutdown();
+            scheduler->RequestStop();
+            scheduler->Join();
         }
         catch (const std::exception &exception)
         {
             logger->Error("Application", "Shutdown",
                           "Task scheduler shutdown reported an error: " + std::string(exception.what()));
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
         }
         catch (...)
         {
             logger->Error("Application", "Shutdown",
                           "Task scheduler shutdown reported an unknown error");
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
         }
 
         try
@@ -273,15 +298,27 @@ int Application::Shutdown()
         {
             logger->Error("Application", "Shutdown",
                           "Task scheduler drain reported an error during shutdown: " + std::string(exception.what()));
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
         }
         catch (...)
         {
             logger->Error("Application", "Shutdown",
                           "Task scheduler drain reported an unknown error during shutdown");
+            if (!first_error)
+            {
+                first_error = std::current_exception();
+            }
         }
 
         logger->Info("Application", "Lifecycle", "Shutdown finished");
         state_ = State::ShutDown;
+        if (first_error)
+        {
+            std::rethrow_exception(first_error);
+        }
         return 0;
     }
     catch (...)
