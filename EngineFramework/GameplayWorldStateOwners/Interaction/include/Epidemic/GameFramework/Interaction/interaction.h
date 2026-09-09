@@ -163,6 +163,8 @@ struct InteractionSnapshot
     std::vector<InteractionSession> sessions;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 enum class InteractionChangeKind
 {
@@ -188,6 +190,9 @@ struct InteractionChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::vector<InteractionChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct InteractionDiagnostics
@@ -263,11 +268,27 @@ class InteractionService
     [[nodiscard]] std::vector<InteractionSession> SessionsRequiringSchedule() const;
     [[nodiscard]] InteractionSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(InteractionSnapshot snapshot);
-    [[nodiscard]] std::vector<InteractionChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] InteractionChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    private:
+        [[nodiscard]] std::vector<InteractionChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] InteractionChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] InteractionChangeBatch ReadChangesSince(ChangeCursor cursor) const
     {
-        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1;
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
     }
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
     [[nodiscard]] InteractionDiagnostics GetDiagnostics() const noexcept;
@@ -314,6 +335,7 @@ class InteractionService
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     std::deque<InteractionChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     mutable std::uint64_t callback_failures_ = 0;
     std::uint64_t dropped_changes_ = 0;
 };

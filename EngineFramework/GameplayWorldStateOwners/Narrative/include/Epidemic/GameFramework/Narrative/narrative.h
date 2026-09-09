@@ -863,16 +863,6 @@ struct NarrativeChange
 
 struct NarrativeSnapshot
 {
-    // Definition vectors are retained for source compatibility only. Runtime saves no longer
-    // capture or restore build/content definitions. Restore validates state against the already
-    // registered and frozen current-build registry.
-    std::vector<NarrativeThreadDefinition> thread_definitions;
-    std::vector<NarrativeArcDefinition> arc_definitions;
-    std::vector<NarrativeBeatDefinition> beat_definitions;
-    std::vector<NarrativeObjectiveDefinition> objective_definitions;
-    std::vector<NarrativeConditionDefinition> condition_definitions;
-    std::vector<NarrativeConsequenceDefinition> consequence_definitions;
-    std::vector<StoryletDefinition> storylet_definitions;
     std::vector<NarrativeThreadState> thread_states;
     std::vector<NarrativeObjectiveState> objective_states;
     std::vector<NarrativeConsequenceExecution> consequences;
@@ -893,6 +883,8 @@ struct NarrativeSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot consequence_ids{};
     Revision revision{};
     bool frozen = false;
+
+    std::uint64_t change_epoch = 1;
 };
 struct NarrativeChangeBatch
 {
@@ -900,6 +892,9 @@ struct NarrativeChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct NarrativeDiagnostics
 {
@@ -999,12 +994,27 @@ class NarrativeService
     [[nodiscard]] std::vector<ClueRecord> FindClues(GameplayObjectRef owner, TypeId topic = {}) const;
     [[nodiscard]] std::vector<RumorRecord> FindRumors(GameplayObjectRef scope, TypeId topic = {}) const;
     [[nodiscard]] std::vector<NarrativeConsequenceExecution> FindConsequences(ConsequenceExecutionState state) const;
-    [[nodiscard]] std::vector<NarrativeChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] NarrativeChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    private:
+        [[nodiscard]] std::vector<NarrativeChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] NarrativeChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] NarrativeChangeBatch ReadChangesSince(ChangeCursor cursor) const
     {
-        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                          : next_change_sequence_ - 1;
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
     }
     [[nodiscard]] std::uint64_t CompactTerminalExecutions(GameplayTimePoint before);
     [[nodiscard]] NarrativeSnapshot CaptureSnapshot() const;
@@ -1077,6 +1087,7 @@ class NarrativeService
     std::vector<NarrativeBeatId> activated_beats_;
     std::deque<NarrativeChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     mutable NarrativeDiagnostics diagnostics_{};
     mutable std::size_t evaluation_counter_ = 0;
     mutable std::size_t evaluation_limit_ = static_cast<std::size_t>(-1);

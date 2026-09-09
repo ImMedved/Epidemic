@@ -710,12 +710,12 @@ std::vector<AccessRule> OwnershipService::FindAccessRules(GameplayObjectRef p) c
     return out;
 }
 
-std::vector<OwnershipChange> OwnershipService::ChangesSince(std::uint64_t seq) const
+std::vector<OwnershipChange> OwnershipService::ChangesSinceSequence(std::uint64_t seq) const
 {
-    return ReadChangesSince(seq).changes;
+    return ReadChangesSinceSequence(seq).changes;
 }
 
-OwnershipChangeBatch OwnershipService::ReadChangesSince(std::uint64_t seq) const
+OwnershipChangeBatch OwnershipService::ReadChangesSinceSequence(std::uint64_t seq) const
 {
     OwnershipChangeBatch batch;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
@@ -775,11 +775,18 @@ OwnershipSnapshot OwnershipService::CaptureSnapshot() const
     s.rule_ids = rule_ids_.GetSnapshot();
     s.claim_ids = claim_ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 
 foundation::Result<void> OwnershipService::RestoreSnapshot(OwnershipSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if (s.revision.value == 0 && (!s.records.empty() || !s.grants.empty() || !s.rules.empty() || !s.claims.empty()))
         return foundation::Result<void>::Failure(
             Error("gameplay.ownership.restore_invalid", "non-empty snapshot requires non-zero revision"));
@@ -888,6 +895,7 @@ foundation::Result<void> OwnershipService::RestoreSnapshot(OwnershipSnapshot s)
     changes_.clear();
     next_change_sequence_ = 1;
     diagnostics_ = {};
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

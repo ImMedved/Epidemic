@@ -180,9 +180,9 @@ int main()
     CHECK(world.RestoreSnapshot(world_snapshot));
     CHECK(environment.RestoreSnapshot(environment_snapshot));
     CHECK(interaction.RestoreSnapshot(interaction_snapshot));
-    CHECK(world.LatestChangeSequence() == 0);
-    CHECK(environment.LatestChangeSequence() == 0);
-    CHECK(interaction.LatestChangeSequence() == 0);
+    CHECK(world.LatestChangeCursor().sequence == 0);
+    CHECK(environment.LatestChangeCursor().sequence == 0);
+    CHECK(interaction.LatestChangeCursor().sequence == 0);
     CHECK(facts_adapter.RestoreCheckpoint(checkpoint));
 
     // New owner changes start a fresh sequence epoch and must not be skipped by the old checkpoint.

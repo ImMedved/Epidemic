@@ -248,6 +248,9 @@ struct ConditionChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::vector<ConditionChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct ConditionsSnapshot
@@ -257,6 +260,8 @@ struct ConditionsSnapshot
     Revision revision{};
     std::vector<ConditionChange> journal;
     std::uint64_t next_change_sequence = 1;
+
+    std::uint64_t change_epoch = 1;
 };
 
 struct ConditionsDiagnostics
@@ -359,9 +364,30 @@ class ConditionService
     [[nodiscard]] std::vector<ConditionInstance> FindByType(ConditionTypeId type) const;
     [[nodiscard]] std::vector<ConditionInstance> FindBySource(GameplayObjectRef source) const;
 
-    [[nodiscard]] std::vector<ConditionChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] ConditionChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return next_change_sequence_ - 1; }
+    private:
+        [[nodiscard]] std::vector<ConditionChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] ConditionChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] ConditionChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if (!batch.snapshot_required && cursor.sequence < batch.latest_cursor.sequence && batch.changes.empty())
+            batch.snapshot_required = true;
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] ConditionsSnapshot CaptureSnapshot() const;
@@ -400,6 +426,7 @@ class ConditionService
 
     std::deque<ConditionChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
 
     std::uint64_t applied_ = 0;
     std::uint64_t expired_ = 0;

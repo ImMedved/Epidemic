@@ -531,12 +531,31 @@ std::vector<EntityRecord> EntityService::FindByMaterialization(EntityMaterializa
     std::sort(result.begin(), result.end(), [](const auto& a, const auto& b) { return a.id < b.id; }); return result;
 }
 
-std::vector<EntityChange> EntityService::ChangesSince(std::uint64_t sequence) const
+std::vector<EntityChange> EntityService::ChangesSinceSequence(std::uint64_t sequence) const
 {
     const auto found = std::upper_bound(changes_.begin(), changes_.end(), sequence, [](std::uint64_t value, const EntityChange& change) { return value < change.sequence; });
     return {found, changes_.end()};
 }
-std::uint64_t EntityService::LatestChangeSequence() const noexcept { return last_change_sequence_; }
+EntityChangeBatch EntityService::ReadChangesSince(ChangeCursor cursor) const
+{
+    EntityChangeBatch batch;
+    batch.oldest_available_cursor = {journal_epoch_, changes_.empty() ? next_change_sequence_ : changes_.front().sequence};
+    batch.latest_cursor = {journal_epoch_, last_change_sequence_};
+    if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    batch.changes = ChangesSinceSequence(cursor.sequence);
+    if (!batch.snapshot_required && batch.changes.empty() && cursor.sequence < batch.latest_cursor.sequence)
+        batch.snapshot_required = true;
+    if (!changes_.empty() && changes_.front().sequence > 1 && cursor.sequence < changes_.front().sequence - 1)
+    {
+        batch.changes.clear();
+        batch.snapshot_required = true;
+    }
+    return batch;
+}
 void EntityService::PruneChangesBefore(std::uint64_t sequence)
 {
     const auto found = std::lower_bound(changes_.begin(), changes_.end(), sequence, [](const EntityChange& change, std::uint64_t value) { return change.sequence < value; });
@@ -546,7 +565,7 @@ void EntityService::PruneChangesBefore(std::uint64_t sequence)
 EntitySnapshot EntityService::CaptureSnapshot() const
 {
     EntitySnapshot snapshot;
-    snapshot.id_generator = ids_.GetSnapshot(); snapshot.revision = revision_;
+    snapshot.id_generator = ids_.GetSnapshot(); snapshot.revision = revision_; snapshot.change_epoch = journal_epoch_;
     for (const auto& slot : slots_)
     {
         if (!slot.occupied || slot.record.persistence != EntityPersistencePolicy::Persistent) continue;
@@ -568,6 +587,11 @@ EntitySnapshot EntityService::CaptureSnapshot() const
 
 foundation::Result<void> EntityService::RestoreSnapshot(EntitySnapshot snapshot)
 {
+    const auto next_journal_epoch =
+        CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "entity service must be frozen before restore"));
     if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.id_generator) || snapshot.id_generator.scope != ids_.GetSnapshot().scope)
         return foundation::Result<void>::Failure(Error("gameplay.entity_snapshot_invalid", "entity id generator snapshot is invalid"));
@@ -628,7 +652,7 @@ foundation::Result<void> EntityService::RestoreSnapshot(EntitySnapshot snapshot)
     slots_ = std::move(rebuilt_slots); free_slots_.clear(); id_to_slot_ = std::move(rebuilt_index);
     pending_destroy_ = std::move(rebuilt_pending); pending_destroy_reasons_ = std::move(rebuilt_reasons); pending_destroy_contexts_ = std::move(rebuilt_contexts);
     ids_.Restore(snapshot.id_generator); revision_ = snapshot.revision;
-    changes_.clear(); next_change_sequence_ = 1; last_change_sequence_ = 0;
+    changes_.clear(); next_change_sequence_ = 1; last_change_sequence_ = 0; journal_epoch_ = *next_journal_epoch;
     creates_ = 0; destroys_ = 0; invalid_handle_lookups_ = 0;
     return foundation::Result<void>::Success();
 }

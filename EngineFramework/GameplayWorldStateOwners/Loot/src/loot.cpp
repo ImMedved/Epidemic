@@ -496,11 +496,11 @@ bool LootService::WasClaimed(RewardExecutionId id) const noexcept
 {
     return ClaimHistoryStatus(id) == RewardClaimHistoryStatus::Claimed;
 }
-std::vector<LootChange> LootService::ChangesSince(std::uint64_t sequence) const
+std::vector<LootChange> LootService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
-LootChangeBatch LootService::ReadChangesSince(std::uint64_t sequence) const
+LootChangeBatch LootService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     LootChangeBatch batch;
     const auto latest = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -545,10 +545,17 @@ LootSnapshot LootService::CaptureSnapshot() const
     snapshot.claimed.assign(claimed_order_.begin(), claimed_order_.end());
     std::sort(snapshot.generated.begin(), snapshot.generated.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     std::sort(snapshot.pending.begin(), snapshot.pending.end(), [](const auto &a, const auto &b) { return a.bundle.id < b.bundle.id; });
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 foundation::Result<void> LootService::RestoreSnapshot(LootSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<RewardExecutionId, RewardBundle, IdHash> restored_generated;
     std::unordered_map<RewardExecutionId, PendingReward, IdHash> restored_pending;
     std::unordered_set<RewardExecutionId, IdHash> restored_claimed;
@@ -626,6 +633,7 @@ foundation::Result<void> LootService::RestoreSnapshot(LootSnapshot snapshot)
     execution_ids_.Restore(snapshot.execution_ids);
     next_change_sequence_ = snapshot.next_change_sequence;
     diagnostics_.pending = pending_.size();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 LootDiagnostics LootService::GetDiagnostics() const noexcept

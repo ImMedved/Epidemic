@@ -610,7 +610,7 @@ int main()
         PerceptionProcessingContext{GameplayTickId{2}, GameplayTimePoint{20}, {}, {Sample(npc)}});
     if (!pending_before_save || !pending_before_save.Value().empty() || delayed.GetDiagnostics().pending_observations != 1)
         return 67;
-    const auto saved_change_cursor = delayed.ReadChangesSince(0).latest_sequence;
+    const auto saved_change_cursor = delayed.ReadChangesSince(ChangeCursor{}).latest_cursor;
     auto snapshot = delayed.CaptureSnapshot();
     PerceptionService restored;
     if (!restored.RegisterSense(delayed_hearing) || !restored.RegisterProfileDefinition(delayed_profile))
@@ -620,19 +620,23 @@ int main()
         return 46;
     if (!restored.FindPerceiver(npc))
         return 47;
+    if (!restored.ReadChangesSince(saved_change_cursor).snapshot_required)
+        return 121;
+    const auto restored_change_cursor = restored.LatestChangeCursor();
     auto restored_pending = restored.AdvanceTime({25});
     if (!restored_pending || restored_pending.Value().size() != 1 || restored.GetDiagnostics().pending_observations != 0)
         return 68;
-    const auto resumed_changes = restored.ReadChangesSince(saved_change_cursor);
+    const auto resumed_changes = restored.ReadChangesSince(restored_change_cursor);
     if (resumed_changes.snapshot_required || resumed_changes.changes.empty() ||
-        resumed_changes.changes.front().sequence <= saved_change_cursor)
-        return 121;
-    if (saved_change_cursor > 0 && !restored.ReadChangesSince(saved_change_cursor - 1).snapshot_required)
+        resumed_changes.changes.front().sequence <= restored_change_cursor.sequence)
         return 122;
-    const auto restored_latest = restored.ReadChangesSince(saved_change_cursor).latest_sequence;
-    if (restored_latest != std::numeric_limits<std::uint64_t>::max() &&
-        !restored.ReadChangesSince(restored_latest + 1).snapshot_required)
+    if (restored_change_cursor.sequence > 0 &&
+        !restored.ReadChangesSince(restored_change_cursor.AtSequence(restored_change_cursor.sequence - 1)).snapshot_required)
         return 123;
+    const auto restored_latest = resumed_changes.latest_cursor;
+    if (restored_latest.sequence != std::numeric_limits<std::uint64_t>::max() &&
+        !restored.ReadChangesSince(restored_latest.AtSequence(restored_latest.sequence + 1)).snapshot_required)
+        return 128;
 
     auto exhausted_sequence_snapshot = snapshot;
     exhausted_sequence_snapshot.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
@@ -646,7 +650,7 @@ int main()
     const auto exhausted_subject = Ref("sequence.max");
     if (!exhausted_sequence.RegisterPerceiver(exhausted_subject, delayed_profile.id))
         return 126;
-    auto max_batch = exhausted_sequence.ReadChangesSince(std::numeric_limits<std::uint64_t>::max() - 1);
+    auto max_batch = exhausted_sequence.ReadChangesSince(exhausted_sequence.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max() - 1));
     if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||
         max_batch.changes.front().sequence != std::numeric_limits<std::uint64_t>::max())
         return 127;
@@ -665,7 +669,7 @@ int main()
     if (!restored.RegisterPerceiver(another, delayed_profile.id) || !restored.UnregisterPerceiver(another) ||
         !restored.RegisterPerceiver(another, delayed_profile.id) || !restored.UnregisterPerceiver(another))
         return 50;
-    auto batch = restored.ReadChangesSince(1);
+    auto batch = restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(1));
     if (!batch.snapshot_required)
         return 51;
 

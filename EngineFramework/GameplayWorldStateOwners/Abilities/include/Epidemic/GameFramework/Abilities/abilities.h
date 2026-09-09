@@ -355,6 +355,9 @@ struct AbilityChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::vector<AbilityChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct AbilitiesSnapshot
 {
@@ -365,6 +368,8 @@ struct AbilitiesSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot execution_ids{};
     std::vector<AbilityChange> journal;
     std::uint64_t next_change_sequence = 1;
+
+    std::uint64_t change_epoch = 1;
 };
 struct AbilitiesDiagnostics
 {
@@ -435,8 +440,28 @@ class AbilityService
     }
     [[nodiscard]] foundation::Result<void> ReconcileRestoredReservations(GameplayContext context = {});
     [[nodiscard]] const AbilityExecution *FindExecution(AbilityExecutionId id) const noexcept;
-    [[nodiscard]] std::vector<AbilityChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] AbilityChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] std::vector<AbilityChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] AbilityChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] AbilityChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     [[nodiscard]] AbilitiesSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(AbilitiesSnapshot snapshot);
     [[nodiscard]] AbilitiesDiagnostics GetDiagnostics() const noexcept;
@@ -479,6 +504,7 @@ class AbilityService
     static constexpr std::uint64_t kMaxChannelOccurrencesPerCall = 1024;
     std::deque<AbilityChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     AbilitiesDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::abilities

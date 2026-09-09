@@ -177,6 +177,9 @@ struct EquipmentChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct EquipmentSnapshot
@@ -190,6 +193,8 @@ struct EquipmentSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot operation_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot loadout_ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 struct EquipmentDiagnostics
 {
@@ -278,8 +283,30 @@ class EquipmentService
     [[nodiscard]] bool CanEquip(GameplayObjectRef subject, EquipmentItemId item,
                                 const std::vector<EquipmentSlotId> &slots) const;
     [[nodiscard]] foundation::Result<EquipmentLoadoutId> SaveLoadout(EquipmentLoadout loadout);
-    [[nodiscard]] EquipmentChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::vector<EquipmentChange> ChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] EquipmentChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] EquipmentChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
+    private:
+        [[nodiscard]] std::vector<EquipmentChange> ChangesSinceSequence(std::uint64_t sequence) const;
+    public:
     [[nodiscard]] EquipmentSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(EquipmentSnapshot snapshot);
     [[nodiscard]] EquipmentDiagnostics GetDiagnostics() const noexcept;
@@ -312,6 +339,7 @@ class EquipmentService
     std::deque<EquipmentChange> changes_;
     std::size_t change_capacity_ = 2048;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     EquipmentReconciliationState reconciliation_state_ = EquipmentReconciliationState::Ready;
     EquipmentDiagnostics diagnostics_{};
 };

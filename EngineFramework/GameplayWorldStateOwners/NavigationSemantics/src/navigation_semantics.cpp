@@ -698,11 +698,18 @@ NavigationSnapshot NavigationSemanticsService::CaptureSnapshot() const
     snapshot.revision = revision_;
     snapshot.journal.assign(changes_.begin(), changes_.end());
     snapshot.next_change_sequence = next_change_sequence_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<GameplayObjectRef, NavigationSemanticProfile, RefHash> restored_profiles;
     std::unordered_map<NavigationLayerId, NavigationSemanticLayer, IdHash> restored_layers;
     std::unordered_map<NavigationLinkId, NavigationSemanticLink, IdHash> restored_links;
@@ -756,17 +763,18 @@ foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationS
     revision_ = snapshot.revision;
     next_change_sequence_ = snapshot.next_change_sequence;
     RebuildIndexes();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 
-std::vector<NavigationChange> NavigationSemanticsService::ChangesSince(std::uint64_t sequence) const
+std::vector<NavigationChange> NavigationSemanticsService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
-NavigationChangeBatch NavigationSemanticsService::ReadChangesSince(std::uint64_t sequence) const
+NavigationChangeBatch NavigationSemanticsService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     NavigationChangeBatch batch;
-    const auto latest = LatestChangeSequence();
+    const auto latest = LatestChangeCursor().sequence;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
     if (next_change_sequence_ == 0 || sequence > latest)
     {

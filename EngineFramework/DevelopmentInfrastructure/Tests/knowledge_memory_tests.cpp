@@ -210,7 +210,7 @@ int main()
     if (!transient_by_profile || !retention.CaptureSnapshot().knowledge.empty())
         return 23;
 
-    const auto saved_change_cursor = k.ReadChangesSince(0).latest_sequence;
+    const auto saved_change_cursor = k.ReadChangesSince(ChangeCursor{}).latest_cursor;
     auto snap = k.CaptureSnapshot();
     KnowledgeService restored;
     if (!restored.RegisterDecayRule(decay) || !restored.FreezeDefinitions() || !restored.RestoreSnapshot(snap))
@@ -218,6 +218,9 @@ int main()
     if (restored.FindKnowledgeByOwner(npc).empty() || restored.FindKnowledgeAboutSubject(npc, player).empty() ||
         !restored.FindMemory(compact.Value()) || restored.FindMemory(compact.Value())->emotion != summary.emotion)
         return 25;
+    if (!restored.ReadChangesSince(saved_change_cursor).snapshot_required)
+        return 37;
+    const auto restored_change_cursor = restored.LatestChangeCursor();
 
     CreateMemoryRequest after_restore_memory;
     after_restore_memory.owner = npc;
@@ -227,16 +230,17 @@ int main()
     after_restore_memory.context.time = GameplayTimePoint{14};
     if (!restored.CreateMemory(after_restore_memory))
         return 36;
-    auto resumed_changes = restored.ReadChangesSince(saved_change_cursor);
+    auto resumed_changes = restored.ReadChangesSince(restored_change_cursor);
     if (resumed_changes.snapshot_required || resumed_changes.changes.empty() ||
-        resumed_changes.changes.front().sequence <= saved_change_cursor)
-        return 37;
-    if (saved_change_cursor > 0 && !restored.ReadChangesSince(saved_change_cursor - 1).snapshot_required)
+        resumed_changes.changes.front().sequence <= restored_change_cursor.sequence)
         return 38;
-    const auto restored_latest = resumed_changes.latest_sequence;
-    if (restored_latest != std::numeric_limits<std::uint64_t>::max() &&
-        !restored.ReadChangesSince(restored_latest + 1).snapshot_required)
+    if (restored_change_cursor.sequence > 0 &&
+        !restored.ReadChangesSince(restored_change_cursor.AtSequence(restored_change_cursor.sequence - 1)).snapshot_required)
         return 39;
+    const auto restored_latest = resumed_changes.latest_cursor;
+    if (restored_latest.sequence != std::numeric_limits<std::uint64_t>::max() &&
+        !restored.ReadChangesSince(restored_latest.AtSequence(restored_latest.sequence + 1)).snapshot_required)
+        return 43;
 
     auto exhausted_sequence_snapshot = snap;
     exhausted_sequence_snapshot.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
@@ -248,7 +252,7 @@ int main()
     max_sequence_memory.type = MemoryTypeId::FromString("game.memory.max_sequence");
     if (!exhausted_sequence.CreateMemory(max_sequence_memory))
         return 41;
-    auto max_batch = exhausted_sequence.ReadChangesSince(std::numeric_limits<std::uint64_t>::max() - 1);
+    auto max_batch = exhausted_sequence.ReadChangesSince(exhausted_sequence.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max() - 1));
     if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||
         max_batch.changes.front().sequence != std::numeric_limits<std::uint64_t>::max())
         return 42;
@@ -287,7 +291,7 @@ int main()
         if (!bounded.Learn(std::move(q)))
             return 31;
     }
-    auto batch = bounded.ReadChangesSince(0);
+    auto batch = bounded.ReadChangesSince(ChangeCursor{});
     if (!batch.snapshot_required || !batch.changes.empty())
         return 32;
 

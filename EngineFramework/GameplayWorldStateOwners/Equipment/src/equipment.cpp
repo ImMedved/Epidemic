@@ -525,7 +525,7 @@ foundation::Result<EquipmentLoadoutId> EquipmentService::SaveLoadout(EquipmentLo
     return foundation::Result<EquipmentLoadoutId>::Success(id);
 }
 
-EquipmentChangeBatch EquipmentService::ReadChangesSince(std::uint64_t seq) const
+EquipmentChangeBatch EquipmentService::ReadChangesSinceSequence(std::uint64_t seq) const
 {
     EquipmentChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1;
@@ -540,9 +540,9 @@ EquipmentChangeBatch EquipmentService::ReadChangesSince(std::uint64_t seq) const
     return batch;
 }
 
-std::vector<EquipmentChange> EquipmentService::ChangesSince(std::uint64_t seq) const
+std::vector<EquipmentChange> EquipmentService::ChangesSinceSequence(std::uint64_t seq) const
 {
-    return ReadChangesSince(seq).changes;
+    return ReadChangesSinceSequence(seq).changes;
 }
 EquipmentSnapshot EquipmentService::CaptureSnapshot() const
 {
@@ -571,10 +571,17 @@ EquipmentSnapshot EquipmentService::CaptureSnapshot() const
     s.operation_ids = operation_ids_.GetSnapshot();
     s.loadout_ids = loadout_ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<EquipmentProfileId, EquipmentProfile, IdHash> profiles;
     std::unordered_map<GameplayObjectRef, EquipmentProfileId> by_subject;
     std::uint64_t max_profile_low = 0;
@@ -698,6 +705,7 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
     diagnostics_ = {};
     diagnostics_.profiles = profiles_.size();
     diagnostics_.bindings = bindings_.size();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 EquipmentDiagnostics EquipmentService::GetDiagnostics() const noexcept

@@ -167,18 +167,18 @@ int main()
                                                                       : WorkplaceState::Active)),
               "journal state change");
     }
-    auto stale_batch = journal.ReadChangesSince(0);
+    auto stale_batch = journal.ReadChangesSince(ChangeCursor{});
     Check(stale_batch.snapshot_required, "bounded journal requires snapshot for stale reader");
-    auto latest_batch = journal.ReadChangesSince(journal.LatestChangeSequence());
+    auto latest_batch = journal.ReadChangesSince(journal.LatestChangeCursor());
     Check(!latest_batch.snapshot_required && latest_batch.changes.empty(), "latest journal cursor valid");
-    Check(journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+    Check(journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,
           "UINT64_MAX is an incompatible future roles/jobs cursor");
     RolesJobsService empty_journal;
-    Check(empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+    Check(empty_journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,
           "UINT64_MAX is incompatible with an empty roles/jobs journal");
 
-    const auto pre_restore_cursor = service.LatestChangeSequence();
-    Check(pre_restore_cursor >= 2, "pre-restore roles/jobs journal has multiple changes");
+    const auto pre_restore_cursor = service.LatestChangeCursor();
+    Check(pre_restore_cursor.sequence >= 2, "pre-restore roles/jobs journal has multiple changes");
     auto snapshot = service.CaptureSnapshot();
     RolesJobsService restored;
     Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), "restore");
@@ -189,9 +189,9 @@ int main()
           "post-restore roles/jobs change");
     Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
           "old roles/jobs cursor remains incompatible after new changes");
-    const auto new_epoch = restored.ReadChangesSince(0);
+    const auto new_epoch = restored.ReadChangesSince(ChangeCursor{});
     Check(!new_epoch.snapshot_required && !new_epoch.changes.empty(), "new roles/jobs epoch readable from zero");
-    const auto exact_epoch = restored.ReadChangesSince(new_epoch.latest_sequence);
+    const auto exact_epoch = restored.ReadChangesSince(new_epoch.latest_cursor);
     Check(!exact_epoch.snapshot_required && exact_epoch.changes.empty(), "exact roles/jobs cursor is current");
     Check(restored.FindJobsOfSubject(assignment.worker).size() == 1, "restore assignment");
 

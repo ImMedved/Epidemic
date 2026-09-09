@@ -129,7 +129,7 @@ int main()
     if (!s.Interrupt(exec2.Value(), interrupt_reason, {16}) || res.balance != 80 ||
         s.FindExecution(exec2.Value()) != nullptr)
         return 10;
-    const auto changes = s.ChangesSince(0);
+    const auto changes = s.ReadChangesSince(ChangeCursor{}).changes;
     bool saw_reason = false;
     for (const auto &change : changes)
         if (change.kind == AbilityChangeKind::Interrupted && change.execution == exec2.Value() &&

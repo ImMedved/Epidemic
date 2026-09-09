@@ -210,7 +210,7 @@ int main()
         c.owner_object = Ref("actor", "journal_owner");
         Check(static_cast<bool>(journal_service.CreateContainer(c)), "journal container create");
     }
-    auto old_batch = journal_service.ReadChangesSince(0);
+    auto old_batch = journal_service.ReadChangesSince(ChangeCursor{});
     Check(old_batch.snapshot_required, "bounded journal requires snapshot for stale sequence");
 
     return 0;

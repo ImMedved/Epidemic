@@ -148,7 +148,7 @@ struct ConditionProgressionMapping
 };
 struct ConditionProgressionCheckpoint
 {
-    std::uint64_t cursor = 0;
+    ChangeCursor cursor{};
     std::uint64_t mapping_revision = 0;
 };
 class ConditionProgressionAdapter
@@ -160,8 +160,8 @@ class ConditionProgressionAdapter
     [[nodiscard]] std::uint64_t MappingRevision() const noexcept { return mapping_revision_; }
     [[nodiscard]] foundation::Result<void> ProcessChanges();
     [[nodiscard]] foundation::Result<void> ReconcileAll();
-    [[nodiscard]] std::uint64_t Cursor() const noexcept { return cursor_; }
-    void RestoreCursor(std::uint64_t cursor) noexcept { cursor_ = cursor; }
+    [[nodiscard]] ChangeCursor Cursor() const noexcept { return cursor_; }
+    void RestoreCursor(ChangeCursor cursor) noexcept { cursor_ = cursor; }
     [[nodiscard]] ConditionProgressionCheckpoint CaptureCheckpoint() const noexcept { return {cursor_,mapping_revision_}; }
     [[nodiscard]] foundation::Result<void> RestoreCheckpoint(ConditionProgressionCheckpoint checkpoint);
   private:
@@ -172,7 +172,7 @@ class ConditionProgressionAdapter
     std::vector<ConditionProgressionMapping> mappings_;
     bool mappings_frozen_ = false;
     std::uint64_t mapping_revision_ = 0;
-    std::uint64_t cursor_=0;
+    ChangeCursor cursor_{};
 };
 
 struct AbilityTimePendingTrigger
@@ -260,7 +260,7 @@ struct DeathRewardDeliveryRecord
 };
 struct DeathRewardCheckpoint
 {
-    std::uint64_t cursor = 0;
+    ChangeCursor cursor{};
     std::uint64_t mapping_revision = 0;
     std::vector<DeathRewardDeliveryRecord> deliveries;
 };
@@ -272,8 +272,8 @@ class DeathRewardAdapter
     [[nodiscard]] foundation::Result<void> FreezeMappings();
     [[nodiscard]] std::uint64_t MappingRevision() const noexcept { return mapping_revision_; }
     [[nodiscard]] foundation::Result<std::vector<loot::RewardExecutionId>> ProcessChanges();
-    [[nodiscard]] std::uint64_t Cursor() const noexcept { return cursor_; }
-    void RestoreCursor(std::uint64_t cursor) noexcept { cursor_ = cursor; }
+    [[nodiscard]] ChangeCursor Cursor() const noexcept { return cursor_; }
+    void RestoreCursor(ChangeCursor cursor) noexcept { cursor_ = cursor; }
     [[nodiscard]] DeathRewardCheckpoint CaptureCheckpoint() const;
     [[nodiscard]] foundation::Result<void> RestoreCheckpoint(DeathRewardCheckpoint checkpoint);
   private:
@@ -284,7 +284,7 @@ class DeathRewardAdapter
     std::uint64_t mapping_revision_ = 0;
     static constexpr std::size_t kDeliveryCapacity = 4096;
     std::vector<DeathRewardDeliveryRecord> deliveries_;
-    std::uint64_t cursor_=0;
+    ChangeCursor cursor_{};
 };
 } // namespace epidemic::gameplay::integration
 

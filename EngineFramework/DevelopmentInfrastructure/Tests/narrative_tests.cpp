@@ -133,8 +133,6 @@ int main()
     Check(service.GetJournal(player).size()==1,"builtin journal consequence added entry");
 
     auto snapshot=service.CaptureSnapshot();
-    Check(snapshot.thread_definitions.empty() && snapshot.condition_definitions.empty(),
-          "runtime snapshot does not persist build definitions");
     Check(!snapshot.activated_beats.empty(),"activated beats explicitly persisted");
     NarrativeService restored;
     Check(static_cast<bool>(restored.RegisterConditionResolver(NarrativeConditionTypeId::FromString("condition.event_tag"),tag_resolver)),"restored resolver");
@@ -205,8 +203,8 @@ int main()
     NarrativeFlag epoch_flag_b; epoch_flag_b.id = NarrativeFlagId::FromString("test.epoch.b"); epoch_flag_b.value = true;
     Check(static_cast<bool>(resumable.SetFlag(epoch_flag_a)),"first pre-restore narrative journal change");
     Check(static_cast<bool>(resumable.SetFlag(epoch_flag_b)),"second pre-restore narrative journal change");
-    const auto pre_restore_cursor = resumable.LatestChangeSequence();
-    Check(pre_restore_cursor >= 2,"pre-restore narrative journal has multiple changes");
+    const auto pre_restore_cursor = resumable.LatestChangeCursor();
+    Check(pre_restore_cursor.sequence >= 2,"pre-restore narrative journal has multiple changes");
     auto pending_snapshot = resumable.CaptureSnapshot();
     Check(pending_snapshot.event_executions.size()==1 &&
           pending_snapshot.event_executions.front().state==NarrativeEventExecutionState::Pending,
@@ -221,15 +219,15 @@ int main()
     Check(static_cast<bool>(resumed.FreezeDefinitions()),"resumed freeze");
     Check(static_cast<bool>(resumed.RestoreSnapshot(pending_snapshot)),"restore pending event");
     Check(resumed.ReadChangesSince(pre_restore_cursor).snapshot_required,"pre-restore narrative cursor requires snapshot");
-    Check(resumed.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,"future narrative cursor incompatible");
+    Check(resumed.ReadChangesSince(resumed.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"future narrative cursor incompatible");
     Check(static_cast<bool>(resumed.ProcessNarrativeEvent(resumable_event)),"resume event after restore");
     Check(resumed.FindConsequences(ConsequenceExecutionState::Pending).size()==1,"resumed event plans consequence exactly once");
     Check(static_cast<bool>(resumed.ProcessNarrativeEvent(resumable_event)),"completed event deduplicates");
     Check(resumed.FindConsequences(ConsequenceExecutionState::Pending).size()==1,"dedupe does not duplicate resumed consequence");
     Check(resumed.ReadChangesSince(pre_restore_cursor).snapshot_required,"old narrative cursor remains incompatible after new changes");
-    const auto narrative_epoch = resumed.ReadChangesSince(0);
+    const auto narrative_epoch = resumed.ReadChangesSince(ChangeCursor{});
     Check(!narrative_epoch.snapshot_required && !narrative_epoch.changes.empty(),"new narrative epoch readable from zero");
-    const auto narrative_current = resumed.ReadChangesSince(narrative_epoch.latest_sequence);
+    const auto narrative_current = resumed.ReadChangesSince(narrative_epoch.latest_cursor);
     Check(!narrative_current.snapshot_required && narrative_current.changes.empty(),"exact narrative cursor current");
 
     Check(!static_cast<bool>(resumed.CompleteThread(NarrativeThreadId::FromString("thread.unknown"))),
@@ -242,9 +240,9 @@ int main()
         flag.id = NarrativeFlagId::FromRaw(0x9911, static_cast<std::uint64_t>(i+1));
         Check(static_cast<bool>(bounded.SetFlag(flag)),"bounded journal mutation");
     }
-    Check(bounded.ReadChangesSince(0).snapshot_required,"bounded narrative journal reports snapshot-required gap");
-    Check(bounded.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,"max narrative cursor never wraps");
+    Check(bounded.ReadChangesSince(ChangeCursor{}).snapshot_required,"bounded narrative journal reports snapshot-required gap");
+    Check(bounded.ReadChangesSince(bounded.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"max narrative cursor never wraps");
     NarrativeService empty_journal;
-    Check(empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,"max narrative cursor incompatible with empty journal");
+    Check(empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"max narrative cursor incompatible with empty journal");
     return 0;
 }

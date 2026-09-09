@@ -262,6 +262,9 @@ struct ItemsChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     std::vector<ItemChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct ItemsSnapshot
@@ -274,6 +277,8 @@ struct ItemsSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot transfer_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot reservation_ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 
 struct ItemPropertySchema
@@ -384,8 +389,28 @@ class ItemsInventoryService
     [[nodiscard]] ContainerUsage GetContainerUsage(ContainerId container) const noexcept;
     [[nodiscard]] std::vector<ItemInstance> FindItemsInContainer(ContainerId container) const;
     [[nodiscard]] std::vector<ItemInstance> FindItemsByDefinition(ItemDefinitionId definition) const;
-    [[nodiscard]] std::vector<ItemChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] ItemsChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] std::vector<ItemChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] ItemsChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] ItemsChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] ItemsSnapshot CaptureSnapshot() const;
@@ -430,6 +455,7 @@ class ItemsInventoryService
     MonotonicIdGenerator<GameplayObjectId> reservation_ids_{0x3403};
     std::deque<ItemChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     static constexpr std::size_t kChangeJournalCapacity = 8192;
     ItemsDiagnostics diagnostics_{};
 };

@@ -81,3 +81,18 @@ Game — конечный composition root и конкретная игра. З�
 Если код нужен для запуска и общей инфраструктуры процесса — это кандидат в EngineBase. Если это нейтральный переиспользуемый engine subsystem — EngineRuntime. Если код описывает общую игровую механику — GameFramework. Если он выражает конкретное правило или контент текущей игры — Game.
 
 Новые зависимости между Runtime majors не добавляются. Если два majors необходимо связать технически, сначала проверяется возможность adapter в Support. Если связь имеет gameplay-смысл, она поднимается в GameFramework.
+
+## Architecture freeze
+
+Layer boundaries are enforced by `cmake/ArchitectureFreeze.cmake` during every CMake configuration. The validator inspects both direct and interface link dependencies, scans production includes, and compiles every public header as an isolated translation unit.
+
+The frozen dependency rules are:
+
+- EngineBase has no Runtime or GameFramework dependencies.
+- EngineRuntime has no GameFramework dependencies. Runtime majors may depend on RuntimeFoundation; cross-major composition belongs to Runtime Support.
+- GameFramework base infrastructure and gameplay state owners have no direct Runtime dependencies.
+- RuntimeBridge is the approved world, physics, environment, and navigation boundary.
+- CoreIntegration's RuntimeTimeAdapter is the sole approved direct IntegrationLayer dependency on RuntimeTime. It adapts the runtime clock to gameplay time and must not acquire additional Runtime responsibilities.
+- Gameplay majors may depend only on the centrally allowlisted Framework foundation modules; horizontal gameplay composition belongs to IntegrationLayer.
+
+Changing an allowlist is an architecture decision and must update the validator, this document, and the architecture build matrix in the same change.

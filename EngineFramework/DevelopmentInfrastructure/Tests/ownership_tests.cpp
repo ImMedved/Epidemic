@@ -230,7 +230,7 @@ int main()
         return 34;
 
     // Bounded/prunable journal must report a gap instead of silently returning an incomplete stream.
-    const auto before = restored.ReadChangesSince(0);
+    const auto before = restored.ReadChangesSince(ChangeCursor{});
     if (!before.changes.empty() || before.snapshot_required)
         return 35;
     AccessRule journal_rule;
@@ -241,11 +241,11 @@ int main()
     auto journal_rule_id = restored.AddAccessRule(journal_rule);
     if (!journal_rule_id)
         return 36;
-    auto changes = restored.ReadChangesSince(0);
+    auto changes = restored.ReadChangesSince(ChangeCursor{});
     if (changes.snapshot_required || changes.changes.empty())
         return 37;
     restored.PruneChangesThrough(changes.latest_sequence);
-    if (!restored.ReadChangesSince(0).snapshot_required)
+    if (!restored.ReadChangesSince(ChangeCursor{}).snapshot_required)
         return 38;
 
     return 0;

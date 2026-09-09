@@ -252,7 +252,7 @@ int main()
     if (!lifecycle.ScheduleThink(guard, {1}) || !lifecycle.ScheduleThink(guard, {2}) ||
         !lifecycle.ScheduleThink(guard, {3}) || !lifecycle.ScheduleThink(guard, {4}))
         return 35;
-    auto batch = lifecycle.ReadChangesSince(0);
+    auto batch = lifecycle.ReadChangesSince(ChangeCursor{});
     if (!batch.snapshot_required || batch.oldest_available_sequence == 0 || batch.latest_sequence < batch.oldest_available_sequence)
         return 36;
 
@@ -327,24 +327,28 @@ int main()
         !sequence_source.Freeze() || !sequence_source.RegisterAgent(guard, profile_id) ||
         !sequence_source.ScheduleThink(guard, {3}))
         return 47;
-    const auto saved_change_cursor = sequence_source.ReadChangesSince(0).latest_sequence;
+    const auto saved_change_cursor = sequence_source.ReadChangesSince(ChangeCursor{}).latest_cursor;
     auto sequence_snapshot = sequence_source.CaptureSnapshot();
     AIService sequence_restored;
     if (!RegisterCoreDefinitions(sequence_restored, profile_id, goal_id, intent_type, score_key) ||
         !sequence_restored.Freeze() || !sequence_restored.RestoreSnapshot(sequence_snapshot))
         return 48;
+    if (!sequence_restored.ReadChangesSince(saved_change_cursor).snapshot_required)
+        return 50;
+    const auto restored_change_cursor = sequence_restored.LatestChangeCursor();
     if (!sequence_restored.RegisterAgent(Ref("sequence.other"), profile_id))
         return 49;
-    auto resumed_changes = sequence_restored.ReadChangesSince(saved_change_cursor);
+    auto resumed_changes = sequence_restored.ReadChangesSince(restored_change_cursor);
     if (resumed_changes.snapshot_required || resumed_changes.changes.empty() ||
-        resumed_changes.changes.front().sequence <= saved_change_cursor)
-        return 50;
-    if (saved_change_cursor > 0 && !sequence_restored.ReadChangesSince(saved_change_cursor - 1).snapshot_required)
+        resumed_changes.changes.front().sequence <= restored_change_cursor.sequence)
         return 51;
-    const auto restored_latest = resumed_changes.latest_sequence;
-    if (restored_latest != std::numeric_limits<std::uint64_t>::max() &&
-        !sequence_restored.ReadChangesSince(restored_latest + 1).snapshot_required)
+    if (restored_change_cursor.sequence > 0 &&
+        !sequence_restored.ReadChangesSince(restored_change_cursor.AtSequence(restored_change_cursor.sequence - 1)).snapshot_required)
         return 52;
+    const auto restored_latest = resumed_changes.latest_cursor;
+    if (restored_latest.sequence != std::numeric_limits<std::uint64_t>::max() &&
+        !sequence_restored.ReadChangesSince(restored_latest.AtSequence(restored_latest.sequence + 1)).snapshot_required)
+        return 56;
 
     sequence_snapshot.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
     AIService exhausted_sequence;
@@ -353,7 +357,7 @@ int main()
         return 53;
     if (!exhausted_sequence.RegisterAgent(Ref("sequence.max"), profile_id))
         return 54;
-    auto max_batch = exhausted_sequence.ReadChangesSince(std::numeric_limits<std::uint64_t>::max() - 1);
+    auto max_batch = exhausted_sequence.ReadChangesSince(exhausted_sequence.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max() - 1));
     if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||
         max_batch.changes.front().sequence != std::numeric_limits<std::uint64_t>::max())
         return 55;

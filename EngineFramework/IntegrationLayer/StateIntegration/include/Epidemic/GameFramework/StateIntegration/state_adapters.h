@@ -82,16 +82,16 @@ struct ConditionFactValue
 
 struct StateFactsCheckpoint
 {
-    std::uint32_t schema_version = 1;
+    std::uint32_t schema_version = 2;
     std::uint64_t contract_revision = 0;
-    std::uint64_t entity_cursor = 0;
-    std::uint64_t material_cursor = 0;
-    std::uint64_t condition_cursor = 0;
-    std::uint64_t effect_cursor = 0;
-    std::uint64_t entity_latest = 0;
-    std::uint64_t material_latest = 0;
-    std::uint64_t condition_latest = 0;
-    std::uint64_t effect_latest = 0;
+    ChangeCursor entity_cursor{};
+    ChangeCursor material_cursor{};
+    ChangeCursor condition_cursor{};
+    ChangeCursor effect_cursor{};
+    ChangeCursor entity_latest{};
+    ChangeCursor material_latest{};
+    ChangeCursor condition_latest{};
+    ChangeCursor effect_latest{};
 };
 
 class StateFactsAdapter
@@ -141,10 +141,10 @@ class StateFactsAdapter
     EventTypeId effect_changed_{};
     FactTypeId active_condition_fact_{};
 
-    std::uint64_t entity_cursor_ = 0;
-    std::uint64_t material_cursor_ = 0;
-    std::uint64_t condition_cursor_ = 0;
-    std::uint64_t effect_cursor_ = 0;
+    ChangeCursor entity_cursor_{};
+    ChangeCursor material_cursor_{};
+    ChangeCursor condition_cursor_{};
+    ChangeCursor effect_cursor_{};
 };
 
 struct EntityCreateEffectPayload
@@ -258,9 +258,9 @@ class StateEffectAdapter
 
 struct StateLifecycleCheckpoint
 {
-    std::uint32_t schema_version = 1;
-    std::uint64_t cursor = 0;
-    std::uint64_t entity_latest = 0;
+    std::uint32_t schema_version = 2;
+    ChangeCursor cursor{};
+    ChangeCursor entity_latest{};
 };
 
 class StateLifecycleAdapter
@@ -288,7 +288,7 @@ class StateLifecycleAdapter
     materials::MaterialService& materials_;
     conditions::ConditionService& conditions_;
     effects::EffectService& effects_;
-    std::uint64_t cursor_ = 0;
+    ChangeCursor cursor_{};
 };
 
 enum class ConditionEffectDeliveryState
@@ -328,9 +328,9 @@ struct ConditionEffectDeliveryRecord
 
 struct ConditionEffectsCheckpoint
 {
-    std::uint32_t schema_version = 2;
-    std::uint64_t cursor = 0;
-    std::uint64_t condition_latest = 0;
+    std::uint32_t schema_version = 3;
+    ChangeCursor cursor{};
+    ChangeCursor condition_latest{};
     std::uint64_t route_revision = 0;
     std::vector<ConditionEffectDeliveryRecord> deliveries;
 };
@@ -365,7 +365,7 @@ class ConditionEffectsAdapter
     conditions::ConditionService& conditions_;
     effects::EffectService& effects_;
     std::unordered_map<ActionTypeId, effects::EffectDefinitionId> routes_;
-    std::uint64_t cursor_ = 0;
+    ChangeCursor cursor_{};
     static constexpr std::size_t kDeliveryCapacity = 4096;
     std::vector<ConditionEffectDeliveryRecord> deliveries_;
 };
@@ -388,11 +388,11 @@ struct DeferredEffectReconciliationRecord
 
 struct StateTimeCheckpoint
 {
-    std::uint32_t schema_version = 2;
-    std::uint64_t condition_cursor = 0;
-    std::uint64_t effect_cursor = 0;
-    std::uint64_t condition_latest = 0;
-    std::uint64_t effect_latest = 0;
+    std::uint32_t schema_version = 3;
+    ChangeCursor condition_cursor{};
+    ChangeCursor effect_cursor{};
+    ChangeCursor condition_latest{};
+    ChangeCursor effect_latest{};
     std::vector<DeferredEffectReconciliationRecord> deferred_reconciliations;
 };
 
@@ -461,8 +461,8 @@ class StateTimeAdapter
     ActionTypeId expire_action_{};
     ActionTypeId periodic_action_{};
     ActionTypeId deferred_effect_action_{};
-    std::uint64_t condition_cursor_ = 0;
-    std::uint64_t effect_cursor_ = 0;
+    ChangeCursor condition_cursor_{};
+    ChangeCursor effect_cursor_{};
     integration::ScheduledTriggerDispatcher* dispatcher_ = nullptr;
     effects::EffectExecutionBudget effect_budget_{};
     StateTimeProcessResult process_result_{};

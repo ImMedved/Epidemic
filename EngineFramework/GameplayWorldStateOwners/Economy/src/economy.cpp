@@ -105,6 +105,9 @@ foundation::Result<CurrencyId> EconomyService::RegisterCurrency(CurrencyDefiniti
 }
 foundation::Result<EconomicAccountId> EconomyService::CreateAccount(EconomicAccount a)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<EconomicAccountId>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     if (!frozen_) return foundation::Result<EconomicAccountId>::Failure(Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
     auto amount_valid = ValidateMoneyAmount(a.currency, a.balance, true);
     if (!a.owner.IsValid() || !currencies_.contains(a.currency) || a.balance < 0 || !amount_valid)
@@ -135,6 +138,9 @@ std::optional<EconomicAccount> EconomyService::FindAccountCopy(EconomicAccountId
 }
 foundation::Result<void> EconomyService::SetAccountState(EconomicAccountId id, AccountState state, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = accounts_.find(id);
     if (it == accounts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.account_missing", "account missing"));
     const auto old = it->second.state;
@@ -176,6 +182,9 @@ Fixed EconomyService::GetAvailableBalance(EconomicAccountId id) const noexcept
 }
 foundation::Result<void> EconomyService::Credit(EconomicAccountId id, Fixed amount, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = accounts_.find(id);
     if (it == accounts_.end() || it->second.state == AccountState::Closed || !ValidateMoneyAmount(it->second.currency, amount, true))
         return foundation::Result<void>::Failure(Error("gameplay.economy.credit_invalid", "credit invalid"));
@@ -192,6 +201,9 @@ foundation::Result<void> EconomyService::Credit(EconomicAccountId id, Fixed amou
 }
 foundation::Result<void> EconomyService::Debit(EconomicAccountId id, Fixed amount, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = accounts_.find(id);
     if (it == accounts_.end() || it->second.state != AccountState::Active ||
         !ValidateMoneyAmount(it->second.currency, amount, true) || GetAvailableBalance(id) < amount)
@@ -214,6 +226,9 @@ foundation::Result<FundsReservationId> EconomyService::ReserveFunds(EconomicAcco
                                                                     GameplayObjectRef beneficiary, TypeId reason,
                                                                     GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<FundsReservationId>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     const auto *a = FindAccount(account);
     if (!a || a->state != AccountState::Active || !ValidateMoneyAmount(a->currency, amount, false) || GetAvailableBalance(account) < amount)
         return foundation::Result<FundsReservationId>::Failure(
@@ -236,6 +251,9 @@ foundation::Result<FundsReservationId> EconomyService::ReserveFunds(EconomicAcco
 }
 foundation::Result<void> EconomyService::ReleaseFunds(FundsReservationId id, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = reservations_.find(id);
     if (it == reservations_.end() || it->second.state != FundsReservationState::Active)
         return foundation::Result<void>::Failure(Error("gameplay.economy.reservation_missing", "active funds reservation missing"));
@@ -253,6 +271,9 @@ foundation::Result<void> EconomyService::ReleaseFunds(FundsReservationId id, Gam
 foundation::Result<void> EconomyService::CommitFunds(FundsReservationId id, EconomicAccountId destination,
                                                      GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto *r = MutableReservation(id);
     auto from = r ? accounts_.find(r->account) : accounts_.end();
     auto to = accounts_.find(destination);
@@ -282,6 +303,9 @@ foundation::Result<void> EconomyService::CommitFunds(FundsReservationId id, Econ
 }
 foundation::Result<MarketId> EconomyService::CreateMarket(MarketState m)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<MarketId>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     if (!frozen_) return foundation::Result<MarketId>::Failure(Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
     if (!m.area.IsValid()) return foundation::Result<MarketId>::Failure(Error("gameplay.economy.invalid_market", "market area missing"));
     if (!m.id.IsValid()) m.id = MarketId{market_ids_.Next()};
@@ -293,10 +317,19 @@ foundation::Result<MarketId> EconomyService::CreateMarket(MarketState m)
     const auto id = m.id;
     markets_.emplace(id, m);
     ++diagnostics_.markets;
+    EconomyChange change{};
+    change.kind = EconomyChangeKind::MarketCreated;
+    change.subject = m.area;
+    change.market = id;
+    change.revision = revision_;
+    Record(std::move(change));
     return foundation::Result<MarketId>::Success(id);
 }
 foundation::Result<void> EconomyService::SetMarketIndicator(MarketIndicator i)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     if (!markets_.contains(i.market) || !i.commodity.IsValid() || i.supply < 0 || i.demand < 0 || i.price_index_micro < 0)
         return foundation::Result<void>::Failure(Error("gameplay.economy.invalid_indicator", "invalid market indicator"));
     const IndicatorKey key{i.market, i.commodity};
@@ -353,6 +386,9 @@ std::optional<PriceQuote> EconomyService::GetPriceQuote(const PriceQuoteRequest 
 }
 foundation::Result<OfferId> EconomyService::CreateOffer(EconomicOffer o)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<OfferId>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     if (!o.seller.IsValid() || !o.type.IsValid() || !o.subject.type.IsValid() || !currencies_.contains(o.currency) ||
         o.quantity <= 0 || !ValidateMoneyAmount(o.currency, o.unit_price, true))
         return foundation::Result<OfferId>::Failure(Error("gameplay.economy.invalid_offer", "invalid economic offer"));
@@ -370,6 +406,9 @@ foundation::Result<OfferId> EconomyService::CreateOffer(EconomicOffer o)
 }
 foundation::Result<void> EconomyService::CancelOffer(OfferId id, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = offers_.find(id);
     if (it == offers_.end())
         return foundation::Result<void>::Failure(Error("gameplay.economy.offer_missing", "offer missing"));
@@ -388,6 +427,9 @@ foundation::Result<void> EconomyService::CancelOffer(OfferId id, GameplayContext
 }
 foundation::Result<TradeTransactionId> EconomyService::AcceptOffer(OfferAcceptanceRequest request)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<TradeTransactionId>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto offer_it = offers_.find(request.offer);
     if (offer_it == offers_.end())
         return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_missing", "offer missing"));
@@ -506,6 +548,9 @@ foundation::Result<void> EconomyService::ValidateTransfer(const MonetaryTransfer
 }
 foundation::Result<TradeTransactionId> EconomyService::PrepareTrade(TradePlan p)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<TradeTransactionId>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     if (!frozen_) return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
     if (!p.buyer.IsValid() || !p.seller.IsValid() || SameObject(p.buyer, p.seller))
         return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.trade_invalid", "trade requires distinct valid buyer and seller"));
@@ -534,6 +579,9 @@ foundation::Result<TradeTransactionId> EconomyService::PrepareTrade(TradePlan p)
 
 foundation::Result<void> EconomyService::ReserveTrade(TradeTransactionId id)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = transactions_.find(id);
     if (it == transactions_.end() || it->second.state != TradeTransactionState::Prepared)
         return foundation::Result<void>::Failure(Error("gameplay.economy.trade_state", "trade not prepared"));
@@ -582,6 +630,9 @@ foundation::Result<void> EconomyService::ReserveTrade(TradeTransactionId id)
 }
 foundation::Result<void> EconomyService::CommitTrade(TradeTransactionId id)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = transactions_.find(id);
     if (it == transactions_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.trade_missing", "trade missing"));
     if (it->second.state != TradeTransactionState::Reserved ||
@@ -651,6 +702,9 @@ foundation::Result<void> EconomyService::CommitTrade(TradeTransactionId id)
 
 foundation::Result<void> EconomyService::CancelTrade(TradeTransactionId id)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = transactions_.find(id);
     if (it == transactions_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.trade_missing", "trade missing"));
     if (it->second.state != TradeTransactionState::Prepared && it->second.state != TradeTransactionState::Reserved)
@@ -702,6 +756,9 @@ std::vector<EconomicAccount> EconomyService::FindAccounts(GameplayObjectRef owne
 }
 foundation::Result<DebtId> EconomyService::CreateDebt(DebtRecord d)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<DebtId>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     if (!d.debtor.IsValid() || !d.creditor.IsValid() || SameObject(d.debtor, d.creditor) || !currencies_.contains(d.currency) ||
         !ValidateMoneyAmount(d.currency, d.principal, false))
         return foundation::Result<DebtId>::Failure(Error("gameplay.economy.invalid_debt", "invalid debt"));
@@ -719,6 +776,9 @@ foundation::Result<DebtId> EconomyService::CreateDebt(DebtRecord d)
 }
 foundation::Result<void> EconomyService::ResolveDebt(DebtId id, DebtState state, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = debts_.find(id);
     if (it == debts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.debt_missing", "debt missing"));
     if (it->second.state == state) return foundation::Result<void>::Success();
@@ -736,6 +796,9 @@ foundation::Result<void> EconomyService::ResolveDebt(DebtId id, DebtState state,
 
 foundation::Result<void> EconomyService::CompactDebt(DebtId id, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = debts_.find(id);
     if (it == debts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.debt_missing", "debt missing"));
     if (it->second.state == DebtState::Active) return foundation::Result<void>::Failure(Error("gameplay.economy.debt_state", "active debt cannot be compacted"));
@@ -761,6 +824,9 @@ std::vector<DebtRecord> EconomyService::FindDebts(GameplayObjectRef s) const
 }
 foundation::Result<EconomicContractId> EconomyService::CreateContract(EconomicContract c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<EconomicContractId>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     std::unordered_set<GameplayObjectRef> unique_parties;
     const bool parties_valid = std::all_of(c.parties.begin(), c.parties.end(), [&](const auto& party){ return party.IsValid() && unique_parties.insert(party).second; });
     const auto schema_it = contract_terms_schemas_.find(c.type);
@@ -785,6 +851,9 @@ foundation::Result<EconomicContractId> EconomyService::CreateContract(EconomicCo
 }
 foundation::Result<void> EconomyService::SetContractState(EconomicContractId id, ContractState state, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = contracts_.find(id);
     if (it == contracts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.contract_missing", "contract missing"));
     const auto old = it->second.state;
@@ -806,6 +875,9 @@ foundation::Result<void> EconomyService::SetContractState(EconomicContractId id,
 
 foundation::Result<void> EconomyService::CompactContract(EconomicContractId id, GameplayContext c)
 {
+    if (!CheckedNext(revision_))
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = contracts_.find(id);
     if (it == contracts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.contract_missing", "contract missing"));
     if (it->second.state == ContractState::Draft || it->second.state == ContractState::Active)
@@ -816,7 +888,7 @@ foundation::Result<void> EconomyService::CompactContract(EconomicContractId id, 
     change.contract = id; change.currency = copy.currency; Record(std::move(change));
     return foundation::Result<void>::Success();
 }
-EconomyChangeBatch EconomyService::ReadChangesSince(std::uint64_t seq) const
+EconomyChangeBatch EconomyService::ReadChangesSinceSequence(std::uint64_t seq) const
 {
     EconomyChangeBatch batch;
     batch.latest_sequence = changes_.empty() ? 0 : changes_.back().sequence;
@@ -829,9 +901,9 @@ EconomyChangeBatch EconomyService::ReadChangesSince(std::uint64_t seq) const
     std::copy_if(changes_.begin(), changes_.end(), std::back_inserter(batch.changes), [seq](const auto &c) { return c.sequence > seq; });
     return batch;
 }
-std::vector<EconomyChange> EconomyService::ChangesSince(std::uint64_t seq) const
+std::vector<EconomyChange> EconomyService::ChangesSinceSequence(std::uint64_t seq) const
 {
-    return ReadChangesSince(seq).changes;
+    return ReadChangesSinceSequence(seq).changes;
 }
 EconomySnapshot EconomyService::CaptureSnapshot() const
 {
@@ -897,10 +969,17 @@ EconomySnapshot EconomyService::CaptureSnapshot() const
     s.debt_ids = debt_ids_.GetSnapshot();
     s.contract_ids = contract_ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<EconomicAccountId, EconomicAccount, IdHash> a;
     for (auto &v : s.accounts)
     {
@@ -1070,6 +1149,7 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
         if (v.state == FundsReservationState::Active)
             ++diagnostics_.active_reservations;
     }
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 EconomyDiagnostics EconomyService::GetDiagnostics() const noexcept

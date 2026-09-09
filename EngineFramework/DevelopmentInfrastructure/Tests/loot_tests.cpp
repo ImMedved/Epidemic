@@ -224,7 +224,7 @@ int main()
     history_snapshot.claimed_history_floor_low = 10;
     history_snapshot.execution_ids.next = 11;
     if (!recovery.service.RestoreSnapshot(std::move(history_snapshot))) return 35;
-    if (!recovery.service.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 38;
+    if (!recovery.service.ReadChangesSince(recovery.service.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 38;
 
     auto loot_journal_seed = recovery.service.CaptureSnapshot();
     loot_journal_seed.journal.clear();
@@ -239,7 +239,7 @@ int main()
     const auto loot_exhausted = recovery.service.CaptureSnapshot();
     if (loot_exhausted.next_change_sequence != 0 || loot_exhausted.journal.size() != 1 ||
         loot_exhausted.journal.front().sequence != std::numeric_limits<std::uint64_t>::max()) return 41;
-    if (!recovery.service.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 42;
+    if (!recovery.service.ReadChangesSince(recovery.service.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 42;
     if (!recovery.service.RestoreSnapshot(loot_exhausted)) return 43;
     const auto scope = GameplayObjectId::FromString("framework.loot.executions").High();
     RewardExecutionId old_id{GameplayObjectId::FromRaw(scope, 5)};
@@ -248,7 +248,7 @@ int main()
     if (recovery.service.ClaimHistoryStatus(new_id) != RewardClaimHistoryStatus::Unknown) return 37;
 
     LootService empty_journal;
-    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 44;
+    if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;
 
     return 0;
 }

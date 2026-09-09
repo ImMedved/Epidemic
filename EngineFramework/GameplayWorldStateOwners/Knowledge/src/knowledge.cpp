@@ -72,7 +72,8 @@ foundation::Result<void> KnowledgeService::CreateProfile(KnowledgeProfile p)
     if(p.default_decay_rule.IsValid()&&!decay_rules_.contains(p.default_decay_rule))
         return foundation::Result<void>::Failure(Error("gameplay.knowledge.invalid_profile","knowledge profile references unknown decay rule"));
     definitions_frozen_=true;
-    Bump(); p.revision=revision_; profiles_.emplace(p.subject,std::move(p)); return foundation::Result<void>::Success();
+    Bump(); p.revision=revision_; const auto subject=p.subject; profiles_.emplace(subject,std::move(p));
+    Record({0,KnowledgeChangeKind::ProfileCreated,subject,{}, {},{}, {},{},revision_}); return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> KnowledgeService::RemoveProfile(GameplayObjectRef subject,GameplayContext context)
@@ -255,7 +256,7 @@ std::vector<MemoryRecord> KnowledgeService::FindImportantMemories(GameplayObject
     auto all=FindMemoriesByOwner(owner);all.erase(std::remove_if(all.begin(),all.end(),[min](const auto& m){return static_cast<int>(m.importance)<static_cast<int>(min);}),all.end());return all;
 }
 
-KnowledgeChangeBatch KnowledgeService::ReadChangesSince(std::uint64_t seq)const
+KnowledgeChangeBatch KnowledgeService::ReadChangesSinceSequence(std::uint64_t seq)const
 {
     KnowledgeChangeBatch b;
     b.latest_sequence=next_change_sequence_==0?std::numeric_limits<std::uint64_t>::max():next_change_sequence_-1;
@@ -274,11 +275,18 @@ KnowledgeChangeBatch KnowledgeService::ReadChangesSince(std::uint64_t seq)const
 KnowledgeSnapshot KnowledgeService::CaptureSnapshot()const
 {
     KnowledgeSnapshot s;for(const auto& [o,p]:profiles_){(void)o;s.profiles.push_back(p);}for(const auto& [id,k]:knowledge_){(void)id;if(k.persistence==MemoryPersistencePolicy::Persistent||k.persistence==MemoryPersistencePolicy::Timed)s.knowledge.push_back(k);}for(const auto& [id,m]:memories_){(void)id;if(m.persistence==MemoryPersistencePolicy::Persistent||m.persistence==MemoryPersistencePolicy::Timed)s.memories.push_back(m);}
-    std::sort(s.profiles.begin(),s.profiles.end(),[](const auto&a,const auto&b){return a.subject<b.subject;});std::sort(s.knowledge.begin(),s.knowledge.end(),[](const auto&a,const auto&b){return a.id<b.id;});std::sort(s.memories.begin(),s.memories.end(),[](const auto&a,const auto&b){return a.id<b.id;});s.knowledge_ids=knowledge_ids_.GetSnapshot();s.memory_ids=memory_ids_.GetSnapshot();s.next_change_sequence=next_change_sequence_;s.revision=revision_;return s;
+    std::sort(s.profiles.begin(),s.profiles.end(),[](const auto&a,const auto&b){return a.subject<b.subject;});std::sort(s.knowledge.begin(),s.knowledge.end(),[](const auto&a,const auto&b){return a.id<b.id;});std::sort(s.memories.begin(),s.memories.end(),[](const auto&a,const auto&b){return a.id<b.id;});s.knowledge_ids=knowledge_ids_.GetSnapshot();s.memory_ids=memory_ids_.GetSnapshot();s.next_change_sequence=next_change_sequence_;s.revision=revision_;s.change_epoch = journal_epoch_;
+    return s;
 }
 
 foundation::Result<void> KnowledgeService::RestoreSnapshot(KnowledgeSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<GameplayObjectRef,KnowledgeProfile,RefHash> new_profiles;std::unordered_map<KnowledgeRecordId,KnowledgeRecord,IdHash> new_knowledge;std::unordered_map<MemoryRecordId,MemoryRecord,IdHash> new_memories;
     new_profiles.reserve(s.profiles.size());new_knowledge.reserve(s.knowledge.size());new_memories.reserve(s.memories.size());std::uint64_t max_k=0,max_m=0;
     for(const auto& p:s.profiles)
@@ -301,7 +309,8 @@ foundation::Result<void> KnowledgeService::RestoreSnapshot(KnowledgeSnapshot s)
     }
     if(!ValidateGenerator(s.knowledge_ids,knowledge_ids_.GetSnapshot().scope,max_k)||!ValidateGenerator(s.memory_ids,memory_ids_.GetSnapshot().scope,max_m))
         return foundation::Result<void>::Failure(Error("gameplay.knowledge.restore_invalid","invalid id generator snapshot"));
-    profiles_=std::move(new_profiles);knowledge_=std::move(new_knowledge);memories_=std::move(new_memories);knowledge_ids_.Restore(s.knowledge_ids);memory_ids_.Restore(s.memory_ids);revision_=s.revision;changes_.clear();next_change_sequence_=s.next_change_sequence;definitions_frozen_=true;RebuildIndexes();return foundation::Result<void>::Success();
+    profiles_=std::move(new_profiles);knowledge_=std::move(new_knowledge);memories_=std::move(new_memories);knowledge_ids_.Restore(s.knowledge_ids);memory_ids_.Restore(s.memory_ids);revision_=s.revision;changes_.clear();next_change_sequence_=s.next_change_sequence;definitions_frozen_=true;RebuildIndexes();journal_epoch_ = *next_journal_epoch;
+    return foundation::Result<void>::Success();
 }
 
 KnowledgeDiagnostics KnowledgeService::GetDiagnostics()const noexcept{auto d=diagnostics_;d.profiles=profiles_.size();d.knowledge_records=knowledge_.size();d.memory_records=memories_.size();return d;}

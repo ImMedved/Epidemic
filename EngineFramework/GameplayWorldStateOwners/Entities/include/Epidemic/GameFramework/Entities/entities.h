@@ -161,12 +161,21 @@ struct EntityChange
     Revision revision{};
 };
 
+struct EntityChangeBatch
+{
+    std::vector<EntityChange> changes;
+    bool snapshot_required = false;
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
+};
+
 struct EntitySnapshot
 {
     std::vector<EntityRecord> records;
     std::vector<PendingEntityDestruction> pending_destruction;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot id_generator{};
     Revision revision{};
+    std::uint64_t change_epoch = 1;
 };
 
 struct EntitiesDiagnostics
@@ -238,8 +247,13 @@ class EntityService
     [[nodiscard]] std::vector<EntityRecord> FindByLifecycle(EntityLifecycleState lifecycle) const;
     [[nodiscard]] std::vector<EntityRecord> FindByMaterialization(EntityMaterializationState state) const;
 
-    [[nodiscard]] std::vector<EntityChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept;
+    private:
+
+        [[nodiscard]] std::vector<EntityChange> ChangesSinceSequence(std::uint64_t sequence) const;
+
+    public:
+    [[nodiscard]] EntityChangeBatch ReadChangesSince(ChangeCursor cursor) const;
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept { return {journal_epoch_, last_change_sequence_}; }
     void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] EntitySnapshot CaptureSnapshot() const;
@@ -275,6 +289,7 @@ class EntityService
     std::vector<EntityChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     std::uint64_t last_change_sequence_ = 0;
+    std::uint64_t journal_epoch_ = 1;
 
     std::uint64_t creates_ = 0;
     std::uint64_t destroys_ = 0;

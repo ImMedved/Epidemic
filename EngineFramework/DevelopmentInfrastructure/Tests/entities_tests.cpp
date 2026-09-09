@@ -112,7 +112,7 @@ int main()
     if (!service.RestoreSnapshot(pending_snapshot)) return 183;
     auto restored_destroy = service.CommitPendingDestruction();
     if (!restored_destroy || restored_destroy.Value().size() != 1) return 184;
-    const auto restored_destroy_change = service.ChangesSince(0);
+    const auto restored_destroy_change = service.ReadChangesSince(ChangeCursor{}).changes;
     if (restored_destroy_change.empty() || restored_destroy_change.back().destroy_reason != EntityDestroyReason::Consumed) return 185;
     if (!service.RestoreSnapshot(snapshot)) return 186;
 
@@ -163,7 +163,7 @@ int main()
     const auto diagnostics = service.GetDiagnostics();
     if (diagnostics.entity_count < 100001 || service.AllEntities().size() != diagnostics.entity_count) return 20;
 
-    const auto changes = service.ChangesSince(0);
-    if (changes.empty() || changes.back().sequence != service.LatestChangeSequence()) return 21;
+    const auto changes = service.ReadChangesSince(ChangeCursor{}).changes;
+    if (changes.empty() || changes.back().sequence != service.LatestChangeCursor().sequence) return 21;
     return 0;
 }

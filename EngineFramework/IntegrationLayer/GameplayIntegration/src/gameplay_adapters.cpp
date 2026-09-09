@@ -512,8 +512,8 @@ foundation::Result<void> ConditionProgressionAdapter::ReconcileAll()
         if (!projected)
             return projected;
     }
-    const auto snapshot = conditions_.CaptureSnapshot();
-    cursor_ = snapshot.next_change_sequence == 0 ? 0 : snapshot.next_change_sequence - 1;
+
+    cursor_ = conditions_.LatestChangeCursor();
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> ConditionProgressionAdapter::ProcessChanges()
@@ -524,14 +524,15 @@ foundation::Result<void> ConditionProgressionAdapter::ProcessChanges()
     const auto batch = conditions_.ReadChangesSince(cursor_);
     if (batch.snapshot_required)
         return ReconcileAll();
+    cursor_.epoch = batch.latest_cursor.epoch;
     for (const auto &change : batch.changes)
     {
-        const auto next_cursor = std::max(cursor_, change.sequence);
+        const auto next_sequence = std::max(cursor_.sequence, change.sequence);
         const auto source = ConditionSource(change.instance);
         if (change.kind == conditions::ConditionChangeKind::Removed || change.kind == conditions::ConditionChangeKind::Expired)
         {
             (void)progression_.RemoveModifiersBySource(change.subject, source, change.context);
-            cursor_ = next_cursor;
+            cursor_.sequence = next_sequence;
             continue;
         }
         if (change.kind == conditions::ConditionChangeKind::Added || change.kind == conditions::ConditionChangeKind::Refreshed ||
@@ -547,7 +548,7 @@ foundation::Result<void> ConditionProgressionAdapter::ProcessChanges()
                     return projected;
             }
         }
-        cursor_ = next_cursor;
+        cursor_.sequence = next_sequence;
     }
     return foundation::Result<void>::Success();
 }
@@ -803,6 +804,7 @@ foundation::Result<std::vector<loot::RewardExecutionId>> DeathRewardAdapter::Pro
     if (batch.snapshot_required)
         return foundation::Result<std::vector<loot::RewardExecutionId>>::Failure(
             Error("gameplay.integration.change_gap", "combat change journal gap requires reconciliation from snapshot"));
+    cursor_.epoch = batch.latest_cursor.epoch;
     if (batch.oldest_available_sequence != 0)
         std::erase_if(deliveries_, [&](const auto &record) {
             return record.key.combat_sequence < batch.oldest_available_sequence;
@@ -845,7 +847,7 @@ foundation::Result<std::vector<loot::RewardExecutionId>> DeathRewardAdapter::Pro
                 out.push_back(delivery->reward);
             }
         }
-        cursor_ = change.sequence;
+        cursor_.sequence = change.sequence;
     }
     return foundation::Result<std::vector<loot::RewardExecutionId>>::Success(std::move(out));
 }
@@ -861,7 +863,9 @@ DeathRewardCheckpoint DeathRewardAdapter::CaptureCheckpoint() const
 }
 foundation::Result<void> DeathRewardAdapter::RestoreCheckpoint(DeathRewardCheckpoint checkpoint)
 {
-    if (!mappings_frozen_ || checkpoint.mapping_revision != mapping_revision_ || checkpoint.deliveries.size() > kDeliveryCapacity)
+    if (!mappings_frozen_ || checkpoint.mapping_revision != mapping_revision_ ||
+        !checkpoint.cursor.IsValid() || checkpoint.cursor.epoch != combat_.LatestChangeCursor().epoch ||
+        checkpoint.deliveries.size() > kDeliveryCapacity)
         return foundation::Result<void>::Failure(
             Error("gameplay.integration.checkpoint_invalid", "death reward checkpoint is incompatible with frozen mappings"));
     std::sort(checkpoint.deliveries.begin(), checkpoint.deliveries.end(),

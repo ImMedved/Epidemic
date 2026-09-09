@@ -109,16 +109,9 @@ int main()
     auto site = p.CreateProductionSite({{}, owner, {}, {}, ProductionSiteState::Active, 1'000'000, {}});
     if (!in || !out || !site) return 27;
     if (!p.Add(in.Value(), {pwood, 100})) return 28;
-    auto order = p.StartProductionOrder(site.Value(), rid.Value(), in.Value(), out.Value(), GameplayTimePoint{0});
-    if (!order) return 29;
-    if (p.GetAmount(in.Value(), pwood) != 100 || p.GetAvailableAmount(in.Value(), pwood) != 90) return 30;
-    if (p.CompleteProductionOrder(order.Value(), GameplayTimePoint{4})) return 31;
-    if (!p.CompleteProductionOrder(order.Value(), GameplayTimePoint{5})) return 32;
-    if (p.GetAmount(in.Value(), pwood) != 90 || p.GetAmount(out.Value(), pwood) != 12) return 33;
-    if (p.FindProductionOrder(order.Value()) != nullptr) return 34;
 
-    const auto pre_restore_cursor = p.LatestChangeSequence();
-    if (pre_restore_cursor < 2) return 57;
+    const auto pre_restore_cursor = p.LatestChangeCursor();
+    if (pre_restore_cursor.sequence < 2) return 57;
     auto snap = p.CaptureSnapshot();
     ResourcesProductionService restored;
     ResourceTypeId restored_wood;
@@ -126,8 +119,8 @@ int main()
     auto rr = restored.RegisterProductionRecipe(recipe); if (!rr) return 36;
     if (!restored.RestoreSnapshot(snap)) return 37;
     if (!restored.ReadChangesSince(pre_restore_cursor).snapshot_required) return 49;
-    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 50;
-    if (restored.GetAmount(in.Value(), restored_wood) != 90) return 38;
+    if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 50;
+    if (restored.GetAmount(in.Value(), restored_wood) != 100) return 38;
 
     auto before_bad_restore = restored.GetDiagnostics();
     auto bad = snap;
@@ -135,12 +128,12 @@ int main()
     if (restored.RestoreSnapshot(bad)) return 39;
     auto after_bad_restore = restored.GetDiagnostics();
     if (before_bad_restore.stockpiles != after_bad_restore.stockpiles ||
-        restored.GetAmount(in.Value(), restored_wood) != 90) return 40;
+        restored.GetAmount(in.Value(), restored_wood) != 100) return 40;
     if (!restored.Add(in.Value(), {restored_wood, 1})) return 51;
     if (!restored.ReadChangesSince(pre_restore_cursor).snapshot_required) return 52;
-    const auto resources_epoch = restored.ReadChangesSince(0);
+    const auto resources_epoch = restored.ReadChangesSince(ChangeCursor{});
     if (resources_epoch.snapshot_required || resources_epoch.changes.empty()) return 53;
-    const auto resources_current = restored.ReadChangesSince(resources_epoch.latest_sequence);
+    const auto resources_current = restored.ReadChangesSince(resources_epoch.latest_cursor);
     if (resources_current.snapshot_required || !resources_current.changes.empty()) return 54;
 
     ResourcesProductionService journal;
@@ -152,12 +145,12 @@ int main()
     {
         if (!journal.Add(js.Value(), {jwood, 1})) return 43;
     }
-    auto batch = journal.ReadChangesSince(0);
+    auto batch = journal.ReadChangesSince(ChangeCursor{});
     if (!batch.snapshot_required) return 44;
-    if (!journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 55;
+    if (!journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 55;
     ResourcesProductionService empty_journal;
-    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required) return 56;
-    if (journal.ChangesSince(journal.LatestChangeSequence()).size() != 0) return 45;
+    if (!empty_journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 56;
+    if (journal.ReadChangesSince(journal.LatestChangeCursor()).changes.size() != 0) return 45;
 
     return 0;
 }

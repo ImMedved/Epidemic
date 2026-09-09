@@ -621,11 +621,11 @@ std::size_t CombatService::ExpirePreparedPlans(GameplayTimePoint now) noexcept
     });
     return before - prepared_plans_.size();
 }
-std::vector<CombatChange> CombatService::ChangesSince(std::uint64_t sequence) const
+std::vector<CombatChange> CombatService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
-CombatChangeBatch CombatService::ReadChangesSince(std::uint64_t sequence) const
+CombatChangeBatch CombatService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     CombatChangeBatch batch;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
@@ -656,10 +656,17 @@ CombatSnapshot CombatService::CaptureSnapshot() const
     }
     std::sort(snapshot.resource_reservations.begin(), snapshot.resource_reservations.end(),
               [](const auto &a, const auto &b) { return a.id < b.id; });
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 foundation::Result<void> CombatService::RestoreSnapshot(CombatSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<GameplayObjectRef, CombatantRecord> restored;
     restored.reserve(snapshot.combatants.size());
     for (auto &record : snapshot.combatants)
@@ -749,6 +756,7 @@ foundation::Result<void> CombatService::RestoreSnapshot(CombatSnapshot snapshot)
     next_change_sequence_ = snapshot.next_change_sequence;
     prepared_plans_.clear();
     diagnostics_.combatants = combatants_.size();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 CombatDiagnostics CombatService::GetDiagnostics() const noexcept

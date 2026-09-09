@@ -48,6 +48,19 @@ namespace
     return id.Low();
 }
 
+template <class TId>
+void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId> &generator, TId id) noexcept
+{
+    auto snapshot = generator.GetSnapshot();
+    if (!id.IsValid() || id.value.High() != snapshot.scope || snapshot.next == 0)
+        return;
+    const auto low = id.value.Low();
+    if (low < snapshot.next)
+        return;
+    snapshot.next = low == std::numeric_limits<std::uint64_t>::max() ? 0 : low + 1;
+    generator.Restore(snapshot);
+}
+
 [[nodiscard]] foundation::Error CallbackError(std::string_view stage)
 {
     return foundation::Error::Create("gameplay.processes.provider_exception", stage);
@@ -144,12 +157,20 @@ foundation::Result<ProcessStationId> ProcessesService::RegisterStation(ProcessSt
     if (stations_.contains(station.id) || station_by_object_.contains(station.station_object))
         return foundation::Result<ProcessStationId>::Failure(
             Error("gameplay.processes.invalid_station", "duplicate process station"));
+    AdvanceGeneratorPastAcceptedId(station_ids_, station.id);
     Bump();
     station.revision = revision_;
     const auto id = station.id;
-    station_by_object_.emplace(station.station_object, id);
+    const auto station_object = station.station_object;
+    station_by_object_.emplace(station_object, id);
     stations_.emplace(id, std::move(station));
     diagnostics_.stations = stations_.size();
+    ProcessChange change{};
+    change.kind = ProcessChangeKind::StationRegistered;
+    change.actor = station_object;
+    change.station = id;
+    change.revision = revision_;
+    Record(std::move(change));
     return foundation::Result<ProcessStationId>::Success(id);
 }
 
@@ -961,12 +982,12 @@ std::vector<ProcessInstance> ProcessesService::FindProcessesByStation(GameplayOb
     return out;
 }
 
-std::vector<ProcessChange> ProcessesService::ChangesSince(std::uint64_t sequence) const
+std::vector<ProcessChange> ProcessesService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-ProcessChangeBatch ProcessesService::ReadChangesSince(std::uint64_t sequence) const
+ProcessChangeBatch ProcessesService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     ProcessChangeBatch batch;
     const auto latest = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -1034,11 +1055,18 @@ ProcessesSnapshot ProcessesService::CaptureSnapshot() const
     snapshot.reservation_ids = reservation_ids_.GetSnapshot();
     snapshot.next_change_sequence = next_change_sequence_;
     snapshot.revision = revision_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<ProcessStationId, ProcessStation, IdHash> new_stations;
     std::unordered_map<GameplayObjectRef, ProcessStationId> new_station_by_object;
     std::unordered_map<ProcessInstanceId, ProcessInstance, IdHash> new_instances;
@@ -1149,6 +1177,7 @@ foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot sna
             if (output.state == ProcessOutputCommitState::Committed)
                 ++diagnostics_.outputs;
     }
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

@@ -114,7 +114,7 @@ void TestDispatcherCompletionAndObservedTime()
     CHECK(pumped.Value().pending == 0);
     CHECK(fixture.interactions.FindSession(execution) == nullptr);
 
-    const auto changes = fixture.interactions.ReadChangesSince(0);
+    const auto changes = fixture.interactions.ReadChangesSince(ChangeCursor{});
     CHECK(!changes.snapshot_required);
     CHECK(!changes.changes.empty());
     const auto& completed = changes.changes.back();
@@ -188,13 +188,13 @@ void TestJournalGapFallsBackToAuthoritativeReconciliation()
         const auto execution = fixture.Start(context);
         CHECK(fixture.interactions.Cancel(execution, TypeId::FromString("test.cancel"), GameplayContext{}));
     }
-    CHECK(fixture.interactions.ReadChangesSince(0).snapshot_required);
+    CHECK(fixture.interactions.ReadChangesSince(ChangeCursor{}).snapshot_required);
 
     const auto live_context = fixture.Context(9000);
     const auto live_execution = fixture.Start(live_context);
     const auto synchronized = fixture.adapter.Synchronize(fixture.clock);
     CHECK(synchronized);
-    CHECK(fixture.adapter.Cursor() != 0);
+    CHECK(fixture.adapter.Cursor().sequence != 0);
 
     const auto* session = fixture.interactions.FindSession(live_execution);
     CHECK(session != nullptr && session->completion_schedule.has_value());

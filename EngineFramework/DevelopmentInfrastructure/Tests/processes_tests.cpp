@@ -452,16 +452,16 @@ struct ConfiguredProcess
     auto snapshot = service.CaptureSnapshot();
     if (snapshot.next_change_sequence <= 1)
         return false;
-    const auto expected_latest = snapshot.next_change_sequence - 1;
+    const auto expected_latest_sequence = snapshot.next_change_sequence - 1;
 
     ProcessesService restored;
     const auto restored_config = Configure(restored, ProcessTimingPolicy::Timed, ProcessPersistencePolicy::Transient, 0, {});
     (void)restored_config;
     if (!restored.RestoreSnapshot(std::move(snapshot)))
         return false;
-    const auto stale = restored.ReadChangesSince(0);
-    const auto current = restored.ReadChangesSince(expected_latest);
-    return stale.snapshot_required && stale.latest_sequence == expected_latest && !current.snapshot_required &&
+    const auto stale = restored.ReadChangesSince(ChangeCursor{});
+    const auto current = restored.ReadChangesSince(restored.LatestChangeCursor());
+    return stale.snapshot_required && stale.latest_cursor.sequence == expected_latest_sequence && !current.snapshot_required &&
            current.changes.empty();
 }
 } // namespace

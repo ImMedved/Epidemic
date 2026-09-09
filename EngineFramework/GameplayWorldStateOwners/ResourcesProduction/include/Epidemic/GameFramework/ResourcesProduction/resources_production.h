@@ -101,20 +101,6 @@ struct ProductionRecipeId
     [[nodiscard]] constexpr bool operator==(const ProductionRecipeId &) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const ProductionRecipeId &) const noexcept = default;
 };
-struct ProductionOrderId
-{
-    GameplayObjectId value{};
-    static constexpr ProductionOrderId FromRaw(std::uint64_t h, std::uint64_t l) noexcept
-    {
-        return {GameplayObjectId::FromRaw(h, l)};
-    }
-    [[nodiscard]] constexpr bool IsValid() const noexcept
-    {
-        return value.IsValid();
-    }
-    [[nodiscard]] constexpr bool operator==(const ProductionOrderId &) const noexcept = default;
-    [[nodiscard]] constexpr auto operator<=>(const ProductionOrderId &) const noexcept = default;
-};
 struct ResourceTransactionId
 {
     GameplayObjectId value{};
@@ -241,16 +227,6 @@ enum class ProductionSiteState
     Disabled,
     Destroyed
 };
-enum class ProductionOrderState
-{
-    Queued,
-    Running,
-    Paused,
-    Completed,
-    Failed,
-    Cancelled,
-    BlockedByResources
-};
 enum class ResourceReservationState
 {
     Active,
@@ -275,15 +251,13 @@ enum class ResourceChangeKind
     ResourceReservationReleased,
     ResourceReservationConsumed,
     StockpileStateChanged,
+    NodeCreated,
     NodeDepleted,
     NodeRegenerated,
     ProductionSiteCreated,
     ProductionCapabilityCreated,
     ProductionPlanCreated,
     ProductionPlanChanged,
-    ProductionOrderStarted,
-    ProductionOrderCompleted,
-    ProductionOrderFailed,
     ShortageDetected,
     SurplusDetected
 };
@@ -347,21 +321,6 @@ struct ProductionRecipe
     GameplayDuration duration{};
     Revision revision{};
 };
-// Legacy compatibility surface. Timed recipe execution belongs to Processes; new production code should use
-// ProductionCapability/ProductionPlan and an integration adapter.
-struct ProductionOrder
-{
-    ProductionOrderId id{};
-    ProductionSiteId site{};
-    ProductionRecipeId recipe{};
-    ResourceStockpileId input_stockpile{};
-    ResourceStockpileId output_stockpile{};
-    ProductionOrderState state = ProductionOrderState::Queued;
-    GameplayTimePoint started_at{};
-    GameplayTimePoint due_at{};
-    ResourceReservationId input_reservation{};
-    Revision revision{};
-};
 struct ResourceReservation
 {
     ResourceReservationId id{};
@@ -407,11 +366,12 @@ struct ResourceChange
     ResourceChangeKind kind = ResourceChangeKind::ResourceAdded;
     ResourceStockpileId stockpile{};
     ResourceTypeId resource{};
-    ProductionOrderId order{};
+    ResourceReservationId reservation{};
     Fixed amount = 0;
     GameplayTimePoint time{};
     GameplayContext context{};
     Revision revision{};
+    ResourceNodeId node{};
 };
 struct ResourceChangeBatch
 {
@@ -419,6 +379,9 @@ struct ResourceChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     std::vector<ResourceChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct ResourcesSnapshot
@@ -430,17 +393,17 @@ struct ResourcesSnapshot
     std::vector<ResourceReservation> reservations;
     std::vector<ProductionCapability> capabilities;
     std::vector<ProductionPlan> plans;
-    std::vector<ProductionOrder> orders;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot stockpile_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot node_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot site_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot reservation_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot capability_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot plan_ids{};
-    MonotonicIdGenerator<GameplayObjectId>::Snapshot order_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot transaction_ids{};
     Revision revision{};
     std::vector<ResourceTransaction> transactions;
+
+    std::uint64_t change_epoch = 1;
 };
 struct ResourcesDiagnostics
 {
@@ -451,7 +414,6 @@ struct ResourcesDiagnostics
     std::uint64_t active_reservations = 0;
     std::uint64_t production_capabilities = 0;
     std::uint64_t production_plans = 0;
-    std::uint64_t active_orders = 0;
     std::uint64_t transactions = 0;
     std::uint64_t shortages = 0;
 };
@@ -516,19 +478,29 @@ class ResourcesProductionService
     [[nodiscard]] const ProductionPlan *FindProductionPlan(ProductionPlanId id) const noexcept;
     [[nodiscard]] std::vector<ProductionPlan> FindProductionPlans(GameplayObjectRef owner = {}) const;
 
-    // Legacy compatibility API. New timed production execution must be coordinated through Processes.
-    [[nodiscard]] foundation::Result<ProductionOrderId> StartProductionOrder(
-        ProductionSiteId site, ProductionRecipeId recipe, ResourceStockpileId input, ResourceStockpileId output,
-        GameplayTimePoint now, GameplayContext context = {});
-    [[nodiscard]] foundation::Result<void> CompleteProductionOrder(ProductionOrderId order, GameplayTimePoint now,
-                                                                   GameplayContext context = {});
-    [[nodiscard]] foundation::Result<std::vector<ProductionOrderId>> CompleteDueOrders(GameplayTimePoint now);
-    [[nodiscard]] const ProductionOrder *FindProductionOrder(ProductionOrderId id) const noexcept;
-
-    [[nodiscard]] std::vector<ResourceChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] ResourceChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] std::vector<ResourceChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] ResourceChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] ResourceChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept;
     void PruneChangesBefore(std::uint64_t sequence) noexcept;
     [[nodiscard]] ResourcesSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(ResourcesSnapshot snapshot);
@@ -570,7 +542,6 @@ class ResourcesProductionService
                                                                       StockpileOperation operation) const;
     [[nodiscard]] bool CanAddToStockpile(ResourceStockpileId stockpile) const noexcept;
     [[nodiscard]] bool CanRemoveFromStockpile(ResourceStockpileId stockpile) const noexcept;
-    [[nodiscard]] static bool IsTerminalOrderState(ProductionOrderState state) noexcept;
     [[nodiscard]] static std::uint64_t LowPart(GameplayObjectId id) noexcept;
     void AddReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept;
     void RemoveReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept;
@@ -588,7 +559,6 @@ class ResourcesProductionService
     std::unordered_map<ProductionCapabilityId, ProductionCapability, IdHash> capabilities_;
     std::unordered_map<ProductionPlanId, ProductionPlan, IdHash> plans_;
     std::unordered_map<ProductionRecipeId, ProductionRecipe, IdHash> recipes_;
-    std::unordered_map<ProductionOrderId, ProductionOrder, IdHash> orders_;
     std::unordered_map<ResourceTransactionId, ResourceTransaction, IdHash> transactions_;
     MonotonicIdGenerator<GameplayObjectId> stockpile_ids_;
     MonotonicIdGenerator<GameplayObjectId> node_ids_;
@@ -596,10 +566,10 @@ class ResourcesProductionService
     MonotonicIdGenerator<GameplayObjectId> reservation_ids_{0x3110};
     MonotonicIdGenerator<GameplayObjectId> capability_ids_{0x3111};
     MonotonicIdGenerator<GameplayObjectId> plan_ids_{0x3112};
-    MonotonicIdGenerator<GameplayObjectId> order_ids_;
     MonotonicIdGenerator<GameplayObjectId> transaction_ids_;
     std::deque<ResourceChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     std::size_t change_retention_ = 4096;
     ResourcesDiagnostics diagnostics_{};
 };

@@ -140,10 +140,10 @@ int main()
         return 13;
     if (restored.FindSocket(sock.id)->state != SocketState::Occupied)
         return 14;
-    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+    if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)
         return 46;
     ConstructionService empty_journal;
-    if (!empty_journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+    if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)
         return 53;
 
     auto construction_journal_seed = restored.CaptureSnapshot();
@@ -162,7 +162,7 @@ int main()
     if (construction_exhausted.next_change_sequence != 0 || construction_exhausted.journal.size() != 1 ||
         construction_exhausted.journal.front().sequence != std::numeric_limits<std::uint64_t>::max())
         return 49;
-    if (!restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required)
+    if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)
         return 50;
     ConstructionService construction_exhausted_restore;
     if (!construction_exhausted_restore.RegisterPlacementDefinition(free_def) ||

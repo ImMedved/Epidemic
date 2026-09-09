@@ -789,15 +789,15 @@ void EffectService::RecordChange(EffectChange change)
     }
 }
 
-std::vector<EffectChange> EffectService::ChangesSince(std::uint64_t sequence) const
+std::vector<EffectChange> EffectService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-EffectChangeBatch EffectService::ReadChangesSince(std::uint64_t sequence) const
+EffectChangeBatch EffectService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     EffectChangeBatch batch;
-    const auto latest = LatestChangeSequence();
+    const auto latest = LatestChangeCursor().sequence;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
     if (next_change_sequence_ == 0 || sequence > latest)
     {
@@ -849,11 +849,18 @@ EffectsSnapshot EffectService::CaptureSnapshot() const
         }
     }
     std::sort(snapshot.deferred.begin(), snapshot.deferred.end(), [](const auto& left, const auto& right) { return left.id < right.id; });
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> EffectService::RestoreSnapshot(EffectsSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     const auto expected_execution_scope = execution_ids_.Scope().Raw();
     const auto expected_deferred_scope = deferred_ids_.Scope().Raw();
     if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.execution_ids) ||
@@ -893,6 +900,7 @@ foundation::Result<void> EffectService::RestoreSnapshot(EffectsSnapshot snapshot
     changes_.clear();
     next_change_sequence_ = 1;
     executions_ = operations_ = targets_ = derived_effects_ = waves_ = rejections_ = budget_exhaustions_ = 0;
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

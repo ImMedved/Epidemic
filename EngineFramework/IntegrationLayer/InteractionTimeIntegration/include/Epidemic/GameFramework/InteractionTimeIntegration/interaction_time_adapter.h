@@ -45,7 +45,7 @@ class InteractionTimeAdapter
         GameplayContext context = {});
 
     [[nodiscard]] ActionTypeId CompleteAction() const noexcept { return complete_action_; }
-    [[nodiscard]] std::uint64_t Cursor() const noexcept { return cursor_; }
+    [[nodiscard]] ChangeCursor Cursor() const noexcept { return cursor_; }
     [[nodiscard]] const std::vector<InteractionTimeReconciliationRecord>& PendingReconciliations() const noexcept
     {
         return reconciliations_;
@@ -68,7 +68,7 @@ class InteractionTimeAdapter
     time::GameplayTimeService& time_;
     integration::ScheduledTriggerDispatcher* dispatcher_ = nullptr;
     ActionTypeId complete_action_{};
-    std::uint64_t cursor_ = 0;
+    ChangeCursor cursor_{};
     std::vector<InteractionTimeReconciliationRecord> reconciliations_;
 };
 } // namespace epidemic::gameplay::interaction_time_integration

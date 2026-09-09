@@ -880,12 +880,12 @@ const AbilityExecution *AbilityService::FindExecution(AbilityExecutionId id) con
     return it == executions_.end() ? nullptr : &it->second;
 }
 
-std::vector<AbilityChange> AbilityService::ChangesSince(std::uint64_t sequence) const
+std::vector<AbilityChange> AbilityService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-AbilityChangeBatch AbilityService::ReadChangesSince(std::uint64_t sequence) const
+AbilityChangeBatch AbilityService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     AbilityChangeBatch batch;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
@@ -928,11 +928,18 @@ AbilitiesSnapshot AbilityService::CaptureSnapshot() const
             return a.owner < b.owner;
         return a.group < b.group;
     });
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> AbilityService::RestoreSnapshot(AbilitiesSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<AbilityInstanceId, AbilityInstance, IdHash> instances;
     std::unordered_map<AbilityExecutionId, AbilityExecution, IdHash> executions;
     std::unordered_map<ScheduleId, AbilityExecutionId> schedules;
@@ -1033,6 +1040,7 @@ foundation::Result<void> AbilityService::RestoreSnapshot(AbilitiesSnapshot snaps
         executions_.begin(), executions_.end(), [](const auto &entry) { return !entry.second.reservations.empty(); });
     diagnostics_.instances = instances_.size();
     diagnostics_.cooldowns = cooldowns_.size();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

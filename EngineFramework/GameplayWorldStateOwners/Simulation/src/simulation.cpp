@@ -441,7 +441,7 @@ std::vector<SimulationSummary> SimulationService::FindSummaries(SimulationRegion
     return out;
 }
 
-SimulationChangeBatch SimulationService::ReadChangesSince(std::uint64_t sequence) const
+SimulationChangeBatch SimulationService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     SimulationChangeBatch out;
     out.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -468,9 +468,9 @@ SimulationChangeBatch SimulationService::ReadChangesSince(std::uint64_t sequence
     return out;
 }
 
-std::vector<SimulationChange> SimulationService::ChangesSince(std::uint64_t sequence) const
+std::vector<SimulationChange> SimulationService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
 SimulationSnapshot SimulationService::CaptureSnapshot() const
@@ -496,11 +496,18 @@ SimulationSnapshot SimulationService::CaptureSnapshot() const
     s.task_ids = task_ids_.GetSnapshot();
     s.summary_ids = summary_ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 
 foundation::Result<void> SimulationService::RestoreSnapshot(SimulationSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<SimulationRegionId, SimulationRegion, IdHash> new_regions;
     std::unordered_map<SimulationRegionId, SimulationIntervalExecution, IdHash> new_intervals;
     std::deque<SimulationSummary> new_summaries;
@@ -596,6 +603,7 @@ foundation::Result<void> SimulationService::RestoreSnapshot(SimulationSnapshot s
     next_change_sequence_ = 1;
     diagnostics_ = {};
     TrimRetention();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

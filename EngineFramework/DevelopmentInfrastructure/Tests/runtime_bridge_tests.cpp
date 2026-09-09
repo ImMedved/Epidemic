@@ -296,7 +296,9 @@ int main()
     CHECK(backend.dematerialize_calls == dematerialize_before_collision + 1);
     const auto collision_reconciliation = bridge.ReconciliationRequests();
     CHECK(collision_reconciliation.size() == 1);
+    CHECK(!bridge.ForgetObjectIdentity(other));
     CHECK(bridge.DiscardReconciliation(collision_reconciliation.front().sequence));
+    CHECK(bridge.ForgetObjectIdentity(other));
     backend.force_collision_object = false;
 
     const auto vanished = Object("object.vanished");
@@ -374,6 +376,7 @@ int main()
     CHECK(dead_bridge.Process().failed == 1);
     auto dead_records = dead_bridge.ReconciliationRequests();
     CHECK(dead_records.size() == 1 && dead_records.front().attempts == 2 && dead_records.front().last_error.has_value());
+    CHECK(!dead_bridge.ForgetEnvironmentProjection(dead_environment.region));
 
     // A newer successful revision wins; retrying the older reconciliation record must not project stale state.
     dead_backend.environment_always_fails = false;

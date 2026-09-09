@@ -480,7 +480,7 @@ int main()
     const auto gap_applied = conditions.Apply(gap_apply_request);
     if (!gap_applied) return 41;
     const auto gap_history_before_rebuild = gap_facts.FindHistory(gap_facts_adapter.ConditionChangedEvent()).size();
-    conditions.PruneChangesBefore(conditions.LatestChangeSequence() + 1);
+    conditions.PruneChangesBefore(conditions.LatestChangeCursor().sequence + 1);
     const auto gap_published = gap_facts_adapter.PublishPendingChanges(context);
     if (!gap_published || gap_published.Value() == 0 || !gap_facts.Dispatch()) return 42;
     if (gap_facts.FindHistory(gap_facts_adapter.ConditionChangedEvent()).size() != gap_history_before_rebuild) return 165;
@@ -495,7 +495,7 @@ int main()
     if (!cleanup_deferred || !time_adapter.SynchronizeDeferredEffects(context)) return 45;
     if (!entities.RequestDestroy(stone_created.Value().id, EntityDestroyReason::Destroyed, context)) return 46;
     const auto destroyed = entities.CommitPendingDestruction();
-    entities.PruneChangesBefore(entities.LatestChangeSequence() + 1);
+    entities.PruneChangesBefore(entities.LatestChangeCursor().sequence + 1);
     if (!destroyed || destroyed.Value().size() != 1 || !lifecycle_adapter.ProcessEntityChanges(context)) return 47;
     if (!materials.FindSlots(stone_ref).empty() || !conditions.GetConditions(stone_ref).empty() ||
         effects.FindDeferred(cleanup_deferred.Value()) != nullptr) return 48;
@@ -587,12 +587,12 @@ int main()
 
     const auto unresolved_checkpoint = state_persistence.CaptureCheckpoint();
     if (unresolved_checkpoint.condition_effects.deliveries.size() != 1 ||
-        unresolved_checkpoint.facts.schema_version != 1 || unresolved_checkpoint.lifecycle.schema_version != 1 ||
-        unresolved_checkpoint.time.schema_version != 2) return 181;
+        unresolved_checkpoint.facts.schema_version != 2 || unresolved_checkpoint.lifecycle.schema_version != 2 ||
+        unresolved_checkpoint.time.schema_version != 3) return 181;
 
     auto incompatible_aggregate = unresolved_checkpoint;
     incompatible_aggregate.condition_effects.route_revision ^= 0x55AA55AAull;
-    incompatible_aggregate.lifecycle.cursor = 0;
+    incompatible_aggregate.lifecycle.cursor.sequence = 0;
     const auto aggregate_before_invalid = state_persistence.CaptureCheckpoint();
     if (state_persistence.RestoreCheckpoint(std::move(incompatible_aggregate))) return 182;
     const auto aggregate_after_invalid = state_persistence.CaptureCheckpoint();

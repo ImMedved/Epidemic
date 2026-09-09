@@ -267,6 +267,9 @@ struct LootChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::vector<LootChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct LootSnapshot
 {
@@ -277,6 +280,8 @@ struct LootSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot execution_ids{};
     std::vector<LootChange> journal;
     std::uint64_t next_change_sequence = 1;
+
+    std::uint64_t change_epoch = 1;
 };
 enum class RewardClaimHistoryStatus
 {
@@ -337,8 +342,28 @@ class LootService
     [[nodiscard]] RewardClaimHistoryStatus ClaimHistoryStatus(RewardExecutionId reward) const noexcept;
     [[nodiscard]] bool WasClaimed(RewardExecutionId reward) const noexcept;
 
-    [[nodiscard]] std::vector<LootChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] LootChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] std::vector<LootChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] LootChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] LootChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     [[nodiscard]] LootSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(LootSnapshot snapshot);
     [[nodiscard]] LootDiagnostics GetDiagnostics() const noexcept;
@@ -370,6 +395,7 @@ class LootService
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     std::deque<LootChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     LootDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::loot

@@ -146,7 +146,7 @@ foundation::Result<std::uint64_t> WorldFactsAdapter::PublishPending(GameplayCont
                                 SubjectForWorldChange(c), c, producer);
         if (!r)
             return foundation::Result<std::uint64_t>::Failure(r.GetError());
-        wc_ = c.sequence;
+        wc_ = {world_changes.latest_cursor.epoch, c.sequence};
         ++n;
     }
     const auto environment_changes = environment_.ReadChangesSince(ec_);
@@ -161,7 +161,7 @@ foundation::Result<std::uint64_t> WorldFactsAdapter::PublishPending(GameplayCont
                            GameplayObjectRef{environment::EnvironmentService::Domain(), c.layer.value}, c, producer);
         if (!r)
             return foundation::Result<std::uint64_t>::Failure(r.GetError());
-        ec_ = c.sequence;
+        ec_ = {environment_changes.latest_cursor.epoch, c.sequence};
         ++n;
     }
     const auto interaction_changes = interaction_.ReadChangesSince(ic_);
@@ -175,16 +175,27 @@ foundation::Result<std::uint64_t> WorldFactsAdapter::PublishPending(GameplayCont
             facts_.Publish(interaction_event_, c.context.tick.IsValid() ? c.context : context, c.actor, c, producer);
         if (!r)
             return foundation::Result<std::uint64_t>::Failure(r.GetError());
-        ic_ = c.sequence;
+        ic_ = {interaction_changes.latest_cursor.epoch, c.sequence};
         ++n;
     }
+    if (!wc_.IsValid()) wc_.epoch = world_changes.latest_cursor.epoch;
+    if (!ec_.IsValid()) ec_.epoch = environment_changes.latest_cursor.epoch;
+    if (!ic_.IsValid()) ic_.epoch = interaction_changes.latest_cursor.epoch;
     return foundation::Result<std::uint64_t>::Success(n);
 }
 
 WorldFactsCheckpoint WorldFactsAdapter::CaptureCheckpoint() const noexcept
 {
-    return WorldFactsCheckpoint{WorldFactsCheckpoint::kSchemaVersion, wc_, ec_, ic_, world_.CurrentRevision(),
-                                environment_.CurrentRevision(), interaction_.CurrentRevision()};
+    return WorldFactsCheckpoint{WorldFactsCheckpoint::kSchemaVersion,
+                                wc_.sequence,
+                                ec_.sequence,
+                                ic_.sequence,
+                                wc_.epoch,
+                                ec_.epoch,
+                                ic_.epoch,
+                                world_.CurrentRevision(),
+                                environment_.CurrentRevision(),
+                                interaction_.CurrentRevision()};
 }
 
 foundation::Result<void> WorldFactsAdapter::RestoreCheckpoint(WorldFactsCheckpoint checkpoint)
@@ -193,46 +204,46 @@ foundation::Result<void> WorldFactsAdapter::RestoreCheckpoint(WorldFactsCheckpoi
         return foundation::Result<void>::Failure(foundation::Error::Create(
             "gameplay.world_integration.checkpoint_version", "unsupported WorldFacts checkpoint schema version"));
 
-    const auto restore_cursor = [](std::uint64_t saved_sequence, Revision saved_revision, Revision current_revision,
-                                   std::uint64_t latest_sequence, bool snapshot_required, std::string_view code)
-        -> foundation::Result<std::uint64_t> {
-        if (saved_sequence <= latest_sequence)
+    const auto restore_cursor = [](ChangeCursor saved_cursor, Revision saved_revision, Revision current_revision,
+                                   ChangeCursor latest_cursor, bool snapshot_required, std::string_view code)
+        -> foundation::Result<ChangeCursor> {
+        if (!snapshot_required && saved_cursor.epoch == latest_cursor.epoch &&
+            saved_cursor.sequence <= latest_cursor.sequence)
         {
-            if (snapshot_required)
-                return foundation::Result<std::uint64_t>::Failure(foundation::Error::Create(
-                    code, "saved cursor predates the retained owner journal; historical events require reconciliation"));
-            return foundation::Result<std::uint64_t>::Success(saved_sequence);
+            return foundation::Result<ChangeCursor>::Success(saved_cursor);
         }
 
-        // Gameplay owner snapshots intentionally reset their transient change journal. When the owner
-        // revision exactly matches the checkpoint revision, all pre-save changes are already represented
-        // by the restored Facts snapshot, so the new journal must be consumed from sequence zero.
-        if (latest_sequence == 0 && current_revision == saved_revision)
-            return foundation::Result<std::uint64_t>::Success(0);
+        // A restored owner deliberately starts a new journal epoch. Equal authoritative revisions mean
+        // the persisted Facts snapshot already represents pre-save history, so consume the new epoch from zero.
+        if (latest_cursor.sequence == 0 && current_revision == saved_revision)
+            return foundation::Result<ChangeCursor>::Success({latest_cursor.epoch, 0});
 
-        return foundation::Result<std::uint64_t>::Failure(foundation::Error::Create(
-            code, "saved cursor is ahead of the current owner journal and cannot be reconciled safely"));
+        return foundation::Result<ChangeCursor>::Failure(foundation::Error::Create(
+            code, "saved cursor belongs to an incompatible owner journal; historical events require reconciliation"));
     };
 
-    const auto world_batch = world_.ReadChangesSince(checkpoint.world_sequence);
-    auto world_cursor = restore_cursor(checkpoint.world_sequence, checkpoint.world_revision, world_.CurrentRevision(),
-                                       world_.LatestChangeSequence(), world_batch.snapshot_required,
+    const ChangeCursor saved_world{checkpoint.world_epoch, checkpoint.world_sequence};
+    const auto world_batch = world_.ReadChangesSince(saved_world);
+    auto world_cursor = restore_cursor(saved_world, checkpoint.world_revision, world_.CurrentRevision(),
+                                       world_.LatestChangeCursor(), world_batch.snapshot_required,
                                        "gameplay.world_integration.world_checkpoint_gap");
     if (!world_cursor)
         return foundation::Result<void>::Failure(world_cursor.GetError());
 
-    const auto environment_batch = environment_.ReadChangesSince(checkpoint.environment_sequence);
+    const ChangeCursor saved_environment{checkpoint.environment_epoch, checkpoint.environment_sequence};
+    const auto environment_batch = environment_.ReadChangesSince(saved_environment);
     auto environment_cursor =
-        restore_cursor(checkpoint.environment_sequence, checkpoint.environment_revision, environment_.CurrentRevision(),
-                       environment_.LatestChangeSequence(), environment_batch.snapshot_required,
+        restore_cursor(saved_environment, checkpoint.environment_revision, environment_.CurrentRevision(),
+                       environment_.LatestChangeCursor(), environment_batch.snapshot_required,
                        "gameplay.world_integration.environment_checkpoint_gap");
     if (!environment_cursor)
         return foundation::Result<void>::Failure(environment_cursor.GetError());
 
-    const auto interaction_batch = interaction_.ReadChangesSince(checkpoint.interaction_sequence);
+    const ChangeCursor saved_interaction{checkpoint.interaction_epoch, checkpoint.interaction_sequence};
+    const auto interaction_batch = interaction_.ReadChangesSince(saved_interaction);
     auto interaction_cursor =
-        restore_cursor(checkpoint.interaction_sequence, checkpoint.interaction_revision, interaction_.CurrentRevision(),
-                       interaction_.LatestChangeSequence(), interaction_batch.snapshot_required,
+        restore_cursor(saved_interaction, checkpoint.interaction_revision, interaction_.CurrentRevision(),
+                       interaction_.LatestChangeCursor(), interaction_batch.snapshot_required,
                        "gameplay.world_integration.interaction_checkpoint_gap");
     if (!interaction_cursor)
         return foundation::Result<void>::Failure(interaction_cursor.GetError());
@@ -245,9 +256,9 @@ foundation::Result<void> WorldFactsAdapter::RestoreCheckpoint(WorldFactsCheckpoi
 
 void WorldFactsAdapter::ResetCursorsToLatest() noexcept
 {
-    wc_ = world_.LatestChangeSequence();
-    ec_ = environment_.LatestChangeSequence();
-    ic_ = interaction_.LatestChangeSequence();
+    wc_ = world_.LatestChangeCursor();
+    ec_ = environment_.LatestChangeCursor();
+    ic_ = interaction_.LatestChangeCursor();
 }
 bool EntityInteractionStateProvider::IsMaterialized(GameplayObjectRef object) const
 {

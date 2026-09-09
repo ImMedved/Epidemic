@@ -221,8 +221,8 @@ int main()
     CHECK(!throwing.Sample({}, GameplayTimePoint{}));
     CHECK(throwing.GetDiagnostics().blend_failures == 1);
 
-    const auto pre_restore_cursor = environment.LatestChangeSequence();
-    CHECK(pre_restore_cursor >= 2);
+    const auto pre_restore_cursor = environment.LatestChangeCursor();
+    CHECK(pre_restore_cursor.sequence >= 2);
     const auto snapshot = environment.CaptureSnapshot();
     CHECK(snapshot.layers.size() == 1); // only the persistent base layer
 
@@ -231,14 +231,14 @@ int main()
     CHECK(restored.RestoreSnapshot(snapshot));
     CHECK(restored.GetLayer(base_id.Value()).has_value());
     CHECK(restored.ReadChangesSince(pre_restore_cursor).snapshot_required);
-    CHECK(restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required);
+    CHECK(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required);
     EnvironmentLayer epoch_layer;
     epoch_layer.type = weather;
     CHECK(restored.AddLayer(epoch_layer));
     CHECK(restored.ReadChangesSince(pre_restore_cursor).snapshot_required);
-    const auto environment_epoch = restored.ReadChangesSince(0);
+    const auto environment_epoch = restored.ReadChangesSince(ChangeCursor{});
     CHECK(!environment_epoch.snapshot_required && !environment_epoch.changes.empty());
-    const auto environment_current = restored.ReadChangesSince(environment_epoch.latest_sequence);
+    const auto environment_current = restored.ReadChangesSince(environment_epoch.latest_cursor);
     CHECK(!environment_current.snapshot_required && environment_current.changes.empty());
 
     // Restore validates the entire snapshot before replacing live state.
@@ -266,10 +266,10 @@ int main()
     }
     const auto diagnostics = journal.GetDiagnostics();
     CHECK(diagnostics.changes <= 4096);
-    const auto stale_batch = journal.ReadChangesSince(0);
+    const auto stale_batch = journal.ReadChangesSince(ChangeCursor{});
     CHECK(stale_batch.snapshot_required);
-    CHECK(journal.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required);
-    const auto current_batch = journal.ReadChangesSince(journal.LatestChangeSequence());
+    CHECK(journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required);
+    const auto current_batch = journal.ReadChangesSince(journal.LatestChangeCursor());
     CHECK(!current_batch.snapshot_required && current_batch.changes.empty());
 
     return 0;

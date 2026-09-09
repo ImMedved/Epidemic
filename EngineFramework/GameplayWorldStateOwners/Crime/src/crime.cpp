@@ -862,15 +862,15 @@ std::optional<BountyRecord> CrimeService::GetBounty(GameplayObjectRef offender, 
     return bit->second;
 }
 
-std::vector<CrimeChange> CrimeService::ChangesSince(std::uint64_t sequence) const
+std::vector<CrimeChange> CrimeService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-CrimeChangeBatch CrimeService::ReadChangesSince(std::uint64_t sequence) const
+CrimeChangeBatch CrimeService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     CrimeChangeBatch batch;
-    batch.latest_sequence = LatestChangeSequence();
+    batch.latest_sequence = LatestChangeCursor().sequence;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
     if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
     {
@@ -978,11 +978,18 @@ CrimeSnapshot CrimeService::CaptureSnapshot() const
     snapshot.response_ids = response_ids_.GetSnapshot();
     snapshot.revision = revision_;
     snapshot.definitions_frozen = definitions_frozen_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> CrimeService::RestoreSnapshot(CrimeSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     using LawMap = decltype(laws_);
     using ResponseDefinitionMap = decltype(response_definitions_);
     using JurisdictionMap = decltype(jurisdictions_);
@@ -1286,6 +1293,7 @@ foundation::Result<void> CrimeService::RestoreSnapshot(CrimeSnapshot snapshot)
     changes_.clear();
     next_change_sequence_ = 1;
     diagnostics_ = {};
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

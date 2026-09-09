@@ -105,22 +105,6 @@ namespace
     return false;
 }
 
-[[nodiscard]] bool IsValidOrderState(ProductionOrderState state) noexcept
-{
-    switch (state)
-    {
-    case ProductionOrderState::Queued:
-    case ProductionOrderState::Running:
-    case ProductionOrderState::Paused:
-    case ProductionOrderState::Completed:
-    case ProductionOrderState::Failed:
-    case ProductionOrderState::Cancelled:
-    case ProductionOrderState::BlockedByResources:
-        return true;
-    }
-    return false;
-}
-
 [[nodiscard]] bool IsValidPlanState(ProductionPlanState state) noexcept
 {
     switch (state)
@@ -190,8 +174,7 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId> &gene
 } // namespace
 
 ResourcesProductionService::ResourcesProductionService()
-    : stockpile_ids_(0x30321001), node_ids_(0x30321002), site_ids_(0x30321003), order_ids_(0x30321004),
-      transaction_ids_(0x30321005)
+    : stockpile_ids_(0x30321001), node_ids_(0x30321002), site_ids_(0x30321003), transaction_ids_(0x30321005)
 {
 }
 
@@ -339,12 +322,6 @@ bool ResourcesProductionService::CanRemoveFromStockpile(ResourceStockpileId stoc
     return it != stockpiles_.end() && it->second.state == StockpileState::Active;
 }
 
-bool ResourcesProductionService::IsTerminalOrderState(ProductionOrderState state) noexcept
-{
-    return state == ProductionOrderState::Completed || state == ProductionOrderState::Failed ||
-           state == ProductionOrderState::Cancelled;
-}
-
 std::uint64_t ResourcesProductionService::LowPart(GameplayObjectId id) noexcept
 {
     return id.IsValid() ? id.Low() : 0;
@@ -442,6 +419,11 @@ foundation::Result<ResourceNodeId> ResourcesProductionService::CreateNode(Resour
     node.revision = revision_;
     const auto id = node.id;
     nodes_.emplace(id, std::move(node));
+    ResourceChange change{};
+    change.kind = ResourceChangeKind::NodeCreated;
+    change.node = id;
+    change.revision = revision_;
+    Record(std::move(change));
     return foundation::Result<ResourceNodeId>::Success(id);
 }
 
@@ -993,189 +975,16 @@ std::vector<ProductionPlan> ResourcesProductionService::FindProductionPlans(Game
     return out;
 }
 
-foundation::Result<ProductionOrderId> ResourcesProductionService::StartProductionOrder(
-    ProductionSiteId site_id, ProductionRecipeId recipe_id, ResourceStockpileId input, ResourceStockpileId output,
-    GameplayTimePoint now, GameplayContext context)
+std::vector<ResourceChange> ResourcesProductionService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    const auto sit = sites_.find(site_id);
-    const auto rec = recipes_.find(recipe_id);
-    if (sit == sites_.end() || rec == recipes_.end())
-        return foundation::Result<ProductionOrderId>::Failure(
-            Error("gameplay.resources.production_invalid", "invalid production order references"));
-    if (sit->second.state != ProductionSiteState::Active)
-        return foundation::Result<ProductionOrderId>::Failure(
-            Error("gameplay.resources.site_unavailable", "production site unavailable"));
-    auto input_operation = ValidateStockpileOperation(input, StockpileOperation::Reserve);
-    if (!input_operation)
-        return foundation::Result<ProductionOrderId>::Failure(input_operation.GetError());
-    auto output_operation = ValidateStockpileOperation(output, StockpileOperation::Add);
-    if (!output_operation)
-        return foundation::Result<ProductionOrderId>::Failure(output_operation.GetError());
-    if (!CanReserve(input, rec->second.inputs))
-        return foundation::Result<ProductionOrderId>::Failure(
-            Error("gameplay.resources.shortage", "production inputs unavailable"));
-    if (!CheckedAdd(now, rec->second.duration))
-    {
-        return foundation::Result<ProductionOrderId>::Failure(
-            Error("gameplay.resources.time_overflow", "production due time overflow"));
-    }
-
-    const auto reservation_id = ResourceReservationId{reservation_ids_.Next()};
-    if (!reservation_id.IsValid())
-        return foundation::Result<ProductionOrderId>::Failure(
-            Error("gameplay.resources.id_exhausted", "reservation id generator exhausted"));
-    const auto order_id = ProductionOrderId{order_ids_.Next()};
-    if (!order_id.IsValid())
-        return foundation::Result<ProductionOrderId>::Failure(
-            Error("gameplay.resources.id_exhausted", "order id generator exhausted"));
-
-    ResourceReservation reservation;
-    reservation.id = reservation_id;
-    reservation.stockpile = input;
-    reservation.quantities = rec->second.inputs;
-    reservation.owner = sit->second.site_object;
-    reservation.reason = TypeId::FromString("framework.resources.production_order_input");
-
-    ProductionOrder order;
-    order.id = order_id;
-    order.site = site_id;
-    order.recipe = recipe_id;
-    order.input_stockpile = input;
-    order.output_stockpile = output;
-    order.state = ProductionOrderState::Running;
-    order.started_at = now;
-    order.due_at = *CheckedAdd(now, rec->second.duration);
-    order.input_reservation = reservation_id;
-
-    Bump();
-    reservation.revision = revision_;
-    order.revision = revision_;
-    reservations_.emplace(reservation_id, reservation);
-    for (const auto &q : reservation.quantities)
-    {
-        AddReservedIndex(input, q.type, q.amount);
-        Record({0, ResourceChangeKind::ResourceReserved, input, q.type, order_id, q.amount, now, context, revision_});
-    }
-    orders_.emplace(order_id, order);
-    Record({0, ResourceChangeKind::ProductionOrderStarted, input, {}, order_id, 0, now, context, revision_});
-    return foundation::Result<ProductionOrderId>::Success(order_id);
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-foundation::Result<void> ResourcesProductionService::CompleteProductionOrder(ProductionOrderId id,
-                                                                             GameplayTimePoint now,
-                                                                             GameplayContext context)
-{
-    auto it = orders_.find(id);
-    if (it == orders_.end())
-        return foundation::Result<void>::Failure(Error("gameplay.resources.order_missing", "production order missing"));
-    if (it->second.state != ProductionOrderState::Running)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.resources.order_invalid_state", "production order is not running"));
-    if (now.ticks < it->second.due_at.ticks)
-        return foundation::Result<void>::Failure(Error("gameplay.resources.order_not_due", "production order not due"));
-    const auto *recipe = FindProductionRecipe(it->second.recipe);
-    if (!recipe)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.resources.recipe_missing", "production recipe missing"));
-    auto site = sites_.find(it->second.site);
-    if (site == sites_.end() || site->second.state != ProductionSiteState::Active)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.resources.site_unavailable", "production site unavailable"));
-    auto input_operation = ValidateStockpileOperation(it->second.input_stockpile, StockpileOperation::Remove);
-    if (!input_operation)
-        return input_operation;
-    auto output_operation = ValidateStockpileOperation(it->second.output_stockpile, StockpileOperation::Add);
-    if (!output_operation)
-        return output_operation;
-    auto reservation_it = reservations_.find(it->second.input_reservation);
-    if (reservation_it == reservations_.end() || reservation_it->second.state != ResourceReservationState::Active ||
-        reservation_it->second.stockpile != it->second.input_stockpile ||
-        !SameQuantities(reservation_it->second.quantities, recipe->inputs))
-    {
-        return foundation::Result<void>::Failure(
-            Error("gameplay.resources.order_reservation_missing", "production order input reservation missing"));
-    }
-    for (const auto &input : recipe->inputs)
-    {
-        if (GetAmount(it->second.input_stockpile, input.type) < input.amount)
-        {
-            return foundation::Result<void>::Failure(
-                Error("gameplay.resources.reservation_invalid", "reserved production inputs are unavailable"));
-        }
-    }
-    for (const auto &output : recipe->outputs)
-    {
-        Fixed destination_next = 0;
-        if (!CheckedAddFixed(GetAmount(it->second.output_stockpile, output.type), output.amount, destination_next))
-        {
-            return foundation::Result<void>::Failure(
-                Error("gameplay.resources.amount_overflow", "production output stockpile overflow"));
-        }
-    }
-
-    const auto order = it->second;
-    const auto reservation = reservation_it->second;
-    Bump();
-    for (const auto &input : recipe->inputs)
-    {
-        auto key = AmountKey{order.input_stockpile, input.type};
-        auto &amount = amounts_[key];
-        amount -= input.amount;
-        if (amount == 0)
-            amounts_.erase(key);
-        RemoveReservedIndex(order.input_stockpile, input.type, input.amount);
-        Record({0, ResourceChangeKind::ResourceReservationConsumed, order.input_stockpile, input.type, id, input.amount,
-                now, context, revision_});
-    }
-    reservations_.erase(reservation.id);
-    for (const auto &output : recipe->outputs)
-    {
-        amounts_[{order.output_stockpile, output.type}] += output.amount;
-        Record({0, ResourceChangeKind::ResourceAdded, order.output_stockpile, output.type, id, output.amount, now,
-                context, revision_});
-    }
-    it->second.state = ProductionOrderState::Completed;
-    it->second.revision = revision_;
-    Record({0, ResourceChangeKind::ProductionOrderCompleted, order.output_stockpile, {}, id, 0, now, context,
-            revision_});
-    orders_.erase(it);
-    return foundation::Result<void>::Success();
-}
-
-foundation::Result<std::vector<ProductionOrderId>> ResourcesProductionService::CompleteDueOrders(GameplayTimePoint now)
-{
-    std::vector<ProductionOrderId> due;
-    for (const auto &[id, order] : orders_)
-        if (order.state == ProductionOrderState::Running && order.due_at.ticks <= now.ticks)
-            due.push_back(id);
-    std::sort(due.begin(), due.end());
-    for (auto id : due)
-    {
-        GameplayContext c;
-        c.time = now;
-        auto r = CompleteProductionOrder(id, now, c);
-        if (!r)
-            return foundation::Result<std::vector<ProductionOrderId>>::Failure(r.GetError());
-    }
-    return foundation::Result<std::vector<ProductionOrderId>>::Success(std::move(due));
-}
-
-const ProductionOrder *ResourcesProductionService::FindProductionOrder(ProductionOrderId id) const noexcept
-{
-    const auto it = orders_.find(id);
-    return it == orders_.end() ? nullptr : &it->second;
-}
-
-std::vector<ResourceChange> ResourcesProductionService::ChangesSince(std::uint64_t sequence) const
-{
-    return ReadChangesSince(sequence).changes;
-}
-
-ResourceChangeBatch ResourcesProductionService::ReadChangesSince(std::uint64_t sequence) const
+ResourceChangeBatch ResourcesProductionService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     ResourceChangeBatch batch;
     batch.oldest_available_sequence = OldestChangeSequence();
-    batch.latest_sequence = LatestChangeSequence();
+    batch.latest_sequence = LatestChangeCursor().sequence;
     if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
     {
         batch.snapshot_required = true;
@@ -1204,10 +1013,6 @@ std::uint64_t ResourcesProductionService::OldestChangeSequence() const noexcept
     return changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
 }
 
-std::uint64_t ResourcesProductionService::LatestChangeSequence() const noexcept
-{
-    return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1;
-}
 
 void ResourcesProductionService::PruneChangesBefore(std::uint64_t sequence) noexcept
 {
@@ -1256,12 +1061,6 @@ ResourcesSnapshot ResourcesProductionService::CaptureSnapshot() const
         (void)id;
         s.plans.push_back(v);
     }
-    for (const auto &[id, v] : orders_)
-    {
-        (void)id;
-        if (!IsTerminalOrderState(v.state))
-            s.orders.push_back(v);
-    }
     for (const auto &[id, v] : transactions_)
     {
         (void)id;
@@ -1276,7 +1075,6 @@ ResourcesSnapshot ResourcesProductionService::CaptureSnapshot() const
     std::sort(s.reservations.begin(), s.reservations.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     std::sort(s.capabilities.begin(), s.capabilities.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     std::sort(s.plans.begin(), s.plans.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
-    std::sort(s.orders.begin(), s.orders.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     std::sort(s.transactions.begin(), s.transactions.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     s.stockpile_ids = stockpile_ids_.GetSnapshot();
     s.node_ids = node_ids_.GetSnapshot();
@@ -1284,14 +1082,20 @@ ResourcesSnapshot ResourcesProductionService::CaptureSnapshot() const
     s.reservation_ids = reservation_ids_.GetSnapshot();
     s.capability_ids = capability_ids_.GetSnapshot();
     s.plan_ids = plan_ids_.GetSnapshot();
-    s.order_ids = order_ids_.GetSnapshot();
     s.transaction_ids = transaction_ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 
 foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<ResourceStockpileId, ResourceStockpile, IdHash> stockpiles;
     std::unordered_map<AmountKey, Fixed, AmountKeyHash> amounts;
     std::unordered_map<ResourceNodeId, ResourceNode, IdHash> nodes;
@@ -1299,7 +1103,6 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
     std::unordered_map<ResourceReservationId, ResourceReservation, IdHash> reservations;
     std::unordered_map<ProductionCapabilityId, ProductionCapability, IdHash> capabilities;
     std::unordered_map<ProductionPlanId, ProductionPlan, IdHash> plans;
-    std::unordered_map<ProductionOrderId, ProductionOrder, IdHash> orders;
     std::unordered_map<ResourceTransactionId, ResourceTransaction, IdHash> transactions;
     std::unordered_map<AmountKey, Fixed, AmountKeyHash> reserved;
 
@@ -1309,7 +1112,6 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
     std::uint64_t max_reservation = 0;
     std::uint64_t max_capability = 0;
     std::uint64_t max_plan = 0;
-    std::uint64_t max_order = 0;
     std::uint64_t max_transaction = 0;
 
     for (auto &v : s.stockpiles)
@@ -1403,24 +1205,6 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
         max_plan = std::max(max_plan, LowPart(v.id.value));
         plans.emplace(v.id, std::move(v));
     }
-    for (auto &v : s.orders)
-    {
-        if (!v.id.IsValid() || !recipes_.contains(v.recipe) || !sites.contains(v.site) || !stockpiles.contains(v.input_stockpile) ||
-            !stockpiles.contains(v.output_stockpile) || !IsValidOrderState(v.state) || IsTerminalOrderState(v.state) ||
-            orders.contains(v.id))
-            return foundation::Result<void>::Failure(Error("gameplay.resources.restore_invalid", "invalid order"));
-        const auto recipe = recipes_.find(v.recipe);
-        if (v.state == ProductionOrderState::Running)
-        {
-            auto reservation = reservations.find(v.input_reservation);
-            if (reservation == reservations.end() || reservation->second.stockpile != v.input_stockpile ||
-                !SameQuantities(reservation->second.quantities, recipe->second.inputs))
-                return foundation::Result<void>::Failure(
-                    Error("gameplay.resources.restore_invalid", "order reservation mismatch"));
-        }
-        max_order = std::max(max_order, LowPart(v.id.value));
-        orders.emplace(v.id, std::move(v));
-    }
     for (auto &v : s.transactions)
     {
         auto canonical = CanonicalizeQuantities(v.quantities);
@@ -1453,9 +1237,6 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
     g = ValidateGenerator(s.plan_ids, plan_ids_.Scope(), max_plan, "plan");
     if (!g)
         return g;
-    g = ValidateGenerator(s.order_ids, order_ids_.Scope(), max_order, "order");
-    if (!g)
-        return g;
     g = ValidateGenerator(s.transaction_ids, transaction_ids_.Scope(), max_transaction, "transaction");
     if (!g)
         return g;
@@ -1468,7 +1249,6 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
     reservations_ = std::move(reservations);
     capabilities_ = std::move(capabilities);
     plans_ = std::move(plans);
-    orders_ = std::move(orders);
     transactions_ = std::move(transactions);
     stockpile_ids_.Restore(s.stockpile_ids);
     node_ids_.Restore(s.node_ids);
@@ -1476,13 +1256,13 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
     reservation_ids_.Restore(s.reservation_ids);
     capability_ids_.Restore(s.capability_ids);
     plan_ids_.Restore(s.plan_ids);
-    order_ids_.Restore(s.order_ids);
     transaction_ids_.Restore(s.transaction_ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;
     diagnostics_ = {};
     diagnostics_.transactions = transactions_.size();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 
@@ -1496,13 +1276,6 @@ ResourcesDiagnostics ResourcesProductionService::GetDiagnostics() const noexcept
     d.production_capabilities = capabilities_.size();
     d.production_plans = plans_.size();
     d.active_reservations = reservations_.size();
-    d.active_orders = 0;
-    for (const auto &[id, o] : orders_)
-    {
-        (void)id;
-        if (!IsTerminalOrderState(o.state))
-            ++d.active_orders;
-    }
     d.transactions = transactions_.size();
     return d;
 }

@@ -341,6 +341,9 @@ struct TraversalChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::vector<TraversalChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct TraversalSnapshot
 {
@@ -355,6 +358,8 @@ struct TraversalSnapshot
     Revision revision{};
     std::vector<TraversalChange> journal;
     std::uint64_t next_change_sequence = 1;
+
+    std::uint64_t change_epoch = 1;
 };
 struct TraversalDiagnostics
 {
@@ -422,12 +427,27 @@ class TraversalService
     [[nodiscard]] const TraversalSession *FindSession(TraversalSessionId id) const noexcept;
     [[nodiscard]] std::vector<TraversalState> FindSubjectsUsingMode(TraversalModeId mode) const;
     [[nodiscard]] std::vector<TraversalCarrierBinding> FindCarrierPassengers(GameplayObjectRef carrier) const;
-    [[nodiscard]] std::vector<TraversalChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] TraversalChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    private:
+        [[nodiscard]] std::vector<TraversalChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] TraversalChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] TraversalChangeBatch ReadChangesSince(ChangeCursor cursor) const
     {
-        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                          : next_change_sequence_ - 1;
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
     }
     [[nodiscard]] TraversalSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(TraversalSnapshot snapshot);
@@ -469,6 +489,7 @@ class TraversalService
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     std::deque<TraversalChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     std::uint64_t mode_changes_ = 0, rejected_mode_changes_ = 0, boarding_ops_ = 0;
 };
 } // namespace epidemic::gameplay::traversal

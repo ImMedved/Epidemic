@@ -474,10 +474,17 @@ InteractionSnapshot InteractionService::CaptureSnapshot() const
     std::sort(s.sessions.begin(), s.sessions.end(), [](auto &a, auto &b) { return a.id < b.id; });
     s.ids = ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 foundation::Result<void> InteractionService::RestoreSnapshot(InteractionSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(s.ids) || s.ids.scope != ids_.Scope().Raw())
         return foundation::Result<void>::Failure(
             E("gameplay.interaction.restore_invalid_generator", "invalid interaction execution id generator snapshot"));
@@ -505,15 +512,16 @@ foundation::Result<void> InteractionService::RestoreSnapshot(InteractionSnapshot
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 
-std::vector<InteractionChange> InteractionService::ChangesSince(std::uint64_t x) const
+std::vector<InteractionChange> InteractionService::ChangesSinceSequence(std::uint64_t x) const
 {
-    return ReadChangesSince(x).changes;
+    return ReadChangesSinceSequence(x).changes;
 }
 
-InteractionChangeBatch InteractionService::ReadChangesSince(std::uint64_t sequence) const
+InteractionChangeBatch InteractionService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     InteractionChangeBatch batch;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;

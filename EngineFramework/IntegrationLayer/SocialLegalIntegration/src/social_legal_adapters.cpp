@@ -293,20 +293,21 @@ foundation::Result<crime::LawResponseId> CrimeSocietyAdapter::RequestAuthorityRe
 foundation::Result<void> CrimeSocietyAdapter::ProcessCrimeLifecycle()
 {
     const auto batch = crime_.ReadChangesSince(crime_cursor_);
-    if (batch.snapshot_required || crime_cursor_ > batch.latest_sequence)
+    if (batch.snapshot_required)
     {
         std::erase_if(applied_relationship_penalties_, [&](const RelationshipPenaltyDelivery& delivery) {
             return crime_.FindCrime(delivery.crime) == nullptr;
         });
-        crime_cursor_ = batch.latest_sequence;
+        crime_cursor_ = batch.latest_cursor;
         return foundation::Result<void>::Success();
     }
 
+    crime_cursor_.epoch = batch.latest_cursor.epoch;
     for (const auto& change : batch.changes)
     {
         if (change.kind == crime::CrimeChangeKind::CrimePruned && change.crime.IsValid())
             PruneDeliveriesForCrime(change.crime);
-        crime_cursor_ = change.sequence;
+        crime_cursor_.sequence = change.sequence;
     }
     return foundation::Result<void>::Success();
 }
@@ -357,8 +358,11 @@ foundation::Result<void> CrimeSocietyAdapter::RestoreCheckpoint(SocialLegalCheck
     std::erase_if(applied_relationship_penalties_, [&](const RelationshipPenaltyDelivery& delivery) {
         return crime_.FindCrime(delivery.crime) == nullptr;
     });
-    const auto latest = crime_.LatestChangeSequence();
-    crime_cursor_ = checkpoint.crime_cursor <= latest ? checkpoint.crime_cursor : latest;
+    const auto latest = crime_.LatestChangeCursor();
+    crime_cursor_ = checkpoint.crime_cursor.epoch == latest.epoch &&
+                            checkpoint.crime_cursor.sequence <= latest.sequence
+                        ? checkpoint.crime_cursor
+                        : latest;
     return foundation::Result<void>::Success();
 }
 

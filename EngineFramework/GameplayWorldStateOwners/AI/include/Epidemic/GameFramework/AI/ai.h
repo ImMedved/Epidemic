@@ -387,6 +387,9 @@ struct AIChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct AISnapshot
 {
@@ -394,6 +397,8 @@ struct AISnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot intent_ids{};
     std::uint64_t next_change_sequence = 1;
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 struct AIDiagnostics
 {
@@ -488,7 +493,27 @@ class AIService
     [[nodiscard]] std::vector<AIAgentState> FindAgentsByActivity(AIAgentActivity activity) const;
     [[nodiscard]] std::vector<AIAgentState> FindAgentsWithGoal(AIGoalId goal) const;
     [[nodiscard]] std::vector<GameplayObjectRef> FindDueAgents(GameplayTimePoint now, std::size_t limit) const;
-    [[nodiscard]] AIChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] AIChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] AIChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     [[nodiscard]] AISnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(AISnapshot snapshot);
     [[nodiscard]] AIDiagnostics GetDiagnostics() const noexcept;
@@ -539,6 +564,7 @@ class AIService
     std::deque<AIChange> changes_;
     std::size_t change_journal_capacity_ = 4096;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     AIBudget budget_{};
     AITickBudgetState tick_budget_{};
     AIDiagnostics diagnostics_{};

@@ -694,15 +694,15 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
     std::uint64_t published = 0;
     const auto producer = ProducerId::FromString("framework.state_integration");
 
-    const auto entity_changes = entities_.ChangesSince(entity_cursor_);
-    if (HasJournalGap(entity_cursor_, entities_.LatestChangeSequence(), entity_changes))
+    const auto entity_batch = entities_.ReadChangesSince(entity_cursor_);
+    if (entity_batch.snapshot_required)
     {
         return foundation::Result<std::uint64_t>::Failure(JournalGapError("entities"));
     }
-    if (!entity_changes.empty())
+    if (!entity_batch.changes.empty())
     {
-        auto batch = facts_.CreateBatch(producer, entity_cursor_ + 1);
-        for (const auto& change : entity_changes)
+        auto batch = facts_.CreateBatch(producer, entity_cursor_.sequence + 1);
+        for (const auto& change : entity_batch.changes)
         {
             auto event_context = change.context.tick.IsValid() ? change.context : context;
             batch.Publish(entity_changed_, event_context, entities::EntityService::ToGameplayObjectRef(change.entity), change);
@@ -712,19 +712,19 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
         {
             return foundation::Result<std::uint64_t>::Failure(submitted.GetError());
         }
-        entity_cursor_ = entity_changes.back().sequence;
-        published += entity_changes.size();
+        entity_cursor_ = {entity_batch.latest_cursor.epoch, entity_batch.changes.back().sequence};
+        published += entity_batch.changes.size();
     }
 
-    const auto material_changes = materials_.ChangesSince(material_cursor_);
-    if (HasJournalGap(material_cursor_, materials_.LatestChangeSequence(), material_changes))
+    const auto material_batch = materials_.ReadChangesSince(material_cursor_);
+    if (material_batch.snapshot_required)
     {
         return foundation::Result<std::uint64_t>::Failure(JournalGapError("materials"));
     }
-    if (!material_changes.empty())
+    if (!material_batch.changes.empty())
     {
-        auto batch = facts_.CreateBatch(producer, material_cursor_ + 1);
-        for (const auto& change : material_changes)
+        auto batch = facts_.CreateBatch(producer, material_cursor_.sequence + 1);
+        for (const auto& change : material_batch.changes)
         {
             auto event_context = change.context.tick.IsValid() ? change.context : context;
             batch.Publish(material_changed_, event_context, change.key.subject, change);
@@ -734,8 +734,8 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
         {
             return foundation::Result<std::uint64_t>::Failure(submitted.GetError());
         }
-        material_cursor_ = material_changes.back().sequence;
-        published += material_changes.size();
+        material_cursor_ = {material_batch.latest_cursor.epoch, material_batch.changes.back().sequence};
+        published += material_batch.changes.size();
     }
 
     struct PendingConditionFactMutation
@@ -745,8 +745,7 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
     };
 
     const auto condition_batch = conditions_.ReadChangesSince(condition_cursor_);
-    const bool condition_snapshot_required = condition_batch.snapshot_required ||
-                                             (condition_cursor_ < conditions_.LatestChangeSequence() && condition_batch.changes.empty());
+    const bool condition_snapshot_required = condition_batch.snapshot_required;
     if (condition_snapshot_required)
     {
         const auto rebuilt = RebuildActiveConditionFacts(context);
@@ -754,7 +753,7 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
         {
             return foundation::Result<std::uint64_t>::Failure(rebuilt.GetError());
         }
-        condition_cursor_ = conditions_.LatestChangeSequence();
+        condition_cursor_ = conditions_.LatestChangeCursor();
         published += rebuilt.Value();
     }
     else if (!condition_batch.changes.empty())
@@ -817,7 +816,7 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
             }
         }
 
-        auto batch = facts_.CreateBatch(producer, condition_cursor_ + 1);
+        auto batch = facts_.CreateBatch(producer, condition_cursor_.sequence + 1);
         for (const auto& change : condition_batch.changes)
         {
             auto event_context = change.context.tick.IsValid() ? change.context : context;
@@ -828,7 +827,7 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
         {
             return foundation::Result<std::uint64_t>::Failure(submitted.GetError());
         }
-        condition_cursor_ = condition_batch.changes.back().sequence;
+        condition_cursor_ = {condition_batch.latest_cursor.epoch, condition_batch.changes.back().sequence};
         published += condition_batch.changes.size();
     }
 
@@ -839,7 +838,7 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
     }
     if (!effect_batch.changes.empty())
     {
-        auto batch = facts_.CreateBatch(producer, effect_cursor_ + 1);
+        auto batch = facts_.CreateBatch(producer, effect_cursor_.sequence + 1);
         for (const auto& change : effect_batch.changes)
         {
             auto event_context = change.context.tick.IsValid() ? change.context : context;
@@ -850,10 +849,14 @@ foundation::Result<std::uint64_t> StateFactsAdapter::PublishPendingChanges(Gamep
         {
             return foundation::Result<std::uint64_t>::Failure(submitted.GetError());
         }
-        effect_cursor_ = effect_batch.changes.back().sequence;
+        effect_cursor_ = {effect_batch.latest_cursor.epoch, effect_batch.changes.back().sequence};
         published += effect_batch.changes.size();
     }
 
+    if (!entity_cursor_.IsValid()) entity_cursor_.epoch = entity_batch.latest_cursor.epoch;
+    if (!material_cursor_.IsValid()) material_cursor_.epoch = material_batch.latest_cursor.epoch;
+    if (!condition_cursor_.IsValid()) condition_cursor_.epoch = condition_batch.latest_cursor.epoch;
+    if (!effect_cursor_.IsValid()) effect_cursor_.epoch = effect_batch.latest_cursor.epoch;
     return foundation::Result<std::uint64_t>::Success(published);
 }
 
@@ -878,19 +881,25 @@ StateFactsCheckpoint StateFactsAdapter::CaptureCheckpoint() const noexcept
     checkpoint.material_cursor = material_cursor_;
     checkpoint.condition_cursor = condition_cursor_;
     checkpoint.effect_cursor = effect_cursor_;
-    checkpoint.entity_latest = entities_.LatestChangeSequence();
-    checkpoint.material_latest = materials_.LatestChangeSequence();
-    checkpoint.condition_latest = conditions_.LatestChangeSequence();
-    checkpoint.effect_latest = effects_.LatestChangeSequence();
+    checkpoint.entity_latest = entities_.LatestChangeCursor();
+    checkpoint.material_latest = materials_.LatestChangeCursor();
+    checkpoint.condition_latest = conditions_.LatestChangeCursor();
+    checkpoint.effect_latest = effects_.LatestChangeCursor();
     return checkpoint;
 }
 
 foundation::Result<void> StateFactsAdapter::ValidateCheckpoint(const StateFactsCheckpoint& checkpoint) const
 {
-    if (checkpoint.schema_version != 1 || checkpoint.contract_revision != ContractRevision() ||
-        checkpoint.entity_cursor > checkpoint.entity_latest || checkpoint.material_cursor > checkpoint.material_latest ||
-        checkpoint.condition_cursor > checkpoint.condition_latest || checkpoint.effect_cursor > checkpoint.effect_latest ||
-        checkpoint.condition_latest > conditions_.LatestChangeSequence())
+    const auto valid_pair = [](ChangeCursor cursor, ChangeCursor latest) {
+        return cursor.IsValid() && cursor.epoch == latest.epoch && cursor.sequence <= latest.sequence;
+    };
+    const auto current_condition = conditions_.LatestChangeCursor();
+    if (checkpoint.schema_version != 2 || checkpoint.contract_revision != ContractRevision() ||
+        !valid_pair(checkpoint.entity_cursor, checkpoint.entity_latest) ||
+        !valid_pair(checkpoint.material_cursor, checkpoint.material_latest) ||
+        !valid_pair(checkpoint.condition_cursor, checkpoint.condition_latest) ||
+        !valid_pair(checkpoint.effect_cursor, checkpoint.effect_latest) ||
+        checkpoint.condition_latest.sequence > current_condition.sequence)
     {
         return foundation::Result<void>::Failure(
             Error("gameplay.state_facts_checkpoint_invalid", "state facts checkpoint is incompatible with the current contracts or journals"));
@@ -900,10 +909,19 @@ foundation::Result<void> StateFactsAdapter::ValidateCheckpoint(const StateFactsC
 
 void StateFactsAdapter::ApplyCheckpoint(StateFactsCheckpoint checkpoint) noexcept
 {
-    entity_cursor_ = entities_.LatestChangeSequence() < checkpoint.entity_latest ? 0 : checkpoint.entity_cursor;
-    material_cursor_ = materials_.LatestChangeSequence() < checkpoint.material_latest ? 0 : checkpoint.material_cursor;
-    condition_cursor_ = checkpoint.condition_cursor;
-    effect_cursor_ = effects_.LatestChangeSequence() < checkpoint.effect_latest ? 0 : checkpoint.effect_cursor;
+    const auto entity_latest = entities_.LatestChangeCursor();
+    const auto material_latest = materials_.LatestChangeCursor();
+    const auto condition_latest = conditions_.LatestChangeCursor();
+    const auto effect_latest = effects_.LatestChangeCursor();
+    const auto translate = [](ChangeCursor current, ChangeCursor saved_latest, ChangeCursor saved_cursor) {
+        return current.sequence >= saved_latest.sequence
+                   ? ChangeCursor{current.epoch, saved_cursor.sequence}
+                   : ChangeCursor{current.epoch, 0};
+    };
+    entity_cursor_ = translate(entity_latest, checkpoint.entity_latest, checkpoint.entity_cursor);
+    material_cursor_ = translate(material_latest, checkpoint.material_latest, checkpoint.material_cursor);
+    condition_cursor_ = translate(condition_latest, checkpoint.condition_latest, checkpoint.condition_cursor);
+    effect_cursor_ = translate(effect_latest, checkpoint.effect_latest, checkpoint.effect_cursor);
 }
 
 foundation::Result<void> StateFactsAdapter::RestoreCheckpoint(StateFactsCheckpoint checkpoint)
@@ -1093,8 +1111,8 @@ foundation::Result<std::uint64_t> StateLifecycleAdapter::ProcessEntityChanges(Ga
         return foundation::Result<void>::Success();
     };
 
-    const auto changes = entities_.ChangesSince(cursor_);
-    if (HasJournalGap(cursor_, entities_.LatestChangeSequence(), changes))
+    const auto batch = entities_.ReadChangesSince(cursor_);
+    if (batch.snapshot_required)
     {
         std::uint64_t reconciled = 0;
         for (const auto& entity : entities_.AllEntities())
@@ -1109,13 +1127,14 @@ foundation::Result<std::uint64_t> StateLifecycleAdapter::ProcessEntityChanges(Ga
                 ++reconciled;
             }
         }
-        cursor_ = entities_.LatestChangeSequence();
+        cursor_ = entities_.LatestChangeCursor();
         return foundation::Result<std::uint64_t>::Success(reconciled);
     }
 
     std::uint64_t processed = 0;
-    std::uint64_t next_cursor = cursor_;
-    for (const auto& change : changes)
+    ChangeCursor next_cursor = cursor_;
+    next_cursor.epoch = batch.latest_cursor.epoch;
+    for (const auto& change : batch.changes)
     {
         const auto ref = entities::EntityService::ToGameplayObjectRef(change.entity);
         const auto effective_context = change.context.tick.IsValid() ? change.context : context;
@@ -1136,7 +1155,7 @@ foundation::Result<std::uint64_t> StateLifecycleAdapter::ProcessEntityChanges(Ga
                 return foundation::Result<std::uint64_t>::Failure(result.GetError());
             }
         }
-        next_cursor = change.sequence;
+        next_cursor.sequence = change.sequence;
         ++processed;
     }
     cursor_ = next_cursor;
@@ -1145,12 +1164,14 @@ foundation::Result<std::uint64_t> StateLifecycleAdapter::ProcessEntityChanges(Ga
 
 StateLifecycleCheckpoint StateLifecycleAdapter::CaptureCheckpoint() const noexcept
 {
-    return StateLifecycleCheckpoint{1, cursor_, entities_.LatestChangeSequence()};
+    return StateLifecycleCheckpoint{2, cursor_, entities_.LatestChangeCursor()};
 }
 
 foundation::Result<void> StateLifecycleAdapter::ValidateCheckpoint(const StateLifecycleCheckpoint& checkpoint) const
 {
-    if (checkpoint.schema_version != 1 || checkpoint.cursor > checkpoint.entity_latest)
+    if (checkpoint.schema_version != 2 || !checkpoint.cursor.IsValid() ||
+        checkpoint.cursor.epoch != checkpoint.entity_latest.epoch ||
+        checkpoint.cursor.sequence > checkpoint.entity_latest.sequence)
         return foundation::Result<void>::Failure(
             Error("gameplay.state_lifecycle_checkpoint_invalid", "state lifecycle checkpoint is invalid"));
     return foundation::Result<void>::Success();
@@ -1158,7 +1179,8 @@ foundation::Result<void> StateLifecycleAdapter::ValidateCheckpoint(const StateLi
 
 void StateLifecycleAdapter::ApplyCheckpoint(StateLifecycleCheckpoint checkpoint) noexcept
 {
-    cursor_ = entities_.LatestChangeSequence() < checkpoint.entity_latest ? 0 : checkpoint.cursor;
+    const auto latest = entities_.LatestChangeCursor();
+    cursor_ = latest == checkpoint.entity_latest ? checkpoint.cursor : ChangeCursor{latest.epoch, 0};
 }
 
 foundation::Result<void> StateLifecycleAdapter::RestoreCheckpoint(StateLifecycleCheckpoint checkpoint)
@@ -1189,10 +1211,11 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
 {
     std::vector<effects::EffectExecutionResult> results;
     const auto batch = conditions_.ReadChangesSince(cursor_);
-    if (batch.snapshot_required || (cursor_ < conditions_.LatestChangeSequence() && batch.changes.empty()))
+    if (batch.snapshot_required)
     {
         return foundation::Result<std::vector<effects::EffectExecutionResult>>::Failure(JournalGapError("conditions"));
     }
+    cursor_.epoch = batch.latest_cursor.epoch;
 
     const auto route_revision = RouteRevision();
     for (const auto& change : batch.changes)
@@ -1200,7 +1223,7 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
         const auto* definition = conditions_.FindDefinition(change.type);
         if (definition == nullptr)
         {
-            cursor_ = change.sequence;
+            cursor_.sequence = change.sequence;
             PruneTerminalDeliveries();
             continue;
         }
@@ -1228,7 +1251,7 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
         const auto route = routes_.find(action);
         if (!action.IsValid() || route == routes_.end())
         {
-            cursor_ = change.sequence;
+            cursor_.sequence = change.sequence;
             PruneTerminalDeliveries();
             continue;
         }
@@ -1252,7 +1275,7 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
         if (delivery->state == ConditionEffectDeliveryState::Applied ||
             delivery->state == ConditionEffectDeliveryState::RejectedTerminal)
         {
-            cursor_ = change.sequence;
+            cursor_.sequence = change.sequence;
             PruneTerminalDeliveries();
             continue;
         }
@@ -1304,14 +1327,14 @@ foundation::Result<std::vector<effects::EffectExecutionResult>> ConditionEffects
         if (disposition == effects::EffectBatchDisposition::Succeeded)
         {
             delivery->state = ConditionEffectDeliveryState::Applied;
-            cursor_ = change.sequence;
+            cursor_.sequence = change.sequence;
             PruneTerminalDeliveries();
             continue;
         }
         if (disposition == effects::EffectBatchDisposition::Rejected && !had_applied)
         {
             delivery->state = ConditionEffectDeliveryState::RejectedTerminal;
-            cursor_ = change.sequence;
+            cursor_.sequence = change.sequence;
             PruneTerminalDeliveries();
             continue;
         }
@@ -1360,7 +1383,7 @@ const ConditionEffectDeliveryRecord* ConditionEffectsAdapter::FindDelivery(std::
 void ConditionEffectsAdapter::PruneTerminalDeliveries()
 {
     std::erase_if(deliveries_, [this](const auto& delivery) {
-        return delivery.key.condition_sequence <= cursor_ &&
+        return delivery.key.condition_sequence <= cursor_.sequence &&
                (delivery.state == ConditionEffectDeliveryState::Applied ||
                 delivery.state == ConditionEffectDeliveryState::RejectedTerminal);
     });
@@ -1370,7 +1393,7 @@ ConditionEffectsCheckpoint ConditionEffectsAdapter::CaptureCheckpoint() const
 {
     ConditionEffectsCheckpoint checkpoint;
     checkpoint.cursor = cursor_;
-    checkpoint.condition_latest = conditions_.LatestChangeSequence();
+    checkpoint.condition_latest = conditions_.LatestChangeCursor();
     checkpoint.route_revision = RouteRevision();
     checkpoint.deliveries = deliveries_;
     std::sort(checkpoint.deliveries.begin(), checkpoint.deliveries.end(), [](const auto& left, const auto& right) {
@@ -1381,8 +1404,11 @@ ConditionEffectsCheckpoint ConditionEffectsAdapter::CaptureCheckpoint() const
 
 foundation::Result<void> ConditionEffectsAdapter::ValidateCheckpoint(const ConditionEffectsCheckpoint& checkpoint) const
 {
-    if (checkpoint.schema_version != 2 || checkpoint.route_revision != RouteRevision() ||
-        checkpoint.cursor > checkpoint.condition_latest || checkpoint.condition_latest > conditions_.LatestChangeSequence() ||
+    const auto current_latest = conditions_.LatestChangeCursor();
+    if (checkpoint.schema_version != 3 || checkpoint.route_revision != RouteRevision() ||
+        !checkpoint.cursor.IsValid() || checkpoint.cursor.epoch != checkpoint.condition_latest.epoch ||
+        checkpoint.cursor.sequence > checkpoint.condition_latest.sequence ||
+        checkpoint.condition_latest.sequence > current_latest.sequence ||
         checkpoint.deliveries.size() > kDeliveryCapacity)
     {
         return foundation::Result<void>::Failure(
@@ -1394,8 +1420,8 @@ foundation::Result<void> ConditionEffectsAdapter::ValidateCheckpoint(const Condi
     {
         const auto& key = delivery.key;
         const auto route = routes_.find(key.action);
-        if (key.condition_sequence == 0 || key.condition_sequence <= checkpoint.cursor ||
-            key.condition_sequence > checkpoint.condition_latest || key.condition_sequence <= previous_sequence ||
+        if (key.condition_sequence == 0 || key.condition_sequence <= checkpoint.cursor.sequence ||
+            key.condition_sequence > checkpoint.condition_latest.sequence || key.condition_sequence <= previous_sequence ||
             key.route_revision != checkpoint.route_revision || !key.action.IsValid() || !key.definition.IsValid() ||
             route == routes_.end() || route->second != key.definition ||
             (delivery.retry_authorized && delivery.state != ConditionEffectDeliveryState::Pending))
@@ -1410,7 +1436,10 @@ foundation::Result<void> ConditionEffectsAdapter::ValidateCheckpoint(const Condi
 
 void ConditionEffectsAdapter::ApplyCheckpoint(ConditionEffectsCheckpoint checkpoint) noexcept
 {
-    cursor_ = checkpoint.cursor;
+    const auto current_latest = conditions_.LatestChangeCursor();
+    cursor_ = current_latest.sequence >= checkpoint.condition_latest.sequence
+                  ? ChangeCursor{current_latest.epoch, checkpoint.cursor.sequence}
+                  : ChangeCursor{current_latest.epoch, 0};
     deliveries_ = std::move(checkpoint.deliveries);
 }
 
@@ -1441,7 +1470,7 @@ foundation::Result<void> ConditionEffectsAdapter::ResolveReconciliation(
     auto* delivery = FindDelivery(key.condition_sequence);
     if (delivery == nullptr)
     {
-        if (key.condition_sequence <= cursor_ && resolution != ConditionEffectReconciliationResolution::ConfirmedNotApplied)
+        if (key.condition_sequence <= cursor_.sequence && resolution != ConditionEffectReconciliationResolution::ConfirmedNotApplied)
             return foundation::Result<void>::Success();
         return foundation::Result<void>::Failure(
             Error("gameplay.condition_effect_reconciliation_missing", "condition effect reconciliation delivery is missing"));
@@ -1798,8 +1827,7 @@ foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeConditionSchedule
 {
     std::uint64_t processed = 0;
     const auto batch = conditions_.ReadChangesSince(condition_cursor_);
-    const bool condition_snapshot_required = batch.snapshot_required ||
-                                             (condition_cursor_ < conditions_.LatestChangeSequence() && batch.changes.empty());
+    const bool condition_snapshot_required = batch.snapshot_required;
     if (condition_snapshot_required)
     {
         const auto reconciled = ReconcileConditionSchedules(context);
@@ -1807,11 +1835,12 @@ foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeConditionSchedule
         {
             return foundation::Result<std::uint64_t>::Failure(reconciled.GetError());
         }
-        condition_cursor_ = conditions_.LatestChangeSequence();
+        condition_cursor_ = conditions_.LatestChangeCursor();
         return foundation::Result<std::uint64_t>::Success(reconciled.Value());
     }
 
-    std::uint64_t next_cursor = condition_cursor_;
+    ChangeCursor next_cursor = condition_cursor_;
+    next_cursor.epoch = batch.latest_cursor.epoch;
     for (const auto& change : batch.changes)
     {
         if (change.kind == conditions::ConditionChangeKind::Removed ||
@@ -1820,7 +1849,7 @@ foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeConditionSchedule
             const auto owner = GameplayObjectRef{conditions::ConditionService::Domain(), change.instance.value};
             (void)time_.CancelOwnedBy(owner);
         }
-        next_cursor = change.sequence;
+        next_cursor.sequence = change.sequence;
         ++processed;
     }
     condition_cursor_ = next_cursor;
@@ -1959,11 +1988,12 @@ foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeDeferredEffects(G
         {
             return foundation::Result<std::uint64_t>::Failure(reconciled.GetError());
         }
-        effect_cursor_ = effects_.LatestChangeSequence();
+        effect_cursor_ = effects_.LatestChangeCursor();
         return foundation::Result<std::uint64_t>::Success(reconciled.Value());
     }
 
-    std::uint64_t next_cursor = effect_cursor_;
+    ChangeCursor next_cursor = effect_cursor_;
+    next_cursor.epoch = batch.latest_cursor.epoch;
     for (const auto& change : batch.changes)
     {
         if ((change.kind == effects::EffectChangeKind::DeferredCancelled || change.kind == effects::EffectChangeKind::DeferredExecuted) &&
@@ -1975,7 +2005,7 @@ foundation::Result<std::uint64_t> StateTimeAdapter::SynchronizeDeferredEffects(G
                 return foundation::Result<std::uint64_t>::Failure(cancelled.GetError());
             }
         }
-        next_cursor = change.sequence;
+        next_cursor.sequence = change.sequence;
         ++processed;
     }
     effect_cursor_ = next_cursor;
@@ -2144,8 +2174,8 @@ StateTimeCheckpoint StateTimeAdapter::CaptureCheckpoint() const
     StateTimeCheckpoint checkpoint;
     checkpoint.condition_cursor = condition_cursor_;
     checkpoint.effect_cursor = effect_cursor_;
-    checkpoint.condition_latest = conditions_.LatestChangeSequence();
-    checkpoint.effect_latest = effects_.LatestChangeSequence();
+    checkpoint.condition_latest = conditions_.LatestChangeCursor();
+    checkpoint.effect_latest = effects_.LatestChangeCursor();
     checkpoint.deferred_reconciliations = deferred_reconciliations_;
     std::sort(checkpoint.deferred_reconciliations.begin(), checkpoint.deferred_reconciliations.end(),
               [](const auto& left, const auto& right) { return left.deferred < right.deferred; });
@@ -2154,8 +2184,13 @@ StateTimeCheckpoint StateTimeAdapter::CaptureCheckpoint() const
 
 foundation::Result<void> StateTimeAdapter::ValidateCheckpoint(const StateTimeCheckpoint& checkpoint) const
 {
-    if (checkpoint.schema_version != 2 || checkpoint.condition_cursor > checkpoint.condition_latest ||
-        checkpoint.effect_cursor > checkpoint.effect_latest || checkpoint.condition_latest > conditions_.LatestChangeSequence() ||
+    const auto current_condition = conditions_.LatestChangeCursor();
+    if (checkpoint.schema_version != 3 || !checkpoint.condition_cursor.IsValid() || !checkpoint.effect_cursor.IsValid() ||
+        checkpoint.condition_cursor.epoch != checkpoint.condition_latest.epoch ||
+        checkpoint.effect_cursor.epoch != checkpoint.effect_latest.epoch ||
+        checkpoint.condition_cursor.sequence > checkpoint.condition_latest.sequence ||
+        checkpoint.effect_cursor.sequence > checkpoint.effect_latest.sequence ||
+        checkpoint.condition_latest.sequence > current_condition.sequence ||
         checkpoint.deferred_reconciliations.size() > kDeferredReconciliationCapacity)
         return foundation::Result<void>::Failure(
             Error("gameplay.state_time_checkpoint_invalid", "state time checkpoint is invalid"));
@@ -2175,8 +2210,14 @@ foundation::Result<void> StateTimeAdapter::ValidateCheckpoint(const StateTimeChe
 
 void StateTimeAdapter::ApplyCheckpoint(StateTimeCheckpoint checkpoint) noexcept
 {
-    condition_cursor_ = checkpoint.condition_cursor;
-    effect_cursor_ = effects_.LatestChangeSequence() < checkpoint.effect_latest ? 0 : checkpoint.effect_cursor;
+    const auto condition_latest = conditions_.LatestChangeCursor();
+    const auto effect_latest = effects_.LatestChangeCursor();
+    condition_cursor_ = condition_latest.sequence >= checkpoint.condition_latest.sequence
+                            ? ChangeCursor{condition_latest.epoch, checkpoint.condition_cursor.sequence}
+                            : ChangeCursor{condition_latest.epoch, 0};
+    effect_cursor_ = effect_latest.sequence >= checkpoint.effect_latest.sequence
+                         ? ChangeCursor{effect_latest.epoch, checkpoint.effect_cursor.sequence}
+                         : ChangeCursor{effect_latest.epoch, 0};
     deferred_reconciliations_ = std::move(checkpoint.deferred_reconciliations);
 }
 

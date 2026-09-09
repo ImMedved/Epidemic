@@ -948,7 +948,7 @@ std::vector<GameplayObjectRef> AIService::FindDueAgents(GameplayTimePoint now, s
     return out;
 }
 
-AIChangeBatch AIService::ReadChangesSince(std::uint64_t sequence) const
+AIChangeBatch AIService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     AIChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -1000,11 +1000,18 @@ AISnapshot AIService::CaptureSnapshot() const
     snapshot.intent_ids = intent_ids_.GetSnapshot();
     snapshot.next_change_sequence = next_change_sequence_;
     snapshot.revision = revision_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> AIService::RestoreSnapshot(AISnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if (auto frozen = RequireFrozen(); !frozen)
         return frozen;
     constexpr std::uint64_t kIntentScope = 0x2200;
@@ -1085,6 +1092,7 @@ foundation::Result<void> AIService::RestoreSnapshot(AISnapshot snapshot)
     next_change_sequence_ = snapshot.next_change_sequence;
     tick_budget_ = {};
     diagnostics_ = {};
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

@@ -96,14 +96,14 @@ foundation::Result<void> InteractionTimeAdapter::CancelOrRecord(
 
 std::uint64_t InteractionTimeAdapter::LatestRetainedSequence() const
 {
-    const auto first = interactions_.ReadChangesSince(0);
+    const auto first = interactions_.ReadChangesSince(ChangeCursor{});
     if (!first.snapshot_required)
     {
         return first.changes.empty() ? 0 : first.changes.back().sequence;
     }
 
     const auto oldest = first.oldest_available_sequence;
-    const auto retained = interactions_.ReadChangesSince(oldest == 0 ? 0 : oldest - 1);
+    const auto retained = interactions_.ReadChangesSince(first.oldest_available_cursor.AtSequence(oldest == 0 ? 0 : oldest - 1));
     if (!retained.changes.empty())
     {
         return retained.changes.back().sequence;
@@ -295,12 +295,13 @@ foundation::Result<std::uint64_t> InteractionTimeAdapter::Synchronize(ClockId cl
     const auto batch = interactions_.ReadChangesSince(cursor_);
     if (batch.snapshot_required)
     {
-        cursor_ = LatestRetainedSequence();
+        cursor_ = interactions_.LatestChangeCursor();
         return reconciled;
     }
+    cursor_.epoch = batch.latest_cursor.epoch;
     if (!batch.changes.empty())
     {
-        cursor_ = batch.changes.back().sequence;
+        cursor_.sequence = batch.changes.back().sequence;
     }
     return reconciled;
 }

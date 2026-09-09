@@ -703,7 +703,7 @@ foundation::Result<void> DialogueService::FailConsequence(DialogueConsequenceExe
     MaybeCleanupTerminalSession(session_id);
     return foundation::Result<void>::Success();
 }
-DialogueChangeBatch DialogueService::ReadChangesSince(std::uint64_t seq) const
+DialogueChangeBatch DialogueService::ReadChangesSinceSequence(std::uint64_t seq) const
 {
     DialogueChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ > 1 ? next_change_sequence_ - 1 : 0;
@@ -718,9 +718,9 @@ DialogueChangeBatch DialogueService::ReadChangesSince(std::uint64_t seq) const
                  [seq](const auto &c) { return c.sequence > seq; });
     return batch;
 }
-std::vector<DialogueChange> DialogueService::ChangesSince(std::uint64_t seq) const
+std::vector<DialogueChange> DialogueService::ChangesSinceSequence(std::uint64_t seq) const
 {
-    return ReadChangesSince(seq).changes;
+    return ReadChangesSinceSequence(seq).changes;
 }
 DialogueSnapshot DialogueService::CaptureSnapshot() const
 {
@@ -744,10 +744,17 @@ DialogueSnapshot DialogueService::CaptureSnapshot() const
     s.session_ids = session_ids_.GetSnapshot();
     s.consequence_ids = consequence_ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<ConversationSessionId, ConversationSession, IdHash> sessions;
     for (auto &v : s.sessions)
     {
@@ -828,6 +835,7 @@ foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
         sessions_.begin(), sessions_.end(), [](const auto &pair) { return !IsTerminal(pair.second.state); }));
     diagnostics_.consequences = consequences_.size();
     diagnostics_.definitions = definitions_.size();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 void DialogueService::MaybeCleanupTerminalSession(ConversationSessionId id)

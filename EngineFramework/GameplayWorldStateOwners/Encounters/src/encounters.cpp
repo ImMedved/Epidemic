@@ -105,7 +105,12 @@ foundation::Result<SpawnPointId> EncountersService::AddSpawnPoint(SpawnPoint p)
     else AdvanceForCallerId(point_ids_, p.id);
     if (points_.contains(p.id))
         return foundation::Result<SpawnPointId>::Failure(Error("gameplay.encounters.duplicate_spawn_point", "duplicate spawn point"));
-    Bump(); p.revision = revision_; const auto id = p.id; points_.emplace(id, std::move(p));
+    Bump();
+    p.revision = revision_;
+    const auto id = p.id;
+    const auto area = p.area;
+    points_.emplace(id, std::move(p));
+    Record({0, EncounterChangeKind::SpawnPointAdded, {}, {}, area, {}, revision_, id});
     return foundation::Result<SpawnPointId>::Success(id);
 }
 
@@ -519,7 +524,7 @@ std::vector<SpawnPoint> EncountersService::FindSpawnPointsInArea(GameplayObjectR
     std::vector<SpawnPoint> out; for(const auto&[id,p]:points_){(void)id;if(p.area==area)out.push_back(p);} std::sort(out.begin(),out.end(),[](const auto&a,const auto&b){return a.id<b.id;}); return out;
 }
 
-EncounterChangeBatch EncountersService::ReadChangesSince(std::uint64_t sequence) const
+EncounterChangeBatch EncountersService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     EncounterChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -556,11 +561,18 @@ EncountersSnapshot EncountersService::CaptureSnapshot() const
     std::sort(s.points.begin(),s.points.end(),[](const auto&a,const auto&b){return a.id<b.id;}); std::sort(s.instances.begin(),s.instances.end(),[](const auto&a,const auto&b){return a.id<b.id;});
     std::sort(s.spawned.begin(),s.spawned.end(),[](const auto&a,const auto&b){return a.id<b.id;}); std::sort(s.respawn_rules.begin(),s.respawn_rules.end(),[](const auto&a,const auto&b){return a.id<b.id;});
     std::sort(s.requests.begin(),s.requests.end(),[](const auto&a,const auto&b){return a.request.id<b.request.id;});
-    s.instance_ids=instance_ids_.GetSnapshot(); s.point_ids=point_ids_.GetSnapshot(); s.request_ids=request_ids_.GetSnapshot(); s.spawned_ids=spawned_ids_.GetSnapshot(); s.respawn_ids=respawn_ids_.GetSnapshot(); s.revision=revision_; return s;
+    s.instance_ids=instance_ids_.GetSnapshot(); s.point_ids=point_ids_.GetSnapshot(); s.request_ids=request_ids_.GetSnapshot(); s.spawned_ids=spawned_ids_.GetSnapshot(); s.respawn_ids=respawn_ids_.GetSnapshot(); s.revision=revision_; s.change_epoch = journal_epoch_;
+    return s;
 }
 
 foundation::Result<void> EncountersService::RestoreSnapshot(EncountersSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     decltype(definitions_) definitions; decltype(tables_) tables; decltype(points_) points; decltype(instances_) instances; decltype(spawned_) spawned; decltype(respawns_) respawns; decltype(requests_) requests;
     if (definitions_frozen_)
     {
@@ -581,7 +593,8 @@ foundation::Result<void> EncountersService::RestoreSnapshot(EncountersSnapshot s
     for(auto& r:s.requests){if(!r.request.id.IsValid()||requests.contains(r.request.id))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid request record")); if(r.result.encounter_instance.IsValid()&&!instances.contains(r.result.encounter_instance))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","request references missing encounter"));ObserveMaxLow(r.request.id,s.request_ids.scope,max_request);requests.emplace(r.request.id,r);}
     if(!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.instance_ids,instance_ids_.Scope(),max_instance)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.point_ids,point_ids_.Scope(),max_point)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.request_ids,request_ids_.Scope(),max_request)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.spawned_ids,spawned_ids_.Scope(),max_spawned)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.respawn_ids,respawn_ids_.Scope(),max_respawn))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid_generator","invalid encounter id generator snapshot"));
     definitions_=std::move(definitions);tables_=std::move(tables);points_=std::move(points);instances_=std::move(instances);spawned_=std::move(spawned);respawns_=std::move(respawns);requests_=std::move(requests);
-    instance_ids_.Restore(s.instance_ids);point_ids_.Restore(s.point_ids);request_ids_.Restore(s.request_ids);spawned_ids_.Restore(s.spawned_ids);respawn_ids_.Restore(s.respawn_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;spawn_budget_tick_={};spawn_operations_used_=0;RebuildIndexes();return foundation::Result<void>::Success();
+    instance_ids_.Restore(s.instance_ids);point_ids_.Restore(s.point_ids);request_ids_.Restore(s.request_ids);spawned_ids_.Restore(s.spawned_ids);respawn_ids_.Restore(s.respawn_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;spawn_budget_tick_={};spawn_operations_used_=0;RebuildIndexes();journal_epoch_ = *next_journal_epoch;
+    return foundation::Result<void>::Success();
 }
 
 void EncountersService::RebuildIndexes()

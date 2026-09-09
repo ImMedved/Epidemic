@@ -22,8 +22,7 @@ struct PerceptionKnowledgeMapping
 
 struct ObservationKnowledgeResult
 {
-    // Knowledge is semantically mandatory on success; optional is retained for source compatibility.
-    std::optional<knowledge::KnowledgeRecordId> knowledge;
+    knowledge::KnowledgeRecordId knowledge{};
     std::optional<knowledge::MemoryRecordId> memory;
     bool memory_creation_failed = false;
     std::optional<foundation::Error> memory_error;
@@ -79,10 +78,6 @@ class KnowledgeAIAdapter
     [[nodiscard]] ai::AIContextSnapshot BuildContext(
         GameplayObjectRef agent, AIExecutionAvailability availability,
         const perception::PerceptionService *perception_service = nullptr, GameplayTimePoint now = {}) const;
-    // Compatibility overload: availability is conservatively unknown/unavailable.
-    [[nodiscard]] ai::AIContextSnapshot BuildContext(GameplayObjectRef agent,
-                                                     const perception::PerceptionService *perception_service = nullptr,
-                                                     GameplayTimePoint now = {}) const;
 
   private:
     const knowledge::KnowledgeService &knowledge_;

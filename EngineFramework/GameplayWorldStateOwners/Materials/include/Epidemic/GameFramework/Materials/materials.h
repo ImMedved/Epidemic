@@ -298,10 +298,19 @@ struct MaterialChange
     GameplayContext context{};
 };
 
+struct MaterialChangeBatch
+{
+    std::vector<MaterialChange> changes;
+    bool snapshot_required = false;
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
+};
+
 struct MaterialsSnapshot
 {
     std::vector<MaterialSlotState> states;
     Revision revision{};
+    std::uint64_t change_epoch = 1;
 };
 
 struct MaterialsDiagnostics
@@ -375,8 +384,13 @@ class MaterialService
     [[nodiscard]] std::vector<MaterialSlotState> FindExposedTo(SubstanceId substance) const;
     [[nodiscard]] std::vector<MaterialSlotState> FindByMaterialTag(TagId tag, const GameplayTagRegistry& tags) const;
 
-    [[nodiscard]] std::vector<MaterialChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return last_change_sequence_; }
+    private:
+
+        [[nodiscard]] std::vector<MaterialChange> ChangesSinceSequence(std::uint64_t sequence) const;
+
+    public:
+    [[nodiscard]] MaterialChangeBatch ReadChangesSince(ChangeCursor cursor) const;
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept { return {journal_epoch_, last_change_sequence_}; }
     void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] MaterialsSnapshot CaptureSnapshot() const;
@@ -415,6 +429,7 @@ class MaterialService
     std::vector<MaterialChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     std::uint64_t last_change_sequence_ = 0;
+    std::uint64_t journal_epoch_ = 1;
 
     mutable std::uint64_t reaction_evaluations_ = 0;
     std::uint64_t stimuli_ = 0;

@@ -943,7 +943,7 @@ PopulationCounts PopulationService::GetPopulationCounts(PopulationGroupId group)
     return counts;
 }
 
-PopulationChangeBatch PopulationService::ReadChangesSince(std::uint64_t sequence) const
+PopulationChangeBatch PopulationService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     PopulationChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -969,9 +969,9 @@ PopulationChangeBatch PopulationService::ReadChangesSince(std::uint64_t sequence
     return batch;
 }
 
-std::vector<PopulationChange> PopulationService::ChangesSince(std::uint64_t sequence) const
+std::vector<PopulationChange> PopulationService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
 void PopulationService::PruneChangesThrough(std::uint64_t sequence)
@@ -1041,11 +1041,18 @@ PopulationSnapshot PopulationService::CaptureSnapshot() const
     snapshot.allocation_ids = allocation_ids_.GetSnapshot();
     snapshot.allocation_correlation_ids = allocation_correlation_ids_.GetSnapshot();
     snapshot.revision = revision_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     // Pre-allocation snapshots have zero-initialized generator fields. They are safe to accept only
     // when no allocation records are present; the current empty allocation generators then remain canonical.
     auto allocation_id_snapshot = snapshot.allocation_ids;
@@ -1054,17 +1061,6 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
         allocation_id_snapshot = allocation_ids_.GetSnapshot();
     if (snapshot.allocations.empty() && allocation_correlation_snapshot.scope == 0)
         allocation_correlation_snapshot = allocation_correlation_ids_.GetSnapshot();
-
-    for (const auto &legacy_definition : snapshot.templates)
-    {
-        if (!legacy_definition.id.IsValid())
-            return foundation::Result<void>::Failure(
-                Error("gameplay.population.restore_invalid", "invalid template definition in legacy snapshot"));
-        auto current = templates_.find(legacy_definition.id);
-        if (current == templates_.end() || !SameTemplateDefinition(current->second, legacy_definition))
-            return foundation::Result<void>::Failure(
-                Error("gameplay.population.restore_definition_mismatch", "snapshot population definition does not match current content"));
-    }
 
     std::unordered_map<PopulationGroupId, PopulationGroup, IdHash> new_groups;
     std::unordered_map<PopulationUnitId, PopulationUnit, IdHash> new_units;
@@ -1220,6 +1216,7 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
         (void)group;
         RecountGroup(id);
     }
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

@@ -667,14 +667,14 @@ std::vector<TraversalCarrierBinding> TraversalService::FindCarrierPassengers(Gam
     return result;
 }
 
-std::vector<TraversalChange> TraversalService::ChangesSince(std::uint64_t sequence) const
+std::vector<TraversalChange> TraversalService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
-TraversalChangeBatch TraversalService::ReadChangesSince(std::uint64_t sequence) const
+TraversalChangeBatch TraversalService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     TraversalChangeBatch batch;
-    const auto latest = LatestChangeSequence();
+    const auto latest = LatestChangeCursor().sequence;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
     if (next_change_sequence_ == 0 || sequence > latest)
     {
@@ -747,11 +747,18 @@ TraversalSnapshot TraversalService::CaptureSnapshot() const
     snapshot.revision = revision_;
     snapshot.journal.assign(changes_.begin(), changes_.end());
     snapshot.next_change_sequence = next_change_sequence_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<GameplayObjectRef, TraversalState, RefHash> restored_states;
     std::unordered_map<TraversalSessionId, TraversalSession, IdHash> restored_sessions;
     std::unordered_map<TraversalRouteId, TraversalRoute, IdHash> restored_routes;
@@ -850,6 +857,7 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     capability_grant_ids_.Restore(snapshot.capability_grant_ids);
     revision_ = snapshot.revision;
     next_change_sequence_ = snapshot.next_change_sequence;
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

@@ -302,6 +302,9 @@ struct EffectChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::vector<EffectChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct EffectsSnapshot
@@ -309,6 +312,8 @@ struct EffectsSnapshot
     std::vector<DeferredEffectRecord> deferred;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot execution_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot deferred_ids{};
+
+    std::uint64_t change_epoch = 1;
 };
 
 struct EffectsDiagnostics
@@ -369,14 +374,29 @@ class EffectService
     [[nodiscard]] foundation::Result<void> ClearDeferredSchedule(DeferredEffectId id);
     [[nodiscard]] foundation::Result<EffectRequest> TakeDeferredBySchedule(ScheduleId schedule, GameplayContext context = {});
 
-    [[nodiscard]] std::vector<EffectChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] EffectChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    private:
+        [[nodiscard]] std::vector<EffectChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] EffectChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] EffectChangeBatch ReadChangesSince(ChangeCursor cursor) const
     {
-        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                          : next_change_sequence_ - 1;
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
     }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
+    [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
     void PruneChangesBefore(std::uint64_t sequence);
 
     [[nodiscard]] EffectsSnapshot CaptureSnapshot() const;
@@ -426,6 +446,7 @@ class EffectService
 
     std::vector<EffectChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
 
     std::uint64_t executions_ = 0;
     std::uint64_t operations_ = 0;

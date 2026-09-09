@@ -651,12 +651,31 @@ void MaterialService::RecordChange(MaterialChange change) noexcept
     changes_.push_back(std::move(change));
 }
 
-std::vector<MaterialChange> MaterialService::ChangesSince(std::uint64_t sequence) const
+std::vector<MaterialChange> MaterialService::ChangesSinceSequence(std::uint64_t sequence) const
 {
     const auto found = std::upper_bound(changes_.begin(), changes_.end(), sequence, [](std::uint64_t value, const MaterialChange& change) {
         return value < change.sequence;
     });
     return std::vector<MaterialChange>(found, changes_.end());
+}
+
+MaterialChangeBatch MaterialService::ReadChangesSince(ChangeCursor cursor) const
+{
+    MaterialChangeBatch batch;
+    batch.oldest_available_cursor = {journal_epoch_, changes_.empty() ? next_change_sequence_ : changes_.front().sequence};
+    batch.latest_cursor = {journal_epoch_, last_change_sequence_};
+    if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+    {
+        batch.snapshot_required = true;
+        return batch;
+    }
+    batch.changes = ChangesSinceSequence(cursor.sequence);
+    if (!changes_.empty() && changes_.front().sequence > 1 && cursor.sequence < changes_.front().sequence - 1)
+    {
+        batch.changes.clear();
+        batch.snapshot_required = true;
+    }
+    return batch;
 }
 
 void MaterialService::PruneChangesBefore(std::uint64_t sequence)
@@ -671,6 +690,7 @@ MaterialsSnapshot MaterialService::CaptureSnapshot() const
 {
     MaterialsSnapshot snapshot;
     snapshot.revision = revision_;
+    snapshot.change_epoch = journal_epoch_;
     snapshot.states.reserve(states_.size());
     for (const auto& [_, state] : states_)
     {
@@ -690,6 +710,7 @@ MaterialsSnapshot MaterialService::CaptureSnapshot(std::span<const GameplayObjec
 {
     MaterialsSnapshot snapshot;
     snapshot.revision = revision_;
+    snapshot.change_epoch = journal_epoch_;
 
     std::vector<GameplayObjectRef> included(subjects.begin(), subjects.end());
     std::sort(included.begin(), included.end());
@@ -720,6 +741,11 @@ MaterialsSnapshot MaterialService::CaptureSnapshot(std::span<const GameplayObjec
 
 foundation::Result<void> MaterialService::RestoreSnapshot(MaterialsSnapshot snapshot)
 {
+    const auto next_journal_epoch =
+        CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before restore"));
     std::unordered_map<MaterialSlotKey, MaterialSlotState, MaterialSlotKeyHash> rebuilt;
     for (auto& state : snapshot.states)
@@ -769,6 +795,7 @@ foundation::Result<void> MaterialService::RestoreSnapshot(MaterialsSnapshot snap
     changes_.clear();
     next_change_sequence_ = 1;
     last_change_sequence_ = 0;
+    journal_epoch_ = *next_journal_epoch;
     stimuli_ = 0;
     reactions_triggered_ = 0;
     reaction_evaluations_ = 0;

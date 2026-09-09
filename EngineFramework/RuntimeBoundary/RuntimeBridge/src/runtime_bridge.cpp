@@ -1296,6 +1296,23 @@ foundation::Result<void> RuntimeBridgeService::ForgetObjectIdentity(GameplayObje
             return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.identity_in_use", "queued runtime command still references gameplay object identity"));
         }
     }
+    for (const auto& pending : reconciliation_)
+    {
+        const bool references = std::visit([object](const auto& value) {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, MaterializeRequest> || std::is_same_v<T, DematerializeRequest> ||
+                          std::is_same_v<T, DestroyRuntimeRequest> || std::is_same_v<T, ImpulseProjectionRequest>)
+            {
+                return value.object == object;
+            }
+            return false;
+        }, pending.request);
+        if (references)
+        {
+            return foundation::Result<void>::Failure(
+                E("gameplay.runtime_bridge.identity_in_use", "reconciliation command still references gameplay object identity"));
+        }
+    }
     generations_.erase(object);
     return foundation::Result<void>::Success();
 }
@@ -1313,6 +1330,15 @@ foundation::Result<void> RuntimeBridgeService::ForgetEnvironmentProjection(Runti
             return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.projection_in_use", "queued environment projection still references region"));
         }
     }
+    for (const auto& pending : reconciliation_)
+    {
+        if (const auto* request = std::get_if<EnvironmentProjectionRequest>(&pending.request);
+            request && request->region == region)
+        {
+            return foundation::Result<void>::Failure(
+                E("gameplay.runtime_bridge.projection_in_use", "reconciliation environment projection still references region"));
+        }
+    }
     environment_projection_revision_.erase(region.value);
     return foundation::Result<void>::Success();
 }
@@ -1328,6 +1354,15 @@ foundation::Result<void> RuntimeBridgeService::ForgetWorldAlterationProjection(G
         if (const auto* request = std::get_if<WorldAlterationProjectionRequest>(&queued.request); request && request->alteration == alteration)
         {
             return foundation::Result<void>::Failure(E("gameplay.runtime_bridge.projection_in_use", "queued world projection still references alteration"));
+        }
+    }
+    for (const auto& pending : reconciliation_)
+    {
+        if (const auto* request = std::get_if<WorldAlterationProjectionRequest>(&pending.request);
+            request && request->alteration == alteration)
+        {
+            return foundation::Result<void>::Failure(
+                E("gameplay.runtime_bridge.projection_in_use", "reconciliation world projection still references alteration"));
         }
     }
     world_projection_revision_.erase(alteration);

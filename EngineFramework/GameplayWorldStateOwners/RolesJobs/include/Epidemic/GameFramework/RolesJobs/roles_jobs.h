@@ -282,6 +282,9 @@ struct RolesJobsChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     bool snapshot_required = false;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct RolesJobsSnapshot
 {
@@ -296,6 +299,8 @@ struct RolesJobsSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot shift_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot duty_ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 struct RolesJobsDiagnostics
 {
@@ -340,9 +345,28 @@ class RolesJobsService
     [[nodiscard]] std::vector<Workplace> FindWorkplacesInArea(GameplayObjectRef area) const;
     [[nodiscard]] std::vector<Duty> FindDutiesForAssignment(JobAssignmentId assignment) const;
     [[nodiscard]] std::vector<Duty> FindActiveDuties() const;
-    [[nodiscard]] std::vector<RolesJobsChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] RolesJobsChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept;
+    private:
+        [[nodiscard]] std::vector<RolesJobsChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] RolesJobsChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] RolesJobsChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     [[nodiscard]] std::uint64_t OldestChangeSequence() const noexcept;
     void PruneChangesBefore(std::uint64_t sequence) noexcept;
     [[nodiscard]] RolesJobsSnapshot CaptureSnapshot() const;
@@ -406,6 +430,7 @@ class RolesJobsService
     std::unordered_map<GameplayObjectRef, std::vector<DutyId>> duties_by_subject_;
     std::deque<RolesJobsChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     std::size_t change_retention_capacity_ = 4096;
     std::size_t terminal_duty_retention_capacity_ = 2048;
     mutable RolesJobsDiagnostics diagnostics_{};

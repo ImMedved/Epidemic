@@ -192,6 +192,9 @@ struct EnvironmentChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     std::vector<EnvironmentChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct EnvironmentSnapshot
@@ -199,6 +202,8 @@ struct EnvironmentSnapshot
     std::vector<EnvironmentLayer> layers;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 
 struct EnvironmentDiagnostics
@@ -251,9 +256,28 @@ class EnvironmentService
 
     // ChangesSince is retained as a compatibility helper. Consumers that require loss detection must use
     // ReadChangesSince and handle snapshot_required.
-    [[nodiscard]] std::vector<EnvironmentChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] EnvironmentChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept { return last_change_sequence_; }
+    private:
+        [[nodiscard]] std::vector<EnvironmentChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] EnvironmentChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] EnvironmentChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
     [[nodiscard]] EnvironmentDiagnostics GetDiagnostics() const noexcept;
 
@@ -328,6 +352,7 @@ class EnvironmentService
     std::uint64_t expired_ = 0;
     std::deque<EnvironmentChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     std::uint64_t last_change_sequence_ = 0;
 };
 } // namespace epidemic::gameplay::environment

@@ -1036,12 +1036,12 @@ std::vector<ItemInstance> ItemsInventoryService::FindItemsByDefinition(ItemDefin
     std::sort(out.begin(), out.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     return out;
 }
-std::vector<ItemChange> ItemsInventoryService::ChangesSince(std::uint64_t seq) const
+std::vector<ItemChange> ItemsInventoryService::ChangesSinceSequence(std::uint64_t seq) const
 {
-    return ReadChangesSince(seq).changes;
+    return ReadChangesSinceSequence(seq).changes;
 }
 
-ItemsChangeBatch ItemsInventoryService::ReadChangesSince(std::uint64_t seq) const
+ItemsChangeBatch ItemsInventoryService::ReadChangesSinceSequence(std::uint64_t seq) const
 {
     ItemsChangeBatch batch;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
@@ -1090,10 +1090,17 @@ ItemsSnapshot ItemsInventoryService::CaptureSnapshot() const
     s.transfer_ids = transfer_ids_.GetSnapshot();
     s.reservation_ids = reservation_ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if (!frozen_) return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen", "item registry must be frozen before restore"));
     if (s.revision.value == 0 && (!s.items.empty() || !s.containers.empty() || !s.reservations.empty()))
         return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "non-empty snapshot requires a non-zero revision"));
@@ -1317,6 +1324,7 @@ foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
             ++diagnostics_.active_reservations;
     }
     RebuildIndexes();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

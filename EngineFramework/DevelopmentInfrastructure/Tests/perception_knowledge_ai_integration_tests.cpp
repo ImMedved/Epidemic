@@ -96,11 +96,11 @@ int main()
     PerceptionKnowledgeAdapter perception_knowledge{knowledge, mapping};
     const auto learned = perception_knowledge.LearnFromObservation(observation);
     CHECK(learned);
-    CHECK(learned.Value().knowledge.has_value() && learned.Value().knowledge->IsValid());
+    CHECK(learned.Value().knowledge.IsValid());
     CHECK(learned.Value().memory.has_value());
     CHECK(!learned.Value().memory_error.has_value());
 
-    const auto *learned_record = knowledge.FindKnowledge(*learned.Value().knowledge);
+    const auto *learned_record = knowledge.FindKnowledge(learned.Value().knowledge);
     CHECK(learned_record != nullptr);
     CHECK(learned_record->subject == player);
     CHECK(learned_record->source == player);
@@ -112,7 +112,7 @@ int main()
     PerceptionKnowledgeAdapter best_effort_memory{knowledge, broken_memory_mapping};
     const auto learned_without_memory = best_effort_memory.LearnFromObservation(observation);
     CHECK(learned_without_memory);
-    CHECK(learned_without_memory.Value().knowledge.has_value() && learned_without_memory.Value().knowledge->IsValid());
+    CHECK(learned_without_memory.Value().knowledge.IsValid());
     CHECK(!learned_without_memory.Value().memory.has_value());
     CHECK(learned_without_memory.Value().memory_error.has_value());
 
@@ -122,8 +122,8 @@ int main()
     anonymous.identity_confidence_micro = 0;
     anonymous.position_uncertainty_mm = 2500;
     const auto anonymous_learning = perception_knowledge.LearnFromObservation(anonymous);
-    CHECK(anonymous_learning && anonymous_learning.Value().knowledge.has_value());
-    const auto *anonymous_record = knowledge.FindKnowledge(*anonymous_learning.Value().knowledge);
+    CHECK(anonymous_learning && anonymous_learning.Value().knowledge.IsValid());
+    const auto *anonymous_record = knowledge.FindKnowledge(anonymous_learning.Value().knowledge);
     CHECK(anonymous_record != nullptr);
     CHECK(!anonymous_record->subject.IsValid());
     CHECK(!anonymous_record->source.IsValid());
@@ -230,10 +230,6 @@ int main()
     CHECK(projection_available.materialized && projection_available.runtime_projection_available);
     const auto projection_think = ai.Think(projected_agent, projection_available, {});
     CHECK(projection_think && projection_think.Value().intent.has_value());
-
-    // Compatibility overload remains conservative.
-    const auto compatibility_context = knowledge_ai.BuildContext(npc, nullptr, GameplayTimePoint{2});
-    CHECK(!compatibility_context.materialized && !compatibility_context.runtime_projection_available);
 
     const auto knowledge_only_context = knowledge_ai.BuildContext(
         npc, AIExecutionAvailability{}, nullptr, GameplayTimePoint{2});

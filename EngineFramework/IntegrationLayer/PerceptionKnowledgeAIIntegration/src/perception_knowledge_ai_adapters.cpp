@@ -350,13 +350,6 @@ ai::AIContextSnapshot KnowledgeAIAdapter::BuildContext(
     return context;
 }
 
-ai::AIContextSnapshot KnowledgeAIAdapter::BuildContext(GameplayObjectRef agent,
-                                                       const perception::PerceptionService *perception_service,
-                                                       GameplayTimePoint now) const
-{
-    return BuildContext(agent, AIExecutionAvailability{}, perception_service, now);
-}
-
 AIIntentExecutionRecorder::AIIntentExecutionRecorder(std::size_t retention_capacity) noexcept
     : retention_capacity_(std::max<std::size_t>(1, retention_capacity))
 {

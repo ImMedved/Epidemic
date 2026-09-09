@@ -131,15 +131,13 @@ int main()
     auto transient_id = service.CreateUnit(transient_unit);
     Check(static_cast<bool>(transient_id), "create transient unit");
 
-    const auto pre_restore_cursor = service.ReadChangesSince(0).latest_sequence;
-    Check(pre_restore_cursor >= 2, "pre-restore population journal has multiple changes");
+    const auto pre_restore_cursor = service.ReadChangesSince(ChangeCursor{}).latest_cursor;
+    Check(pre_restore_cursor.sequence >= 2, "pre-restore population journal has multiple changes");
     auto snapshot = service.CaptureSnapshot();
     bool transient_in_snapshot = false;
     for (const auto &saved : snapshot.units)
         transient_in_snapshot = transient_in_snapshot || saved.id == transient_id.Value();
     Check(!transient_in_snapshot, "nonpersistent template unit omitted from snapshot");
-    Check(snapshot.templates.empty(), "definitions are not runtime snapshot state");
-
     PopulationService restored;
     Check(static_cast<bool>(restored.RegisterTemplate(templ)), "restore register current template");
     Check(static_cast<bool>(restored.RegisterTemplate(transient_templ)), "restore register transient template");
@@ -147,11 +145,11 @@ int main()
     Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), "restore");
     Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
           "pre-restore population cursor requires snapshot in new journal epoch");
-    Check(restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+    Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,
           "future population cursor is incompatible");
     Check(restored.GetUnit(unit_id.Value())->current_area == migration.to, "restore unit");
     Check(restored.GetUnit(transient_id.Value()) == nullptr, "transient unit not restored");
-    Check(restored.ChangesSince(0).empty(), "restore no events");
+    Check(restored.ReadChangesSince(ChangeCursor{}).changes.empty(), "restore no events");
     Check(restored.GetGroup(group_id.Value())->current_known_count == 2, "restore recomputes group counters");
 
     const auto original_revision = restored.CurrentRevision();
@@ -170,9 +168,9 @@ int main()
     Check(static_cast<bool>(collision_probe_id), "generator continues after restore");
     Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
           "old population cursor remains incompatible after new epoch change");
-    const auto new_epoch = restored.ReadChangesSince(0);
+    const auto new_epoch = restored.ReadChangesSince(ChangeCursor{});
     Check(!new_epoch.snapshot_required && !new_epoch.changes.empty(), "new population epoch readable from zero");
-    const auto current_epoch = restored.ReadChangesSince(new_epoch.latest_sequence);
+    const auto current_epoch = restored.ReadChangesSince(new_epoch.latest_cursor);
     Check(!current_epoch.snapshot_required && current_epoch.changes.empty(), "exact population cursor is current");
 
     for (int i = 0; i < 4200; ++i)
@@ -183,7 +181,7 @@ int main()
         update.home_property = Ref("property", "house.rotating");
         Check(static_cast<bool>(restored.AssignResidence(update)), "journal stress residence update");
     }
-    const auto journal = restored.ReadChangesSince(0);
+    const auto journal = restored.ReadChangesSince(ChangeCursor{});
     Check(journal.snapshot_required, "bounded journal requires snapshot for stale consumer");
 
     return 0;

@@ -114,7 +114,10 @@ foundation::Result<void> ConstructionService::RegisterSocket(PlacementSocket soc
             Error("gameplay.construction.invalid_socket", "invalid placement socket"));
     Bump();
     socket.revision = revision_;
-    sockets_.emplace(socket.id, std::move(socket));
+    const auto id = socket.id;
+    const auto owner = socket.owner;
+    sockets_.emplace(id, std::move(socket));
+    Record({0, ConstructionChangeKind::SocketRegistered, {}, {}, {}, id, owner, revision_, {}});
     return foundation::Result<void>::Success();
 }
 
@@ -1091,11 +1094,18 @@ ConstructionSnapshot ConstructionService::CaptureSnapshot() const
     snapshot.revision = revision_;
     snapshot.journal.assign(changes_.begin(), changes_.end());
     snapshot.next_change_sequence = next_change_sequence_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.plan_ids) ||
         !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.site_ids) ||
         !MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.placed_ids) ||
@@ -1218,18 +1228,19 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
     revision_ = snapshot.revision;
     changes_.assign(snapshot.journal.begin(), snapshot.journal.end());
     next_change_sequence_ = snapshot.next_change_sequence;
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 
-std::vector<ConstructionChange> ConstructionService::ChangesSince(std::uint64_t sequence) const
+std::vector<ConstructionChange> ConstructionService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-ConstructionChangeBatch ConstructionService::ReadChangesSince(std::uint64_t sequence) const
+ConstructionChangeBatch ConstructionService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     ConstructionChangeBatch batch;
-    const auto latest = LatestChangeSequence();
+    const auto latest = LatestChangeCursor().sequence;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
     if (next_change_sequence_ == 0 || sequence > latest)
     {

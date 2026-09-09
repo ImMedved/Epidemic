@@ -1,6 +1,7 @@
 #include "Epidemic/GameFramework/Economy/economy.h"
 #include <cstdlib>
 #include <iostream>
+#include <limits>
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::economy;
 namespace
@@ -250,6 +251,24 @@ int main()
     auto journal_id = journal.CreateAccount(journal_account);
     Check(static_cast<bool>(journal_id), "journal account");
     for (int i = 0; i < 4200; ++i) Check(static_cast<bool>(journal.Credit(journal_id.Value(), 1)), "journal credit");
-    Check(journal.ReadChangesSince(0).snapshot_required, "bounded journal requires snapshot for stale reader");
+    Check(journal.ReadChangesSince(ChangeCursor{}).snapshot_required, "bounded journal requires snapshot for stale reader");
+
+    auto overflow_snapshot = restored.CaptureSnapshot();
+    overflow_snapshot.revision = Revision{std::numeric_limits<std::uint64_t>::max()};
+    EconomyService exhausted;
+    Check(static_cast<bool>(exhausted.RegisterCurrency(coin)), "exhausted restore currency def");
+    Check(static_cast<bool>(exhausted.RegisterContractTermsSchema(terms_schema)), "exhausted restore contract schema");
+    exhausted.Freeze();
+    Check(static_cast<bool>(exhausted.RestoreSnapshot(std::move(overflow_snapshot))), "max revision snapshot restores read-only state");
+    const auto markets_before = exhausted.CaptureSnapshot().markets.size();
+    MarketState overflow_market;
+    overflow_market.area = Ref("area", "overflow");
+    const auto overflow_create = exhausted.CreateMarket(overflow_market);
+    Check(!overflow_create && overflow_create.GetError().HasCode("gameplay.revision_exhausted"),
+          "mutation rejects exhausted revision with controlled error");
+    Check(exhausted.CurrentRevision().value == std::numeric_limits<std::uint64_t>::max(),
+          "failed exhausted mutation does not wrap revision");
+    Check(exhausted.CaptureSnapshot().markets.size() == markets_before,
+          "failed exhausted mutation leaves authoritative state unchanged");
     return 0;
 }

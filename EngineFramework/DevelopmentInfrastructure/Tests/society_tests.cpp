@@ -195,10 +195,10 @@ int main()
         if (!restored.SetReputation({player, guards, crime_rep, value, {}}, time_context))
             return 36;
     }
-    const auto old_reader = restored.ReadChangesSince(0);
+    const auto old_reader = restored.ReadChangesSince(ChangeCursor{});
     if (!old_reader.snapshot_required || old_reader.oldest_available_sequence <= 1)
         return 37;
-    const auto latest = restored.ReadChangesSince(old_reader.latest_sequence);
+    const auto latest = restored.ReadChangesSince(old_reader.latest_cursor);
     if (latest.snapshot_required || !latest.changes.empty())
         return 38;
 

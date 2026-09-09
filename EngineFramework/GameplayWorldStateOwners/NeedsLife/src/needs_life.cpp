@@ -677,7 +677,7 @@ const LifeRoutine *NeedsLifeService::GetRoutine(GameplayObjectRef s) const noexc
     return it == routines_.end() ? nullptr : &it->second;
 }
 
-NeedsLifeChangeBatch NeedsLifeService::ReadChangesSince(std::uint64_t sequence) const
+NeedsLifeChangeBatch NeedsLifeService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     NeedsLifeChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -704,9 +704,9 @@ NeedsLifeChangeBatch NeedsLifeService::ReadChangesSince(std::uint64_t sequence) 
     return batch;
 }
 
-std::vector<NeedsLifeChange> NeedsLifeService::ChangesSince(std::uint64_t sequence) const
+std::vector<NeedsLifeChange> NeedsLifeService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
 void NeedsLifeService::PruneChangesThrough(std::uint64_t sequence) noexcept
@@ -775,11 +775,18 @@ NeedsLifeSnapshot NeedsLifeService::CaptureSnapshot() const
     s.pressure_ids = pressure_ids_.GetSnapshot();
     s.routine_ids = routine_ids_.GetSnapshot();
     s.revision = revision_;
+    s.change_epoch = journal_epoch_;
     return s;
 }
 
 foundation::Result<void> NeedsLifeService::RestoreSnapshot(NeedsLifeSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     decltype(decay_rules_) new_decay_rules;
     decltype(simulation_profiles_) new_simulation_profiles;
     decltype(definitions_) new_definitions;
@@ -904,6 +911,7 @@ foundation::Result<void> NeedsLifeService::RestoreSnapshot(NeedsLifeSnapshot s)
     changes_.clear();
     next_change_sequence_ = 1;
     diagnostics_ = {};
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

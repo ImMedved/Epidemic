@@ -307,7 +307,7 @@ int main()
     Check(static_cast<bool>(journal.FreezeDefinitions()), "journal freeze");
     for (int i = 0; i < 2100; ++i)
         Check(static_cast<bool>(journal.StartConversation(journal_def_id.Value(), {npc, player})), "journal session");
-    auto journal_batch = journal.ReadChangesSince(0);
+    auto journal_batch = journal.ReadChangesSince(ChangeCursor{});
     Check(journal_batch.snapshot_required, "journal overflow requires snapshot");
     Check(journal_batch.changes.empty(), "stale journal read does not return partial history");
 

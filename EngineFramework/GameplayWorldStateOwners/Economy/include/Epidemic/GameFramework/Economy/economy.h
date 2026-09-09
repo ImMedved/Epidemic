@@ -121,6 +121,7 @@ enum class EconomyChangeKind
     FundsReserved,
     FundsReleased,
     FundsCommitted,
+    MarketCreated,
     MarketChanged,
     OfferCreated,
     OfferChanged,
@@ -318,6 +319,8 @@ struct EconomySnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot account_ids{}, reservation_ids{}, market_ids{}, offer_ids{},
         transaction_ids{}, debt_ids{}, contract_ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 struct EconomyDiagnostics
 {
@@ -334,6 +337,9 @@ struct EconomyChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     bool snapshot_required = false;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 class IPriceProvider
@@ -398,8 +404,30 @@ class EconomyService
     [[nodiscard]] foundation::Result<void> SetContractState(EconomicContractId contract, ContractState state,
                                                             GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> CompactContract(EconomicContractId contract, GameplayContext context = {});
-    [[nodiscard]] EconomyChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::vector<EconomyChange> ChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] EconomyChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] EconomyChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
+    private:
+        [[nodiscard]] std::vector<EconomyChange> ChangesSinceSequence(std::uint64_t sequence) const;
+    public:
     [[nodiscard]] EconomySnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(EconomySnapshot snapshot);
     [[nodiscard]] EconomyDiagnostics GetDiagnostics() const noexcept;
@@ -425,7 +453,8 @@ class EconomyService
     };
     void Bump() noexcept
     {
-        ++revision_.value;
+        if (const auto next = CheckedNext(revision_))
+            revision_ = *next;
     }
     void Record(EconomyChange c);
     [[nodiscard]] foundation::Result<void> ValidateTransfer(const MonetaryTransfer &t) const;
@@ -455,6 +484,7 @@ class EconomyService
         offer_ids_{0x3703}, transaction_ids_{0x3704}, debt_ids_{0x3705}, contract_ids_{0x3706};
     std::deque<EconomyChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     EconomyDiagnostics diagnostics_{};
 };

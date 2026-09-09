@@ -869,12 +869,12 @@ void ConditionService::RecordChange(ConditionChange change)
         changes_.pop_front();
 }
 
-std::vector<ConditionChange> ConditionService::ChangesSince(std::uint64_t sequence) const
+std::vector<ConditionChange> ConditionService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-ConditionChangeBatch ConditionService::ReadChangesSince(std::uint64_t sequence) const
+ConditionChangeBatch ConditionService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     ConditionChangeBatch batch;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
@@ -917,11 +917,18 @@ ConditionsSnapshot ConditionService::CaptureSnapshot() const
         }
     }
     std::sort(snapshot.instances.begin(), snapshot.instances.end(), [](const auto& left, const auto& right) { return left.id < right.id; });
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<ConditionInstanceId, bool, ConditionInstanceIdHash> seen;
     for (auto& instance : snapshot.instances)
     {
@@ -985,6 +992,7 @@ foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot sn
     }
     changes_.swap(restored_changes);
     next_change_sequence_ = snapshot.next_change_sequence;
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

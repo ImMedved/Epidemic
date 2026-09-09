@@ -432,10 +432,17 @@ foundation::Result<void> WorldService::CompactAlteration(WorldAlterationId id, G
 WorldSnapshot WorldService::CaptureSnapshot() const
 {
     WorldSnapshot s;for(const auto&[_,f]:features_)if(f.dynamic)s.dynamic_features.push_back(f);for(const auto&[_,p]:object_placements_)s.object_placements.push_back(p);for(const auto&[_,a]:alterations_)if(a.persistence==WorldAlterationPersistence::Persistent)s.alterations.push_back(a);
-    std::sort(s.dynamic_features.begin(),s.dynamic_features.end(),[](const auto&a,const auto&b){return a.id<b.id;});std::sort(s.object_placements.begin(),s.object_placements.end(),[](const auto&a,const auto&b){return a.object<b.object;});std::sort(s.alterations.begin(),s.alterations.end(),[](const auto&a,const auto&b){return a.id<b.id;});s.alteration_ids=alteration_ids_.GetSnapshot();s.revision=revision_;return s;
+    std::sort(s.dynamic_features.begin(),s.dynamic_features.end(),[](const auto&a,const auto&b){return a.id<b.id;});std::sort(s.object_placements.begin(),s.object_placements.end(),[](const auto&a,const auto&b){return a.object<b.object;});std::sort(s.alterations.begin(),s.alterations.end(),[](const auto&a,const auto&b){return a.id<b.id;});s.alteration_ids=alteration_ids_.GetSnapshot();s.revision=revision_;s.change_epoch = journal_epoch_;
+    return s;
 }
 foundation::Result<void> WorldService::RestoreSnapshot(WorldSnapshot s)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if(!frozen_)return foundation::Result<void>::Failure(Error("gameplay.registry_not_frozen","world service must be frozen before restore"));
     if(!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(s.alteration_ids)||s.alteration_ids.scope!=alteration_ids_.GetSnapshot().scope)return foundation::Result<void>::Failure(Error("gameplay.world.restore_invalid","invalid alteration id generator snapshot"));
     auto rebuilt_features=features_;for(auto i=rebuilt_features.begin();i!=rebuilt_features.end();)if(i->second.dynamic)i=rebuilt_features.erase(i);else ++i;
@@ -445,10 +452,11 @@ foundation::Result<void> WorldService::RestoreSnapshot(WorldSnapshot s)
     std::unordered_map<WorldAlterationId,WorldAlterationRecord,IdHash> rebuilt_alterations;std::uint64_t max_generated_low=0;
     for(auto&a:s.alterations){if(auto v=ValidateAlteration(a);!v)return foundation::Result<void>::Failure(Error("gameplay.world.restore_invalid","invalid alteration in snapshot"));if(a.persistence!=WorldAlterationPersistence::Persistent||a.revision>s.revision||!rebuilt_alterations.emplace(a.id,a).second)return foundation::Result<void>::Failure(Error("gameplay.world.restore_invalid","invalid or duplicate alteration in snapshot"));if(a.id.value.High()==s.alteration_ids.scope&&a.id.value.Low()>max_generated_low)max_generated_low=a.id.value.Low();}
     if(s.alteration_ids.next!=0&&s.alteration_ids.next<=max_generated_low)return foundation::Result<void>::Failure(Error("gameplay.world.restore_invalid","alteration id generator can reproduce a restored id"));
-    features_=std::move(rebuilt_features);object_placements_=std::move(rebuilt_placements);alterations_=std::move(rebuilt_alterations);alteration_ids_.Restore(s.alteration_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;last_change_sequence_=0;RebuildAlterationIndex();return foundation::Result<void>::Success();
+    features_=std::move(rebuilt_features);object_placements_=std::move(rebuilt_placements);alterations_=std::move(rebuilt_alterations);alteration_ids_.Restore(s.alteration_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;last_change_sequence_=0;RebuildAlterationIndex();journal_epoch_ = *next_journal_epoch;
+    return foundation::Result<void>::Success();
 }
-std::vector<WorldChange> WorldService::ChangesSince(std::uint64_t sequence) const {return ReadChangesSince(sequence).changes;}
-WorldChangeBatch WorldService::ReadChangesSince(std::uint64_t sequence) const
+std::vector<WorldChange> WorldService::ChangesSinceSequence(std::uint64_t sequence) const {return ReadChangesSinceSequence(sequence).changes;}
+WorldChangeBatch WorldService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     WorldChangeBatch batch;batch.oldest_available_sequence=changes_.empty()?next_change_sequence_:changes_.front().sequence;
     if(!changes_.empty()&&sequence<changes_.front().sequence-1){batch.snapshot_required=true;return batch;}

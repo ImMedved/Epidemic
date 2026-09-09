@@ -449,6 +449,8 @@ struct CrimeSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot response_ids{};
     Revision revision{};
     bool definitions_frozen = false;
+
+    std::uint64_t change_epoch = 1;
 };
 struct CrimeChangeBatch
 {
@@ -456,6 +458,9 @@ struct CrimeChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct CrimeDiagnostics
 {
@@ -504,15 +509,30 @@ class CrimeService
     [[nodiscard]] std::vector<WitnessRecord> FindWitnesses(CrimeRecordId crime) const;
     [[nodiscard]] std::vector<EvidenceRecord> FindEvidence(CrimeRecordId crime) const;
     [[nodiscard]] std::optional<BountyRecord> GetBounty(GameplayObjectRef offender, JurisdictionId jurisdiction) const;
-    [[nodiscard]] std::vector<CrimeChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] CrimeChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] std::vector<CrimeChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] CrimeChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] CrimeChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     void PruneChangesThrough(std::uint64_t sequence);
     void SetChangeJournalCapacity(std::size_t capacity) noexcept;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
-    {
-        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                          : next_change_sequence_ - 1;
-    }
     [[nodiscard]] CrimeSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(CrimeSnapshot snapshot);
     [[nodiscard]] CrimeDiagnostics GetDiagnostics() const noexcept;
@@ -555,6 +575,7 @@ class CrimeService
     std::deque<CrimeChange> changes_;
     std::size_t change_journal_capacity_ = 4096;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     mutable CrimeDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::crime

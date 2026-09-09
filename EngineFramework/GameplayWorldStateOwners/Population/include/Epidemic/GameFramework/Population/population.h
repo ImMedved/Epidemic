@@ -304,13 +304,13 @@ struct PopulationChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct PopulationSnapshot
 {
-    // Definitions are build/content state and are not captured by new snapshots.
-    // The field remains for compatibility with pre-freeze snapshots and is validation-only on restore.
-    std::vector<PopulationTemplate> templates;
     std::vector<PopulationGroup> groups;
     std::vector<PopulationUnit> units;
     std::vector<PopulationResidence> residences;
@@ -323,6 +323,8 @@ struct PopulationSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot allocation_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot allocation_correlation_ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 struct PopulationDiagnostics
 {
@@ -387,8 +389,30 @@ class PopulationService
     [[nodiscard]] std::vector<PopulationUnit> FindMaterializationCandidates(GameplayObjectRef area,
                                                                             std::size_t limit) const;
     [[nodiscard]] PopulationCounts GetPopulationCounts(PopulationGroupId group = {}) const;
-    [[nodiscard]] PopulationChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::vector<PopulationChange> ChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] PopulationChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] PopulationChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
+    private:
+        [[nodiscard]] std::vector<PopulationChange> ChangesSinceSequence(std::uint64_t sequence) const;
+    public:
     void PruneChangesThrough(std::uint64_t sequence);
     [[nodiscard]] PopulationSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(PopulationSnapshot snapshot);
@@ -438,6 +462,7 @@ class PopulationService
     std::array<std::unordered_set<PopulationUnitId, IdHash>, 5> units_by_state_;
     std::deque<PopulationChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     std::size_t change_journal_capacity_ = 4096;
     bool definitions_frozen_ = false;
     mutable PopulationDiagnostics diagnostics_{};

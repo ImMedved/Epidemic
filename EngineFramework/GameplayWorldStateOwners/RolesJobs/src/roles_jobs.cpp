@@ -916,15 +916,15 @@ std::vector<Duty> RolesJobsService::FindActiveDuties() const
     return out;
 }
 
-std::vector<RolesJobsChange> RolesJobsService::ChangesSince(std::uint64_t sequence) const
+std::vector<RolesJobsChange> RolesJobsService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-RolesJobsChangeBatch RolesJobsService::ReadChangesSince(std::uint64_t sequence) const
+RolesJobsChangeBatch RolesJobsService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     RolesJobsChangeBatch batch;
-    batch.latest_sequence = LatestChangeSequence();
+    batch.latest_sequence = LatestChangeCursor().sequence;
     batch.oldest_available_sequence = OldestChangeSequence();
     if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
     {
@@ -946,10 +946,6 @@ RolesJobsChangeBatch RolesJobsService::ReadChangesSince(std::uint64_t sequence) 
     return batch;
 }
 
-std::uint64_t RolesJobsService::LatestChangeSequence() const noexcept
-{
-    return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1;
-}
 
 std::uint64_t RolesJobsService::OldestChangeSequence() const noexcept
 {
@@ -1005,11 +1001,18 @@ RolesJobsSnapshot RolesJobsService::CaptureSnapshot() const
     snapshot.shift_ids = shift_ids_.GetSnapshot();
     snapshot.duty_ids = duty_ids_.GetSnapshot();
     snapshot.revision = revision_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> RolesJobsService::RestoreSnapshot(RolesJobsSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<JobDefinitionId, JobDefinition, IdHash> definitions;
     std::unordered_map<WorkplaceId, Workplace, IdHash> workplaces;
     std::unordered_map<JobAssignmentId, JobAssignment, IdHash> assignments;
@@ -1171,6 +1174,7 @@ foundation::Result<void> RolesJobsService::RestoreSnapshot(RolesJobsSnapshot sna
     next_change_sequence_ = 1;
     RebuildIndexes();
     PruneTerminalDuties();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

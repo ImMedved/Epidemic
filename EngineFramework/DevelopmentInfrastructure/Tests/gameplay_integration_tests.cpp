@@ -91,15 +91,15 @@ int main()
              TypeId::FromString("game.mod.attack_buff.invalid"), 0, 1'000'000}) ||
         !failing_condition_adapter.FreezeMappings()) return 10;
     const auto failed_checkpoint = failing_condition_adapter.CaptureCheckpoint();
-    if (failed_checkpoint.cursor != 0 || failed_checkpoint.mapping_revision == 0) return 11;
+    if (failed_checkpoint.cursor.sequence != 0 || failed_checkpoint.mapping_revision == 0) return 11;
     auto failed_apply = failing_condition_adapter.ProcessChanges();
-    if (failed_apply || failing_condition_adapter.Cursor() != 0) return 12;
+    if (failed_apply || failing_condition_adapter.Cursor().sequence != 0) return 12;
     boosted = progression.GetAttribute(player, attack_id.Value());
     if (!boosted || boosted.Value() != 7'000'000) return 13;
     auto restored_condition_checkpoint = failed_checkpoint;
-    restored_condition_checkpoint.cursor = 17;
+    restored_condition_checkpoint.cursor.sequence = 17;
     if (!failing_condition_adapter.RestoreCheckpoint(restored_condition_checkpoint) ||
-        failing_condition_adapter.Cursor() != 17) return 14;
+        failing_condition_adapter.Cursor().sequence != 17) return 14;
 
     CombatService combat;
     CombatResourceDefinition health;
@@ -429,7 +429,7 @@ int main()
 
     // H61: replay before cursor acknowledgement reuses the same tracked reward execution.
     auto death_checkpoint = death_rewards.CaptureCheckpoint();
-    death_checkpoint.cursor = 0;
+    death_checkpoint.cursor.sequence = 0;
     if (!death_rewards.RestoreCheckpoint(death_checkpoint)) return 68;
     auto replayed = death_rewards.ProcessChanges();
     if (!replayed || replayed.Value().size() != 1 || replayed.Value().front() != reward_execution ||

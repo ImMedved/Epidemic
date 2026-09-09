@@ -229,13 +229,13 @@ int main()
           "second journal change");
     Check(static_cast<bool>(crime.ChangeCaseState(*witnessed.Value().crime, CrimeCaseState::Open)),
           "third journal change");
-    const auto old_batch = crime.ReadChangesSince(0);
+    const auto old_batch = crime.ReadChangesSince(ChangeCursor{});
     Check(old_batch.snapshot_required, "bounded journal requires snapshot for stale reader");
-    const auto latest_batch = crime.ReadChangesSince(crime.LatestChangeSequence());
+    const auto latest_batch = crime.ReadChangesSince(crime.LatestChangeCursor());
     Check(!latest_batch.snapshot_required && latest_batch.changes.empty(), "current journal reader is up to date");
 
-    const auto pre_restore_cursor = crime.LatestChangeSequence();
-    Check(pre_restore_cursor >= 2, "pre-restore journal has multiple changes");
+    const auto pre_restore_cursor = crime.LatestChangeCursor();
+    Check(pre_restore_cursor.sequence >= 2, "pre-restore journal has multiple changes");
     const auto snapshot = crime.CaptureSnapshot();
 
     CrimeService preserved;
@@ -270,19 +270,19 @@ int main()
     Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), "valid snapshot restore");
     Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
           "pre-restore crime cursor requires snapshot in new journal epoch");
-    Check(restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+    Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,
           "future crime cursor is incompatible");
     auto epoch_crime = restored.EvaluateCrimeCandidate(MakeCandidate(fixture, "epoch_apple", 170),
                                                         CrimeCandidatePolicy::RecordAlways);
     Check(static_cast<bool>(epoch_crime) && epoch_crime.Value().crime.has_value(), "post-restore crime change");
     Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
           "old crime cursor remains incompatible after new epoch changes");
-    const auto new_epoch = restored.ReadChangesSince(0);
+    const auto new_epoch = restored.ReadChangesSince(ChangeCursor{});
     Check(!new_epoch.snapshot_required && !new_epoch.changes.empty(), "new crime epoch readable from zero");
-    const auto exact_epoch = restored.ReadChangesSince(new_epoch.latest_sequence);
+    const auto exact_epoch = restored.ReadChangesSince(new_epoch.latest_cursor);
     Check(!exact_epoch.snapshot_required && exact_epoch.changes.empty(), "exact crime cursor is current");
     Check(restored.DefinitionsFrozen(), "definition freeze state restored");
-    Check(restored.FindCrimesByOffender(fixture.player).size() == 2, "runtime crimes restored");
+    Check(restored.FindCrimesByOffender(fixture.player).size() == 3, "restored and post-restore runtime crimes retained");
     Check(!restored.GetBounty(fixture.player, fixture.jurisdiction), "terminal bounty state restored without active index");
 
     Check(static_cast<bool>(restored.PruneTerminalCrime(crime_id)), "prune terminal crime");

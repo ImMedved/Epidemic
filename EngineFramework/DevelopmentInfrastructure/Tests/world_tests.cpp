@@ -173,9 +173,9 @@ int main()
         ObjectPlacementRecord p; p.object = object; p.area = area.id;
         CHECK(restored.PlaceObject(p));
     }
-    const auto stale_batch = restored.ReadChangesSince(0);
+    const auto stale_batch = restored.ReadChangesSince(ChangeCursor{});
     CHECK(stale_batch.snapshot_required);
-    const auto latest_batch = restored.ReadChangesSince(restored.LatestChangeSequence());
+    const auto latest_batch = restored.ReadChangesSince(restored.LatestChangeCursor());
     CHECK(!latest_batch.snapshot_required && latest_batch.changes.empty());
 
     // Freeze rejects missing topology references.

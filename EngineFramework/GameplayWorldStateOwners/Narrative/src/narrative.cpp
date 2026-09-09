@@ -1592,12 +1592,12 @@ std::vector<NarrativeConsequenceExecution> NarrativeService::FindConsequences(Co
     std::sort(out.begin(), out.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     return out;
 }
-std::vector<NarrativeChange> NarrativeService::ChangesSince(std::uint64_t sequence) const
+std::vector<NarrativeChange> NarrativeService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-NarrativeChangeBatch NarrativeService::ReadChangesSince(std::uint64_t sequence) const
+NarrativeChangeBatch NarrativeService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     NarrativeChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -1775,11 +1775,18 @@ NarrativeSnapshot NarrativeService::CaptureSnapshot() const
     snapshot.consequence_ids = consequence_ids_.GetSnapshot();
     snapshot.revision = revision_;
     snapshot.frozen = frozen_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if (!frozen_)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.restore_requires_frozen_definitions",
@@ -2043,6 +2050,7 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
     evaluation_limit_ = static_cast<std::size_t>(-1);
     evaluation_depth_ = 0;
     evaluation_budget_exhausted_ = false;
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

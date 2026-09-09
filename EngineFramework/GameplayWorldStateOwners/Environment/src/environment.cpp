@@ -614,11 +614,18 @@ EnvironmentSnapshot EnvironmentService::CaptureSnapshot() const
     std::sort(snapshot.layers.begin(), snapshot.layers.end(), [](const auto &a, const auto &b) { return a.id < b.id; });
     snapshot.ids = ids_.GetSnapshot();
     snapshot.revision = revision_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> EnvironmentService::RestoreSnapshot(EnvironmentSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if (!frozen_)
         return foundation::Result<void>::Failure(
             Error("gameplay.registry_not_frozen", "environment service must be frozen before restore"));
@@ -656,18 +663,19 @@ foundation::Result<void> EnvironmentService::RestoreSnapshot(EnvironmentSnapshot
     next_change_sequence_ = 1;
     last_change_sequence_ = 0;
     RebuildSpatialIndex();
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 
-std::vector<EnvironmentChange> EnvironmentService::ChangesSince(std::uint64_t sequence) const
+std::vector<EnvironmentChange> EnvironmentService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-EnvironmentChangeBatch EnvironmentService::ReadChangesSince(std::uint64_t sequence) const
+EnvironmentChangeBatch EnvironmentService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     EnvironmentChangeBatch batch;
-    batch.latest_sequence = LatestChangeSequence();
+    batch.latest_sequence = LatestChangeCursor().sequence;
     batch.oldest_available_sequence = changes_.empty() ? next_change_sequence_ : changes_.front().sequence;
     if (next_change_sequence_ == 0 || sequence > batch.latest_sequence)
     {

@@ -167,10 +167,10 @@ int main()
     Check(static_cast<bool>(service.SatisfyNeed(small)), "journal change 2");
     small.context.time = GameplayTimePoint{23};
     Check(static_cast<bool>(service.SatisfyNeed(small)), "journal change 3");
-    Check(service.ReadChangesSince(0).snapshot_required, "journal gap requires snapshot");
-    Check(service.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+    Check(service.ReadChangesSince(ChangeCursor{}).snapshot_required, "journal gap requires snapshot");
+    Check(service.ReadChangesSince(service.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,
           "future needs cursor is incompatible");
-    const auto pre_restore_cursor = service.ReadChangesSince(0).latest_sequence;
+    const auto pre_restore_cursor = service.ReadChangesSince(ChangeCursor{}).latest_cursor;
 
     const auto snapshot = service.CaptureSnapshot();
     NeedsLifeService restored;
@@ -179,15 +179,15 @@ int main()
     Check(restored.GetCommittedNeedState(npc, hunger.id) != nullptr, "restore need state");
     Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
           "pre-restore needs cursor requires snapshot in new epoch");
-    Check(restored.ReadChangesSince(std::numeric_limits<std::uint64_t>::max()).snapshot_required,
+    Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,
           "future needs cursor remains incompatible after restore");
     small.context.time = GameplayTimePoint{24};
     Check(static_cast<bool>(restored.SatisfyNeed(small)), "post-restore needs change");
     Check(restored.ReadChangesSince(pre_restore_cursor).snapshot_required,
           "old needs cursor remains incompatible after post-restore change");
-    const auto needs_epoch = restored.ReadChangesSince(0);
+    const auto needs_epoch = restored.ReadChangesSince(ChangeCursor{});
     Check(!needs_epoch.snapshot_required && !needs_epoch.changes.empty(), "new needs epoch readable from zero");
-    const auto needs_current = restored.ReadChangesSince(needs_epoch.latest_sequence);
+    const auto needs_current = restored.ReadChangesSince(needs_epoch.latest_cursor);
     Check(!needs_current.snapshot_required && needs_current.changes.empty(), "exact needs cursor is current");
 
     // Restore is transactional. A broken snapshot must not erase the current service.

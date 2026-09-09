@@ -701,7 +701,10 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
         return a.record.subject < b.record.subject;
     });
     if (candidates.size() > budget_.max_perceivers_per_stimulus)
+    {
+        ++diagnostics_.budget_exhaustions;
         candidates.resize(budget_.max_perceivers_per_stimulus);
+    }
 
     std::vector<PerceptionObservation> activated = std::move(temporal.Value());
     bool budget_reported = false;
@@ -1097,7 +1100,7 @@ std::vector<PerceptionObservation> PerceptionService::FindActiveObservations(Gam
     return result;
 }
 
-PerceptionChangeBatch PerceptionService::ReadChangesSince(std::uint64_t sequence) const
+PerceptionChangeBatch PerceptionService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     PerceptionChangeBatch batch;
     batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -1175,6 +1178,7 @@ PerceptionSnapshot PerceptionService::CaptureSnapshot() const
     snapshot.observation_ids = observation_ids_.GetSnapshot();
     snapshot.next_change_sequence = next_change_sequence_;
     snapshot.revision = revision_;
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
@@ -1190,6 +1194,12 @@ bool PerceptionService::ValidGeneratorSnapshot(MonotonicIdGenerator<GameplayObje
 
 foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     if (!frozen_)
         return foundation::Result<void>::Failure(
             Error("gameplay.perception.registry_not_frozen", "perception definitions must be frozen before restore"));
@@ -1318,6 +1328,7 @@ foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot s
     changes_.clear();
     next_change_sequence_ = snapshot.next_change_sequence;
     tick_budget_ = {};
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

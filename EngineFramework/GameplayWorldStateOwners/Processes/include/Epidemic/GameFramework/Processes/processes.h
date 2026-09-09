@@ -294,7 +294,8 @@ enum class ProcessChangeKind
     InputConsumed,
     OutputProduced,
     QualityResolved,
-    ReconciliationRequired
+    ReconciliationRequired,
+    StationRegistered
 };
 
 struct ProcessStepDefinition
@@ -434,6 +435,7 @@ struct ProcessChange
     GameplayTimePoint time{};
     GameplayContext context{};
     Revision revision{};
+    ProcessStationId station{};
 };
 struct ProcessChangeBatch
 {
@@ -441,6 +443,9 @@ struct ProcessChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     std::vector<ProcessChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct ProcessesSnapshot
@@ -452,6 +457,8 @@ struct ProcessesSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot reservation_ids{};
     std::uint64_t next_change_sequence = 1;
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 struct ProcessesDiagnostics
 {
@@ -558,8 +565,28 @@ class ProcessesService
 
     [[nodiscard]] std::vector<ProcessInstance> FindProcessesByActor(GameplayObjectRef actor) const;
     [[nodiscard]] std::vector<ProcessInstance> FindProcessesByStation(GameplayObjectRef station) const;
-    [[nodiscard]] std::vector<ProcessChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] ProcessChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] std::vector<ProcessChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] ProcessChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] ProcessChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     [[nodiscard]] foundation::Result<void> PruneTerminalProcesses(std::size_t keep_recent = 0);
     [[nodiscard]] ProcessesSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(ProcessesSnapshot snapshot);
@@ -603,6 +630,7 @@ class ProcessesService
     std::deque<ProcessChange> changes_;
     std::size_t change_journal_capacity_ = 4096;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     ProcessesDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::processes

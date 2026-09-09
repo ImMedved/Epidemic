@@ -238,6 +238,9 @@ struct NeedsLifeChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     bool snapshot_required = false;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct NeedsLifeSnapshot
 {
@@ -252,6 +255,8 @@ struct NeedsLifeSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot pressure_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot routine_ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 struct NeedsLifeDiagnostics
 {
@@ -307,8 +312,32 @@ class NeedsLifeService
     [[nodiscard]] std::vector<LifePressure> FindLifePressures(GameplayObjectRef subject) const;
     [[nodiscard]] const LifeRoutine *GetRoutine(GameplayObjectRef subject) const noexcept;
 
-    [[nodiscard]] NeedsLifeChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::vector<NeedsLifeChange> ChangesSince(std::uint64_t sequence) const;
+    private:
+
+        [[nodiscard]] NeedsLifeChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+
+    public:
+    [[nodiscard]] NeedsLifeChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
+    private:
+        [[nodiscard]] std::vector<NeedsLifeChange> ChangesSinceSequence(std::uint64_t sequence) const;
+    public:
     void PruneChangesThrough(std::uint64_t sequence) noexcept;
     void SetChangeJournalCapacity(std::size_t capacity) noexcept;
 
@@ -356,6 +385,7 @@ class NeedsLifeService
     std::deque<NeedsLifeChange> changes_;
     std::size_t change_journal_capacity_ = 4096;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     mutable NeedsLifeDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::needs_life

@@ -1084,12 +1084,12 @@ foundation::Result<ProgressionProfileSnapshot> ProgressionService::GetProfileSna
     return foundation::Result<ProgressionProfileSnapshot>::Success(std::move(out));
 }
 
-std::vector<ProgressionChange> ProgressionService::ChangesSince(std::uint64_t sequence) const
+std::vector<ProgressionChange> ProgressionService::ChangesSinceSequence(std::uint64_t sequence) const
 {
-    return ReadChangesSince(sequence).changes;
+    return ReadChangesSinceSequence(sequence).changes;
 }
 
-ProgressionChangeBatch ProgressionService::ReadChangesSince(std::uint64_t sequence) const
+ProgressionChangeBatch ProgressionService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     ProgressionChangeBatch batch;
     const auto latest = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
@@ -1130,11 +1130,18 @@ ProgressionSnapshot ProgressionService::CaptureSnapshot() const
             snapshot.profiles.push_back(std::move(one).Value());
     }
     std::sort(snapshot.profiles.begin(), snapshot.profiles.end(), [](const auto& a, const auto& b) { return a.subject < b.subject; });
+    snapshot.change_epoch = journal_epoch_;
     return snapshot;
 }
 
 foundation::Result<void> ProgressionService::RestoreSnapshot(ProgressionSnapshot snapshot)
 {
+    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    if (!next_journal_epoch)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
+    }
     std::unordered_map<GameplayObjectRef, Profile> restored_profiles;
     restored_profiles.reserve(snapshot.profiles.size());
     std::unordered_set<ProgressionModifierId, IdHash> restored_modifier_ids;
@@ -1224,6 +1231,7 @@ foundation::Result<void> ProgressionService::RestoreSnapshot(ProgressionSnapshot
     pending_progress_grants_.clear();
     revision_ = snapshot.revision;
     next_change_sequence_ = snapshot.next_change_sequence;
+    journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

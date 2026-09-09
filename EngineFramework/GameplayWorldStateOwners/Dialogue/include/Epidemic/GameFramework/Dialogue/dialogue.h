@@ -217,6 +217,9 @@ struct DialogueChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     bool snapshot_required = false;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct DialogueSnapshot
 {
@@ -225,6 +228,8 @@ struct DialogueSnapshot
     MonotonicIdGenerator<GameplayObjectId>::Snapshot session_ids{};
     MonotonicIdGenerator<GameplayObjectId>::Snapshot consequence_ids{};
     Revision revision{};
+
+    std::uint64_t change_epoch = 1;
 };
 struct DialogueDiagnostics
 {
@@ -286,8 +291,30 @@ class DialogueService
                                                              GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> FailConsequence(DialogueConsequenceExecutionId execution, TypeId reason,
                                                            GameplayContext context = {});
-    [[nodiscard]] DialogueChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::vector<DialogueChange> ChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] DialogueChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] DialogueChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
+    private:
+        [[nodiscard]] std::vector<DialogueChange> ChangesSinceSequence(std::uint64_t sequence) const;
+    public:
     [[nodiscard]] DialogueSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(DialogueSnapshot snapshot);
     [[nodiscard]] DialogueDiagnostics GetDiagnostics() const noexcept;
@@ -326,6 +353,7 @@ class DialogueService
     std::deque<DialogueChange> changes_;
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     DialogueDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::dialogue

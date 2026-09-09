@@ -278,6 +278,9 @@ struct SocietyChangeBatch
     std::uint64_t oldest_available_sequence = 0;
     std::uint64_t latest_sequence = 0;
     std::vector<SocietyChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 
 struct SocietySnapshot
@@ -294,6 +297,8 @@ struct SocietySnapshot
     Revision revision{};
     std::vector<SocietyChange> journal;
     std::uint64_t next_change_sequence = 1;
+
+    std::uint64_t change_epoch = 1;
 };
 
 struct SocietyDiagnostics
@@ -350,8 +355,28 @@ class SocietyService
     [[nodiscard]] SocialStandingSnapshot GetSocialStanding(GameplayObjectRef subject, GameplayObjectRef scope) const;
     [[nodiscard]] bool HasRole(GameplayObjectRef subject, SocialRoleId role, GameplayObjectRef scope = {}) const;
 
-    [[nodiscard]] std::vector<SocietyChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] SocietyChangeBatch ReadChangesSince(std::uint64_t sequence) const;
+    private:
+        [[nodiscard]] std::vector<SocietyChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] SocietyChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] SocietyChangeBatch ReadChangesSince(ChangeCursor cursor) const
+    {
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
+    }
     void PruneChangesThrough(std::uint64_t sequence);
 
     [[nodiscard]] SocietySnapshot CaptureSnapshot() const;
@@ -428,6 +453,7 @@ class SocietyService
 
     std::deque<SocietyChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     mutable SocietyDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::society

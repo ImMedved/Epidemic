@@ -62,7 +62,7 @@ private:
 
 // Timed production recipes execute through Processes. ResourcesProduction remains the
 // authoritative ledger/capability/plan owner; this integration intentionally exposes no
-// second aggregate ProductionOrder simulation executor.
+// second aggregate timed-production executor.
 class ProcessesSimulationLayer final : public simulation::ISimulationLayerExecutor
 {
 public:

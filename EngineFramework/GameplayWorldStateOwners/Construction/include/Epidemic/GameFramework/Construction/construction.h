@@ -247,6 +247,7 @@ enum class ConstructionChangeKind
     PlacementPlanCancelled,
     PlacementPlanExpired,
     PlacementStateCompacted,
+    SocketRegistered,
     SiteProgressed,
     SiteFailed
 };
@@ -468,6 +469,9 @@ struct ConstructionChangeBatch
     bool snapshot_required = false;
     std::uint64_t oldest_available_sequence = 0;
     std::vector<ConstructionChange> changes;
+
+    ChangeCursor oldest_available_cursor{};
+    ChangeCursor latest_cursor{};
 };
 struct ConstructionSnapshot
 {
@@ -487,6 +491,8 @@ struct ConstructionSnapshot
     Revision revision{};
     std::vector<ConstructionChange> journal;
     std::uint64_t next_change_sequence = 1;
+
+    std::uint64_t change_epoch = 1;
 };
 struct ConstructionDiagnostics
 {
@@ -558,12 +564,27 @@ class ConstructionService
     [[nodiscard]] foundation::Result<void> CompactPlacementState(PlacementPlanId plan, GameplayContext context = {});
     [[nodiscard]] ConstructionSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(ConstructionSnapshot snapshot);
-    [[nodiscard]] std::vector<ConstructionChange> ChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] ConstructionChangeBatch ReadChangesSince(std::uint64_t sequence) const;
-    [[nodiscard]] std::uint64_t LatestChangeSequence() const noexcept
+    private:
+        [[nodiscard]] std::vector<ConstructionChange> ChangesSinceSequence(std::uint64_t sequence) const;
+        [[nodiscard]] ConstructionChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+    public:
+    [[nodiscard]] ConstructionChangeBatch ReadChangesSince(ChangeCursor cursor) const
     {
-        return next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                          : next_change_sequence_ - 1;
+        auto batch = ReadChangesSinceSequence(cursor.sequence);
+        batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
+        batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                                    : next_change_sequence_ - 1};
+        if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
+        {
+            batch.changes.clear();
+            batch.snapshot_required = true;
+        }
+        return batch;
+    }
+    [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
+    {
+        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
+                                                          : next_change_sequence_ - 1};
     }
     [[nodiscard]] ConstructionDiagnostics GetDiagnostics() const noexcept;
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
@@ -611,6 +632,7 @@ class ConstructionService
     static constexpr GameplayDuration kDefaultPlanLifetime{300};
     std::deque<ConstructionChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
+    std::uint64_t journal_epoch_ = 1;
     mutable std::uint64_t validations_ = 0, rejections_ = 0;
     std::uint64_t committed_ = 0, socket_reservations_ = 0, completed_sites_ = 0;
 };

@@ -132,7 +132,7 @@ int main()
     const auto off_id = service.AddSlot(profile_id.Value(), off);
     Check(static_cast<bool>(off_id), "off slot creation failed");
 
-    const auto slot_changes = service.ChangesSince(0);
+    const auto slot_changes = service.ReadChangesSince(ChangeCursor{}).changes;
     Check(std::count_if(slot_changes.begin(), slot_changes.end(), [](const auto& change) {
               return change.kind == EquipmentChangeKind::SlotAdded;
           }) == 2,
@@ -190,7 +190,7 @@ int main()
     EquipmentSlotDefinition second;
     second.type = EquipmentSlotTypeId::FromString("second");
     Check(static_cast<bool>(bounded.AddSlot(journal_profile_id.Value(), second)), "journal second slot failed");
-    const auto batch = bounded.ReadChangesSince(0);
+    const auto batch = bounded.ReadChangesSince(ChangeCursor{});
     Check(batch.snapshot_required, "bounded journal must require snapshot when the consumer fell behind retention");
     Check(batch.changes.empty(), "snapshot-required batch must not expose an incomplete change suffix as complete history");
 

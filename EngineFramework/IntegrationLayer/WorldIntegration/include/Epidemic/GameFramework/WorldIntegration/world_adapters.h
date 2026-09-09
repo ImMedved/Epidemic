@@ -57,12 +57,15 @@ struct ActiveInteractionsQuery
 
 struct WorldFactsCheckpoint
 {
-    static constexpr std::uint32_t kSchemaVersion = 1;
+    static constexpr std::uint32_t kSchemaVersion = 2;
 
     std::uint32_t schema_version = kSchemaVersion;
     std::uint64_t world_sequence = 0;
     std::uint64_t environment_sequence = 0;
     std::uint64_t interaction_sequence = 0;
+    std::uint64_t world_epoch = 0;
+    std::uint64_t environment_epoch = 0;
+    std::uint64_t interaction_epoch = 0;
     Revision world_revision{};
     Revision environment_revision{};
     Revision interaction_revision{};
@@ -114,7 +117,7 @@ class WorldFactsAdapter
     interaction::InteractionService &interaction_;
     facts::GameplayFactsService &facts_;
     EventTypeId world_event_{}, environment_event_{}, interaction_event_{};
-    std::uint64_t wc_ = 0, ec_ = 0, ic_ = 0;
+    ChangeCursor wc_{}, ec_{}, ic_{};
 };
 
 class EntityInteractionStateProvider final : public interaction::IInteractionStateProvider
