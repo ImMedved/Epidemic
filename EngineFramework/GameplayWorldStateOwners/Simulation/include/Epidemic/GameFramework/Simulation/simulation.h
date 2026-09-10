@@ -252,6 +252,7 @@ struct SimulationSnapshot
     Revision revision{};
 
     std::uint64_t change_epoch = 1;
+    std::uint64_t next_change_sequence = 1;
 };
 struct SimulationDiagnostics
 {
@@ -330,6 +331,13 @@ class SimulationService
     [[nodiscard]] SimulationChangeBatch ReadChangesSince(ChangeCursor cursor) const
     {
         auto batch = ReadChangesSinceSequence(cursor.sequence);
+        if (!cursor.IsValid() && cursor.sequence == 0 && journal_epoch_ > 1)
+        {
+            batch.changes.clear();
+            for (const auto &change : changes_)
+                batch.changes.push_back(change);
+            batch.snapshot_required = false;
+        }
         batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
         batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
                                                                     : next_change_sequence_ - 1};
@@ -357,9 +365,12 @@ class SimulationService
     }
 
   private:
-    void Bump() noexcept
+    bool Bump() noexcept
     {
+        if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+            return false;
         ++revision_.value;
+        return true;
     }
     void Record(SimulationChange change);
     void TrimRetention() noexcept;

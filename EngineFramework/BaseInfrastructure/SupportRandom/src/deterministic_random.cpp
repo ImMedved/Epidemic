@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <exception>
+#include <stdexcept>
 
 namespace epidemic::gameplay::random
 {
@@ -30,9 +31,13 @@ RandomSeed DeriveSeed(RandomSeed root, RandomStream stream, std::uint64_t salt) 
     return RandomSeed{StableMix(root.value ^ StableMix(stream.id.Raw()) ^ StableMix(salt))};
 }
 
-RandomSequence::RandomSequence(RandomSeed seed, RandomStream stream, std::uint64_t sequence) noexcept
+RandomSequence::RandomSequence(RandomSeed seed, RandomStream stream, std::uint64_t sequence)
     : seed_(seed), stream_(stream), sequence_(sequence)
 {
+    if (!stream_.IsValid())
+    {
+        throw std::invalid_argument("random stream must be valid");
+    }
 }
 
 std::optional<RandomSequence> RandomSequence::TryFromSnapshot(RandomSequenceSnapshot snapshot) noexcept
@@ -123,8 +128,22 @@ std::optional<double> RandomSequence::TryUniformReal(double minimum, double maxi
     {
         return std::nullopt;
     }
-    const auto value = minimum + span * *unit;
-    return std::isfinite(value) ? std::optional<double>{value} : std::nullopt;
+    auto value = minimum + span * *unit;
+    if (!std::isfinite(value))
+    {
+        return std::nullopt;
+    }
+    // Floating-point rounding can turn a mathematically half-open sample into the
+    // nominal exclusive upper endpoint. Preserve the public [minimum, maximum) contract.
+    if (value >= maximum)
+    {
+        value = std::nextafter(maximum, minimum);
+        if (!(value >= minimum) || !(value < maximum))
+        {
+            return std::nullopt;
+        }
+    }
+    return value;
 }
 
 std::optional<bool> RandomSequence::TryRollMicro(std::uint32_t chance_micro) noexcept
@@ -133,7 +152,11 @@ std::optional<bool> RandomSequence::TryRollMicro(std::uint32_t chance_micro) noe
     {
         return false;
     }
-    if (chance_micro >= 1'000'000u)
+    if (chance_micro > 1'000'000u)
+    {
+        return std::nullopt;
+    }
+    if (chance_micro == 1'000'000u)
     {
         return true;
     }

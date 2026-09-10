@@ -5,8 +5,11 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <limits>
 #include <optional>
+#include <string>
+#include <type_traits>
 #include <utility>
 
 namespace epidemic::runtime::physics
@@ -22,6 +25,51 @@ template <typename TValue>
 [[nodiscard]] foundation::Result<TValue> PhysicsFailureValue(std::string_view code, std::string_view message)
 {
     return foundation::Result<TValue>::Failure(foundation::Error::Create(code, message));
+}
+
+template <typename TResult, typename TCallable>
+[[nodiscard]] TResult InvokeExternal(TCallable&& callable,
+                                     std::string_view operation)
+{
+    try
+    {
+        return std::forward<TCallable>(callable)();
+    }
+    catch (const std::exception& exception)
+    {
+        return TResult::Failure(
+            foundation::Error::Create("physics.backend_exception",
+                                      "external physics dependency threw an exception",
+                                      std::string(operation) + ": " + exception.what()));
+    }
+    catch (...)
+    {
+        return TResult::Failure(
+            foundation::Error::Create("physics.backend_exception",
+                                      "external physics dependency threw an exception",
+                                      operation));
+    }
+}
+
+[[nodiscard]] bool CanAdvanceRevision(std::uint64_t current, std::uint64_t count = 1) noexcept
+{
+    return count <= std::numeric_limits<std::uint64_t>::max() - current;
+}
+
+[[nodiscard]] bool CheckedAddDuration(RuntimeFrameDuration left,
+                                      RuntimeFrameDuration right,
+                                      RuntimeFrameDuration& result) noexcept
+{
+    const auto lhs = left.value.count();
+    const auto rhs = right.value.count();
+    using Rep = decltype(lhs);
+    if ((rhs > 0 && lhs > std::numeric_limits<Rep>::max() - rhs) ||
+        (rhs < 0 && lhs < std::numeric_limits<Rep>::min() - rhs))
+    {
+        return false;
+    }
+    result.value = std::chrono::microseconds{lhs + rhs};
+    return true;
 }
 } // namespace
 
@@ -45,14 +93,69 @@ PhysicsRuntime::~PhysicsRuntime()
     (void)Shutdown();
 }
 
+foundation::Result<void> PhysicsRuntime::DrainPendingBackendCleanup()
+{
+    if (!backend_ || backend_.get() == this)
+    {
+        pending_backend_body_cleanup_.clear();
+        pending_backend_shape_cleanup_.clear();
+        return foundation::Result<void>::Success();
+    }
+
+    std::optional<foundation::Error> first;
+    for (auto iterator = pending_backend_body_cleanup_.begin(); iterator != pending_backend_body_cleanup_.end();)
+    {
+        const auto destroyed = InvokeExternal<foundation::Result<void>>(
+            [&] { return backend_->DestroyBody(*iterator); },
+            "DestroyBody pending rollback");
+        if (destroyed)
+        {
+            iterator = pending_backend_body_cleanup_.erase(iterator);
+        }
+        else
+        {
+            if (!first)
+            {
+                first = destroyed.GetError();
+            }
+            ++iterator;
+        }
+    }
+    for (auto iterator = pending_backend_shape_cleanup_.begin(); iterator != pending_backend_shape_cleanup_.end();)
+    {
+        const auto destroyed = InvokeExternal<foundation::Result<void>>(
+            [&] { return backend_->DestroyShape(*iterator); },
+            "DestroyShape pending rollback");
+        if (destroyed)
+        {
+            iterator = pending_backend_shape_cleanup_.erase(iterator);
+        }
+        else
+        {
+            if (!first)
+            {
+                first = destroyed.GetError();
+            }
+            ++iterator;
+        }
+    }
+    return first ? foundation::Result<void>::Failure(*first) : foundation::Result<void>::Success();
+}
+
 foundation::Result<void> PhysicsRuntime::Shutdown()
 {
+    if (const auto pending = DrainPendingBackendCleanup(); !pending)
+    {
+        return pending;
+    }
     if (backend_ && backend_.get() != this)
     {
         std::optional<foundation::Error> first_error;
         for (auto iterator = bodies_.begin(); iterator != bodies_.end();)
         {
-            const auto destroyed = backend_->DestroyBody(iterator->second.backend_handle);
+            const auto destroyed = InvokeExternal<foundation::Result<void>>(
+                [&] { return backend_->DestroyBody(iterator->second.backend_handle); },
+                "DestroyBody during shutdown");
             if (!destroyed && !first_error)
             {
                 first_error = destroyed.GetError();
@@ -71,7 +174,9 @@ foundation::Result<void> PhysicsRuntime::Shutdown()
         }
         for (auto iterator = shapes_.begin(); iterator != shapes_.end();)
         {
-            const auto destroyed = backend_->DestroyShape(iterator->second.backend_handle);
+            const auto destroyed = InvokeExternal<foundation::Result<void>>(
+                [&] { return backend_->DestroyShape(iterator->second.backend_handle); },
+                "DestroyShape during shutdown");
             if (!destroyed && !first_error)
             {
                 first_error = destroyed.GetError();
@@ -81,6 +186,7 @@ foundation::Result<void> PhysicsRuntime::Shutdown()
                 ++iterator;
                 continue;
             }
+            backend_to_shape_.erase(iterator->second.backend_handle.value);
             iterator = shapes_.erase(iterator);
         }
         if (first_error)
@@ -92,8 +198,10 @@ foundation::Result<void> PhysicsRuntime::Shutdown()
     {
         bodies_.clear();
         shapes_.clear();
+        backend_to_shape_.clear();
         backend_to_body_.clear();
     }
+    pending_transform_projections_.clear();
     return foundation::Result<void>::Success();
 }
 
@@ -107,11 +215,35 @@ foundation::Result<void> PhysicsRuntime::RegisterShape(const CollisionShapeDesc&
     {
         return PhysicsFailure("physics.duplicate_shape", "collision shape id is already registered");
     }
+    if (const auto pending = DrainPendingBackendCleanup(); !pending)
+    {
+        return pending;
+    }
+
+    const bool uses_external_backend = backend_ && backend_.get() != this;
+    if (!uses_external_backend && !CanAllocateMonotonicId(next_backend_shape_value_))
+    {
+        return PhysicsFailure("physics.backend_shape_id_overflow", "backend shape id allocator is exhausted");
+    }
+
+    try
+    {
+        shapes_.reserve(shapes_.size() + 1);
+        backend_to_shape_.reserve(backend_to_shape_.size() + 1);
+        pending_backend_shape_cleanup_.reserve(pending_backend_shape_cleanup_.size() + 1);
+    }
+    catch (const std::bad_alloc&)
+    {
+        return PhysicsFailure("physics.allocation_failure", "could not reserve collision-shape bookkeeping");
+    }
 
     BackendShapeHandle backend_shape{};
-    if (backend_ && backend_.get() != this)
+    std::uint64_t next_backend_shape_candidate = next_backend_shape_value_;
+    if (uses_external_backend)
     {
-        const auto created = backend_->CreateShape(desc);
+        const auto created = InvokeExternal<foundation::Result<BackendShapeHandle>>(
+            [&] { return backend_->CreateShape(desc); },
+            "CreateShape");
         if (!created)
         {
             return foundation::Result<void>::Failure(created.GetError());
@@ -124,26 +256,76 @@ foundation::Result<void> PhysicsRuntime::RegisterShape(const CollisionShapeDesc&
     }
     else
     {
-        const auto allocated = AllocateMonotonicId(
-            next_backend_shape_value_,
-            "physics.backend_shape_id_overflow",
-            "backend shape id allocator is exhausted");
-        if (!allocated)
-        {
-            return foundation::Result<void>::Failure(allocated.GetError());
-        }
-        backend_shape = BackendShapeHandle{allocated.Value()};
+        backend_shape = BackendShapeHandle{next_backend_shape_candidate};
+        next_backend_shape_candidate = next_backend_shape_candidate == std::numeric_limits<std::uint64_t>::max()
+                                           ? 0
+                                           : next_backend_shape_candidate + 1;
     }
-    const auto [shape_iterator, inserted] = shapes_.emplace(desc.id, ShapeRecord{desc, backend_shape});
-    if (!inserted)
+
+    auto rollback_backend = [&]() -> foundation::Result<void> {
+        if (!uses_external_backend)
+        {
+            return foundation::Result<void>::Success();
+        }
+        const auto destroyed = InvokeExternal<foundation::Result<void>>(
+            [&] { return backend_->DestroyShape(backend_shape); },
+            "DestroyShape rollback");
+        if (!destroyed)
+        {
+            pending_backend_shape_cleanup_.push_back(backend_shape);
+            return PhysicsFailure("physics.cleanup_pending", "backend shape rollback is pending");
+        }
+        return foundation::Result<void>::Success();
+    };
+
+    if (fail_next_shape_publication_for_testing_)
     {
-        if (backend_ && backend_.get() != this)
-        {
-            (void)backend_->DestroyShape(backend_shape);
-        }
-        return PhysicsFailure("physics.duplicate_shape", "collision shape id is already registered");
+        fail_next_shape_publication_for_testing_ = false;
+        const auto cleanup = rollback_backend();
+        return cleanup ? PhysicsFailure("physics.allocation_failure", "simulated collision-shape publication failure")
+                       : cleanup;
     }
-    (void)shape_iterator;
+
+    if (backend_to_shape_.contains(backend_shape.value))
+    {
+        const auto cleanup = rollback_backend();
+        return cleanup ? PhysicsFailure("physics.duplicate_backend_shape_handle", "physics backend returned a duplicate shape handle")
+                       : cleanup;
+    }
+
+    try
+    {
+        const auto [shape_iterator, inserted] = shapes_.emplace(desc.id, ShapeRecord{desc, backend_shape});
+        if (!inserted)
+        {
+            const auto cleanup = rollback_backend();
+            return cleanup ? PhysicsFailure("physics.duplicate_shape", "collision shape id is already registered")
+                           : cleanup;
+        }
+        (void)shape_iterator;
+        const auto [backend_iterator, backend_inserted] = backend_to_shape_.emplace(backend_shape.value, desc.id);
+        if (!backend_inserted)
+        {
+            shapes_.erase(desc.id);
+            const auto cleanup = rollback_backend();
+            return cleanup ? PhysicsFailure("physics.duplicate_backend_shape_handle", "physics backend returned a duplicate shape handle")
+                           : cleanup;
+        }
+        (void)backend_iterator;
+    }
+    catch (const std::bad_alloc&)
+    {
+        shapes_.erase(desc.id);
+        backend_to_shape_.erase(backend_shape.value);
+        const auto cleanup = rollback_backend();
+        return cleanup ? PhysicsFailure("physics.allocation_failure", "could not publish collision-shape bookkeeping")
+                       : cleanup;
+    }
+
+    if (!uses_external_backend)
+    {
+        next_backend_shape_value_ = next_backend_shape_candidate;
+    }
     return foundation::Result<void>::Success();
 }
 
@@ -173,12 +355,15 @@ foundation::Result<void> PhysicsRuntime::UnregisterShape(CollisionShapeId id)
     }
     if (backend_ && backend_.get() != this)
     {
-        const auto destroyed = backend_->DestroyShape(iterator->second.backend_handle);
+        const auto destroyed = InvokeExternal<foundation::Result<void>>(
+            [&] { return backend_->DestroyShape(iterator->second.backend_handle); },
+            "DestroyShape");
         if (!destroyed)
         {
             return destroyed;
         }
     }
+    backend_to_shape_.erase(iterator->second.backend_handle.value);
     shapes_.erase(iterator);
     return foundation::Result<void>::Success();
 }
@@ -193,9 +378,21 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     {
         return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_transform", "physics body must reference a valid transform projection");
     }
+    if (!desc.shape.IsValid())
+    {
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_shape", "physics body shape id must be valid");
+    }
+    if (!IsValidBodyType(desc.type))
+    {
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_body_type", "physics body type is outside the declared enum domain");
+    }
     if (!std::isfinite(desc.mass) || desc.mass < 0.0f || (desc.type == PhysicsBodyType::Dynamic && desc.mass <= 0.0f))
     {
         return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_mass", "physics body mass must be finite and positive for dynamic bodies");
+    }
+    if (!IsValidTransform(desc.initial_transform))
+    {
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_transform", "physics initial transform must contain finite valid TRS values");
     }
 
     const auto shape_it = shapes_.find(desc.shape);
@@ -203,32 +400,62 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     {
         return PhysicsFailureValue<PhysicsBodyHandle>("physics.shape_not_found", "physics body requires a registered collision shape");
     }
+    if (const auto pending = DrainPendingBackendCleanup(); !pending)
+    {
+        return foundation::Result<PhysicsBodyHandle>::Failure(pending.GetError());
+    }
 
     Transform initial_transform = desc.initial_transform;
     if (transform_source_)
     {
-        const auto transform = transform_source_->ReadTransform(desc.transform_node);
+        const auto transform = InvokeExternal<foundation::Result<Transform>>(
+            [&] { return transform_source_->ReadTransform(desc.transform_node); },
+            "ReadTransform for body creation");
         if (!transform)
         {
             return foundation::Result<PhysicsBodyHandle>::Failure(transform.GetError());
         }
+        if (!IsValidTransform(transform.Value()))
+        {
+            return PhysicsFailureValue<PhysicsBodyHandle>("physics.invalid_transform", "physics transform source returned invalid TRS values");
+        }
         initial_transform = transform.Value();
     }
 
-    PhysicsBodyDesc backend_desc = desc;
-    backend_desc.initial_transform = initial_transform;
     const bool uses_external_backend = backend_ && backend_.get() != this;
     if (!CanAllocateMonotonicId(next_body_value_) || !CanAllocateMonotonicId(next_body_generation_) ||
         (!uses_external_backend && !CanAllocateMonotonicId(next_backend_body_value_)) ||
-        revision_ == std::numeric_limits<std::uint64_t>::max())
+        !CanAdvanceRevision(revision_))
     {
-        return PhysicsFailureValue<PhysicsBodyHandle>("physics.body_id_overflow", "physics body id allocator is exhausted");
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.body_id_overflow", "physics body id/generation/revision allocator is exhausted");
     }
 
+    try
+    {
+        bodies_.reserve(bodies_.size() + 1);
+        backend_to_body_.reserve(backend_to_body_.size() + 1);
+        pending_backend_body_cleanup_.reserve(pending_backend_body_cleanup_.size() + 1);
+    }
+    catch (const std::bad_alloc&)
+    {
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.allocation_failure", "could not reserve physics body bookkeeping");
+    }
+
+    const std::uint64_t body_value = next_body_value_;
+    const std::uint32_t body_generation = next_body_generation_;
+    const std::uint64_t next_body_after = body_value == std::numeric_limits<std::uint64_t>::max() ? 0 : body_value + 1;
+    const std::uint32_t next_generation_after = body_generation == std::numeric_limits<std::uint32_t>::max() ? 0 : body_generation + 1;
+    const PhysicsBodyHandle handle{PhysicsBodyId{body_value}, body_generation};
+
+    PhysicsBodyDesc backend_desc = desc;
+    backend_desc.initial_transform = initial_transform;
     BackendBodyHandle backend_handle{};
+    std::uint64_t next_backend_body_after = next_backend_body_value_;
     if (uses_external_backend)
     {
-        const auto backend_body = backend_->CreateBody(backend_desc, shape_it->second.backend_handle);
+        const auto backend_body = InvokeExternal<foundation::Result<BackendBodyHandle>>(
+            [&] { return backend_->CreateBody(backend_desc, shape_it->second.backend_handle); },
+            "CreateBody");
         if (!backend_body)
         {
             return foundation::Result<PhysicsBodyHandle>::Failure(backend_body.GetError());
@@ -241,28 +468,43 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     }
     else
     {
-        const auto backend_value = AllocateMonotonicId(
-            next_backend_body_value_,
-            "physics.backend_body_id_overflow",
-            "backend body id allocator is exhausted");
-        if (!backend_value)
-        {
-            return foundation::Result<PhysicsBodyHandle>::Failure(backend_value.GetError());
-        }
-        backend_handle = BackendBodyHandle{backend_value.Value()};
+        backend_handle = BackendBodyHandle{next_backend_body_value_};
+        next_backend_body_after = next_backend_body_value_ == std::numeric_limits<std::uint64_t>::max()
+                                      ? 0
+                                      : next_backend_body_value_ + 1;
     }
 
-    const auto body_value = AllocateMonotonicId(next_body_value_, "physics.body_id_overflow", "physics body id allocator is exhausted");
-    const auto body_generation = AllocateMonotonicId(next_body_generation_, "physics.body_id_overflow", "physics body generation allocator is exhausted");
-    if (!body_value || !body_generation)
-    {
-        if (uses_external_backend)
+    auto rollback_backend = [&]() -> foundation::Result<void> {
+        if (!uses_external_backend)
         {
-            (void)backend_->DestroyBody(backend_handle);
+            return foundation::Result<void>::Success();
         }
-        return PhysicsFailureValue<PhysicsBodyHandle>("physics.body_id_overflow", "physics body id allocator is exhausted");
+        const auto destroyed = InvokeExternal<foundation::Result<void>>(
+            [&] { return backend_->DestroyBody(backend_handle); },
+            "DestroyBody rollback");
+        if (!destroyed)
+        {
+            pending_backend_body_cleanup_.push_back(backend_handle);
+            return PhysicsFailure("physics.cleanup_pending", "backend body rollback is pending");
+        }
+        return foundation::Result<void>::Success();
+    };
+
+    if (fail_next_body_publication_for_testing_)
+    {
+        fail_next_body_publication_for_testing_ = false;
+        const auto cleanup = rollback_backend();
+        return cleanup ? PhysicsFailureValue<PhysicsBodyHandle>("physics.allocation_failure", "simulated physics body publication failure")
+                       : foundation::Result<PhysicsBodyHandle>::Failure(cleanup.GetError());
     }
-    const PhysicsBodyHandle handle{PhysicsBodyId{body_value.Value()}, body_generation.Value()};
+
+    if (backend_to_body_.contains(backend_handle))
+    {
+        const auto cleanup = rollback_backend();
+        return cleanup ? PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_backend_body_handle", "physics backend returned a duplicate body handle")
+                       : foundation::Result<PhysicsBodyHandle>::Failure(cleanup.GetError());
+    }
+
     BodyRecord record{};
     record.handle = handle;
     record.backend_handle = backend_handle;
@@ -271,36 +513,45 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
     record.dirty = PhysicsDirtyFlags::Transform | PhysicsDirtyFlags::Shape;
     record.world_transform = initial_transform;
     record.bounds = TransformAabb(record.world_transform, shape_it->second.desc.local_bounds);
-    record.revision = ++revision_;
-    if (backend_to_body_.contains(backend_handle))
+    record.revision = revision_ + 1;
+
+    try
     {
-        if (uses_external_backend)
+        const auto [body_iterator, body_inserted] = bodies_.emplace(handle.id, record);
+        if (!body_inserted)
         {
-            (void)backend_->DestroyBody(backend_handle);
+            const auto cleanup = rollback_backend();
+            return cleanup ? PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_body_id", "allocated physics body id already exists")
+                           : foundation::Result<PhysicsBodyHandle>::Failure(cleanup.GetError());
         }
-        return PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_backend_body_handle", "physics backend returned a duplicate body handle");
-    }
-    const auto [body_iterator, body_inserted] = bodies_.emplace(handle.id, record);
-    if (!body_inserted)
-    {
-        if (uses_external_backend)
+        (void)body_iterator;
+        const auto [backend_iterator, backend_inserted] = backend_to_body_.emplace(backend_handle, handle.id);
+        if (!backend_inserted)
         {
-            (void)backend_->DestroyBody(backend_handle);
+            bodies_.erase(handle.id);
+            const auto cleanup = rollback_backend();
+            return cleanup ? PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_backend_body_handle", "physics backend returned a duplicate body handle")
+                           : foundation::Result<PhysicsBodyHandle>::Failure(cleanup.GetError());
         }
-        return PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_body_id", "allocated physics body id already exists");
+        (void)backend_iterator;
     }
-    (void)body_iterator;
-    const auto [backend_iterator, backend_inserted] = backend_to_body_.emplace(backend_handle, handle.id);
-    if (!backend_inserted)
+    catch (const std::bad_alloc&)
     {
+        backend_to_body_.erase(backend_handle);
         bodies_.erase(handle.id);
-        if (uses_external_backend)
-        {
-            (void)backend_->DestroyBody(backend_handle);
-        }
-        return PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_backend_body_handle", "physics backend returned a duplicate body handle");
+        const auto cleanup = rollback_backend();
+        return cleanup ? PhysicsFailureValue<PhysicsBodyHandle>("physics.allocation_failure", "could not publish physics body bookkeeping")
+                       : foundation::Result<PhysicsBodyHandle>::Failure(cleanup.GetError());
     }
-    (void)backend_iterator;
+
+    // Commit allocator/revision state only after every local ownership mapping exists.
+    next_body_value_ = next_body_after;
+    next_body_generation_ = next_generation_after;
+    if (!uses_external_backend)
+    {
+        next_backend_body_value_ = next_backend_body_after;
+    }
+    ++revision_;
     return foundation::Result<PhysicsBodyHandle>::Success(handle);
 }
 
@@ -312,9 +563,16 @@ foundation::Result<void> PhysicsRuntime::DestroyBody(PhysicsBodyHandle handle)
         return ValidateHandle(handle);
     }
 
+    if (!CanAdvanceRevision(revision_))
+    {
+        return PhysicsFailure("physics.revision_overflow", "physics revision is exhausted");
+    }
+
     if (backend_ && backend_.get() != this)
     {
-        const auto destroyed = backend_->DestroyBody(body->backend_handle);
+        const auto destroyed = InvokeExternal<foundation::Result<void>>(
+            [&] { return backend_->DestroyBody(body->backend_handle); },
+            "DestroyBody");
         if (!destroyed)
         {
             return destroyed;
@@ -342,10 +600,16 @@ foundation::Result<void> PhysicsRuntime::ApplyImpulse(PhysicsBodyHandle handle, 
     {
         return PhysicsFailure("physics.impulse_not_allowed", "impulse can only be applied to movable enabled bodies");
     }
+    if (!CanAdvanceRevision(revision_))
+    {
+        return PhysicsFailure("physics.revision_overflow", "physics revision is exhausted");
+    }
 
     if (backend_ && backend_.get() != this)
     {
-        const auto applied = backend_->ApplyImpulse(body->backend_handle, impulse);
+        const auto applied = InvokeExternal<foundation::Result<void>>(
+            [&] { return backend_->ApplyImpulse(body->backend_handle, impulse); },
+            "ApplyImpulse");
         if (!applied)
         {
             return applied;
@@ -371,7 +635,9 @@ foundation::Result<PhysicsBodySnapshot> PhysicsRuntime::GetBodySnapshot(PhysicsB
 
     if (backend_ && backend_.get() != this)
     {
-        const auto snapshot = backend_->GetBodySnapshot(body->backend_handle);
+        const auto snapshot = InvokeExternal<foundation::Result<BackendBodySnapshot>>(
+            [&] { return backend_->GetBodySnapshot(body->backend_handle); },
+            "GetBodySnapshot");
         if (!snapshot)
         {
             return foundation::Result<PhysicsBodySnapshot>::Failure(snapshot.GetError());
@@ -403,7 +669,31 @@ foundation::Result<PhysicsStepResult> PhysicsRuntime::Tick(RuntimeFrameDuration 
         return PhysicsFailureValue<PhysicsStepResult>("physics.invalid_step", "physics tick delta must not be negative");
     }
 
-    accumulator_.value += delta.value;
+    RuntimeFrameDuration candidate_accumulator{};
+    if (!CheckedAddDuration(accumulator_, delta, candidate_accumulator))
+    {
+        return PhysicsFailureValue<PhysicsStepResult>("physics.time_overflow", "physics fixed-step accumulator overflow");
+    }
+
+    // Preflight dropped-time arithmetic before any backend/local step can commit.
+    RuntimeFrameDuration projected_accumulator = candidate_accumulator;
+    std::uint32_t projected_substeps = 0;
+    while (fixed_step_.value.count() > 0 && projected_accumulator.value >= fixed_step_.value &&
+           projected_substeps < max_substeps_)
+    {
+        projected_accumulator.value -= fixed_step_.value;
+        ++projected_substeps;
+    }
+    if (fixed_step_.value.count() > 0 && projected_accumulator.value >= fixed_step_.value)
+    {
+        RuntimeFrameDuration ignored{};
+        if (!CheckedAddDuration(dropped_time_, projected_accumulator, ignored))
+        {
+            return PhysicsFailureValue<PhysicsStepResult>("physics.time_overflow", "physics dropped-time counter overflow");
+        }
+    }
+
+    accumulator_ = candidate_accumulator;
     std::uint32_t substeps = 0;
     while (fixed_step_.value.count() > 0 && accumulator_.value >= fixed_step_.value && substeps < max_substeps_)
     {
@@ -418,12 +708,19 @@ foundation::Result<PhysicsStepResult> PhysicsRuntime::Tick(RuntimeFrameDuration 
 
     if (fixed_step_.value.count() > 0 && accumulator_.value >= fixed_step_.value)
     {
-        dropped_time_.value += accumulator_.value;
+        RuntimeFrameDuration candidate_dropped{};
+        if (!CheckedAddDuration(dropped_time_, accumulator_, candidate_dropped))
+        {
+            return PhysicsFailureValue<PhysicsStepResult>("physics.time_overflow", "physics dropped-time counter overflow");
+        }
+        dropped_time_ = candidate_dropped;
         accumulator_.value = std::chrono::microseconds{0};
     }
 
     return foundation::Result<PhysicsStepResult>::Success(
-        PhysicsStepResult{fixed_step_, fixed_step_count_, substeps, accumulator_, dropped_time_, revision_});
+        PhysicsStepResult{fixed_step_, fixed_step_count_, substeps, accumulator_, dropped_time_, revision_,
+                          static_cast<std::uint32_t>(std::min<std::size_t>(pending_transform_projections_.size(),
+                                                                         std::numeric_limits<std::uint32_t>::max()))});
 }
 
 foundation::Result<void> PhysicsRuntime::Initialize(const PhysicsBackendOptions&)
@@ -459,9 +756,18 @@ foundation::Result<void> PhysicsRuntime::DestroyShape(BackendShapeHandle handle)
 
 foundation::Result<BackendBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBodyDesc& desc, BackendShapeHandle shape)
 {
-    if (!shape.IsValid() || !desc.owner.IsValid())
+    if (!shape.IsValid() || !desc.owner.IsValid() || !desc.transform_node.IsValid() || !desc.shape.IsValid())
     {
         return PhysicsFailureValue<BackendBodyHandle>("physics.invalid_body", "backend body requires valid shape and owner");
+    }
+    if (!IsValidBodyType(desc.type))
+    {
+        return PhysicsFailureValue<BackendBodyHandle>("physics.invalid_body_type", "backend body type is outside the declared enum domain");
+    }
+    if (!std::isfinite(desc.mass) || desc.mass < 0.0f || (desc.type == PhysicsBodyType::Dynamic && desc.mass <= 0.0f) ||
+        !IsValidTransform(desc.initial_transform))
+    {
+        return PhysicsFailureValue<BackendBodyHandle>("physics.invalid_body", "backend body descriptor contains invalid mass or transform data");
     }
     const auto allocated = AllocateMonotonicId(
         next_backend_body_value_,
@@ -483,11 +789,15 @@ foundation::Result<void> PhysicsRuntime::DestroyBody(BackendBodyHandle handle)
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> PhysicsRuntime::ApplyImpulse(BackendBodyHandle handle, const Vec3&)
+foundation::Result<void> PhysicsRuntime::ApplyImpulse(BackendBodyHandle handle, const Vec3& impulse)
 {
     if (!handle.IsValid())
     {
         return PhysicsFailure("physics.invalid_handle", "backend body handle must be valid");
+    }
+    if (!IsFinite(impulse))
+    {
+        return PhysicsFailure("physics.invalid_impulse", "backend impulse must contain finite values");
     }
     return foundation::Result<void>::Success();
 }
@@ -500,7 +810,9 @@ foundation::Result<void> PhysicsRuntime::SimulateFixed(RuntimeFrameDuration fixe
     }
     if (backend_ && backend_.get() != this)
     {
-        return backend_->SimulateFixed(fixed_delta);
+        return InvokeExternal<foundation::Result<void>>(
+            [&] { return backend_->SimulateFixed(fixed_delta); },
+            "SimulateFixed");
     }
     return foundation::Result<void>::Success();
 }
@@ -550,7 +862,9 @@ foundation::Result<RaycastHit> PhysicsRuntime::Raycast(const RaycastQuery& query
 
     if (backend_ && backend_.get() != this)
     {
-        const auto hit = backend_->RaycastBackend(normalized);
+        const auto hit = InvokeExternal<foundation::Result<BackendRaycastHit>>(
+            [&] { return backend_->RaycastBackend(normalized); },
+            "RaycastBackend");
         if (!hit)
         {
             return foundation::Result<RaycastHit>::Failure(hit.GetError());
@@ -770,6 +1084,18 @@ bool PhysicsRuntime::IsFinite(Vec3 value) noexcept
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
 
+bool PhysicsRuntime::IsValidBodyType(PhysicsBodyType value) noexcept
+{
+    switch (value)
+    {
+    case PhysicsBodyType::Static:
+    case PhysicsBodyType::Dynamic:
+    case PhysicsBodyType::Kinematic:
+        return true;
+    }
+    return false;
+}
+
 bool PhysicsRuntime::IsValidActivity(PhysicsActivityState value) noexcept
 {
     switch (value)
@@ -937,6 +1263,23 @@ foundation::Result<void> PhysicsRuntime::ValidateHandle(PhysicsBodyHandle handle
 
 foundation::Result<PhysicsStepResult> PhysicsRuntime::CompleteFixedStep(RuntimeFrameDuration fixed_delta, std::uint32_t substeps)
 {
+    const bool uses_external_backend = backend_ && backend_.get() != this;
+    const std::uint64_t body_revision_count = uses_external_backend
+                                                  ? static_cast<std::uint64_t>(bodies_.size())
+                                                  : 0;
+    if (fixed_step_count_ == std::numeric_limits<std::uint64_t>::max())
+    {
+        return PhysicsFailureValue<PhysicsStepResult>("physics.step_overflow", "physics fixed-step counter is exhausted");
+    }
+    if (body_revision_count == std::numeric_limits<std::uint64_t>::max() ||
+        !CanAdvanceRevision(revision_, body_revision_count + 1))
+    {
+        return PhysicsFailureValue<PhysicsStepResult>("physics.revision_overflow", "physics revision is exhausted");
+    }
+
+    // Retry lagging Scene projection independently from authoritative physics progress.
+    FlushPendingTransformProjections();
+
     if (!backend_step_pending_sync_)
     {
         const auto simulated = SimulateFixed(fixed_delta);
@@ -944,15 +1287,52 @@ foundation::Result<PhysicsStepResult> PhysicsRuntime::CompleteFixedStep(RuntimeF
         {
             return foundation::Result<PhysicsStepResult>::Failure(simulated.GetError());
         }
-        backend_step_pending_sync_ = backend_ && backend_.get() != this;
+        backend_step_pending_sync_ = uses_external_backend;
     }
-    std::vector<std::pair<PhysicsBodyId, BackendBodySnapshot>> backend_snapshots;
-    if (backend_ && backend_.get() != this)
+
+    struct StagedBody
     {
-        backend_snapshots.reserve(bodies_.size());
+        PhysicsBodyId id{};
+        BodyRecord record{};
+    };
+
+    std::vector<StagedBody> staged_bodies;
+    std::vector<PhysicsBodyId> ordered_ids;
+    std::vector<ContactEvent> mapped_contacts;
+    std::vector<PendingTransformProjection> candidate_projections;
+    std::uint64_t invalid_contact_delta = 0;
+
+    try
+    {
+        ordered_ids.reserve(bodies_.size());
         for (const auto& [id, body] : bodies_)
         {
-            const auto snapshot = backend_->GetBodySnapshot(body.backend_handle);
+            (void)body;
+            ordered_ids.push_back(id);
+        }
+        std::sort(ordered_ids.begin(), ordered_ids.end(), [](PhysicsBodyId left, PhysicsBodyId right) {
+            return left.value < right.value;
+        });
+        staged_bodies.reserve(ordered_ids.size());
+    }
+    catch (const std::bad_alloc&)
+    {
+        return PhysicsFailureValue<PhysicsStepResult>("physics.allocation_failure", "could not allocate fixed-step staging state");
+    }
+
+    std::uint64_t revision_cursor = revision_;
+    if (uses_external_backend)
+    {
+        for (PhysicsBodyId id : ordered_ids)
+        {
+            const auto body = bodies_.find(id);
+            if (body == bodies_.end())
+            {
+                return PhysicsFailureValue<PhysicsStepResult>("physics.body_state_changed", "physics body disappeared during fixed-step staging");
+            }
+            const auto snapshot = InvokeExternal<foundation::Result<BackendBodySnapshot>>(
+                [&] { return backend_->GetBodySnapshot(body->second.backend_handle); },
+                "GetBodySnapshot during fixed step");
             if (!snapshot)
             {
                 return foundation::Result<PhysicsStepResult>::Failure(snapshot.GetError());
@@ -961,75 +1341,192 @@ foundation::Result<PhysicsStepResult> PhysicsRuntime::CompleteFixedStep(RuntimeF
             {
                 return PhysicsFailureValue<PhysicsStepResult>("physics.invalid_backend_snapshot", "physics backend returned invalid body snapshot data");
             }
-            backend_snapshots.push_back(std::pair{id, snapshot.Value()});
-        }
-    }
-    for (const auto& [id, snapshot] : backend_snapshots)
-    {
-        auto body = bodies_.find(id);
-        if (body == bodies_.end())
-        {
-            continue;
-        }
-        const auto applied = ApplyBackendSnapshot(body->second, snapshot);
-        if (!applied)
-        {
-            return foundation::Result<PhysicsStepResult>::Failure(applied.GetError());
-        }
-    }
-    for (auto& [id, body] : bodies_)
-    {
-        (void)id;
-        if (body.desc.type == PhysicsBodyType::Dynamic && transform_sink_)
-        {
-            const auto written = transform_sink_->WriteTransform(body.desc.transform_node, body.world_transform);
-            if (!written)
+            const auto shape = shapes_.find(body->second.desc.shape);
+            if (shape == shapes_.end())
             {
-                return foundation::Result<PhysicsStepResult>::Failure(written.GetError());
+                return PhysicsFailureValue<PhysicsStepResult>("physics.shape_not_found", "physics body references a missing collision shape");
             }
+
+            BodyRecord staged = body->second;
+            staged.world_transform = snapshot.Value().world_transform;
+            staged.linear_velocity = snapshot.Value().linear_velocity;
+            staged.angular_velocity = snapshot.Value().angular_velocity;
+            staged.activity = snapshot.Value().activity;
+            staged.dirty = PhysicsDirtyFlags::None;
+            staged.bounds = TransformAabb(staged.world_transform, shape->second.desc.local_bounds);
+            staged.revision = ++revision_cursor;
+            staged_bodies.push_back(StagedBody{id, staged});
         }
-    }
-    if (backend_ && backend_.get() != this)
-    {
-        const auto backend_contacts = backend_->ConsumeContactEvents();
-        if (!backend_contacts)
+
+        if (!backend_contacts_pending_sync_)
         {
-            return foundation::Result<PhysicsStepResult>::Failure(backend_contacts.GetError());
+            const auto backend_contacts = InvokeExternal<foundation::Result<std::vector<BackendContactEvent>>>(
+                [&] { return backend_->ConsumeContactEvents(); },
+                "ConsumeContactEvents");
+            if (!backend_contacts)
+            {
+                return foundation::Result<PhysicsStepResult>::Failure(backend_contacts.GetError());
+            }
+            pending_backend_contacts_ = std::move(backend_contacts).Value();
+            backend_contacts_pending_sync_ = true;
         }
-        std::vector<ContactEvent> mapped_contacts;
-        mapped_contacts.reserve(backend_contacts.Value().size());
-        for (const BackendContactEvent& contact : backend_contacts.Value())
+
+        try
+        {
+            mapped_contacts.reserve(pending_backend_contacts_.size());
+        }
+        catch (const std::bad_alloc&)
+        {
+            return PhysicsFailureValue<PhysicsStepResult>("physics.allocation_failure", "could not allocate contact-event staging state");
+        }
+
+        for (const BackendContactEvent& contact : pending_backend_contacts_)
         {
             if (!IsValidBackendContactPayload(contact))
             {
-                ++invalid_backend_contact_count_;
+                ++invalid_contact_delta;
                 continue;
             }
             const auto left = MapBackendBody(contact.a);
             const auto right = MapBackendBody(contact.b);
             if (!left || !right)
             {
-                ++invalid_backend_contact_count_;
+                ++invalid_contact_delta;
                 continue;
             }
-            mapped_contacts.push_back(ContactEvent{left.Value(), right.Value(), contact.point, contact.normal, contact.impulse, contact.state});
+            mapped_contacts.push_back(ContactEvent{left.Value(), right.Value(), contact.point, contact.normal,
+                                                   contact.impulse, contact.state});
         }
-        contacts_.insert(contacts_.end(), mapped_contacts.begin(), mapped_contacts.end());
     }
-    backend_step_pending_sync_ = false;
-    if (fixed_step_count_ == std::numeric_limits<std::uint64_t>::max() || revision_ == std::numeric_limits<std::uint64_t>::max())
+
+    try
     {
-        return PhysicsFailureValue<PhysicsStepResult>("physics.revision_overflow", "physics step counter or revision overflow");
+        if (mapped_contacts.size() > contacts_.max_size() - contacts_.size())
+        {
+            return PhysicsFailureValue<PhysicsStepResult>("physics.contact_capacity_overflow", "physics contact buffer size overflow");
+        }
+        contacts_.reserve(contacts_.size() + mapped_contacts.size());
+
+        candidate_projections = pending_transform_projections_;
+        candidate_projections.reserve(candidate_projections.size() + bodies_.size());
+
+        auto stage_projection = [&](PhysicsTransformId id, const Transform& transform) {
+            const auto existing = std::find_if(candidate_projections.begin(), candidate_projections.end(),
+                                               [&](const PendingTransformProjection& pending) {
+                                                   return pending.id == id;
+                                               });
+            if (existing != candidate_projections.end())
+            {
+                existing->transform = transform;
+            }
+            else
+            {
+                candidate_projections.push_back(PendingTransformProjection{id, transform});
+            }
+        };
+
+        if (uses_external_backend)
+        {
+            for (const StagedBody& staged : staged_bodies)
+            {
+                if (staged.record.desc.type == PhysicsBodyType::Dynamic && transform_sink_)
+                {
+                    stage_projection(staged.record.desc.transform_node, staged.record.world_transform);
+                }
+            }
+        }
+        else
+        {
+            for (PhysicsBodyId id : ordered_ids)
+            {
+                const auto body = bodies_.find(id);
+                if (body != bodies_.end() && body->second.desc.type == PhysicsBodyType::Dynamic && transform_sink_)
+                {
+                    stage_projection(body->second.desc.transform_node, body->second.world_transform);
+                }
+            }
+        }
     }
+    catch (const std::bad_alloc&)
+    {
+        return PhysicsFailureValue<PhysicsStepResult>("physics.allocation_failure", "could not allocate fixed-step commit buffers");
+    }
+
+    // All fallible validation/allocation work is complete. Commit local authoritative state.
+    if (uses_external_backend)
+    {
+        for (const StagedBody& staged : staged_bodies)
+        {
+            auto body = bodies_.find(staged.id);
+            if (body != bodies_.end())
+            {
+                body->second = staged.record;
+            }
+        }
+    }
+    contacts_.insert(contacts_.end(), mapped_contacts.begin(), mapped_contacts.end());
+    invalid_backend_contact_count_ += invalid_contact_delta;
+    pending_backend_contacts_.clear();
+    backend_contacts_pending_sync_ = false;
+    backend_step_pending_sync_ = false;
+
+    ++revision_cursor; // revision for the fixed-step commit itself
+    revision_ = revision_cursor;
     ++fixed_step_count_;
-    ++revision_;
+
+    pending_transform_projections_.swap(candidate_projections);
+    FlushPendingTransformProjections();
+
     return foundation::Result<PhysicsStepResult>::Success(
-        PhysicsStepResult{fixed_delta, fixed_step_count_, substeps, accumulator_, dropped_time_, revision_});
+        PhysicsStepResult{fixed_delta,
+                          fixed_step_count_,
+                          substeps,
+                          accumulator_,
+                          dropped_time_,
+                          revision_,
+                          static_cast<std::uint32_t>(std::min<std::size_t>(pending_transform_projections_.size(),
+                                                                         std::numeric_limits<std::uint32_t>::max()))});
+}
+
+void PhysicsRuntime::FlushPendingTransformProjections() noexcept
+{
+    if (!transform_sink_)
+    {
+        pending_transform_projections_.clear();
+        return;
+    }
+
+    for (std::size_t index = 0; index < pending_transform_projections_.size();)
+    {
+        bool completed = false;
+        try
+        {
+            const auto written = transform_sink_->WriteTransform(pending_transform_projections_[index].id,
+                                                                 pending_transform_projections_[index].transform);
+            completed = written.HasValue();
+        }
+        catch (...)
+        {
+            completed = false;
+        }
+
+        if (completed)
+        {
+            pending_transform_projections_.erase(pending_transform_projections_.begin() +
+                                                 static_cast<std::ptrdiff_t>(index));
+        }
+        else
+        {
+            ++index;
+        }
+    }
 }
 
 foundation::Result<void> PhysicsRuntime::SynchronizeBackendBody(BodyRecord& body)
 {
-    const auto snapshot = backend_->GetBodySnapshot(body.backend_handle);
+    const auto snapshot = InvokeExternal<foundation::Result<BackendBodySnapshot>>(
+        [&] { return backend_->GetBodySnapshot(body.backend_handle); },
+        "GetBodySnapshot during body synchronization");
     if (!snapshot)
     {
         return foundation::Result<void>::Failure(snapshot.GetError());
@@ -1048,21 +1545,24 @@ foundation::Result<void> PhysicsRuntime::ApplyBackendSnapshot(BodyRecord& body, 
     {
         return PhysicsFailure("physics.invalid_backend_snapshot", "physics backend returned invalid body snapshot data");
     }
+    if (!CanAdvanceRevision(revision_))
+    {
+        return PhysicsFailure("physics.revision_overflow", "physics revision overflow");
+    }
+    const auto shape = shapes_.find(body.desc.shape);
+    if (shape == shapes_.end())
+    {
+        return PhysicsFailure("physics.shape_not_found", "physics body references a missing collision shape");
+    }
+    const Aabb staged_bounds = TransformAabb(snapshot.world_transform, shape->second.desc.local_bounds);
+
     body.world_transform = snapshot.world_transform;
     body.linear_velocity = snapshot.linear_velocity;
     body.angular_velocity = snapshot.angular_velocity;
     body.activity = snapshot.activity;
     body.dirty = PhysicsDirtyFlags::None;
-    if (revision_ == std::numeric_limits<std::uint64_t>::max())
-    {
-        return PhysicsFailure("physics.revision_overflow", "physics revision overflow");
-    }
+    body.bounds = staged_bounds;
     body.revision = ++revision_;
-    const auto shape = shapes_.find(body.desc.shape);
-    if (shape != shapes_.end())
-    {
-        body.bounds = TransformAabb(body.world_transform, shape->second.desc.local_bounds);
-    }
     return foundation::Result<void>::Success();
 }
 } // namespace epidemic::runtime::physics

@@ -70,6 +70,23 @@ namespace
         definition.rank_thresholds_micro.begin());
 }
 
+
+[[nodiscard]] bool IsValidModifierOperation(ModifierOperation operation) noexcept
+{
+    switch (operation)
+    {
+    case ModifierOperation::BaseAdd:
+    case ModifierOperation::BaseMultiply:
+    case ModifierOperation::FinalAdd:
+    case ModifierOperation::FinalMultiply:
+    case ModifierOperation::Override:
+    case ModifierOperation::ClampMin:
+    case ModifierOperation::ClampMax:
+        return true;
+    }
+    return false;
+}
+
 [[nodiscard]] bool StrictlyIncreasing(const std::vector<std::int64_t>& values) noexcept
 {
     for (std::size_t i = 1; i < values.size(); ++i)
@@ -278,7 +295,8 @@ foundation::Result<void> ProgressionService::EnsureProfile(GameplayObjectRef sub
         return foundation::Result<void>::Success();
     Profile profile;
     profile.subject = subject;
-    Bump(profile);
+    if (!Bump(profile))
+        return foundation::Result<void>::Failure(Error("gameplay.progression.revision_exhausted", "progression revision exhausted"));
     profiles_.emplace(subject, std::move(profile));
     Record({0, ProgressionChangeKind::ProfileCreated, subject, {}, {}, {}, {}, revision_, context});
     return foundation::Result<void>::Success();
@@ -294,6 +312,8 @@ foundation::Result<void> ProgressionService::RemoveProfile(GameplayObjectRef sub
         return foundation::Result<void>::Failure(
             Error("gameplay.progression.profile_reserved", "profile has an active progress reservation"));
     profiles_.erase(it);
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(Error("gameplay.progression.revision_exhausted", "progression revision exhausted"));
     ++revision_.value;
     Record({0, ProgressionChangeKind::ProfileRemoved, subject, {}, {}, {}, {}, revision_, context});
     return foundation::Result<void>::Success();
@@ -322,22 +342,29 @@ bool ProgressionService::HasPendingProgressGrant(GameplayObjectRef subject) cons
                        [&](const auto& entry) { return entry.second.subject == subject; });
 }
 
-void ProgressionService::Bump(Profile& profile) noexcept
+bool ProgressionService::CanBump(const Profile& profile) const noexcept
 {
+    return revision_.value != std::numeric_limits<std::uint64_t>::max() &&
+           profile.revision.value != std::numeric_limits<std::uint64_t>::max();
+}
+
+bool ProgressionService::Bump(Profile& profile) noexcept
+{
+    if (!CanBump(profile))
+        return false;
     ++revision_.value;
     ++profile.revision.value;
+    return true;
 }
 
 void ProgressionService::Record(ProgressionChange change)
 {
     if (next_change_sequence_ == 0)
         return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
+    const auto assigned = next_change_sequence_;
+    change.sequence = assigned;
     changes_.push_back(std::move(change));
+    next_change_sequence_ = assigned == std::numeric_limits<std::uint64_t>::max() ? 0 : assigned + 1;
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();
 }
@@ -437,7 +464,7 @@ foundation::Result<ProgressionModifierId> ProgressionService::AddModifier(Gamepl
                                                                           GameplayContext context)
 {
     auto* profile = FindProfile(subject);
-    if (profile == nullptr || !attributes_.contains(modifier.target))
+    if (profile == nullptr || !attributes_.contains(modifier.target) || !IsValidModifierOperation(modifier.operation))
         return foundation::Result<ProgressionModifierId>::Failure(
             Error("gameplay.progression.modifier_invalid", "profile or target attribute missing"));
     if (!modifier.id.IsValid())
@@ -457,6 +484,8 @@ foundation::Result<ProgressionModifierId> ProgressionService::AddModifier(Gamepl
     }
     const auto id = modifier.id;
     AdvanceGeneratorPast(modifier_ids_, id.value);
+    if (!CanBump(*profile))
+        return foundation::Result<ProgressionModifierId>::Failure(Error("gameplay.progression.revision_exhausted", "progression revision exhausted"));
     profile->modifiers.push_back(std::move(modifier));
     Bump(*profile);
     Record({0, ProgressionChangeKind::ModifierAdded, subject, {}, {}, {}, id, revision_, context});
@@ -472,6 +501,8 @@ foundation::Result<void> ProgressionService::RemoveModifier(GameplayObjectRef su
     const auto it = std::find_if(p->modifiers.begin(), p->modifiers.end(), [&](const auto& m) { return m.id == modifier; });
     if (it == p->modifiers.end())
         return foundation::Result<void>::Failure(Error("gameplay.progression.modifier_missing", "modifier missing"));
+    if (!CanBump(*p))
+        return foundation::Result<void>::Failure(Error("gameplay.progression.revision_exhausted", "progression revision exhausted"));
     p->modifiers.erase(it);
     Bump(*p);
     Record({0, ProgressionChangeKind::ModifierRemoved, subject, {}, {}, {}, modifier, revision_, context});
@@ -517,7 +548,7 @@ foundation::Result<std::vector<ProgressionModifierId>> ProgressionService::Repla
     ids.reserve(modifiers.size());
     for (auto& modifier : modifiers)
     {
-        if (!attributes_.contains(modifier.target) || (modifier.source.IsValid() && modifier.source != source))
+        if (!attributes_.contains(modifier.target) || !IsValidModifierOperation(modifier.operation) || (modifier.source.IsValid() && modifier.source != source))
             return foundation::Result<std::vector<ProgressionModifierId>>::Failure(
                 Error("gameplay.progression.modifier_invalid", "replacement modifier target or source is invalid"));
         modifier.source = source;
@@ -544,13 +575,17 @@ foundation::Result<std::vector<ProgressionModifierId>> ProgressionService::Repla
         ids.push_back(modifier.id);
     }
 
-    modifier_ids_.Restore(staged_generator.GetSnapshot());
-    profile->modifiers.erase(
-        std::remove_if(profile->modifiers.begin(), profile->modifiers.end(),
+    if (!CanBump(*profile))
+        return foundation::Result<std::vector<ProgressionModifierId>>::Failure(Error("gameplay.progression.revision_exhausted", "progression revision exhausted"));
+    auto staged_modifiers = profile->modifiers;
+    staged_modifiers.erase(
+        std::remove_if(staged_modifiers.begin(), staged_modifiers.end(),
                        [&](const auto& current) { return current.source == source; }),
-        profile->modifiers.end());
+        staged_modifiers.end());
     for (auto& modifier : modifiers)
-        profile->modifiers.push_back(std::move(modifier));
+        staged_modifiers.push_back(std::move(modifier));
+    modifier_ids_.Restore(staged_generator.GetSnapshot());
+    profile->modifiers = std::move(staged_modifiers);
     Bump(*profile);
     for (const auto id : removed_ids)
         Record({0, ProgressionChangeKind::ModifierRemoved, subject, {}, {}, {}, id, revision_, context});
@@ -576,25 +611,31 @@ foundation::Result<ProgressionTrackState> ProgressionService::GrantProgress(Game
         return foundation::Result<ProgressionTrackState>::Failure(
             Error("gameplay.progression.decrease_forbidden", "track policy forbids decreasing progress"));
 
-    auto& state = p->tracks[track];
-    state.id = track;
-    const auto old_progress = state.progress_micro;
-    const auto old_rank = state.rank;
-    state.progress_micro = std::clamp(AddSat(state.progress_micro, amount), d->second.policy.min_progress_micro,
+    const auto existing = p->tracks.find(track);
+    ProgressionTrackState before = existing == p->tracks.end()
+        ? ProgressionTrackState{track, d->second.policy.min_progress_micro,
+                                RankFor(d->second, d->second.policy.min_progress_micro), {}}
+        : existing->second;
+    auto after = before;
+    after.progress_micro = std::clamp(AddSat(before.progress_micro, amount), d->second.policy.min_progress_micro,
                                       d->second.policy.max_progress_micro);
-    state.rank = RankFor(d->second, state.progress_micro);
-    if (state.progress_micro == old_progress && state.rank == old_rank)
-        return foundation::Result<ProgressionTrackState>::Success(state);
-    ++state.revision.value;
+    after.rank = RankFor(d->second, after.progress_micro);
+    if (after.progress_micro == before.progress_micro && after.rank == before.rank)
+        return foundation::Result<ProgressionTrackState>::Success(before);
+    if (!CanBump(*p) || after.revision.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ProgressionTrackState>::Failure(
+            Error("gameplay.progression.revision_exhausted", "progression revision exhausted"));
+    ++after.revision.value;
+    p->tracks[track] = after;
     ++track_grants_;
     Bump(*p);
     Record({0, ProgressionChangeKind::TrackProgressChanged, subject, {}, track, {}, {}, revision_, context});
-    if (state.rank != old_rank)
+    if (after.rank != before.rank)
     {
         ++rank_changes_;
         Record({0, ProgressionChangeKind::TrackRankChanged, subject, {}, track, {}, {}, revision_, context});
     }
-    return foundation::Result<ProgressionTrackState>::Success(state);
+    return foundation::Result<ProgressionTrackState>::Success(after);
 }
 
 foundation::Result<ProgressionTrackState> ProgressionService::SetProgress(GameplayObjectRef subject,
@@ -614,26 +655,33 @@ foundation::Result<ProgressionTrackState> ProgressionService::SetProgress(Gamepl
         return foundation::Result<ProgressionTrackState>::Failure(
             Error("gameplay.progression.direct_set_forbidden", "track policy forbids direct progress assignment"));
 
-    auto& state = p->tracks[track];
-    state.id = track;
+    const auto existing = p->tracks.find(track);
+    ProgressionTrackState before = existing == p->tracks.end()
+        ? ProgressionTrackState{track, d->second.policy.min_progress_micro,
+                                RankFor(d->second, d->second.policy.min_progress_micro), {}}
+        : existing->second;
     const auto target = std::clamp(progress, d->second.policy.min_progress_micro, d->second.policy.max_progress_micro);
-    if (target < state.progress_micro && !d->second.policy.allow_decrease)
+    if (target < before.progress_micro && !d->second.policy.allow_decrease)
         return foundation::Result<ProgressionTrackState>::Failure(
             Error("gameplay.progression.decrease_forbidden", "track policy forbids decreasing progress"));
-    const auto old_rank = state.rank;
-    if (target == state.progress_micro)
-        return foundation::Result<ProgressionTrackState>::Success(state);
-    state.progress_micro = target;
-    state.rank = RankFor(d->second, target);
-    ++state.revision.value;
+    if (target == before.progress_micro)
+        return foundation::Result<ProgressionTrackState>::Success(before);
+    if (!CanBump(*p) || before.revision.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ProgressionTrackState>::Failure(
+            Error("gameplay.progression.revision_exhausted", "progression revision exhausted"));
+    auto after = before;
+    after.progress_micro = target;
+    after.rank = RankFor(d->second, target);
+    ++after.revision.value;
+    p->tracks[track] = after;
     Bump(*p);
     Record({0, ProgressionChangeKind::TrackProgressChanged, subject, {}, track, {}, {}, revision_, context});
-    if (state.rank != old_rank)
+    if (after.rank != before.rank)
     {
         ++rank_changes_;
         Record({0, ProgressionChangeKind::TrackRankChanged, subject, {}, track, {}, {}, revision_, context});
     }
-    return foundation::Result<ProgressionTrackState>::Success(state);
+    return foundation::Result<ProgressionTrackState>::Success(after);
 }
 
 foundation::Result<ProgressionTrackState> ProgressionService::GetTrack(GameplayObjectRef subject,
@@ -667,8 +715,9 @@ foundation::Result<ProgressionGrantReservationId> ProgressionService::ReservePro
         return foundation::Result<ProgressionGrantReservationId>::Failure(
             Error("gameplay.progression.decrease_forbidden", "track policy forbids decreasing progress"));
 
+    auto staged_grant_ids = grant_reservation_ids_;
     PendingProgressGrant pending;
-    pending.id = ProgressionGrantReservationId{grant_reservation_ids_.Next()};
+    pending.id = ProgressionGrantReservationId{staged_grant_ids.Next()};
     if (!pending.id.IsValid())
         return foundation::Result<ProgressionGrantReservationId>::Failure(
             Error("gameplay.progression.id_exhausted", "progress grant reservation id exhausted"));
@@ -689,8 +738,10 @@ foundation::Result<ProgressionGrantReservationId> ProgressionService::ReservePro
                                               definition->second.policy.min_progress_micro,
                                               definition->second.policy.max_progress_micro);
     pending.after.rank = RankFor(definition->second, pending.after.progress_micro);
-    pending_progress_grants_.emplace(pending.id, pending);
-    return foundation::Result<ProgressionGrantReservationId>::Success(pending.id);
+    const auto id = pending.id;
+    pending_progress_grants_.emplace(id, pending);
+    grant_reservation_ids_.Restore(staged_grant_ids.GetSnapshot());
+    return foundation::Result<ProgressionGrantReservationId>::Success(id);
 }
 
 void ProgressionService::CommitProgressGrant(ProgressionGrantReservationId reservation) noexcept
@@ -1119,6 +1170,7 @@ ProgressionSnapshot ProgressionService::CaptureSnapshot() const
 {
     ProgressionSnapshot snapshot;
     snapshot.modifier_ids = modifier_ids_.GetSnapshot();
+    snapshot.grant_reservation_ids = grant_reservation_ids_.GetSnapshot();
     snapshot.revision = revision_;
     snapshot.journal.assign(changes_.begin(), changes_.end());
     snapshot.next_change_sequence = next_change_sequence_;
@@ -1149,7 +1201,7 @@ foundation::Result<void> ProgressionService::RestoreSnapshot(ProgressionSnapshot
     const auto modifier_scope = modifier_ids_.Scope().Raw();
     for (auto& stored : snapshot.profiles)
     {
-        if (!stored.subject.IsValid() || restored_profiles.contains(stored.subject))
+        if (!stored.subject.IsValid() || stored.revision.value > snapshot.revision.value || restored_profiles.contains(stored.subject))
             return foundation::Result<void>::Failure(
                 Error("gameplay.progression.restore_invalid", "invalid or duplicate profile snapshot"));
         Profile profile;
@@ -1168,14 +1220,15 @@ foundation::Result<void> ProgressionService::RestoreSnapshot(ProgressionSnapshot
             const auto def = tracks_.find(state.id);
             if (def == tracks_.end() || profile.tracks.contains(state.id) ||
                 state.progress_micro < def->second.policy.min_progress_micro || state.progress_micro > def->second.policy.max_progress_micro ||
-                state.rank != RankFor(def->second, state.progress_micro))
+                state.rank != RankFor(def->second, state.progress_micro) ||
+                state.revision.value > stored.revision.value)
                 return foundation::Result<void>::Failure(
                     Error("gameplay.progression.restore_invalid", "invalid track snapshot"));
             profile.tracks.emplace(state.id, state);
         }
         for (const auto& modifier : stored.modifiers)
         {
-            if (!modifier.id.IsValid() || !attributes_.contains(modifier.target) ||
+            if (!modifier.id.IsValid() || !attributes_.contains(modifier.target) || !IsValidModifierOperation(modifier.operation) ||
                 !restored_modifier_ids.insert(modifier.id).second)
                 return foundation::Result<void>::Failure(
                     Error("gameplay.progression.restore_invalid", "invalid or duplicate modifier snapshot"));
@@ -1221,6 +1274,10 @@ foundation::Result<void> ProgressionService::RestoreSnapshot(ProgressionSnapshot
         restored_changes.push_back(change);
         previous = change.sequence;
     }
+    if (!ValidGeneratorSnapshot(snapshot.grant_reservation_ids, grant_reservation_ids_.Scope().Raw(), 0))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.progression.restore_invalid", "invalid progression grant reservation id generator snapshot"));
+
     if (!ValidGeneratorSnapshot(snapshot.modifier_ids, modifier_scope, max_modifier_low))
         return foundation::Result<void>::Failure(
             Error("gameplay.progression.restore_invalid", "invalid progression modifier id generator snapshot"));
@@ -1228,6 +1285,7 @@ foundation::Result<void> ProgressionService::RestoreSnapshot(ProgressionSnapshot
     profiles_.swap(restored_profiles);
     changes_.swap(restored_changes);
     modifier_ids_.Restore(snapshot.modifier_ids);
+    grant_reservation_ids_.Restore(snapshot.grant_reservation_ids);
     pending_progress_grants_.clear();
     revision_ = snapshot.revision;
     next_change_sequence_ = snapshot.next_change_sequence;

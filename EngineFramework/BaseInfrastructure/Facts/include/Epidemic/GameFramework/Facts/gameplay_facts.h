@@ -10,7 +10,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <limits>
 #include <optional>
+#include <stdexcept>
 #include <span>
 #include <mutex>
 #include <string>
@@ -170,14 +172,21 @@ class GameplayEventBatch
     template <typename TPayload>
     void Publish(EventTypeId type, GameplayContext context, GameplayObjectRef scope, GameplayObjectRef subject, TPayload payload)
     {
-        pending_.push_back(PendingEvent{type,
-                                        std::move(context),
-                                        subject,
-                                        scope,
-                                        std::any(std::move(payload)),
-                                        typeid(TPayload),
-                                        producer_,
-                                        next_local_sequence_++});
+        if (next_local_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        {
+            throw std::overflow_error("event batch local sequence is exhausted");
+        }
+        const auto sequence = next_local_sequence_;
+        PendingEvent staged{type,
+                            std::move(context),
+                            subject,
+                            scope,
+                            std::any(std::move(payload)),
+                            typeid(TPayload),
+                            producer_,
+                            sequence};
+        pending_.push_back(std::move(staged));
+        ++next_local_sequence_;
     }
 
     [[nodiscard]] ProducerId Producer() const noexcept { return producer_; }
@@ -539,14 +548,17 @@ class GameplayFactsService
             ++rejected_events_;
             return validation;
         }
-        pending_events_.push_back(PendingEvent{type,
-                                               std::move(context),
-                                               subject,
-                                               scope,
-                                               std::any(std::move(payload)),
-                                               typeid(TPayload),
-                                               producer,
-                                               next_direct_order_++});
+        const auto order = next_direct_order_;
+        PendingEvent staged{type,
+                            std::move(context),
+                            subject,
+                            scope,
+                            std::any(std::move(payload)),
+                            typeid(TPayload),
+                            producer,
+                            order};
+        pending_events_.push_back(std::move(staged));
+        ++next_direct_order_;
         ++published_events_;
         return foundation::Result<void>::Success();
     }
@@ -643,7 +655,7 @@ class GameplayFactsService
     [[nodiscard]] foundation::Result<void> ValidateEventPayload(EventTypeId type, std::type_index payload_type) const;
     [[nodiscard]] foundation::Result<void> ValidateMutation(const FactTransaction& transaction, const FactTransaction::Mutation& mutation) const;
     [[nodiscard]] foundation::Result<void> MergeSubmittedBatches();
-    void AppendHistory(const EventRecord& event);
+    void AppendHistoryTo(std::vector<EventRecord>& history, const EventRecord& event) const;
     void PublishFactChanges(const std::vector<FactChange>& changes, const GameplayContext& context, EventId source_event);
     [[nodiscard]] foundation::Result<void> ValidateSnapshot(const FactsSnapshot& snapshot) const;
     [[nodiscard]] foundation::Result<void> ValidateHistoryRecords(std::span<const EventRecord> records) const;

@@ -20,6 +20,9 @@ class WindowsPlatformRuntime final : public IPlatformRuntime, public IWindowSyst
     // Releases the internal implementation and any tracked windows.
     ~WindowsPlatformRuntime() override;
 
+    // Closes all native resources on the constructing thread. Safe to call repeatedly.
+    void Shutdown();
+
     // Returns the backend name for diagnostics and logs.
     [[nodiscard]] std::string_view Name() const override;
 

@@ -1,0 +1,51 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "base-debug",
+      "displayName": "EngineBase only",
+      "binaryDir": "${sourceDir}/build/presets/base-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON",
+        "EPIDEMIC_BUILD_RUNTIME": "OFF",
+        "EPIDEMIC_BUILD_FRAMEWORK": "OFF",
+        "EPIDEMIC_ARCHITECTURE_FREEZE_CHECKS": "ON"
+      }
+    },
+    {
+      "name": "runtime-debug",
+      "displayName": "EngineRuntime without Framework",
+      "binaryDir": "${sourceDir}/build/presets/runtime-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON",
+        "EPIDEMIC_BUILD_RUNTIME": "ON",
+        "EPIDEMIC_BUILD_FRAMEWORK": "OFF",
+        "EPIDEMIC_ARCHITECTURE_FREEZE_CHECKS": "ON"
+      }
+    },
+    {
+      "name": "full-debug",
+      "displayName": "Full engine",
+      "binaryDir": "${sourceDir}/build/presets/full-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "BUILD_TESTING": "ON",
+        "EPIDEMIC_BUILD_RUNTIME": "ON",
+        "EPIDEMIC_BUILD_FRAMEWORK": "ON",
+        "EPIDEMIC_ARCHITECTURE_FREEZE_CHECKS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "base-debug", "configurePreset": "base-debug", "configuration": "Debug" },
+    { "name": "runtime-debug", "configurePreset": "runtime-debug", "configuration": "Debug" },
+    { "name": "full-debug", "configurePreset": "full-debug", "configuration": "Debug" }
+  ],
+  "testPresets": [
+    { "name": "base-debug", "configurePreset": "base-debug", "configuration": "Debug", "output": { "outputOnFailure": true } },
+    { "name": "runtime-debug", "configurePreset": "runtime-debug", "configuration": "Debug", "output": { "outputOnFailure": true } },
+    { "name": "full-debug", "configurePreset": "full-debug", "configuration": "Debug", "output": { "outputOnFailure": true } }
+  ]
+}

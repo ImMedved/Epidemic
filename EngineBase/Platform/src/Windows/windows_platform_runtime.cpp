@@ -580,11 +580,16 @@ struct WindowsPlatformRuntime::Impl
                 close_requested_ = true;
             }
 
-            if (IsWindow(hwnd_))
+            if (!IsWindow(hwnd_))
             {
-                DestroyWindow(hwnd_);
+                hwnd_ = nullptr;
+                return;
             }
-            hwnd_ = nullptr;
+
+            if (DestroyWindow(hwnd_))
+            {
+                hwnd_ = nullptr;
+            }
         }
 
         // Updates button-mask state, emits the matching mouse-button event, and refreshes capture ownership.
@@ -682,45 +687,66 @@ struct WindowsPlatformRuntime::Impl
     std::uint64_t next_window_id{1};
     bool class_registered{false};
     bool exit_requested{false};
+    bool shutdown{false};
     std::thread::id main_thread_id{std::this_thread::get_id()};
     mutable std::mutex mutex;
 
         // Releases all tracked windows and unregisters the window class during runtime teardown.
     ~Impl() noexcept
     {
-        std::unordered_map<WindowId, std::shared_ptr<WindowsWindow>> windows_to_close;
+        try
         {
-            std::scoped_lock lock(mutex);
-            windows_to_close.swap(windows_by_id);
-            windows_by_handle.clear();
+            Shutdown();
+        }
+        catch (...)
+        {
+            std::terminate();
+        }
+    }
+
+    void Shutdown()
+    {
+        EnsureMainThread("WindowsPlatformRuntime::Shutdown");
+        if (shutdown)
+        {
+            return;
         }
 
-        runtime_token->owner = nullptr;
-        for (auto &[window_id, window] : windows_to_close)
+        std::vector<std::shared_ptr<WindowsWindow>> windows_to_close;
         {
-            static_cast<void>(window_id);
+            std::scoped_lock lock(mutex);
+            windows_to_close.reserve(windows_by_id.size());
+            for (const auto &[window_id, window] : windows_by_id)
+            {
+                static_cast<void>(window_id);
+                windows_to_close.push_back(window);
+            }
+        }
+
+        for (const auto &window : windows_to_close)
+        {
             if (window)
             {
                 window->CloseFromRuntimeTeardownNoThrow();
             }
         }
 
-        try
         {
-            if (std::this_thread::get_id() == main_thread_id)
+            std::scoped_lock lock(mutex);
+            if (!windows_by_id.empty() || !windows_by_handle.empty())
             {
-                PumpMessages();
+                throw std::runtime_error("WindowsPlatformRuntime failed to destroy all native windows");
             }
         }
-        catch (...)
+
+        PumpMessages();
+        if (class_registered && !UnregisterClassW(kWindowClassName, instance_handle))
         {
+            throw std::runtime_error("WindowsPlatformRuntime failed to unregister its window class");
         }
 
-        if (class_registered)
-        {
-            UnregisterClassW(kWindowClassName, instance_handle);
-        }
-
+        class_registered = false;
+        shutdown = true;
         runtime_token->owner = nullptr;
     }
 
@@ -736,6 +762,13 @@ struct WindowsPlatformRuntime::Impl
         // Creates a Win32 window, attaches it to a WindowsWindow wrapper, and starts tracking it.
     [[nodiscard]] epidemic::foundation::Result<WindowPtr> CreateWindow(const WindowCreateInfo &create_info)
     {
+        EnsureMainThread("WindowsPlatformRuntime::CreateWindow");
+        if (shutdown)
+        {
+            return epidemic::foundation::Result<WindowPtr>::Failure(
+                epidemic::foundation::Error::Create("platform.runtime_shutdown", "Platform runtime is shut down"));
+        }
+
         if (create_info.client_width == 0 || create_info.client_height == 0)
         {
             return epidemic::foundation::Result<WindowPtr>::Failure(
@@ -818,6 +851,7 @@ struct WindowsPlatformRuntime::Impl
         // Pumps all currently pending Win32 messages.
     void PumpMessages()
     {
+        EnsureMainThread("WindowsPlatformRuntime::PumpEvents");
         MSG message{};
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
         {
@@ -914,6 +948,11 @@ WindowsPlatformRuntime::WindowsPlatformRuntime() : impl_(std::make_unique<Impl>(
 
 // Defaulted because the Impl object owns teardown behavior.
 WindowsPlatformRuntime::~WindowsPlatformRuntime() = default;
+
+void WindowsPlatformRuntime::Shutdown()
+{
+    impl_->Shutdown();
+}
 
 // Returns the stable backend name exposed through IPlatformRuntime.
 std::string_view WindowsPlatformRuntime::Name() const
@@ -1017,7 +1056,6 @@ std::size_t WindowsPlatformRuntime::WindowCount() const noexcept
     return impl_->WindowCount();
 }
 } // namespace epidemic::platform
-
 
 
 

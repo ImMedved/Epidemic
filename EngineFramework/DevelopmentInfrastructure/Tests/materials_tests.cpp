@@ -118,6 +118,29 @@ int main()
     invalid_material.physical.density_micro = -1;
     MaterialService invalid_service;
     if (invalid_service.RegisterMaterial(invalid_material)) return 21;
+
+    // Forged stimulus enum must fail without changing material state or revision.
+    auto invalid_stimulus = heat;
+    invalid_stimulus.type = static_cast<MaterialStimulusType>(999);
+    const auto material_invalid_revision = service.CurrentRevision();
+    const auto material_invalid_state = *service.FindState(subject, slot.Value());
+    if (service.ApplyStimulus(invalid_stimulus, tags)) return 32;
+    const auto material_after_invalid = service.FindState(subject, slot.Value());
+    if (!material_after_invalid || service.CurrentRevision() != material_invalid_revision ||
+        !(material_after_invalid->dynamic == material_invalid_state.dynamic))
+        return 33;
+
+    // Revision exhaustion is rejected before a material mutation is published.
+    auto material_exhausted_snapshot = service.CaptureSnapshot();
+    material_exhausted_snapshot.revision.value = std::numeric_limits<std::uint64_t>::max();
+    if (!service.RestoreSnapshot(material_exhausted_snapshot)) return 34;
+    const auto material_exhausted_before = *service.FindState(subject, slot.Value());
+    if (service.SetContainedSubstance(subject, slot.Value(), water_id.Value(), 3000)) return 35;
+    const auto material_exhausted_after = service.FindState(subject, slot.Value());
+    if (!material_exhausted_after || service.CurrentRevision().value != std::numeric_limits<std::uint64_t>::max() ||
+        !(material_exhausted_after->dynamic == material_exhausted_before.dynamic))
+        return 36;
+
     return 0;
 }
 

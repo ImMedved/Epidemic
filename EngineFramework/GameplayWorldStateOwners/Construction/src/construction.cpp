@@ -63,6 +63,8 @@ void ConstructionService::SetPlacementProvider(const IConstructionPlacementProvi
 {
     if (placement_provider_ == provider)
         return;
+    if (placement_provider_epoch_ == std::numeric_limits<std::uint64_t>::max())
+        return;
     placement_provider_ = provider;
     ++placement_provider_epoch_;
 }
@@ -70,6 +72,8 @@ void ConstructionService::SetPlacementProvider(const IConstructionPlacementProvi
 void ConstructionService::SetCostProvider(IConstructionCostProvider *provider) noexcept
 {
     if (cost_provider_ == provider)
+        return;
+    if (cost_provider_epoch_ == std::numeric_limits<std::uint64_t>::max())
         return;
     cost_provider_ = provider;
     ++cost_provider_epoch_;
@@ -109,14 +113,26 @@ foundation::Result<void> ConstructionService::RegisterRecipe(ConstructionRecipe 
 
 foundation::Result<void> ConstructionService::RegisterSocket(PlacementSocket socket)
 {
+    if (frozen_)
+        return foundation::Result<void>::Failure(Error("gameplay.registry_frozen", "construction registry frozen"));
     if (!socket.id.IsValid() || !socket.owner.IsValid() || sockets_.contains(socket.id))
         return foundation::Result<void>::Failure(
             Error("gameplay.construction.invalid_socket", "invalid placement socket"));
-    Bump();
-    socket.revision = revision_;
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    socket.revision = *next_revision;
     const auto id = socket.id;
     const auto owner = socket.owner;
-    sockets_.emplace(id, std::move(socket));
+    try
+    {
+        sockets_.emplace(id, std::move(socket));
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.construction.allocation_failed", "failed to register construction socket"));
+    }
+    revision_ = *next_revision;
     Record({0, ConstructionChangeKind::SocketRegistered, {}, {}, {}, id, owner, revision_, {}});
     return foundation::Result<void>::Success();
 }
@@ -309,8 +325,13 @@ foundation::Result<PlacementPlan> ConstructionService::PreparePlacementPlan(cons
     if (recipe_it == recipes_.end())
         return foundation::Result<PlacementPlan>::Failure(Error("gameplay.construction.recipe_missing", "recipe missing"));
 
+    const auto expires_at = CheckedAdd(request.context.time, kDefaultPlanLifetime);
+    if (!expires_at)
+        return foundation::Result<PlacementPlan>::Failure(
+            Error("gameplay.time_overflow", "placement plan expiry overflows gameplay time"));
+    auto staged_plan_ids = plan_ids_;
     PlacementPlan plan;
-    plan.id = PlacementPlanId{plan_ids_.Next()};
+    plan.id = PlacementPlanId{staged_plan_ids.Next()};
     if (!plan.id.IsValid())
         return foundation::Result<PlacementPlan>::Failure(Error("gameplay.construction.id_exhausted", "plan id exhausted"));
     plan.actor = request.actor;
@@ -324,7 +345,7 @@ foundation::Result<PlacementPlan> ConstructionService::PreparePlacementPlan(cons
     plan.placement_provider_epoch = placement_provider_epoch_;
     plan.cost_provider_epoch = cost_provider_epoch_;
     plan.prepared_at = request.context.time;
-    plan.expires_at = request.context.time + kDefaultPlanLifetime;
+    plan.expires_at = *expires_at;
     if (request.target.socket)
     {
         plan.dependency_socket = request.target.socket;
@@ -333,9 +354,19 @@ foundation::Result<PlacementPlan> ConstructionService::PreparePlacementPlan(cons
         if (socket)
             plan.dependency_socket_revision = socket->revision;
     }
-    plans_.emplace(plan.id, plan);
+    try
+    {
+        const auto [_, inserted] = plans_.emplace(plan.id, plan);
+        if (!inserted)
+            return foundation::Result<PlacementPlan>::Failure(Error("gameplay.construction.plan_conflict", "placement plan id conflict"));
+    }
+    catch (...)
+    {
+        return foundation::Result<PlacementPlan>::Failure(Error("gameplay.construction.allocation_failed", "failed to publish placement plan"));
+    }
+    plan_ids_ = staged_plan_ids;
     Record({0, ConstructionChangeKind::PlacementValidated, plan.id, {}, {}, {}, request.actor, revision_, request.context, {}});
-    return foundation::Result<PlacementPlan>::Success(plan);
+    return foundation::Result<PlacementPlan>::Success(std::move(plan));
 }
 
 foundation::Result<std::vector<ConstructionCostReservation>> ConstructionService::ReserveCosts(const PlacementPlan &plan)
@@ -354,7 +385,19 @@ foundation::Result<std::vector<ConstructionCostReservation>> ConstructionService
     reservations.reserve(plan.reserved_costs.size());
     for (const auto &cost : plan.reserved_costs)
     {
-        auto reserved = cost_provider_->Reserve(plan.actor, cost, plan.context);
+        foundation::Result<ConstructionCostReservation> reserved =
+            foundation::Result<ConstructionCostReservation>::Failure(
+                Error("gameplay.construction.cost_provider_failed", "construction cost provider failed"));
+        try
+        {
+            reserved = cost_provider_->Reserve(plan.actor, cost, plan.context);
+        }
+        catch (...)
+        {
+            ReleaseCosts(reservations, plan.context);
+            return foundation::Result<std::vector<ConstructionCostReservation>>::Failure(
+                Error("gameplay.construction.cost_provider_exception", "construction cost provider threw"));
+        }
         if (!reserved || !reserved.Value().token.IsValid())
         {
             ReleaseCosts(reservations, plan.context);
@@ -442,17 +485,38 @@ foundation::Result<std::vector<PlacementOutputEnvelope>> ConstructionService::St
     return foundation::Result<std::vector<PlacementOutputEnvelope>>::Success(std::move(envelopes));
 }
 
-void ConstructionService::QueueOutputs(std::vector<PlacementOutputEnvelope> outputs,
+foundation::Result<void> ConstructionService::QueueOutputs(std::vector<PlacementOutputEnvelope> outputs,
                                        PlacementPlanId plan, ConstructionSiteId site,
-                                       GameplayObjectRef actor, GameplayContext context)
+                                       GameplayObjectRef actor, GameplayContext context, Revision publication_revision)
 {
-    for (auto &envelope : outputs)
+    if (outputs.empty())
+        return foundation::Result<void>::Success();
+    if (outputs.size() > kOutboxCapacity - outbox_.size())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.outbox_full", "construction outbox full"));
+    try
     {
-        output_ids_.Restore({output_ids_.Scope().Raw(), envelope.id.value.Low() + 1});
-        const auto output_id = envelope.id;
-        const auto execution = envelope.execution;
-        outbox_.push_back(std::move(envelope));
-        Record({0, ConstructionChangeKind::OutputQueued, plan, execution, site, {}, actor, revision_, context, output_id});
+        auto staged_outbox = outbox_;
+        auto staged_output_ids = output_ids_;
+        for (auto &envelope : outputs)
+        {
+            const PlacementOutputId expected{staged_output_ids.Next()};
+            if (!expected.IsValid() || expected != envelope.id)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.construction.output_sequence_mismatch", "staged construction output id mismatch"));
+            staged_outbox.push_back(envelope);
+        }
+        outbox_.swap(staged_outbox);
+        output_ids_ = staged_output_ids;
+        for (const auto &envelope : outputs)
+            Record({0, ConstructionChangeKind::OutputQueued, plan, envelope.execution, site, {}, actor,
+                    publication_revision, context, envelope.id});
+        return foundation::Result<void>::Success();
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.allocation_failed", "failed to queue construction outputs"));
     }
 }
 
@@ -461,7 +525,7 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
     const auto plan_it = plans_.find(id);
     if (plan_it == plans_.end())
         return foundation::Result<PlacementCommitResult>::Failure(Error("gameplay.construction.plan_missing", "placement plan missing"));
-    auto &plan = plan_it->second;
+    const PlacementPlan plan = plan_it->second;
     if (plan.state == PlacementPlanState::Committed)
         return foundation::Result<PlacementCommitResult>::Failure(
             Error("gameplay.construction.already_committed", "placement plan already committed"));
@@ -494,103 +558,188 @@ foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(P
         return foundation::Result<PlacementCommitResult>::Failure(
             Error("gameplay.construction.stale_plan", "placement dependencies changed"));
 
-    PlacementSocket *socket = nullptr;
     if (plan.dependency_socket)
     {
-        socket = FindMutableSocket(*plan.dependency_socket);
+        const auto socket_it = sockets_.find(*plan.dependency_socket);
         const bool owns_reservation = plan.dependency_socket_reservation &&
             socket_reservation_by_socket_.contains(*plan.dependency_socket) &&
             socket_reservation_by_socket_.at(*plan.dependency_socket) == *plan.dependency_socket_reservation;
-        const bool state_ok = socket && (socket->state == SocketState::Free || (socket->state == SocketState::Reserved && owns_reservation));
-        if (!state_ok || socket->revision != plan.dependency_socket_revision)
+        const bool state_ok = socket_it != sockets_.end() &&
+            (socket_it->second.state == SocketState::Free ||
+             (socket_it->second.state == SocketState::Reserved && owns_reservation));
+        if (!state_ok || socket_it->second.revision != plan.dependency_socket_revision)
             return foundation::Result<PlacementCommitResult>::Failure(
                 Error("gameplay.construction.stale_plan", "placement socket dependency changed"));
     }
 
-    auto reservations = ReserveCosts(plan);
-    if (!reservations)
-        return foundation::Result<PlacementCommitResult>::Failure(reservations.GetError());
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<PlacementCommitResult>::Failure(
+            Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+
+    auto reservations_result = ReserveCosts(plan);
+    if (!reservations_result)
+        return foundation::Result<PlacementCommitResult>::Failure(reservations_result.GetError());
+    auto reservations = std::move(reservations_result).Value();
+    struct ReservationGuard
+    {
+        IConstructionCostProvider *provider = nullptr;
+        const std::vector<ConstructionCostReservation> *reservations = nullptr;
+        const GameplayContext *context = nullptr;
+        bool active = true;
+        ~ReservationGuard() noexcept
+        {
+            if (!active || provider == nullptr || reservations == nullptr || context == nullptr)
+                return;
+            for (auto it = reservations->rbegin(); it != reservations->rend(); ++it)
+                provider->Release(*it, *context);
+        }
+    } reservation_guard{cost_provider_, &reservations, &plan.context, true};
 
     PlacementCommitResult result;
-    result.execution = PlacementExecutionId{execution_ids_.Next()};
-    if (!result.execution.IsValid())
+    try
     {
-        ReleaseCosts(reservations.Value(), plan.context);
-        return foundation::Result<PlacementCommitResult>::Failure(Error("gameplay.construction.id_exhausted", "execution id exhausted"));
-    }
+        auto staged_execution_ids = execution_ids_;
+        auto staged_placed_ids = placed_ids_;
+        auto staged_site_ids = site_ids_;
+        auto staged_output_ids = output_ids_;
 
-    std::vector<PlacementOutputEnvelope> staged_outputs;
-    if (definition_it->second.commit_policy == PlacementCommitPolicy::Instant)
-    {
-        result.placed_object = PlacedObjectId{placed_ids_.Next()};
-        if (!result.placed_object.IsValid())
+        result.execution = PlacementExecutionId{staged_execution_ids.Next()};
+        if (!result.execution.IsValid())
+            return foundation::Result<PlacementCommitResult>::Failure(
+                Error("gameplay.construction.id_exhausted", "execution id exhausted"));
+
+        std::vector<PlacementOutputEnvelope> staged_outputs;
+        if (definition_it->second.commit_policy == PlacementCommitPolicy::Instant)
         {
-            ReleaseCosts(reservations.Value(), plan.context);
-            return foundation::Result<PlacementCommitResult>::Failure(Error("gameplay.construction.id_exhausted", "placed object id exhausted"));
+            result.placed_object = PlacedObjectId{staged_placed_ids.Next()};
+            if (!result.placed_object.IsValid())
+                return foundation::Result<PlacementCommitResult>::Failure(
+                    Error("gameplay.construction.id_exhausted", "placed object id exhausted"));
+            result.outputs = BuildOutputs(plan, recipe_it->second, result.placed_object);
+            if (result.outputs.size() > kOutboxCapacity - outbox_.size())
+                return foundation::Result<PlacementCommitResult>::Failure(
+                    Error("gameplay.construction.outbox_full", "construction outbox full"));
+            staged_outputs.reserve(result.outputs.size());
+            for (std::size_t ordinal = 0; ordinal < result.outputs.size(); ++ordinal)
+            {
+                PlacementOutputEnvelope envelope;
+                envelope.id = PlacementOutputId{staged_output_ids.Next()};
+                if (!envelope.id.IsValid())
+                    return foundation::Result<PlacementCommitResult>::Failure(
+                        Error("gameplay.construction.id_exhausted", "output id exhausted"));
+                envelope.execution = result.execution;
+                envelope.ordinal = static_cast<std::uint32_t>(ordinal);
+                envelope.operation = result.outputs[ordinal];
+                staged_outputs.push_back(std::move(envelope));
+            }
         }
-        result.outputs = BuildOutputs(plan, recipe_it->second, result.placed_object);
-        auto staged = StageOutputs(result.execution, result.outputs);
-        if (!staged)
+        else
         {
-            ReleaseCosts(reservations.Value(), plan.context);
-            return foundation::Result<PlacementCommitResult>::Failure(staged.GetError());
+            result.site = ConstructionSiteId{staged_site_ids.Next()};
+            if (!result.site.IsValid())
+                return foundation::Result<PlacementCommitResult>::Failure(
+                    Error("gameplay.construction.id_exhausted", "site id exhausted"));
         }
-        staged_outputs = std::move(staged).Value();
-    }
-    else
-    {
-        result.site = ConstructionSiteId{site_ids_.Next()};
-        if (!result.site.IsValid())
+
+        auto new_plans = plans_;
+        auto new_sockets = sockets_;
+        auto new_reservations = socket_reservations_by_id_;
+        auto new_reservation_by_socket = socket_reservation_by_socket_;
+        auto new_placed_objects = placed_objects_;
+        auto new_sites = sites_;
+        auto new_outbox = outbox_;
+
+        auto staged_plan_it = new_plans.find(id);
+        if (staged_plan_it == new_plans.end() || staged_plan_it->second.state != PlacementPlanState::Prepared)
+            return foundation::Result<PlacementCommitResult>::Failure(
+                Error("gameplay.construction.plan_not_prepared", "placement plan changed during staging"));
+        staged_plan_it->second.state = PlacementPlanState::Committed;
+
+        PlacementSocketId occupied_socket{};
+        GameplayObjectRef socket_owner{};
+        if (plan.dependency_socket)
         {
-            ReleaseCosts(reservations.Value(), plan.context);
-            return foundation::Result<PlacementCommitResult>::Failure(Error("gameplay.construction.id_exhausted", "site id exhausted"));
+            auto socket_it = new_sockets.find(*plan.dependency_socket);
+            if (socket_it == new_sockets.end())
+                return foundation::Result<PlacementCommitResult>::Failure(
+                    Error("gameplay.construction.stale_plan", "placement socket disappeared"));
+            socket_it->second.state = SocketState::Occupied;
+            socket_it->second.revision = *next_revision;
+            occupied_socket = socket_it->first;
+            socket_owner = socket_it->second.owner;
+            if (plan.dependency_socket_reservation)
+            {
+                new_reservations.erase(*plan.dependency_socket_reservation);
+                new_reservation_by_socket.erase(*plan.dependency_socket);
+            }
         }
-    }
 
-    Bump();
-    result.revision = revision_;
-    plan.state = PlacementPlanState::Committed;
-
-    if (socket)
-    {
-        socket->state = SocketState::Occupied;
-        socket->revision = revision_;
-        if (plan.dependency_socket_reservation)
+        if (definition_it->second.commit_policy == PlacementCommitPolicy::Instant)
         {
-            socket_reservations_by_id_.erase(*plan.dependency_socket_reservation);
-            socket_reservation_by_socket_.erase(*plan.dependency_socket);
+            new_placed_objects.push_back({result.placed_object, plan.id, result.execution});
+            for (const auto &envelope : staged_outputs)
+                new_outbox.push_back(envelope);
         }
-        Record({0, ConstructionChangeKind::SocketOccupied, plan.id, result.execution, result.site,
-                *plan.dependency_socket, socket->owner, revision_, plan.context, {}});
-    }
+        else
+        {
+            ConstructionSite site;
+            site.id = result.site;
+            site.actor = plan.actor;
+            site.recipe = plan.recipe;
+            site.target = plan.target;
+            site.state = ConstructionSiteState::ResourcesCommitted;
+            site.revision = *next_revision;
+            site.plan = plan.id;
+            if (!new_sites.emplace(site.id, site).second)
+                return foundation::Result<PlacementCommitResult>::Failure(
+                    Error("gameplay.construction.site_conflict", "construction site id conflict"));
+        }
 
-    if (definition_it->second.commit_policy == PlacementCommitPolicy::Instant)
-    {
-        placed_objects_.push_back({result.placed_object, plan.id, result.execution});
-        QueueOutputs(std::move(staged_outputs), plan.id, {}, plan.actor, plan.context);
-        Record({0, ConstructionChangeKind::PlacedObjectCreated, plan.id, result.execution, {}, {}, plan.actor,
-                revision_, plan.context, {}});
-    }
-    else
-    {
-        ConstructionSite site;
-        site.id = result.site;
-        site.actor = plan.actor;
-        site.recipe = plan.recipe;
-        site.target = plan.target;
-        site.state = ConstructionSiteState::ResourcesCommitted;
-        site.revision = revision_;
-        site.plan = plan.id;
-        sites_.emplace(site.id, site);
-        Record({0, ConstructionChangeKind::SiteCreated, plan.id, result.execution, site.id, {}, plan.actor,
-                revision_, plan.context, {}});
-    }
+        result.revision = *next_revision;
 
-    CommitCosts(reservations.Value(), plan.context);
-    ++committed_;
-    Record({0, ConstructionChangeKind::PlacementCommitted, plan.id, result.execution, result.site,
-            plan.target.socket.value_or(PlacementSocketId{}), plan.actor, revision_, plan.context, {}});
-    return foundation::Result<PlacementCommitResult>::Success(std::move(result));
+        plans_.swap(new_plans);
+        sockets_.swap(new_sockets);
+        socket_reservations_by_id_.swap(new_reservations);
+        socket_reservation_by_socket_.swap(new_reservation_by_socket);
+        placed_objects_.swap(new_placed_objects);
+        sites_.swap(new_sites);
+        outbox_.swap(new_outbox);
+        execution_ids_ = staged_execution_ids;
+        placed_ids_ = staged_placed_ids;
+        site_ids_ = staged_site_ids;
+        output_ids_ = staged_output_ids;
+        revision_ = *next_revision;
+
+        reservation_guard.active = false;
+        CommitCosts(reservations, plan.context);
+        ++committed_;
+
+        if (occupied_socket.IsValid())
+            Record({0, ConstructionChangeKind::SocketOccupied, plan.id, result.execution, result.site,
+                    occupied_socket, socket_owner, revision_, plan.context, {}});
+        if (definition_it->second.commit_policy == PlacementCommitPolicy::Instant)
+        {
+            for (const auto &envelope : staged_outputs)
+                Record({0, ConstructionChangeKind::OutputQueued, plan.id, result.execution, {}, {}, plan.actor,
+                        revision_, plan.context, envelope.id});
+            Record({0, ConstructionChangeKind::PlacedObjectCreated, plan.id, result.execution, {}, {}, plan.actor,
+                    revision_, plan.context, {}});
+        }
+        else
+        {
+            Record({0, ConstructionChangeKind::SiteCreated, plan.id, result.execution, result.site, {}, plan.actor,
+                    revision_, plan.context, {}});
+        }
+        Record({0, ConstructionChangeKind::PlacementCommitted, plan.id, result.execution, result.site,
+                plan.target.socket.value_or(PlacementSocketId{}), plan.actor, revision_, plan.context, {}});
+        return foundation::Result<PlacementCommitResult>::Success(std::move(result));
+    }
+    catch (...)
+    {
+        return foundation::Result<PlacementCommitResult>::Failure(
+            Error("gameplay.construction.allocation_failed", "failed to stage placement commit"));
+    }
 }
 
 foundation::Result<PlacementCommitResult> ConstructionService::CommitPlacement(const PlacementPlan &plan)
@@ -608,7 +757,10 @@ foundation::Result<void> ConstructionService::CancelPlacementPlan(PlacementPlanI
     if (it->second.state != PlacementPlanState::Prepared)
         return foundation::Result<void>::Failure(
             Error("gameplay.construction.plan_not_cancellable", "placement plan is not cancellable"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     it->second.state = PlacementPlanState::Cancelled;
     Record({0, ConstructionChangeKind::PlacementPlanCancelled, id, {}, {}, {}, it->second.actor, revision_, context, {}});
     return foundation::Result<void>::Success();
@@ -621,10 +773,15 @@ std::size_t ConstructionService::ExpirePlacementPlans(GameplayTimePoint now, Gam
         if (plan.state == PlacementPlanState::Prepared && plan.expires_at.ticks != 0 && plan.expires_at <= now)
             due.push_back(id);
     std::sort(due.begin(), due.end());
+    if (due.empty())
+        return 0;
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return 0;
+    revision_ = *next_revision;
     for (const auto id : due)
     {
         auto &plan = plans_.at(id);
-        Bump();
         plan.state = PlacementPlanState::Expired;
         Record({0, ConstructionChangeKind::PlacementPlanExpired, id, {}, {}, {}, plan.actor, revision_, context, {}});
     }
@@ -660,7 +817,10 @@ foundation::Result<ConstructionSiteId> ConstructionService::StartConstructionSit
         return foundation::Result<ConstructionSiteId>::Failure(
             Error("gameplay.construction.site_not_startable", "construction site is not startable"));
 
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<ConstructionSiteId>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     site->state = ConstructionSiteState::UnderConstruction;
     site->started_at = started_at;
     site->revision = revision_;
@@ -680,7 +840,10 @@ foundation::Result<void> ConstructionService::PauseConstructionSite(Construction
     auto *site = FindMutableSite(id);
     if (!site || site->state != ConstructionSiteState::UnderConstruction)
         return foundation::Result<void>::Failure(Error("gameplay.construction.site_not_pausable", "construction site is not pausable"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     site->state = ConstructionSiteState::Paused;
     site->revision = revision_;
     Record({0, ConstructionChangeKind::SitePaused, site->plan, {}, id, {}, site->actor, revision_, context, {}});
@@ -692,7 +855,10 @@ foundation::Result<void> ConstructionService::ResumeConstructionSite(Constructio
     auto *site = FindMutableSite(id);
     if (!site || site->state != ConstructionSiteState::Paused)
         return foundation::Result<void>::Failure(Error("gameplay.construction.site_not_resumable", "construction site is not resumable"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     site->state = ConstructionSiteState::UnderConstruction;
     site->revision = revision_;
     Record({0, ConstructionChangeKind::SiteResumed, site->plan, {}, id, {}, site->actor, revision_, context, {}});
@@ -707,32 +873,63 @@ foundation::Result<void> ConstructionService::CompleteConstructionSite(Construct
     if (site->state == ConstructionSiteState::Completed)
         return foundation::Result<void>::Success();
     if (site->state != ConstructionSiteState::UnderConstruction || site->progress_micro != 1'000'000)
-        return foundation::Result<void>::Failure(Error("gameplay.construction.site_not_completable", "construction site is not completable"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.site_not_completable", "construction site is not completable"));
     const auto plan_it = plans_.find(site->plan);
     const auto recipe_it = recipes_.find(site->recipe);
     if (plan_it == plans_.end() || recipe_it == recipes_.end())
-        return foundation::Result<void>::Failure(Error("gameplay.construction.site_invalid", "construction site references missing definition"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.site_invalid", "construction site references missing definition"));
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.revision_exhausted", "construction revision is exhausted"));
 
-    const auto execution = PlacementExecutionId{execution_ids_.Next()};
-    const auto placed = PlacedObjectId{placed_ids_.Next()};
-    if (!execution.IsValid() || !placed.IsValid())
-        return foundation::Result<void>::Failure(Error("gameplay.construction.id_exhausted", "construction completion id exhausted"));
-    const auto outputs = BuildOutputs(plan_it->second, recipe_it->second, placed);
-    auto staged_outputs = StageOutputs(execution, outputs);
-    if (!staged_outputs)
-        return foundation::Result<void>::Failure(staged_outputs.GetError());
+    try
+    {
+        auto staged_execution_ids = execution_ids_;
+        auto staged_placed_ids = placed_ids_;
+        const auto execution = PlacementExecutionId{staged_execution_ids.Next()};
+        const auto placed = PlacedObjectId{staged_placed_ids.Next()};
+        if (!execution.IsValid() || !placed.IsValid())
+            return foundation::Result<void>::Failure(
+                Error("gameplay.construction.id_exhausted", "construction completion id exhausted"));
 
-    Bump();
-    site->state = ConstructionSiteState::Completed;
-    site->completion_execution = execution;
-    site->placed_object = placed;
-    site->revision = revision_;
-    placed_objects_.push_back({placed, site->plan, execution});
-    QueueOutputs(std::move(staged_outputs).Value(), site->plan, id, site->actor, context);
-    ++completed_sites_;
-    Record({0, ConstructionChangeKind::PlacedObjectCreated, site->plan, execution, id, {}, site->actor, revision_, context, {}});
-    Record({0, ConstructionChangeKind::SiteCompleted, site->plan, execution, id, {}, site->actor, revision_, context, {}});
-    return foundation::Result<void>::Success();
+        const auto outputs = BuildOutputs(plan_it->second, recipe_it->second, placed);
+        auto staged_outputs_result = StageOutputs(execution, outputs);
+        if (!staged_outputs_result)
+            return foundation::Result<void>::Failure(staged_outputs_result.GetError());
+        auto staged_outputs = std::move(staged_outputs_result).Value();
+
+        auto staged_placed_objects = placed_objects_;
+        staged_placed_objects.push_back({placed, site->plan, execution});
+
+        auto queued = QueueOutputs(staged_outputs, site->plan, id, site->actor, context, *next_revision);
+        if (!queued)
+            return queued;
+
+        const auto plan_id = site->plan;
+        const auto actor = site->actor;
+        placed_objects_.swap(staged_placed_objects);
+        site->state = ConstructionSiteState::Completed;
+        site->completion_execution = execution;
+        site->placed_object = placed;
+        site->revision = *next_revision;
+        execution_ids_ = staged_execution_ids;
+        placed_ids_ = staged_placed_ids;
+        revision_ = *next_revision;
+        ++completed_sites_;
+        Record({0, ConstructionChangeKind::PlacedObjectCreated, plan_id, execution, id, {}, actor,
+                revision_, context, {}});
+        Record({0, ConstructionChangeKind::SiteCompleted, plan_id, execution, id, {}, actor,
+                revision_, context, {}});
+        return foundation::Result<void>::Success();
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.allocation_failed", "failed to stage construction site completion"));
+    }
 }
 
 foundation::Result<void> ConstructionService::CancelConstructionSite(ConstructionSiteId id, GameplayContext context)
@@ -744,7 +941,10 @@ foundation::Result<void> ConstructionService::CancelConstructionSite(Constructio
         return foundation::Result<void>::Success();
     if (!IsLiveSite(site->state))
         return foundation::Result<void>::Failure(Error("gameplay.construction.site_not_cancellable", "construction site is not cancellable"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     site->state = ConstructionSiteState::Cancelled;
     site->revision = revision_;
     Record({0, ConstructionChangeKind::SiteCancelled, site->plan, {}, id, {}, site->actor, revision_, context, {}});
@@ -760,7 +960,10 @@ foundation::Result<void> ConstructionService::DestroyConstructionSite(Constructi
         return foundation::Result<void>::Success();
     if (site->state == ConstructionSiteState::Cancelled)
         return foundation::Result<void>::Failure(Error("gameplay.construction.site_not_destroyable", "cancelled site cannot be destroyed"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     site->state = ConstructionSiteState::Destroyed;
     site->revision = revision_;
     Record({0, ConstructionChangeKind::SiteDestroyed, site->plan, site->completion_execution, id, {}, site->actor,
@@ -777,8 +980,11 @@ foundation::Result<void> ConstructionService::AdvanceConstructionProgress(Constr
         return foundation::Result<void>::Failure(
             Error("gameplay.construction.site_not_progressable", "construction site is not progressable"));
     const auto next = SaturatingAdd(site->progress_micro, delta_micro);
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
     site->progress_micro = next > 1'000'000 ? 1'000'000 : next;
-    Bump();
+    revision_ = *next_revision;
     site->revision = revision_;
     Record({0, ConstructionChangeKind::SiteProgressed, site->plan, {}, id, {}, site->actor, revision_, context, {}});
     return foundation::Result<void>::Success();
@@ -792,7 +998,10 @@ foundation::Result<void> ConstructionService::FailConstructionSite(ConstructionS
     if (!site || !IsLiveSite(site->state) || !reason.IsValid())
         return foundation::Result<void>::Failure(
             Error("gameplay.construction.site_not_failable", "construction site is not failable"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     site->state = ConstructionSiteState::Failed;
     site->terminal_reason = reason;
     site->revision = revision_;
@@ -814,7 +1023,10 @@ foundation::Result<void> ConstructionService::PruneTerminalSite(ConstructionSite
     if (has_pending_output)
         return foundation::Result<void>::Failure(
             Error("gameplay.construction.site_has_pending_outputs", "construction site still has pending outputs"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     const auto plan = it->second.plan;
     const auto actor = it->second.actor;
     sites_.erase(it);
@@ -829,21 +1041,44 @@ foundation::Result<ConstructionSocketReservationId> ConstructionService::Reserve
     if (!socket || socket->state != SocketState::Free || !owner.IsValid())
         return foundation::Result<ConstructionSocketReservationId>::Failure(
             Error("gameplay.construction.socket_unavailable", "socket unavailable"));
-    const auto reservation_id = ConstructionSocketReservationId{socket_reservation_ids_.Next()};
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<ConstructionSocketReservationId>::Failure(
+            Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+
+    auto staged_ids = socket_reservation_ids_;
+    const auto reservation_id = ConstructionSocketReservationId{staged_ids.Next()};
     if (!reservation_id.IsValid())
         return foundation::Result<ConstructionSocketReservationId>::Failure(
             Error("gameplay.construction.id_exhausted", "socket reservation id exhausted"));
-    Bump();
-    socket->state = SocketState::Reserved;
-    socket->revision = revision_;
+
     ConstructionSocketReservation reservation;
     reservation.id = reservation_id;
     reservation.socket = id;
     reservation.owner = owner;
-    reservation.socket_revision = revision_;
+    reservation.socket_revision = *next_revision;
     reservation.context = context;
-    socket_reservations_by_id_.emplace(reservation.id, reservation);
-    socket_reservation_by_socket_.emplace(id, reservation.id);
+    try
+    {
+        auto new_by_id = socket_reservations_by_id_;
+        auto new_by_socket = socket_reservation_by_socket_;
+        if (!new_by_id.emplace(reservation.id, reservation).second ||
+            !new_by_socket.emplace(id, reservation.id).second)
+            return foundation::Result<ConstructionSocketReservationId>::Failure(
+                Error("gameplay.construction.socket_reservation_conflict", "socket reservation already exists"));
+        socket_reservations_by_id_.swap(new_by_id);
+        socket_reservation_by_socket_.swap(new_by_socket);
+    }
+    catch (...)
+    {
+        return foundation::Result<ConstructionSocketReservationId>::Failure(
+            Error("gameplay.construction.allocation_failed", "failed to publish socket reservation"));
+    }
+
+    socket->state = SocketState::Reserved;
+    socket->revision = *next_revision;
+    socket_reservation_ids_ = staged_ids;
+    revision_ = *next_revision;
     ++socket_reservations_;
     Record({0, ConstructionChangeKind::SocketReserved, {}, {}, {}, id, owner, revision_, context, {}});
     return foundation::Result<ConstructionSocketReservationId>::Success(reservation.id);
@@ -863,7 +1098,10 @@ foundation::Result<void> ConstructionService::ReleaseSocket(ConstructionSocketRe
         socket_reservation_by_socket_.at(reservation.socket) != reservation_id)
         return foundation::Result<void>::Failure(
             Error("gameplay.construction.socket_not_releasable", "socket reservation is not releasable"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     socket->state = SocketState::Free;
     socket->revision = revision_;
     socket_reservation_by_socket_.erase(reservation.socket);
@@ -888,7 +1126,10 @@ foundation::Result<void> ConstructionService::OccupySocket(
         socket_reservations_by_id_.erase(*reservation);
         socket_reservation_by_socket_.erase(id);
     }
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    revision_ = *next_revision;
     socket->state = SocketState::Occupied;
     socket->revision = revision_;
     Record({0, ConstructionChangeKind::SocketOccupied, {}, {}, {}, id, socket->owner, revision_, context, {}});
@@ -986,8 +1227,14 @@ foundation::Result<PlacementOutputId> ConstructionService::EnqueuePlacedObjectOu
     if (site_it != sites_.end())
         site_id = site_it->first;
 
-    Bump();
-    QueueOutputs(std::move(envelopes), placed_it->plan, site_id, plan_it->second.actor, context);
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<PlacementOutputId>::Failure(
+            Error("gameplay.revision_exhausted", "construction revision is exhausted"));
+    auto queued = QueueOutputs(std::move(envelopes), placed_it->plan, site_id, plan_it->second.actor, context, *next_revision);
+    if (!queued)
+        return foundation::Result<PlacementOutputId>::Failure(queued.GetError());
+    revision_ = *next_revision;
     return foundation::Result<PlacementOutputId>::Success(output_id);
 }
 
@@ -1013,12 +1260,22 @@ foundation::Result<void> ConstructionService::DeadLetterOutput(PlacementOutputId
     if (it == outbox_.end())
         return foundation::Result<void>::Failure(Error("gameplay.construction.output_missing", "construction output missing"));
     const auto entry = *it;
-    outbox_.erase(it);
-    dead_letters_.push_back({entry.id, entry.execution, reason, context});
-    if (dead_letters_.size() > kDeadLetterCapacity)
-        dead_letters_.pop_front();
-    Record({0, ConstructionChangeKind::OutputDeadLettered, {}, entry.execution, {}, {}, {}, revision_, context, id});
-    return foundation::Result<void>::Success();
+    try
+    {
+        auto staged_dead_letters = dead_letters_;
+        staged_dead_letters.push_back({entry.id, entry.execution, reason, context});
+        if (staged_dead_letters.size() > kDeadLetterCapacity)
+            staged_dead_letters.pop_front();
+        outbox_.erase(it);
+        dead_letters_.swap(staged_dead_letters);
+        Record({0, ConstructionChangeKind::OutputDeadLettered, {}, entry.execution, {}, {}, {}, revision_, context, id});
+        return foundation::Result<void>::Success();
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.allocation_failed", "failed to stage construction dead letter"));
+    }
 }
 
 foundation::Result<void> ConstructionService::CompactPlacementState(PlacementPlanId plan_id, GameplayContext context)
@@ -1040,12 +1297,15 @@ foundation::Result<void> ConstructionService::CompactPlacementState(PlacementPla
     if (has_pending)
         return foundation::Result<void>::Failure(
             Error("gameplay.construction.plan_has_pending_outputs", "placement plan still has pending outputs"));
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "construction revision is exhausted"));
     const auto actor = plan_it->second.actor;
     placed_objects_.erase(std::remove_if(placed_objects_.begin(), placed_objects_.end(),
                                         [&](const auto &placed) { return placed.plan == plan_id; }),
                           placed_objects_.end());
     plans_.erase(plan_it);
-    Bump();
+    revision_ = *next_revision;
     Record({0, ConstructionChangeKind::PlacementStateCompacted, plan_id, {}, {}, {}, actor, revision_, context, {}});
     return foundation::Result<void>::Success();
 }
@@ -1211,12 +1471,24 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
         previous_sequence = change.sequence;
     }
 
+    std::deque<ConstructionChange> new_changes;
+    try
+    {
+        new_changes.assign(snapshot.journal.begin(), snapshot.journal.end());
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.construction.allocation_failed", "failed to stage construction journal restore"));
+    }
+
+    auto new_placed_objects = std::move(snapshot.placed_objects);
     plans_.swap(new_plans);
     sites_.swap(new_sites);
     sockets_.swap(new_sockets);
     socket_reservations_by_id_.swap(new_reservations);
     socket_reservation_by_socket_.swap(new_reservation_by_socket);
-    placed_objects_ = std::move(snapshot.placed_objects);
+    placed_objects_.swap(new_placed_objects);
     outbox_.swap(new_outbox);
     dead_letters_.swap(new_dead_letters);
     plan_ids_.Restore(snapshot.plan_ids);
@@ -1226,7 +1498,7 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
     output_ids_.Restore(snapshot.output_ids);
     socket_reservation_ids_.Restore(snapshot.socket_reservation_ids);
     revision_ = snapshot.revision;
-    changes_.assign(snapshot.journal.begin(), snapshot.journal.end());
+    changes_.swap(new_changes);
     next_change_sequence_ = snapshot.next_change_sequence;
     journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
@@ -1284,24 +1556,42 @@ ConstructionDiagnostics ConstructionService::GetDiagnostics() const noexcept
     return diagnostics;
 }
 
-void ConstructionService::Bump() noexcept
+std::optional<Revision> ConstructionService::NextRevision() const noexcept
 {
-    if (revision_.value != std::numeric_limits<std::uint64_t>::max())
-        ++revision_.value;
+    return CheckedNext(revision_);
 }
 
-void ConstructionService::Record(ConstructionChange change)
+void ConstructionService::Record(ConstructionChange change) noexcept
 {
-    if (next_change_sequence_ == 0)
-        return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
+    try
+    {
+        if (next_change_sequence_ == 0 || next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        {
+            if (const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_))
+            {
+                journal_epoch_ = *next_epoch;
+                changes_.clear();
+                next_change_sequence_ = 1;
+            }
+            else
+            {
+                changes_.clear();
+                return;
+            }
+        }
+        change.sequence = next_change_sequence_;
+        changes_.push_back(std::move(change));
         ++next_change_sequence_;
-    changes_.push_back(std::move(change));
-    if (changes_.size() > kChangeJournalCapacity)
-        changes_.pop_front();
+        if (changes_.size() > kChangeJournalCapacity)
+            changes_.pop_front();
+    }
+    catch (...)
+    {
+        changes_.clear();
+        if (const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_))
+            journal_epoch_ = *next_epoch;
+        next_change_sequence_ = 1;
+    }
 }
 } // namespace epidemic::gameplay::construction
 

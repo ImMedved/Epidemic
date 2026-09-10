@@ -147,9 +147,19 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
         // Presents the current back buffer when presentation resources are valid.
     [[nodiscard]] epidemic::foundation::Result<void> Present() override
     {
-        if (swap_chain_ == nullptr || width_ == 0 || height_ == 0 || render_target_view_ == nullptr)
+        if (swap_chain_ == nullptr)
         {
-            return epidemic::foundation::Result<void>::Success();
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("rhi.d3d11.swap_chain_missing",
+                                                    "D3D11 swap chain is not initialized", descriptor_.debug_name));
+        }
+
+        if (recreate_required_ || render_target_view_ == nullptr)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("rhi.d3d11.recreate_required",
+                                                    "D3D11 swap chain render target must be recreated",
+                                                    descriptor_.debug_name));
         }
 
         const auto sync_interval = descriptor_.vsync ? 1u : 0u;
@@ -174,11 +184,6 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
                                                     descriptor_.debug_name));
         }
 
-        descriptor_.width = width;
-        descriptor_.height = height;
-        width_ = width;
-        height_ = height;
-
         if (swap_chain_ == nullptr)
         {
             return epidemic::foundation::Result<void>::Failure(
@@ -198,11 +203,20 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
             swap_chain_->ResizeBuffers(descriptor_.buffer_count, width, height, dxgi_format_result.Value(), 0);
         if (FAILED(result))
         {
+            const auto recovery_result = CreateBackBufferResources();
+            recreate_required_ = !recovery_result.HasValue();
             return epidemic::foundation::Result<void>::Failure(
                 MakeD3D11Error("rhi.d3d11.resize_failed", "IDXGISwapChain::ResizeBuffers", result, descriptor_.debug_name));
         }
 
-        return CreateBackBufferResources();
+        descriptor_.width = width;
+        descriptor_.height = height;
+        width_ = width;
+        height_ = height;
+
+        const auto create_result = CreateBackBufferResources();
+        recreate_required_ = !create_result.HasValue();
+        return create_result;
     }
 
         // Returns the current swap-chain width.
@@ -373,6 +387,7 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
 
         back_buffer_ = std::move(back_buffer);
         render_target_view_ = std::move(render_target_view);
+        recreate_required_ = false;
         return epidemic::foundation::Result<void>::Success();
     }
 
@@ -397,6 +412,7 @@ class D3D11RhiSwapChain final : public IRhiSwapChain, public std::enable_shared_
     ComPtr<IDXGISwapChain> swap_chain_;
     ComPtr<ID3D11Texture2D> back_buffer_;
     ComPtr<ID3D11RenderTargetView> render_target_view_;
+    bool recreate_required_{false};
 };
 
 // Command-context implementation that issues the baseline clear-screen operations through the D3D11 immediate context.

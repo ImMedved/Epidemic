@@ -220,5 +220,37 @@ int main()
     auto generated_id = requested_id_service.CreateNeedProfile(generated);
     Check(static_cast<bool>(generated_id) && generated_id.Value().value.Low() > 100, "generator advanced past requested id");
 
+
+    // Forged profile policy must not consume an id or publish a revision.
+    const auto needs_invalid_before = requested_id_service.CaptureSnapshot();
+    NeedProfile invalid_policy_profile;
+    invalid_policy_profile.subject = Ref("population", "invalid-policy");
+    invalid_policy_profile.active_needs.push_back(hunger.id);
+    invalid_policy_profile.materialization_policy = static_cast<NeedMaterializationPolicy>(999);
+    Check(!requested_id_service.CreateNeedProfile(invalid_policy_profile), "invalid materialization policy rejected");
+    const auto needs_invalid_after = requested_id_service.CaptureSnapshot();
+    Check(needs_invalid_after.revision == needs_invalid_before.revision &&
+              needs_invalid_after.profile_ids.next == needs_invalid_before.profile_ids.next &&
+              needs_invalid_after.profiles.size() == needs_invalid_before.profiles.size(),
+          "invalid profile leaves id/revision/state unchanged");
+
+    // Exhausted revision rejects a mutation without changing the committed need value.
+    auto needs_revision_exhausted_snapshot = snapshot;
+    needs_revision_exhausted_snapshot.revision.value = std::numeric_limits<std::uint64_t>::max();
+    NeedsLifeService needs_revision_exhausted;
+    Check(static_cast<bool>(needs_revision_exhausted.RestoreSnapshot(needs_revision_exhausted_snapshot)),
+          "restore max needs revision");
+    const auto *need_before_exhaustion = needs_revision_exhausted.GetCommittedNeedState(npc, hunger.id);
+    Check(need_before_exhaustion != nullptr, "need exists before revision exhaustion test");
+    const auto exhausted_value_before = need_before_exhaustion->value;
+    SatisfyNeedRequest exhausted_satisfy = satisfy;
+    exhausted_satisfy.amount = 1;
+    exhausted_satisfy.context.time = GameplayTimePoint{30};
+    Check(!needs_revision_exhausted.SatisfyNeed(exhausted_satisfy), "needs revision exhaustion rejected");
+    const auto *need_after_exhaustion = needs_revision_exhausted.GetCommittedNeedState(npc, hunger.id);
+    Check(need_after_exhaustion != nullptr && need_after_exhaustion->value == exhausted_value_before &&
+              needs_revision_exhausted.CurrentRevision().value == std::numeric_limits<std::uint64_t>::max(),
+          "needs revision exhaustion leaves state unchanged");
+
     return 0;
 }

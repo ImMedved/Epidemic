@@ -61,6 +61,9 @@ struct ArchiveObject
 struct ArchiveArray
 {
     std::vector<ArchiveValue> elements;
+    // Writer-side initialization bitmap. Declared-size arrays are write-once: every
+    // slot must be explicitly entered through BeginArrayElement() before finalization.
+    std::vector<bool> initialized;
 };
 
 struct SerializedDocument::Impl

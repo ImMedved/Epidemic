@@ -467,9 +467,12 @@ class TraversalService
     [[nodiscard]] foundation::Result<void> FinalizeSession(TraversalSessionId id, TraversalSessionState terminal_state,
                                                            TraversalChangeKind change_kind, TraversalReasonId reason,
                                                            GameplayContext context);
-    void Bump() noexcept
+    bool Bump() noexcept
     {
+        if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+            return false;
         ++revision_.value;
+        return true;
     }
     void Record(TraversalChange change);
 

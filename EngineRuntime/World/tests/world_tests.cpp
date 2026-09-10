@@ -13,7 +13,31 @@
 #include "Epidemic/Runtime/World/world_services.h"
 #include "Epidemic/Runtime/World/world_state.h"
 
+#include <limits>
 #include <type_traits>
+
+namespace epidemic::runtime
+{
+struct WorldRuntimeTestAccess
+{
+    static void SetNextRuntimeObjectValue(WorldRuntime& runtime, std::uint64_t value) { runtime.next_runtime_object_value_ = value; }
+    static std::uint64_t NextRuntimeObjectValue(const WorldRuntime& runtime) { return runtime.next_runtime_object_value_; }
+    static void SetNextDemotionTokenValue(WorldRuntime& runtime, std::uint64_t value) { runtime.next_demotion_token_value_ = value; }
+    static std::uint64_t NextDemotionTokenValue(const WorldRuntime& runtime) { return runtime.next_demotion_token_value_; }
+    static bool SetObjectRevision(WorldRuntime& runtime, RuntimeObjectId id, std::uint64_t revision)
+    {
+        const auto it = runtime.world_objects_.find(id);
+        if (it == runtime.world_objects_.end()) return false;
+        it->second.revision = revision;
+        return true;
+    }
+    static void FailNextPersistentIndexPublication(WorldRuntime& runtime) { runtime.fail_next_persistent_index_publication_for_testing_ = true; }
+    static void FailNextDemotionTokenPublication(WorldRuntime& runtime) { runtime.fail_next_demotion_token_publication_for_testing_ = true; }
+    static std::size_t ObjectCount(const WorldRuntime& runtime) { return runtime.world_objects_.size(); }
+    static std::size_t PersistentIndexCount(const WorldRuntime& runtime) { return runtime.persistent_to_runtime_.size(); }
+    static std::size_t DemotionTokenCount(const WorldRuntime& runtime) { return runtime.issued_demotion_tokens_.size(); }
+};
+} // namespace epidemic::runtime
 
 namespace
 {
@@ -47,6 +71,7 @@ using epidemic::runtime::CreateWorldServices;
 using epidemic::runtime::WorldLocation;
 using epidemic::runtime::WorldObjectRecord;
 using epidemic::runtime::WorldRuntime;
+using epidemic::runtime::WorldRuntimeTestAccess;
 using epidemic::runtime::ChangePlacementCommand;
 using epidemic::runtime::ChangeChunkStateCommand;
 using epidemic::runtime::ChangeResidencyCommand;
@@ -841,6 +866,204 @@ bool TestDestroyPersistentObjectLeavesTombstone()
            std::holds_alternative<DestroyedPlacement>(stored->placement) &&
            stored->residency == ResidencyState::Unloaded && stored->revision == 2;
 }
+
+[[nodiscard]] bool TestTopologyFreezeContract()
+{
+    WorldRuntime runtime;
+    if (!runtime.RegisterRegion(RegionDescriptor{RegionId{700}, StringId::FromString("freeze")}) ||
+        !runtime.RegisterChunk(ChunkDescriptor{ChunkId{701}, RegionId{700}, 0, 0, 0}))
+    {
+        return false;
+    }
+    runtime.Freeze();
+    runtime.Freeze();
+    const auto region_after = runtime.RegisterRegion(RegionDescriptor{RegionId{702}, StringId::FromString("late")});
+    const auto chunk_after = runtime.RegisterChunk(ChunkDescriptor{ChunkId{703}, RegionId{700}, 1, 0, 0});
+    const auto snapshot = runtime.GetChunkSnapshot(ChunkId{701});
+    if (!runtime.IsFrozen() || region_after || chunk_after || !snapshot)
+    {
+        return false;
+    }
+    const auto state_change = runtime.SetChunkState(ChangeChunkStateCommand{ChunkId{701}, snapshot.Value().revision, ChunkState::Loading});
+    return state_change && region_after.GetError().HasCode("world.topology_frozen") &&
+           chunk_after.GetError().HasCode("world.topology_frozen") && runtime.FindRegion(RegionId{700}).has_value();
+}
+
+[[nodiscard]] bool TestInvalidCreateDoesNotConsumeFinalRuntimeId()
+{
+    WorldRuntime runtime;
+    WorldRuntimeTestAccess::SetNextRuntimeObjectValue(runtime, std::numeric_limits<std::uint64_t>::max());
+    WorldObjectRecord invalid{};
+    invalid.reality = static_cast<ObjectRealityLevel>(999);
+    const auto rejected = runtime.Apply(CreateObjectCommand{invalid});
+    if (rejected || !rejected.GetError().HasCode("world.invalid_state_enum") ||
+        WorldRuntimeTestAccess::NextRuntimeObjectValue(runtime) != std::numeric_limits<std::uint64_t>::max())
+    {
+        return false;
+    }
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    const auto exhausted = runtime.CreateObject(WorldObjectRecord{});
+    return created && created.Value().Raw() == std::numeric_limits<std::uint64_t>::max() && !exhausted &&
+           exhausted.GetError().HasCode("world.runtime_object_id_exhausted");
+}
+
+[[nodiscard]] bool TestCreatePersistentIndexFailureRollsBackEverything()
+{
+    WorldRuntime runtime;
+    const auto before_next = WorldRuntimeTestAccess::NextRuntimeObjectValue(runtime);
+    WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{8001};
+    record.persistence_tier = PersistenceTier::PlayerTouched;
+    WorldRuntimeTestAccess::FailNextPersistentIndexPublication(runtime);
+    const auto failed = runtime.Apply(CreateObjectCommand{record});
+    if (failed || !failed.GetError().HasCode("world.allocation_failed"))
+    {
+        return false;
+    }
+    if (WorldRuntimeTestAccess::ObjectCount(runtime) != 0u || WorldRuntimeTestAccess::PersistentIndexCount(runtime) != 0u ||
+        WorldRuntimeTestAccess::NextRuntimeObjectValue(runtime) != before_next)
+    {
+        return false;
+    }
+    const auto retry = runtime.Apply(CreateObjectCommand{record});
+    return retry && retry.Value().runtime_id.Raw() == before_next;
+}
+
+[[nodiscard]] bool TestPersistentIdentityRenameIsRejectedWithoutMutation()
+{
+    WorldRuntime runtime;
+    WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{900};
+    record.persistence_tier = PersistenceTier::PlayerTouched;
+    const auto created = runtime.Apply(CreateObjectCommand{record});
+    if (!created) return false;
+    const RuntimeObjectId id = created.Value().runtime_id;
+    const auto before = runtime.FindObject(id);
+    const auto rename = runtime.Apply(PromotePersistenceTierCommand{id, before->revision, PersistenceTier::Protected, PersistentObjectId{901}});
+    const auto after = runtime.FindObject(id);
+    if (!before || !after) return false;
+    const auto same = runtime.Apply(PromotePersistenceTierCommand{id, after->revision, PersistenceTier::Protected, PersistentObjectId{900}});
+    const auto old_materialize = runtime.Materialize(MaterializationRequest{PersistentObjectId{900}, ObjectRealityLevel::Logical});
+    const auto new_materialize = runtime.Materialize(MaterializationRequest{PersistentObjectId{901}, ObjectRealityLevel::Logical});
+    return !rename && rename.GetError().HasCode("world.persistent_id_immutable") && *before == *after && same &&
+           old_materialize && !new_materialize && new_materialize.GetError().HasCode("world.object_not_found");
+}
+
+[[nodiscard]] bool TestPromotionIndexFailurePreservesObjectAndDemotionTokens()
+{
+    WorldRuntime runtime;
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    if (!created) return false;
+    const auto object = runtime.FindObject(created.Value());
+    const auto token = runtime.IssueDemotionCommitToken(DemotionSnapshot{
+        created.Value(), ObjectRealityLevel::AbstractFact, HiddenPlacement{}, StringId::FromString("collapse"), object->revision});
+    if (!token) return false;
+    const auto before = runtime.FindObject(created.Value());
+    const auto token_count = WorldRuntimeTestAccess::DemotionTokenCount(runtime);
+    WorldRuntimeTestAccess::FailNextPersistentIndexPublication(runtime);
+    const auto promoted = runtime.Apply(PromotePersistenceTierCommand{
+        created.Value(), before->revision, PersistenceTier::PlayerTouched, PersistentObjectId{9100}});
+    const auto after = runtime.FindObject(created.Value());
+    return !promoted && promoted.GetError().HasCode("world.allocation_failed") && before && after && *before == *after &&
+           WorldRuntimeTestAccess::DemotionTokenCount(runtime) == token_count && WorldRuntimeTestAccess::PersistentIndexCount(runtime) == 0u;
+}
+
+[[nodiscard]] bool TestObjectRevisionExhaustionRejectsMutations()
+{
+    WorldRuntime runtime;
+    if (!RegisterRegionAndChunk(runtime, RegionId{720}, ChunkId{721})) return false;
+    WorldObjectRecord record{};
+    record.persistent_id = PersistentObjectId{9200};
+    record.persistence_tier = PersistenceTier::PlayerTouched;
+    record.placement = WorldSurfacePlacement{RegionId{720}, ChunkId{721}, Transform{}};
+    record.reality = ObjectRealityLevel::Physical;
+    record.residency = ResidencyState::Active;
+    const auto created = runtime.CreateObject(record);
+    if (!created || !WorldRuntimeTestAccess::SetObjectRevision(runtime, created.Value(), std::numeric_limits<std::uint64_t>::max())) return false;
+    const auto before = runtime.FindObject(created.Value());
+    const auto placement = runtime.Apply(ChangePlacementCommand{created.Value(), before->revision, HiddenPlacement{RegionId{720}}});
+    const auto residency = runtime.Apply(ChangeResidencyCommand{created.Value(), before->revision, ResidencyState::Resident});
+    const auto promotion = runtime.Apply(PromotePersistenceTierCommand{created.Value(), before->revision, PersistenceTier::Protected, std::nullopt});
+    const auto materialize = runtime.Apply(epidemic::runtime::MaterializeObjectCommand{
+        MaterializationRequest{PersistentObjectId{9200}, ObjectRealityLevel::Physical}, before->revision});
+    const auto token = runtime.IssueDemotionCommitToken(DemotionSnapshot{
+        created.Value(), ObjectRealityLevel::Logical, HiddenPlacement{RegionId{720}}, StringId::FromString("demote"), before->revision});
+    if (!token) return false;
+    const auto demote = runtime.Apply(epidemic::runtime::DemoteObjectCommand{
+        DemotionRequest{created.Value(), ObjectRealityLevel::Logical, token.Value()}, before->revision});
+    const auto destroy = runtime.Apply(DestroyObjectCommand{created.Value(), before->revision, GameTimePoint{1}, StringId::FromString("destroy")});
+    const auto after = runtime.FindObject(created.Value());
+    return !placement && !residency && !promotion && !materialize && !demote && !destroy && before && after && *before == *after &&
+           placement.GetError().HasCode("world.revision_overflow") && residency.GetError().HasCode("world.revision_overflow") &&
+           promotion.GetError().HasCode("world.revision_overflow") && materialize.GetError().HasCode("world.revision_overflow") &&
+           demote.GetError().HasCode("world.revision_overflow") && destroy.GetError().HasCode("world.revision_overflow");
+}
+
+[[nodiscard]] bool TestInvalidEnumDomainsAreRejectedBeforeMutation()
+{
+    WorldRuntime runtime;
+    WorldObjectRecord invalid_reality{};
+    invalid_reality.reality = static_cast<ObjectRealityLevel>(-1);
+    WorldObjectRecord invalid_residency{};
+    invalid_residency.residency = static_cast<ResidencyState>(999);
+    WorldObjectRecord invalid_tier{};
+    invalid_tier.persistence_tier = static_cast<PersistenceTier>(999);
+    const auto a = runtime.Apply(CreateObjectCommand{invalid_reality});
+    const auto b = runtime.Apply(CreateObjectCommand{invalid_residency});
+    const auto c = runtime.Apply(CreateObjectCommand{invalid_tier});
+    if (a || b || c || WorldRuntimeTestAccess::NextRuntimeObjectValue(runtime) != 1u) return false;
+
+    WorldObjectRecord valid{};
+    valid.persistent_id = PersistentObjectId{9300};
+    valid.persistence_tier = PersistenceTier::PlayerTouched;
+    const auto created = runtime.CreateObject(valid);
+    if (!created) return false;
+    const auto object = runtime.FindObject(created.Value());
+    const auto bad_residency = runtime.Apply(ChangeResidencyCommand{created.Value(), object->revision, static_cast<ResidencyState>(999)});
+    const auto bad_tier = runtime.Apply(PromotePersistenceTierCommand{created.Value(), object->revision, static_cast<PersistenceTier>(999), std::nullopt});
+    const auto bad_materialize = runtime.Apply(epidemic::runtime::MaterializeObjectCommand{
+        MaterializationRequest{PersistentObjectId{9300}, static_cast<ObjectRealityLevel>(999)}, object->revision});
+    const auto bad_demotion_token = runtime.IssueDemotionCommitToken(DemotionSnapshot{
+        created.Value(), static_cast<ObjectRealityLevel>(999), HiddenPlacement{}, StringId::FromString("invalid"), object->revision});
+    return !bad_residency && !bad_tier && !bad_materialize && !bad_demotion_token &&
+           bad_residency.GetError().HasCode("world.invalid_state_enum") &&
+           bad_tier.GetError().HasCode("world.invalid_state_enum") &&
+           bad_materialize.GetError().HasCode("world.invalid_state_enum") &&
+           bad_demotion_token.GetError().HasCode("world.invalid_state_enum") &&
+           runtime.FindObject(created.Value())->revision == object->revision;
+}
+
+[[nodiscard]] bool TestDemotionTokenPublicationFailureDoesNotConsumeId()
+{
+    WorldRuntime runtime;
+    const auto created = runtime.CreateObject(WorldObjectRecord{});
+    if (!created) return false;
+    const auto object = runtime.FindObject(created.Value());
+    WorldRuntimeTestAccess::SetNextDemotionTokenValue(runtime, std::numeric_limits<std::uint64_t>::max());
+    const DemotionSnapshot snapshot{created.Value(), ObjectRealityLevel::AbstractFact, HiddenPlacement{},
+                                    StringId::FromString("collapse"), object->revision};
+    WorldRuntimeTestAccess::FailNextDemotionTokenPublication(runtime);
+    const auto failed = runtime.IssueDemotionCommitToken(snapshot);
+    if (failed || !failed.GetError().HasCode("world.allocation_failed") ||
+        WorldRuntimeTestAccess::NextDemotionTokenValue(runtime) != std::numeric_limits<std::uint64_t>::max())
+    {
+        return false;
+    }
+    const auto token = runtime.IssueDemotionCommitToken(snapshot);
+    const auto exhausted = runtime.IssueDemotionCommitToken(snapshot);
+    return token && token.Value().token_id == std::numeric_limits<std::uint64_t>::max() && !exhausted &&
+           exhausted.GetError().HasCode("world.demotion_token_exhausted");
+}
+
+[[nodiscard]] bool TestRuntimeObjectIdsAreNeverReused()
+{
+    WorldRuntime runtime;
+    const auto first = runtime.CreateObject(WorldObjectRecord{});
+    if (!first || !runtime.DestroyObject(first.Value())) return false;
+    const auto second = runtime.CreateObject(WorldObjectRecord{});
+    return second && second.Value().Raw() > first.Value().Raw() && !runtime.FindObject(first.Value()).has_value();
+}
+
 } // namespace
 
 // Runs the local test suite and maps failures to stable exit codes.
@@ -1046,6 +1269,16 @@ int main()
     {
         return 31;
     }
+
+    if (!TestTopologyFreezeContract()) return 40;
+    if (!TestInvalidCreateDoesNotConsumeFinalRuntimeId()) return 41;
+    if (!TestCreatePersistentIndexFailureRollsBackEverything()) return 42;
+    if (!TestPersistentIdentityRenameIsRejectedWithoutMutation()) return 43;
+    if (!TestPromotionIndexFailurePreservesObjectAndDemotionTokens()) return 44;
+    if (!TestObjectRevisionExhaustionRejectsMutations()) return 45;
+    if (!TestInvalidEnumDomainsAreRejectedBeforeMutation()) return 46;
+    if (!TestDemotionTokenPublicationFailureDoesNotConsumeId()) return 47;
+    if (!TestRuntimeObjectIdsAreNeverReused()) return 48;
 
     return 0;
 }

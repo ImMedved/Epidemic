@@ -144,6 +144,15 @@ int main()
     Check(static_cast<bool>(binding), "commit equip failed");
     Check(items.reservations.contains(item_a), "equipment reservation was not created");
 
+    const auto before_invalid_state = service.CaptureSnapshot();
+    Check(!service.SetBindingState(binding.Value(), static_cast<EquipmentBindingState>(999)),
+          "invalid binding state must be rejected");
+    const auto after_invalid_state = service.CaptureSnapshot();
+    Check(after_invalid_state.revision == before_invalid_state.revision, "invalid binding state changed revision");
+    Check(after_invalid_state.bindings.size() == before_invalid_state.bindings.size() &&
+              after_invalid_state.bindings.front().state == before_invalid_state.bindings.front().state,
+          "invalid binding state changed authoritative binding");
+
     const auto bound_snapshot = service.CaptureSnapshot();
     EquipmentService restored;
     restored.SetItemProvider(&items);

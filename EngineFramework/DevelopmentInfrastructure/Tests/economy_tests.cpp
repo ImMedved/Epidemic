@@ -270,5 +270,134 @@ int main()
           "failed exhausted mutation does not wrap revision");
     Check(exhausted.CaptureSnapshot().markets.size() == markets_before,
           "failed exhausted mutation leaves authoritative state unchanged");
+
+    // ECO-09/ECO-10: runtime records require the frozen registry and canonical initial lifecycle states.
+    EconomyService prefreeze;
+    auto prefreeze_currency = prefreeze.RegisterCurrency(coin);
+    Check(static_cast<bool>(prefreeze_currency), "prefreeze currency");
+    EconomicOffer prefreeze_offer;
+    prefreeze_offer.seller = Ref("actor", "prefreeze-seller");
+    prefreeze_offer.type = OfferTypeId::FromString("offer.prefreeze");
+    prefreeze_offer.subject = value;
+    prefreeze_offer.quantity = 1;
+    prefreeze_offer.currency = prefreeze_currency.Value();
+    prefreeze_offer.unit_price = 1;
+    DebtRecord prefreeze_debt;
+    prefreeze_debt.debtor = Ref("actor", "prefreeze-debtor");
+    prefreeze_debt.creditor = Ref("actor", "prefreeze-creditor");
+    prefreeze_debt.currency = prefreeze_currency.Value();
+    prefreeze_debt.principal = 1;
+    EconomicContract prefreeze_contract;
+    prefreeze_contract.parties = {prefreeze_debt.debtor, prefreeze_debt.creditor};
+    prefreeze_contract.type = ContractTypeId::FromString("contract.prefreeze");
+    prefreeze_contract.currency = prefreeze_currency.Value();
+    prefreeze_contract.amount = 1;
+    Check(!static_cast<bool>(prefreeze.CreateOffer(prefreeze_offer)), "offer creation before freeze rejected");
+    Check(!static_cast<bool>(prefreeze.CreateDebt(prefreeze_debt)), "debt creation before freeze rejected");
+    Check(!static_cast<bool>(prefreeze.CreateContract(prefreeze_contract)), "contract creation before freeze rejected");
+    Check(prefreeze.CaptureSnapshot().offers.empty() && prefreeze.CaptureSnapshot().debts.empty() &&
+              prefreeze.CaptureSnapshot().contracts.empty(),
+          "prefreeze failures do not publish runtime state");
+
+    EconomyService invalid_states;
+    auto invalid_states_currency = invalid_states.RegisterCurrency(coin);
+    Check(static_cast<bool>(invalid_states_currency), "invalid states currency");
+    invalid_states.Freeze();
+    EconomicAccount invalid_account;
+    invalid_account.owner = Ref("actor", "invalid-account");
+    invalid_account.currency = invalid_states_currency.Value();
+    invalid_account.state = static_cast<AccountState>(99);
+    Check(!static_cast<bool>(invalid_states.CreateAccount(invalid_account)), "invalid account state rejected");
+    auto invalid_offer = prefreeze_offer;
+    invalid_offer.currency = invalid_states_currency.Value();
+    invalid_offer.state = static_cast<OfferState>(99);
+    Check(!static_cast<bool>(invalid_states.CreateOffer(invalid_offer)), "invalid offer state rejected");
+    auto invalid_debt = prefreeze_debt;
+    invalid_debt.currency = invalid_states_currency.Value();
+    invalid_debt.state = static_cast<DebtState>(99);
+    Check(!static_cast<bool>(invalid_states.CreateDebt(invalid_debt)), "invalid debt state rejected");
+    auto invalid_contract = prefreeze_contract;
+    invalid_contract.currency = invalid_states_currency.Value();
+    invalid_contract.state = static_cast<ContractState>(99);
+    Check(!static_cast<bool>(invalid_states.CreateContract(invalid_contract)), "invalid contract state rejected");
+    Check(invalid_states.CaptureSnapshot().accounts.empty() && invalid_states.CaptureSnapshot().offers.empty() &&
+              invalid_states.CaptureSnapshot().debts.empty() && invalid_states.CaptureSnapshot().contracts.empty(),
+          "invalid lifecycle values leave state unchanged");
+
+    // ECO-03/ECO-02: aggregate availability is validated before reservation IDs/state are published.
+    EconomyService aggregate;
+    auto aggregate_currency = aggregate.RegisterCurrency(coin);
+    Check(static_cast<bool>(aggregate_currency), "aggregate currency");
+    aggregate.Freeze();
+    EconomicAccount aggregate_source;
+    aggregate_source.owner = Ref("actor", "aggregate-source");
+    aggregate_source.currency = aggregate_currency.Value();
+    aggregate_source.balance = 100;
+    EconomicAccount aggregate_destination;
+    aggregate_destination.owner = Ref("actor", "aggregate-destination");
+    aggregate_destination.currency = aggregate_currency.Value();
+    auto aggregate_source_id = aggregate.CreateAccount(aggregate_source);
+    auto aggregate_destination_id = aggregate.CreateAccount(aggregate_destination);
+    Check(static_cast<bool>(aggregate_source_id) && static_cast<bool>(aggregate_destination_id), "aggregate accounts");
+    TradePlan aggregate_plan;
+    aggregate_plan.buyer = aggregate_source.owner;
+    aggregate_plan.seller = aggregate_destination.owner;
+    aggregate_plan.monetary_transfers = {
+        {aggregate_source_id.Value(), aggregate_destination_id.Value(), 60, aggregate_currency.Value()},
+        {aggregate_source_id.Value(), aggregate_destination_id.Value(), 60, aggregate_currency.Value()}};
+    auto aggregate_tx = aggregate.PrepareTrade(aggregate_plan);
+    Check(static_cast<bool>(aggregate_tx), "aggregate trade prepared");
+    const auto aggregate_before = aggregate.CaptureSnapshot();
+    auto aggregate_reserve = aggregate.ReserveTrade(aggregate_tx.Value());
+    const auto aggregate_after = aggregate.CaptureSnapshot();
+    Check(!aggregate_reserve, "aggregate over-reservation rejected");
+    Check(aggregate_before.reservation_ids.next == aggregate_after.reservation_ids.next &&
+              aggregate_before.reservations.size() == aggregate_after.reservations.size(),
+          "failed aggregate reservation consumes no IDs or reservations");
+    const auto *aggregate_tx_after = aggregate.FindTransaction(aggregate_tx.Value());
+    Check(aggregate_tx_after != nullptr && aggregate_tx_after->state == TradeTransactionState::Prepared &&
+              aggregate_tx_after->reservations.empty(),
+          "failed aggregate reservation leaves transaction prepared");
+
+    // ECO-08: offer expiration is blocked atomically at revision exhaustion.
+    EconomyService expiration_seed;
+    auto expiration_currency = expiration_seed.RegisterCurrency(coin);
+    Check(static_cast<bool>(expiration_currency), "expiration currency");
+    expiration_seed.Freeze();
+    EconomicOffer expiring_offer;
+    expiring_offer.seller = Ref("actor", "expiration-seller");
+    expiring_offer.type = OfferTypeId::FromString("offer.expiring");
+    expiring_offer.subject = value;
+    expiring_offer.quantity = 1;
+    expiring_offer.currency = expiration_currency.Value();
+    expiring_offer.unit_price = 1;
+    expiring_offer.expires_at = GameplayTimePoint{10};
+    auto expiring_offer_id = expiration_seed.CreateOffer(expiring_offer);
+    Check(static_cast<bool>(expiring_offer_id), "expiring offer created");
+    auto expiration_snapshot = expiration_seed.CaptureSnapshot();
+    expiration_snapshot.revision = Revision{std::numeric_limits<std::uint64_t>::max()};
+    for (auto& offer_record : expiration_snapshot.offers)
+        offer_record.revision = expiration_snapshot.revision;
+    EconomyService expiration_exhausted;
+    auto expiration_exhausted_currency = expiration_exhausted.RegisterCurrency(coin);
+    Check(static_cast<bool>(expiration_exhausted_currency), "expiration exhausted currency");
+    expiration_exhausted.Freeze();
+    Check(static_cast<bool>(expiration_exhausted.RestoreSnapshot(expiration_snapshot)), "expiration exhausted restore");
+    auto expiration_result = expiration_exhausted.ExpireOffers(GameplayTimePoint{11});
+    Check(!expiration_result && expiration_result.GetError().HasCode("gameplay.revision_exhausted"),
+          "expiration rejects exhausted revision");
+    Check(expiration_exhausted.FindOffers(expiring_offer.seller).size() == 1,
+          "failed expiration leaves active offer intact");
+
+    // ECO-11: malformed lifecycle state in restore is rejected without replacing live state.
+    const auto live_balance_before_bad_restore = restored.GetBalance(bid.Value());
+    auto bad_lifecycle_snapshot = restored.CaptureSnapshot();
+    Check(!bad_lifecycle_snapshot.accounts.empty(), "bad lifecycle seed has account");
+    bad_lifecycle_snapshot.accounts.front().state = static_cast<AccountState>(99);
+    Check(!static_cast<bool>(restored.RestoreSnapshot(std::move(bad_lifecycle_snapshot))),
+          "invalid lifecycle snapshot rejected");
+    Check(restored.GetBalance(bid.Value()) == live_balance_before_bad_restore,
+          "failed lifecycle restore preserves live economy");
+
     return 0;
 }

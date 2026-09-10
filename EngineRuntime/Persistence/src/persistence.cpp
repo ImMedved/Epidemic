@@ -1,32 +1,48 @@
-﻿#include "Epidemic/Runtime/Persistence/persistence_services.h"
+#include "Epidemic/Runtime/Persistence/persistence_services.h"
 
 #include "in_memory_persistence_support.h"
+
+#include <new>
 
 namespace epidemic::runtime
 {
 foundation::Result<PersistenceServices> CreatePersistenceServices(const PersistenceOptions& options)
 {
-    (void)options;
-
     PersistenceSnapshot snapshot{};
     if (options.backend)
     {
-        const auto loaded = options.backend->Load();
-        if (!loaded)
+        try
         {
-            return foundation::Result<PersistenceServices>::Failure(loaded.GetError());
+            const auto loaded = options.backend->Load();
+            if (!loaded)
+            {
+                return foundation::Result<PersistenceServices>::Failure(loaded.GetError());
+            }
+            const auto valid = ValidatePersistenceSnapshot(loaded.Value());
+            if (!valid)
+            {
+                return foundation::Result<PersistenceServices>::Failure(valid.GetError());
+            }
+            snapshot = loaded.Value();
         }
-        const auto valid = ValidatePersistenceSnapshot(loaded.Value());
-        if (!valid)
+        catch (...)
         {
-            return foundation::Result<PersistenceServices>::Failure(valid.GetError());
+            return foundation::Result<PersistenceServices>::Failure(
+                foundation::Error::Create("persistence.backend_exception", "persistence backend threw while loading snapshot"));
         }
-        snapshot = loaded.Value();
     }
 
     PersistenceServices services{};
-    services.store = std::make_shared<InMemoryPersistenceStore>(std::move(snapshot), options.backend, options.durability);
-    services.query = services.store;
+    try
+    {
+        services.store = std::make_shared<InMemoryPersistenceStore>(std::move(snapshot), options.backend, options.durability);
+        services.query = services.store;
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<PersistenceServices>::Failure(
+            foundation::Error::Create("persistence.allocation_failed", "failed to allocate persistence services"));
+    }
     return foundation::Result<PersistenceServices>::Success(std::move(services));
 }
 } // namespace epidemic::runtime

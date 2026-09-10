@@ -16,6 +16,13 @@ constexpr std::int64_t kMicro = 1'000'000;
 
 bool ValidMicro(std::int64_t value) noexcept { return value >= 0 && value <= kMicro; }
 
+template <class E>
+[[nodiscard]] constexpr bool EnumInRange(E value, E last) noexcept
+{
+    const auto raw = static_cast<int>(value);
+    return raw >= 0 && raw <= static_cast<int>(last);
+}
+
 bool AdvanceGeneratorPastRequested(MonotonicIdGenerator<GameplayObjectId> &generator, GameplayObjectId id) noexcept
 {
     if (!id.IsValid() || id.High() != generator.Scope().Raw())
@@ -85,10 +92,12 @@ foundation::Result<void> NeedsLifeService::RegisterDecayRule(NeedDecayRule rule)
         return foundation::Result<void>::Failure(Error("gameplay.needs.invalid_decay_rule", "invalid decay rule"));
     if (decay_rules_.contains(rule.id))
         return foundation::Result<void>::Failure(Error("gameplay.needs.duplicate_decay_rule", "duplicate decay rule"));
-    if (!AdvanceRevision())
+    const auto next_revision = CheckedNext(revision_);
+    if (!next_revision)
         return foundation::Result<void>::Failure(Error("gameplay.needs.revision_exhausted", "revision exhausted"));
-    rule.revision = revision_;
+    rule.revision = *next_revision;
     decay_rules_.emplace(rule.id, std::move(rule));
+    revision_ = *next_revision;
     return foundation::Result<void>::Success();
 }
 
@@ -103,10 +112,12 @@ foundation::Result<void> NeedsLifeService::RegisterSimulationProfile(LifeSimulat
     if (simulation_profiles_.contains(profile.id))
         return foundation::Result<void>::Failure(
             Error("gameplay.needs.duplicate_simulation_profile", "duplicate simulation profile"));
-    if (!AdvanceRevision())
+    const auto next_revision = CheckedNext(revision_);
+    if (!next_revision)
         return foundation::Result<void>::Failure(Error("gameplay.needs.revision_exhausted", "revision exhausted"));
-    profile.revision = revision_;
+    profile.revision = *next_revision;
     simulation_profiles_.emplace(profile.id, std::move(profile));
+    revision_ = *next_revision;
     return foundation::Result<void>::Success();
 }
 
@@ -134,11 +145,13 @@ foundation::Result<void> NeedsLifeService::RegisterNeedDefinition(NeedDefinition
     if (definitions_.contains(d.id))
         return foundation::Result<void>::Failure(
             Error("gameplay.needs.duplicate_definition", "duplicate need definition"));
-    if (!AdvanceRevision())
+    const auto next_revision = CheckedNext(revision_);
+    if (!next_revision)
         return foundation::Result<void>::Failure(Error("gameplay.needs.revision_exhausted", "revision exhausted"));
     d.default_value = Clamp(d, d.default_value);
-    d.revision = revision_;
+    d.revision = *next_revision;
     definitions_.emplace(d.id, std::move(d));
+    revision_ = *next_revision;
     return foundation::Result<void>::Success();
 }
 
@@ -158,7 +171,7 @@ foundation::Result<void> NeedsLifeService::FreezeDefinitions()
 
 foundation::Result<void> NeedsLifeService::ValidateProfile(const NeedProfile &p) const
 {
-    if (!p.subject.IsValid())
+    if (!p.subject.IsValid() || !EnumInRange(p.materialization_policy, NeedMaterializationPolicy::DisabledWhenAbstract))
         return foundation::Result<void>::Failure(Error("gameplay.needs.invalid_profile", "invalid need profile"));
     if (p.simulation_profile.IsValid() && !simulation_profiles_.contains(p.simulation_profile))
         return foundation::Result<void>::Failure(
@@ -179,32 +192,35 @@ foundation::Result<NeedProfileId> NeedsLifeService::CreateNeedProfile(NeedProfil
     if (auto valid = ValidateProfile(p); !valid)
         return foundation::Result<NeedProfileId>::Failure(valid.GetError());
     if (profile_by_subject_.contains(p.subject))
-        return foundation::Result<NeedProfileId>::Failure(
-            Error("gameplay.needs.profile_exists", "subject already has an active need profile"));
-    if (!p.id.IsValid())
-        p.id = NeedProfileId{profile_ids_.Next()};
-    if (!p.id.IsValid())
-        return foundation::Result<NeedProfileId>::Failure(Error("gameplay.needs.id_exhausted", "profile id exhausted"));
-    if (profiles_.contains(p.id))
-        return foundation::Result<NeedProfileId>::Failure(
-            Error("gameplay.needs.duplicate_profile", "duplicate need profile"));
-    AdvanceGeneratorPastRequested(profile_ids_, p.id.value);
-    std::sort(p.active_needs.begin(), p.active_needs.end());
-    if (p.last_simulated_at.ticks == 0)
-        p.last_simulated_at = c.time;
-    if (!AdvanceRevision())
+        return foundation::Result<NeedProfileId>::Failure(Error("gameplay.needs.profile_exists", "subject already has an active need profile"));
+    const auto next_revision = CheckedNext(revision_);
+    if (!next_revision)
         return foundation::Result<NeedProfileId>::Failure(Error("gameplay.needs.revision_exhausted", "revision exhausted"));
-    p.revision = revision_;
+
+    auto staged_generator = profile_ids_;
+    if (!p.id.IsValid()) p.id = NeedProfileId{staged_generator.Next()};
+    if (!p.id.IsValid()) return foundation::Result<NeedProfileId>::Failure(Error("gameplay.needs.id_exhausted", "profile id exhausted"));
+    if (profiles_.contains(p.id)) return foundation::Result<NeedProfileId>::Failure(Error("gameplay.needs.duplicate_profile", "duplicate need profile"));
+    AdvanceGeneratorPastRequested(staged_generator, p.id.value);
+    std::sort(p.active_needs.begin(), p.active_needs.end());
+    if (p.last_simulated_at.ticks == 0) p.last_simulated_at = c.time;
+    p.revision = *next_revision;
+
+    auto staged_states = states_;
+    auto staged_profiles = profiles_;
+    auto staged_index = profile_by_subject_;
     for (auto n : p.active_needs)
     {
         const auto &def = definitions_.at(n);
-        NeedState st{p.subject, n, def.default_value, ThresholdFor(def, def.default_value), c.time, revision_};
-        states_.emplace(StateKey(p.subject, n), st);
+        NeedState st{p.subject, n, def.default_value, ThresholdFor(def, def.default_value), c.time, *next_revision};
+        if (!staged_states.emplace(StateKey(p.subject, n), st).second)
+            return foundation::Result<NeedProfileId>::Failure(Error("gameplay.needs.state_exists", "need state already exists"));
     }
-    const auto id = p.id;
-    const auto subject = p.subject;
-    profiles_.emplace(id, std::move(p));
-    profile_by_subject_[subject] = id;
+    const auto id=p.id; const auto subject=p.subject;
+    if(!staged_profiles.emplace(id,p).second || !staged_index.emplace(subject,id).second)
+        return foundation::Result<NeedProfileId>::Failure(Error("gameplay.needs.profile_exists", "need profile already exists"));
+
+    states_.swap(staged_states); profiles_.swap(staged_profiles); profile_by_subject_.swap(staged_index); profile_ids_=staged_generator; revision_=*next_revision;
     Record({0, NeedsLifeChangeKind::NeedProfileCreated, subject, {}, {}, NeedThreshold::Satisfied, c, revision_});
     return foundation::Result<NeedProfileId>::Success(id);
 }
@@ -365,25 +381,18 @@ foundation::Result<void> NeedsLifeService::AddNeedPressure(AddNeedPressureReques
 
 foundation::Result<LifePressureId> NeedsLifeService::CreateLifePressure(LifePressure p, GameplayContext c)
 {
-    if (!p.subject.IsValid() || !p.type.IsValid() || p.urgency < 0 ||
+    if (!p.subject.IsValid() || !p.type.IsValid() || p.urgency < 0 || !EnumInRange(p.state, LifePressureState::Expired) ||
         (p.expires_at && *p.expires_at <= c.time))
         return foundation::Result<LifePressureId>::Failure(Error("gameplay.needs.invalid_pressure", "invalid pressure"));
-    if (!p.id.IsValid())
-        p.id = LifePressureId{pressure_ids_.Next()};
-    if (!p.id.IsValid())
-        return foundation::Result<LifePressureId>::Failure(Error("gameplay.needs.id_exhausted", "pressure id exhausted"));
-    if (pressures_.contains(p.id))
-        return foundation::Result<LifePressureId>::Failure(
-            Error("gameplay.needs.duplicate_pressure", "duplicate pressure"));
-    AdvanceGeneratorPastRequested(pressure_ids_, p.id.value);
-    if (!AdvanceRevision())
-        return foundation::Result<LifePressureId>::Failure(Error("gameplay.needs.revision_exhausted", "revision exhausted"));
-    p.state = LifePressureState::Active;
-    p.revision = revision_;
-    const auto id = p.id;
-    const auto subject = p.subject;
-    pressures_.emplace(id, p);
-    pressures_by_subject_.emplace(subject, id);
+    const auto next_revision=CheckedNext(revision_);
+    if(!next_revision)return foundation::Result<LifePressureId>::Failure(Error("gameplay.needs.revision_exhausted","revision exhausted"));
+    auto staged_generator=pressure_ids_; if(!p.id.IsValid())p.id=LifePressureId{staged_generator.Next()};
+    if(!p.id.IsValid())return foundation::Result<LifePressureId>::Failure(Error("gameplay.needs.id_exhausted","pressure id exhausted"));
+    if(pressures_.contains(p.id))return foundation::Result<LifePressureId>::Failure(Error("gameplay.needs.duplicate_pressure","duplicate pressure"));
+    AdvanceGeneratorPastRequested(staged_generator,p.id.value); p.state=LifePressureState::Active;p.revision=*next_revision;
+    auto staged_pressures=pressures_;auto staged_index=pressures_by_subject_;const auto id=p.id;const auto subject=p.subject;
+    staged_pressures.emplace(id,p);staged_index.emplace(subject,id);
+    pressures_.swap(staged_pressures);pressures_by_subject_.swap(staged_index);pressure_ids_=staged_generator;revision_=*next_revision;
     Record({0, NeedsLifeChangeKind::LifePressureCreated, subject, {}, id, NeedThreshold::Satisfied, c, revision_});
     return foundation::Result<LifePressureId>::Success(id);
 }
@@ -411,11 +420,11 @@ foundation::Result<std::size_t> NeedsLifeService::SweepExpiredPressures(Gameplay
         if (pressure.state == LifePressureState::Active && pressure.expires_at && *pressure.expires_at <= now)
             due.push_back(id);
     std::sort(due.begin(), due.end());
+    if (due.size() > std::numeric_limits<std::uint64_t>::max() - revision_.value)
+        return foundation::Result<std::size_t>::Failure(Error("gameplay.needs.revision_exhausted", "revision exhausted"));
     for (auto id : due)
     {
-        if (!AdvanceRevision())
-            return foundation::Result<std::size_t>::Failure(
-                Error("gameplay.needs.revision_exhausted", "revision exhausted"));
+        ++revision_.value;
         auto &pressure = pressures_.at(id);
         pressure.state = LifePressureState::Expired;
         pressure.revision = revision_;
@@ -430,38 +439,18 @@ foundation::Result<std::size_t> NeedsLifeService::SweepExpiredPressures(Gameplay
 
 foundation::Result<LifeRoutineId> NeedsLifeService::SetRoutine(LifeRoutine r, GameplayContext c)
 {
-    if (!r.subject.IsValid())
-        return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.invalid_routine", "invalid routine"));
-    for (const auto &entry : r.entries)
-        if (!entry.routine_type.IsValid() || entry.duration.ticks <= 0)
-            return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.invalid_routine", "invalid routine entry"));
-    std::sort(r.entries.begin(), r.entries.end(), [](const auto &a, const auto &b) {
-        if (a.start != b.start)
-            return a.start < b.start;
-        return a.routine_type < b.routine_type;
-    });
-    auto existing = routine_by_subject_.find(r.subject);
-    if (existing != routine_by_subject_.end())
-    {
-        if (r.id.IsValid() && r.id != existing->second)
-            return foundation::Result<LifeRoutineId>::Failure(
-                Error("gameplay.needs.routine_exists", "subject already has a different routine"));
-        r.id = existing->second;
-    }
-    else if (!r.id.IsValid())
-    {
-        r.id = LifeRoutineId{routine_ids_.Next()};
-    }
-    if (!r.id.IsValid())
-        return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.id_exhausted", "routine id exhausted"));
-    AdvanceGeneratorPastRequested(routine_ids_, r.id.value);
-    if (!AdvanceRevision())
-        return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.revision_exhausted", "revision exhausted"));
-    r.revision = revision_;
-    const auto id = r.id;
-    const auto subject = r.subject;
-    routines_[id] = std::move(r);
-    routine_by_subject_[subject] = id;
+    if (!r.subject.IsValid())return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.invalid_routine", "invalid routine"));
+    for (const auto &entry : r.entries)if (!entry.routine_type.IsValid() || entry.duration.ticks <= 0)return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.invalid_routine", "invalid routine entry"));
+    std::sort(r.entries.begin(), r.entries.end(), [](const auto &a, const auto &b) { if (a.start != b.start) return a.start < b.start; return a.routine_type < b.routine_type; });
+    const auto next_revision=CheckedNext(revision_);if(!next_revision)return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.revision_exhausted","revision exhausted"));
+    auto staged_generator=routine_ids_;
+    auto existing=routine_by_subject_.find(r.subject);
+    if(existing!=routine_by_subject_.end()){if(r.id.IsValid()&&r.id!=existing->second)return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.routine_exists","subject already has a different routine"));r.id=existing->second;}
+    else if(!r.id.IsValid())r.id=LifeRoutineId{staged_generator.Next()};
+    if(!r.id.IsValid())return foundation::Result<LifeRoutineId>::Failure(Error("gameplay.needs.id_exhausted","routine id exhausted"));
+    AdvanceGeneratorPastRequested(staged_generator,r.id.value);r.revision=*next_revision;const auto id=r.id;const auto subject=r.subject;
+    auto staged_routines=routines_;auto staged_index=routine_by_subject_;staged_routines[id]=r;staged_index[subject]=id;
+    routines_.swap(staged_routines);routine_by_subject_.swap(staged_index);routine_ids_=staged_generator;revision_=*next_revision;
     Record({0, NeedsLifeChangeKind::RoutineChanged, subject, {}, {}, NeedThreshold::Satisfied, c, revision_});
     return foundation::Result<LifeRoutineId>::Success(id);
 }
@@ -499,13 +488,25 @@ std::vector<LifeRoutineOccurrence> NeedsLifeService::FindRoutineEntriesInInterva
 std::size_t NeedsLifeService::PruneTerminalPressures(GameplayObjectRef subject) noexcept
 {
     std::vector<LifePressureId> remove;
-    for (const auto &[id, pressure] : pressures_)
-        if (pressure.state != LifePressureState::Active && (!subject.IsValid() || pressure.subject == subject))
-            remove.push_back(id);
+    try
+    {
+        for (const auto &[id, pressure] : pressures_)
+            if (pressure.state != LifePressureState::Active && (!subject.IsValid() || pressure.subject == subject))
+                remove.push_back(id);
+    }
+    catch (...)
+    {
+        return 0;
+    }
     for (auto id : remove)
-        pressures_.erase(id);
-    if (!remove.empty())
-        RebuildIndexes();
+    {
+        const auto it=pressures_.find(id);
+        if(it==pressures_.end())continue;
+        const auto owner=it->second.subject;
+        auto [first,last]=pressures_by_subject_.equal_range(owner);
+        for(auto idx=first;idx!=last;){if(idx->second==id)idx=pressures_by_subject_.erase(idx);else ++idx;}
+        pressures_.erase(it);
+    }
     return remove.size();
 }
 
@@ -826,7 +827,7 @@ foundation::Result<void> NeedsLifeService::RestoreSnapshot(NeedsLifeSnapshot s)
     std::uint64_t max_profile = 0, max_pressure = 0, max_routine = 0;
     for (auto &profile : s.profiles)
     {
-        if (!profile.id.IsValid() || !profile.subject.IsValid() || profile.revision > s.revision ||
+        if (!profile.id.IsValid() || !profile.subject.IsValid() || !EnumInRange(profile.materialization_policy, NeedMaterializationPolicy::DisabledWhenAbstract) || profile.revision > s.revision ||
             (profile.simulation_profile.IsValid() && !new_simulation_profiles.contains(profile.simulation_profile)) ||
             new_profile_by_subject.contains(profile.subject))
             return foundation::Result<void>::Failure(Error("gameplay.needs.restore_invalid", "invalid need profile"));
@@ -866,7 +867,7 @@ foundation::Result<void> NeedsLifeService::RestoreSnapshot(NeedsLifeSnapshot s)
     for (auto &pressure : s.pressures)
     {
         if (!pressure.id.IsValid() || !pressure.subject.IsValid() || !pressure.type.IsValid() || pressure.urgency < 0 ||
-            pressure.revision > s.revision || !new_pressures.emplace(pressure.id, pressure).second)
+            !EnumInRange(pressure.state, LifePressureState::Expired) || pressure.revision > s.revision || !new_pressures.emplace(pressure.id, pressure).second)
             return foundation::Result<void>::Failure(Error("gameplay.needs.restore_invalid", "invalid pressure"));
         new_pressures_by_subject.emplace(pressure.subject, pressure.id);
         if (pressure.id.value.High() == s.pressure_ids.scope)
@@ -957,15 +958,13 @@ NeedThreshold NeedsLifeService::ThresholdFor(const NeedDefinition &d, std::int64
 
 NeedStateKey NeedsLifeService::StateKey(GameplayObjectRef s, NeedTypeId n) noexcept { return {s, n}; }
 
-void NeedsLifeService::Record(NeedsLifeChange change)
+void NeedsLifeService::Record(NeedsLifeChange change) noexcept
 {
-    if (next_change_sequence_ == 0)
-        return;
-    change.sequence = next_change_sequence_;
-    const auto next = CheckedNextSequence(next_change_sequence_);
-    next_change_sequence_ = next ? *next : 0;
-    changes_.push_back(std::move(change));
-    TrimJournal();
+    if (next_change_sequence_ == 0) return;
+    const auto sequence=next_change_sequence_;change.sequence=sequence;
+    try{changes_.push_back(std::move(change));TrimJournal();}
+    catch(...){changes_.clear();const auto next_epoch=CheckedNextChangeEpoch(journal_epoch_);if(next_epoch)journal_epoch_=*next_epoch;next_change_sequence_=1;return;}
+    const auto next=CheckedNextSequence(sequence);next_change_sequence_=next?*next:0;
 }
 
 void NeedsLifeService::TrimJournal() noexcept

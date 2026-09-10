@@ -522,9 +522,12 @@ class ResourcesProductionService
             return a ^ (b + 0x9E3779B97F4A7C15ull + (a << 6u) + (a >> 2u));
         }
     };
-    void Bump() noexcept
+    [[nodiscard]] bool Bump() noexcept
     {
+        if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+            return false;
         ++revision_.value;
+        return true;
     }
     enum class StockpileOperation
     {
@@ -543,9 +546,9 @@ class ResourcesProductionService
     [[nodiscard]] bool CanAddToStockpile(ResourceStockpileId stockpile) const noexcept;
     [[nodiscard]] bool CanRemoveFromStockpile(ResourceStockpileId stockpile) const noexcept;
     [[nodiscard]] static std::uint64_t LowPart(GameplayObjectId id) noexcept;
-    void AddReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept;
+    void AddReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount);
     void RemoveReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept;
-    void RebuildDerivedState() noexcept;
+    void RebuildDerivedState();
 
     bool frozen_ = false;
     Revision revision_{};

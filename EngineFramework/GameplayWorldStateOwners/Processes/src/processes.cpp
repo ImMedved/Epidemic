@@ -65,10 +65,47 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId> &gene
 {
     return foundation::Error::Create("gameplay.processes.provider_exception", stage);
 }
+
+[[nodiscard]] constexpr bool IsValid(ProcessTimingPolicy v) noexcept
+{ switch(v){case ProcessTimingPolicy::Instant:case ProcessTimingPolicy::Timed:case ProcessTimingPolicy::ExternalCompletion:return true;} return false; }
+[[nodiscard]] constexpr bool IsValid(ProcessPersistencePolicy v) noexcept
+{ switch(v){case ProcessPersistencePolicy::Transient:case ProcessPersistencePolicy::Session:case ProcessPersistencePolicy::Persistent:return true;} return false; }
+[[nodiscard]] constexpr bool IsValid(InputConsumptionPolicy v) noexcept
+{ switch(v){case InputConsumptionPolicy::ConsumeOnStart:case InputConsumptionPolicy::ConsumeOnCompletion:case InputConsumptionPolicy::ReserveThenConsume:case InputConsumptionPolicy::ToolNotConsumed:case InputConsumptionPolicy::Catalyst:case InputConsumptionPolicy::ConditionRequired:return true;} return false; }
+[[nodiscard]] constexpr bool IsValid(OutputDeliveryPolicy v) noexcept
+{ switch(v){case OutputDeliveryPolicy::Immediate:case OutputDeliveryPolicy::OnCompletion:return true;} return false; }
+[[nodiscard]] constexpr bool IsValid(ProcessInstanceState v) noexcept
+{ switch(v){case ProcessInstanceState::Prepared:case ProcessInstanceState::Reserved:case ProcessInstanceState::Running:case ProcessInstanceState::Paused:case ProcessInstanceState::Completed:case ProcessInstanceState::Failed:case ProcessInstanceState::Cancelled:case ProcessInstanceState::Expired:case ProcessInstanceState::ReconciliationRequired:return true;} return false; }
+[[nodiscard]] constexpr bool IsValid(StationState v) noexcept
+{ switch(v){case StationState::Active:case StationState::Disabled:case StationState::Destroyed:case StationState::Occupied:case StationState::Unavailable:return true;} return false; }
+[[nodiscard]] constexpr bool IsValid(ProcessInputCommitState v) noexcept
+{ switch(v){case ProcessInputCommitState::Reserved:case ProcessInputCommitState::Consumed:case ProcessInputCommitState::Released:return true;} return false; }
+[[nodiscard]] constexpr bool IsValid(ProcessOutputCommitState v) noexcept
+{ switch(v){case ProcessOutputCommitState::Prepared:case ProcessOutputCommitState::Committed:case ProcessOutputCommitState::Cancelled:return true;} return false; }
+
+void AppendStagedChange(std::deque<ProcessChange> &journal, std::uint64_t &next_sequence,
+                        ProcessChange change, std::size_t capacity)
+{
+    if (next_sequence == 0) throw std::overflow_error("process change sequence exhausted");
+    change.sequence = next_sequence;
+    journal.push_back(std::move(change));
+    if (next_sequence == std::numeric_limits<std::uint64_t>::max()) next_sequence = 0;
+    else ++next_sequence;
+    while (journal.size() > capacity) journal.pop_front();
+}
 } // namespace
 
 ProcessesService::ProcessesService() : station_ids_(0x30320001), instance_ids_(0x30320002), reservation_ids_(0x30320003)
 {
+}
+
+bool ProcessesService::CanAdvanceRevision(std::size_t count) const noexcept
+{
+    return count == 0 || count <= std::numeric_limits<std::uint64_t>::max() - revision_.value;
+}
+bool ProcessesService::CanRecordChanges(std::size_t count) const noexcept
+{
+    return count == 0 || (next_change_sequence_ != 0 && count - 1 <= std::numeric_limits<std::uint64_t>::max() - next_change_sequence_);
 }
 
 foundation::Result<ProcessDefinitionId> ProcessesService::RegisterDefinition(ProcessDefinition definition)
@@ -76,7 +113,7 @@ foundation::Result<ProcessDefinitionId> ProcessesService::RegisterDefinition(Pro
     if (frozen_)
         return foundation::Result<ProcessDefinitionId>::Failure(
             Error("gameplay.processes.registry_frozen", "process registry is frozen"));
-    if (definition.canonical_name.empty() || !definition.kind.IsValid())
+    if (definition.canonical_name.empty() || !definition.kind.IsValid() || !IsValid(definition.timing) || !IsValid(definition.persistence))
         return foundation::Result<ProcessDefinitionId>::Failure(
             Error("gameplay.processes.invalid_definition", "process definition name and kind are required"));
     const auto canonical = ProcessDefinitionId::FromString(definition.canonical_name);
@@ -98,11 +135,12 @@ foundation::Result<ProcessDefinitionId> ProcessesService::RegisterDefinition(Pro
         return foundation::Result<ProcessDefinitionId>::Failure(
             Error("gameplay.processes.invalid_definition", "instant process cannot contain timed steps"));
 
-    Bump();
-    definition.revision = revision_;
-    const auto id = definition.id;
-    definitions_.emplace(id, std::move(definition));
-    return foundation::Result<ProcessDefinitionId>::Success(id);
+    if (!CanAdvanceRevision())
+        return foundation::Result<ProcessDefinitionId>::Failure(Error("gameplay.processes.revision_exhausted", "process revision is exhausted"));
+    const Revision next{revision_.value + 1}; definition.revision = next; const auto id = definition.id;
+    try { if (!definitions_.emplace(id, std::move(definition)).second) return foundation::Result<ProcessDefinitionId>::Failure(Error("gameplay.processes.invalid_definition", "duplicate process definition")); }
+    catch (...) { return foundation::Result<ProcessDefinitionId>::Failure(Error("gameplay.processes.publication_failed", "process definition publication failed")); }
+    revision_ = next; return foundation::Result<ProcessDefinitionId>::Success(id);
 }
 
 foundation::Result<ProcessRecipeId> ProcessesService::RegisterRecipe(ProcessRecipe recipe)
@@ -121,57 +159,45 @@ foundation::Result<ProcessRecipeId> ProcessesService::RegisterRecipe(ProcessReci
             Error("gameplay.processes.invalid_recipe", "invalid or duplicate process recipe"));
 
     std::unordered_set<ProcessInputId, IdHash> input_ids;
+    auto staged_reservation_ids = reservation_ids_;
     for (const auto &input : recipe.inputs)
     {
-        if (!input.id.IsValid() || !input.type.IsValid() || input.amount < 0 || !input_ids.insert(input.id).second)
+        if (!input.id.IsValid() || !input.type.IsValid() || input.amount < 0 || !IsValid(input.consumption) || !input_ids.insert(input.id).second)
             return foundation::Result<ProcessRecipeId>::Failure(
                 Error("gameplay.processes.invalid_input", "recipe has invalid or duplicate input"));
     }
     std::unordered_set<ProcessOutputId, IdHash> output_ids;
     for (const auto &output : recipe.outputs)
     {
-        if (!output.id.IsValid() || !output.type.IsValid() || output.amount < 0 || !output_ids.insert(output.id).second)
+        if (!output.id.IsValid() || !output.type.IsValid() || output.amount < 0 || !IsValid(output.delivery) || !output_ids.insert(output.id).second)
             return foundation::Result<ProcessRecipeId>::Failure(
                 Error("gameplay.processes.invalid_output", "recipe has invalid or duplicate output"));
     }
-    Bump();
-    recipe.revision = revision_;
-    const auto id = recipe.id;
-    recipes_.emplace(id, std::move(recipe));
-    return foundation::Result<ProcessRecipeId>::Success(id);
+    if (!CanAdvanceRevision())
+        return foundation::Result<ProcessRecipeId>::Failure(Error("gameplay.processes.revision_exhausted", "process revision is exhausted"));
+    const Revision next{revision_.value + 1}; recipe.revision = next; const auto id = recipe.id;
+    try { if (!recipes_.emplace(id, std::move(recipe)).second) return foundation::Result<ProcessRecipeId>::Failure(Error("gameplay.processes.invalid_recipe", "duplicate process recipe")); }
+    catch (...) { return foundation::Result<ProcessRecipeId>::Failure(Error("gameplay.processes.publication_failed", "process recipe publication failed")); }
+    revision_ = next; return foundation::Result<ProcessRecipeId>::Success(id);
 }
 
 foundation::Result<ProcessStationId> ProcessesService::RegisterStation(ProcessStation station)
 {
-    if (!station.station_object.IsValid() || station.efficiency_micro <= 0)
-        return foundation::Result<ProcessStationId>::Failure(
-            Error("gameplay.processes.invalid_station", "station object and efficiency are required"));
-    if (!station.id.IsValid())
-    {
-        const auto next = station_ids_.Next();
-        if (!next.IsValid())
-            return foundation::Result<ProcessStationId>::Failure(
-                Error("gameplay.processes.id_exhausted", "process station id generator is exhausted"));
-        station.id = ProcessStationId{next};
-    }
-    if (stations_.contains(station.id) || station_by_object_.contains(station.station_object))
-        return foundation::Result<ProcessStationId>::Failure(
-            Error("gameplay.processes.invalid_station", "duplicate process station"));
-    AdvanceGeneratorPastAcceptedId(station_ids_, station.id);
-    Bump();
-    station.revision = revision_;
-    const auto id = station.id;
-    const auto station_object = station.station_object;
-    station_by_object_.emplace(station_object, id);
-    stations_.emplace(id, std::move(station));
-    diagnostics_.stations = stations_.size();
-    ProcessChange change{};
-    change.kind = ProcessChangeKind::StationRegistered;
-    change.actor = station_object;
-    change.station = id;
-    change.revision = revision_;
-    Record(std::move(change));
-    return foundation::Result<ProcessStationId>::Success(id);
+    if (!station.station_object.IsValid() || station.efficiency_micro <= 0 || !IsValid(station.state))
+        return foundation::Result<ProcessStationId>::Failure(Error("gameplay.processes.invalid_station", "station object, state and efficiency are required"));
+    if (station_by_object_.contains(station.station_object))
+        return foundation::Result<ProcessStationId>::Failure(Error("gameplay.processes.invalid_station", "duplicate process station object"));
+    auto staged_ids = station_ids_;
+    if (!station.id.IsValid()) station.id = ProcessStationId{staged_ids.Next()};
+    if (!station.id.IsValid()) return foundation::Result<ProcessStationId>::Failure(Error("gameplay.processes.id_exhausted", "process station id generator is exhausted"));
+    if (stations_.contains(station.id)) return foundation::Result<ProcessStationId>::Failure(Error("gameplay.processes.invalid_station", "duplicate process station id"));
+    AdvanceGeneratorPastAcceptedId(staged_ids, station.id);
+    if (!CanAdvanceRevision() || !CanRecordChanges()) return foundation::Result<ProcessStationId>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted", "process mutation metadata is exhausted"));
+    const Revision next{revision_.value+1}; station.revision=next; const auto id=station.id; const auto object=station.station_object;
+    std::deque<ProcessChange> staged_changes; auto seq=next_change_sequence_; bool p=false,idx=false;
+    try { staged_changes=changes_; { ProcessChange ch{}; ch.kind=ProcessChangeKind::StationRegistered; ch.actor=object; ch.station=id; ch.revision=next; AppendStagedChange(staged_changes,seq,std::move(ch),change_journal_capacity_); }; stations_.reserve(stations_.size()+1);station_by_object_.reserve(station_by_object_.size()+1); p=stations_.emplace(id,station).second; idx=station_by_object_.emplace(object,id).second; if(!p||!idx) throw std::runtime_error("station publication conflict"); }
+    catch (...) { if(idx)station_by_object_.erase(object);if(p)stations_.erase(id);return foundation::Result<ProcessStationId>::Failure(Error("gameplay.processes.publication_failed","process station publication failed")); }
+    changes_.swap(staged_changes);next_change_sequence_=seq;station_ids_.Restore(staged_ids.GetSnapshot());revision_=next;diagnostics_.stations=stations_.size();return foundation::Result<ProcessStationId>::Success(id);
 }
 
 const ProcessDefinition *ProcessesService::FindDefinition(ProcessDefinitionId id) const noexcept
@@ -293,6 +319,8 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
     // provider token can be staged without any subsequent allocation window.
     instance.reserved_inputs.reserve(instance.reserved_inputs.size() + reservation_count);
 
+    auto staged_reservation_ids = reservation_ids_;
+
     for (const auto &input : recipe.inputs)
     {
         auto validated = ValidateProviderInput(input, request, instance.id);
@@ -304,8 +332,7 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
         // Prepare the Framework-owned identity before the external call. Work on a staged copy so
         // a provider failure does not consume a sequence value, while exhaustion is still detected
         // before external state can be created.
-        auto staged_ids = reservation_ids_;
-        const auto generated = staged_ids.Next();
+        const auto generated = staged_reservation_ids.Next();
         if (!generated.IsValid())
             return foundation::Result<void>::Failure(
                 Error("gameplay.processes.id_exhausted", "process reservation id generator is exhausted"));
@@ -337,7 +364,6 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
             value.state = ProcessInputCommitState::Reserved;
 
             instance.reserved_inputs.push_back(std::move(value));
-            reservation_ids_.Restore(staged_ids.GetSnapshot());
             auto &stored = instance.reserved_inputs.back();
 
             const auto *definition = FindDefinition(recipe.process);
@@ -370,8 +396,6 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
                     Error("gameplay.processes.nonportable_token", "persistent process input token must use versioned encoding"));
             }
 
-            Record({0, ProcessChangeKind::InputReserved, instance.id, instance.recipe, instance.actor, request.now,
-                    request.context, revision_});
         }
         catch (const std::exception &)
         {
@@ -388,48 +412,21 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
             return foundation::Result<void>::Failure(CallbackError("input reserve callback threw unknown exception"));
         }
     }
-    diagnostics_.reservations += instance.reserved_inputs.size();
+    reservation_ids_.Restore(staged_reservation_ids.GetSnapshot());
     return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> ProcessesService::ConsumeInputs(ProcessInstance &instance, InputConsumptionPolicy phase,
                                                          GameplayContext context)
 {
-    if (!input_provider_)
-        return instance.reserved_inputs.empty()
-                   ? foundation::Result<void>::Success()
-                   : foundation::Result<void>::Failure(
-                         Error("gameplay.processes.input_provider_missing", "input provider missing"));
-    for (auto &reservation : instance.reserved_inputs)
-    {
-        if (reservation.state != ProcessInputCommitState::Reserved || !ConsumesAt(reservation.consumption, phase))
-            continue;
-        try
-        {
-            auto consumed = input_provider_->Consume(reservation, context);
-            if (!consumed)
-            {
-                instance.state = ProcessInstanceState::ReconciliationRequired;
-                return consumed;
-            }
-        }
-        catch (const std::exception &)
-        {
-            instance.state = ProcessInstanceState::ReconciliationRequired;
-            return foundation::Result<void>::Failure(CallbackError("input consume callback threw"));
-        }
-        catch (...)
-        {
-            instance.state = ProcessInstanceState::ReconciliationRequired;
-            return foundation::Result<void>::Failure(CallbackError("input consume callback threw unknown exception"));
-        }
-        Bump();
-        reservation.state = ProcessInputCommitState::Consumed;
-        instance.revision = revision_;
-        Record({0, ProcessChangeKind::InputConsumed, instance.id, instance.recipe, instance.actor, context.time,
-                context, revision_});
-    }
-    return foundation::Result<void>::Success();
+    if (!input_provider_) return instance.reserved_inputs.empty()?foundation::Result<void>::Success():foundation::Result<void>::Failure(Error("gameplay.processes.input_provider_missing","input provider missing"));
+    for(auto &reservation:instance.reserved_inputs){
+        if(reservation.state!=ProcessInputCommitState::Reserved||!ConsumesAt(reservation.consumption,phase))continue;
+        if(!CanAdvanceRevision()||!CanRecordChanges())return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));
+        const Revision next{revision_.value+1};std::deque<ProcessChange> staged;auto seq=next_change_sequence_;try{staged=changes_;AppendStagedChange(staged,seq,{0,ProcessChangeKind::InputConsumed,instance.id,instance.recipe,instance.actor,context.time,context,next},change_journal_capacity_);}catch(...){return foundation::Result<void>::Failure(Error("gameplay.processes.publication_failed","process journal staging failed"));}
+        try{auto consumed=input_provider_->Consume(reservation,context);if(!consumed){instance.state=ProcessInstanceState::ReconciliationRequired;return consumed;}}catch(const std::exception&){instance.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<void>::Failure(CallbackError("input consume callback threw"));}catch(...){instance.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<void>::Failure(CallbackError("input consume callback threw unknown exception"));}
+        reservation.state=ProcessInputCommitState::Consumed;instance.revision=next;changes_.swap(staged);next_change_sequence_=seq;revision_=next;
+    }return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> ProcessesService::ReleaseInputs(ProcessInstance &instance, GameplayContext context)
@@ -545,45 +542,11 @@ foundation::Result<void> ProcessesService::PrepareOutputs(ProcessInstance &insta
 foundation::Result<void> ProcessesService::CommitOutputs(ProcessInstance &instance, OutputDeliveryPolicy phase,
                                                          GameplayContext context)
 {
-    for (auto &prepared : instance.prepared_outputs)
-    {
-        if (prepared.delivery != phase || prepared.state != ProcessOutputCommitState::Prepared)
-            continue;
-        const auto it = std::find_if(output_handlers_.begin(), output_handlers_.end(),
-                                     [&](const auto *handler) { return handler && handler->Supports(prepared.type); });
-        if (it == output_handlers_.end())
-        {
-            instance.state = ProcessInstanceState::ReconciliationRequired;
-            return foundation::Result<void>::Failure(
-                Error("gameplay.processes.output_handler_missing", "prepared process output handler is missing"));
-        }
-        try
-        {
-            auto committed = (*it)->Commit(prepared, instance, context);
-            if (!committed)
-            {
-                instance.state = ProcessInstanceState::ReconciliationRequired;
-                return committed;
-            }
-        }
-        catch (const std::exception &)
-        {
-            instance.state = ProcessInstanceState::ReconciliationRequired;
-            return foundation::Result<void>::Failure(CallbackError("output commit callback threw"));
-        }
-        catch (...)
-        {
-            instance.state = ProcessInstanceState::ReconciliationRequired;
-            return foundation::Result<void>::Failure(CallbackError("output commit callback threw unknown exception"));
-        }
-        Bump();
-        prepared.state = ProcessOutputCommitState::Committed;
-        instance.revision = revision_;
-        ++diagnostics_.outputs;
-        Record({0, ProcessChangeKind::OutputProduced, instance.id, instance.recipe, instance.actor, context.time,
-                context, revision_});
-    }
-    return foundation::Result<void>::Success();
+    for(auto &prepared:instance.prepared_outputs){if(prepared.delivery!=phase||prepared.state!=ProcessOutputCommitState::Prepared)continue;auto hit=std::find_if(output_handlers_.begin(),output_handlers_.end(),[&](auto *h){return h&&h->Supports(prepared.type);});if(hit==output_handlers_.end()){instance.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<void>::Failure(Error("gameplay.processes.output_handler_missing","prepared process output handler is missing"));}
+        if(!CanAdvanceRevision()||!CanRecordChanges())return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));const Revision next{revision_.value+1};std::deque<ProcessChange> staged;auto seq=next_change_sequence_;try{staged=changes_;AppendStagedChange(staged,seq,{0,ProcessChangeKind::OutputProduced,instance.id,instance.recipe,instance.actor,context.time,context,next},change_journal_capacity_);}catch(...){return foundation::Result<void>::Failure(Error("gameplay.processes.publication_failed","process journal staging failed"));}
+        try{auto r=(*hit)->Commit(prepared,instance,context);if(!r){instance.state=ProcessInstanceState::ReconciliationRequired;return r;}}catch(const std::exception&){instance.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<void>::Failure(CallbackError("output commit callback threw"));}catch(...){instance.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<void>::Failure(CallbackError("output commit callback threw unknown exception"));}
+        prepared.state=ProcessOutputCommitState::Committed;instance.revision=next;++diagnostics_.outputs;changes_.swap(staged);next_change_sequence_=seq;revision_=next;
+    }return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> ProcessesService::CancelPreparedOutputs(ProcessInstance &instance, GameplayContext context)
@@ -618,202 +581,41 @@ foundation::Result<void> ProcessesService::CancelPreparedOutputs(ProcessInstance
 
 foundation::Result<ProcessInstanceId> ProcessesService::StartProcess(StartProcessRequest request)
 {
-    if (!frozen_)
-        return foundation::Result<ProcessInstanceId>::Failure(
-            Error("gameplay.processes.registry_not_frozen", "process definitions must be frozen before execution"));
-    const auto *recipe = FindRecipe(request.recipe);
-    if (!recipe)
-        return foundation::Result<ProcessInstanceId>::Failure(
-            Error("gameplay.processes.recipe_missing", "process recipe is missing"));
-    const auto *definition = FindDefinition(recipe->process);
-    if (!definition)
-        return foundation::Result<ProcessInstanceId>::Failure(
-            Error("gameplay.processes.definition_missing", "process definition is missing"));
-    const auto *station = request.station.IsValid() ? FindStationByObject(request.station) : nullptr;
-    if (request.station.IsValid() && (!station || station->state != StationState::Active))
-        return foundation::Result<ProcessInstanceId>::Failure(
-            Error("gameplay.processes.station_unavailable", "process station is unavailable"));
-    if (!recipe->station_capabilities.Values().empty() &&
-        (!station || !HasAllExact(station->capabilities, recipe->station_capabilities)))
-        return foundation::Result<ProcessInstanceId>::Failure(
-            Error("gameplay.processes.station_capability_missing", "process station lacks required capability"));
-
-    const auto generated = instance_ids_.Next();
-    if (!generated.IsValid())
-        return foundation::Result<ProcessInstanceId>::Failure(
-            Error("gameplay.processes.id_exhausted", "process instance id generator is exhausted"));
-    ProcessInstance staged;
-    staged.id = ProcessInstanceId{generated};
-    staged.recipe = recipe->id;
-    staged.actor = request.actor;
-    staged.station = request.station;
-    staged.target = request.target;
-    staged.simulation_area = request.simulation_area;
-    staged.state = ProcessInstanceState::Prepared;
-    staged.started_at = request.now;
-    staged.last_updated_at = request.now;
-    try
-    {
-        staged.quality = quality_provider_
-                             ? quality_provider_->Resolve(*recipe, request)
-                             : ProcessQualityResult{ProcessQualityId::FromString("framework.quality.normal"), 1'000'000, {}};
-    }
-    catch (...)
-    {
-        return foundation::Result<ProcessInstanceId>::Failure(CallbackError("quality provider threw"));
-    }
-    const auto duration = DurationFor(*recipe, *definition, station);
-    staged.total_duration = duration;
-    staged.paused_remaining = duration;
-    staged.due_at = definition->timing == ProcessTimingPolicy::ExternalCompletion
-                        ? GameplayTimePoint{}
-                        : SaturatingAdd(request.now, duration);
-
-    Bump();
-    staged.revision = revision_;
-    const auto id = staged.id;
-    auto [instance_it, inserted] = instances_.emplace(id, std::move(staged));
-    if (!inserted)
-        return foundation::Result<ProcessInstanceId>::Failure(
-            Error("gameplay.processes.duplicate_instance", "process instance id already exists"));
-    auto &instance = instance_it->second;
-
-    const auto has_unresolved_legs = [&]() noexcept {
-        return std::any_of(instance.reserved_inputs.begin(), instance.reserved_inputs.end(),
-                           [](const auto &leg) { return leg.state == ProcessInputCommitState::Reserved; }) ||
-               std::any_of(instance.prepared_outputs.begin(), instance.prepared_outputs.end(),
-                           [](const auto &leg) { return leg.state == ProcessOutputCommitState::Prepared; });
-    };
-    const auto mark_reconciliation = [&]() {
-        Bump();
-        instance.state = ProcessInstanceState::ReconciliationRequired;
-        instance.last_updated_at = request.now;
-        instance.revision = revision_;
-        Record({0, ProcessChangeKind::ReconciliationRequired, id, recipe->id, request.actor, request.now,
-                request.context, revision_});
-        return foundation::Result<ProcessInstanceId>::Success(id);
-    };
-
-    auto reserve = ReserveInputs(instance, *recipe, request);
-    if (!reserve)
-    {
-        if (instance.state == ProcessInstanceState::ReconciliationRequired || has_unresolved_legs())
-            return mark_reconciliation();
-        instances_.erase(id);
-        return foundation::Result<ProcessInstanceId>::Failure(reserve.GetError());
-    }
-
-    auto prepared_immediate = PrepareOutputs(instance, *recipe, OutputDeliveryPolicy::Immediate, request.context);
-    if (!prepared_immediate)
-    {
-        auto released = ReleaseInputs(instance, request.context);
-        if (!released || instance.state == ProcessInstanceState::ReconciliationRequired || has_unresolved_legs())
-            return mark_reconciliation();
-        instances_.erase(id);
-        return foundation::Result<ProcessInstanceId>::Failure(prepared_immediate.GetError());
-    }
-
-    auto start_consumed = ConsumeInputs(instance, InputConsumptionPolicy::ConsumeOnStart, request.context);
-    if (!start_consumed)
-        return mark_reconciliation();
-
-    auto immediate = CommitOutputs(instance, OutputDeliveryPolicy::Immediate, request.context);
-    if (!immediate)
-        return mark_reconciliation();
-
-    Bump();
-    instance.state = ProcessInstanceState::Running;
-    instance.revision = revision_;
-    Record({0, ProcessChangeKind::Started, id, recipe->id, request.actor, request.now, request.context, revision_});
-    if (definition->timing == ProcessTimingPolicy::Instant)
-    {
-        auto completed = Complete(id, request.now, request.context);
-        if (!completed)
-        {
-            auto current = instances_.find(id);
-            if (current != instances_.end() && !IsTerminal(current->second.state))
-            {
-                if (current->second.state != ProcessInstanceState::ReconciliationRequired)
-                {
-                    Bump();
-                    current->second.state = ProcessInstanceState::ReconciliationRequired;
-                    current->second.last_updated_at = request.now;
-                    current->second.revision = revision_;
-                    Record({0, ProcessChangeKind::ReconciliationRequired, id, recipe->id, request.actor, request.now,
-                            request.context, revision_});
-                }
-                return foundation::Result<ProcessInstanceId>::Success(id);
-            }
-            return foundation::Result<ProcessInstanceId>::Failure(completed.GetError());
-        }
-    }
+    if(!frozen_)return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.registry_not_frozen","process definitions must be frozen before execution"));const auto *recipe=FindRecipe(request.recipe);if(!recipe)return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.recipe_missing","process recipe is missing"));const auto *definition=FindDefinition(recipe->process);if(!definition)return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.definition_missing","process definition is missing"));const auto *station=request.station.IsValid()?FindStationByObject(request.station):nullptr;if(request.station.IsValid()&&(!station||station->state!=StationState::Active))return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.station_unavailable","process station is unavailable"));if(!recipe->station_capabilities.Values().empty()&&(!station||!HasAllExact(station->capabilities,recipe->station_capabilities)))return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.station_capability_missing","process station lacks required capability"));
+    auto staged_instance_ids=instance_ids_;auto generated=staged_instance_ids.Next();if(!generated.IsValid())return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.id_exhausted","process instance id generator is exhausted"));ProcessInstance instance;instance.id=ProcessInstanceId{generated};instance.recipe=recipe->id;instance.actor=request.actor;instance.station=request.station;instance.target=request.target;instance.simulation_area=request.simulation_area;instance.state=ProcessInstanceState::Prepared;instance.started_at=request.now;instance.last_updated_at=request.now;
+    try{instance.quality=quality_provider_?quality_provider_->Resolve(*recipe,request):ProcessQualityResult{ProcessQualityId::FromString("framework.quality.normal"),1'000'000,{}};}catch(...){return foundation::Result<ProcessInstanceId>::Failure(CallbackError("quality provider threw"));}
+    const auto duration=DurationFor(*recipe,*definition,station);instance.total_duration=duration;instance.paused_remaining=duration;instance.due_at=definition->timing==ProcessTimingPolicy::ExternalCompletion?GameplayTimePoint{}:SaturatingAdd(request.now,duration);
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot reservations_before=reservation_ids_.GetSnapshot();
+    auto reserve=ReserveInputs(instance,*recipe,request);if(!reserve){if(instance.state==ProcessInstanceState::ReconciliationRequired){ /* publish below */ }else{reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(reserve.GetError());}}
+    if(reserve){auto prep=PrepareOutputs(instance,*recipe,OutputDeliveryPolicy::Immediate,request.context);if(!prep){auto released=ReleaseInputs(instance,request.context);if(released&&instance.state!=ProcessInstanceState::ReconciliationRequired){reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(prep.GetError());}instance.state=ProcessInstanceState::ReconciliationRequired;}}
+    if(!CanAdvanceRevision()||!CanRecordChanges(instance.reserved_inputs.size()+1)){auto cancel=CancelPreparedOutputs(instance,request.context);auto release=ReleaseInputs(instance,request.context);if(cancel&&release){reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));}instance.state=ProcessInstanceState::ReconciliationRequired;}
+    const Revision initial{revision_.value+1};instance.revision=initial;std::deque<ProcessChange> staged_changes;auto seq=next_change_sequence_;try{instances_.reserve(instances_.size()+1);staged_changes=changes_;for(const auto &r:instance.reserved_inputs)if(r.state==ProcessInputCommitState::Reserved)AppendStagedChange(staged_changes,seq,{0,ProcessChangeKind::InputReserved,instance.id,instance.recipe,instance.actor,request.now,request.context,initial},change_journal_capacity_);if(instance.state==ProcessInstanceState::ReconciliationRequired)AppendStagedChange(staged_changes,seq,{0,ProcessChangeKind::ReconciliationRequired,instance.id,instance.recipe,instance.actor,request.now,request.context,initial},change_journal_capacity_);}catch(...){return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.publication_failed","process instance staging failed"));}
+    const auto id=instance.id;try{if(!instances_.emplace(id,std::move(instance)).second)return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.duplicate_instance","process instance id already exists"));}catch(...){return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.publication_failed","process instance publication failed"));}
+    instance_ids_.Restore(staged_instance_ids.GetSnapshot());revision_=initial;changes_.swap(staged_changes);next_change_sequence_=seq;diagnostics_.reservations += instances_.at(id).reserved_inputs.size();
+    auto &live=instances_.at(id);if(live.state==ProcessInstanceState::ReconciliationRequired)return foundation::Result<ProcessInstanceId>::Success(id);
+    auto consumed=ConsumeInputs(live,InputConsumptionPolicy::ConsumeOnStart,request.context);if(!consumed){live.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}auto immediate=CommitOutputs(live,OutputDeliveryPolicy::Immediate,request.context);if(!immediate){live.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}
+    if(!CanAdvanceRevision()||!CanRecordChanges()){live.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}const Revision running{revision_.value+1};std::deque<ProcessChange> sj;auto sq=next_change_sequence_;try{sj=changes_;AppendStagedChange(sj,sq,{0,ProcessChangeKind::Started,id,recipe->id,request.actor,request.now,request.context,running},change_journal_capacity_);}catch(...){live.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}live.state=ProcessInstanceState::Running;live.revision=running;revision_=running;changes_.swap(sj);next_change_sequence_=sq;
+    if(definition->timing==ProcessTimingPolicy::Instant){auto completed=Complete(id,request.now,request.context);if(!completed){auto &cur=instances_.at(id);if(!IsTerminal(cur.state)){cur.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}return foundation::Result<ProcessInstanceId>::Failure(completed.GetError());}}
     return foundation::Result<ProcessInstanceId>::Success(id);
 }
 
 foundation::Result<void> ProcessesService::Pause(ProcessInstanceId id, GameplayTimePoint now, GameplayContext context)
 {
-    auto it = instances_.find(id);
-    if (it == instances_.end())
-        return foundation::Result<void>::Failure(Error("gameplay.processes.instance_missing", "process instance is missing"));
-    if (it->second.state != ProcessInstanceState::Running)
-        return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state", "process is not running"));
-    const auto *recipe = FindRecipe(it->second.recipe);
-    const auto *definition = recipe ? FindDefinition(recipe->process) : nullptr;
-    if (!definition || definition->timing != ProcessTimingPolicy::Timed)
-        return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state", "only timed process can be paused"));
-    const auto remaining = SaturatingDifference(it->second.due_at, now).ticks;
-    it->second.paused_remaining = GameplayDuration{std::max<std::int64_t>(0, remaining)};
-    Bump();
-    it->second.state = ProcessInstanceState::Paused;
-    it->second.last_updated_at = now;
-    it->second.revision = revision_;
-    Record({0, ProcessChangeKind::Paused, id, it->second.recipe, it->second.actor, now, context, revision_});
-    return foundation::Result<void>::Success();
+    auto it=instances_.find(id);if(it==instances_.end())return foundation::Result<void>::Failure(Error("gameplay.processes.instance_missing","process instance is missing"));if(it->second.state!=ProcessInstanceState::Running)return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state","process is not running"));const auto *recipe=FindRecipe(it->second.recipe);const auto *definition=recipe?FindDefinition(recipe->process):nullptr;if(!definition||definition->timing!=ProcessTimingPolicy::Timed)return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state","only timed process can be paused"));if(!CanAdvanceRevision()||!CanRecordChanges())return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));const Revision next{revision_.value+1};std::deque<ProcessChange> staged;auto seq=next_change_sequence_;try{staged=changes_;AppendStagedChange(staged,seq,{0,ProcessChangeKind::Paused,id,it->second.recipe,it->second.actor,now,context,next},change_journal_capacity_);}catch(...){return foundation::Result<void>::Failure(Error("gameplay.processes.publication_failed","process journal staging failed"));}const auto rem=SaturatingDifference(it->second.due_at,now).ticks;it->second.paused_remaining={std::max<std::int64_t>(0,rem)};it->second.state=ProcessInstanceState::Paused;it->second.last_updated_at=now;it->second.revision=next;revision_=next;changes_.swap(staged);next_change_sequence_=seq;return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> ProcessesService::Resume(ProcessInstanceId id, GameplayTimePoint now, GameplayContext context)
 {
-    auto it = instances_.find(id);
-    if (it == instances_.end())
-        return foundation::Result<void>::Failure(Error("gameplay.processes.instance_missing", "process instance is missing"));
-    if (it->second.state != ProcessInstanceState::Paused)
-        return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state", "process is not paused"));
-    Bump();
-    it->second.state = ProcessInstanceState::Running;
-    it->second.due_at = SaturatingAdd(now, it->second.paused_remaining);
-    it->second.last_updated_at = now;
-    it->second.revision = revision_;
-    Record({0, ProcessChangeKind::Resumed, id, it->second.recipe, it->second.actor, now, context, revision_});
-    return foundation::Result<void>::Success();
+    auto it=instances_.find(id);if(it==instances_.end())return foundation::Result<void>::Failure(Error("gameplay.processes.instance_missing","process instance is missing"));if(it->second.state!=ProcessInstanceState::Paused)return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state","process is not paused"));if(!CanAdvanceRevision()||!CanRecordChanges())return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));const Revision next{revision_.value+1};std::deque<ProcessChange> staged;auto seq=next_change_sequence_;try{staged=changes_;AppendStagedChange(staged,seq,{0,ProcessChangeKind::Resumed,id,it->second.recipe,it->second.actor,now,context,next},change_journal_capacity_);}catch(...){return foundation::Result<void>::Failure(Error("gameplay.processes.publication_failed","process journal staging failed"));}it->second.state=ProcessInstanceState::Running;it->second.due_at=SaturatingAdd(now,it->second.paused_remaining);it->second.last_updated_at=now;it->second.revision=next;revision_=next;changes_.swap(staged);next_change_sequence_=seq;return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> ProcessesService::Cancel(ProcessInstanceId id, GameplayTimePoint now, GameplayContext context)
 {
-    auto it = instances_.find(id);
-    if (it == instances_.end())
-        return foundation::Result<void>::Failure(Error("gameplay.processes.instance_missing", "process instance is missing"));
-    if (it->second.state == ProcessInstanceState::Cancelled)
-        return foundation::Result<void>::Success();
-    if (it->second.state == ProcessInstanceState::Completed)
-        return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state", "completed process cannot be cancelled"));
-    auto cancelled_outputs = CancelPreparedOutputs(it->second, context);
-    if (!cancelled_outputs)
-    {
-        it->second.state = ProcessInstanceState::ReconciliationRequired;
-        return cancelled_outputs;
-    }
-    auto released = ReleaseInputs(it->second, context);
-    if (!released)
-    {
-        it->second.state = ProcessInstanceState::ReconciliationRequired;
-        return released;
-    }
-    Bump();
-    it->second.state = ProcessInstanceState::Cancelled;
-    it->second.last_updated_at = now;
-    it->second.revision = revision_;
-    Record({0, ProcessChangeKind::Cancelled, id, it->second.recipe, it->second.actor, now, context, revision_});
-    return foundation::Result<void>::Success();
+    auto it=instances_.find(id);if(it==instances_.end())return foundation::Result<void>::Failure(Error("gameplay.processes.instance_missing","process instance is missing"));if(it->second.state==ProcessInstanceState::Cancelled)return foundation::Result<void>::Success();if(it->second.state==ProcessInstanceState::Completed)return foundation::Result<void>::Failure(Error("gameplay.processes.invalid_state","completed process cannot be cancelled"));
+    if(!CanAdvanceRevision()||!CanRecordChanges())return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));
+    auto cancelled_outputs=CancelPreparedOutputs(it->second,context);if(!cancelled_outputs){it->second.state=ProcessInstanceState::ReconciliationRequired;return cancelled_outputs;}auto released=ReleaseInputs(it->second,context);if(!released){it->second.state=ProcessInstanceState::ReconciliationRequired;return released;}
+    const Revision next{revision_.value+1};std::deque<ProcessChange> staged;auto seq=next_change_sequence_;try{staged=changes_;AppendStagedChange(staged,seq,{0,ProcessChangeKind::Cancelled,id,it->second.recipe,it->second.actor,now,context,next},change_journal_capacity_);}catch(...){it->second.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<void>::Failure(Error("gameplay.processes.publication_failed","process cancel journal staging failed"));}
+    it->second.state=ProcessInstanceState::Cancelled;it->second.last_updated_at=now;it->second.revision=next;revision_=next;changes_.swap(staged);next_change_sequence_=seq;return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> ProcessesService::Complete(ProcessInstanceId id, GameplayTimePoint now, GameplayContext context)
@@ -860,36 +662,24 @@ foundation::Result<void> ProcessesService::Complete(ProcessInstanceId id, Gamepl
                 revision_});
         return released;
     }
-    Bump();
-    instance.state = ProcessInstanceState::Completed;
-    instance.last_updated_at = now;
-    instance.revision = revision_;
-    ++diagnostics_.completed_processes;
-    Record({0, ProcessChangeKind::Completed, id, instance.recipe, instance.actor, now, context, revision_});
+    if (!CanAdvanceRevision() || !CanRecordChanges())
+    {
+        instance.state = ProcessInstanceState::ReconciliationRequired;
+        return foundation::Result<void>::Failure(Error(!CanAdvanceRevision() ? "gameplay.processes.revision_exhausted" :
+                                                     "gameplay.processes.change_sequence_exhausted",
+                                                     "process completion metadata is exhausted"));
+    }
+    const Revision next{revision_.value + 1};
+    std::deque<ProcessChange> staged_changes; auto staged_sequence=next_change_sequence_;
+    try { staged_changes=changes_; AppendStagedChange(staged_changes,staged_sequence,{0,ProcessChangeKind::Completed,id,instance.recipe,instance.actor,now,context,next},change_journal_capacity_); }
+    catch (...) { instance.state=ProcessInstanceState::ReconciliationRequired; return foundation::Result<void>::Failure(Error("gameplay.processes.publication_failed","process completion journal staging failed")); }
+    instance.state=ProcessInstanceState::Completed;instance.last_updated_at=now;instance.revision=next;++diagnostics_.completed_processes;revision_=next;changes_.swap(staged_changes);next_change_sequence_=staged_sequence;
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<std::vector<ProcessInstanceId>> ProcessesService::CompleteDue(GameplayTimePoint now)
+foundation::Result<ProcessBatchCompletionReport> ProcessesService::CompleteDue(GameplayTimePoint now)
 {
-    std::vector<ProcessInstanceId> due;
-    for (const auto &[id, instance] : instances_)
-    {
-        const auto *recipe = FindRecipe(instance.recipe);
-        const auto *definition = recipe ? FindDefinition(recipe->process) : nullptr;
-        if (instance.state == ProcessInstanceState::Running && definition &&
-            definition->timing == ProcessTimingPolicy::Timed && instance.due_at.ticks <= now.ticks)
-            due.push_back(id);
-    }
-    std::sort(due.begin(), due.end());
-    for (auto id : due)
-    {
-        GameplayContext context;
-        context.time = now;
-        auto completed = Complete(id, now, context);
-        if (!completed)
-            return foundation::Result<std::vector<ProcessInstanceId>>::Failure(completed.GetError());
-    }
-    return foundation::Result<std::vector<ProcessInstanceId>>::Success(std::move(due));
+    std::vector<ProcessInstanceId> due;for(const auto &[id,instance]:instances_){const auto *recipe=FindRecipe(instance.recipe);const auto *definition=recipe?FindDefinition(recipe->process):nullptr;if(instance.state==ProcessInstanceState::Running&&definition&&definition->timing==ProcessTimingPolicy::Timed&&instance.due_at.ticks<=now.ticks)due.push_back(id);}std::sort(due.begin(),due.end());ProcessBatchCompletionReport report;report.completed.reserve(due.size());for(auto id:due){GameplayContext context;context.time=now;auto r=Complete(id,now,context);if(r)report.completed.push_back(id);else report.failures.push_back({id,r.GetError()});}return foundation::Result<ProcessBatchCompletionReport>::Success(std::move(report));
 }
 
 std::vector<ProcessInstance> ProcessesService::FindDueProcessesForSimulation(GameplayObjectRef simulation_area,
@@ -910,53 +700,13 @@ std::vector<ProcessInstance> ProcessesService::FindDueProcessesForSimulation(Gam
     return out;
 }
 
-foundation::Result<std::vector<ProcessInstanceId>> ProcessesService::CompletePreparedDueForSimulation(
-    GameplayObjectRef simulation_area, std::span<const ProcessInstanceId> process_ids, GameplayTimePoint now,
-    GameplayContext context)
+foundation::Result<ProcessBatchCompletionReport> ProcessesService::CompletePreparedDueForSimulation(
+    GameplayObjectRef simulation_area, std::span<const ProcessInstanceId> process_ids, GameplayTimePoint now, GameplayContext context)
 {
-    if (!simulation_area.IsValid())
-        return foundation::Result<std::vector<ProcessInstanceId>>::Failure(
-            Error("gameplay.processes.simulation_area_missing", "simulation area is required"));
-    std::vector<ProcessInstanceId> unique(process_ids.begin(), process_ids.end());
-    std::sort(unique.begin(), unique.end());
-    unique.erase(std::unique(unique.begin(), unique.end()), unique.end());
-
-    for (auto id : unique)
-    {
-        const auto it = instances_.find(id);
-        if (it == instances_.end())
-            return foundation::Result<std::vector<ProcessInstanceId>>::Failure(
-                Error("gameplay.processes.instance_missing", "prepared process instance is missing"));
-        const auto &instance = it->second;
-        if (instance.simulation_area != simulation_area)
-            return foundation::Result<std::vector<ProcessInstanceId>>::Failure(
-                Error("gameplay.processes.simulation_area_mismatch", "prepared process belongs to another simulation area"));
-        if (instance.state != ProcessInstanceState::Running && instance.state != ProcessInstanceState::Completed)
-            return foundation::Result<std::vector<ProcessInstanceId>>::Failure(
-                Error("gameplay.processes.invalid_state", "prepared process is not due-completable"));
-        if (instance.state == ProcessInstanceState::Running && instance.due_at.ticks > now.ticks)
-            return foundation::Result<std::vector<ProcessInstanceId>>::Failure(
-                Error("gameplay.processes.not_due", "prepared process is not due"));
-    }
-
-    std::vector<ProcessInstanceId> completed_ids;
-    completed_ids.reserve(unique.size());
-    for (auto id : unique)
-    {
-        auto it = instances_.find(id);
-        if (it != instances_.end() && it->second.state == ProcessInstanceState::Completed)
-        {
-            completed_ids.push_back(id);
-            continue;
-        }
-        context.time = now;
-        auto completed = Complete(id, now, context);
-        if (!completed)
-            return foundation::Result<std::vector<ProcessInstanceId>>::Failure(completed.GetError());
-        completed_ids.push_back(id);
-    }
-    return foundation::Result<std::vector<ProcessInstanceId>>::Success(std::move(completed_ids));
+    if(!simulation_area.IsValid())return foundation::Result<ProcessBatchCompletionReport>::Failure(Error("gameplay.processes.simulation_area_missing","simulation area is required"));std::vector<ProcessInstanceId> unique(process_ids.begin(),process_ids.end());std::sort(unique.begin(),unique.end());unique.erase(std::unique(unique.begin(),unique.end()),unique.end());for(auto id:unique){auto it=instances_.find(id);if(it==instances_.end())return foundation::Result<ProcessBatchCompletionReport>::Failure(Error("gameplay.processes.instance_missing","prepared process instance is missing"));const auto &x=it->second;if(x.simulation_area!=simulation_area)return foundation::Result<ProcessBatchCompletionReport>::Failure(Error("gameplay.processes.simulation_area_mismatch","prepared process belongs to another simulation area"));if(x.state!=ProcessInstanceState::Running&&x.state!=ProcessInstanceState::Completed)return foundation::Result<ProcessBatchCompletionReport>::Failure(Error("gameplay.processes.invalid_state","prepared process is not due-completable"));if(x.state==ProcessInstanceState::Running&&x.due_at.ticks>now.ticks)return foundation::Result<ProcessBatchCompletionReport>::Failure(Error("gameplay.processes.not_due","prepared process is not due"));}
+    ProcessBatchCompletionReport report;report.completed.reserve(unique.size());for(auto id:unique){auto &x=instances_.at(id);if(x.state==ProcessInstanceState::Completed){report.completed.push_back(id);continue;}context.time=now;auto r=Complete(id,now,context);if(r)report.completed.push_back(id);else report.failures.push_back({id,r.GetError()});}return foundation::Result<ProcessBatchCompletionReport>::Success(std::move(report));
 }
+
 std::vector<ProcessInstance> ProcessesService::FindProcessesByActor(GameplayObjectRef actor) const
 {
     std::vector<ProcessInstance> out;
@@ -1017,17 +767,7 @@ ProcessChangeBatch ProcessesService::ReadChangesSinceSequence(std::uint64_t sequ
 
 foundation::Result<void> ProcessesService::PruneTerminalProcesses(std::size_t keep_recent)
 {
-    std::vector<ProcessInstanceId> terminal;
-    for (const auto &[id, instance] : instances_)
-        if (IsTerminal(instance.state))
-            terminal.push_back(id);
-    std::sort(terminal.begin(), terminal.end());
-    if (terminal.size() <= keep_recent)
-        return foundation::Result<void>::Success();
-    const auto remove_count = terminal.size() - keep_recent;
-    for (std::size_t i = 0; i < remove_count; ++i)
-        instances_.erase(terminal[i]);
-    return foundation::Result<void>::Success();
+    std::vector<ProcessInstanceId> terminal;for(const auto &[id,instance]:instances_)if(IsTerminal(instance.state))terminal.push_back(id);std::sort(terminal.begin(),terminal.end());if(terminal.size()<=keep_recent)return foundation::Result<void>::Success();const auto count=terminal.size()-keep_recent;if(!CanAdvanceRevision()||!CanRecordChanges(count))return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));const Revision next{revision_.value+1};std::deque<ProcessChange> staged;auto seq=next_change_sequence_;try{staged=changes_;for(size_t i=0;i<count;++i){const auto &x=instances_.at(terminal[i]);AppendStagedChange(staged,seq,{0,ProcessChangeKind::Pruned,x.id,x.recipe,x.actor,x.last_updated_at,{},next},change_journal_capacity_);}}catch(...){return foundation::Result<void>::Failure(Error("gameplay.processes.publication_failed","process prune journal staging failed"));}for(size_t i=0;i<count;++i)instances_.erase(terminal[i]);revision_=next;changes_.swap(staged);next_change_sequence_=seq;return foundation::Result<void>::Success();
 }
 
 ProcessesSnapshot ProcessesService::CaptureSnapshot() const
@@ -1076,7 +816,7 @@ foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot sna
     for (auto &station : snapshot.stations)
     {
         if (!station.id.IsValid() || !station.station_object.IsValid() || station.efficiency_micro <= 0 ||
-            new_stations.contains(station.id) || new_station_by_object.contains(station.station_object))
+            !IsValid(station.state) || station.revision > snapshot.revision || new_stations.contains(station.id) || new_station_by_object.contains(station.station_object))
             return foundation::Result<void>::Failure(
                 Error("gameplay.processes.restore_invalid", "invalid or duplicate station in snapshot"));
         if (station.id.value.High() == station_ids_.Scope().Raw())
@@ -1089,7 +829,7 @@ foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot sna
         const auto *recipe = FindRecipe(instance.recipe);
         const auto *definition = recipe ? FindDefinition(recipe->process) : nullptr;
         if (!instance.id.IsValid() || !recipe || !definition || new_instances.contains(instance.id) ||
-            instance.total_duration.ticks < 0)
+            !IsValid(instance.state) || instance.revision > snapshot.revision || instance.total_duration.ticks < 0)
             return foundation::Result<void>::Failure(
                 Error("gameplay.processes.restore_invalid", "invalid process instance in snapshot"));
         if (instance.station.IsValid() && !new_station_by_object.contains(instance.station))
@@ -1105,7 +845,8 @@ foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot sna
             const auto input = std::find_if(recipe->inputs.begin(), recipe->inputs.end(),
                                             [&](const auto &value) { return value.id == reservation.input; });
             if (!reservation.id.IsValid() || input == recipe->inputs.end() || reservation.type != input->type ||
-                reservation.amount != input->amount || reservation.consumption != input->consumption ||
+                reservation.amount != input->amount || !IsValid(reservation.consumption) || !IsValid(reservation.state) ||
+                reservation.consumption != input->consumption ||
                 !reservation.provider_token.IsPortable() || !seen_inputs.insert(reservation.input).second ||
                 !reservation_ids.insert(reservation.id).second)
                 return foundation::Result<void>::Failure(
@@ -1118,8 +859,8 @@ foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot sna
         {
             const auto output = std::find_if(recipe->outputs.begin(), recipe->outputs.end(),
                                              [&](const auto &value) { return value.id == prepared.output; });
-            if (output == recipe->outputs.end() || prepared.type != output->type || prepared.delivery != output->delivery ||
-                !prepared.provider_token.IsPortable() || !seen_outputs.insert(prepared.output).second)
+            if (output == recipe->outputs.end() || prepared.type != output->type || !IsValid(prepared.delivery) ||
+                !IsValid(prepared.state) || prepared.delivery != output->delivery || !prepared.provider_token.IsPortable() || !seen_outputs.insert(prepared.output).second)
                 return foundation::Result<void>::Failure(
                     Error("gameplay.processes.restore_invalid", "invalid prepared output in snapshot"));
         }
@@ -1150,9 +891,9 @@ foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot sna
         return foundation::Result<void>::Failure(
             Error("gameplay.processes.restore_invalid", "process id generator snapshot is invalid"));
 
-    stations_ = std::move(new_stations);
-    station_by_object_ = std::move(new_station_by_object);
-    instances_ = std::move(new_instances);
+    stations_.swap(new_stations);
+    station_by_object_.swap(new_station_by_object);
+    instances_.swap(new_instances);
     station_ids_.Restore(snapshot.station_ids);
     instance_ids_.Restore(snapshot.instance_ids);
     reservation_ids_.Restore(snapshot.reservation_ids);
@@ -1197,15 +938,9 @@ ProcessesDiagnostics ProcessesService::GetDiagnostics() const noexcept
 
 void ProcessesService::Record(ProcessChange change)
 {
-    if (next_change_sequence_ == 0)
-        return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
-    changes_.push_back(std::move(change));
-    while (changes_.size() > change_journal_capacity_)
-        changes_.pop_front();
+    if (next_change_sequence_ == 0) return;
+    const auto sequence=next_change_sequence_;change.sequence=sequence;changes_.push_back(std::move(change));
+    next_change_sequence_=sequence==std::numeric_limits<std::uint64_t>::max()?0:sequence+1;
+    while(changes_.size()>change_journal_capacity_)changes_.pop_front();
 }
 } // namespace epidemic::gameplay::processes

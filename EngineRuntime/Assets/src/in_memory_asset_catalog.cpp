@@ -55,8 +55,17 @@ namespace
 
 [[nodiscard]] bool IsAbsolutePath(std::string_view path) noexcept
 {
-    return path.starts_with('/') || (path.size() >= 3 && std::isalpha(static_cast<unsigned char>(path[0])) &&
-                                    path[1] == ':' && path[2] == '/');
+    if (path.empty())
+    {
+        return false;
+    }
+    // Any rooted slash/backslash form is host-rooted (POSIX, UNC, device path, etc.).
+    if (path.front() == '/' || path.front() == '\\')
+    {
+        return true;
+    }
+    // Windows drive-relative paths ("C:foo" and "C:") are not engine-root-relative.
+    return path.size() >= 2 && std::isalpha(static_cast<unsigned char>(path[0])) && path[1] == ':';
 }
 
 [[nodiscard]] bool IsSafeRelativePath(std::string_view path) noexcept
@@ -66,11 +75,19 @@ namespace
         return false;
     }
 
-    std::stringstream stream{std::string{path}};
-    std::string part;
     int depth = 0;
-    while (std::getline(stream, part, '/'))
+    std::size_t segment_begin = 0;
+    for (std::size_t index = 0; index <= path.size(); ++index)
     {
+        const bool end = index == path.size();
+        const bool separator = !end && (path[index] == '/' || path[index] == '\\');
+        if (!end && !separator)
+        {
+            continue;
+        }
+
+        const std::string_view part = path.substr(segment_begin, index - segment_begin);
+        segment_begin = index + 1;
         if (part.empty() || part == ".")
         {
             continue;
@@ -124,6 +141,10 @@ AssetLocation CanonicalizeAssetLocation(AssetLocation location)
 
 bool IsValidAssetLocation(const AssetLocation& location) noexcept
 {
+    if (!IsValidAssetLocationKind(location.kind))
+    {
+        return false;
+    }
     if (!IsSafeRelativePath(location.path))
     {
         return false;
@@ -250,18 +271,75 @@ foundation::Result<AssetDependencyManifest> InMemoryAssetCatalog::BuildDependenc
 
     AssetDependencyManifest manifest{};
     manifest.root = root;
-    std::unordered_set<AssetId> visiting;
-    std::unordered_set<AssetId> visited;
-    bool missing_required_dependency = false;
-    if (!BuildDependencyManifestDepthFirst(root, manifest, visiting, visited, missing_required_dependency))
+
+    enum class VisitState : std::uint8_t
     {
-        if (missing_required_dependency)
+        Visiting,
+        Visited,
+    };
+    struct Frame
+    {
+        AssetId id{};
+        std::size_t dependency_index = 0;
+    };
+
+    std::unordered_map<AssetId, VisitState> states;
+    std::unordered_set<AssetId> manifest_ids;
+    std::vector<Frame> stack;
+    states.emplace(root, VisitState::Visiting);
+    stack.push_back(Frame{root, 0});
+
+    while (!stack.empty())
+    {
+        Frame& frame = stack.back();
+        const auto metadata = FindById(frame.id);
+        if (!metadata)
         {
             return foundation::Result<AssetDependencyManifest>::Failure(
                 foundation::Error::Create("asset.missing_dependency", "required asset dependency is not registered"));
         }
-        return foundation::Result<AssetDependencyManifest>::Failure(
-            foundation::Error::Create("asset.dependency_cycle", "asset dependency graph contains a cycle"));
+
+        if (frame.dependency_index >= metadata->dependencies.size())
+        {
+            states[frame.id] = VisitState::Visited;
+            stack.pop_back();
+            continue;
+        }
+
+        const AssetDependency dependency = metadata->dependencies[frame.dependency_index++];
+        const auto dependency_metadata = FindById(dependency.asset_id);
+        if (!dependency_metadata)
+        {
+            if (dependency.required)
+            {
+                return foundation::Result<AssetDependencyManifest>::Failure(
+                    foundation::Error::Create("asset.missing_dependency", "required asset dependency is not registered"));
+            }
+            if (manifest_ids.insert(dependency.asset_id).second)
+            {
+                manifest.dependencies.push_back(dependency);
+            }
+            continue;
+        }
+
+        if (manifest_ids.insert(dependency.asset_id).second)
+        {
+            manifest.dependencies.push_back(dependency);
+        }
+
+        const auto state = states.find(dependency.asset_id);
+        if (state != states.end())
+        {
+            if (state->second == VisitState::Visiting)
+            {
+                return foundation::Result<AssetDependencyManifest>::Failure(
+                    foundation::Error::Create("asset.dependency_cycle", "asset dependency graph contains a cycle"));
+            }
+            continue;
+        }
+
+        states.emplace(dependency.asset_id, VisitState::Visiting);
+        stack.push_back(Frame{dependency.asset_id, 0});
     }
 
     std::sort(manifest.dependencies.begin(), manifest.dependencies.end(), [](const AssetDependency& left, const AssetDependency& right) {
@@ -296,6 +374,82 @@ foundation::Result<AssetMetadata> InMemoryAssetCatalog::ValidateAndNormalize(con
             foundation::Error::Create("asset.invalid_type", "asset type must be valid before registration"));
     }
 
+    if (!IsValidAssetState(metadata.state))
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.invalid_state", "asset state is outside the declared enum domain"));
+    }
+
+    if (!IsValidAssetLocationKind(metadata.location.kind))
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.invalid_location", "asset location kind is outside the declared enum domain"));
+    }
+
+    if (metadata.location.path.size() > kMaxAssetPathBytes)
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.metadata_too_large", "asset location path exceeds the supported size limit"));
+    }
+    if (metadata.dependencies.size() > kMaxAssetDependencies)
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.metadata_too_large", "asset dependency list exceeds the supported size limit"));
+    }
+    if (metadata.tags.size() > kMaxAssetTags)
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.metadata_too_large", "asset tag list exceeds the supported size limit"));
+    }
+
+    if (!IsValidAssetLocation(metadata.location))
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.invalid_location", "asset location must be an engine-root-relative path"));
+    }
+
+    if (metadata.version == 0)
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.invalid_version", "asset metadata version must be greater than zero"));
+    }
+
+    for (const AssetDependency& dependency : metadata.dependencies)
+    {
+        if (!dependency.asset_id.IsValid())
+        {
+            return foundation::Result<AssetMetadata>::Failure(
+                foundation::Error::Create("asset.invalid_dependency", "asset dependency id must be valid"));
+        }
+
+        if (dependency.asset_id == metadata.id)
+        {
+            return foundation::Result<AssetMetadata>::Failure(
+                foundation::Error::Create("asset.self_dependency", "asset cannot depend on itself"));
+        }
+    }
+
+    for (const foundation::StringId tag : metadata.tags)
+    {
+        if (!tag.IsValid())
+        {
+            return foundation::Result<AssetMetadata>::Failure(
+                foundation::Error::Create("asset.invalid_tag", "asset tag id must be valid"));
+        }
+    }
+
+    if (HasDuplicateDependency(metadata.dependencies))
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.invalid_dependency", "duplicate asset dependencies are not allowed"));
+    }
+
+    if (HasDuplicateTag(metadata.tags))
+    {
+        return foundation::Result<AssetMetadata>::Failure(
+            foundation::Error::Create("asset.invalid_tag", "duplicate asset tags are not allowed"));
+    }
+
     AssetMetadata normalized = metadata;
     normalized.location = CanonicalizeAssetLocation(normalized.location);
     if (!IsValidAssetLocation(normalized.location))
@@ -304,94 +458,7 @@ foundation::Result<AssetMetadata> InMemoryAssetCatalog::ValidateAndNormalize(con
             foundation::Error::Create("asset.invalid_location", "asset location must contain a valid canonical path"));
     }
 
-    if (normalized.version == 0)
-    {
-        return foundation::Result<AssetMetadata>::Failure(
-            foundation::Error::Create("asset.invalid_version", "asset metadata version must be greater than zero"));
-    }
-
-    for (const AssetDependency& dependency : normalized.dependencies)
-    {
-        if (!dependency.asset_id.IsValid())
-        {
-            return foundation::Result<AssetMetadata>::Failure(
-                foundation::Error::Create("asset.invalid_dependency", "asset dependency id must be valid"));
-        }
-
-        if (dependency.asset_id == normalized.id)
-        {
-            return foundation::Result<AssetMetadata>::Failure(
-                foundation::Error::Create("asset.self_dependency", "asset cannot depend on itself"));
-        }
-    }
-
-    if (HasDuplicateDependency(normalized.dependencies))
-    {
-        return foundation::Result<AssetMetadata>::Failure(
-            foundation::Error::Create("asset.invalid_dependency", "duplicate asset dependencies are not allowed"));
-    }
-
-    if (HasDuplicateTag(normalized.tags))
-    {
-        return foundation::Result<AssetMetadata>::Failure(
-            foundation::Error::Create("asset.invalid_tag", "duplicate asset tags are not allowed"));
-    }
-
     return foundation::Result<AssetMetadata>::Success(std::move(normalized));
 }
 
-bool InMemoryAssetCatalog::BuildDependencyManifestDepthFirst(
-    AssetId current,
-    AssetDependencyManifest& manifest,
-    std::unordered_set<AssetId>& visiting,
-    std::unordered_set<AssetId>& visited,
-    bool& missing_required_dependency) const
-{
-    if (visited.contains(current))
-    {
-        return true;
-    }
-
-    if (!visiting.insert(current).second)
-    {
-        return false;
-    }
-
-    const auto current_metadata = FindById(current);
-    if (current_metadata)
-    {
-        for (const AssetDependency& dependency : current_metadata->dependencies)
-        {
-            if (!Contains(dependency.asset_id))
-            {
-                if (dependency.required)
-                {
-                    missing_required_dependency = true;
-                    return false;
-                }
-                if (std::none_of(manifest.dependencies.begin(), manifest.dependencies.end(), [&](const AssetDependency& existing) {
-                        return existing.asset_id == dependency.asset_id;
-                    }))
-                {
-                    manifest.dependencies.push_back(dependency);
-                }
-                continue;
-            }
-            if (std::none_of(manifest.dependencies.begin(), manifest.dependencies.end(), [&](const AssetDependency& existing) {
-                    return existing.asset_id == dependency.asset_id;
-                }))
-            {
-                manifest.dependencies.push_back(dependency);
-            }
-            if (!BuildDependencyManifestDepthFirst(dependency.asset_id, manifest, visiting, visited, missing_required_dependency))
-            {
-                return false;
-            }
-        }
-    }
-
-    visiting.erase(current);
-    visited.insert(current);
-    return true;
-}
 } // namespace epidemic::runtime

@@ -357,7 +357,7 @@ class NeedsLifeService
     [[nodiscard]] static std::int64_t SaturatingMultiply64(std::int64_t a, std::int64_t b) noexcept;
     [[nodiscard]] static std::int64_t ScaleMicro(std::int64_t value, std::int64_t multiplier_micro) noexcept;
     [[nodiscard]] bool AdvanceRevision() noexcept;
-    void Record(NeedsLifeChange change);
+    void Record(NeedsLifeChange change) noexcept;
     void TrimJournal() noexcept;
     void RebuildIndexes();
     [[nodiscard]] NeedThreshold ThresholdFor(const NeedDefinition &def, std::int64_t value) const noexcept;

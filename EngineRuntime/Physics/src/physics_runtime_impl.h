@@ -60,6 +60,45 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     void SetFixedStep(RuntimeFrameDuration step) noexcept;
     void SetMaxSubsteps(std::uint32_t substeps) noexcept;
 
+    // Module-local deterministic seams used by the Physics contract suite. This
+    // concrete implementation header is not part of the installed public API.
+    void SetRevisionForTesting(std::uint64_t revision) noexcept { revision_ = revision; }
+    void SetFixedStepCountForTesting(std::uint64_t value) noexcept { fixed_step_count_ = value; }
+    void SetAllocatorStateForTesting(std::uint64_t next_body,
+                                     std::uint32_t next_generation,
+                                     std::uint64_t next_backend_body) noexcept
+    {
+        next_body_value_ = next_body;
+        next_body_generation_ = next_generation;
+        next_backend_body_value_ = next_backend_body;
+    }
+    void SetBackendShapeAllocatorForTesting(std::uint64_t next_backend_shape) noexcept
+    {
+        next_backend_shape_value_ = next_backend_shape;
+    }
+    void SetTimingStateForTesting(RuntimeFrameDuration accumulator, RuntimeFrameDuration dropped) noexcept
+    {
+        accumulator_ = accumulator;
+        dropped_time_ = dropped;
+    }
+    [[nodiscard]] std::uint64_t RevisionForTesting() const noexcept { return revision_; }
+    [[nodiscard]] std::uint64_t FixedStepCountForTesting() const noexcept { return fixed_step_count_; }
+    [[nodiscard]] RuntimeFrameDuration AccumulatorForTesting() const noexcept { return accumulator_; }
+    [[nodiscard]] RuntimeFrameDuration DroppedTimeForTesting() const noexcept { return dropped_time_; }
+    [[nodiscard]] std::size_t PendingProjectionCountForTesting() const noexcept
+    {
+        return pending_transform_projections_.size();
+    }
+    [[nodiscard]] foundation::Result<PhysicsBodySnapshot> GetLocalBodySnapshotForTesting(PhysicsBodyHandle handle) const
+    {
+        const BodyRecord* body = FindBody(handle);
+        return body ? foundation::Result<PhysicsBodySnapshot>::Success(BuildSnapshot(*body))
+                    : foundation::Result<PhysicsBodySnapshot>::Failure(
+                          foundation::Error::Create("physics.unknown_handle", "test requested unknown local body"));
+    }
+    void FailNextBodyPublicationForTesting() noexcept { fail_next_body_publication_for_testing_ = true; }
+    void FailNextShapePublicationForTesting() noexcept { fail_next_shape_publication_for_testing_ = true; }
+
   private:
     struct BodyRecord
     {
@@ -87,6 +126,7 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     [[nodiscard]] static bool IntersectsAabb(const Aabb& left, const Aabb& right) noexcept;
     [[nodiscard]] static bool RayIntersectsAabb(const RaycastQuery& query, const Aabb& bounds, float& distance) noexcept;
     [[nodiscard]] static bool IsFinite(Vec3 value) noexcept;
+    [[nodiscard]] static bool IsValidBodyType(PhysicsBodyType value) noexcept;
     [[nodiscard]] static bool IsValidActivity(PhysicsActivityState value) noexcept;
     [[nodiscard]] static bool IsValidEventState(PhysicsEventState value) noexcept;
     [[nodiscard]] static bool IsValidBackendSnapshot(const BackendBodySnapshot& snapshot) noexcept;
@@ -105,16 +145,29 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     [[nodiscard]] foundation::Result<PhysicsStepResult> CompleteFixedStep(RuntimeFrameDuration fixed_delta, std::uint32_t substeps);
     [[nodiscard]] foundation::Result<void> SynchronizeBackendBody(BodyRecord& body);
     [[nodiscard]] foundation::Result<void> ApplyBackendSnapshot(BodyRecord& body, const BackendBodySnapshot& snapshot);
+    void FlushPendingTransformProjections() noexcept;
+    [[nodiscard]] foundation::Result<void> DrainPendingBackendCleanup();
+
+    struct PendingTransformProjection
+    {
+        PhysicsTransformId id{};
+        Transform transform{};
+    };
 
     std::unordered_map<CollisionShapeId, ShapeRecord> shapes_;
+    std::unordered_map<std::uint64_t, CollisionShapeId> backend_to_shape_;
     std::unordered_map<PhysicsBodyId, BodyRecord> bodies_;
     std::unordered_map<BackendBodyHandle, PhysicsBodyId> backend_to_body_;
+    std::vector<BackendShapeHandle> pending_backend_shape_cleanup_;
+    std::vector<BackendBodyHandle> pending_backend_body_cleanup_;
     std::vector<ContactEvent> contacts_;
+    std::vector<BackendContactEvent> pending_backend_contacts_;
     std::shared_ptr<IPhysicsBackend> backend_;
     std::shared_ptr<IPhysicsTransformSource> owned_transform_source_;
     std::shared_ptr<IPhysicsTransformSink> owned_transform_sink_;
     IPhysicsTransformSource* transform_source_ = nullptr;
     IPhysicsTransformSink* transform_sink_ = nullptr;
+    std::vector<PendingTransformProjection> pending_transform_projections_;
     std::uint64_t next_body_value_ = 1;
     std::uint64_t next_backend_shape_value_ = 1;
     std::uint64_t next_backend_body_value_ = 1;
@@ -123,6 +176,9 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     std::uint64_t revision_ = 0;
     std::uint64_t invalid_backend_contact_count_ = 0;
     bool backend_step_pending_sync_ = false;
+    bool backend_contacts_pending_sync_ = false;
+    bool fail_next_body_publication_for_testing_ = false;
+    bool fail_next_shape_publication_for_testing_ = false;
     RuntimeFrameDuration fixed_step_{std::chrono::microseconds{16667}};
     RuntimeFrameDuration accumulator_{};
     RuntimeFrameDuration dropped_time_{};

@@ -81,7 +81,8 @@ enum class DialogueConsequenceState
     Pending,
     Applied,
     Deferred,
-    Failed
+    Failed,
+    ReconciliationRequired
 };
 enum class DialogueOptionRepeatPolicy
 {
@@ -98,7 +99,9 @@ enum class DialogueChangeKind
     ConsequencePlanned,
     ConsequenceApplied,
     ConsequenceDeferred,
-    ConsequenceFailed
+    ConsequenceFailed,
+    ConsequenceResumed,
+    ConsequenceReconciliationRequired
 };
 
 struct DialogueTextRef
@@ -289,6 +292,8 @@ class DialogueService
     [[nodiscard]] std::vector<DialogueConsequenceExecutionId> ExecutePendingConsequences(std::size_t budget = 128);
     [[nodiscard]] foundation::Result<void> ResumeConsequence(DialogueConsequenceExecutionId execution,
                                                              GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> ResolveConsequenceReconciliation(
+        DialogueConsequenceExecutionId execution, bool confirmed_applied, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> FailConsequence(DialogueConsequenceExecutionId execution, TypeId reason,
                                                            GameplayContext context = {});
     private:
@@ -320,11 +325,8 @@ class DialogueService
     [[nodiscard]] DialogueDiagnostics GetDiagnostics() const noexcept;
 
   private:
-    void Bump() noexcept
-    {
-        ++revision_.value;
-    }
-    void Record(DialogueChange c);
+    [[nodiscard]] std::optional<Revision> NextRevision() const noexcept;
+    void Record(DialogueChange c) noexcept;
     [[nodiscard]] const DialogueNodeDefinition *FindNode(const ConversationDefinition &d,
                                                          DialogueNodeId id) const noexcept;
     [[nodiscard]] bool ConditionsPass(const std::vector<TypeId> &ids, const DialogueConditionContext &ctx) const;
@@ -333,8 +335,10 @@ class DialogueService
                                                      std::optional<std::vector<DialogueConsequenceExecution>> prepared_consequences = std::nullopt);
     [[nodiscard]] foundation::Result<std::vector<DialogueConsequenceExecution>> PrepareConsequences(
         ConversationSessionId session, const std::vector<TypeId> &ids, DialogueNodeId source_node,
-        DialogueOptionId source_option, GameplayContext context);
-    void CommitPreparedConsequences(std::vector<DialogueConsequenceExecution> prepared);
+        DialogueOptionId source_option, GameplayContext context,
+        MonotonicIdGenerator<GameplayObjectId> &staged_generator);
+    [[nodiscard]] foundation::Result<void> CommitPreparedConsequences(
+        std::vector<DialogueConsequenceExecution> prepared, Revision revision);
     [[nodiscard]] GameplayObjectRef ResolveRole(const ConversationSession &session, TypeId role) const noexcept;
     [[nodiscard]] DialogueConditionContext MakeConditionContext(const ConversationSession &session,
                                                                 GameplayObjectRef actor) const noexcept;

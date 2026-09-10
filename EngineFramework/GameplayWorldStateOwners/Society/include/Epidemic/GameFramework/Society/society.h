@@ -420,7 +420,13 @@ class SocietyService
 
     static constexpr std::size_t kChangeJournalCapacity = 4096;
 
-    void Bump() noexcept { revision_.value++; }
+    bool Bump() noexcept
+    {
+        if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+            return false;
+        ++revision_.value;
+        return true;
+    }
     void Record(SocietyChange change);
     [[nodiscard]] RelationshipRecord *FindMutableRelationship(GameplayObjectRef subject, GameplayObjectRef target,
                                                               RelationshipTypeId type) noexcept;

@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/Runtime/Persistence/persistence_backend.h"
@@ -8,6 +8,8 @@
 
 namespace epidemic::runtime
 {
+// Persistence backend/schema composition is fixed when services are created.
+// Runtime object data remains mutable transactionally; there is no hot schema/migration registry in this module.
 struct PersistenceOptions
 {
     std::shared_ptr<IPersistenceBackend> backend;

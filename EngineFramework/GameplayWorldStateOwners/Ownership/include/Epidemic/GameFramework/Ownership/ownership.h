@@ -349,7 +349,8 @@ class OwnershipService
     };
 
     static constexpr std::size_t kChangeRetention = 4096;
-    void Bump() noexcept { revision_.value++; }
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    [[nodiscard]] bool CanRecordChanges(std::size_t count = 1) const noexcept;
     void Record(OwnershipChange change);
     [[nodiscard]] OwnershipRecord *FindMutableOwnership(OwnershipRecordId id) noexcept;
     [[nodiscard]] const PermissionGrant *FindBestActiveGrant(GameplayObjectRef subject, GameplayObjectRef property,

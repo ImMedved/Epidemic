@@ -543,11 +543,8 @@ class CrimeService
     }
 
   private:
-    void Bump() noexcept
-    {
-        revision_.value++;
-    }
-    void Record(CrimeChange change);
+    [[nodiscard]] std::optional<Revision> NextRevision() const noexcept;
+    void Record(CrimeChange change) noexcept;
     [[nodiscard]] CrimeRecord *FindMutableCrime(CrimeRecordId id) noexcept;
     [[nodiscard]] const LawDefinition *FindLawFor(CrimeTypeId type, JurisdictionId jurisdiction) const noexcept;
     [[nodiscard]] const LawResponseDefinition *FindResponseDefinition(LawResponseTypeId id) const noexcept;

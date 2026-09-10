@@ -93,12 +93,8 @@ foundation::Result<void> GameplayFactsService::SubmitBatch(GameplayEventBatch ba
 
 foundation::Result<void> GameplayFactsService::MergeSubmittedBatches()
 {
-    std::vector<GameplayEventBatch> batches;
-    {
-        std::scoped_lock lock(batch_mutex_);
-        batches.swap(submitted_batches_);
-    }
-    if (batches.empty())
+    std::scoped_lock lock(batch_mutex_);
+    if (submitted_batches_.empty())
     {
         return foundation::Result<void>::Success();
     }
@@ -110,16 +106,24 @@ foundation::Result<void> GameplayFactsService::MergeSubmittedBatches()
         std::uint64_t local_sequence = 0;
     };
 
+    // Copy both accepted queues before destructive publication. Any allocation/payload-copy
+    // exception leaves submitted_batches_ and pending_events_ untouched.
+    const auto batches = submitted_batches_;
+    auto staged_pending = pending_events_;
     std::vector<FlattenedEvent> flattened;
-    for (auto& batch : batches)
+    std::size_t total = 0;
+    for (const auto& batch : batches)
+        total += batch.pending_.size();
+    flattened.reserve(total);
+    for (const auto& batch : batches)
     {
-        for (auto& pending : batch.pending_)
+        for (const auto& pending : batch.pending_)
         {
             flattened.push_back(FlattenedEvent{PendingEvent{pending.type,
-                                                             std::move(pending.context),
+                                                             pending.context,
                                                              pending.subject,
                                                              pending.scope,
-                                                             std::move(pending.payload),
+                                                             pending.payload,
                                                              pending.payload_type,
                                                              pending.producer,
                                                              pending.local_sequence},
@@ -132,10 +136,12 @@ foundation::Result<void> GameplayFactsService::MergeSubmittedBatches()
         return std::tie(left.event.context.tick.value, left.event.producer.value, left.batch_order, left.local_sequence) <
                std::tie(right.event.context.tick.value, right.event.producer.value, right.batch_order, right.local_sequence);
     });
+    staged_pending.reserve(staged_pending.size() + flattened.size());
     for (auto& item : flattened)
-    {
-        pending_events_.push_back(std::move(item.event));
-    }
+        staged_pending.push_back(std::move(item.event));
+
+    pending_events_.swap(staged_pending);
+    submitted_batches_.clear();
     return foundation::Result<void>::Success();
 }
 
@@ -166,50 +172,41 @@ foundation::Result<std::uint64_t> GameplayFactsService::Dispatch(EventDispatchLi
     {
         const auto merged = MergeSubmittedBatches();
         if (!merged)
-        {
             return foundation::Result<std::uint64_t>::Failure(merged.GetError());
-        }
         if (pending_events_.empty())
-        {
             break;
-        }
 
         ++wave;
-        ++dispatch_waves_;
-        std::vector<PendingEvent> current;
-        current.swap(pending_events_);
-
-        std::size_t index = 0;
-        for (; index < current.size(); ++index)
+        bool wave_counted = false;
+        while (!pending_events_.empty())
         {
             if (processed >= limits.max_events)
             {
-                pending_events_.insert(pending_events_.begin(),
-                                       std::make_move_iterator(current.begin() + static_cast<std::ptrdiff_t>(index)),
-                                       std::make_move_iterator(current.end()));
                 return foundation::Result<std::uint64_t>::Failure(
                     foundation::Error::Create("gameplay.event_budget_exceeded", "event dispatch exceeded max events budget"));
             }
             if (event_ids_.IsExhausted())
             {
-                pending_events_.insert(pending_events_.begin(),
-                                       std::make_move_iterator(current.begin() + static_cast<std::ptrdiff_t>(index)),
-                                       std::make_move_iterator(current.end()));
                 return foundation::Result<std::uint64_t>::Failure(
                     foundation::Error::Create("gameplay.event_id_exhausted", "event id generator is exhausted"));
             }
             if (next_event_sequence_ == 0 || next_event_sequence_ == std::numeric_limits<std::uint64_t>::max())
             {
-                pending_events_.insert(pending_events_.begin(),
-                                       std::make_move_iterator(current.begin() + static_cast<std::ptrdiff_t>(index)),
-                                       std::make_move_iterator(current.end()));
                 return foundation::Result<std::uint64_t>::Failure(
                     foundation::Error::Create("gameplay.event_sequence_exhausted", "event sequence counter is exhausted"));
             }
 
-            auto& pending = current[index];
+            // Stage the complete committed event, history state and remaining queue before
+            // consuming identity/sequence or removing the accepted event from pending work.
+            const PendingEvent pending = pending_events_.front();
+            auto staged_ids = event_ids_;
             EventRecord record;
-            record.envelope.id = event_ids_.Next();
+            record.envelope.id = staged_ids.Next();
+            if (!record.envelope.id.IsValid())
+            {
+                return foundation::Result<std::uint64_t>::Failure(
+                    foundation::Error::Create("gameplay.event_id_exhausted", "event id generator is exhausted"));
+            }
             record.envelope.type = pending.type;
             record.envelope.tick = pending.context.tick;
             record.envelope.time = pending.context.time;
@@ -217,12 +214,31 @@ foundation::Result<std::uint64_t> GameplayFactsService::Dispatch(EventDispatchLi
             record.envelope.subject = pending.subject;
             record.envelope.scope = pending.scope;
             record.envelope.producer = pending.producer;
-            record.envelope.sequence = next_event_sequence_++;
-            record.payload = std::move(pending.payload);
+            record.envelope.sequence = next_event_sequence_;
+            record.payload = pending.payload;
             record.payload_type = pending.payload_type;
 
-            AppendHistory(record);
+            auto staged_history = history_;
+            AppendHistoryTo(staged_history, record);
+            std::vector<PendingEvent> staged_pending;
+            staged_pending.reserve(pending_events_.size() - 1);
+            for (std::size_t i = 1; i < pending_events_.size(); ++i)
+                staged_pending.push_back(pending_events_[i]);
 
+            history_.swap(staged_history);
+            pending_events_.swap(staged_pending);
+            (void)event_ids_.Restore(staged_ids.GetSnapshot());
+            ++next_event_sequence_;
+            ++processed;
+            ++dispatched_events_;
+            if (!wave_counted)
+            {
+                ++dispatch_waves_;
+                wave_counted = true;
+            }
+
+            // Subscribers observe a committed event. Their exceptions are isolated and do
+            // not roll back the event itself.
             const auto found = subscribers_.find(record.envelope.type);
             if (found != subscribers_.end())
             {
@@ -238,43 +254,36 @@ foundation::Result<std::uint64_t> GameplayFactsService::Dispatch(EventDispatchLi
                     }
                 }
             }
-            ++processed;
-            ++dispatched_events_;
         }
     }
 
     const auto merged = MergeSubmittedBatches();
     if (!merged)
-    {
         return foundation::Result<std::uint64_t>::Failure(merged.GetError());
-    }
     if (!pending_events_.empty())
     {
         return foundation::Result<std::uint64_t>::Failure(
             foundation::Error::Create("gameplay.event_wave_budget_exceeded", "event dispatch exceeded max wave budget"));
     }
-
     return foundation::Result<std::uint64_t>::Success(processed);
 }
 
-void GameplayFactsService::AppendHistory(const EventRecord& event)
+void GameplayFactsService::AppendHistoryTo(std::vector<EventRecord>& history, const EventRecord& event) const
 {
     const auto type = event_types_.find(event.envelope.type);
     if (type == event_types_.end() || type->second.history_policy == HistoryPolicy::None)
-    {
         return;
-    }
 
-    history_.push_back(event);
+    history.push_back(event);
     if (type->second.history_policy == HistoryPolicy::Recent)
     {
         std::size_t count = 0;
-        for (auto iterator = history_.rbegin(); iterator != history_.rend(); ++iterator)
+        for (auto iterator = history.rbegin(); iterator != history.rend(); ++iterator)
         {
             if (iterator->envelope.type == event.envelope.type && ++count > type->second.recent_limit)
             {
-                const auto erase_index = static_cast<std::size_t>(std::distance(iterator, history_.rend()) - 1);
-                history_.erase(history_.begin() + static_cast<std::ptrdiff_t>(erase_index));
+                const auto erase_index = static_cast<std::size_t>(std::distance(iterator, history.rend()) - 1);
+                history.erase(history.begin() + static_cast<std::ptrdiff_t>(erase_index));
                 break;
             }
         }
@@ -337,34 +346,24 @@ foundation::Result<std::vector<FactChange>> GameplayFactsService::Commit(
     {
         const auto validation = ValidateMutation(transaction, mutation);
         if (!validation)
-        {
             return foundation::Result<std::vector<FactChange>>::Failure(validation.GetError());
-        }
         if (!touched_keys.emplace(mutation.key, true).second)
         {
             return foundation::Result<std::vector<FactChange>>::Failure(
                 foundation::Error::Create("gameplay.fact_duplicate_mutation", "a fact transaction may mutate each key at most once"));
         }
-
         const auto existing = facts_.find(mutation.key);
         if (mutation.kind == FactTransaction::MutationKind::Set)
         {
             ++real_changes;
             if (existing == facts_.end())
-            {
                 ++creates;
-            }
         }
         else if (existing != facts_.end())
-        {
             ++real_changes;
-        }
     }
-
     if (real_changes == 0)
-    {
         return foundation::Result<std::vector<FactChange>>::Success({});
-    }
     if (fact_revision_.value == std::numeric_limits<std::uint64_t>::max())
     {
         return foundation::Result<std::vector<FactChange>>::Failure(
@@ -373,34 +372,41 @@ foundation::Result<std::vector<FactChange>> GameplayFactsService::Commit(
     if (creates > 0)
     {
         const auto ids = fact_ids_.GetSnapshot();
-        if (ids.next == 0 || ids.next > std::numeric_limits<std::uint64_t>::max() - creates + 1)
+        if (ids.next == 0 || creates > std::numeric_limits<std::uint64_t>::max() - ids.next + 1)
         {
             return foundation::Result<std::vector<FactChange>>::Failure(
                 foundation::Error::Create("gameplay.fact_id_exhausted", "fact id generator cannot allocate all new facts atomically"));
         }
     }
+    if (real_changes > std::numeric_limits<std::uint64_t>::max() - next_direct_order_)
+    {
+        return foundation::Result<std::vector<FactChange>>::Failure(
+            foundation::Error::Create("gameplay.event_order_exhausted", "fact change event order counter is exhausted"));
+    }
 
-    ++fact_revision_.value;
+    const Revision next_revision{fact_revision_.value + 1};
+    auto staged_facts = facts_;
+    auto staged_ids = fact_ids_;
+    auto staged_pending = pending_events_;
     std::vector<FactChange> changes;
     changes.reserve(static_cast<std::size_t>(real_changes));
 
     for (auto& mutation : transaction.mutations_)
     {
-        const auto existing = facts_.find(mutation.key);
+        auto existing = staged_facts.find(mutation.key);
         if (mutation.kind == FactTransaction::MutationKind::Remove)
         {
-            if (existing != facts_.end())
+            if (existing != staged_facts.end())
             {
                 changes.push_back(FactChange{FactChangeKind::Removed, mutation.key, existing->second, std::nullopt});
-                facts_.erase(existing);
+                staged_facts.erase(existing);
             }
             continue;
         }
-
-        if (existing == facts_.end())
+        if (existing == staged_facts.end())
         {
             FactRecord record;
-            record.id = fact_ids_.Next();
+            record.id = staged_ids.Next();
             if (!record.id.IsValid())
             {
                 return foundation::Result<std::vector<FactChange>>::Failure(
@@ -410,21 +416,21 @@ foundation::Result<std::vector<FactChange>> GameplayFactsService::Commit(
             record.owner = transaction.owner_;
             record.created_at = context.time;
             record.updated_at = context.time;
-            record.revision = fact_revision_;
+            record.revision = next_revision;
             record.source_operation = context.operation;
             record.source_event = source_event;
             record.persistence = mutation.persistence;
             record.expires_at = mutation.expires_at;
             record.value = std::move(mutation.value);
             record.value_type = mutation.value_type;
-            facts_.emplace(record.key, record);
+            staged_facts.emplace(record.key, record);
             changes.push_back(FactChange{FactChangeKind::Created, record.key, std::nullopt, record});
         }
         else
         {
             const FactRecord before = existing->second;
             existing->second.updated_at = context.time;
-            existing->second.revision = fact_revision_;
+            existing->second.revision = next_revision;
             existing->second.source_operation = context.operation;
             existing->second.source_event = source_event;
             existing->second.persistence = mutation.persistence;
@@ -435,7 +441,28 @@ foundation::Result<std::vector<FactChange>> GameplayFactsService::Commit(
         }
     }
 
-    PublishFactChanges(changes, context, source_event);
+    staged_pending.reserve(staged_pending.size() + changes.size());
+    auto next_order = next_direct_order_;
+    for (const auto& change : changes)
+    {
+        auto event_context = context;
+        if (source_event.IsValid())
+        {
+            event_context.cause_event = source_event;
+            if (!event_context.correlation.IsValid())
+                event_context.correlation = CorrelationId::FromRaw(source_event.High(), source_event.Low());
+        }
+        staged_pending.push_back(PendingEvent{fact_changed_event_type_, event_context, change.key.subject, {},
+                                              std::any(change), typeid(FactChange), {}, next_order});
+        ++next_order;
+    }
+
+    facts_.swap(staged_facts);
+    pending_events_.swap(staged_pending);
+    (void)fact_ids_.Restore(staged_ids.GetSnapshot());
+    fact_revision_ = next_revision;
+    next_direct_order_ = next_order;
+    published_events_.fetch_add(changes.size(), std::memory_order_relaxed);
     return foundation::Result<std::vector<FactChange>>::Success(std::move(changes));
 }
 
@@ -497,28 +524,54 @@ std::vector<FactRecord> GameplayFactsService::FindFacts(FactTypeId type, Gamepla
 
 foundation::Result<std::uint64_t> GameplayFactsService::ExpireDueFacts(GameplayTimePoint now, GameplayContext context)
 {
-    std::map<std::uint64_t, FactTransaction> transactions;
+    std::vector<FactKey> due;
+    due.reserve(facts_.size());
     for (const auto& [key, record] : facts_)
     {
         if (record.persistence == FactPersistence::Timed && record.expires_at.has_value() && *record.expires_at <= now)
-        {
-            auto [iterator, inserted] = transactions.try_emplace(record.owner.Raw(), record.owner);
-            (void)inserted;
-            iterator->second.Remove(key);
-        }
+            due.push_back(key);
+    }
+    if (due.empty())
+        return foundation::Result<std::uint64_t>::Success(0);
+    if (fact_revision_.value == std::numeric_limits<std::uint64_t>::max())
+    {
+        return foundation::Result<std::uint64_t>::Failure(
+            foundation::Error::Create("gameplay.fact_revision_exhausted", "fact revision counter is exhausted"));
+    }
+    if (due.size() > std::numeric_limits<std::uint64_t>::max() - next_direct_order_)
+    {
+        return foundation::Result<std::uint64_t>::Failure(
+            foundation::Error::Create("gameplay.event_order_exhausted", "fact change event order counter is exhausted"));
     }
 
-    std::uint64_t expired = 0;
-    for (auto& [_, transaction] : transactions)
+    const Revision next_revision{fact_revision_.value + 1};
+    auto staged_facts = facts_;
+    auto staged_pending = pending_events_;
+    std::vector<FactChange> changes;
+    changes.reserve(due.size());
+    for (const auto& key : due)
     {
-        const auto result = Commit(std::move(transaction), context);
-        if (!result)
-        {
-            return foundation::Result<std::uint64_t>::Failure(result.GetError());
-        }
-        expired += result.Value().size();
+        auto it = staged_facts.find(key);
+        if (it == staged_facts.end())
+            continue;
+        changes.push_back(FactChange{FactChangeKind::Removed, key, it->second, std::nullopt});
+        staged_facts.erase(it);
     }
-    return foundation::Result<std::uint64_t>::Success(expired);
+    staged_pending.reserve(staged_pending.size() + changes.size());
+    auto next_order = next_direct_order_;
+    for (const auto& change : changes)
+    {
+        staged_pending.push_back(PendingEvent{fact_changed_event_type_, context, change.key.subject, {}, std::any(change),
+                                              typeid(FactChange), {}, next_order});
+        ++next_order;
+    }
+
+    facts_.swap(staged_facts);
+    pending_events_.swap(staged_pending);
+    fact_revision_ = next_revision;
+    next_direct_order_ = next_order;
+    published_events_.fetch_add(changes.size(), std::memory_order_relaxed);
+    return foundation::Result<std::uint64_t>::Success(static_cast<std::uint64_t>(changes.size()));
 }
 
 std::vector<EventRecord> GameplayFactsService::FindHistory(EventTypeId type, GameplayObjectRef subject) const
@@ -826,8 +879,8 @@ foundation::Result<void> GameplayFactsService::RestoreSnapshot(FactsSnapshot sna
 
     facts_ = std::move(restored);
     history_ = std::move(snapshot.history);
-    fact_ids_.Restore(snapshot.fact_ids);
-    event_ids_.Restore(snapshot.event_ids);
+    (void)fact_ids_.Restore(snapshot.fact_ids);
+    (void)event_ids_.Restore(snapshot.event_ids);
     fact_revision_ = snapshot.fact_revision;
     next_event_sequence_ = snapshot.next_event_sequence;
     pending_events_.clear();

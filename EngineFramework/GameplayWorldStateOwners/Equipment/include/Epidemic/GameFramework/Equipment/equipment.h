@@ -312,11 +312,8 @@ class EquipmentService
     [[nodiscard]] EquipmentDiagnostics GetDiagnostics() const noexcept;
 
   private:
-    void Bump() noexcept
-    {
-        ++revision_.value;
-    }
-    void Record(EquipmentChange change);
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    void Record(EquipmentChange change) noexcept;
     [[nodiscard]] EquipmentProfile *MutableProfile(EquipmentProfileId id) noexcept;
     [[nodiscard]] bool SlotAccepts(const EquipmentSlotDefinition &slot,
                                    const EquipmentItemDescriptor &item) const noexcept;

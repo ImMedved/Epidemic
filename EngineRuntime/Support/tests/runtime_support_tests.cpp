@@ -3,15 +3,48 @@
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <limits>
 #include <memory>
+#include <optional>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 
 using epidemic::core::Application;
 using namespace epidemic::runtime;
 
+namespace epidemic::runtime::support_testing
+{
+std::shared_ptr<renderer::IRenderResourceBridge> CreateRenderResourceBridge(std::shared_ptr<IResourceManager> manager);
+std::shared_ptr<streaming::IStreamingDataSource> CreateStreamingAdapter(std::shared_ptr<WorldServices> world,
+                                                                       std::shared_ptr<ResourceServices> resources,
+                                                                       std::shared_ptr<PersistenceServices> persistence,
+                                                                       std::shared_ptr<IChunkStreamingManifestSource> manifests);
+void FailNextRenderLeasePublication() noexcept;
+void FailNextStreamingLeasePublication() noexcept;
+void FailStreamingLeasePublicationAfter(std::size_t successful_publications) noexcept;
+void FailNextStreamingPlanConstruction() noexcept;
+void FailNextPersistenceException() noexcept;
+void FailNextStreamingCleanupWorldTransition() noexcept;
+void FailNextMainViewCreation() noexcept;
+void FailNextMainViewPublication() noexcept;
+foundation::Result<void> EnsureMainView(renderer::RendererServices& renderer_services,
+                                        const std::shared_ptr<SceneServices>& scene);
+foundation::Result<void> SetPreparedRevision(streaming::IStreamingDataSource& source,
+                                             std::uint64_t request_id,
+                                             std::uint64_t revision);
+}
+
 namespace
 {
+namespace foundation = epidemic::foundation;
+
+[[nodiscard]] ResourceId TestResourceId(std::size_t index)
+{
+    const std::string value = "support.resource." + std::to_string(index);
+    return ResourceId::FromString(value);
+}
+
 bool Expect(bool condition, std::string_view message)
 {
     if (!condition)
@@ -35,6 +68,425 @@ class EmptyChunkManifestSource final : public IChunkStreamingManifestSource
         return epidemic::foundation::Result<ChunkStreamingManifest>::Success(ChunkStreamingManifest{chunk, {}, {}});
     }
 };
+
+class TestResourceManager final : public IResourceManager
+{
+  public:
+    [[nodiscard]] foundation::Result<ResourceLease> RequestLease(ResourceRequest request) override
+    {
+        ++request_attempts[request.resource_id.Raw()];
+        if (fail_request_resource && *fail_request_resource == request.resource_id.Raw())
+        {
+            return foundation::Result<ResourceLease>::Failure(
+                foundation::Error::Create("test.request_failed", "injected resource request failure"));
+        }
+        const ResourceLease lease{ResourceHandle{request.resource_id, 1}, next_acquisition++};
+        active.emplace(lease.acquisition, lease);
+        ++successful_requests[request.resource_id.Raw()];
+        return foundation::Result<ResourceLease>::Success(lease);
+    }
+
+    [[nodiscard]] foundation::Result<ResourceProcessingStats> ProcessPendingLoads(RuntimeBudget = {}) override
+    {
+        return foundation::Result<ResourceProcessingStats>::Success({});
+    }
+
+    [[nodiscard]] foundation::Result<void> Release(ResourceLease lease) override
+    {
+        ++release_attempts[lease.resource.id.Raw()];
+        if (fail_release_resource_once && *fail_release_resource_once == lease.resource.id.Raw())
+        {
+            fail_release_resource_once.reset();
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("test.release_failed", "injected resource release failure"));
+        }
+        const auto iterator = active.find(lease.acquisition);
+        if (iterator == active.end())
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("test.double_release", "resource lease was released twice"));
+        }
+        active.erase(iterator);
+        ++successful_releases[lease.resource.id.Raw()];
+        return foundation::Result<void>::Success();
+    }
+
+    [[nodiscard]] foundation::Result<void> Evict(ResourceId) override
+    {
+        return foundation::Result<void>::Success();
+    }
+    [[nodiscard]] std::size_t EvictUnreferenced() override { return 0; }
+    [[nodiscard]] foundation::Result<void> ValidateHandle(ResourceHandle handle) const override
+    {
+        return handle.IsValid() ? foundation::Result<void>::Success()
+                                : foundation::Result<void>::Failure(
+                                      foundation::Error::Create("test.invalid_handle", "invalid test resource handle"));
+    }
+    [[nodiscard]] ResourceState GetState(ResourceHandle handle) const override
+    {
+        return handle.IsValid() ? ResourceState::Ready : ResourceState::Unknown;
+    }
+    [[nodiscard]] bool IsReady(ResourceHandle handle) const override { return handle.IsValid(); }
+    [[nodiscard]] std::optional<ResourceId> GetResourceId(ResourceHandle handle) const override
+    {
+        return handle.IsValid() ? std::optional<ResourceId>{handle.id} : std::nullopt;
+    }
+    [[nodiscard]] ResourcePayloadPtr GetPayload(ResourceHandle) const override { return {}; }
+    void SetMemoryBudgetBytes(std::size_t) override {}
+    [[nodiscard]] ResourceMemoryStats GetMemoryStatistics() const override { return {}; }
+
+    [[nodiscard]] std::size_t ActiveCount() const noexcept { return active.size(); }
+    [[nodiscard]] int SuccessfulReleaseCount(ResourceId id) const
+    {
+        const auto iterator = successful_releases.find(id.Raw());
+        return iterator == successful_releases.end() ? 0 : iterator->second;
+    }
+    [[nodiscard]] int ReleaseAttemptCount(ResourceId id) const
+    {
+        const auto iterator = release_attempts.find(id.Raw());
+        return iterator == release_attempts.end() ? 0 : iterator->second;
+    }
+    [[nodiscard]] int RequestAttemptCount(ResourceId id) const
+    {
+        const auto iterator = request_attempts.find(id.Raw());
+        return iterator == request_attempts.end() ? 0 : iterator->second;
+    }
+
+    std::optional<std::uint64_t> fail_request_resource{};
+    std::optional<std::uint64_t> fail_release_resource_once{};
+
+  private:
+    ResourceAcquisitionId next_acquisition = 1;
+    std::unordered_map<ResourceAcquisitionId, ResourceLease> active;
+    std::unordered_map<std::uint64_t, int> request_attempts;
+    std::unordered_map<std::uint64_t, int> successful_requests;
+    std::unordered_map<std::uint64_t, int> release_attempts;
+    std::unordered_map<std::uint64_t, int> successful_releases;
+};
+
+class TestViewSystem final : public renderer::IViewSystem
+{
+  public:
+    [[nodiscard]] foundation::Result<renderer::ViewId> CreateView(const renderer::ViewDesc&) override
+    {
+        const renderer::ViewId id{next_id++};
+        views[id.value] = renderer::ViewLifecycle::Active;
+        return foundation::Result<renderer::ViewId>::Success(id);
+    }
+    [[nodiscard]] foundation::Result<void> DestroyView(renderer::ViewId view) override
+    {
+        const auto iterator = views.find(view.value);
+        if (iterator == views.end())
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("test.view_missing", "test view missing"));
+        }
+        views.erase(iterator);
+        if (main == view) main = {};
+        return foundation::Result<void>::Success();
+    }
+    [[nodiscard]] foundation::Result<void> SetMainView(renderer::ViewId view) override
+    {
+        if (!views.contains(view.value))
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("test.view_missing", "test view missing"));
+        }
+        main = view;
+        return foundation::Result<void>::Success();
+    }
+    [[nodiscard]] renderer::ViewId GetMainView() const override { return main; }
+    [[nodiscard]] renderer::ViewLifecycle GetViewLifecycle(renderer::ViewId view) const override
+    {
+        const auto iterator = views.find(view.value);
+        return iterator == views.end() ? renderer::ViewLifecycle::Destroyed : iterator->second;
+    }
+
+  private:
+    std::uint64_t next_id = 1;
+    std::unordered_map<std::uint64_t, renderer::ViewLifecycle> views;
+    renderer::ViewId main{};
+};
+
+class TestChunkManifestSource final : public IChunkStreamingManifestSource
+{
+  public:
+    ChunkStreamingManifest manifest{};
+    [[nodiscard]] foundation::Result<ChunkStreamingManifest> GetManifest(ChunkId chunk) const override
+    {
+        if (manifest.chunk != chunk)
+        {
+            return foundation::Result<ChunkStreamingManifest>::Failure(
+                foundation::Error::Create("test.manifest_chunk", "manifest chunk mismatch"));
+        }
+        return foundation::Result<ChunkStreamingManifest>::Success(manifest);
+    }
+};
+
+struct StreamingFixture
+{
+    RegionId region{501};
+    ChunkId chunk{601};
+    std::shared_ptr<WorldServices> world;
+    std::shared_ptr<ResourceServices> resources;
+    std::shared_ptr<PersistenceServices> persistence;
+    std::shared_ptr<TestChunkManifestSource> manifests;
+    std::shared_ptr<TestResourceManager> manager;
+    std::shared_ptr<streaming::IStreamingDataSource> source;
+    std::shared_ptr<streaming::IStreamingCommitTarget> commit;
+    std::shared_ptr<streaming::IResidencyController> residency;
+    std::shared_ptr<streaming::IStreamingPersistenceSource> persistence_source;
+    std::shared_ptr<IRuntimeAdapterLifecycle> lifecycle;
+    std::shared_ptr<IStreamingPreparedChunkDataQuery> prepared_query;
+
+    [[nodiscard]] streaming::StreamingRequest Request(std::uint64_t id = 1) const
+    {
+        streaming::StreamingRequest request{};
+        request.id = streaming::StreamingRequestId{id};
+        request.handle = streaming::StreamingRequestHandle{request.id, 1};
+        request.target = streaming::ChunkStreamingTarget{chunk};
+        return request;
+    }
+};
+
+[[nodiscard]] std::optional<StreamingFixture> MakeStreamingFixture(std::size_t resource_count)
+{
+    const auto world_result = CreateWorldServices();
+    const auto persistence_result = CreatePersistenceServices();
+    if (!world_result || !persistence_result)
+    {
+        return std::nullopt;
+    }
+
+    StreamingFixture fixture{};
+    fixture.world = std::make_shared<WorldServices>(world_result.Value());
+    fixture.persistence = std::make_shared<PersistenceServices>(persistence_result.Value());
+    fixture.manager = std::make_shared<TestResourceManager>();
+    fixture.resources = std::make_shared<ResourceServices>();
+    fixture.resources->manager = fixture.manager;
+    fixture.manifests = std::make_shared<TestChunkManifestSource>();
+    fixture.manifests->manifest.chunk = fixture.chunk;
+    fixture.manifests->manifest.persistence_location = PersistenceLocation{
+        fixture.region, fixture.chunk, foundation::StringId::FromString("support-test")};
+    for (std::size_t index = 0; index < resource_count; ++index)
+    {
+        fixture.manifests->manifest.resources.push_back(ChunkResourceRequirement{
+            TestResourceId(index),
+            ResourceType{foundation::StringId::FromString("streaming.test")},
+            1});
+    }
+
+    if (!fixture.world->regions->RegisterRegion(
+            RegionDescriptor{fixture.region, foundation::StringId::FromString("support-test-region")}) ||
+        !fixture.world->chunks->RegisterChunk(ChunkDescriptor{fixture.chunk, fixture.region, 0, 0, 0}))
+    {
+        return std::nullopt;
+    }
+
+    fixture.source = support_testing::CreateStreamingAdapter(fixture.world, fixture.resources,
+                                                              fixture.persistence, fixture.manifests);
+    fixture.commit = std::dynamic_pointer_cast<streaming::IStreamingCommitTarget>(fixture.source);
+    fixture.residency = std::dynamic_pointer_cast<streaming::IResidencyController>(fixture.source);
+    fixture.persistence_source = std::dynamic_pointer_cast<streaming::IStreamingPersistenceSource>(fixture.source);
+    fixture.lifecycle = std::dynamic_pointer_cast<IRuntimeAdapterLifecycle>(fixture.source);
+    fixture.prepared_query = std::dynamic_pointer_cast<IStreamingPreparedChunkDataQuery>(fixture.source);
+    if (!fixture.commit || !fixture.residency || !fixture.persistence_source || !fixture.lifecycle || !fixture.prepared_query)
+    {
+        return std::nullopt;
+    }
+    return fixture;
+}
+
+bool TestRenderLeaseRollbackAndCompositeRetry()
+{
+    const ResourceId mesh = ResourceId::FromString("support.mesh");
+    const ResourceId material = ResourceId::FromString("support.material");
+    auto manager = std::make_shared<TestResourceManager>();
+    auto bridge = support_testing::CreateRenderResourceBridge(manager);
+    auto lifecycle = std::dynamic_pointer_cast<IRuntimeAdapterLifecycle>(bridge);
+    if (!bridge || !lifecycle) return false;
+
+    support_testing::FailNextRenderLeasePublication();
+    const auto local_publication_failure = bridge->AcquirePayloads(mesh, material);
+    if (local_publication_failure || !local_publication_failure.GetError().HasCode("runtime_support.allocation_failure") ||
+        manager->ActiveCount() != 0 || manager->SuccessfulReleaseCount(mesh) != 1)
+        return false;
+
+    manager->fail_request_resource = material.Raw();
+    manager->fail_release_resource_once = mesh.Raw();
+    const auto composite_failure = bridge->AcquirePayloads(mesh, material);
+    if (composite_failure || !composite_failure.GetError().HasCode("runtime_support.render_payload_cleanup_pending") ||
+        manager->ActiveCount() != 1 || manager->ReleaseAttemptCount(mesh) != 2)
+        return false;
+    if (!bridge->ReleasePayloads(mesh, material) || manager->ActiveCount() != 0 ||
+        manager->SuccessfulReleaseCount(mesh) != 2)
+        return false;
+
+    manager->fail_request_resource.reset();
+    if (!bridge->AcquirePayloads(mesh, material) || manager->ActiveCount() != 2)
+        return false;
+    manager->fail_release_resource_once = material.Raw();
+    const auto partial = bridge->ReleasePayloads(mesh, material);
+    if (partial || manager->ActiveCount() != 1 || manager->SuccessfulReleaseCount(mesh) != 3)
+        return false;
+    if (!bridge->ReleasePayloads(mesh, material) || manager->ActiveCount() != 0 ||
+        manager->SuccessfulReleaseCount(material) != 1)
+        return false;
+
+    if (!bridge->AcquirePayloads(mesh, material)) return false;
+    manager->fail_release_resource_once = mesh.Raw();
+    const auto first_shutdown = lifecycle->Shutdown();
+    if (first_shutdown || manager->ActiveCount() != 1) return false;
+    const auto second_shutdown = lifecycle->Shutdown();
+    return second_shutdown && manager->ActiveCount() == 0;
+}
+
+bool TestStreamingPublicationDuplicateAndPlanAtomicity()
+{
+    auto fixture_opt = MakeStreamingFixture(3);
+    if (!fixture_opt) return false;
+    auto& fixture = *fixture_opt;
+    const auto request = fixture.Request();
+
+    support_testing::FailNextStreamingPlanConstruction();
+    const auto failed_plan = fixture.source->BuildLoadPlan(request);
+    if (failed_plan || !failed_plan.GetError().HasCode("runtime_support.allocation_failure")) return false;
+    const auto plan = fixture.source->BuildLoadPlan(request);
+    if (!plan || plan.Value().steps.size() != 4) return false;
+
+    const auto duplicate = fixture.source->BuildLoadPlan(request);
+    if (duplicate || !duplicate.GetError().HasCode("runtime_support.duplicate_streaming_request")) return false;
+
+    const auto resolve = fixture.source->ExecuteStep(
+        request, streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::ResolveTarget, 1}, RuntimeBudget{});
+    if (!resolve) return false;
+
+    support_testing::FailStreamingLeasePublicationAfter(1);
+    const auto publication_failure = fixture.source->ExecuteStep(
+        request, streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::PrepareResources, 3}, RuntimeBudget{});
+    if (publication_failure || !publication_failure.GetError().HasCode("runtime_support.allocation_failure") ||
+        fixture.manager->ActiveCount() != 1 || fixture.manager->SuccessfulReleaseCount(TestResourceId(1)) != 1)
+        return false;
+
+    const auto retry = fixture.source->ExecuteStep(
+        request, streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::PrepareResources, 3}, RuntimeBudget{});
+    if (!retry || !retry.Value().completed || fixture.manager->ActiveCount() != 3) return false;
+
+    const auto duplicate_with_leases = fixture.source->BuildLoadPlan(request);
+    if (duplicate_with_leases || fixture.manager->ActiveCount() != 3) return false;
+    if (!fixture.commit->Rollback(request) || fixture.manager->ActiveCount() != 0) return false;
+    return true;
+}
+
+bool TestStreamingPrepareDataAndCleanupRetry()
+{
+    {
+        auto fixture_opt = MakeStreamingFixture(1);
+        if (!fixture_opt) return false;
+        auto& fixture = *fixture_opt;
+        const auto request = fixture.Request(11);
+        if (!fixture.source->BuildLoadPlan(request)) return false;
+        const auto before = fixture.prepared_query->GetPreparedData(fixture.chunk);
+        if (!before) return false;
+        if (!support_testing::SetPreparedRevision(*fixture.source, request.id.value,
+                                                  std::numeric_limits<std::uint64_t>::max())) return false;
+        const auto overflow = fixture.persistence_source->PrepareChunkData(request);
+        const auto after_overflow = fixture.prepared_query->GetPreparedData(fixture.chunk);
+        if (overflow || !overflow.GetError().HasCode("runtime_support.prepared_revision_overflow") ||
+            !after_overflow || after_overflow.Value().revision != std::numeric_limits<std::uint64_t>::max() ||
+            after_overflow.Value().persisted_state.has_value() != before.Value().persisted_state.has_value())
+            return false;
+    }
+
+    {
+        auto fixture_opt = MakeStreamingFixture(1);
+        if (!fixture_opt) return false;
+        auto& fixture = *fixture_opt;
+        const auto request = fixture.Request(12);
+        if (!fixture.source->BuildLoadPlan(request)) return false;
+        const auto before = fixture.prepared_query->GetPreparedData(fixture.chunk);
+        support_testing::FailNextPersistenceException();
+        const auto failed = fixture.persistence_source->PrepareChunkData(request);
+        const auto after = fixture.prepared_query->GetPreparedData(fixture.chunk);
+        if (failed || !failed.GetError().HasCode("runtime_support.persistence_exception") || !before || !after ||
+            before.Value().revision != after.Value().revision || before.Value().persisted_state.has_value() != after.Value().persisted_state.has_value())
+            return false;
+    }
+
+    {
+        auto fixture_opt = MakeStreamingFixture(1);
+        if (!fixture_opt) return false;
+        auto& fixture = *fixture_opt;
+        const auto request = fixture.Request(13);
+        if (!fixture.source->BuildLoadPlan(request)) return false;
+        if (!fixture.source->ExecuteStep(request,
+                                         streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::ResolveTarget, 1},
+                                         RuntimeBudget{})) return false;
+        if (!fixture.source->ExecuteStep(request,
+                                         streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::PrepareResources, 1},
+                                         RuntimeBudget{})) return false;
+        support_testing::FailNextStreamingCleanupWorldTransition();
+        const auto first = fixture.commit->Rollback(request);
+        const auto loading = fixture.world->chunks->GetChunkSnapshot(fixture.chunk);
+        if (first || !loading || loading.Value().state != ChunkState::Loading || fixture.manager->ActiveCount() != 0 ||
+            fixture.manager->SuccessfulReleaseCount(TestResourceId(0)) != 1)
+            return false;
+        if (!fixture.lifecycle->Shutdown()) return false;
+        const auto unloaded = fixture.world->chunks->GetChunkSnapshot(fixture.chunk);
+        if (!unloaded || unloaded.Value().state != ChunkState::Unloaded ||
+            fixture.manager->SuccessfulReleaseCount(TestResourceId(0)) != 1)
+            return false;
+    }
+
+    {
+        auto fixture_opt = MakeStreamingFixture(1);
+        if (!fixture_opt) return false;
+        auto& fixture = *fixture_opt;
+        const auto request = fixture.Request(14);
+        if (!fixture.source->BuildLoadPlan(request)) return false;
+        if (!fixture.source->ExecuteStep(request,
+                                         streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::ResolveTarget, 1},
+                                         RuntimeBudget{})) return false;
+        if (!fixture.source->ExecuteStep(request,
+                                         streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::PrepareResources, 1},
+                                         RuntimeBudget{})) return false;
+        if (!fixture.commit->Commit(request)) return false;
+        if (!fixture.residency->ActivateChunk(fixture.chunk) || !fixture.residency->DeactivateChunk(fixture.chunk)) return false;
+        support_testing::FailNextStreamingCleanupWorldTransition();
+        const auto first = fixture.residency->UnloadChunk(fixture.chunk);
+        const auto unloading = fixture.world->chunks->GetChunkSnapshot(fixture.chunk);
+        if (first || !unloading || unloading.Value().state != ChunkState::Unloading || fixture.manager->ActiveCount() != 0 ||
+            fixture.manager->SuccessfulReleaseCount(TestResourceId(0)) != 1)
+            return false;
+        if (!fixture.residency->UnloadChunk(fixture.chunk)) return false;
+        const auto unloaded = fixture.world->chunks->GetChunkSnapshot(fixture.chunk);
+        return unloaded && unloaded.Value().state == ChunkState::Unloaded &&
+               fixture.manager->SuccessfulReleaseCount(TestResourceId(0)) == 1;
+    }
+}
+
+bool TestMainViewCreationRollback()
+{
+    const auto scene_result = CreateSceneServices();
+    if (!scene_result) return false;
+    auto scene = std::make_shared<SceneServices>(scene_result.Value());
+    renderer::RendererServices renderer_services{};
+    renderer_services.views = std::make_shared<TestViewSystem>();
+
+    support_testing::FailNextMainViewCreation();
+    const auto create_failure = support_testing::EnsureMainView(renderer_services, scene);
+    if (create_failure || renderer_services.views->GetMainView().IsValid() || scene->nodes->Exists(SceneNodeId{1}))
+        return false;
+
+    support_testing::FailNextMainViewPublication();
+    const auto publish_failure = support_testing::EnsureMainView(renderer_services, scene);
+    if (publish_failure || renderer_services.views->GetMainView().IsValid() || scene->nodes->Exists(SceneNodeId{2}) ||
+        renderer_services.views->GetViewLifecycle(renderer::ViewId{1}) != renderer::ViewLifecycle::Destroyed)
+        return false;
+
+    return support_testing::EnsureMainView(renderer_services, scene).HasValue() &&
+           renderer_services.views->GetMainView().IsValid();
+}
 
 bool TestIndividualRegistration()
 {
@@ -308,6 +760,10 @@ bool TestFullTickAndTerminalShutdown()
 int main()
 {
     bool ok = true;
+    ok &= Expect(TestRenderLeaseRollbackAndCompositeRetry(), "render lease transaction regression failed");
+    ok &= Expect(TestStreamingPublicationDuplicateAndPlanAtomicity(), "streaming publication/plan regression failed");
+    ok &= Expect(TestStreamingPrepareDataAndCleanupRetry(), "streaming prepare/cleanup regression failed");
+    ok &= Expect(TestMainViewCreationRollback(), "main-view rollback regression failed");
     ok &= TestIndividualRegistration();
     ok &= TestAtomicDefaultCompositionAndTypedOwnership();
     ok &= TestProductionPreflightIsAtomic();

@@ -6,6 +6,9 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <stdexcept>
+#include <cfloat>
+#include <cstdint>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -41,19 +44,30 @@ struct TestResourceSource final : IAnimationResourceSource
     bool fail_clip = false;
     bool fail_skeleton = false;
     float clip_duration = 2.0f;
+    std::uint32_t skeleton_joint_count = 16;
+    bool throw_clip = false;
+    bool throw_skeleton = false;
 
     epidemic::foundation::Result<SkeletonDesc> LoadSkeleton(SkeletonId id) const override
     {
+        if (throw_skeleton)
+        {
+            throw std::runtime_error("skeleton load throw");
+        }
         if (fail_skeleton)
         {
             return epidemic::foundation::Result<SkeletonDesc>::Failure(
                 epidemic::foundation::Error::Create("animation.skeleton_not_found", "test skeleton missing"));
         }
-        return epidemic::foundation::Result<SkeletonDesc>::Success(SkeletonDesc{id, 16});
+        return epidemic::foundation::Result<SkeletonDesc>::Success(SkeletonDesc{id, skeleton_joint_count});
     }
 
     epidemic::foundation::Result<AnimationClipDesc> LoadClip(AnimationClipId id) const override
     {
+        if (throw_clip)
+        {
+            throw std::runtime_error("clip load throw");
+        }
         if (fail_clip)
         {
             return epidemic::foundation::Result<AnimationClipDesc>::Failure(
@@ -67,9 +81,14 @@ struct TestPoseSink final : IAnimationPoseSink
 {
     std::vector<std::shared_ptr<const PoseBuffer>> published;
     bool fail = false;
+    bool throw_on_publish = false;
 
     epidemic::foundation::Result<void> Publish(std::shared_ptr<const PoseBuffer> pose) override
     {
+        if (throw_on_publish)
+        {
+            throw std::runtime_error("pose sink throw");
+        }
         if (fail)
         {
             return epidemic::foundation::Result<void>::Failure(
@@ -82,9 +101,21 @@ struct TestPoseSink final : IAnimationPoseSink
 
 struct TestEvaluatorBackend final : IAnimationEvaluatorBackend
 {
+    bool fail = false;
+    bool throw_on_evaluate = false;
+
     epidemic::foundation::Result<PoseBuffer> EvaluatePose(const AnimationEvaluationRequest& request) const override
     {
         ++evaluations;
+        if (throw_on_evaluate)
+        {
+            throw std::runtime_error("evaluator throw");
+        }
+        if (fail)
+        {
+            return epidemic::foundation::Result<PoseBuffer>::Failure(
+                epidemic::foundation::Error::Create("animation.evaluate_failed", "test evaluator failure"));
+        }
         PoseBuffer pose{request.animator, request.owner, std::vector<epidemic::runtime::Transform>(request.skeleton.joint_count), request.revision};
         for (std::size_t index = 0; index < pose.bone_transforms.size(); ++index)
         {
@@ -163,7 +194,7 @@ bool TestPlayInvalidClipReturnsError()
     const auto created = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{77}, SkeletonId{1}, AnimationLodLevel::Full});
     ok &= Expect(created.HasValue(), "valid animator should be created");
     ok &= Expect(!runtime.Play(AnimationPlaybackCommand{created.Value(), AnimationClipId{999}}).HasValue(), "missing clip should fail playback");
-    ok &= ExpectReadiness(runtime, created.Value(), AnimatorReadiness::ResourceMissing, "missing clip should mark resource missing");
+    ok &= ExpectReadiness(runtime, created.Value(), AnimatorReadiness::Ready, "failed play should leave readiness unchanged");
     return ok;
 }
 
@@ -402,7 +433,7 @@ bool TestResourceSourceFailureAndPoseSinkPublication()
     resources->fail_clip = true;
     ok &= Expect(!runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{10}, false}).HasValue(),
                  "resource source clip failure should propagate");
-    ok &= ExpectReadiness(runtime, animator.Value(), AnimatorReadiness::ResourceMissing, "resource failure should mark missing");
+    ok &= ExpectReadiness(runtime, animator.Value(), AnimatorReadiness::Ready, "resource failure should leave animator readiness unchanged");
 
     resources->fail_clip = false;
     ok &= Expect(runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{10}, false}).HasValue(),
@@ -441,7 +472,7 @@ bool TestPoseSinkFailurePropagates()
     ok &= Expect(runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{10}}).HasValue(), "animator should play");
     sink->fail = true;
     const auto tick = runtime.Tick(FrameDuration{std::chrono::microseconds{1000}}, 1);
-    return ok && Expect(!tick.HasValue() && tick.GetError().HasCode("animation.publish_failed"),
+    return ok && Expect(!tick.HasValue() && tick.GetError().HasCode("animation.pose_publication_failed_after_commit"),
                         "pose sink failure should propagate from tick");
 }
 
@@ -510,6 +541,90 @@ bool TestFactoryProfilesSeparateMockEvaluation()
     ok &= Expect(mock.runtime != nullptr && mock.poses != nullptr, "mock services should be populated");
     return ok;
 }
+bool TestDeepFreezeAnimationContracts()
+{
+    bool ok = true;
+    {
+        auto evaluator = std::make_shared<TestEvaluatorBackend>();
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}, AnimationDependencies{{}, {}, evaluator}};
+        ok &= Expect(SeedResources(runtime), "resources should seed for evaluator atomicity");
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{501}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{11}, true}).HasValue(), "animator should start for evaluator atomicity");
+        const auto before = runtime.GetAnimatorSnapshot(animator.Value());
+        const auto before_pose = runtime.GetPoseBuffer(animator.Value());
+        evaluator->fail = true;
+        const auto failed = runtime.Tick(FrameDuration{std::chrono::microseconds{1000}}, 1);
+        const auto after = runtime.GetAnimatorSnapshot(animator.Value());
+        const auto after_pose = runtime.GetPoseBuffer(animator.Value());
+        ok &= Expect(!failed && before && after && before.Value().local_time == after.Value().local_time && before.Value().revision == after.Value().revision,
+                     "evaluator Result failure must leave animator snapshot unchanged");
+        ok &= Expect(before_pose && after_pose && before_pose.Value().revision == after_pose.Value().revision, "evaluator failure must preserve cached pose");
+        evaluator->fail = false;
+        ok &= Expect(runtime.Tick(FrameDuration{std::chrono::microseconds{1000}}, 1).HasValue(), "retry after evaluator recovery should advance once");
+        const auto recovered = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(recovered && recovered.Value().local_time.value.count() == 1000, "recovered retry should advance exactly one delta");
+        evaluator->throw_on_evaluate = true;
+        const auto throw_before = runtime.GetAnimatorSnapshot(animator.Value());
+        const auto thrown = runtime.Tick(FrameDuration{std::chrono::microseconds{1000}}, 1);
+        const auto throw_after = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(!thrown && thrown.GetError().HasCode("animation.evaluator_exception") && throw_before.Value().local_time == throw_after.Value().local_time,
+                     "throwing evaluator must preserve staged animator state");
+    }
+    {
+        auto sink = std::make_shared<TestPoseSink>(); auto evaluator = std::make_shared<TestEvaluatorBackend>();
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}, AnimationDependencies{{}, sink, evaluator}};
+        ok &= Expect(SeedResources(runtime), "resources should seed for sink semantics");
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{502}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{11}, true}).HasValue(), "animator should play for sink semantics");
+        const auto before = runtime.GetAnimatorSnapshot(animator.Value()); sink->fail = true;
+        const auto failed = runtime.Tick(FrameDuration{std::chrono::microseconds{1000}}, 1);
+        const auto after = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(!failed && failed.GetError().HasCode("animation.pose_publication_failed_after_commit") && after.Value().revision == before.Value().revision + 1 && after.Value().local_time.value.count() == 1000,
+                     "pose sink failure should report post-commit frame semantics");
+        sink->fail = false; sink->throw_on_publish = true;
+        const auto thrown = runtime.Tick(FrameDuration{std::chrono::microseconds{1000}}, 1);
+        ok &= Expect(!thrown && thrown.GetError().HasCode("animation.pose_publication_failed_after_commit"), "throwing sink should remain inside public Result boundary");
+    }
+    {
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}}; ok &= Expect(SeedResources(runtime), "resources should seed for zero crossfade");
+        const auto animator=runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{503},SkeletonId{1},AnimationLodLevel::Full});
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(),AnimationClipId{11},true}).HasValue() && runtime.Tick(FrameDuration{std::chrono::microseconds{1000}},1).HasValue(), "animator should have ready pose");
+        ok &= Expect(runtime.GetPoseState(animator.Value()).Value()==PoseState::Ready, "pre-crossfade pose should be ready");
+        ok &= Expect(runtime.Crossfade(animator.Value(),AnimationClipId{10},FrameDuration{}).HasValue(), "zero crossfade should succeed");
+        const auto pose=runtime.GetPoseState(animator.Value()); ok &= Expect(pose && (pose.Value()==PoseState::Dirty || pose.Value()==PoseState::Evaluating), "zero crossfade must invalidate old clip pose");
+    }
+    {
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true, .max_animators = 1, .max_skeleton_joints = 8}};
+        ok &= Expect(runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{1},8}).HasValue(), "maximum skeleton joint count should register");
+        ok &= Expect(!runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{2},9}), "oversized skeleton should be rejected");
+        ok &= Expect(runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1},SkeletonId{1},1.0f}).HasValue(), "clip should register");
+        const auto invalid_lod=runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{1},SkeletonId{1},static_cast<AnimationLodLevel>(99)}); ok &= Expect(!invalid_lod,"invalid LOD create should fail");
+        const auto animator=runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{1},SkeletonId{1},AnimationLodLevel::Full}); ok &= Expect(animator.HasValue(),"valid animator should create");
+        ok &= Expect(!runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{2},SkeletonId{1},AnimationLodLevel::Full}),"max_animators should be enforced");
+        const auto before=runtime.GetAnimatorSnapshot(animator.Value()); ok &= Expect(!runtime.SetLod(animator.Value(),static_cast<AnimationLodLevel>(99)),"invalid SetLod should fail"); const auto after=runtime.GetAnimatorSnapshot(animator.Value()); ok &= Expect(before.Value().revision==after.Value().revision && before.Value().lod==after.Value().lod,"invalid SetLod should not mutate state");
+        ok &= Expect(runtime.Freeze().HasValue() && runtime.Freeze().HasValue() && runtime.IsFrozen(),"animation registry freeze should be idempotent");
+        ok &= Expect(!runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{3},1}) && !runtime.RegisterClip(AnimationClipDesc{AnimationClipId{3},SkeletonId{1},1.0f}),"registration after freeze should fail");
+    }
+    {
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}}; ok &= Expect(SeedResources(runtime),"resources should seed for revision exhaustion");
+        const auto animator=runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{504},SkeletonId{1},AnimationLodLevel::Full}); runtime.SetRevisionForTesting(animator.Value(),std::numeric_limits<std::uint64_t>::max()-1);
+        ok &= Expect(runtime.SetLod(animator.Value(),AnimationLodLevel::Reduced).HasValue(),"last animator revision should commit"); const auto at_max=runtime.GetAnimatorSnapshot(animator.Value());
+        const auto exhausted=runtime.SetLod(animator.Value(),AnimationLodLevel::Full); const auto unchanged=runtime.GetAnimatorSnapshot(animator.Value()); ok &= Expect(!exhausted && exhausted.GetError().HasCode("animation.revision_exhausted") && at_max.Value().revision==unchanged.Value().revision && at_max.Value().lod==unchanged.Value().lod,"revision exhaustion should not wrap or mutate");
+    }
+    {
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}}; ok &= Expect(SeedResources(runtime),"resources should seed for id exhaustion"); runtime.SetNextIdentityForTesting(std::numeric_limits<std::uint64_t>::max(),std::numeric_limits<std::uint32_t>::max());
+        const auto last=runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{505},SkeletonId{1},AnimationLodLevel::Full}); ok &= Expect(last && last.Value().id.value==std::numeric_limits<std::uint64_t>::max() && last.Value().generation==std::numeric_limits<std::uint32_t>::max(),"final animator identity should issue once"); ok &= Expect(!runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{506},SkeletonId{1},AnimationLodLevel::Full}),"animator identity should exhaust after final committed create");
+    }
+    {
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}}; ok &= Expect(runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{1},1}).HasValue(),"skeleton should register for numeric tests"); ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1},SkeletonId{1},FLT_MAX}),"FLT_MAX clip duration should fail checked conversion"); ok &= Expect(runtime.RegisterClip(AnimationClipDesc{AnimationClipId{2},SkeletonId{1},1000.0f}).HasValue(),"normal clip should register"); const auto animator=runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{507},SkeletonId{1},AnimationLodLevel::Full});
+        ok &= Expect(!runtime.Play(AnimationPlaybackCommand{animator.Value(),AnimationClipId{2},false,std::numeric_limits<double>::max()}),"DBL_MAX playback rate should fail before mutation"); ok &= Expect(runtime.Play(AnimationPlaybackCommand{animator.Value(),AnimationClipId{2},true,2.0}).HasValue(),"finite playback should start"); const auto before=runtime.GetAnimatorSnapshot(animator.Value()); const auto overflow=runtime.Tick(FrameDuration{std::chrono::microseconds{std::numeric_limits<std::int64_t>::max()}},1); const auto after=runtime.GetAnimatorSnapshot(animator.Value()); ok &= Expect(!overflow && overflow.GetError().HasCode("animation.time_overflow") && before.Value().local_time==after.Value().local_time && before.Value().revision==after.Value().revision,"playback time overflow must leave animator unchanged");
+    }
+    {
+        auto resources=std::make_shared<TestResourceSource>(); resources->skeleton_joint_count=9; AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation=true,.max_skeleton_joints=8},AnimationDependencies{resources,{},{}}}; const auto created=runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{508},SkeletonId{1},AnimationLodLevel::Full}); ok &= Expect(!created && created.GetError().HasCode("animation.invalid_skeleton"),"oversized resource-backed skeleton should be rejected without allocation");
+    }
+    return ok;
+}
+
 } // namespace
 
 int main()
@@ -537,6 +652,7 @@ int main()
     ok &= TestEventCapacityDropsOldest();
     ok &= TestZeroEventCapacityUsesDefaultBound();
     ok &= TestFactoryProfilesSeparateMockEvaluation();
+    ok &= TestDeepFreezeAnimationContracts();
     return ok ? 0 : 1;
 }
 

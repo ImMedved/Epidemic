@@ -26,6 +26,19 @@ namespace
 {
     return scale.numerator > 0 && scale.denominator > 0;
 }
+
+[[nodiscard]] bool IsValidDayPhase(DayPhase phase) noexcept
+{
+    switch (phase)
+    {
+    case DayPhase::Dawn:
+    case DayPhase::Day:
+    case DayPhase::Dusk:
+    case DayPhase::Night:
+        return true;
+    }
+    return false;
+}
 } // namespace
 
 foundation::Result<void> ValidateTimeOptions(const TimeOptions& options)
@@ -68,6 +81,11 @@ foundation::Result<void> ValidateTimeOptions(const TimeOptions& options)
     });
     for (std::size_t index = 0; index < boundaries.size(); ++index)
     {
+        if (!IsValidDayPhase(boundaries[index].phase))
+        {
+            return foundation::Result<void>::Failure(
+                MakeTimeError("time.invalid_phase", "day phase boundary phase is outside the DayPhase enum domain"));
+        }
         if (boundaries[index].start_minute >= minutes_per_day)
         {
             return foundation::Result<void>::Failure(

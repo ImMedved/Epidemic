@@ -11,6 +11,8 @@
 #include "Epidemic/Runtime/Environment/weather_state.h"
 
 #include <iostream>
+#include <limits>
+#include <stdexcept>
 #include <memory>
 #include <type_traits>
 
@@ -442,6 +444,147 @@ class WetnessPolicy final : public IEnvironmentUpdatePolicy
     const auto weather = services.Value().query->GetWeather(region);
     return weather && weather.Value().kind == WeatherKind::Clear;
 }
+
+class ThrowingPolicy final : public IEnvironmentUpdatePolicy
+{
+public:
+    epidemic::foundation::Result<EnvironmentStateUpdate> BuildUpdate(
+        const EnvironmentUpdateInput&,
+        const IEnvironmentQuery&) const override
+    {
+        throw std::runtime_error("policy failure");
+    }
+};
+
+[[nodiscard]] bool TestBatchOwnershipAndDuplicatesAreTransactional()
+{
+    EnvironmentRuntime runtime;
+    const RegionId first{70};
+    const RegionId second{71};
+    const SurfaceId surface{700};
+    if (!SeedRegion(runtime, first) || !SeedRegion(runtime, second) ||
+        !runtime.SetSurfaceState(SurfaceState{surface, first, SurfaceConditionKind::Dry, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}))
+    {
+        return false;
+    }
+    const auto before_global = runtime.GetRevision();
+    const auto before_first = runtime.GetRegionRevision(first);
+    const auto before_second = runtime.GetRegionRevision(second);
+    const auto before_surface = runtime.GetSurfaceState(surface);
+    if (!before_first || !before_second || !before_surface)
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate moved{};
+    moved.region = second;
+    moved.source_revision = before_second.Value();
+    moved.surfaces.push_back(SurfaceState{surface, second, SurfaceConditionKind::Wet, 0.5f, 0.0f, 0.0f, 0.0f, 2.0f});
+    const auto rejected_move = runtime.ApplyUpdate(moved);
+    if (rejected_move || !rejected_move.GetError().HasCode("environment.surface_region_mismatch") ||
+        runtime.GetRevision() != before_global || runtime.GetRegionRevision(first).Value() != before_first.Value() ||
+        runtime.GetRegionRevision(second).Value() != before_second.Value() || runtime.GetSurfaceState(surface).Value() != before_surface.Value())
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate duplicate{};
+    duplicate.region = first;
+    duplicate.source_revision = before_first.Value();
+    duplicate.surfaces.push_back(SurfaceState{SurfaceId{701}, first, SurfaceConditionKind::Wet, 0.2f, 0.0f, 0.0f, 0.0f, 1.0f});
+    duplicate.surfaces.push_back(SurfaceState{SurfaceId{701}, first, SurfaceConditionKind::Wet, 0.4f, 0.0f, 0.0f, 0.0f, 1.0f});
+    const auto rejected_duplicate = runtime.ApplyUpdate(duplicate);
+    return !rejected_duplicate && rejected_duplicate.GetError().HasCode("environment.duplicate_surface_update") &&
+           runtime.GetRevision() == before_global && !runtime.GetSurfaceState(SurfaceId{701});
+}
+
+[[nodiscard]] bool TestEnvironmentEnumRevisionAllocationAndFreezeContracts()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{72};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+    const auto before = runtime.BuildSnapshot(region);
+    const auto before_global = runtime.GetRevision();
+    if (!before)
+    {
+        return false;
+    }
+    WeatherState invalid_weather = before.Value().weather;
+    invalid_weather.kind = static_cast<WeatherKind>(255);
+    SeasonState invalid_season = before.Value().season;
+    invalid_season.kind = static_cast<SeasonKind>(255);
+    const auto weather_failed = runtime.SetWeather(region, invalid_weather);
+    const auto season_failed = runtime.SetSeason(region, invalid_season);
+    if (weather_failed || season_failed || runtime.GetRevision() != before_global)
+    {
+        return false;
+    }
+
+    runtime.SetRevisionForTesting(std::numeric_limits<std::uint64_t>::max());
+    const auto overflow_before = runtime.BuildSnapshot(region);
+    const auto overflow = runtime.SetWeather(region, WeatherState{WeatherKind::Cloudy, 0.2f, 0.4f, 0.0f, 1.0f, 90.0f});
+    if (!overflow_before || overflow || !overflow.GetError().HasCode("environment.revision_overflow") ||
+        runtime.BuildSnapshot(region).Value().weather != overflow_before.Value().weather)
+    {
+        return false;
+    }
+
+    EnvironmentRuntime allocation;
+    allocation.FailNextAllocationForTesting();
+    const auto failed_registration = allocation.RegisterRegionEnvironment(
+        RegionId{80}, WeatherState{}, SeasonState{}, ClimateProfile{10.0f, 0.3f, 1.0f, 100.0f});
+    if (failed_registration || allocation.GetRevision() != 0 || allocation.GetWeather(RegionId{80}))
+    {
+        return false;
+    }
+    if (!SeedRegion(allocation, RegionId{81}))
+    {
+        return false;
+    }
+    allocation.FreezeRegistration();
+    const auto frozen_revision = allocation.GetRevision();
+    const auto frozen = allocation.RegisterRegionEnvironment(
+        RegionId{82}, WeatherState{}, SeasonState{}, ClimateProfile{10.0f, 0.3f, 1.0f, 100.0f});
+    return allocation.IsRegistrationFrozen() && !frozen && frozen.GetError().HasCode("environment.registration_frozen") &&
+           allocation.GetRevision() == frozen_revision;
+}
+
+[[nodiscard]] bool TestEnvironmentPolicyExceptionAndNoOpBatch()
+{
+    EnvironmentRuntime runtime;
+    const RegionId region{73};
+    if (!SeedRegion(runtime, region))
+    {
+        return false;
+    }
+    const auto before = runtime.BuildSnapshot(region);
+    const auto before_region_revision = runtime.GetRegionRevision(region);
+    if (!before || !before_region_revision)
+    {
+        return false;
+    }
+    runtime.SetUpdatePolicy(std::make_shared<ThrowingPolicy>());
+    const auto policy_failed = runtime.Update(EnvironmentUpdateInput{.game_delta = epidemic::runtime::GameDuration{1}, .region_id = region});
+    if (policy_failed || !policy_failed.GetError().HasCode("environment.update_policy_exception") ||
+        runtime.GetRevision() != before.Value().revision)
+    {
+        return false;
+    }
+
+    EnvironmentStateUpdate same{};
+    same.region = region;
+    same.source_revision = before_region_revision.Value();
+    same.weather = before.Value().weather;
+    same.season = before.Value().season;
+    same.climate = before.Value().climate;
+    const auto no_op = runtime.ApplyUpdate(same);
+    return no_op && runtime.GetRevision() == before.Value().revision &&
+           runtime.GetRegionRevision(region).Value() == before_region_revision.Value();
+}
+
 } // namespace
 
 int main()
@@ -481,6 +624,9 @@ int main()
         {"EmptyUpdateDoesNotBumpRevision", TestEmptyUpdateDoesNotBumpRevision},
         {"CrossRegionRevisionDoesNotConflict", TestCrossRegionRevisionDoesNotConflict},
         {"FactoryCreatesSplitServices", TestFactoryCreatesSplitServices},
+        {"BatchOwnershipAndDuplicatesAreTransactional", TestBatchOwnershipAndDuplicatesAreTransactional},
+        {"EnvironmentEnumRevisionAllocationAndFreezeContracts", TestEnvironmentEnumRevisionAllocationAndFreezeContracts},
+        {"EnvironmentPolicyExceptionAndNoOpBatch", TestEnvironmentPolicyExceptionAndNoOpBatch},
     };
 
     for (const NamedTest& test : tests)

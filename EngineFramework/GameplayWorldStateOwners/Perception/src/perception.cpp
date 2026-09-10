@@ -18,6 +18,19 @@ foundation::Error Error(std::string_view c, std::string_view m)
 
 constexpr Fixed kMicro = 1'000'000;
 
+[[nodiscard]] bool IsValidSenseEvaluationModel(SenseEvaluationModel value) noexcept
+{
+    switch (value)
+    {
+    case SenseEvaluationModel::Vision:
+    case SenseEvaluationModel::Hearing:
+    case SenseEvaluationModel::Radial:
+    case SenseEvaluationModel::Custom:
+        return true;
+    }
+    return false;
+}
+
 [[nodiscard]] Fixed ClampMicro(Fixed value) noexcept
 {
     return std::clamp<Fixed>(value, 0, kMicro);
@@ -37,12 +50,27 @@ constexpr Fixed kMicro = 1'000'000;
 
 PerceptionService::PerceptionService() = default;
 
+bool PerceptionService::CanAdvanceRevision(std::size_t count) const noexcept
+{
+    if (count == 0) return true;
+    const auto remaining = std::numeric_limits<std::uint64_t>::max() - revision_.value;
+    return count <= remaining;
+}
+
+bool PerceptionService::CanRecordChanges(std::size_t count) const noexcept
+{
+    if (count == 0) return true;
+    if (next_change_sequence_ == 0) return false;
+    const auto remaining = std::numeric_limits<std::uint64_t>::max() - next_change_sequence_;
+    return count - 1 <= remaining;
+}
+
 foundation::Result<void> PerceptionService::RegisterSense(SenseDefinition d)
 {
     if (frozen_)
         return foundation::Result<void>::Failure(
             Error("gameplay.perception.registry_frozen", "perception registry frozen"));
-    if (!d.id.IsValid() || d.canonical_name.empty() || senses_.contains(d.id) || d.base_range_mm < 0 ||
+    if (!d.id.IsValid() || d.canonical_name.empty() || senses_.contains(d.id) || !IsValidSenseEvaluationModel(d.evaluation_model) || d.base_range_mm < 0 ||
         d.field_of_view_cosine_micro < -kMicro || d.field_of_view_cosine_micro > kMicro ||
         d.acuity_micro < 0 || d.acuity_micro > kMicro || d.identify_threshold_micro < 0 ||
         d.identify_threshold_micro > kMicro || d.direction_threshold_micro < 0 ||
@@ -127,18 +155,26 @@ foundation::Result<void> PerceptionService::RegisterPerceiver(GameplayObjectRef 
                                                               GameplayContext context)
 {
     if (!frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.perception.registry_not_frozen", "perception definitions must be frozen"));
-    if (!subject.IsValid() || !profile.IsValid() || !profile_definitions_.contains(profile) ||
-        perceivers_.contains(subject))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.registry_not_frozen", "perception definitions must be frozen"));
+    if (!subject.IsValid() || !profile.IsValid() || !profile_definitions_.contains(profile) || perceivers_.contains(subject))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.invalid_perceiver", "invalid, duplicate or unknown perceiver"));
+    if (!CanAdvanceRevision())
+        return foundation::Result<void>::Failure(Error("gameplay.perception.revision_exhausted", "perception revision is exhausted"));
+    if (!CanRecordChanges())
+        return foundation::Result<void>::Failure(Error("gameplay.perception.change_sequence_exhausted", "perception change sequence is exhausted"));
+    const Revision next{revision_.value + 1};
+    bool inserted=false;
+    try
     {
-        return foundation::Result<void>::Failure(
-            Error("gameplay.perception.invalid_perceiver", "invalid, duplicate or unknown perceiver"));
+        perceivers_.emplace(subject, PerceiverRecord{subject, profile, next}); inserted=true;
+        Record({0, PerceptionChangeKind::PerceiverRegistered, subject, {}, {}, {}, AwarenessLevel::Unaware, context, next});
     }
-    Bump();
-    perceivers_.emplace(subject, PerceiverRecord{subject, profile, revision_});
-    Record({0, PerceptionChangeKind::PerceiverRegistered, subject, {}, {}, {}, AwarenessLevel::Unaware, context,
-            revision_});
+    catch (...)
+    {
+        if (inserted) perceivers_.erase(subject);
+        return foundation::Result<void>::Failure(Error("gameplay.perception.publication_failed", "perceiver publication failed"));
+    }
+    revision_=next;
     return foundation::Result<void>::Success();
 }
 
@@ -146,8 +182,20 @@ foundation::Result<void> PerceptionService::UnregisterPerceiver(GameplayObjectRe
 {
     const auto it = perceivers_.find(subject);
     if (it == perceivers_.end())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.perception.perceiver_missing", "perceiver missing"));
+        return foundation::Result<void>::Failure(Error("gameplay.perception.perceiver_missing", "perceiver missing"));
+    if (!CanAdvanceRevision())
+        return foundation::Result<void>::Failure(Error("gameplay.perception.revision_exhausted", "perception revision is exhausted"));
+    if (!CanRecordChanges())
+        return foundation::Result<void>::Failure(Error("gameplay.perception.change_sequence_exhausted", "perception change sequence is exhausted"));
+    const Revision next{revision_.value + 1};
+    try
+    {
+        Record({0, PerceptionChangeKind::PerceiverUnregistered, subject, {}, {}, {}, AwarenessLevel::Unaware, context, next});
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.perception.publication_failed", "perceiver removal journal publication failed"));
+    }
 
     std::vector<PerceptionObservationId> observation_ids;
     if (const auto index = observations_by_perceiver_.find(subject); index != observations_by_perceiver_.end())
@@ -155,117 +203,97 @@ foundation::Result<void> PerceptionService::UnregisterPerceiver(GameplayObjectRe
     for (const auto id : observation_ids)
     {
         const auto oi = observations_.find(id);
-        if (oi != observations_.end())
+        if (oi != observations_.end()) { UnindexObservation(oi->second); observations_.erase(oi); }
+    }
+    for (auto pi=pending_observations_.begin(); pi!=pending_observations_.end(); )
+    {
+        if (pi->second.observation.perceiver == subject)
         {
-            UnindexObservation(oi->second);
-            observations_.erase(oi);
+            pending_by_ready_.erase(PendingKey{pi->second.ready_at, pi->first});
+            pi = pending_observations_.erase(pi);
         }
+        else ++pi;
     }
-
-    std::vector<PerceptionObservationId> pending_ids;
-    for (const auto &[id, pending] : pending_observations_)
-    {
-        if (pending.observation.perceiver == subject)
-            pending_ids.push_back(id);
-    }
-    std::sort(pending_ids.begin(), pending_ids.end());
-    for (const auto id : pending_ids)
-    {
-        const auto pi = pending_observations_.find(id);
-        if (pi != pending_observations_.end())
-        {
-            pending_by_ready_.erase(PendingKey{pi->second.ready_at, id});
-            pending_observations_.erase(pi);
-        }
-    }
-
-    for (auto ai = awareness_.begin(); ai != awareness_.end();)
-    {
-        if (ai->second.perceiver == subject)
-            ai = awareness_.erase(ai);
-        else
-            ++ai;
-    }
-
+    for (auto ai=awareness_.begin(); ai!=awareness_.end(); )
+        ai = ai->second.perceiver == subject ? awareness_.erase(ai) : std::next(ai);
     perceivers_.erase(it);
-    Bump();
-    Record({0, PerceptionChangeKind::PerceiverUnregistered, subject, {}, {}, {}, AwarenessLevel::Unaware, context,
-            revision_});
+    revision_=next;
     return foundation::Result<void>::Success();
 }
 
 foundation::Result<PerceptionStimulusId> PerceptionService::CreateStimulus(PerceptionStimulus s)
 {
     if (!frozen_)
-        return foundation::Result<PerceptionStimulusId>::Failure(
-            Error("gameplay.perception.registry_not_frozen", "perception definitions must be frozen"));
+        return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.registry_not_frozen", "perception definitions must be frozen"));
     if (!s.sense.IsValid() || !senses_.contains(s.sense) || !s.source.IsValid() || s.strength_micro < 0 ||
         s.strength_micro > kMicro || s.lifetime.ticks < 0)
-    {
-        return foundation::Result<PerceptionStimulusId>::Failure(
-            Error("gameplay.perception.invalid_stimulus", "invalid stimulus"));
-    }
+        return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.invalid_stimulus", "invalid stimulus"));
 
+    auto staged_ids=stimulus_ids_;
     if (!s.id.IsValid())
     {
-        const auto generated = stimulus_ids_.Next();
-        if (!generated.IsValid())
-            return foundation::Result<PerceptionStimulusId>::Failure(
-                Error("gameplay.perception.id_exhausted", "stimulus id generator exhausted"));
-        s.id = PerceptionStimulusId{generated};
+        const auto generated=staged_ids.Next();
+        if (!generated.IsValid()) return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.id_exhausted", "stimulus id generator exhausted"));
+        s.id=PerceptionStimulusId{generated};
     }
-    if (stimuli_.contains(s.id))
-        return foundation::Result<PerceptionStimulusId>::Failure(
-            Error("gameplay.perception.duplicate_stimulus", "duplicate stimulus"));
-
-    const auto generator_snapshot = stimulus_ids_.GetSnapshot();
-    if (s.id.value.High() == generator_snapshot.scope && generator_snapshot.next != 0 &&
-        s.id.value.Low() >= generator_snapshot.next)
+    if (stimuli_.contains(s.id)) return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.duplicate_stimulus", "duplicate stimulus"));
+    auto gs=staged_ids.GetSnapshot();
+    if (s.id.value.High()==gs.scope && gs.next!=0 && s.id.value.Low()>=gs.next)
     {
-        auto advanced = generator_snapshot;
-        advanced.next = s.id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : s.id.value.Low() + 1;
-        stimulus_ids_.Restore(advanced);
+        gs.next=s.id.value.Low()==std::numeric_limits<std::uint64_t>::max()?0:s.id.value.Low()+1; staged_ids.Restore(gs);
     }
-
-    Bump();
-    s.revision = revision_;
-    const auto id = s.id;
-    stimuli_.emplace(id, s);
-    IndexStimulus(s);
-    Record({0, PerceptionChangeKind::StimulusCreated, s.source, {}, id, {}, AwarenessLevel::Unaware, s.context,
-            revision_});
-    return foundation::Result<PerceptionStimulusId>::Success(id);
+    if(!CanAdvanceRevision()) return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.revision_exhausted","perception revision is exhausted"));
+    if(!CanRecordChanges()) return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.change_sequence_exhausted","perception change sequence is exhausted"));
+    const Revision next{revision_.value+1}; s.revision=next; const auto id=s.id; bool inserted=false;
+    try { stimuli_.emplace(id,s); inserted=true; IndexStimulus(s); Record({0,PerceptionChangeKind::StimulusCreated,s.source,{},id,{},AwarenessLevel::Unaware,s.context,next}); }
+    catch(...) { if(inserted){UnindexStimulus(s);stimuli_.erase(id);} return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.publication_failed","stimulus publication failed")); }
+    stimulus_ids_.Restore(staged_ids.GetSnapshot()); revision_=next; return foundation::Result<PerceptionStimulusId>::Success(id);
 }
 
 foundation::Result<void> PerceptionService::ExpireStimuli(GameplayTimePoint now, GameplayContext context)
 {
-    auto temporal = AdvanceTime(now, context);
-    if (!temporal)
-        return foundation::Result<void>::Failure(temporal.GetError());
-
     std::vector<PerceptionStimulusId> expired;
+    try { expired.reserve(stimuli_.size()); }
+    catch (...) { return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "stimulus expiry staging failed")); }
     for (const auto &[id, stimulus] : stimuli_)
     {
-        if (stimulus.lifetime.ticks <= 0)
-            continue;
+        if (stimulus.lifetime.ticks <= 0) continue;
         const auto expires_at = SaturatingAdd(stimulus.created_at, stimulus.lifetime);
-        if (now >= expires_at)
-            expired.push_back(id);
+        if (now >= expires_at) expired.push_back(id);
     }
     std::sort(expired.begin(), expired.end());
+    if (expired.empty()) return foundation::Result<void>::Success();
+    if (!CanAdvanceRevision(expired.size()))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.revision_exhausted", "perception revision is exhausted"));
+    if (!CanRecordChanges(expired.size()))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.change_sequence_exhausted", "perception change sequence is exhausted"));
+
+    std::deque<PerceptionChange> staged_changes;
+    try { staged_changes = changes_; }
+    catch (...) { return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "stimulus expiry journal staging failed")); }
+    auto sequence = next_change_sequence_;
+    auto rev = revision_.value;
+    try
+    {
+        for (const auto id : expired)
+        {
+            const auto it=stimuli_.find(id); if(it==stimuli_.end()) continue;
+            ++rev;
+            PerceptionChange change{0,PerceptionChangeKind::StimulusExpired,it->second.source,{},id,{},AwarenessLevel::Unaware,
+                                    EffectiveContext(context,it->second.context,now),Revision{rev}};
+            change.sequence=sequence; staged_changes.push_back(std::move(change));
+            sequence=sequence==std::numeric_limits<std::uint64_t>::max()?0:sequence+1;
+            while(staged_changes.size()>change_capacity_) staged_changes.pop_front();
+        }
+    }
+    catch (...) { return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "stimulus expiry journal staging failed")); }
 
     for (const auto id : expired)
     {
-        const auto it = stimuli_.find(id);
-        if (it == stimuli_.end())
-            continue;
-        const auto stimulus = it->second;
-        UnindexStimulus(stimulus);
-        stimuli_.erase(it);
-        Bump();
-        Record({0, PerceptionChangeKind::StimulusExpired, stimulus.source, {}, id, {}, AwarenessLevel::Unaware,
-                EffectiveContext(context, stimulus.context, now), revision_});
+        const auto it=stimuli_.find(id); if(it==stimuli_.end()) continue;
+        const auto copy=it->second; UnindexStimulus(copy); stimuli_.erase(it);
     }
+    changes_.swap(staged_changes); next_change_sequence_=sequence; revision_=Revision{rev};
     return foundation::Result<void>::Success();
 }
 
@@ -622,168 +650,153 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
         return foundation::Result<std::vector<PerceptionObservation>>::Failure(
             Error("gameplay.perception.registry_not_frozen", "perception definitions must be frozen"));
 
-    // Processing samples are snapshot-like input. Validate and index them before any temporal or awareness mutation.
     std::unordered_map<GameplayObjectRef, const PerceiverEvaluationSample *, RefHash> sample_index;
-    sample_index.reserve(pc.perceivers.size());
+    try { sample_index.reserve(pc.perceivers.size()); }
+    catch (...) { return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.allocation_failed", "processing sample index allocation failed")); }
     for (const auto &sample : pc.perceivers)
     {
         if (!sample.subject.IsValid())
-            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
-                Error("gameplay.perception.invalid_processing_sample", "processing sample subject is invalid"));
+            return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.invalid_processing_sample", "processing sample subject is invalid"));
         if (!sample_index.emplace(sample.subject, &sample).second)
-            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
-                Error("gameplay.perception.duplicate_processing_sample", "duplicate perceiver processing sample"));
+            return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.duplicate_processing_sample", "duplicate perceiver processing sample"));
     }
 
     const auto *stimulus = FindStimulus(sid);
-    if (!stimulus)
-        return foundation::Result<std::vector<PerceptionObservation>>::Failure(
-            Error("gameplay.perception.stimulus_missing", "stimulus missing"));
-
+    if (!stimulus) return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.stimulus_missing", "stimulus missing"));
     const auto *definition = FindSense(stimulus->sense);
-    if (!definition)
-        return foundation::Result<std::vector<PerceptionObservation>>::Failure(
-            Error("gameplay.perception.invalid_sense_link", "stimulus references an unavailable sense definition"));
+    if (!definition) return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.invalid_sense_link", "stimulus references an unavailable sense definition"));
     if (definition->evaluation_model == SenseEvaluationModel::Custom)
     {
         const auto evaluator = evaluators_.find(definition->evaluator);
         if (evaluator == evaluators_.end() || !evaluator->second)
         {
             ++diagnostics_.evaluator_failures;
-            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
-                Error("gameplay.perception.evaluator_missing", "custom sense evaluator missing"));
+            return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.evaluator_missing", "custom sense evaluator missing"));
         }
     }
 
-    EnsureBudgetEpoch(pc.tick);
-    auto temporal = AdvanceTime(pc.now, pc.gameplay);
-    if (!temporal)
-        return temporal;
-
+    PerceptionTickBudgetState staged_budget = tick_budget_.tick == pc.tick ? tick_budget_ : PerceptionTickBudgetState{pc.tick,0,0};
     const auto event_context = EffectiveContext(pc.gameplay, stimulus->context, pc.now);
-    if (tick_budget_.processed_stimuli >= budget_.max_stimuli_per_tick)
+    if (staged_budget.processed_stimuli >= budget_.max_stimuli_per_tick)
     {
-        ++diagnostics_.budget_exhaustions;
-        ++diagnostics_.dropped_stimuli;
-        Record({0, PerceptionChangeKind::BudgetExceeded, stimulus->source, {}, sid, {}, AwarenessLevel::Unaware,
-                event_context, revision_});
+        ++diagnostics_.budget_exhaustions; ++diagnostics_.dropped_stimuli;
         return foundation::Result<std::vector<PerceptionObservation>>::Success({});
     }
-    ++tick_budget_.processed_stimuli;
-    ++diagnostics_.processed_stimuli;
 
-    struct Candidate
-    {
-        PerceiverRecord record{};
-        const PerceiverProfileDefinition *profile = nullptr;
-        const PerceiverEvaluationSample *sample = nullptr;
-    };
+    struct Candidate { PerceiverRecord record{}; const PerceiverProfileDefinition *profile=nullptr; const PerceiverEvaluationSample *sample=nullptr; };
     std::vector<Candidate> candidates;
-    candidates.reserve(std::min<std::size_t>(perceivers_.size(), budget_.max_perceivers_per_stimulus));
+    try { candidates.reserve(std::min<std::size_t>(perceivers_.size(), budget_.max_perceivers_per_stimulus)); }
+    catch (...) { return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.allocation_failed", "candidate allocation failed")); }
     for (const auto &[subject, record] : perceivers_)
     {
-        if (subject == stimulus->source)
-            continue;
-        const auto *profile = FindProfileDefinition(record.profile);
-        if (!profile)
-            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
-                Error("gameplay.perception.invalid_profile_link", "perceiver references an unavailable profile"));
-        if (!std::binary_search(profile->senses.begin(), profile->senses.end(), stimulus->sense))
-            continue;
-
-        const auto sample_it = sample_index.find(record.subject);
-        const auto *sample = sample_it == sample_index.end() ? nullptr : sample_it->second;
-        if (!CanAttemptSenseEvaluation(*definition, *profile, sample))
-            continue;
-        candidates.push_back(Candidate{record, profile, sample});
+        if (subject == stimulus->source) continue;
+        const auto *profile=FindProfileDefinition(record.profile);
+        if(!profile) return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.invalid_profile_link","perceiver references an unavailable profile"));
+        if(!std::binary_search(profile->senses.begin(),profile->senses.end(),stimulus->sense)) continue;
+        const auto si=sample_index.find(record.subject); const auto *sample=si==sample_index.end()?nullptr:si->second;
+        if(!CanAttemptSenseEvaluation(*definition,*profile,sample)) continue;
+        candidates.push_back({record,profile,sample});
     }
-    std::sort(candidates.begin(), candidates.end(), [](const auto &a, const auto &b) {
-        return a.record.subject < b.record.subject;
-    });
-    if (candidates.size() > budget_.max_perceivers_per_stimulus)
+    std::sort(candidates.begin(),candidates.end(),[](const auto&a,const auto&b){return a.record.subject<b.record.subject;});
+    bool truncated=candidates.size()>budget_.max_perceivers_per_stimulus;
+    if(truncated) candidates.resize(budget_.max_perceivers_per_stimulus);
+
+    struct Prepared { PerceiverRecord record{}; SenseEvaluationResult eval{}; PerceptionObservation observation{}; GameplayTimePoint ready_at{}; Fixed score=0; bool delayed=false; };
+    std::vector<Prepared> prepared;
+    try { prepared.reserve(candidates.size()); }
+    catch (...) { return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.allocation_failed","prepared observation allocation failed")); }
+    std::uint64_t local_detection=0, local_visibility=0, local_audibility=0, local_custom=0;
+    bool detection_budget_hit=false;
+    for(const auto &candidate:candidates)
     {
-        ++diagnostics_.budget_exhaustions;
-        candidates.resize(budget_.max_perceivers_per_stimulus);
+        if(staged_budget.detection_tests>=budget_.max_detection_tests_per_tick){detection_budget_hit=true;break;}
+        ++staged_budget.detection_tests; ++local_detection;
+        switch(definition->evaluation_model){case SenseEvaluationModel::Vision:++local_visibility;break;case SenseEvaluationModel::Hearing:++local_audibility;break;case SenseEvaluationModel::Custom:++local_custom;break;case SenseEvaluationModel::Radial:break;}
+        auto evaluated=EvaluateSense(*definition,*candidate.profile,candidate.record,*stimulus,candidate.sample,pc);
+        if(!evaluated) return foundation::Result<std::vector<PerceptionObservation>>::Failure(evaluated.GetError());
+        if(evaluated.Value().score_micro<=0) continue;
+        Prepared item; item.record=candidate.record; item.eval=evaluated.Value(); item.score=item.eval.score_micro;
+        item.ready_at=SaturatingAdd(pc.now,definition->reaction_delay); item.delayed=definition->reaction_delay.ticks>0 && item.ready_at>pc.now;
+        prepared.push_back(std::move(item));
     }
 
-    std::vector<PerceptionObservation> activated = std::move(temporal.Value());
-    bool budget_reported = false;
-    for (const auto &candidate : candidates)
+    const std::size_t immediate_count=std::count_if(prepared.begin(),prepared.end(),[](const Prepared&p){return !p.delayed;});
+    const std::size_t identified_immediate=std::count_if(prepared.begin(),prepared.end(),[](const Prepared&p){return !p.delayed&&p.eval.identified_subject;});
+    const std::size_t revisions_needed=prepared.size()+immediate_count;
+    const std::size_t changes_needed=immediate_count+identified_immediate;
+    if(!CanAdvanceRevision(revisions_needed)) return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.revision_exhausted","perception revision is exhausted"));
+    if(!CanRecordChanges(changes_needed)) return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.change_sequence_exhausted","perception change sequence is exhausted"));
+
+    auto staged_ids=observation_ids_; std::uint64_t rev_cursor=revision_.value;
+    for(auto &item:prepared)
     {
-        const auto &perceiver = candidate.record;
-        if (tick_budget_.detection_tests >= budget_.max_detection_tests_per_tick)
+        const auto raw=staged_ids.Next(); if(!raw.IsValid()) return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.id_exhausted","observation id generator exhausted"));
+        ++rev_cursor;
+        auto &o=item.observation; o.id=PerceptionObservationId{raw}; o.perceiver=item.record.subject;
+        o.perceived_subject=item.eval.identified_subject?stimulus->source:GameplayObjectRef{}; o.stimulus=sid; o.sense=stimulus->sense;
+        o.confidence=ConfidenceFromScore(item.eval.score_micro); o.identity_confidence_micro=item.eval.identified_subject?ClampMicro(item.eval.identity_confidence_micro):0;
+        o.perceived_position=item.eval.perceived_position; o.position_uncertainty_mm=std::max<Fixed>(0,item.eval.position_uncertainty_mm);
+        o.observed_at=pc.now; o.observed_tags=stimulus->tags; o.context=event_context; o.revision=Revision{rev_cursor};
+        if(!item.delayed){++rev_cursor; o.revision=Revision{rev_cursor};}
+    }
+
+    std::deque<PerceptionChange> staged_changes;
+    try { staged_changes=changes_; }
+    catch (...) { return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.allocation_failed","journal staging failed")); }
+    auto staged_sequence=next_change_sequence_; std::uint64_t dropped=0;
+    auto append_change=[&](PerceptionChange c){ c.sequence=staged_sequence; staged_changes.push_back(std::move(c)); staged_sequence=staged_sequence==std::numeric_limits<std::uint64_t>::max()?0:staged_sequence+1; while(staged_changes.size()>change_capacity_){staged_changes.pop_front();++dropped;} };
+
+    std::unordered_map<PerceptionObservationId,PendingPerceptionObservation,IdHash> pending_nodes;
+    std::map<PendingKey,PerceptionObservationId> pending_index_nodes;
+    std::unordered_map<PerceptionObservationId,PerceptionObservation,IdHash> observation_nodes;
+    std::unordered_map<GameplayObjectRef,std::vector<PerceptionObservationId>,RefHash> replacement_indexes;
+    std::unordered_map<AwarenessKey,AwarenessRecord,AwarenessKeyHash> awareness_updates;
+    std::vector<PerceptionObservation> activated; activated.reserve(immediate_count);
+    try
+    {
+        pending_nodes.reserve(prepared.size()-immediate_count); observation_nodes.reserve(immediate_count);
+        replacement_indexes.reserve(immediate_count); awareness_updates.reserve(identified_immediate);
+        for(auto &item:prepared)
         {
-            ++diagnostics_.budget_exhaustions;
-            if (!budget_reported)
+            if(item.delayed)
             {
-                Record({0, PerceptionChangeKind::BudgetExceeded, perceiver.subject, stimulus->source, sid, {},
-                        AwarenessLevel::Unaware, event_context, revision_});
-                budget_reported = true;
+                PendingPerceptionObservation po{item.observation,item.ready_at,item.score};
+                pending_nodes.emplace(item.observation.id,po); pending_index_nodes.emplace(PendingKey{item.ready_at,item.observation.id},item.observation.id);
+                continue;
             }
-            break;
+            observation_nodes.emplace(item.observation.id,item.observation);
+            auto [idx_it,idx_new]=replacement_indexes.try_emplace(item.observation.perceiver);
+            if(idx_new){ if(auto live=observations_by_perceiver_.find(item.observation.perceiver);live!=observations_by_perceiver_.end()) idx_it->second=live->second; }
+            idx_it->second.push_back(item.observation.id); std::sort(idx_it->second.begin(),idx_it->second.end());
+            AwarenessLevel level=AwarenessLevel::Unaware;
+            if(item.observation.perceived_subject.IsValid())
+            {
+                const AwarenessKey key{item.observation.perceiver,item.observation.perceived_subject};
+                auto [ai, fresh]=awareness_updates.try_emplace(key);
+                if(fresh){if(auto live=awareness_.find(key);live!=awareness_.end())ai->second=live->second;else ai->second=AwarenessRecord{item.observation.perceiver,item.observation.perceived_subject};}
+                auto &a=ai->second; a.suspicion_micro=std::min<Fixed>(kMicro,a.suspicion_micro+std::max<Fixed>(1,item.score/2));
+                a.level=a.suspicion_micro>=800'000?AwarenessLevel::Confirmed:(a.suspicion_micro>=400'000?AwarenessLevel::Aware:AwarenessLevel::Suspicious);
+                a.last_observed_at=item.observation.observed_at;a.last_decay_at=item.observation.observed_at;a.last_known_position=item.observation.perceived_position;a.revision=item.observation.revision;level=a.level;
+            }
+            append_change({0,PerceptionChangeKind::Observed,item.observation.perceiver,item.observation.perceived_subject,sid,item.observation.id,level,event_context,item.observation.revision});
+            if(item.observation.perceived_subject.IsValid()) append_change({0,PerceptionChangeKind::AwarenessChanged,item.observation.perceiver,item.observation.perceived_subject,sid,item.observation.id,level,event_context,item.observation.revision});
+            activated.push_back(item.observation);
         }
-        ++tick_budget_.detection_tests;
-        ++diagnostics_.detection_tests;
-
-        switch (definition->evaluation_model)
-        {
-        case SenseEvaluationModel::Vision:
-            ++diagnostics_.visibility_tests;
-            break;
-        case SenseEvaluationModel::Hearing:
-            ++diagnostics_.audibility_tests;
-            break;
-        case SenseEvaluationModel::Custom:
-            ++diagnostics_.custom_tests;
-            break;
-        case SenseEvaluationModel::Radial:
-            break;
-        }
-
-        auto evaluated = EvaluateSense(*definition, *candidate.profile, perceiver, *stimulus, candidate.sample, pc);
-        if (!evaluated)
-            return foundation::Result<std::vector<PerceptionObservation>>::Failure(evaluated.GetError());
-        const auto evaluation = evaluated.Value();
-        if (evaluation.score_micro <= 0)
-            continue;
-
-        const auto raw_id = observation_ids_.Next();
-        if (!raw_id.IsValid())
-            return foundation::Result<std::vector<PerceptionObservation>>::Failure(
-                Error("gameplay.perception.id_exhausted", "observation id generator exhausted"));
-
-        const auto observation_id = PerceptionObservationId{raw_id};
-        Bump();
-        PerceptionObservation observation;
-        observation.id = observation_id;
-        observation.perceiver = perceiver.subject;
-        observation.perceived_subject = evaluation.identified_subject ? stimulus->source : GameplayObjectRef{};
-        observation.stimulus = sid;
-        observation.sense = stimulus->sense;
-        observation.confidence = ConfidenceFromScore(evaluation.score_micro);
-        observation.identity_confidence_micro =
-            evaluation.identified_subject ? ClampMicro(evaluation.identity_confidence_micro) : 0;
-        observation.perceived_position = evaluation.perceived_position;
-        observation.position_uncertainty_mm = std::max<Fixed>(0, evaluation.position_uncertainty_mm);
-        observation.observed_at = pc.now;
-        observation.observed_tags = stimulus->tags;
-        observation.context = event_context;
-        observation.revision = revision_;
-
-        const auto ready_at = SaturatingAdd(pc.now, definition->reaction_delay);
-        PendingPerceptionObservation pending{observation, ready_at, evaluation.score_micro};
-        if (definition->reaction_delay.ticks > 0 && ready_at > pc.now)
-        {
-            pending_observations_.emplace(observation_id, pending);
-            pending_by_ready_.emplace(PendingKey{ready_at, observation_id}, observation_id);
-            continue;
-        }
-
-        auto activation = ActivateObservation(std::move(pending), event_context, &activated);
-        if (!activation)
-            return foundation::Result<std::vector<PerceptionObservation>>::Failure(activation.GetError());
+        observations_.reserve(observations_.size()+observation_nodes.size()); pending_observations_.reserve(pending_observations_.size()+pending_nodes.size());
+        observations_by_perceiver_.reserve(observations_by_perceiver_.size()+replacement_indexes.size()); awareness_.reserve(awareness_.size()+awareness_updates.size());
     }
+    catch(...){return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.allocation_failed","perception batch staging failed"));}
 
+    for(auto it=pending_nodes.begin();it!=pending_nodes.end();){auto node=pending_nodes.extract(it++);pending_observations_.insert(std::move(node));}
+    for(auto it=pending_index_nodes.begin();it!=pending_index_nodes.end();){auto node=pending_index_nodes.extract(it++);pending_by_ready_.insert(std::move(node));}
+    for(auto it=observation_nodes.begin();it!=observation_nodes.end();){auto node=observation_nodes.extract(it++);observations_.insert(std::move(node));}
+    for(auto &[subject,ids]:replacement_indexes){auto live=observations_by_perceiver_.find(subject);if(live==observations_by_perceiver_.end())observations_by_perceiver_.emplace(subject,std::move(ids));else live->second.swap(ids);}
+    for(auto &[key,value]:awareness_updates){auto live=awareness_.find(key);if(live==awareness_.end())awareness_.emplace(key,value);else live->second=value;}
+    changes_.swap(staged_changes); next_change_sequence_=staged_sequence; observation_ids_.Restore(staged_ids.GetSnapshot()); revision_=Revision{rev_cursor};
+    ++staged_budget.processed_stimuli; tick_budget_=staged_budget;
+    ++diagnostics_.processed_stimuli; diagnostics_.detection_tests+=local_detection; diagnostics_.visibility_tests+=local_visibility; diagnostics_.audibility_tests+=local_audibility; diagnostics_.custom_tests+=local_custom;
+    if(truncated||detection_budget_hit)++diagnostics_.budget_exhaustions;
+    (void)dropped;
     return foundation::Result<std::vector<PerceptionObservation>>::Success(std::move(activated));
 }
 
@@ -793,179 +806,222 @@ foundation::Result<void> PerceptionService::ActivateObservation(PendingPerceptio
 {
     auto observation = std::move(pending.observation);
     if (observations_.contains(observation.id))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.perception.duplicate_observation", "duplicate observation"));
+        return foundation::Result<void>::Failure(Error("gameplay.perception.duplicate_observation", "duplicate observation"));
+    const std::size_t change_count = observation.perceived_subject.IsValid() ? 2 : 1;
+    if (!CanAdvanceRevision())
+        return foundation::Result<void>::Failure(Error("gameplay.perception.revision_exhausted", "perception revision is exhausted"));
+    if (!CanRecordChanges(change_count))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.change_sequence_exhausted", "perception change sequence is exhausted"));
+    const Revision next{revision_.value+1}; observation.revision=next;
 
-    Bump();
-    observation.revision = revision_;
-    observations_.emplace(observation.id, observation);
-    IndexObservation(observation);
-
-    AwarenessLevel level = AwarenessLevel::Unaware;
-    if (observation.perceived_subject.IsValid())
+    AwarenessRecord next_awareness; bool has_awareness=false; AwarenessLevel level=AwarenessLevel::Unaware; AwarenessKey awareness_key{};
+    if(observation.perceived_subject.IsValid())
     {
-        const AwarenessKey key{observation.perceiver, observation.perceived_subject};
-        auto [it, inserted] =
-            awareness_.try_emplace(key, AwarenessRecord{observation.perceiver, observation.perceived_subject});
-        auto &awareness = it->second;
-        (void)inserted;
-        awareness.suspicion_micro =
-            std::min<Fixed>(kMicro, awareness.suspicion_micro + std::max<Fixed>(1, pending.detection_score_micro / 2));
-        awareness.level = awareness.suspicion_micro >= 800'000
-                              ? AwarenessLevel::Confirmed
-                              : (awareness.suspicion_micro >= 400'000 ? AwarenessLevel::Aware
-                                                                     : AwarenessLevel::Suspicious);
-        awareness.last_observed_at = observation.observed_at;
-        awareness.last_decay_at = observation.observed_at;
-        awareness.last_known_position = observation.perceived_position;
-        awareness.revision = revision_;
-        level = awareness.level;
+        has_awareness=true; awareness_key={observation.perceiver,observation.perceived_subject};
+        if(auto it=awareness_.find(awareness_key);it!=awareness_.end())next_awareness=it->second;
+        else next_awareness=AwarenessRecord{observation.perceiver,observation.perceived_subject};
+        next_awareness.suspicion_micro=std::min<Fixed>(kMicro,next_awareness.suspicion_micro+std::max<Fixed>(1,pending.detection_score_micro/2));
+        next_awareness.level=next_awareness.suspicion_micro>=800'000?AwarenessLevel::Confirmed:(next_awareness.suspicion_micro>=400'000?AwarenessLevel::Aware:AwarenessLevel::Suspicious);
+        next_awareness.last_observed_at=observation.observed_at; next_awareness.last_decay_at=observation.observed_at;
+        next_awareness.last_known_position=observation.perceived_position; next_awareness.revision=next; level=next_awareness.level;
     }
+    const auto event_context=context.tick.IsValid()||context.operation.IsValid()?context:observation.context;
 
-    const auto event_context = context.tick.IsValid() || context.operation.IsValid() ? context : observation.context;
-    Record({0, PerceptionChangeKind::Observed, observation.perceiver, observation.perceived_subject,
-            observation.stimulus, observation.id, level, event_context, revision_});
-    if (observation.perceived_subject.IsValid())
+    std::deque<PerceptionChange> staged_changes;
+    std::vector<PerceptionObservationId> staged_index;
+    std::unordered_map<PerceptionObservationId,PerceptionObservation,IdHash> observation_node;
+    std::unordered_map<AwarenessKey,AwarenessRecord,AwarenessKeyHash> awareness_node;
+    try
     {
-        Record({0, PerceptionChangeKind::AwarenessChanged, observation.perceiver, observation.perceived_subject,
-                observation.stimulus, observation.id, level, event_context, revision_});
+        staged_changes=changes_; auto seq=next_change_sequence_;
+        auto add=[&](PerceptionChange c){c.sequence=seq;staged_changes.push_back(std::move(c));seq=seq==std::numeric_limits<std::uint64_t>::max()?0:seq+1;while(staged_changes.size()>change_capacity_)staged_changes.pop_front();};
+        add({0,PerceptionChangeKind::Observed,observation.perceiver,observation.perceived_subject,observation.stimulus,observation.id,level,event_context,next});
+        if(has_awareness)add({0,PerceptionChangeKind::AwarenessChanged,observation.perceiver,observation.perceived_subject,observation.stimulus,observation.id,level,event_context,next});
+        if(auto idx=observations_by_perceiver_.find(observation.perceiver);idx!=observations_by_perceiver_.end())staged_index=idx->second;
+        staged_index.push_back(observation.id);std::sort(staged_index.begin(),staged_index.end());
+        observation_node.emplace(observation.id,observation);
+        if(has_awareness && !awareness_.contains(awareness_key))awareness_node.emplace(awareness_key,next_awareness);
+        observations_.reserve(observations_.size()+1); observations_by_perceiver_.reserve(observations_by_perceiver_.size()+1); awareness_.reserve(awareness_.size()+(awareness_node.empty()?0:1));
+        if(activated) activated->reserve(activated->size()+1);
     }
-    if (activated)
-        activated->push_back(observation);
+    catch(...){return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed","observation activation staging failed"));}
+
+    auto on=observation_node.extract(observation.id); observations_.insert(std::move(on));
+    auto idx=observations_by_perceiver_.find(observation.perceiver);
+    if(idx==observations_by_perceiver_.end()) observations_by_perceiver_.emplace(observation.perceiver,std::move(staged_index)); else idx->second.swap(staged_index);
+    if(has_awareness){auto ai=awareness_.find(awareness_key);if(ai==awareness_.end()){auto node=awareness_node.extract(awareness_key);awareness_.insert(std::move(node));}else ai->second=next_awareness;}
+    const auto old_seq=next_change_sequence_; (void)old_seq;
+    // staged change builder consumed exactly change_count sequences
+    auto seq=next_change_sequence_; for(std::size_t i=0;i<change_count;++i)seq=seq==std::numeric_limits<std::uint64_t>::max()?0:seq+1;
+    changes_.swap(staged_changes); next_change_sequence_=seq; revision_=next;
+    if(activated) activated->push_back(observation);
     return foundation::Result<void>::Success();
 }
 
 foundation::Result<std::vector<PerceptionObservation>> PerceptionService::AdvanceTime(GameplayTimePoint now,
                                                                                        GameplayContext context)
 {
-    std::vector<PerceptionObservation> activated;
-    while (!pending_by_ready_.empty())
+    std::vector<PerceptionObservationId> due;
+    try
     {
-        const auto first = pending_by_ready_.begin();
-        if (first->first.ready_at > now)
-            break;
-        const auto id = first->second;
-        pending_by_ready_.erase(first);
-        const auto pending_it = pending_observations_.find(id);
-        if (pending_it == pending_observations_.end())
-            continue;
-        auto pending = std::move(pending_it->second);
-        pending_observations_.erase(pending_it);
-        auto result = ActivateObservation(std::move(pending), context, &activated);
-        if (!result)
-            return foundation::Result<std::vector<PerceptionObservation>>::Failure(result.GetError());
+        for(auto it=pending_by_ready_.begin();it!=pending_by_ready_.end()&&it->first.ready_at<=now;++it) due.push_back(it->second);
+        std::sort(due.begin(),due.end());
     }
+    catch(...){return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.allocation_failed","temporal staging failed"));}
+    // Conservative preflight prevents a later lifecycle step from exhausting revisions after a prefix committed.
+    const std::size_t upper_revisions = due.size() + observations_.size() + awareness_.size();
+    const std::size_t upper_changes = due.size()*2 + observations_.size() + awareness_.size();
+    if(!CanAdvanceRevision(upper_revisions)) return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.revision_exhausted","perception revision is exhausted"));
+    if(!CanRecordChanges(upper_changes)) return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.change_sequence_exhausted","perception change sequence is exhausted"));
 
-    ExpireObservations(now, context);
-    DecayAwareness(now, context);
+    std::vector<PerceptionObservation> activated;
+    try { activated.reserve(due.size()); }
+    catch(...){return foundation::Result<std::vector<PerceptionObservation>>::Failure(Error("gameplay.perception.allocation_failed","activation output staging failed"));}
+    for(const auto id:due)
+    {
+        const auto pending_it=pending_observations_.find(id); if(pending_it==pending_observations_.end())continue;
+        auto result=ActivateObservation(pending_it->second,context,&activated);
+        if(!result)return foundation::Result<std::vector<PerceptionObservation>>::Failure(result.GetError());
+        pending_by_ready_.erase(PendingKey{pending_it->second.ready_at,id}); pending_observations_.erase(pending_it);
+    }
+    auto expired=ExpireObservations(now,context); if(!expired)return foundation::Result<std::vector<PerceptionObservation>>::Failure(expired.GetError());
+    auto decayed=DecayAwareness(now,context); if(!decayed)return foundation::Result<std::vector<PerceptionObservation>>::Failure(decayed.GetError());
     CleanupUnaware();
     return foundation::Result<std::vector<PerceptionObservation>>::Success(std::move(activated));
 }
 
-void PerceptionService::ExpireObservations(GameplayTimePoint now, GameplayContext context)
+foundation::Result<void> PerceptionService::ExpireObservations(GameplayTimePoint now, GameplayContext context)
 {
-    if (temporal_policy_.observation_retention.ticks <= 0)
-        return;
-
+    if (temporal_policy_.observation_retention.ticks <= 0) return foundation::Result<void>::Success();
     std::vector<PerceptionObservationId> expired;
-    for (const auto &[id, observation] : observations_)
+    try
     {
-        const auto expires_at = CheckedAdd(observation.observed_at, temporal_policy_.observation_retention);
-        if (!expires_at || now >= *expires_at)
-            expired.push_back(id);
+        expired.reserve(observations_.size());
+        for(const auto &[id,observation]:observations_){const auto expires_at=CheckedAdd(observation.observed_at,temporal_policy_.observation_retention);if(!expires_at||now>=*expires_at)expired.push_back(id);}
+        std::sort(expired.begin(),expired.end());
     }
-    std::sort(expired.begin(), expired.end());
-
-    for (const auto id : expired)
-    {
-        const auto it = observations_.find(id);
-        if (it == observations_.end())
-            continue;
-        const auto observation = it->second;
-        UnindexObservation(observation);
-        observations_.erase(it);
-        Bump();
-        Record({0, PerceptionChangeKind::Lost, observation.perceiver, observation.perceived_subject,
-                observation.stimulus, observation.id, AwarenessLevel::Lost,
-                EffectiveContext(context, observation.context, now), revision_});
-    }
+    catch(...){return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed","observation expiry staging failed"));}
+    if(expired.empty())return foundation::Result<void>::Success();
+    if(!CanAdvanceRevision(expired.size()))return foundation::Result<void>::Failure(Error("gameplay.perception.revision_exhausted","perception revision is exhausted"));
+    if(!CanRecordChanges(expired.size()))return foundation::Result<void>::Failure(Error("gameplay.perception.change_sequence_exhausted","perception change sequence is exhausted"));
+    std::deque<PerceptionChange> staged; try{staged=changes_;}catch(...){return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed","observation expiry journal staging failed"));}
+    auto seq=next_change_sequence_;auto rev=revision_.value;
+    try{for(const auto id:expired){const auto it=observations_.find(id);if(it==observations_.end())continue;++rev;PerceptionChange c{0,PerceptionChangeKind::Lost,it->second.perceiver,it->second.perceived_subject,it->second.stimulus,id,AwarenessLevel::Unaware,EffectiveContext(context,it->second.context,now),Revision{rev}};c.sequence=seq;staged.push_back(std::move(c));seq=seq==std::numeric_limits<std::uint64_t>::max()?0:seq+1;while(staged.size()>change_capacity_)staged.pop_front();}}
+    catch(...){return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed","observation expiry journal staging failed"));}
+    for(const auto id:expired){auto it=observations_.find(id);if(it!=observations_.end()){const auto copy=it->second;UnindexObservation(copy);observations_.erase(it);}}
+    changes_.swap(staged);next_change_sequence_=seq;revision_=Revision{rev};return foundation::Result<void>::Success();
 }
 
-void PerceptionService::DecayAwareness(GameplayTimePoint now, GameplayContext context)
+foundation::Result<void> PerceptionService::DecayAwareness(GameplayTimePoint now, GameplayContext context)
 {
     const auto interval = temporal_policy_.awareness_decay_interval.ticks;
     const auto decay = temporal_policy_.awareness_decay_micro_per_interval;
     if (interval <= 0 || decay <= 0)
-        return;
+        return foundation::Result<void>::Success();
 
-    std::vector<AwarenessKey> keys;
-    keys.reserve(awareness_.size());
-    for (const auto &[key, record] : awareness_)
+    struct Update
     {
-        (void)record;
-        keys.push_back(key);
-    }
-    std::sort(keys.begin(), keys.end());
-
-    for (const auto &key : keys)
+        AwarenessKey key{};
+        AwarenessRecord value{};
+        PerceptionChangeKind kind = PerceptionChangeKind::AwarenessChanged;
+    };
+    std::vector<Update> updates;
+    try
     {
-        const auto it = awareness_.find(key);
-        if (it == awareness_.end())
-            continue;
-        auto &record = it->second;
-        if (now <= record.last_decay_at)
-            continue;
-        const auto elapsed = CheckedDifference(now, record.last_decay_at);
-        if (!elapsed || elapsed->ticks <= 0)
-            continue;
-        const auto steps = elapsed->ticks / interval;
-        if (steps <= 0)
-            continue;
-
-        const auto old_level = record.level;
-        const auto old_suspicion = record.suspicion_micro;
-        if (record.suspicion_micro > 0)
+        updates.reserve(awareness_.size());
+        for (const auto &[key, current] : awareness_)
         {
-            const long double total_decay = static_cast<long double>(decay) * static_cast<long double>(steps);
-            record.suspicion_micro = total_decay >= static_cast<long double>(record.suspicion_micro)
-                                         ? 0
-                                         : record.suspicion_micro - static_cast<Fixed>(total_decay);
-            if (record.suspicion_micro >= 800'000)
-                record.level = AwarenessLevel::Confirmed;
-            else if (record.suspicion_micro >= 400'000)
-                record.level = AwarenessLevel::Aware;
-            else if (record.suspicion_micro > 0)
-                record.level = AwarenessLevel::Suspicious;
-            else
-                record.level = AwarenessLevel::Lost;
+            auto value = current;
+            if (now <= value.last_decay_at)
+                continue;
+            const auto elapsed = CheckedDifference(now, value.last_decay_at);
+            if (!elapsed || elapsed->ticks <= 0)
+                continue;
+            const auto steps = elapsed->ticks / interval;
+            if (steps <= 0)
+                continue;
+
+            const auto old_level = value.level;
+            const auto old_suspicion = value.suspicion_micro;
+            if (value.suspicion_micro > 0)
+            {
+                const long double total_decay = static_cast<long double>(decay) * static_cast<long double>(steps);
+                value.suspicion_micro = total_decay >= static_cast<long double>(value.suspicion_micro)
+                                             ? 0
+                                             : value.suspicion_micro - static_cast<Fixed>(total_decay);
+                if (value.suspicion_micro >= 800'000)
+                    value.level = AwarenessLevel::Confirmed;
+                else if (value.suspicion_micro >= 400'000)
+                    value.level = AwarenessLevel::Aware;
+                else if (value.suspicion_micro > 0)
+                    value.level = AwarenessLevel::Suspicious;
+                else
+                    value.level = AwarenessLevel::Lost;
+            }
+            else if (value.level == AwarenessLevel::Lost)
+            {
+                value.level = AwarenessLevel::Unaware;
+            }
+
+            const long double delta = static_cast<long double>(steps) * static_cast<long double>(interval);
+            const auto advance = delta >= static_cast<long double>(std::numeric_limits<std::int64_t>::max())
+                                     ? GameplayDuration{std::numeric_limits<std::int64_t>::max()}
+                                     : GameplayDuration{static_cast<std::int64_t>(delta)};
+            value.last_decay_at = SaturatingAdd(value.last_decay_at, advance);
+            if (value.level == old_level && value.suspicion_micro == old_suspicion)
+                continue;
+            updates.push_back(Update{key, value,
+                                     value.level == AwarenessLevel::Lost ? PerceptionChangeKind::Lost
+                                                                        : PerceptionChangeKind::AwarenessChanged});
         }
-        else if (record.level == AwarenessLevel::Lost)
-        {
-            record.level = AwarenessLevel::Unaware;
-        }
-
-        const long double delta = static_cast<long double>(steps) * static_cast<long double>(interval);
-        const auto advance = delta >= static_cast<long double>(std::numeric_limits<std::int64_t>::max())
-                                 ? GameplayDuration{std::numeric_limits<std::int64_t>::max()}
-                                 : GameplayDuration{static_cast<std::int64_t>(delta)};
-        record.last_decay_at = SaturatingAdd(record.last_decay_at, advance);
-
-        if (record.level == old_level && record.suspicion_micro == old_suspicion)
-            continue;
-
-        Bump();
-        record.revision = revision_;
-        Record({0,
-                record.level == AwarenessLevel::Lost ? PerceptionChangeKind::Lost
-                                                     : PerceptionChangeKind::AwarenessChanged,
-                record.perceiver,
-                record.target,
-                {},
-                {},
-                record.level,
-                context,
-                revision_});
+        std::sort(updates.begin(), updates.end(), [](const Update &a, const Update &b) { return a.key < b.key; });
     }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "awareness decay staging failed"));
+    }
+
+    if (updates.empty())
+        return foundation::Result<void>::Success();
+    if (!CanAdvanceRevision(updates.size()))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.revision_exhausted", "perception revision is exhausted"));
+    if (!CanRecordChanges(updates.size()))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.change_sequence_exhausted", "perception change sequence is exhausted"));
+
+    std::deque<PerceptionChange> staged;
+    try { staged = changes_; }
+    catch (...) { return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "awareness journal staging failed")); }
+    auto seq = next_change_sequence_;
+    auto rev = revision_.value;
+    try
+    {
+        for (auto &update : updates)
+        {
+            ++rev;
+            update.value.revision = Revision{rev};
+            PerceptionChange change{0, update.kind, update.value.perceiver, update.value.target, {}, {},
+                                    update.value.level, EffectiveContext(context, {}, now), update.value.revision};
+            change.sequence = seq;
+            staged.push_back(std::move(change));
+            seq = seq == std::numeric_limits<std::uint64_t>::max() ? 0 : seq + 1;
+            while (staged.size() > change_capacity_) staged.pop_front();
+        }
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "awareness journal staging failed"));
+    }
+
+    for (const auto &update : updates)
+    {
+        auto it = awareness_.find(update.key);
+        if (it != awareness_.end())
+            it->second = update.value;
+    }
+    changes_.swap(staged);
+    next_change_sequence_ = seq;
+    revision_ = Revision{rev};
+    return foundation::Result<void>::Success();
 }
 
 bool PerceptionService::HasObservationFor(GameplayObjectRef perceiver, GameplayObjectRef target) const
@@ -996,6 +1052,7 @@ bool PerceptionService::HasPendingFor(GameplayObjectRef perceiver, GameplayObjec
 void PerceptionService::CleanupUnaware()
 {
     std::vector<AwarenessKey> removable;
+    removable.reserve(awareness_.size());
     for (const auto &[key, record] : awareness_)
     {
         if (record.level == AwarenessLevel::Unaware && !HasObservationFor(record.perceiver, record.target) &&
@@ -1357,11 +1414,11 @@ void PerceptionService::Record(PerceptionChange change)
     if (next_change_sequence_ == 0)
         return;
     change.sequence = next_change_sequence_;
+    changes_.push_back(std::move(change));
     if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
         next_change_sequence_ = 0;
     else
         ++next_change_sequence_;
-    changes_.push_back(std::move(change));
     while (changes_.size() > change_capacity_)
         changes_.pop_front();
 }

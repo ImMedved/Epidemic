@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 
@@ -35,6 +36,7 @@ private:
         PathQueryHandle handle{};
         PathRequest request{};
         PathResult result{};
+        std::optional<std::uint64_t> source_revision{};
         std::chrono::steady_clock::time_point completed_at{};
         bool released = false;
     };
@@ -51,7 +53,13 @@ private:
     [[nodiscard]] std::vector<NavTileId> BuildTileWorkList() const;
     [[nodiscard]] std::vector<PathQueryId> BuildQueryWorkList() const;
     [[nodiscard]] bool HasExpired(const QueryRecord& query) const;
-    [[nodiscard]] bool HasSourceRevisionChanged(const QueryRecord& query) const;
+    [[nodiscard]] foundation::Result<std::optional<std::uint64_t>> ReadSourceRevision(RegionId region) const;
+    [[nodiscard]] foundation::Result<bool> HasSourceRevisionChanged(const QueryRecord& query) const;
+    [[nodiscard]] foundation::Result<void> ValidateRequest(const PathRequest& request) const;
+    [[nodiscard]] foundation::Result<void> PreflightGlobalRevision() const;
+    [[nodiscard]] static foundation::Result<void> PreflightResultRevision(const QueryRecord& query);
+    [[nodiscard]] static bool CanAdvanceRevisionValue(std::uint64_t revision) noexcept;
+    [[nodiscard]] static std::uint64_t NextRevisionValue(std::uint64_t revision) noexcept;
     [[nodiscard]] std::size_t EstimatedPathBytes(const QueryRecord& query) const;
     [[nodiscard]] bool HasPathByteBudget(RuntimeBudget budget, const QueryRecord& query) const;
     [[nodiscard]] static bool IsTerminal(PathQueryState state) noexcept;
@@ -61,8 +69,9 @@ private:
     void MarkStale(QueryRecord& query);
     void PurgeReleasedAndExpired();
     bool CompleteQuery(QueryRecord& query, RuntimeBudget budget);
-    void CompleteWithResult(QueryRecord& query, PathResult result);
-    void CompleteWithReference(QueryRecord& query);
+    [[nodiscard]] foundation::Result<PathResult> BuildReferenceResult(const QueryRecord& query) const;
+    [[nodiscard]] foundation::Result<void> CompleteWithResult(QueryRecord& query, PathResult result);
+    [[nodiscard]] foundation::Result<void> CompleteWithFailure(QueryRecord& query);
 
     NavigationOptions options_{};
     NavigationDependencies dependencies_{};

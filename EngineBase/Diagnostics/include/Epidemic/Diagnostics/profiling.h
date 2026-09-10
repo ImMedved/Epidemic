@@ -73,7 +73,7 @@ class ProfileScope
     explicit ProfileScope(std::string_view scope_name);
 
     // Finishes the scope and records an event when profiling is enabled and a collector exists.
-    ~ProfileScope();
+    ~ProfileScope() noexcept;
 
     ProfileScope(const ProfileScope &) = delete;
     ProfileScope &operator=(const ProfileScope &) = delete;

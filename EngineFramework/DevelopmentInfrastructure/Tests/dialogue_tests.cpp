@@ -67,6 +67,25 @@ class ThrowingHandler final : public IDialogueConsequenceHandler
         throw 9;
     }
 };
+class FlipCondition final : public IDialogueConditionResolver
+{
+  public:
+    mutable int count = 0;
+    DialogueConditionResult Evaluate(const DialogueConditionDefinition &, const DialogueConditionContext &) const override
+    {
+        ++count;
+        return {count == 1 ? DialogueConditionState::Satisfied : DialogueConditionState::Unsatisfied};
+    }
+};
+class InvalidStateHandler final : public IDialogueConsequenceHandler
+{
+  public:
+    DialogueConsequenceState Execute(const DialogueConsequenceDefinition &, const DialogueConsequenceExecution &,
+                                     const ConversationSession &) const override
+    {
+        return static_cast<DialogueConsequenceState>(99);
+    }
+};
 } // namespace
 int main()
 {
@@ -283,8 +302,16 @@ int main()
     auto throwing_session = throwing_consequence_service.StartConversation(throwing_def_id.Value(), {npc, player});
     Check(static_cast<bool>(throwing_session), "throwing consequence session");
     auto throwing_result = throwing_consequence_service.ExecutePendingConsequences();
-    Check(throwing_result.empty() && !throwing_consequence_service.GetSession(throwing_session.Value()).has_value(),
-          "consequence exception contained as failure");
+    const auto throwing_snapshot = throwing_consequence_service.CaptureSnapshot();
+    Check(throwing_result.empty() && throwing_snapshot.consequences.size() == 1 &&
+              throwing_snapshot.consequences.front().state == DialogueConsequenceState::ReconciliationRequired &&
+              throwing_consequence_service.GetSession(throwing_session.Value()).has_value(),
+          "ambiguous consequence exception enters reconciliation without blind retry");
+    Check(static_cast<bool>(throwing_consequence_service.ResolveConsequenceReconciliation(
+              throwing_snapshot.consequences.front().id, true)),
+          "confirmed applied reconciliation resolves consequence");
+    Check(!throwing_consequence_service.GetSession(throwing_session.Value()).has_value(),
+          "reconciled terminal session is cleaned up");
 
     // Generator snapshots are validated before state replacement.
     auto valid_snapshot = deferred.CaptureSnapshot();
@@ -310,6 +337,70 @@ int main()
     auto journal_batch = journal.ReadChangesSince(ChangeCursor{});
     Check(journal_batch.snapshot_required, "journal overflow requires snapshot");
     Check(journal_batch.changes.empty(), "stale journal read does not return partial history");
+
+    // DLG-02/DLG-07: destination conditions are evaluated once and malformed restore state is rejected transactionally.
+    DialogueService flip_service;
+    FlipCondition flip_condition;
+    const auto flip_type = DialogueConditionTypeId::FromString("condition.flip");
+    const auto flip_condition_id = TypeId::FromString("dialogue.condition.flip");
+    Check(static_cast<bool>(flip_service.RegisterConditionResolver(flip_type, flip_condition)), "flip resolver");
+    Check(static_cast<bool>(flip_service.RegisterCondition({flip_condition_id, flip_type, {}})), "flip condition");
+    ConversationDefinition flip_definition;
+    flip_definition.canonical_name = "conversation.flip";
+    flip_definition.entry_node = DialogueNodeId::FromString("node.flip.start");
+    DialogueNodeDefinition flip_start;
+    flip_start.id = flip_definition.entry_node;
+    DialogueOptionDefinition flip_option;
+    flip_option.id = DialogueOptionId::FromString("option.flip");
+    flip_option.next_node = DialogueNodeId::FromString("node.flip.end");
+    flip_start.options.push_back(flip_option);
+    DialogueNodeDefinition flip_end;
+    flip_end.id = flip_option.next_node;
+    flip_end.conditions.push_back(flip_condition_id);
+    flip_definition.nodes = {flip_start, flip_end};
+    auto flip_definition_id = flip_service.RegisterConversation(flip_definition);
+    Check(static_cast<bool>(flip_definition_id), "flip definition");
+    Check(static_cast<bool>(flip_service.FreezeDefinitions()), "flip freeze");
+    auto flip_session = flip_service.StartConversation(flip_definition_id.Value(), {npc, player});
+    Check(static_cast<bool>(flip_session), "flip session");
+    auto invalid_state_snapshot = flip_service.CaptureSnapshot();
+    Check(invalid_state_snapshot.sessions.size() == 1, "invalid state seed session");
+    invalid_state_snapshot.sessions.front().state = static_cast<ConversationState>(99);
+    Check(!static_cast<bool>(flip_service.RestoreSnapshot(std::move(invalid_state_snapshot))), "invalid conversation state rejected");
+    auto preserved_flip = flip_service.GetSession(flip_session.Value());
+    Check(preserved_flip && preserved_flip->state == ConversationState::WaitingForChoice,
+          "failed dialogue restore preserves live session");
+    Check(static_cast<bool>(flip_service.SelectOption(flip_session.Value(), flip_option.id, player)),
+          "stateful destination condition succeeds with single evaluation");
+    Check(flip_condition.count == 1, "destination condition is not re-evaluated during commit");
+
+    // DLG-05: an out-of-domain handler state never enters authoritative lifecycle state.
+    DialogueService invalid_handler_service;
+    InvalidStateHandler invalid_handler;
+    const auto invalid_handler_type = DialogueConsequenceTypeId::FromString("consequence.invalid_state");
+    const auto invalid_handler_consequence = TypeId::FromString("dialogue.consequence.invalid_state");
+    Check(static_cast<bool>(invalid_handler_service.RegisterConsequenceHandler(invalid_handler_type, invalid_handler)),
+          "invalid-state handler registered");
+    Check(static_cast<bool>(invalid_handler_service.RegisterConsequence(
+              {invalid_handler_consequence, invalid_handler_type, {}, 1})),
+          "invalid-state consequence registered");
+    ConversationDefinition invalid_handler_definition;
+    invalid_handler_definition.canonical_name = "conversation.invalid_handler";
+    invalid_handler_definition.entry_node = DialogueNodeId::FromString("node.invalid_handler");
+    DialogueNodeDefinition invalid_handler_node;
+    invalid_handler_node.id = invalid_handler_definition.entry_node;
+    invalid_handler_node.consequences.push_back(invalid_handler_consequence);
+    invalid_handler_definition.nodes.push_back(invalid_handler_node);
+    auto invalid_handler_definition_id = invalid_handler_service.RegisterConversation(invalid_handler_definition);
+    Check(static_cast<bool>(invalid_handler_definition_id), "invalid handler conversation");
+    Check(static_cast<bool>(invalid_handler_service.FreezeDefinitions()), "invalid handler freeze");
+    auto invalid_handler_session = invalid_handler_service.StartConversation(invalid_handler_definition_id.Value(), {npc, player});
+    Check(static_cast<bool>(invalid_handler_session), "invalid handler session");
+    auto invalid_handler_pump = invalid_handler_service.ExecutePendingConsequences();
+    auto invalid_handler_snapshot = invalid_handler_service.CaptureSnapshot();
+    Check(invalid_handler_pump.empty() && invalid_handler_snapshot.consequences.size() == 1 &&
+              invalid_handler_snapshot.consequences.front().state == DialogueConsequenceState::ReconciliationRequired,
+          "invalid callback enum becomes controlled reconciliation state");
 
     return 0;
 }

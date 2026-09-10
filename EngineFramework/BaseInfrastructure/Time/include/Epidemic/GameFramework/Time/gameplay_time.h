@@ -97,6 +97,7 @@ struct ScheduleEntry
     RecurrenceRule recurrence{};
     CatchUpPolicy catch_up = CatchUpPolicy::FireOnce;
     SchedulePersistence persistence = SchedulePersistence::Session;
+    Revision revision{};
 };
 
 struct ScheduledTrigger
@@ -132,6 +133,7 @@ struct GameplayTimeSnapshot
     std::vector<ScheduleEntry> schedules;
     std::vector<ClockId> externally_synchronized_clocks;
     MonotonicIdGenerator<ScheduleId>::Snapshot schedule_ids{};
+    Revision scheduler_revision{};
 };
 
 class GameplayTimeService
@@ -192,6 +194,7 @@ class GameplayTimeService
     [[nodiscard]] GameplayTimeSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(GameplayTimeSnapshot snapshot);
     [[nodiscard]] GameplayTimeDiagnostics GetDiagnostics() const noexcept;
+    [[nodiscard]] Revision SchedulerRevision() const noexcept { return scheduler_revision_; }
 
   private:
     struct ActionTypeInfo
@@ -233,6 +236,7 @@ class GameplayTimeService
     std::unordered_map<ClockId, std::set<ScheduleKey>> schedule_index_;
 
     MonotonicIdGenerator<ScheduleId> schedule_ids_{ScheduleId::FromString("framework.gameplay_time").High()};
+    Revision scheduler_revision_{};
     bool frozen_ = false;
 
     std::uint64_t emitted_triggers_ = 0;

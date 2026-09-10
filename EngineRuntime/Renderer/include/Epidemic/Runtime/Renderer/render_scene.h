@@ -14,6 +14,7 @@ class IRenderScene
 
     [[nodiscard]] virtual foundation::Result<RenderProxyId> RegisterProxy(const RenderProxyDesc& desc) = 0;
     [[nodiscard]] virtual foundation::Result<void> DestroyProxy(RenderProxyId id) = 0;
+    // Retryable prefix drain: successfully released proxies stay removed; a failed release remains DestroyPending for retry.
     [[nodiscard]] virtual foundation::Result<void> FlushDeferredDestroys() = 0;
     [[nodiscard]] virtual foundation::Result<void> MarkTransformDirty(RenderProxyId id) = 0;
     [[nodiscard]] virtual foundation::Result<void> MarkMaterialDirty(RenderProxyId id) = 0;

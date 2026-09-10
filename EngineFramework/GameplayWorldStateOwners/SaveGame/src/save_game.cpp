@@ -45,6 +45,38 @@ std::vector<SaveParticipantId> SortedUniqueCopy(std::vector<SaveParticipantId> v
     value.erase(std::unique(value.begin(), value.end()), value.end());
     return value;
 }
+
+bool IsValidRequirement(SaveParticipantRequirement requirement) noexcept
+{
+    switch (requirement)
+    {
+    case SaveParticipantRequirement::Required:
+    case SaveParticipantRequirement::Optional:
+        return true;
+    }
+    return false;
+}
+
+bool IsValidCompatibilityPolicy(ContentCompatibilityPolicy policy) noexcept
+{
+    switch (policy)
+    {
+    case ContentCompatibilityPolicy::ExactRequired:
+    case ContentCompatibilityPolicy::CompatibleVersion:
+    case ContentCompatibilityPolicy::MigrationRequired:
+    case ContentCompatibilityPolicy::BestEffort:
+    case ContentCompatibilityPolicy::DeveloperMode:
+        return true;
+    }
+    return false;
+}
+
+void SaturatingIncrement(std::uint64_t &value) noexcept
+{
+    if (value != std::numeric_limits<std::uint64_t>::max())
+        ++value;
+}
+
 } // namespace
 
 DataHash SaveGameOrchestrator::HashBytes(std::span<const std::byte> bytes) noexcept
@@ -100,6 +132,12 @@ foundation::Result<void> SaveGameOrchestrator::RegisterParticipant(ISaveParticip
     }
     const auto id = participant.Id();
     const auto schema = participant.SchemaVersion();
+    const auto requirement = participant.Requirement();
+    if (!IsValidRequirement(requirement))
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.save.invalid_requirement", "invalid save participant requirement"));
+    }
     if (!id.IsValid() || schema == 0 || participants_.contains(id) || participants_.size() >= limits_.max_participants)
     {
         return foundation::Result<void>::Failure(
@@ -139,7 +177,7 @@ foundation::Result<void> SaveGameOrchestrator::RegisterParticipant(ISaveParticip
             Error("gameplay.save.duplicate_dependency", "save participant contains duplicate dependency"));
     }
 
-    participants_.emplace(id, ParticipantRegistration{&participant, schema, participant.Requirement(),
+    participants_.emplace(id, ParticipantRegistration{&participant, schema, requirement,
                                                        std::move(dependencies)});
     return foundation::Result<void>::Success();
 }
@@ -185,6 +223,11 @@ foundation::Result<void> SaveGameOrchestrator::FreezeRegistry()
 
     for (const auto &[id, registration] : participants_)
     {
+        if (!IsValidRequirement(registration.requirement))
+        {
+            return foundation::Result<void>::Failure(
+                Error("gameplay.save.invalid_requirement", "invalid save participant requirement"));
+        }
         for (const auto dependency : registration.dependencies)
         {
             const auto dependency_it = participants_.find(dependency);
@@ -301,12 +344,6 @@ foundation::Result<SaveGameImage> SaveGameOrchestrator::Capture(const SaveContex
     diagnostics_.last_failed_schema_version = 0;
     diagnostics_.phase = SavePhase::Barrier;
 
-    auto frozen = EnsureFrozen();
-    if (!frozen)
-    {
-        MarkFailure(SavePhase::Barrier);
-        return foundation::Result<SaveGameImage>::Failure(frozen.GetError());
-    }
     if (barrier_ == nullptr)
     {
         MarkFailure(SavePhase::Barrier);
@@ -336,6 +373,13 @@ foundation::Result<SaveGameImage> SaveGameOrchestrator::Capture(const SaveContex
     {
         MarkFailure(SavePhase::Barrier);
         return foundation::Result<SaveGameImage>::Failure(CallbackError("capture barrier"));
+    }
+
+    auto frozen = EnsureFrozen();
+    if (!frozen)
+    {
+        MarkFailure(SavePhase::Barrier);
+        return foundation::Result<SaveGameImage>::Failure(frozen.GetError());
     }
 
     auto order = ResolveOrder();
@@ -397,7 +441,7 @@ foundation::Result<SaveGameImage> SaveGameOrchestrator::Capture(const SaveContex
         image.sections.push_back(std::move(section.Value()));
     }
 
-    ++diagnostics_.captures;
+    SaturatingIncrement(diagnostics_.captures);
     diagnostics_.phase = SavePhase::Complete;
     return foundation::Result<SaveGameImage>::Success(std::move(image));
 }
@@ -405,6 +449,11 @@ foundation::Result<SaveGameImage> SaveGameOrchestrator::Capture(const SaveContex
 foundation::Result<void> SaveGameOrchestrator::ValidateCompatibility(const SaveGameImage &image,
                                                                       const RestoreContext &context) const
 {
+    if (!IsValidCompatibilityPolicy(context.compatibility))
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.save.invalid_compatibility_policy", "invalid save compatibility policy"));
+    }
     const auto save_version = image.manifest.save_version;
     if (save_version < format_.minimum_supported || save_version > format_.maximum_supported)
     {
@@ -445,6 +494,9 @@ foundation::Result<void> SaveGameOrchestrator::ValidateCompatibility(const SaveG
     case ContentCompatibilityPolicy::BestEffort:
     case ContentCompatibilityPolicy::DeveloperMode:
         break;
+    default:
+        return foundation::Result<void>::Failure(
+            Error("gameplay.save.invalid_compatibility_policy", "invalid save compatibility policy"));
     }
     return foundation::Result<void>::Success();
 }
@@ -463,7 +515,8 @@ foundation::Result<void> SaveGameOrchestrator::ValidateImageStructure(const Save
     manifest_entries.reserve(image.manifest.participants.size());
     for (const auto &entry : image.manifest.participants)
     {
-        if (!entry.id.IsValid() || entry.schema_version == 0 || manifest_entries.contains(entry.id) ||
+        if (!entry.id.IsValid() || entry.schema_version == 0 || !IsValidRequirement(entry.requirement) ||
+            manifest_entries.contains(entry.id) ||
             entry.dependencies.size() > limits_.max_dependencies_per_participant)
         {
             return foundation::Result<void>::Failure(
@@ -615,7 +668,7 @@ foundation::Result<SaveSection> SaveGameOrchestrator::MigrateToCurrent(SaveSecti
         }
         section = std::move(migrated.Value());
         section.payload_hash = HashBytes(section.payload);
-        ++diagnostics_.migrations;
+        SaturatingIncrement(diagnostics_.migrations);
     }
     if (section.schema_version != registration.schema_version)
     {
@@ -632,12 +685,6 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
     diagnostics_.last_failed_schema_version = 0;
     diagnostics_.phase = SavePhase::Barrier;
 
-    auto frozen = EnsureFrozen();
-    if (!frozen)
-    {
-        MarkFailure(SavePhase::Barrier);
-        return foundation::Result<void>::Failure(frozen.GetError());
-    }
     if (barrier_ == nullptr)
     {
         MarkFailure(SavePhase::Barrier);
@@ -669,25 +716,32 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
         return foundation::Result<void>::Failure(CallbackError("restore barrier"));
     }
 
+    auto frozen = EnsureFrozen();
+    if (!frozen)
+    {
+        MarkFailure(SavePhase::Barrier);
+        return foundation::Result<void>::Failure(frozen.GetError());
+    }
+
     diagnostics_.phase = SavePhase::Validating;
     auto compatibility = ValidateCompatibility(image, context);
     if (!compatibility)
     {
-        ++diagnostics_.validation_failures;
+        SaturatingIncrement(diagnostics_.validation_failures);
         MarkFailure(SavePhase::Validating);
         return compatibility;
     }
     auto structure = ValidateImageStructure(image, context);
     if (!structure)
     {
-        ++diagnostics_.validation_failures;
+        SaturatingIncrement(diagnostics_.validation_failures);
         MarkFailure(SavePhase::Validating);
         return structure;
     }
     auto order = ResolveOrder();
     if (!order)
     {
-        ++diagnostics_.validation_failures;
+        SaturatingIncrement(diagnostics_.validation_failures);
         MarkFailure(SavePhase::Validating);
         return foundation::Result<void>::Failure(order.GetError());
     }
@@ -711,7 +765,7 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
         if (section_it == sections.end())
         {
             skipped.insert(id);
-            ++diagnostics_.optional_participants_skipped;
+            SaturatingIncrement(diagnostics_.optional_participants_skipped);
             continue;
         }
         bool dependency_skipped = false;
@@ -727,13 +781,13 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
         {
             if (registration.requirement == SaveParticipantRequirement::Required)
             {
-                ++diagnostics_.validation_failures;
+                SaturatingIncrement(diagnostics_.validation_failures);
                 MarkFailure(SavePhase::Validating, id, registration.schema_version);
                 return foundation::Result<void>::Failure(
                     Error("gameplay.save.required_dependency_skipped", "required participant dependency was skipped"));
             }
             skipped.insert(id);
-            ++diagnostics_.optional_participants_skipped;
+            SaturatingIncrement(diagnostics_.optional_participants_skipped);
             continue;
         }
 
@@ -746,10 +800,10 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
             if (may_skip)
             {
                 skipped.insert(id);
-                ++diagnostics_.optional_participants_skipped;
+                SaturatingIncrement(diagnostics_.optional_participants_skipped);
                 continue;
             }
-            ++diagnostics_.validation_failures;
+            SaturatingIncrement(diagnostics_.validation_failures);
             MarkFailure(SavePhase::Validating, id, section_it->second.schema_version);
             return foundation::Result<void>::Failure(migrated.GetError());
         }
@@ -757,7 +811,7 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
         if (!AddWithinLimit(migrated_total_payload_bytes, migrated.Value().payload.size(),
                             limits_.max_total_payload_bytes))
         {
-            ++diagnostics_.validation_failures;
+            SaturatingIncrement(diagnostics_.validation_failures);
             MarkFailure(SavePhase::Validating, id, migrated.Value().schema_version);
             return foundation::Result<void>::Failure(
                 Error("gameplay.save.payload_limit", "migrated save payload exceeds configured resource limits"));
@@ -785,10 +839,10 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
             if (may_skip)
             {
                 skipped.insert(id);
-                ++diagnostics_.optional_participants_skipped;
+                SaturatingIncrement(diagnostics_.optional_participants_skipped);
                 continue;
             }
-            ++diagnostics_.validation_failures;
+            SaturatingIncrement(diagnostics_.validation_failures);
             MarkFailure(SavePhase::Validating, id, migrated.Value().schema_version);
             return valid;
         }
@@ -829,7 +883,7 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
                     Error("gameplay.save.required_dependency_skipped", "required participant dependency was skipped"));
             }
             skipped.insert(id);
-            ++diagnostics_.optional_participants_skipped;
+            SaturatingIncrement(diagnostics_.optional_participants_skipped);
             continue;
         }
 
@@ -857,7 +911,7 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
             if (may_skip)
             {
                 skipped.insert(id);
-                ++diagnostics_.optional_participants_skipped;
+                SaturatingIncrement(diagnostics_.optional_participants_skipped);
                 continue;
             }
             MarkFailure(SavePhase::Staging, id, registration.schema_version);
@@ -874,7 +928,7 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
         record.participant->CommitRestore(*record.stage);
     }
 
-    ++diagnostics_.restores;
+    SaturatingIncrement(diagnostics_.restores);
     diagnostics_.phase = SavePhase::Complete;
     return foundation::Result<void>::Success();
 }

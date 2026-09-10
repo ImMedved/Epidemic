@@ -18,6 +18,7 @@
 #include <limits>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -911,6 +912,179 @@ class ArtifactOverrideLoader final : public IResourceLoader
     return second_evict && manager.GetState(root.Value().resource) == ResourceState::Unknown;
 }
 
+
+[[nodiscard]] bool TestGenerationExhaustionPreventsAba()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"), 4);
+    if (!registry.RegisterLoader(loader)) return false;
+    ResourceManager manager(&registry);
+    const auto lease = manager.RequestLease(MakeRequest("resources/generation.mesh", "mesh"));
+    if (!lease || !manager.ProcessPendingLoads() || !manager.Release(lease.Value())) return false;
+    const ResourceId id = ResourceId::FromString("resources/generation.mesh");
+    manager.SetSlotGenerationForTesting(id, std::numeric_limits<std::uint32_t>::max());
+    const auto before = manager.InspectSlot(id);
+    if (!before) return false;
+    const auto state_before = before->state;
+    const auto evicted = manager.Evict(id);
+    const auto after = manager.InspectSlot(id);
+    return !evicted && evicted.GetError().HasCode("resource.generation_exhausted") && after &&
+           after->generation == std::numeric_limits<std::uint32_t>::max() && after->state == state_before;
+}
+
+[[nodiscard]] bool TestReferenceOverflowAndQueuePublicationAreAtomic()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"));
+    if (!registry.RegisterLoader(loader)) return false;
+    ResourceManager manager(&registry);
+    const auto first = manager.RequestLease(MakeRequest("resources/ref-overflow.mesh", "mesh"));
+    if (!first) return false;
+    const ResourceId existing_id = ResourceId::FromString("resources/ref-overflow.mesh");
+    manager.SetSlotReferenceCountForTesting(existing_id, std::numeric_limits<std::uint32_t>::max());
+    const auto rejected = manager.RequestLease(MakeRequest("resources/ref-overflow.mesh", "mesh"));
+    const auto* existing = manager.InspectSlot(existing_id);
+    if (rejected || !rejected.GetError().HasCode("resource.reference_overflow") || !existing ||
+        existing->reference_count != std::numeric_limits<std::uint32_t>::max()) return false;
+
+    ResourceManager queue_manager(&registry);
+    const auto next_before = queue_manager.NextAcquisitionIdForTesting();
+    queue_manager.FailNextQueueEnqueueForTesting();
+    const auto queue_failed = queue_manager.RequestLease(MakeRequest("resources/queue-fault.mesh", "mesh"));
+    return !queue_failed && queue_failed.GetError().HasCode("resource.allocation_failed") &&
+           queue_manager.InspectSlot(ResourceId::FromString("resources/queue-fault.mesh")) == nullptr &&
+           queue_manager.NextAcquisitionIdForTesting() == next_before;
+}
+
+[[nodiscard]] bool TestAcquisitionIdCommitLastAndDependencyPublicationRollback()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(Type("mesh"), 4, false, {MakeDependency("resources/guard.tex", "texture")});
+    CountingLoader texture_loader(Type("texture"), 4);
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader)) return false;
+
+    ResourceManager manager(&registry);
+    manager.SetNextAcquisitionIdForTesting(42);
+    ResourceRequest invalid{};
+    const auto invalid_result = manager.RequestLease(invalid);
+    if (invalid_result || manager.NextAcquisitionIdForTesting() != 42) return false;
+    const auto valid = manager.RequestLease(MakeRequest("resources/acq.mesh", "mesh"));
+    if (!valid || valid.Value().acquisition != 42 || manager.NextAcquisitionIdForTesting() != 43) return false;
+    if (!manager.ProcessPendingLoads()) return false;
+    const auto* before_publish_fault = manager.InspectSlot(ResourceId::FromString("resources/acq.mesh"));
+    if (!before_publish_fault) return false;
+    const std::uint32_t reference_before = before_publish_fault->reference_count;
+    const auto id_before = manager.NextAcquisitionIdForTesting();
+    manager.FailNextAcquisitionPublishForTesting();
+    const auto publish_failed = manager.RequestLease(MakeRequest("resources/acq.mesh", "mesh"));
+    const auto* after_publish_fault = manager.InspectSlot(ResourceId::FromString("resources/acq.mesh"));
+    if (publish_failed || !publish_failed.GetError().HasCode("resource.allocation_failed") || !after_publish_fault ||
+        after_publish_fault->reference_count != reference_before || manager.NextAcquisitionIdForTesting() != id_before) return false;
+
+    ResourceManager dependency_manager(&registry);
+    const auto root = dependency_manager.RequestLease(MakeRequest("resources/guard-root.mesh", "mesh"));
+    if (!root) return false;
+    dependency_manager.FailNextDependencyPublishForTesting();
+    RuntimeBudget one{};
+    one.max_items = 1;
+    const auto processed = dependency_manager.ProcessPendingLoads(one);
+    const auto* dependency = dependency_manager.InspectSlot(ResourceId::FromString("resources/guard.tex"));
+    const auto* root_slot = dependency_manager.InspectSlot(ResourceId::FromString("resources/guard-root.mesh"));
+    return processed && processed.Value().failed_resources == 1u && dependency && dependency->reference_count == 0u &&
+           root_slot && root_slot->dependency_handles.empty();
+}
+
+[[nodiscard]] bool TestResidentAccountingOverflowRejectsBeforePublication()
+{
+    ResourceLoaderRegistry registry;
+    SizedPayloadLoader loader(Type("mesh"), 8);
+    if (!registry.RegisterLoader(loader)) return false;
+    ResourceManager manager(&registry);
+    manager.SetResidentBytesForTesting(std::numeric_limits<std::size_t>::max() - 4u);
+    const auto lease = manager.RequestLease(MakeRequest("resources/accounting.mesh", "mesh"));
+    if (!lease) return false;
+    const auto processed = manager.ProcessPendingLoads();
+    const auto* slot = manager.InspectSlot(ResourceId::FromString("resources/accounting.mesh"));
+    return processed && processed.Value().failed_resources == 1u && slot && slot->state == ResourceState::Failed &&
+           !slot->payload && manager.GetMemoryStatistics().resident_bytes == std::numeric_limits<std::size_t>::max() - 4u;
+}
+
+[[nodiscard]] bool TestIterativeDependencySearchHandlesDeepGraph()
+{
+    ResourceManager manager;
+    constexpr int kDepth = 4096;
+    std::vector<ResourceId> ids;
+    ids.reserve(kDepth + 1);
+    for (int i = 0; i <= kDepth; ++i)
+    {
+        ids.push_back(ResourceId::FromString(std::string("resources/deep-") + std::to_string(i)));
+    }
+    for (int i = 0; i < kDepth; ++i)
+    {
+        manager.SetDependenciesForTesting(ids[static_cast<std::size_t>(i)],
+            {ResourceDependency{ids[static_cast<std::size_t>(i + 1)], Type("mesh"), true}});
+    }
+    return manager.HasDependencyPathForTesting(ids.front(), ids.back()) &&
+           !manager.HasDependencyPathForTesting(ids.back(), ids.front());
+}
+
+[[nodiscard]] bool TestLoaderRegistryFreezeAndEmptyQueueBoundaries()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader first(Type("mesh"));
+    CountingLoader second(Type("texture"));
+    if (!registry.RegisterLoader(first) || !registry.Freeze() || !registry.Freeze() || !registry.IsFrozen()) return false;
+    const auto late = registry.RegisterLoader(second);
+    if (late || !late.GetError().HasCode("resource_loader.frozen")) return false;
+    ResourceManager manager(&registry);
+    RuntimeBudget zero_items{};
+    zero_items.max_items = 0;
+    const auto empty = manager.ProcessPendingLoads(zero_items);
+    return empty && empty.Value().attempted_jobs == 0u && empty.Value().processed_jobs == 0u;
+}
+
+[[nodiscard]] bool TestEvictingRetryKeepsCompletedPrefix()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(Type("mesh"), 4, false, {MakeDependency("resources/evict-prefix.tex", "texture")});
+    CountingLoader texture_loader(Type("texture"), 4);
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader)) return false;
+    ResourceManager manager(&registry);
+    const auto root = manager.RequestLease(MakeRequest("resources/evict-prefix.mesh", "mesh"));
+    if (!root || !manager.ProcessPendingLoads() || !manager.Release(root.Value())) return false;
+    const auto* root_slot = manager.InspectSlot(ResourceId::FromString("resources/evict-prefix.mesh"));
+    if (!root_slot || root_slot->dependency_handles.empty()) return false;
+    const ResourceLease dependency_lease = root_slot->dependency_handles.front().lease;
+    if (!manager.Release(dependency_lease)) return false;
+    const auto first_evict = manager.Evict(ResourceId::FromString("resources/evict-prefix.mesh"));
+    root_slot = manager.InspectSlot(ResourceId::FromString("resources/evict-prefix.mesh"));
+    if (first_evict || !root_slot || root_slot->state != ResourceState::Evicting || root_slot->dependency_handles.size() != 1u) return false;
+    const auto while_evicting = manager.RequestLease(MakeRequest("resources/evict-prefix.mesh", "mesh"));
+    return !while_evicting && while_evicting.GetError().HasCode("resource.evicting") &&
+           manager.InspectSlot(ResourceId::FromString("resources/evict-prefix.mesh"))->state == ResourceState::Evicting;
+}
+
+
+[[nodiscard]] bool TestAcquisitionIdExhaustionBoundary()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"));
+    if (!registry.RegisterLoader(loader)) return false;
+    ResourceManager manager(&registry);
+    manager.SetNextAcquisitionIdForTesting(std::numeric_limits<epidemic::runtime::ResourceAcquisitionId>::max());
+    const auto first = manager.RequestLease(MakeRequest("resources/acq-max.mesh", "mesh"));
+    if (!first || first.Value().acquisition != std::numeric_limits<epidemic::runtime::ResourceAcquisitionId>::max() ||
+        manager.NextAcquisitionIdForTesting() != 0) return false;
+    const auto* before = manager.InspectSlot(ResourceId::FromString("resources/acq-max.mesh"));
+    if (!before) return false;
+    const std::uint32_t reference_before = before->reference_count;
+    const auto second = manager.RequestLease(MakeRequest("resources/acq-second.mesh", "mesh"));
+    const auto* after = manager.InspectSlot(ResourceId::FromString("resources/acq-max.mesh"));
+    return !second && second.GetError().HasCode("resource.acquisition_id_exhausted") &&
+           manager.InspectSlot(ResourceId::FromString("resources/acq-second.mesh")) == nullptr && after &&
+           after->reference_count == reference_before;
+}
+
 [[nodiscard]] bool TestFactoryCreatesUsableServices()
 {
     const auto services = CreateResourceServices();
@@ -974,6 +1148,14 @@ int main()
         {"UnknownAndStaleHandles", TestUnknownAndStaleHandles},
         {"MemoryStatisticsTrackUnreferencedCache", TestMemoryStatisticsTrackUnreferencedCache},
         {"FailedDependencyReleasePreservesLeaseForRetry", TestFailedDependencyReleasePreservesLeaseForRetry},
+        {"GenerationExhaustionPreventsAba", TestGenerationExhaustionPreventsAba},
+        {"ReferenceOverflowAndQueuePublicationAreAtomic", TestReferenceOverflowAndQueuePublicationAreAtomic},
+        {"AcquisitionIdCommitLastAndDependencyPublicationRollback", TestAcquisitionIdCommitLastAndDependencyPublicationRollback},
+        {"ResidentAccountingOverflowRejectsBeforePublication", TestResidentAccountingOverflowRejectsBeforePublication},
+        {"IterativeDependencySearchHandlesDeepGraph", TestIterativeDependencySearchHandlesDeepGraph},
+        {"LoaderRegistryFreezeAndEmptyQueueBoundaries", TestLoaderRegistryFreezeAndEmptyQueueBoundaries},
+        {"EvictingRetryKeepsCompletedPrefix", TestEvictingRetryKeepsCompletedPrefix},
+        {"AcquisitionIdExhaustionBoundary", TestAcquisitionIdExhaustionBoundary},
         {"FactoryCreatesUsableServices", TestFactoryCreatesUsableServices},
     };
 

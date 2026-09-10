@@ -1,5 +1,8 @@
 #include "Epidemic/GameFramework/Abilities/abilities.h"
 #include "Epidemic/Foundation/error.h"
+#include "allocation_fault_injection.h"
+
+#include <limits>
 
 using namespace epidemic;
 using namespace epidemic::gameplay;
@@ -13,6 +16,9 @@ class Resource final : public IAbilityResourceProvider
     std::int64_t balance = 100;
     AbilityResourceTypeId fail_reserve{};
     std::uint64_t reconciled = 0;
+    std::uint64_t reconcile_calls = 0;
+    std::uint64_t fail_reconcile_call = 0;
+    std::uint64_t reserve_counter = 0;
 
     [[nodiscard]] bool CanAfford(GameplayObjectRef, AbilityResourceTypeId, std::int64_t amount) const override
     {
@@ -33,12 +39,13 @@ class Resource final : public IAbilityResourceProvider
             return foundation::Result<AbilityResourceReservation>::Failure(foundation::Error::Create("no", "no"));
         }
         balance -= amount;
+        ++reserve_counter;
         struct Payload
         {
             std::int64_t amount;
         };
         return foundation::Result<AbilityResourceReservation>::Success(
-            {{GameplayObjectId::FromRaw(1, static_cast<std::uint64_t>(amount))}, type,
+            {{GameplayObjectId::FromRaw(1, reserve_counter)}, type,
              RegisteredAbilityPayload::FromTrivial(TypeId::FromString("p"), Payload{amount})});
     }
 
@@ -61,8 +68,46 @@ class Resource final : public IAbilityResourceProvider
     {
         if (!reservation.id.IsValid())
             return foundation::Result<void>::Failure(foundation::Error::Create("reconcile", "invalid reservation"));
+        ++reconcile_calls;
+        if (fail_reconcile_call != 0 && reconcile_calls == fail_reconcile_call)
+            return foundation::Result<void>::Failure(foundation::Error::Create("reconcile", "forced reconcile failure"));
         ++reconciled;
         return foundation::Result<void>::Success();
+    }
+};
+
+
+class NoAllocResource final : public IAbilityResourceProvider
+{
+  public:
+    std::int64_t balance = 100;
+    std::uint64_t reserve_calls = 0;
+    std::uint64_t release_calls = 0;
+    std::uint64_t commit_calls = 0;
+
+    [[nodiscard]] bool CanAfford(GameplayObjectRef, AbilityResourceTypeId, std::int64_t amount) const override
+    {
+        return balance >= amount;
+    }
+
+    [[nodiscard]] foundation::Result<AbilityResourceReservation> Reserve(GameplayObjectRef, AbilityResourceTypeId type,
+                                                                         std::int64_t amount, GameplayContext) override
+    {
+        if (balance < amount)
+            return foundation::Result<AbilityResourceReservation>::Failure(
+                foundation::Error::Create("no", "insufficient resource"));
+        balance -= amount;
+        ++reserve_calls;
+        return foundation::Result<AbilityResourceReservation>::Success(
+            {AbilityReservationId{GameplayObjectId::FromRaw(0xA11, reserve_calls)}, type, {}});
+    }
+
+    void Commit(const AbilityResourceReservation &, GameplayContext) noexcept override { ++commit_calls; }
+
+    void Release(const AbilityResourceReservation &, GameplayContext) noexcept override
+    {
+        balance += 10;
+        ++release_calls;
     }
 };
 
@@ -262,6 +307,177 @@ int main()
     guarded.Freeze();
     if (guarded.RestoreSnapshot(corrupt))
         return 33;
+
+    // ABL-08/09: partial reservation reconciliation is resumable and does not replay completed entries.
+    AbilityService reconcile_source;
+    Resource reconcile_source_res;
+    reconcile_source.SetResourceProvider(&reconcile_source_res);
+    AbilityDefinition reconcile_def;
+    reconcile_def.canonical_name = "game.reconcile_two";
+    reconcile_def.timing.kind = AbilityTimingKind::CastTime;
+    reconcile_def.timing.cast_duration = {1};
+    reconcile_def.costs.push_back({AbilityResourceTypeId::FromString("game.r1"), 10, AbilityCostPolicy::ReserveThenCommit});
+    reconcile_def.costs.push_back({AbilityResourceTypeId::FromString("game.r2"), 10, AbilityCostPolicy::ReserveThenCommit});
+    auto reconcile_did = reconcile_source.RegisterDefinition(reconcile_def);
+    if (!reconcile_did)
+        return 34;
+    reconcile_source.Freeze();
+    auto reconcile_iid = reconcile_source.Grant(owner, reconcile_did.Value());
+    if (!reconcile_iid)
+        return 35;
+    auto reconcile_exec = reconcile_source.BeginActivation({reconcile_iid.Value(), {}, {0}, {}});
+    if (!reconcile_exec)
+        return 36;
+    const auto reconcile_snapshot = reconcile_source.CaptureSnapshot();
+
+    AbilityService reconcile_restored;
+    Resource reconcile_res;
+    reconcile_res.fail_reconcile_call = 2;
+    reconcile_restored.SetResourceProvider(&reconcile_res);
+    AbilityDefinition reconcile_restore_def = reconcile_def;
+    reconcile_restore_def.id = {};
+    if (!reconcile_restored.RegisterDefinition(reconcile_restore_def))
+        return 37;
+    reconcile_restored.Freeze();
+    if (!reconcile_restored.RestoreSnapshot(reconcile_snapshot))
+        return 38;
+    if (reconcile_restored.ReconcileRestoredReservations() || reconcile_res.reconcile_calls != 2 ||
+        reconcile_res.reconciled != 1)
+        return 39;
+    reconcile_res.fail_reconcile_call = 0;
+    if (!reconcile_restored.ReconcileRestoredReservations() || reconcile_res.reconcile_calls != 3 ||
+        reconcile_res.reconciled != 2 || reconcile_restored.NeedsResourceReconciliation())
+        return 40;
+
+    // ABL-07/09: exhausted instance revision rejects mutation without changing the instance.
+    auto revision_snapshot = reconcile_source.CaptureSnapshot();
+    if (revision_snapshot.instances.empty())
+        return 41;
+    revision_snapshot.instances.front().revision.value = std::numeric_limits<std::uint64_t>::max();
+    AbilityService revision_guard;
+    AbilityDefinition revision_def = reconcile_def;
+    revision_def.id = {};
+    if (!revision_guard.RegisterDefinition(revision_def))
+        return 42;
+    revision_guard.Freeze();
+    if (!revision_guard.RestoreSnapshot(revision_snapshot))
+        return 43;
+    const auto revision_instance = revision_snapshot.instances.front().id;
+    const auto before_revision_change = revision_guard.FindInstance(revision_instance)->revision;
+    if (revision_guard.SetAbilityEnabled(revision_instance, false) ||
+        !revision_guard.FindInstance(revision_instance)->enabled ||
+        revision_guard.FindInstance(revision_instance)->revision != before_revision_change)
+        return 44;
+
+    // ABL-05/09: failed schedule rebind preserves the old binding and execution revision.
+    AbilityService bind_service;
+    NoAllocResource bind_res;
+    bind_service.SetResourceProvider(&bind_res);
+    AbilityDefinition bind_def;
+    bind_def.canonical_name = "game.bind";
+    bind_def.timing.kind = AbilityTimingKind::CastTime;
+    bind_def.timing.cast_duration = {5};
+    auto bind_did = bind_service.RegisterDefinition(bind_def);
+    if (!bind_did)
+        return 45;
+    bind_service.Freeze();
+    auto bind_iid = bind_service.Grant(owner, bind_did.Value());
+    if (!bind_iid)
+        return 46;
+    auto bind_exec = bind_service.BeginActivation({bind_iid.Value(), {}, {0}, {}});
+    if (!bind_exec)
+        return 47;
+    const auto old_schedule = ScheduleId::FromString("test.old_schedule");
+    const auto new_schedule = ScheduleId::FromString("test.new_schedule");
+    if (!bind_service.BindSchedule(bind_exec.Value(), old_schedule))
+        return 48;
+    const auto before_bind = bind_service.CaptureSnapshot();
+    {
+        epidemic::tests::allocation_fault::FailAfter fault(0);
+        auto rebound = bind_service.BindSchedule(bind_exec.Value(), new_schedule);
+        if (rebound)
+            return 49;
+    }
+    const auto after_bind = bind_service.CaptureSnapshot();
+    if (after_bind.executions.size() != before_bind.executions.size() || after_bind.executions.empty() ||
+        after_bind.executions.front().schedule != before_bind.executions.front().schedule ||
+        after_bind.executions.front().revision != before_bind.executions.front().revision)
+        return 50;
+
+    // ABL-01/09: allocation failure after resource reservation rolls provider and local state back.
+    bool saw_post_reserve_failure = false;
+    bool saw_activation_success = false;
+    for (long long fail_after = 0; fail_after < 16 && !saw_activation_success; ++fail_after)
+    {
+        AbilityService atomic_service;
+        NoAllocResource atomic_res;
+        atomic_service.SetResourceProvider(&atomic_res);
+        AbilityDefinition atomic_def;
+        atomic_def.canonical_name = "game.atomic_activation";
+        atomic_def.timing.kind = AbilityTimingKind::CastTime;
+        atomic_def.timing.cast_duration = {1};
+        atomic_def.costs.push_back({AbilityResourceTypeId::FromString("game.atomic"), 10,
+                                    AbilityCostPolicy::ReserveThenCommit});
+        auto atomic_did = atomic_service.RegisterDefinition(atomic_def);
+        if (!atomic_did)
+            return 51;
+        atomic_service.Freeze();
+        auto atomic_iid = atomic_service.Grant(owner, atomic_did.Value());
+        if (!atomic_iid)
+            return 52;
+        const auto before = atomic_service.CaptureSnapshot();
+        foundation::Result<AbilityExecutionId> attempted = foundation::Result<AbilityExecutionId>::Failure(
+            foundation::Error::Create("test", "not run"));
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            attempted = atomic_service.BeginActivation({atomic_iid.Value(), {}, {0}, {}});
+        }
+        if (attempted)
+        {
+            saw_activation_success = true;
+            break;
+        }
+        if (atomic_res.reserve_calls > 0)
+            saw_post_reserve_failure = true;
+        const auto after = atomic_service.CaptureSnapshot();
+        if (atomic_res.balance != 100 || after.executions.size() != before.executions.size() ||
+            after.execution_ids.scope != before.execution_ids.scope || after.execution_ids.next != before.execution_ids.next)
+            return 53;
+    }
+    if (!saw_post_reserve_failure || !saw_activation_success)
+        return 54;
+
+    // ABL-02/09: output allocation failure cannot commit held resources or consume the execution.
+    AbilityService output_service;
+    NoAllocResource output_res;
+    output_service.SetResourceProvider(&output_res);
+    AbilityDefinition output_def;
+    output_def.canonical_name = "game.output_atomic";
+    output_def.timing.kind = AbilityTimingKind::CastTime;
+    output_def.timing.cast_duration = {1};
+    output_def.costs.push_back({AbilityResourceTypeId::FromString("game.output_resource"), 10,
+                                AbilityCostPolicy::ReserveThenCommit});
+    output_def.outputs.push_back({ActionTypeId::FromString("game.output"), 1, {}});
+    auto output_did = output_service.RegisterDefinition(output_def);
+    if (!output_did)
+        return 55;
+    output_service.Freeze();
+    auto output_iid = output_service.Grant(owner, output_did.Value());
+    auto output_exec = output_iid ? output_service.BeginActivation({output_iid.Value(), {}, {0}, {}})
+                                  : foundation::Result<AbilityExecutionId>::Failure(
+                                        foundation::Error::Create("test", "grant failed"));
+    if (!output_exec || output_res.balance != 90)
+        return 56;
+    {
+        epidemic::tests::allocation_fault::FailAfter fault(0);
+        auto failed_output = output_service.CompleteExecution(output_exec.Value(), {1});
+        if (failed_output)
+            return 57;
+    }
+    if (output_res.commit_calls != 0 || output_res.balance != 90 || !output_service.FindExecution(output_exec.Value()))
+        return 58;
+    if (!output_service.CompleteExecution(output_exec.Value(), {1}) || output_res.commit_calls != 1)
+        return 59;
 
     return 0;
 }

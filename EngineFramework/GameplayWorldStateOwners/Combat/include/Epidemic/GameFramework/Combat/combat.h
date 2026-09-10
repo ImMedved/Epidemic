@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <deque>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -307,8 +308,8 @@ class CombatService
     [[nodiscard]] CombatDiagnostics GetDiagnostics() const noexcept;
 
   private:
-    void Bump(CombatantRecord& record) noexcept;
-    void Record(CombatChange change);
+    [[nodiscard]] static std::optional<Revision> NextRevision(const CombatantRecord& record) noexcept;
+    void Record(CombatChange change) noexcept;
     [[nodiscard]] bool ReconcileLifeState(CombatantRecord& record, CombatResourceTypeId changed_resource) noexcept;
     [[nodiscard]] static bool IsAllowedLifeTransition(CombatLifeState from, CombatLifeState to) noexcept;
     [[nodiscard]] static std::int64_t ApplyModifiers(std::int64_t amount, std::vector<CombatModifier> modifiers) noexcept;

@@ -10,6 +10,8 @@
 #include <optional>
 #include <span>
 #include <string_view>
+#include <type_traits>
+#include <utility>
 
 namespace epidemic::gameplay::random
 {
@@ -43,7 +45,7 @@ struct RandomSequenceSnapshot
 class RandomSequence
 {
   public:
-    RandomSequence(RandomSeed seed, RandomStream stream, std::uint64_t sequence = 0) noexcept;
+    RandomSequence(RandomSeed seed, RandomStream stream, std::uint64_t sequence = 0);
     [[nodiscard]] static constexpr bool IsValidSnapshot(const RandomSequenceSnapshot& snapshot) noexcept
     {
         return snapshot.stream.IsValid();
@@ -69,7 +71,7 @@ class RandomSequence
     [[nodiscard]] bool RollMicroUnchecked(std::uint32_t chance_micro) noexcept;
     [[nodiscard]] std::optional<std::size_t> WeightedIndex(std::span<const std::uint64_t> weights) noexcept;
 
-    template <typename T> void ShuffleUnchecked(std::span<T> values) noexcept
+    template <typename T> void ShuffleUnchecked(std::span<T> values) noexcept(std::is_nothrow_swappable_v<T>)
     {
         if (values.size() < 2)
         {
@@ -84,7 +86,7 @@ class RandomSequence
         }
     }
 
-    template <typename TContainer> void ShuffleUnchecked(TContainer& values) noexcept
+    template <typename TContainer> void ShuffleUnchecked(TContainer& values) noexcept(noexcept(ShuffleUnchecked(std::span{values.data(), values.size()})))
     {
         ShuffleUnchecked(std::span{values.data(), values.size()});
     }

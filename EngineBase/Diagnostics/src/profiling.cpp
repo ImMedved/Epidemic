@@ -73,19 +73,26 @@ ProfileScope::ProfileScope(std::string_view scope_name) : name_(scope_name)
 }
 
 // Finishes the scope and records a completed profiling event if collection is still possible.
-ProfileScope::~ProfileScope()
+ProfileScope::~ProfileScope() noexcept
 {
-    if (!enabled_)
+    try
     {
-        return;
-    }
+        if (!enabled_)
+        {
+            return;
+        }
 
-    auto current_collector = GetProfileCollector();
-    if (!current_collector)
+        auto current_collector = GetProfileCollector();
+        if (!current_collector)
+        {
+            return;
+        }
+
+        current_collector->Record(ProfileEvent{name_, std::chrono::steady_clock::now() - start_time_,
+                                               std::this_thread::get_id(), std::string(GetCurrentThreadName())});
+    }
+    catch (...)
     {
-        return;
     }
-
-    current_collector->Record(ProfileEvent{name_, std::chrono::steady_clock::now() - start_time_, std::this_thread::get_id(), std::string(GetCurrentThreadName())});
 }
 } 

@@ -20,6 +20,15 @@ class TargetState final : public IEffectTargetStateProvider
     }
 };
 
+class ThrowingTargetState final : public IEffectTargetStateProvider
+{
+  public:
+    [[nodiscard]] EffectTargetState Resolve(GameplayObjectRef) const override
+    {
+        throw std::runtime_error("target state failed");
+    }
+};
+
 class CountingHandler final : public IEffectHandler
 {
   public:
@@ -179,6 +188,14 @@ int main()
     mat_request.targets = {abstract_target};
     const auto unavailable = service.Execute(mat_request);
     if (!unavailable || unavailable.Value().operations.front().disposition != EffectOperationDisposition::Unavailable) return 6;
+
+    // Target-state provider exceptions are contained and become a failed operation.
+    ThrowingTargetState throwing_target_state;
+    service.SetTargetStateProvider(&throwing_target_state);
+    const auto provider_failure = service.Execute(mat_request);
+    if (!provider_failure || provider_failure.Value().operations.empty() ||
+        provider_failure.Value().operations.front().disposition != EffectOperationDisposition::Failed) return 61;
+    service.SetTargetStateProvider(&target_state);
 
     // Budget protects against derived effect storms.
     EffectExecutionBudget tiny;

@@ -27,7 +27,7 @@ class ITransformRegistry
         WorldTransformWriteMode mode = WorldTransformWriteMode::RejectNonInvertibleParent) = 0;
     [[nodiscard]] virtual std::optional<Transform> GetLocalTransform(SceneNodeId node) const = 0;
     [[nodiscard]] virtual std::optional<Transform> GetWorldTransform(SceneNodeId node) const = 0;
-    virtual void MarkTransformClean(SceneNodeId node) = 0;
+    [[nodiscard]] virtual foundation::Result<void> MarkTransformClean(SceneNodeId node) = 0;
     [[nodiscard]] virtual bool IsTransformDirty(SceneNodeId node) const = 0;
 };
 } // namespace epidemic::runtime

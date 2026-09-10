@@ -45,9 +45,15 @@ void EventBus::EnqueueImpl(std::type_index event_type, std::any event)
 std::size_t EventBus::DrainQueued()
 {
     EPIDEMIC_PROFILE_SCOPE("EventBus::DrainQueued");
+    std::scoped_lock drain_lock(drain_mutex_);
     std::size_t drained = 0;
+    std::size_t drain_budget = 0;
+    {
+        std::scoped_lock lock(mutex_);
+        drain_budget = queued_events_.size();
+    }
 
-    while (true)
+    while (drained < drain_budget)
     {
         QueuedEvent next_event;
         {

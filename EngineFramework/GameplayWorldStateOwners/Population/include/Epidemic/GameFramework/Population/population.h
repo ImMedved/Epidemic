@@ -423,9 +423,11 @@ class PopulationService
     }
 
   private:
+    [[nodiscard]] bool CanAdvanceRevision(std::size_t count = 1) const noexcept;
+    [[nodiscard]] bool CanRecordChanges(std::size_t count = 1) const noexcept;
     void Bump() noexcept
     {
-        revision_.value++;
+        ++revision_.value;
     }
     void Record(PopulationChange change);
     void RecountGroup(PopulationGroupId group);

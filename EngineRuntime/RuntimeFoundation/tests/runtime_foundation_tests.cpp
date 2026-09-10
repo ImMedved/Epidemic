@@ -101,6 +101,51 @@ bool TestRuntimeBudgetTracksLimits()
     return budget.HasTimeLimit() && budget.HasItemLimit() && budget.HasByteLimit() && !budget.IsUnlimited();
 }
 
+bool TestRuntimeBudgetRejectsNegativeTime()
+{
+    const RuntimeBudget negative{std::chrono::microseconds{-1}, 0, 0};
+    const RuntimeBudget zero{};
+    const auto invalid = epidemic::runtime::ValidateRuntimeBudget(negative);
+    const auto valid = epidemic::runtime::ValidateRuntimeBudget(zero);
+    return !invalid && invalid.GetError().HasCode("runtime.invalid_budget") && valid;
+}
+
+bool TestTransactionalMonotonicReservation()
+{
+    std::uint64_t next = std::numeric_limits<std::uint64_t>::max();
+    auto reserved = epidemic::runtime::ReserveMonotonicId(next);
+    if (!reserved || reserved.Value().Value() != std::numeric_limits<std::uint64_t>::max() || next != std::numeric_limits<std::uint64_t>::max())
+    {
+        return false;
+    }
+    reserved.Value().Rollback();
+    if (next != std::numeric_limits<std::uint64_t>::max())
+    {
+        return false;
+    }
+    auto retry = epidemic::runtime::ReserveMonotonicId(next);
+    if (!retry || retry.Value().Value() != std::numeric_limits<std::uint64_t>::max())
+    {
+        return false;
+    }
+    retry.Value().Commit();
+    return next == 0 && !epidemic::runtime::PeekMonotonicId(next);
+}
+
+bool TestCheckedArithmeticBoundaries()
+{
+    const auto inc = epidemic::runtime::CheckedRevisionIncrement(std::numeric_limits<std::uint64_t>::max() - 1);
+    const auto exhausted = epidemic::runtime::CheckedRevisionIncrement(std::numeric_limits<std::uint64_t>::max());
+    const auto add_ok = epidemic::runtime::CheckedUnsignedAdd<std::uint64_t>(std::numeric_limits<std::uint64_t>::max() - 1, 1);
+    const auto add_bad = epidemic::runtime::CheckedUnsignedAdd<std::uint64_t>(std::numeric_limits<std::uint64_t>::max(), 1);
+    const auto frame_ok = epidemic::runtime::CheckedAdd(RuntimeFrameDuration{std::chrono::microseconds{10}}, RuntimeFrameDuration{std::chrono::microseconds{5}});
+    const auto frame_bad = epidemic::runtime::CheckedAdd(RuntimeFrameDuration{std::chrono::microseconds{std::numeric_limits<std::int64_t>::max()}}, RuntimeFrameDuration{std::chrono::microseconds{1}});
+    const auto seconds_bad = epidemic::runtime::CheckedSecondsToMicroseconds(std::numeric_limits<double>::max());
+    return inc && *inc == std::numeric_limits<std::uint64_t>::max() && !exhausted &&
+           add_ok && *add_ok == std::numeric_limits<std::uint64_t>::max() && !add_bad &&
+           frame_ok && frame_ok->value.count() == 15 && !frame_bad && !seconds_bad;
+}
+
 bool TestRuntimeFrameDurationUsesRealMicroseconds()
 {
     const RuntimeFrameDuration zero{};
@@ -300,6 +345,18 @@ int main()
     if (!TestRuntimeBudgetTracksLimits())
     {
         return 7;
+    }
+    if (!TestRuntimeBudgetRejectsNegativeTime())
+    {
+        return 19;
+    }
+    if (!TestTransactionalMonotonicReservation())
+    {
+        return 20;
+    }
+    if (!TestCheckedArithmeticBoundaries())
+    {
+        return 21;
     }
 
     if (!TestRuntimeFrameDurationUsesRealMicroseconds())

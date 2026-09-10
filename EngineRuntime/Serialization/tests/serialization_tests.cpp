@@ -1,4 +1,4 @@
-﻿#include "Epidemic/Runtime/Serialization/archive_reader.h"
+#include "Epidemic/Runtime/Serialization/archive_reader.h"
 #include "Epidemic/Runtime/Serialization/archive_writer.h"
 #include "Epidemic/Runtime/Serialization/migration.h"
 #include "Epidemic/Runtime/Serialization/migration_executor.h"
@@ -15,6 +15,7 @@
 #include <cstddef>
 #include <iostream>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,40 @@ struct ProbeData
 {
     std::string name;
     std::uint64_t count = 0;
+};
+
+struct ThrowingCommitData
+{
+    std::uint64_t value = 0;
+
+    ThrowingCommitData() = default;
+    ThrowingCommitData(const ThrowingCommitData&) = default;
+    ThrowingCommitData& operator=(const ThrowingCommitData&) = default;
+    ThrowingCommitData(ThrowingCommitData&&) noexcept = default;
+    ThrowingCommitData& operator=(ThrowingCommitData&&)
+    {
+        value = 999;
+        throw std::runtime_error("commit boom");
+    }
+};
+
+class ThrowingCommitSerializer final : public epidemic::runtime::ISerializer
+{
+  public:
+    [[nodiscard]] StringId GetTypeId() const override { return Id("serialization.throwing_commit"); }
+    [[nodiscard]] SchemaVersion GetSchemaVersion() const override { return {1u, 0u, 0u}; }
+    [[nodiscard]] std::type_index GetCppType() const override { return typeid(ThrowingCommitData); }
+
+    [[nodiscard]] Result<void> Serialize(const void*, IArchiveWriter&) const override
+    {
+        return Result<void>::Failure(CreateSerializationError("serialization.unused", "unused"));
+    }
+
+    [[nodiscard]] Result<void> Deserialize(IArchiveReader&, void* object) const override
+    {
+        static_cast<ThrowingCommitData*>(object)->value = 42;
+        return Result<void>::Success();
+    }
 };
 
 class ProbeSerializer final : public epidemic::runtime::ISerializer
@@ -133,6 +168,37 @@ class ProbeMigration final : public IMigration
 
   private:
     MigrationKey key_{};
+};
+
+
+class MutatingFailDeserializeSerializer final : public epidemic::runtime::ISerializer
+{
+  public:
+    explicit MutatingFailDeserializeSerializer(bool should_throw = false) : should_throw_(should_throw) {}
+
+    [[nodiscard]] StringId GetTypeId() const override { return Id("serialization.probe"); }
+    [[nodiscard]] SchemaVersion GetSchemaVersion() const override { return {1u, 0u, 0u}; }
+    [[nodiscard]] std::type_index GetCppType() const override { return typeid(ProbeData); }
+
+    [[nodiscard]] Result<void> Serialize(const void*, IArchiveWriter&) const override
+    {
+        return Result<void>::Failure(CreateSerializationError("serialization.unused", "unused"));
+    }
+
+    [[nodiscard]] Result<void> Deserialize(IArchiveReader&, void* object) const override
+    {
+        auto& probe = *static_cast<ProbeData*>(object);
+        probe.name = "mutated";
+        probe.count = 999;
+        if (should_throw_)
+        {
+            throw std::runtime_error("deserialize boom");
+        }
+        return Result<void>::Failure(CreateSerializationError("serialization.injected_failure", "injected deserialize failure"));
+    }
+
+  private:
+    bool should_throw_ = false;
 };
 
 class MetadataOverrideWriter final : public IArchiveWriter
@@ -510,6 +576,99 @@ class MetadataOverrideArchiveFactory final : public IArchiveFactory
            !wrong_version && wrong_version.GetError().HasCode("serialization.migration.version_mismatch");
 }
 
+
+[[nodiscard]] bool TestArraySlotsAreWriteOnceAndComplete()
+{
+    InMemoryArchiveWriter writer;
+    if (!writer.BeginArray("items", 1) || !writer.BeginArrayElement(0) || !writer.WriteString("name", "first") ||
+        !writer.EndArrayElement())
+    {
+        return false;
+    }
+    const auto duplicate = writer.BeginArrayElement(0);
+    if (duplicate || !duplicate.GetError().HasCode("serialization.duplicate_array_element"))
+    {
+        return false;
+    }
+    return writer.EndArray().HasValue();
+}
+
+[[nodiscard]] bool TestIncompleteArrayIsRejected()
+{
+    InMemoryArchiveWriter writer;
+    if (!writer.BeginArray("items", 1))
+    {
+        return false;
+    }
+    const auto end = writer.EndArray();
+    const auto finalized = writer.Finalize(Id("serialization.incomplete_array"), {1u, 0u, 0u});
+    return !end && end.GetError().HasCode("serialization.array_incomplete") &&
+           !finalized && finalized.GetError().HasCode("serialization.malformed");
+}
+
+[[nodiscard]] bool TestDeserializeObjectIsFailureAtomic()
+{
+    InMemoryArchiveWriter writer;
+    if (!writer.WriteString("name", "source") || !writer.WriteUInt64("count", 1))
+    {
+        return false;
+    }
+    const auto document = writer.Finalize(Id("serialization.probe"), {1u, 0u, 0u});
+    if (!document)
+    {
+        return false;
+    }
+    InMemoryArchiveReader reader(document.Value());
+    ProbeData destination{"original", 7};
+    const auto failed = DeserializeObject(MutatingFailDeserializeSerializer{}, reader, destination);
+    if (failed || destination.name != "original" || destination.count != 7)
+    {
+        return false;
+    }
+
+    InMemoryArchiveReader throwing_reader(document.Value());
+    const auto thrown = DeserializeObject(MutatingFailDeserializeSerializer{true}, throwing_reader, destination);
+    return !thrown && thrown.GetError().HasCode("serialization.serializer.exception") &&
+           destination.name == "original" && destination.count == 7;
+}
+
+[[nodiscard]] bool TestDeserializeRejectsThrowingCommitBeforeMutation()
+{
+    InMemoryArchiveWriter writer;
+    const auto document = writer.Finalize(Id("serialization.throwing_commit"), {1u, 0u, 0u});
+    if (!document)
+    {
+        return false;
+    }
+    InMemoryArchiveReader reader(document.Value());
+    ThrowingCommitData destination{};
+    destination.value = 7;
+    const auto result = DeserializeObject(ThrowingCommitSerializer{}, reader, destination);
+    return !result && result.GetError().HasCode("serialization.staging_unsupported") && destination.value == 7;
+}
+
+[[nodiscard]] bool TestRegistriesCanFreeze()
+{
+    SerializerRegistry serializers;
+    MigrationRegistry migrations;
+    const auto registered_serializer = serializers.RegisterSerializer(std::make_shared<ProbeSerializer>());
+    const auto frozen_serializer = serializers.Freeze();
+    const auto rejected_serializer = serializers.RegisterSerializer(std::make_shared<ProbeSerializer>());
+
+    const auto type = Id("serialization.freeze_migration");
+    const auto registered_migration = migrations.RegisterMigration(
+        std::make_shared<ProbeMigration>(MigrationKey{type, {1u, 0u, 0u}, {2u, 0u, 0u}}));
+    const auto frozen_migration = migrations.Freeze();
+    const auto path = migrations.FindMigrationPath(type, {1u, 0u, 0u}, {2u, 0u, 0u});
+    const auto rejected_migration = migrations.RegisterMigration(
+        std::make_shared<ProbeMigration>(MigrationKey{type, {2u, 0u, 0u}, {3u, 0u, 0u}}));
+
+    return registered_serializer && frozen_serializer && serializers.IsFrozen() && !rejected_serializer &&
+           rejected_serializer.GetError().HasCode("serialization.registry_frozen") && registered_migration &&
+           frozen_migration && migrations.IsFrozen() && path && path.Value().size() == 1 && !rejected_migration &&
+           rejected_migration.GetError().HasCode("serialization.registry_frozen");
+}
+
 [[nodiscard]] bool TestSerializationServicesFactoryCreatesUsableServices()
 {
     const auto services = CreateSerializationServices();
@@ -556,6 +715,11 @@ int main()
         {"MigrationRegistryRejectsMissingCycleAndAmbiguousPaths", TestMigrationRegistryRejectsMissingCycleAndAmbiguousPaths},
         {"ApplyMigrationsBuildsNewDocument", TestApplyMigrationsBuildsNewDocument},
         {"ApplyMigrationsValidatesEachStepOutput", TestApplyMigrationsValidatesEachStepOutput},
+        {"ArraySlotsAreWriteOnceAndComplete", TestArraySlotsAreWriteOnceAndComplete},
+        {"IncompleteArrayIsRejected", TestIncompleteArrayIsRejected},
+        {"DeserializeObjectIsFailureAtomic", TestDeserializeObjectIsFailureAtomic},
+        {"DeserializeRejectsThrowingCommit", TestDeserializeRejectsThrowingCommitBeforeMutation},
+        {"RegistriesCanFreeze", TestRegistriesCanFreeze},
         {"SerializationServicesFactoryCreatesUsableServices", TestSerializationServicesFactoryCreatesUsableServices},
     };
 
@@ -570,5 +734,4 @@ int main()
 
     return 0;
 }
-
 

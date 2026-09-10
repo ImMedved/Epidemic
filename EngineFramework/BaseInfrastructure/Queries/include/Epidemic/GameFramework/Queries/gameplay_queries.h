@@ -434,16 +434,22 @@ class GameplayQueryService
     // After Freeze(), provider registry and coordinator configuration are immutable.
     // Execute() and AcquireSnapshot() may be called concurrently. Registered providers
     // and the snapshot coordinator are responsible for thread-safe concurrent reads.
-    void Freeze() noexcept
+    foundation::Result<void> Freeze()
     {
-        state_->provider_order.clear();
-        state_->provider_order.reserve(state_->providers.size());
+        if (frozen_)
+        {
+            return foundation::Result<void>::Success();
+        }
+        std::vector<QueryTypeId> staged_order;
+        staged_order.reserve(state_->providers.size());
         for (const auto& [type, _] : state_->providers)
         {
-            state_->provider_order.push_back(type);
+            staged_order.push_back(type);
         }
-        std::sort(state_->provider_order.begin(), state_->provider_order.end());
+        std::sort(staged_order.begin(), staged_order.end());
+        state_->provider_order.swap(staged_order);
         frozen_ = true;
+        return foundation::Result<void>::Success();
     }
     [[nodiscard]] bool IsFrozen() const noexcept { return frozen_; }
     [[nodiscard]] std::size_t ProviderCount() const noexcept { return state_->providers.size(); }
@@ -614,15 +620,19 @@ class GameplayQueryService
                 foundation::Error::Create("gameplay.already_registered", "query provider already registered", std::string(canonical_name)));
         }
 
-        state_->providers.emplace(
+        auto provider = std::make_shared<detail::FunctionQueryProvider<TQuery>>(
             expected,
-            std::make_shared<detail::FunctionQueryProvider<TQuery>>(
-                expected,
-                capabilities,
-                std::move(current_handler),
-                std::move(snapshot_capture),
-                std::move(snapshot_handler)));
-        state_->names.emplace(expected, std::string(canonical_name));
+            capabilities,
+            std::move(current_handler),
+            std::move(snapshot_capture),
+            std::move(snapshot_handler));
+        std::string name(canonical_name);
+        auto staged_providers = state_->providers;
+        auto staged_names = state_->names;
+        staged_providers.emplace(expected, std::move(provider));
+        staged_names.emplace(expected, std::move(name));
+        state_->providers.swap(staged_providers);
+        state_->names.swap(staged_names);
         return foundation::Result<void>::Success();
     }
 
@@ -694,14 +704,6 @@ class GameplayQueryService
         }
 
         auto response = std::move(any_result).Value();
-        auto query_id = NextQueryId();
-        if (!query_id)
-        {
-            ++state_->failed;
-            return foundation::Result<QueryResponse<ResultType>>::Failure(query_id.GetError());
-        }
-        response.metadata.query_id = query_id.Value();
-
         const auto validation = ValidateResponse(response, capabilities, context);
         if (!validation)
         {
@@ -712,11 +714,6 @@ class GameplayQueryService
             }
             return foundation::Result<QueryResponse<ResultType>>::Failure(validation.GetError());
         }
-
-        if (response.metadata.coverage == QueryCoverage::Partial)
-        {
-            ++state_->partial_results;
-        }
         if (response.value_type != typeid(ResultType))
         {
             ++state_->failed;
@@ -724,22 +721,36 @@ class GameplayQueryService
                 foundation::Error::Create("gameplay.query_result_type_mismatch", "query provider returned an unexpected C++ result type"));
         }
 
-        if (!response.has_value)
+        std::optional<ResultType> typed_value;
+        if (response.has_value)
         {
-            return foundation::Result<QueryResponse<ResultType>>::Success(QueryResponse<ResultType>{std::nullopt, response.metadata});
+            try
+            {
+                typed_value.emplace(std::any_cast<ResultType>(std::move(response.value)));
+            }
+            catch (const std::bad_any_cast&)
+            {
+                ++state_->failed;
+                return foundation::Result<QueryResponse<ResultType>>::Failure(
+                    foundation::Error::Create("gameplay.query_result_type_mismatch", "query result payload could not be cast to expected type"));
+            }
         }
 
-        try
-        {
-            return foundation::Result<QueryResponse<ResultType>>::Success(
-                QueryResponse<ResultType>{std::optional<ResultType>{std::any_cast<ResultType>(std::move(response.value))}, response.metadata});
-        }
-        catch (const std::bad_any_cast&)
+        // Query identity belongs to an accepted response. Provider/contract failures must
+        // not consume the finite sequencing space.
+        auto query_id = NextQueryId();
+        if (!query_id)
         {
             ++state_->failed;
-            return foundation::Result<QueryResponse<ResultType>>::Failure(
-                foundation::Error::Create("gameplay.query_result_type_mismatch", "query result payload could not be cast to expected type"));
+            return foundation::Result<QueryResponse<ResultType>>::Failure(query_id.GetError());
         }
+        response.metadata.query_id = query_id.Value();
+        if (response.metadata.coverage == QueryCoverage::Partial)
+        {
+            ++state_->partial_results;
+        }
+        return foundation::Result<QueryResponse<ResultType>>::Success(
+            QueryResponse<ResultType>{std::move(typed_value), response.metadata});
     }
 
     [[nodiscard]] foundation::Result<QueryId> NextQueryId() const noexcept;

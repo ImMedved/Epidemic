@@ -4,6 +4,7 @@
 
 #include <chrono>
 #include <limits>
+#include <stdexcept>
 #include <type_traits>
 
 namespace
@@ -337,6 +338,73 @@ bool TestFactoryRejectsInvalidOptions()
            boundary_result.GetError().HasCode("time.invalid_phase_boundary");
 }
 
+
+bool TestOverflowFailuresPreserveObservableState()
+{
+    TimeRuntime runtime;
+    const auto to_max = runtime.Skip(GameDuration{std::numeric_limits<std::int64_t>::max()});
+    if (!to_max || runtime.GetEvents().empty())
+    {
+        return false;
+    }
+    const auto before_snapshot = runtime.GetSnapshot();
+    const auto before_delta = runtime.LastDelta();
+    const auto before_events = runtime.GetEvents();
+    const auto overflow = runtime.Skip(GameDuration{1});
+    return !overflow && overflow.GetError().HasCode("time.overflow") && runtime.GetSnapshot() == before_snapshot &&
+           runtime.LastDelta() == before_delta && runtime.GetEvents() == before_events;
+}
+
+bool TestIdempotentMutationsDoNotClearEvents()
+{
+    TimeRuntime runtime;
+    const auto pause = runtime.Pause();
+    if (!pause || runtime.GetEvents().empty())
+    {
+        return false;
+    }
+    const auto pause_events = runtime.GetEvents();
+    const auto second_pause = runtime.Pause();
+    if (!second_pause || runtime.GetEvents() != pause_events)
+    {
+        return false;
+    }
+    const auto resume = runtime.Resume();
+    if (!resume || runtime.GetEvents().empty() || runtime.GetEvents().front().kind != TimeEventKind::Resumed)
+    {
+        return false;
+    }
+    const auto resume_events = runtime.GetEvents();
+    const auto second_resume = runtime.Resume();
+    return second_resume && runtime.GetEvents() == resume_events;
+}
+
+bool TestInvalidPhaseAndDirectInvalidConstructionAreRejected()
+{
+    TimeOptions invalid_phase{};
+    invalid_phase.phase_boundaries = {
+        PhaseBoundary{0, static_cast<DayPhase>(99)},
+    };
+    const auto factory_result = CreateTimeServices(invalid_phase);
+    if (factory_result || !factory_result.GetError().HasCode("time.invalid_phase"))
+    {
+        return false;
+    }
+
+    TimeOptions invalid_calendar{};
+    invalid_calendar.calendar.hours_per_day = 0;
+    try
+    {
+        TimeRuntime runtime(invalid_calendar);
+        (void)runtime;
+        return false;
+    }
+    catch (const std::invalid_argument&)
+    {
+        return true;
+    }
+}
+
 bool TestConfigurablePhaseBoundaries()
 {
     TimeOptions options{};
@@ -454,6 +522,18 @@ int main()
     if (!TestFactoryRejectsInvalidOptions())
     {
         return 14;
+    }
+    if (!TestOverflowFailuresPreserveObservableState())
+    {
+        return 32;
+    }
+    if (!TestIdempotentMutationsDoNotClearEvents())
+    {
+        return 33;
+    }
+    if (!TestInvalidPhaseAndDirectInvalidConstructionAreRejected())
+    {
+        return 34;
     }
     if (!TestConfigurablePhaseBoundaries())
     {

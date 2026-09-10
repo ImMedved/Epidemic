@@ -15,6 +15,78 @@ namespace
     return foundation::Error::Create(code, message);
 }
 
+
+[[nodiscard]] bool IsValidSimulationDetailLevel(SimulationDetailLevel detail) noexcept
+{
+    switch (detail)
+    {
+    case SimulationDetailLevel::Disabled:
+    case SimulationDetailLevel::Dormant:
+    case SimulationDetailLevel::Abstract:
+    case SimulationDetailLevel::Coarse:
+    case SimulationDetailLevel::Detailed:
+    case SimulationDetailLevel::Materialized:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidSimulationTaskState(SimulationTaskState state) noexcept
+{
+    switch (state)
+    {
+    case SimulationTaskState::Pending:
+    case SimulationTaskState::Running:
+    case SimulationTaskState::Completed:
+    case SimulationTaskState::Failed:
+    case SimulationTaskState::Skipped:
+    case SimulationTaskState::Deferred:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidSimulationIntervalState(SimulationIntervalState state) noexcept
+{
+    switch (state)
+    {
+    case SimulationIntervalState::Pending:
+    case SimulationIntervalState::Completed:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidSimulationMaterializationPolicy(SimulationMaterializationPolicy policy) noexcept
+{
+    switch (policy)
+    {
+    case SimulationMaterializationPolicy::AbstractCapable:
+    case SimulationMaterializationPolicy::RequiresDetailed:
+    case SimulationMaterializationPolicy::RequiresMaterialized:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidSimulationChangeKind(SimulationChangeKind kind) noexcept
+{
+    switch (kind)
+    {
+    case SimulationChangeKind::RegionRegistered:
+    case SimulationChangeKind::LayerRegistered:
+    case SimulationChangeKind::IntervalStarted:
+    case SimulationChangeKind::TaskPrepared:
+    case SimulationChangeKind::TaskCommitted:
+    case SimulationChangeKind::TaskDeferred:
+    case SimulationChangeKind::TaskFailed:
+    case SimulationChangeKind::BudgetExceeded:
+    case SimulationChangeKind::SummaryGenerated:
+        return true;
+    }
+    return false;
+}
+
 [[nodiscard]] bool SameInterval(const SimulationSummary &summary, SimulationRegionId region, GameplayTimePoint from,
                                 GameplayTimePoint to) noexcept
 {
@@ -53,7 +125,7 @@ SimulationService::SimulationService() : task_ids_(0x30322001), summary_ids_(0x3
 
 foundation::Result<SimulationRegionId> SimulationService::RegisterRegion(SimulationRegion region)
 {
-    if (region.canonical_name.empty())
+    if (region.canonical_name.empty() || !IsValidSimulationDetailLevel(region.detail_level))
         return foundation::Result<SimulationRegionId>::Failure(
             Error("gameplay.simulation.invalid_region", "region name required"));
     const auto canonical = SimulationRegionId::FromString(region.canonical_name);
@@ -63,7 +135,8 @@ foundation::Result<SimulationRegionId> SimulationService::RegisterRegion(Simulat
         return foundation::Result<SimulationRegionId>::Failure(
             Error("gameplay.simulation.invalid_region", "invalid or duplicate region"));
 
-    Bump();
+    if (!Bump())
+        return foundation::Result<SimulationRegionId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
     region.revision = revision_;
     const auto id = region.id;
     regions_.emplace(id, std::move(region));
@@ -77,7 +150,7 @@ foundation::Result<SimulationLayerId> SimulationService::RegisterLayer(Simulatio
     if (definitions_frozen_)
         return foundation::Result<SimulationLayerId>::Failure(
             Error("gameplay.simulation.registry_frozen", "simulation layer definitions frozen"));
-    if (layer.canonical_name.empty() || executor == nullptr)
+    if (layer.canonical_name.empty() || executor == nullptr || !IsValidSimulationMaterializationPolicy(layer.materialization_policy))
         return foundation::Result<SimulationLayerId>::Failure(
             Error("gameplay.simulation.invalid_layer", "layer name and executor required"));
     const auto canonical = SimulationLayerId::FromString(layer.canonical_name);
@@ -87,11 +160,20 @@ foundation::Result<SimulationLayerId> SimulationService::RegisterLayer(Simulatio
         return foundation::Result<SimulationLayerId>::Failure(
             Error("gameplay.simulation.invalid_layer", "invalid or duplicate layer"));
 
-    Bump();
+    if (!Bump())
+        return foundation::Result<SimulationLayerId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
     layer.revision = revision_;
     const auto id = layer.id;
     layers_.emplace(id, std::move(layer));
-    executors_[id] = executor;
+    try
+    {
+        executors_.emplace(id, executor);
+    }
+    catch (...)
+    {
+        layers_.erase(id);
+        throw;
+    }
     Record({0, SimulationChangeKind::LayerRegistered, {}, id, {}, {}, {}, revision_});
     return foundation::Result<SimulationLayerId>::Success(id);
 }
@@ -122,7 +204,8 @@ void SimulationService::SetRetentionPolicy(SimulationRetentionPolicy policy) noe
 
 bool SimulationService::DetailAllows(const SimulationLayerDefinition &layer, SimulationDetailLevel detail) const noexcept
 {
-    if (detail == SimulationDetailLevel::Disabled || detail == SimulationDetailLevel::Dormant)
+    if (!IsValidSimulationDetailLevel(detail) || !IsValidSimulationMaterializationPolicy(layer.materialization_policy) ||
+        detail == SimulationDetailLevel::Disabled || detail == SimulationDetailLevel::Dormant)
         return false;
     if (layer.materialization_policy == SimulationMaterializationPolicy::RequiresMaterialized)
         return detail == SimulationDetailLevel::Materialized;
@@ -176,12 +259,13 @@ foundation::Result<void> SimulationService::CreateIntervalExecution(SimulationRe
         execution.layers.push_back(std::move(layer_execution));
     }
 
-    task_ids_ = staged_task_ids;
-    summary_ids_ = staged_summary_ids;
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
     execution.revision = revision_;
     const auto id = execution.id;
     active_intervals_.emplace(region.id, std::move(execution));
+    task_ids_ = staged_task_ids;
+    summary_ids_ = staged_summary_ids;
     Record({0, SimulationChangeKind::IntervalStarted, region.id, {}, {}, context.time, context, revision_});
     (void)id;
     return foundation::Result<void>::Success();
@@ -211,7 +295,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
             if (task.state != SimulationTaskState::Deferred)
             {
                 task.state = SimulationTaskState::Deferred;
-                Bump();
+                if (!Bump())
+                    return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
                 task.revision = revision_;
                 ++diagnostics_.tasks_deferred;
                 Record({0, SimulationChangeKind::TaskDeferred, region.id, task.layer, task.id, context.time, context,
@@ -230,7 +315,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
 
         if (!DetailAllows(layer_it->second, task.detail))
         {
-            Bump();
+            if (!Bump())
+                return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
             task.state = SimulationTaskState::Skipped;
             task.revision = revision_;
             layer_execution.prepared = true;
@@ -261,7 +347,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
 
             if (!prepared)
             {
-                Bump();
+                if (!Bump())
+                    return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
                 task.state = SimulationTaskState::Failed;
                 task.revision = revision_;
                 Record({0, SimulationChangeKind::TaskFailed, region.id, task.layer, task.id, context.time, context,
@@ -272,7 +359,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
             auto layer_summary = std::move(prepared).Value();
             if (layer_summary.layer != task.layer)
             {
-                Bump();
+                if (!Bump())
+                    return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
                 task.state = SimulationTaskState::Failed;
                 task.revision = revision_;
                 Record({0, SimulationChangeKind::TaskFailed, region.id, task.layer, task.id, context.time, context,
@@ -281,7 +369,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
                     Error("gameplay.simulation.invalid_prepare", "executor returned summary for a different layer"));
             }
             layer_summary.state = SimulationTaskState::Running;
-            Bump();
+            if (!Bump())
+                return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
             task.revision = revision_;
             layer_summary.revision = revision_;
             layer_execution.prepared_summary = std::move(layer_summary);
@@ -295,7 +384,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
         {
             if (task.state != SimulationTaskState::Deferred)
             {
-                Bump();
+                if (!Bump())
+                    return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
                 task.state = SimulationTaskState::Deferred;
                 task.revision = revision_;
                 ++diagnostics_.tasks_deferred;
@@ -326,7 +416,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
 
         if (!committed)
         {
-            Bump();
+            if (!Bump())
+                return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
             task.state = SimulationTaskState::Failed;
             task.revision = revision_;
             Record({0, SimulationChangeKind::TaskFailed, region.id, task.layer, task.id, context.time, context,
@@ -336,7 +427,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
 
         ++commits;
         ++diagnostics_.tasks_committed;
-        Bump();
+        if (!Bump())
+            return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
         task.state = SimulationTaskState::Completed;
         task.revision = revision_;
         layer_execution.prepared_summary.state = SimulationTaskState::Completed;
@@ -376,7 +468,8 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
     for (const auto &layer_execution : execution.layers)
         summary.layers.push_back(layer_execution.prepared_summary);
 
-    Bump();
+    if (!Bump())
+        return foundation::Result<SimulationSummaryId>::Failure(Error("gameplay.simulation.revision_exhausted", "simulation revision exhausted"));
     summary.revision = revision_;
     execution.state = SimulationIntervalState::Completed;
     execution.revision = revision_;
@@ -497,6 +590,7 @@ SimulationSnapshot SimulationService::CaptureSnapshot() const
     s.summary_ids = summary_ids_.GetSnapshot();
     s.revision = revision_;
     s.change_epoch = journal_epoch_;
+    s.next_change_sequence = next_change_sequence_;
     return s;
 }
 
@@ -517,7 +611,8 @@ foundation::Result<void> SimulationService::RestoreSnapshot(SimulationSnapshot s
     for (auto &region : s.regions)
     {
         if (!region.id.IsValid() || region.canonical_name.empty() ||
-            SimulationRegionId::FromString(region.canonical_name) != region.id || !RevisionWithin(region.revision, s.revision))
+            SimulationRegionId::FromString(region.canonical_name) != region.id || !IsValidSimulationDetailLevel(region.detail_level) ||
+            !RevisionWithin(region.revision, s.revision))
             return foundation::Result<void>::Failure(Error("gameplay.simulation.restore_invalid", "invalid region"));
         if (!new_regions.emplace(region.id, region).second)
             return foundation::Result<void>::Failure(
@@ -535,7 +630,7 @@ foundation::Result<void> SimulationService::RestoreSnapshot(SimulationSnapshot s
         for (const auto &layer_summary : summary.layers)
         {
             if (!layer_summary.layer.IsValid() || !layers_.contains(layer_summary.layer) ||
-                !summary_layers.insert(layer_summary.layer).second || !RevisionWithin(layer_summary.revision, s.revision))
+                !summary_layers.insert(layer_summary.layer).second || !RevisionWithin(layer_summary.revision, s.revision) || !IsValidSimulationTaskState(layer_summary.state))
                 return foundation::Result<void>::Failure(
                     Error("gameplay.simulation.restore_invalid", "invalid summary layer"));
         }
@@ -546,7 +641,7 @@ foundation::Result<void> SimulationService::RestoreSnapshot(SimulationSnapshot s
     {
         const auto region_it = new_regions.find(interval.region);
         if (!interval.id.IsValid() || region_it == new_regions.end() || interval.to.ticks <= interval.from.ticks ||
-            interval.state != SimulationIntervalState::Pending || interval.from != region_it->second.last_simulated_at ||
+            !IsValidSimulationIntervalState(interval.state) || interval.state != SimulationIntervalState::Pending || interval.from != region_it->second.last_simulated_at ||
             interval.detail != region_it->second.detail_level || !RevisionWithin(interval.revision, s.revision) ||
             !summary_ids.insert(interval.id).second || interval.layers.size() != layers_.size())
             return foundation::Result<void>::Failure(
@@ -559,7 +654,7 @@ foundation::Result<void> SimulationService::RestoreSnapshot(SimulationSnapshot s
             if (!task.id.IsValid() || !task_ids.insert(task.id).second || task.region != interval.region ||
                 task.from != interval.from || task.to != interval.to || task.detail != interval.detail ||
                 !layers_.contains(task.layer) || !interval_layers.insert(task.layer).second ||
-                !RevisionWithin(task.revision, s.revision))
+                !RevisionWithin(task.revision, s.revision) || !IsValidSimulationTaskState(task.state))
                 return foundation::Result<void>::Failure(
                     Error("gameplay.simulation.restore_invalid", "invalid simulation task"));
 
@@ -600,7 +695,7 @@ foundation::Result<void> SimulationService::RestoreSnapshot(SimulationSnapshot s
     summary_ids_.Restore(s.summary_ids);
     revision_ = s.revision;
     changes_.clear();
-    next_change_sequence_ = 1;
+    next_change_sequence_ = s.next_change_sequence;
     diagnostics_ = {};
     TrimRetention();
     journal_epoch_ = *next_journal_epoch;
@@ -636,12 +731,10 @@ void SimulationService::Record(SimulationChange change)
 {
     if (next_change_sequence_ == 0)
         return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
-    changes_.push_back(change);
+    const auto assigned = next_change_sequence_;
+    change.sequence = assigned;
+    changes_.push_back(std::move(change));
+    next_change_sequence_ = assigned == std::numeric_limits<std::uint64_t>::max() ? 0 : assigned + 1;
     TrimRetention();
 }
 } // namespace epidemic::gameplay::simulation

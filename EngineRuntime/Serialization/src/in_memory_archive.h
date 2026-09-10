@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "archive_tree.h"
 #include "Epidemic/Runtime/Serialization/archive_reader.h"
@@ -32,6 +32,7 @@ class InMemoryArchiveWriter final : public IArchiveWriter
     [[nodiscard]] foundation::Result<SerializedDocument> Finalize(foundation::StringId type_id, SchemaVersion schema_version) override;
 
     [[nodiscard]] ArchiveObjectPtr Snapshot() const;
+    [[nodiscard]] foundation::Result<void> MergeRootFieldsTransactional(const ArchiveObject& source);
 
   private:
     enum class ContextKind { Object, Array, ArrayElement };
@@ -43,7 +44,11 @@ class InMemoryArchiveWriter final : public IArchiveWriter
     };
 
     [[nodiscard]] foundation::Result<void> EnsureWritable() const;
+    [[nodiscard]] foundation::Result<void> ValidateFieldWrite(std::string_view name) const;
     [[nodiscard]] foundation::Result<void> WriteValue(std::string_view name, ArchiveValue value);
+    [[nodiscard]] bool HasUninitializedArrays() const;
+    [[nodiscard]] static bool HasUninitializedArrays(const ArchiveObject& object);
+    [[nodiscard]] static bool HasUninitializedArrays(const ArchiveValue& value);
 
     ArchiveObjectPtr root_;
     std::vector<Context> stack_;

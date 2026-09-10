@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <iterator>
 #include <limits>
+#include <type_traits>
+#include <tuple>
+#include <exception>
 
 namespace epidemic::gameplay::narrative
 {
@@ -28,116 +31,212 @@ void AdvanceGeneratorPast(MonotonicIdGenerator<GameplayObjectId> &generator, TWr
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
     generator.Restore(snapshot);
 }
+
+
+template <class TEnum, TEnum Last>
+[[nodiscard]] constexpr bool IsEnumValueValid(TEnum value) noexcept
+{
+    using U = std::underlying_type_t<TEnum>;
+    const auto raw = static_cast<U>(value);
+    return raw >= static_cast<U>(0) && raw <= static_cast<U>(Last);
+}
+
+[[nodiscard]] constexpr bool IsValid(NarrativeRuntimeState value) noexcept
+{
+    return IsEnumValueValid<NarrativeRuntimeState, NarrativeRuntimeState::Locked>(value);
+}
+[[nodiscard]] constexpr bool IsValid(NarrativeObjectiveRuntimeState value) noexcept
+{
+    return IsEnumValueValid<NarrativeObjectiveRuntimeState, NarrativeObjectiveRuntimeState::OptionalMissed>(value);
+}
+[[nodiscard]] constexpr bool IsValid(ConditionEvaluationState value) noexcept
+{
+    return IsEnumValueValid<ConditionEvaluationState, ConditionEvaluationState::Partial>(value);
+}
+[[nodiscard]] constexpr bool IsValid(ConsequenceExecutionState value) noexcept
+{
+    return IsEnumValueValid<ConsequenceExecutionState, ConsequenceExecutionState::AlreadyApplied>(value);
+}
+[[nodiscard]] constexpr bool IsValid(JournalVisibilityState value) noexcept
+{
+    return IsEnumValueValid<JournalVisibilityState, JournalVisibilityState::Suppressed>(value);
+}
+[[nodiscard]] constexpr bool IsValid(RumorState value) noexcept
+{
+    return IsEnumValueValid<RumorState, RumorState::Suppressed>(value);
+}
+[[nodiscard]] constexpr bool IsValid(NarrativeChoiceState value) noexcept
+{
+    return IsEnumValueValid<NarrativeChoiceState, NarrativeChoiceState::Expired>(value);
+}
+[[nodiscard]] constexpr bool IsValid(NarrativeEventExecutionState value) noexcept
+{
+    return IsEnumValueValid<NarrativeEventExecutionState, NarrativeEventExecutionState::FailedRetryable>(value);
+}
+[[nodiscard]] constexpr bool IsValid(NarrativeEventExecutionPhase value) noexcept
+{
+    return IsEnumValueValid<NarrativeEventExecutionPhase, NarrativeEventExecutionPhase::Completed>(value);
+}
+
+template <class Map, class Key, class Value>
+[[nodiscard]] bool StageInsert(Map &target, Key key, Value value) noexcept
+{
+    try
+    {
+        Map staged = target;
+        staged.emplace(std::move(key), std::move(value));
+        target.swap(staged);
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
 } // namespace
+
+foundation::Result<Revision> NarrativeService::PrepareRevision() const noexcept
+{
+    const auto next = CheckedNext(revision_);
+    if (!next)
+        return foundation::Result<Revision>::Failure(
+            Error("gameplay.narrative.revision_exhausted", "narrative revision counter is exhausted"));
+    return foundation::Result<Revision>::Success(*next);
+}
+
+bool NarrativeService::CanAdvanceRevisionBy(std::size_t count) const noexcept
+{
+    return count <= std::numeric_limits<std::uint64_t>::max() - revision_.value;
+}
 
 foundation::Result<void> NarrativeService::RegisterThreadDefinition(NarrativeThreadDefinition d)
 {
     if (frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
-    if (!d.id.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.invalid_thread", "invalid thread definition"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
+    if (!d.id.IsValid() || !IsValid(d.initial_state))
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_thread", "invalid thread definition"));
     if (thread_defs_.contains(d.id))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.duplicate_thread", "duplicate thread definition"));
-    Bump();
-    d.revision = revision_;
-    thread_defs_.emplace(d.id, d);
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.duplicate_thread", "duplicate thread definition"));
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    d.revision = next_revision.Value();
+    if (!StageInsert(thread_defs_, d.id, d))
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.allocation_failed", "failed to stage thread definition"));
+    CommitRevision(next_revision.Value());
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::RegisterArcDefinition(NarrativeArcDefinition d)
 {
     if (frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
     if (!d.id.IsValid())
         return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_arc", "invalid arc definition"));
     if (arc_defs_.contains(d.id))
         return foundation::Result<void>::Failure(Error("gameplay.narrative.duplicate_arc", "duplicate arc definition"));
-    Bump();
-    d.revision = revision_;
-    arc_defs_.emplace(d.id, d);
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    d.revision = next_revision.Value();
+    if (!StageInsert(arc_defs_, d.id, d))
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.allocation_failed", "failed to stage arc definition"));
+    CommitRevision(next_revision.Value());
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::RegisterBeatDefinition(NarrativeBeatDefinition d)
 {
     if (frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
     if (!d.id.IsValid() || !d.thread.IsValid())
         return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_beat", "invalid beat definition"));
     if (beat_defs_.contains(d.id))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.duplicate_beat", "duplicate beat definition"));
-    Bump();
-    d.revision = revision_;
-    beat_defs_.emplace(d.id, d);
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.duplicate_beat", "duplicate beat definition"));
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    d.revision = next_revision.Value();
+    if (!StageInsert(beat_defs_, d.id, d))
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.allocation_failed", "failed to stage beat definition"));
+    CommitRevision(next_revision.Value());
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::RegisterObjectiveDefinition(NarrativeObjectiveDefinition d)
 {
     if (frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
     if (!d.id.IsValid() || !d.thread.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.invalid_objective", "invalid objective definition"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_objective", "invalid objective definition"));
     if (objective_defs_.contains(d.id))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.duplicate_objective", "duplicate objective definition"));
-    Bump();
-    d.revision = revision_;
-    objective_defs_.emplace(d.id, d);
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.duplicate_objective", "duplicate objective definition"));
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    d.revision = next_revision.Value();
+    if (!StageInsert(objective_defs_, d.id, d))
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.allocation_failed", "failed to stage objective definition"));
+    CommitRevision(next_revision.Value());
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::RegisterConditionDefinition(NarrativeConditionDefinition d)
 {
     if (frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
     if (!d.id.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.invalid_condition", "invalid condition definition"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_condition", "invalid condition definition"));
     if (condition_defs_.contains(d.id))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.duplicate_condition", "duplicate condition definition"));
-    Bump();
-    d.revision = revision_;
-    condition_defs_.emplace(d.id, d);
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.duplicate_condition", "duplicate condition definition"));
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    d.revision = next_revision.Value();
+    if (!StageInsert(condition_defs_, d.id, d))
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.allocation_failed", "failed to stage condition definition"));
+    CommitRevision(next_revision.Value());
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::RegisterConsequenceDefinition(NarrativeConsequenceDefinition d)
 {
     if (frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
-    if (!d.id.IsValid() || !d.type.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.invalid_consequence", "invalid consequence definition"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
+    if (!d.id.IsValid() || !d.type.IsValid() || (d.journal_template && !IsValid(d.journal_template->visibility)))
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_consequence", "invalid consequence definition"));
     if (consequence_defs_.contains(d.id))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.duplicate_consequence", "duplicate consequence definition"));
-    Bump();
-    d.revision = revision_;
-    consequence_defs_.emplace(d.id, d);
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.duplicate_consequence", "duplicate consequence definition"));
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    d.revision = next_revision.Value();
+    if (!StageInsert(consequence_defs_, d.id, d))
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.allocation_failed", "failed to stage consequence definition"));
+    CommitRevision(next_revision.Value());
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::RegisterStoryletDefinition(StoryletDefinition d)
 {
     if (frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.frozen", "narrative definitions are frozen"));
     if (!d.id.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.invalid_storylet", "invalid storylet definition"));
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_storylet", "invalid storylet definition"));
     if (storylet_defs_.contains(d.id))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.narrative.duplicate_storylet", "duplicate storylet definition"));
-    Bump();
-    d.revision = revision_;
-    storylet_defs_.emplace(d.id, d);
-    storylet_runtime_.emplace(d.id, StoryletRuntimeState{.id = d.id, .revision = revision_});
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.duplicate_storylet", "duplicate storylet definition"));
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    d.revision = next_revision.Value();
+    try
+    {
+        auto staged_defs = storylet_defs_;
+        auto staged_runtime = storylet_runtime_;
+        staged_defs.emplace(d.id, d);
+        staged_runtime.emplace(d.id, StoryletRuntimeState{.id = d.id, .revision = next_revision.Value()});
+        storylet_defs_.swap(staged_defs);
+        storylet_runtime_.swap(staged_runtime);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.narrative.allocation_failed", "failed to stage storylet definition"));
+    }
+    CommitRevision(next_revision.Value());
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::RegisterConditionResolver(NarrativeConditionTypeId type,
@@ -149,7 +248,15 @@ foundation::Result<void> NarrativeService::RegisterConditionResolver(NarrativeCo
     if (condition_resolvers_.contains(type))
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.duplicate_resolver", "duplicate condition resolver"));
-    condition_resolvers_.emplace(type, &resolver);
+    try
+    {
+        condition_resolvers_.emplace(type, &resolver);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to register condition resolver"));
+    }
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::RegisterConsequenceHandler(NarrativeConsequenceTypeId type,
@@ -161,7 +268,15 @@ foundation::Result<void> NarrativeService::RegisterConsequenceHandler(NarrativeC
     if (consequence_handlers_.contains(type))
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.duplicate_handler", "duplicate consequence handler"));
-    consequence_handlers_.emplace(type, &handler);
+    try
+    {
+        consequence_handlers_.emplace(type, &handler);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to register consequence handler"));
+    }
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> NarrativeService::FreezeDefinitions()
@@ -371,24 +486,58 @@ NarrativeObjectiveState &NarrativeService::EnsureObjectiveState(NarrativeObjecti
 foundation::Result<void> NarrativeService::StartThread(NarrativeThreadId id, GameplayObjectRef owner,
                                                        GameplayObjectRef scope, GameplayContext c)
 {
-    if (!thread_defs_.contains(id))
+    const auto def_it = thread_defs_.find(id);
+    if (def_it == thread_defs_.end())
         return foundation::Result<void>::Failure(Error("gameplay.narrative.thread_missing", "thread missing"));
-    auto &s = EnsureThreadState(id);
-    if (s.state == NarrativeRuntimeState::Completed || s.state == NarrativeRuntimeState::Failed)
-        return foundation::Result<void>::Success();
-    if (s.state == NarrativeRuntimeState::Expired)
-        return foundation::Result<void>::Failure(Error("gameplay.narrative.thread_expired", "thread is expired"));
-    if (s.state == NarrativeRuntimeState::Active)
-        return foundation::Result<void>::Success();
-    if (s.state == NarrativeRuntimeState::Suspended)
-        return ResumeThread(id, c);
-    Bump();
-    s.state = NarrativeRuntimeState::Active;
-    s.owner_subject = owner;
-    s.scope = scope;
-    s.started_at = c.time;
-    s.updated_at = c.time;
-    s.revision = revision_;
+
+    auto existing = threads_.find(id);
+    if (existing != threads_.end())
+    {
+        if (existing->second.state == NarrativeRuntimeState::Completed ||
+            existing->second.state == NarrativeRuntimeState::Failed)
+            return foundation::Result<void>::Success();
+        if (existing->second.state == NarrativeRuntimeState::Expired)
+            return foundation::Result<void>::Failure(Error("gameplay.narrative.thread_expired", "thread is expired"));
+        if (existing->second.state == NarrativeRuntimeState::Active)
+            return foundation::Result<void>::Success();
+        if (existing->second.state == NarrativeRuntimeState::Suspended)
+            return ResumeThread(id, c);
+    }
+
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+
+    if (existing == threads_.end())
+    {
+        NarrativeThreadState staged;
+        staged.thread = id;
+        staged.state = NarrativeRuntimeState::Active;
+        staged.owner_subject = owner;
+        staged.scope = scope;
+        staged.started_at = c.time;
+        staged.updated_at = c.time;
+        staged.revision = next_revision.Value();
+        try
+        {
+            existing = threads_.emplace(id, std::move(staged)).first;
+        }
+        catch (...)
+        {
+            return foundation::Result<void>::Failure(
+                Error("gameplay.narrative.allocation_failed", "failed to create thread runtime state"));
+        }
+    }
+    else
+    {
+        existing->second.state = NarrativeRuntimeState::Active;
+        existing->second.owner_subject = owner;
+        existing->second.scope = scope;
+        existing->second.started_at = c.time;
+        existing->second.updated_at = c.time;
+        existing->second.revision = next_revision.Value();
+    }
+    CommitRevision(next_revision.Value());
     Record({0, NarrativeChangeKind::ThreadStarted, id, {}, {}, {}, {}, {}, {}, {}, owner, c, revision_});
     return foundation::Result<void>::Success();
 }
@@ -400,7 +549,10 @@ foundation::Result<void> NarrativeService::SuspendThread(NarrativeThreadId id, G
     if (it->second.state != NarrativeRuntimeState::Active)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.thread_transition_invalid", "only an active thread can be suspended"));
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     it->second.state = NarrativeRuntimeState::Suspended;
     it->second.updated_at = c.time;
     it->second.revision = revision_;
@@ -429,7 +581,10 @@ foundation::Result<void> NarrativeService::ResumeThread(NarrativeThreadId id, Ga
     if (it->second.state != NarrativeRuntimeState::Suspended)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.thread_transition_invalid", "only a suspended thread can be resumed"));
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     it->second.state = NarrativeRuntimeState::Active;
     it->second.updated_at = c.time;
     it->second.revision = revision_;
@@ -445,7 +600,10 @@ foundation::Result<void> NarrativeService::ExpireThread(NarrativeThreadId id, Ga
     if (it->second.state == NarrativeRuntimeState::Completed || it->second.state == NarrativeRuntimeState::Failed ||
         it->second.state == NarrativeRuntimeState::Expired)
         return foundation::Result<void>::Success();
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     it->second.state = NarrativeRuntimeState::Expired;
     it->second.updated_at = c.time;
     it->second.revision = revision_;
@@ -465,7 +623,10 @@ foundation::Result<void> NarrativeService::CompleteThread(NarrativeThreadId id, 
         return foundation::Result<void>::Success();
     if (s.state == NarrativeRuntimeState::Expired)
         return foundation::Result<void>::Failure(Error("gameplay.narrative.thread_expired", "thread is expired"));
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     s.state = NarrativeRuntimeState::Completed;
     s.updated_at = c.time;
     s.revision = revision_;
@@ -482,7 +643,10 @@ foundation::Result<void> NarrativeService::FailThread(NarrativeThreadId id, Game
     auto &s = it->second;
     if (s.state == NarrativeRuntimeState::Failed)
         return foundation::Result<void>::Success();
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     s.state = NarrativeRuntimeState::Failed;
     s.updated_at = c.time;
     s.revision = revision_;
@@ -491,27 +655,44 @@ foundation::Result<void> NarrativeService::FailThread(NarrativeThreadId id, Game
 }
 foundation::Result<void> NarrativeService::ActivateObjective(NarrativeObjectiveId id, GameplayContext c)
 {
-    if (!objective_defs_.contains(id))
+    const auto def_it = objective_defs_.find(id);
+    if (def_it == objective_defs_.end())
         return foundation::Result<void>::Failure(Error("gameplay.narrative.objective_missing", "objective missing"));
-    auto &s = EnsureObjectiveState(id);
-    if (s.state == NarrativeObjectiveRuntimeState::Completed || s.state == NarrativeObjectiveRuntimeState::Failed)
+    auto existing = objectives_.find(id);
+    if (existing != objectives_.end() &&
+        (existing->second.state == NarrativeObjectiveRuntimeState::Completed ||
+         existing->second.state == NarrativeObjectiveRuntimeState::Failed))
         return foundation::Result<void>::Success();
-    Bump();
-    s.state = NarrativeObjectiveRuntimeState::Active;
-    s.started_at = c.time;
-    s.revision = revision_;
-    Record({0,
-            NarrativeChangeKind::ObjectiveActivated,
-            objective_defs_.at(id).thread,
-            id,
-            {},
-            {},
-            {},
-            {},
-            {},
-            {},
-            c.actor,
-            c,
+
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+
+    if (existing == objectives_.end())
+    {
+        NarrativeObjectiveState staged;
+        staged.objective = id;
+        staged.state = NarrativeObjectiveRuntimeState::Active;
+        staged.started_at = c.time;
+        staged.revision = next_revision.Value();
+        try
+        {
+            existing = objectives_.emplace(id, std::move(staged)).first;
+        }
+        catch (...)
+        {
+            return foundation::Result<void>::Failure(
+                Error("gameplay.narrative.allocation_failed", "failed to create objective runtime state"));
+        }
+    }
+    else
+    {
+        existing->second.state = NarrativeObjectiveRuntimeState::Active;
+        existing->second.started_at = c.time;
+        existing->second.revision = next_revision.Value();
+    }
+    CommitRevision(next_revision.Value());
+    Record({0, NarrativeChangeKind::ObjectiveActivated, def_it->second.thread, id, {}, {}, {}, {}, {}, {}, c.actor, c,
             revision_});
     return foundation::Result<void>::Success();
 }
@@ -526,7 +707,10 @@ foundation::Result<void> NarrativeService::CompleteObjective(NarrativeObjectiveI
     auto &s = it->second;
     if (s.state == NarrativeObjectiveRuntimeState::Completed)
         return foundation::Result<void>::Success();
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     s.state = NarrativeObjectiveRuntimeState::Completed;
     s.progress = 1'000'000;
     s.completed_at = c.time;
@@ -546,7 +730,10 @@ foundation::Result<void> NarrativeService::FailObjective(NarrativeObjectiveId id
     auto &s = it->second;
     if (s.state == NarrativeObjectiveRuntimeState::Failed)
         return foundation::Result<void>::Success();
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     s.state = NarrativeObjectiveRuntimeState::Failed;
     s.completed_at = c.time;
     s.revision = revision_;
@@ -569,7 +756,10 @@ foundation::Result<void> NarrativeService::CancelObjective(NarrativeObjectiveId 
         it->second.state == NarrativeObjectiveRuntimeState::OptionalMissed)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.objective_transition_invalid", "objective is terminal"));
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     it->second.state = NarrativeObjectiveRuntimeState::Cancelled;
     it->second.completed_at = c.time;
     it->second.revision = revision_;
@@ -592,7 +782,10 @@ foundation::Result<void> NarrativeService::MarkObjectiveOptionalMissed(Narrative
         it->second.state == NarrativeObjectiveRuntimeState::Cancelled)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.objective_transition_invalid", "objective is terminal"));
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     it->second.state = NarrativeObjectiveRuntimeState::OptionalMissed;
     it->second.completed_at = c.time;
     it->second.revision = revision_;
@@ -613,7 +806,10 @@ foundation::Result<void> NarrativeService::UpdateObjectiveProgress(NarrativeObje
     if (s.state != NarrativeObjectiveRuntimeState::Active)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.objective_transition_invalid", "only an active objective has progress"));
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    CommitRevision(next_revision.Value());
     s.progress = std::clamp(progress, std::int64_t{0}, std::int64_t{1'000'000});
     s.revision = revision_;
     auto thread = objective_defs_.at(id).thread;
@@ -672,7 +868,21 @@ NarrativeConditionResult NarrativeService::EvaluateCondition(NarrativeConditionI
         r.state = ConditionEvaluationState::Unavailable;
         return r;
     }
-    return resolver->second->Evaluate(it->second, ctx);
+    try
+    {
+        auto result = resolver->second->Evaluate(it->second, ctx);
+        if (!IsValid(result.state))
+        {
+            result.condition = id;
+            result.state = ConditionEvaluationState::Unavailable;
+        }
+        return result;
+    }
+    catch (...)
+    {
+        r.state = ConditionEvaluationState::Unavailable;
+        return r;
+    }
 }
 bool NarrativeService::AllSatisfied(const std::vector<NarrativeConditionId> &conditions,
                                     const NarrativeEvaluationContext &context) const
@@ -721,56 +931,103 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
         return foundation::Result<void>::Success();
     }
 
+    auto build_work_plan = [&]() -> foundation::Result<std::tuple<std::vector<NarrativeBeatId>,
+                                                                    std::vector<NarrativeObjectiveId>,
+                                                                    std::vector<StoryletId>>>
+    {
+        try
+        {
+            std::vector<NarrativeBeatId> beats;
+            std::vector<NarrativeObjectiveId> objectives;
+            std::vector<StoryletId> storylets;
+            beats.reserve(beat_defs_.size());
+            objectives.reserve(objective_defs_.size());
+            storylets.reserve(storylet_defs_.size());
+            for (const auto &[id, definition] : beat_defs_)
+            {
+                (void)definition;
+                beats.push_back(id);
+            }
+            std::sort(beats.begin(), beats.end(), [this](auto a, auto b) {
+                const auto &left = beat_defs_.at(a);
+                const auto &right = beat_defs_.at(b);
+                if (left.thread != right.thread)
+                    return left.thread < right.thread;
+                if (left.order != right.order)
+                    return left.order < right.order;
+                return left.id < right.id;
+            });
+            for (const auto &[id, definition] : objective_defs_)
+            {
+                (void)definition;
+                objectives.push_back(id);
+            }
+            std::sort(objectives.begin(), objectives.end());
+            for (const auto &[id, definition] : storylet_defs_)
+            {
+                (void)definition;
+                storylets.push_back(id);
+            }
+            std::sort(storylets.begin(), storylets.end(), [this](auto a, auto b) {
+                const auto &left = storylet_defs_.at(a);
+                const auto &right = storylet_defs_.at(b);
+                if (left.priority != right.priority)
+                    return left.priority > right.priority;
+                return left.id < right.id;
+            });
+            return foundation::Result<std::tuple<std::vector<NarrativeBeatId>, std::vector<NarrativeObjectiveId>,
+                                                 std::vector<StoryletId>>>::Success(
+                {std::move(beats), std::move(objectives), std::move(storylets)});
+        }
+        catch (...)
+        {
+            return foundation::Result<std::tuple<std::vector<NarrativeBeatId>, std::vector<NarrativeObjectiveId>,
+                                                 std::vector<StoryletId>>>::Failure(
+                Error("gameplay.narrative.allocation_failed", "failed to build narrative event work plan"));
+        }
+    };
+
     if (existing == event_executions_.end())
     {
-        Bump();
+        auto next_revision = PrepareRevision();
+        if (!next_revision)
+            return foundation::Result<void>::Failure(next_revision.GetError());
+        auto plan = build_work_plan();
+        if (!plan)
+            return foundation::Result<void>::Failure(plan.GetError());
+        auto [beats, objectives, storylets] = std::move(plan.Value());
         NarrativeEventExecution execution;
         execution.key = event_key;
         execution.event = event;
         execution.state = NarrativeEventExecutionState::Pending;
         execution.phase = NarrativeEventExecutionPhase::Beats;
-        execution.revision = revision_;
-        existing = event_executions_.emplace(event_key, std::move(execution)).first;
+        execution.work_plan_initialized = true;
+        execution.beat_plan = std::move(beats);
+        execution.objective_plan = std::move(objectives);
+        execution.storylet_plan = std::move(storylets);
+        execution.revision = next_revision.Value();
+        try
+        {
+            existing = event_executions_.emplace(event_key, std::move(execution)).first;
+        }
+        catch (...)
+        {
+            return foundation::Result<void>::Failure(
+                Error("gameplay.narrative.allocation_failed", "failed to publish narrative event execution"));
+        }
+        CommitRevision(next_revision.Value());
     }
 
     auto &execution = existing->second;
     if (!execution.work_plan_initialized)
     {
-        execution.beat_plan.reserve(beat_defs_.size());
-        for (const auto &[id, definition] : beat_defs_)
-        {
-            (void)definition;
-            execution.beat_plan.push_back(id);
-        }
-        std::sort(execution.beat_plan.begin(), execution.beat_plan.end(), [this](auto a, auto b) {
-            const auto &left = beat_defs_.at(a);
-            const auto &right = beat_defs_.at(b);
-            if (left.thread != right.thread)
-                return left.thread < right.thread;
-            if (left.order != right.order)
-                return left.order < right.order;
-            return left.id < right.id;
-        });
-        execution.objective_plan.reserve(objective_defs_.size());
-        for (const auto &[id, definition] : objective_defs_)
-        {
-            (void)definition;
-            execution.objective_plan.push_back(id);
-        }
-        std::sort(execution.objective_plan.begin(), execution.objective_plan.end());
-        execution.storylet_plan.reserve(storylet_defs_.size());
-        for (const auto &[id, definition] : storylet_defs_)
-        {
-            (void)definition;
-            execution.storylet_plan.push_back(id);
-        }
-        std::sort(execution.storylet_plan.begin(), execution.storylet_plan.end(), [this](auto a, auto b) {
-            const auto &left = storylet_defs_.at(a);
-            const auto &right = storylet_defs_.at(b);
-            if (left.priority != right.priority)
-                return left.priority > right.priority;
-            return left.id < right.id;
-        });
+        auto plan = build_work_plan();
+        if (!plan)
+            return foundation::Result<void>::Failure(plan.GetError());
+        auto [beats, objectives, storylets] = std::move(plan.Value());
+        execution.beat_plan = std::move(beats);
+        execution.objective_plan = std::move(objectives);
+        execution.storylet_plan = std::move(storylets);
         execution.work_plan_initialized = true;
     }
     execution.state = NarrativeEventExecutionState::Processing;
@@ -788,17 +1045,31 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
 
     auto pause_for_budget = [&]() -> foundation::Result<void> {
         ++diagnostics_.budget_exhaustions;
-        Bump();
+        auto next_revision = PrepareRevision();
+        if (!next_revision)
+        {
+            evaluation_limit_ = static_cast<std::size_t>(-1);
+            evaluation_budget_exhausted_ = false;
+            return foundation::Result<void>::Failure(next_revision.GetError());
+        }
         execution.state = NarrativeEventExecutionState::Pending;
-        execution.revision = revision_;
+        execution.revision = next_revision.Value();
+        CommitRevision(next_revision.Value());
         evaluation_limit_ = static_cast<std::size_t>(-1);
         evaluation_budget_exhausted_ = false;
         return foundation::Result<void>::Success();
     };
     auto fail_retryable = [&](foundation::Result<void> failure) -> foundation::Result<void> {
-        Bump();
+        auto next_revision = PrepareRevision();
+        if (!next_revision)
+        {
+            evaluation_limit_ = static_cast<std::size_t>(-1);
+            evaluation_budget_exhausted_ = false;
+            return foundation::Result<void>::Failure(next_revision.GetError());
+        }
         execution.state = NarrativeEventExecutionState::FailedRetryable;
-        execution.revision = revision_;
+        execution.revision = next_revision.Value();
+        CommitRevision(next_revision.Value());
         evaluation_limit_ = static_cast<std::size_t>(-1);
         evaluation_budget_exhausted_ = false;
         return failure;
@@ -834,9 +1105,11 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
                 ++execution.next_beat;
                 continue;
             }
-            auto &thread = EnsureThreadState(beat.thread);
-            if (thread.state == NarrativeRuntimeState::Hidden || thread.state == NarrativeRuntimeState::Available ||
-                thread.state == NarrativeRuntimeState::Discovered || thread.state == NarrativeRuntimeState::Suspended)
+            const auto thread_it = threads_.find(beat.thread);
+            if (thread_it == threads_.end() || thread_it->second.state == NarrativeRuntimeState::Hidden ||
+                thread_it->second.state == NarrativeRuntimeState::Available ||
+                thread_it->second.state == NarrativeRuntimeState::Discovered ||
+                thread_it->second.state == NarrativeRuntimeState::Suspended)
             {
                 auto started = StartThread(beat.thread, event.instigator, event.area,
                                            {.time = event.time,
@@ -862,11 +1135,22 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
                                                              event.correlation);
             if (required > consequences_remaining)
                 return pause_for_budget();
+            std::vector<NarrativeBeatId> staged_activated;
+            try
+            {
+                staged_activated = activated_beats_;
+                staged_activated.push_back(beat.id);
+            }
+            catch (...)
+            {
+                return fail_retryable(foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.allocation_failed", "failed to stage activated beat")));
+            }
             auto planned = PlanConsequences(beat.thread, beat.id, {}, beat.consequences, event.correlation, event.time);
             if (!planned)
                 return fail_retryable(std::move(planned));
             consequences_remaining -= required;
-            activated_beats_.push_back(beat.id);
+            activated_beats_.swap(staged_activated);
             ++execution.next_beat;
         }
         execution.phase = NarrativeEventExecutionPhase::Objectives;
@@ -877,9 +1161,11 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
         while (execution.next_objective < execution.objective_plan.size())
         {
             const auto &objective = objective_defs_.at(execution.objective_plan[execution.next_objective]);
-            auto &state = EnsureObjectiveState(objective.id);
-            if (state.state == NarrativeObjectiveRuntimeState::Hidden ||
-                state.state == NarrativeObjectiveRuntimeState::Available)
+            auto state_it = objectives_.find(objective.id);
+            const auto state_value = state_it == objectives_.end() ? NarrativeObjectiveRuntimeState::Hidden
+                                                                   : state_it->second.state;
+            if (state_value == NarrativeObjectiveRuntimeState::Hidden ||
+                state_value == NarrativeObjectiveRuntimeState::Available)
             {
                 auto [satisfied, exhausted] = all_satisfied(objective.start_conditions);
                 if (exhausted)
@@ -893,10 +1179,13 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
                                                         .source = event.subject});
                     if (!activated)
                         return fail_retryable(std::move(activated));
+                    state_it = objectives_.find(objective.id);
                 }
             }
-            if (state.state == NarrativeObjectiveRuntimeState::Active ||
-                state.state == NarrativeObjectiveRuntimeState::Available)
+            const auto current_state = state_it == objectives_.end() ? NarrativeObjectiveRuntimeState::Hidden
+                                                                     : state_it->second.state;
+            if (current_state == NarrativeObjectiveRuntimeState::Active ||
+                current_state == NarrativeObjectiveRuntimeState::Available)
             {
                 if (!objective.failure_conditions.empty())
                 {
@@ -947,8 +1236,11 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
             const auto &storylet = storylet_defs_.at(execution.storylet_plan[execution.next_storylet]);
             ++storylets_evaluated;
             ++diagnostics_.storylets_evaluated;
-            auto &runtime = storylet_runtime_[storylet.id];
-            runtime.id = storylet.id;
+            auto runtime_it = storylet_runtime_.find(storylet.id);
+            if (runtime_it == storylet_runtime_.end())
+                return fail_retryable(foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.storylet_runtime_missing", "storylet runtime state is missing")));
+            auto &runtime = runtime_it->second;
             if (runtime.activations >= storylet.max_activations)
             {
                 ++execution.next_storylet;
@@ -973,16 +1265,22 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
             const auto required = CountUnplannedConsequences({}, {}, {}, storylet.consequences, event.correlation);
             if (required > consequences_remaining)
                 return pause_for_budget();
+            if (!CanAdvanceRevisionBy(required + 1))
+                return fail_retryable(foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.revision_exhausted", "narrative revision counter is exhausted")));
             auto planned = PlanConsequences({}, {}, {}, storylet.consequences, event.correlation, event.time);
             if (!planned)
                 return fail_retryable(std::move(planned));
             consequences_remaining -= required;
             ++storylets_activated;
             ++diagnostics_.storylets_activated;
-            Bump();
+            auto next_revision = PrepareRevision();
+            if (!next_revision)
+                return fail_retryable(foundation::Result<void>::Failure(next_revision.GetError()));
             ++runtime.activations;
             runtime.last_activated_at = event.time;
-            runtime.revision = revision_;
+            runtime.revision = next_revision.Value();
+            CommitRevision(next_revision.Value());
             Record({0,
                     NarrativeChangeKind::StoryletActivated,
                     {},
@@ -1004,11 +1302,31 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
         execution.phase = NarrativeEventExecutionPhase::Completed;
     }
 
-    Bump();
+    auto completion_revision = PrepareRevision();
+    if (!completion_revision)
+    {
+        evaluation_limit_ = static_cast<std::size_t>(-1);
+        evaluation_budget_exhausted_ = false;
+        return foundation::Result<void>::Failure(completion_revision.GetError());
+    }
+    std::unordered_set<NarrativeEventKey, NarrativeEventKeyHash> staged_processed;
+    try
+    {
+        staged_processed = processed_event_keys_;
+        staged_processed.insert(event_key);
+    }
+    catch (...)
+    {
+        evaluation_limit_ = static_cast<std::size_t>(-1);
+        evaluation_budget_exhausted_ = false;
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to stage processed narrative event"));
+    }
     execution.state = NarrativeEventExecutionState::Completed;
     execution.phase = NarrativeEventExecutionPhase::Completed;
-    execution.revision = revision_;
-    processed_event_keys_.insert(event_key);
+    execution.revision = completion_revision.Value();
+    processed_event_keys_.swap(staged_processed);
+    CommitRevision(completion_revision.Value());
     ++diagnostics_.events_processed;
     Record({0,
             NarrativeChangeKind::EventProcessed,
@@ -1047,77 +1365,119 @@ foundation::Result<void> NarrativeService::ProcessNarrativeEvent(NarrativeEvent 
 
 foundation::Result<void> NarrativeService::PlanConsequences(NarrativeThreadId thread, NarrativeBeatId beat,
                                                             NarrativeObjectiveId objective,
-                                                            const std::vector<NarrativeConsequenceId> &consequences,
+                                                            const std::vector<NarrativeConsequenceId> &consequence_ids,
                                                             CorrelationId correlation, GameplayTimePoint now)
 {
-    std::vector<NarrativeConsequenceId> ids = consequences;
-    std::sort(ids.begin(), ids.end(), [this](auto a, auto b) {
-        const auto pa = consequence_defs_.contains(a) ? consequence_defs_.at(a).priority : 0;
-        const auto pb = consequence_defs_.contains(b) ? consequence_defs_.at(b).priority : 0;
-        if (pa != pb)
-            return pa > pb;
-        return a < b;
-    });
-    std::size_t new_count = 0;
-    std::unordered_set<NarrativeConsequenceKey, NarrativeConsequenceKeyHash> new_keys;
-    for (auto id : ids)
+    try
     {
-        if (!consequence_defs_.contains(id))
-            return foundation::Result<void>::Failure(
-                Error("gameplay.narrative.consequence_missing", "consequence missing"));
-        const auto key = MakeConsequenceKey(thread, beat, objective, id, correlation);
-        if (!consequence_idempotency_.contains(key) && new_keys.insert(key).second)
-            ++new_count;
-    }
-    const auto generator = consequence_ids_.GetSnapshot();
-    if (new_count > 0)
-    {
-        if (generator.next == 0)
-            return foundation::Result<void>::Failure(
-                Error("gameplay.narrative.id_exhausted", "consequence execution id generator exhausted"));
-        const auto available = std::numeric_limits<std::uint64_t>::max() - generator.next + 1;
-        if (new_count > available)
-            return foundation::Result<void>::Failure(
-                Error("gameplay.narrative.id_exhausted", "not enough consequence execution ids remain"));
-    }
-    for (auto id : ids)
-    {
-        const auto key = MakeConsequenceKey(thread, beat, objective, id, correlation);
-        if (consequence_idempotency_.contains(key))
+        std::vector<NarrativeConsequenceId> ids = consequence_ids;
+        std::sort(ids.begin(), ids.end(), [this](auto a, auto b) {
+            const auto pa = consequence_defs_.contains(a) ? consequence_defs_.at(a).priority : 0;
+            const auto pb = consequence_defs_.contains(b) ? consequence_defs_.at(b).priority : 0;
+            if (pa != pb)
+                return pa > pb;
+            return a < b;
+        });
+
+        std::size_t new_count = 0;
+        std::unordered_set<NarrativeConsequenceKey, NarrativeConsequenceKeyHash> new_keys;
+        new_keys.reserve(ids.size());
+        for (auto id : ids)
         {
-            ++diagnostics_.idempotency_hits;
-            continue;
+            if (!consequence_defs_.contains(id))
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.consequence_missing", "consequence missing"));
+            const auto key = MakeConsequenceKey(thread, beat, objective, id, correlation);
+            if (!consequence_idempotency_.contains(key) && new_keys.insert(key).second)
+                ++new_count;
         }
-        Bump();
-        NarrativeConsequenceExecution e;
-        e.id = NarrativeConsequenceExecutionId{consequence_ids_.Next()};
-        e.thread = thread;
-        e.beat = beat;
-        e.objective = objective;
-        e.consequence = id;
-        e.state = ConsequenceExecutionState::Pending;
-        e.planned_at = now;
-        e.correlation = correlation;
-        e.idempotency_key = key;
-        e.revision = revision_;
-        consequences_.emplace(e.id, e);
-        consequence_idempotency_[key] = e.id;
-        ++diagnostics_.consequences_planned;
-        Record({0,
-                NarrativeChangeKind::ConsequencePlanned,
-                thread,
-                objective,
-                beat,
-                e.id,
-                {},
-                {},
-                {},
-                {},
-                {},
-                {.time = now, .correlation = correlation},
-                revision_});
+        if (!CanAdvanceRevisionBy(new_count))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.narrative.revision_exhausted", "narrative revision counter is exhausted"));
+        const auto generator = consequence_ids_.GetSnapshot();
+        if (new_count > 0)
+        {
+            if (generator.next == 0)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.id_exhausted", "consequence execution id generator exhausted"));
+            const auto available = std::numeric_limits<std::uint64_t>::max() - generator.next + 1;
+            if (new_count > available)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.id_exhausted", "not enough consequence execution ids remain"));
+        }
+
+        auto staged_consequences = consequences_;
+        auto staged_idempotency = consequence_idempotency_;
+        auto staged_generator = consequence_ids_;
+        Revision staged_revision = revision_;
+        std::vector<NarrativeChange> staged_changes;
+        staged_changes.reserve(new_count);
+        std::size_t staged_planned = 0;
+
+        for (auto id : ids)
+        {
+            const auto key = MakeConsequenceKey(thread, beat, objective, id, correlation);
+            if (staged_idempotency.contains(key))
+            {
+                if (consequence_idempotency_.contains(key))
+                    ++diagnostics_.idempotency_hits;
+                continue;
+            }
+            const auto next_revision = CheckedNext(staged_revision);
+            if (!next_revision)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.revision_exhausted", "narrative revision counter is exhausted"));
+            const auto raw_id = staged_generator.Next();
+            if (!raw_id.IsValid())
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.id_exhausted", "consequence execution id generator exhausted"));
+
+            NarrativeConsequenceExecution execution;
+            execution.id = NarrativeConsequenceExecutionId{raw_id};
+            execution.thread = thread;
+            execution.beat = beat;
+            execution.objective = objective;
+            execution.consequence = id;
+            execution.state = ConsequenceExecutionState::Pending;
+            execution.planned_at = now;
+            execution.correlation = correlation;
+            execution.idempotency_key = key;
+            execution.revision = *next_revision;
+            if (!staged_consequences.emplace(execution.id, execution).second ||
+                !staged_idempotency.emplace(key, execution.id).second)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.narrative.duplicate_consequence_execution", "duplicate consequence execution"));
+            staged_revision = *next_revision;
+            ++staged_planned;
+            staged_changes.push_back({0,
+                                      NarrativeChangeKind::ConsequencePlanned,
+                                      thread,
+                                      objective,
+                                      beat,
+                                      execution.id,
+                                      {},
+                                      {},
+                                      {},
+                                      {},
+                                      {},
+                                      {.time = now, .correlation = correlation},
+                                      staged_revision});
+        }
+
+        consequences_.swap(staged_consequences);
+        consequence_idempotency_.swap(staged_idempotency);
+        consequence_ids_ = staged_generator;
+        revision_ = staged_revision;
+        diagnostics_.consequences_planned += staged_planned;
+        for (auto &change : staged_changes)
+            Record(std::move(change));
+        return foundation::Result<void>::Success();
     }
-    return foundation::Result<void>::Success();
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to stage narrative consequences"));
+    }
 }
 
 std::size_t NarrativeService::CountUnplannedConsequences(
@@ -1137,130 +1497,232 @@ std::size_t NarrativeService::CountUnplannedConsequences(
     return count;
 }
 
-foundation::Result<JournalEntryId> NarrativeService::AddJournalEntry(JournalEntry e, GameplayContext c)
+foundation::Result<JournalEntryId> NarrativeService::AddJournalEntry(JournalEntry entry, GameplayContext context)
 {
-    if (!e.owner.IsValid())
+    if (!entry.owner.IsValid() || !IsValid(entry.visibility))
         return foundation::Result<JournalEntryId>::Failure(
             Error("gameplay.narrative.invalid_journal", "invalid journal entry"));
-    if (!e.id.IsValid())
-        e.id = JournalEntryId{journal_ids_.Next()};
-    if (journal_.contains(e.id))
+    auto staged_generator = journal_ids_;
+    if (!entry.id.IsValid())
+    {
+        const auto raw = staged_generator.Next();
+        if (!raw.IsValid())
+            return foundation::Result<JournalEntryId>::Failure(
+                Error("gameplay.narrative.id_exhausted", "journal id generator exhausted"));
+        entry.id = JournalEntryId{raw};
+    }
+    if (journal_.contains(entry.id))
         return foundation::Result<JournalEntryId>::Failure(
             Error("gameplay.narrative.duplicate_journal", "duplicate journal entry"));
-    AdvanceGeneratorPast(journal_ids_, e.id);
-    Bump();
-    e.discovered_at = c.time;
-    e.revision = revision_;
-    auto id = e.id;
-    journal_.emplace(id, e);
-    Record({0,
-            NarrativeChangeKind::JournalEntryAdded,
-            e.thread,
-            e.objective,
-            {},
-            {},
-            id,
-            {},
-            {},
-            {},
-            e.owner,
-            c,
-            revision_});
+    AdvanceGeneratorPast(staged_generator, entry.id);
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<JournalEntryId>::Failure(next_revision.GetError());
+    entry.discovered_at = context.time;
+    entry.revision = next_revision.Value();
+    const auto id = entry.id;
+    try
+    {
+        journal_.emplace(id, std::move(entry));
+    }
+    catch (...)
+    {
+        return foundation::Result<JournalEntryId>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to add journal entry"));
+    }
+    journal_ids_ = staged_generator;
+    CommitRevision(next_revision.Value());
+    const auto &stored = journal_.at(id);
+    Record({0, NarrativeChangeKind::JournalEntryAdded, stored.thread, stored.objective, {}, {}, id, {}, {}, {},
+            stored.owner, context, revision_});
     return foundation::Result<JournalEntryId>::Success(id);
 }
-foundation::Result<ClueId> NarrativeService::DiscoverClue(ClueRecord clue, GameplayContext c)
+
+foundation::Result<ClueId> NarrativeService::DiscoverClue(ClueRecord clue, GameplayContext context)
 {
     if (!clue.owner.IsValid() || clue.confidence < 0 || clue.confidence > 1'000'000)
         return foundation::Result<ClueId>::Failure(Error("gameplay.narrative.invalid_clue", "invalid clue"));
+    auto staged_generator = clue_ids_;
     if (!clue.id.IsValid())
-        clue.id = ClueId{clue_ids_.Next()};
+    {
+        const auto raw = staged_generator.Next();
+        if (!raw.IsValid())
+            return foundation::Result<ClueId>::Failure(
+                Error("gameplay.narrative.id_exhausted", "clue id generator exhausted"));
+        clue.id = ClueId{raw};
+    }
     if (clues_.contains(clue.id))
         return foundation::Result<ClueId>::Failure(Error("gameplay.narrative.duplicate_clue", "duplicate clue"));
-    AdvanceGeneratorPast(clue_ids_, clue.id);
-    Bump();
-    clue.discovered_at = c.time;
-    clue.revision = revision_;
-    auto id = clue.id;
-    clues_.emplace(id, clue);
-    Record({0, NarrativeChangeKind::ClueDiscovered, {}, {}, {}, {}, {}, id, {}, {}, clue.owner, c, revision_});
+    AdvanceGeneratorPast(staged_generator, clue.id);
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<ClueId>::Failure(next_revision.GetError());
+    clue.discovered_at = context.time;
+    clue.revision = next_revision.Value();
+    const auto id = clue.id;
+    const auto owner = clue.owner;
+    try
+    {
+        clues_.emplace(id, std::move(clue));
+    }
+    catch (...)
+    {
+        return foundation::Result<ClueId>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to add clue"));
+    }
+    clue_ids_ = staged_generator;
+    CommitRevision(next_revision.Value());
+    Record({0, NarrativeChangeKind::ClueDiscovered, {}, {}, {}, {}, {}, id, {}, {}, owner, context, revision_});
     return foundation::Result<ClueId>::Success(id);
 }
-foundation::Result<RumorId> NarrativeService::CreateRumor(RumorRecord rumor, GameplayContext c)
+
+foundation::Result<RumorId> NarrativeService::CreateRumor(RumorRecord rumor, GameplayContext context)
 {
-    if (!rumor.owner_or_scope.IsValid() || !rumor.topic.IsValid() || rumor.confidence < 0 ||
-        rumor.confidence > 1'000'000 || (rumor.expires_at.ticks != 0 && rumor.expires_at < c.time))
+    if (!rumor.owner_or_scope.IsValid() || !rumor.topic.IsValid() || !IsValid(rumor.state) || rumor.confidence < 0 ||
+        rumor.confidence > 1'000'000 || (rumor.expires_at.ticks != 0 && rumor.expires_at < context.time))
         return foundation::Result<RumorId>::Failure(Error("gameplay.narrative.invalid_rumor", "invalid rumor"));
+    auto staged_generator = rumor_ids_;
     if (!rumor.id.IsValid())
-        rumor.id = RumorId{rumor_ids_.Next()};
+    {
+        const auto raw = staged_generator.Next();
+        if (!raw.IsValid())
+            return foundation::Result<RumorId>::Failure(
+                Error("gameplay.narrative.id_exhausted", "rumor id generator exhausted"));
+        rumor.id = RumorId{raw};
+    }
     if (rumors_.contains(rumor.id))
         return foundation::Result<RumorId>::Failure(Error("gameplay.narrative.duplicate_rumor", "duplicate rumor"));
-    AdvanceGeneratorPast(rumor_ids_, rumor.id);
-    Bump();
-    rumor.created_at = c.time;
-    rumor.revision = revision_;
-    auto id = rumor.id;
-    rumors_.emplace(id, rumor);
-    IndexRumorExpiry(rumor);
-    Record({0, NarrativeChangeKind::RumorCreated, {}, {}, {}, {}, {}, {}, id, {}, rumor.owner_or_scope, c, revision_});
+    AdvanceGeneratorPast(staged_generator, rumor.id);
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<RumorId>::Failure(next_revision.GetError());
+    rumor.created_at = context.time;
+    rumor.revision = next_revision.Value();
+    const auto id = rumor.id;
+    const auto owner = rumor.owner_or_scope;
+    try
+    {
+        auto staged_expiry = rumor_expiry_index_;
+        if (rumor.state == RumorState::Active && rumor.expires_at.ticks != 0)
+        {
+            auto &ids = staged_expiry[rumor.expires_at];
+            const auto position = std::lower_bound(ids.begin(), ids.end(), rumor.id);
+            if (position == ids.end() || *position != rumor.id)
+                ids.insert(position, rumor.id);
+        }
+        rumors_.emplace(id, std::move(rumor));
+        rumor_expiry_index_.swap(staged_expiry);
+    }
+    catch (...)
+    {
+        return foundation::Result<RumorId>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to add rumor"));
+    }
+    rumor_ids_ = staged_generator;
+    CommitRevision(next_revision.Value());
+    Record({0, NarrativeChangeKind::RumorCreated, {}, {}, {}, {}, {}, {}, id, {}, owner, context, revision_});
     return foundation::Result<RumorId>::Success(id);
 }
-std::vector<RumorId> NarrativeService::ExpireRumors(GameplayTimePoint now, GameplayContext c)
+
+std::vector<RumorId> NarrativeService::ExpireRumors(GameplayTimePoint now, GameplayContext context)
 {
     std::vector<RumorId> expired;
-    auto end = rumor_expiry_index_.upper_bound(now);
-    for (auto index_it = rumor_expiry_index_.begin(); index_it != end; ++index_it)
+    try
     {
-        for (auto id : index_it->second)
-        {
-            auto rumor_it = rumors_.find(id);
-            if (rumor_it == rumors_.end())
-                continue;
-            auto &rumor = rumor_it->second;
-            if (rumor.state != RumorState::Active || rumor.expires_at.ticks == 0 || rumor.expires_at > now)
-                continue;
-            Bump();
-            rumor.state = RumorState::Expired;
-            rumor.revision = revision_;
-            expired.push_back(id);
-            Record({0,
-                    NarrativeChangeKind::RumorExpired,
-                    {},
-                    {},
-                    {},
-                    {},
-                    {},
-                    {},
-                    id,
-                    {},
-                    rumor.owner_or_scope,
-                    c,
-                    revision_});
-        }
+        auto end = rumor_expiry_index_.upper_bound(now);
+        for (auto index_it = rumor_expiry_index_.begin(); index_it != end; ++index_it)
+            for (auto id : index_it->second)
+            {
+                auto rumor_it = rumors_.find(id);
+                if (rumor_it != rumors_.end() && rumor_it->second.state == RumorState::Active &&
+                    rumor_it->second.expires_at.ticks != 0 && rumor_it->second.expires_at <= now)
+                    expired.push_back(id);
+            }
+        std::sort(expired.begin(), expired.end());
+        expired.erase(std::unique(expired.begin(), expired.end()), expired.end());
     }
+    catch (...)
+    {
+        return {};
+    }
+    if (!CanAdvanceRevisionBy(expired.size()))
+        return {};
+    for (auto id : expired)
+    {
+        auto next_revision = PrepareRevision();
+        if (!next_revision)
+            return {};
+        auto &rumor = rumors_.at(id);
+        rumor.state = RumorState::Expired;
+        rumor.revision = next_revision.Value();
+        CommitRevision(next_revision.Value());
+        auto change_context = context;
+        change_context.time = now;
+        Record({0, NarrativeChangeKind::RumorExpired, {}, {}, {}, {}, {}, {}, id, {}, rumor.owner_or_scope,
+                change_context, revision_});
+    }
+    auto end = rumor_expiry_index_.upper_bound(now);
     rumor_expiry_index_.erase(rumor_expiry_index_.begin(), end);
-    std::sort(expired.begin(), expired.end());
     return expired;
 }
-foundation::Result<NarrativeChoiceId> NarrativeService::CreateChoice(NarrativeChoice choice, GameplayContext c)
+
+foundation::Result<NarrativeChoiceId> NarrativeService::CreateChoice(NarrativeChoice choice, GameplayContext context)
 {
-    if (!choice.actor.IsValid())
+    if (!choice.actor.IsValid() || !IsValid(choice.state))
         return foundation::Result<NarrativeChoiceId>::Failure(
             Error("gameplay.narrative.invalid_choice", "invalid choice"));
+    std::unordered_set<NarrativeChoiceOptionId, IdHash> option_ids;
+    try
+    {
+        option_ids.reserve(choice.options.size());
+        for (const auto &option : choice.options)
+        {
+            if (!option.id.IsValid() || !option_ids.insert(option.id).second)
+                return foundation::Result<NarrativeChoiceId>::Failure(
+                    Error("gameplay.narrative.invalid_choice", "choice contains invalid or duplicate option id"));
+        }
+    }
+    catch (...)
+    {
+        return foundation::Result<NarrativeChoiceId>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to validate choice options"));
+    }
+    auto staged_generator = choice_ids_;
     if (!choice.id.IsValid())
-        choice.id = NarrativeChoiceId{choice_ids_.Next()};
+    {
+        const auto raw = staged_generator.Next();
+        if (!raw.IsValid())
+            return foundation::Result<NarrativeChoiceId>::Failure(
+                Error("gameplay.narrative.id_exhausted", "choice id generator exhausted"));
+        choice.id = NarrativeChoiceId{raw};
+    }
     if (choices_.contains(choice.id))
         return foundation::Result<NarrativeChoiceId>::Failure(
             Error("gameplay.narrative.duplicate_choice", "duplicate choice"));
-    AdvanceGeneratorPast(choice_ids_, choice.id);
-    Bump();
-    choice.created_at = c.time;
-    choice.revision = revision_;
-    auto id = choice.id;
-    choices_.emplace(id, choice);
-    Record(
-        {0, NarrativeChangeKind::ChoiceCreated, choice.thread, {}, {}, {}, {}, {}, {}, id, choice.actor, c, revision_});
+    AdvanceGeneratorPast(staged_generator, choice.id);
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<NarrativeChoiceId>::Failure(next_revision.GetError());
+    choice.created_at = context.time;
+    choice.revision = next_revision.Value();
+    const auto id = choice.id;
+    const auto thread = choice.thread;
+    const auto actor = choice.actor;
+    try
+    {
+        choices_.emplace(id, std::move(choice));
+    }
+    catch (...)
+    {
+        return foundation::Result<NarrativeChoiceId>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to create narrative choice"));
+    }
+    choice_ids_ = staged_generator;
+    CommitRevision(next_revision.Value());
+    Record({0, NarrativeChangeKind::ChoiceCreated, thread, {}, {}, {}, {}, {}, {}, id, actor, context, revision_});
     return foundation::Result<NarrativeChoiceId>::Success(id);
 }
+
 foundation::Result<void> NarrativeService::ResolveChoice(NarrativeChoiceId id, NarrativeChoiceOptionId option,
                                                          GameplayContext c)
 {
@@ -1284,14 +1746,30 @@ foundation::Result<void> NarrativeService::ResolveChoice(NarrativeChoiceId id, N
     if (evaluation_budget_exhausted_)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.condition_budget_exhausted", "choice condition evaluation budget exhausted"));
+    std::size_t required = 0;
+    try
+    {
+        required = CountUnplannedConsequences(it->second.thread, {}, {}, found->consequences, c.correlation);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to validate choice consequences"));
+    }
+    if (!CanAdvanceRevisionBy(required + 1))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.revision_exhausted", "narrative revision counter is exhausted"));
     auto planned = PlanConsequences(it->second.thread, {}, {}, found->consequences, c.correlation, c.time);
     if (!planned)
         return planned;
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
     it->second.state = NarrativeChoiceState::Resolved;
     it->second.selected_option = option;
     it->second.closed_at = c.time;
-    it->second.revision = revision_;
+    it->second.revision = next_revision.Value();
+    CommitRevision(next_revision.Value());
     Record({0,
             NarrativeChangeKind::ChoiceResolved,
             it->second.thread,
@@ -1317,33 +1795,50 @@ foundation::Result<void> NarrativeService::CancelChoice(NarrativeChoiceId id, Ga
         return foundation::Result<void>::Success();
     if (it->second.state != NarrativeChoiceState::Open)
         return foundation::Result<void>::Failure(Error("gameplay.narrative.choice_closed", "choice is closed"));
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
     it->second.state = NarrativeChoiceState::Cancelled;
     it->second.closed_at = c.time;
-    it->second.revision = revision_;
+    it->second.revision = next_revision.Value();
+    CommitRevision(next_revision.Value());
     Record({0, NarrativeChangeKind::ChoiceCancelled, it->second.thread, {}, {}, {}, {}, {}, {}, id,
             it->second.actor, c, revision_});
     return foundation::Result<void>::Success();
 }
 
-std::vector<NarrativeChoiceId> NarrativeService::ExpireChoices(GameplayTimePoint now, GameplayContext c)
+std::vector<NarrativeChoiceId> NarrativeService::ExpireChoices(GameplayTimePoint now, GameplayContext context)
 {
     std::vector<NarrativeChoiceId> ids;
-    for (auto &[id, choice] : choices_)
+    try
     {
-        if (choice.state != NarrativeChoiceState::Open || choice.expires_at.ticks == 0 || choice.expires_at > now)
-            continue;
-        Bump();
+        ids.reserve(choices_.size());
+        for (const auto &[id, choice] : choices_)
+            if (choice.state == NarrativeChoiceState::Open && choice.expires_at.ticks != 0 && choice.expires_at <= now)
+                ids.push_back(id);
+        std::sort(ids.begin(), ids.end());
+    }
+    catch (...)
+    {
+        return {};
+    }
+    if (!CanAdvanceRevisionBy(ids.size()))
+        return {};
+    for (auto id : ids)
+    {
+        auto next_revision = PrepareRevision();
+        if (!next_revision)
+            return {};
+        auto &choice = choices_.at(id);
         choice.state = NarrativeChoiceState::Expired;
         choice.closed_at = now;
-        choice.revision = revision_;
-        auto context = c;
-        context.time = now;
+        choice.revision = next_revision.Value();
+        CommitRevision(next_revision.Value());
+        auto change_context = context;
+        change_context.time = now;
         Record({0, NarrativeChangeKind::ChoiceExpired, choice.thread, {}, {}, {}, {}, {}, {}, id, choice.actor,
-                context, revision_});
-        ids.push_back(id);
+                change_context, revision_});
     }
-    std::sort(ids.begin(), ids.end());
     return ids;
 }
 
@@ -1364,128 +1859,162 @@ void NarrativeService::IndexRumorExpiry(const RumorRecord &rumor)
     if (position == ids.end() || *position != rumor.id)
         ids.insert(position, rumor.id);
 }
-std::vector<NarrativeConsequenceExecutionId> NarrativeService::ExecutePendingConsequences(NarrativeExecutionContext ctx,
-                                                                                          std::size_t budget)
+std::vector<NarrativeConsequenceExecutionId> NarrativeService::ExecutePendingConsequences(
+    NarrativeExecutionContext context, std::size_t budget)
 {
     std::vector<NarrativeConsequenceExecutionId> applied;
     std::vector<NarrativeConsequenceExecutionId> ids;
-    for (const auto &[id, e] : consequences_)
+    try
     {
-        if (e.state == ConsequenceExecutionState::Pending || e.state == ConsequenceExecutionState::Deferred ||
-            e.state == ConsequenceExecutionState::FailedRetryable)
-            ids.push_back(id);
+        ids.reserve(consequences_.size());
+        for (const auto &[id, execution] : consequences_)
+            if (execution.state == ConsequenceExecutionState::Pending ||
+                execution.state == ConsequenceExecutionState::Deferred ||
+                execution.state == ConsequenceExecutionState::FailedRetryable)
+                ids.push_back(id);
+        std::sort(ids.begin(), ids.end(), [this](auto a, auto b) {
+            const auto &left = consequences_.at(a);
+            const auto &right = consequences_.at(b);
+            const auto left_def = consequence_defs_.find(left.consequence);
+            const auto right_def = consequence_defs_.find(right.consequence);
+            const auto left_priority = left_def == consequence_defs_.end() ? 0 : left_def->second.priority;
+            const auto right_priority = right_def == consequence_defs_.end() ? 0 : right_def->second.priority;
+            if (left_priority != right_priority)
+                return left_priority > right_priority;
+            return a < b;
+        });
+        if (ids.size() > budget)
+        {
+            ids.resize(budget);
+            ++diagnostics_.budget_exhaustions;
+        }
+        applied.reserve(ids.size());
     }
-    std::sort(ids.begin(), ids.end(), [this](auto a, auto b) {
-        const auto &ea = consequences_.at(a);
-        const auto &eb = consequences_.at(b);
-        const auto &da = consequence_defs_.at(ea.consequence);
-        const auto &db = consequence_defs_.at(eb.consequence);
-        if (da.priority != db.priority)
-            return da.priority > db.priority;
-        return a < b;
-    });
-    if (ids.size() > budget)
+    catch (...)
     {
-        ids.resize(budget);
-        ++diagnostics_.budget_exhaustions;
+        return {};
     }
+
     for (auto id : ids)
     {
-        auto &e = consequences_.at(id);
-        auto def_it = consequence_defs_.find(e.consequence);
+        auto execution_it = consequences_.find(id);
+        if (execution_it == consequences_.end())
+            continue;
+        auto def_it = consequence_defs_.find(execution_it->second.consequence);
         if (def_it == consequence_defs_.end())
             continue;
+
+        const bool nested_journal = IsBuiltinAddJournal(def_it->second.type) && def_it->second.journal_template.has_value();
+        const bool nested_rumor = IsBuiltinCreateRumor(def_it->second.type) && def_it->second.rumor_template.has_value();
+        if (!CanAdvanceRevisionBy((nested_journal || nested_rumor) ? 2u : 1u))
+            break;
+
+        NarrativeConsequenceExecution staged_execution = execution_it->second;
+        if (staged_execution.attempts == std::numeric_limits<std::uint32_t>::max())
+        {
+            auto next_revision = PrepareRevision();
+            if (!next_revision)
+                break;
+            staged_execution.state = ConsequenceExecutionState::FailedPermanent;
+            staged_execution.revision = next_revision.Value();
+            execution_it->second = staged_execution;
+            CommitRevision(next_revision.Value());
+            ++diagnostics_.consequences_failed;
+            Record({0, NarrativeChangeKind::ConsequenceFailed, staged_execution.thread, staged_execution.objective,
+                    staged_execution.beat, id, {}, {}, {}, {}, context.default_owner,
+                    {.time = context.now, .correlation = staged_execution.correlation, .actor = context.default_owner},
+                    revision_});
+            continue;
+        }
+        ++staged_execution.attempts;
+
         NarrativeConsequenceResult result;
-        Bump();
-        ++e.attempts;
         if (IsBuiltinAddJournal(def_it->second.type))
         {
-            if (!def_it->second.journal_template.has_value())
-            {
+            if (!def_it->second.journal_template)
                 result.state = ConsequenceExecutionState::Unsupported;
-            }
             else
             {
                 const auto &data = *def_it->second.journal_template;
-            JournalEntry entry;
-            entry.owner = ctx.default_owner;
-            entry.thread = e.thread;
-            entry.objective = e.objective;
+                JournalEntry entry;
+                entry.owner = context.default_owner;
+                entry.thread = staged_execution.thread;
+                entry.objective = staged_execution.objective;
                 entry.type = data.type;
                 entry.visibility = data.visibility;
                 entry.tags = data.tags;
                 entry.payload = data.payload;
-            auto added =
-                AddJournalEntry(entry, {.time = ctx.now, .correlation = e.correlation, .actor = ctx.default_owner});
-            result.state = added ? ConsequenceExecutionState::Applied : ConsequenceExecutionState::FailedRetryable;
+                auto added = AddJournalEntry(
+                    std::move(entry),
+                    {.time = context.now, .correlation = staged_execution.correlation, .actor = context.default_owner});
+                result.state = added ? ConsequenceExecutionState::Applied : ConsequenceExecutionState::FailedRetryable;
             }
         }
         else if (IsBuiltinCreateRumor(def_it->second.type))
         {
-            if (!def_it->second.rumor_template.has_value())
-            {
+            if (!def_it->second.rumor_template)
                 result.state = ConsequenceExecutionState::Unsupported;
-            }
             else
             {
                 const auto &data = *def_it->second.rumor_template;
-            RumorRecord rumor;
-            rumor.owner_or_scope = ctx.default_owner;
+                RumorRecord rumor;
+                rumor.owner_or_scope = context.default_owner;
                 rumor.topic = data.topic;
                 rumor.confidence = data.confidence;
-                rumor.expires_at = data.lifetime.ticks > 0 ? ctx.now + data.lifetime : GameplayTimePoint{};
+                rumor.expires_at = data.lifetime.ticks > 0 ? SaturatingAdd(context.now, data.lifetime)
+                                                          : GameplayTimePoint{};
                 rumor.payload = data.payload;
-            auto created =
-                CreateRumor(rumor, {.time = ctx.now, .correlation = e.correlation, .actor = ctx.default_owner});
-            result.state = created ? ConsequenceExecutionState::Applied : ConsequenceExecutionState::FailedRetryable;
+                auto created = CreateRumor(
+                    std::move(rumor),
+                    {.time = context.now, .correlation = staged_execution.correlation, .actor = context.default_owner});
+                result.state = created ? ConsequenceExecutionState::Applied : ConsequenceExecutionState::FailedRetryable;
             }
         }
-        else if (auto h = consequence_handlers_.find(def_it->second.type); h != consequence_handlers_.end())
+        else if (auto handler = consequence_handlers_.find(def_it->second.type); handler != consequence_handlers_.end())
         {
-            result = h->second->Execute(def_it->second, e, ctx);
+            try
+            {
+                result = handler->second->Execute(def_it->second, staged_execution, context);
+            }
+            catch (...)
+            {
+                result.state = ConsequenceExecutionState::FailedRetryable;
+            }
         }
         else
-        {
             result.state = ConsequenceExecutionState::Unsupported;
-        }
-        e.state = result.state == ConsequenceExecutionState::AlreadyApplied ? ConsequenceExecutionState::Applied
-                                                                            : result.state;
-        e.applied_at = e.state == ConsequenceExecutionState::Applied ? ctx.now : e.applied_at;
-        e.revision = revision_;
-        if (e.state == ConsequenceExecutionState::Applied)
+
+        if (!IsValid(result.state) || result.state == ConsequenceExecutionState::Pending)
+            result.state = ConsequenceExecutionState::FailedPermanent;
+        staged_execution.state = result.state == ConsequenceExecutionState::AlreadyApplied
+                                     ? ConsequenceExecutionState::Applied
+                                     : result.state;
+        if (staged_execution.state == ConsequenceExecutionState::Applied)
+            staged_execution.applied_at = context.now;
+
+        auto next_revision = PrepareRevision();
+        if (!next_revision)
+            break;
+        staged_execution.revision = next_revision.Value();
+        execution_it->second = staged_execution;
+        CommitRevision(next_revision.Value());
+
+        if (staged_execution.state == ConsequenceExecutionState::Applied)
         {
             ++diagnostics_.consequences_applied;
             applied.push_back(id);
-            Record({0,
-                    NarrativeChangeKind::ConsequenceApplied,
-                    e.thread,
-                    e.objective,
-                    e.beat,
-                    id,
-                    {},
-                    {},
-                    {},
-                    {},
-                    ctx.default_owner,
-                    {.time = ctx.now, .correlation = e.correlation, .actor = ctx.default_owner},
+            Record({0, NarrativeChangeKind::ConsequenceApplied, staged_execution.thread, staged_execution.objective,
+                    staged_execution.beat, id, {}, {}, {}, {}, context.default_owner,
+                    {.time = context.now, .correlation = staged_execution.correlation, .actor = context.default_owner},
                     revision_});
         }
-        else if (e.state == ConsequenceExecutionState::FailedPermanent ||
-                 e.state == ConsequenceExecutionState::Unsupported)
+        else if (staged_execution.state == ConsequenceExecutionState::FailedPermanent ||
+                 staged_execution.state == ConsequenceExecutionState::Unsupported)
         {
             ++diagnostics_.consequences_failed;
-            Record({0,
-                    NarrativeChangeKind::ConsequenceFailed,
-                    e.thread,
-                    e.objective,
-                    e.beat,
-                    id,
-                    {},
-                    {},
-                    {},
-                    {},
-                    ctx.default_owner,
-                    {.time = ctx.now, .correlation = e.correlation, .actor = ctx.default_owner},
+            Record({0, NarrativeChangeKind::ConsequenceFailed, staged_execution.thread, staged_execution.objective,
+                    staged_execution.beat, id, {}, {}, {}, {}, context.default_owner,
+                    {.time = context.now, .correlation = staged_execution.correlation, .actor = context.default_owner},
                     revision_});
         }
     }
@@ -1496,10 +2025,21 @@ foundation::Result<void> NarrativeService::SetFlag(NarrativeFlag flag, GameplayC
 {
     if (!flag.id.IsValid())
         return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_flag", "invalid flag"));
-    Bump();
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
     flag.changed_at = c.time;
-    flag.revision = revision_;
-    flags_[flag.id] = flag;
+    flag.revision = next_revision.Value();
+    try
+    {
+        flags_.insert_or_assign(flag.id, flag);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to set narrative flag"));
+    }
+    CommitRevision(next_revision.Value());
     Record({0, NarrativeChangeKind::FlagChanged, {}, {}, {}, {}, {}, {}, {}, {}, flag.scope, c, revision_});
     return foundation::Result<void>::Success();
 }
@@ -1507,9 +2047,20 @@ foundation::Result<void> NarrativeService::SetVariable(NarrativeVariable variabl
 {
     if (!variable.id.IsValid())
         return foundation::Result<void>::Failure(Error("gameplay.narrative.invalid_variable", "invalid variable"));
-    Bump();
-    variable.revision = revision_;
-    variables_[variable.id] = variable;
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(next_revision.GetError());
+    variable.revision = next_revision.Value();
+    try
+    {
+        variables_.insert_or_assign(variable.id, variable);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to set narrative variable"));
+    }
+    CommitRevision(next_revision.Value());
     Record({0, NarrativeChangeKind::VariableChanged, {}, {}, {}, {}, {}, {}, {}, {}, variable.scope, c, revision_});
     return foundation::Result<void>::Success();
 }
@@ -1625,6 +2176,43 @@ NarrativeChangeBatch NarrativeService::ReadChangesSinceSequence(std::uint64_t se
 
 std::uint64_t NarrativeService::CompactTerminalExecutions(GameplayTimePoint before)
 {
+    bool has_candidate = false;
+    for (const auto &[id, execution] : consequences_)
+    {
+        (void)id;
+        const bool terminal = execution.state == ConsequenceExecutionState::Applied ||
+                              execution.state == ConsequenceExecutionState::FailedPermanent ||
+                              execution.state == ConsequenceExecutionState::Unsupported;
+        const auto terminal_time = execution.applied_at.ticks != 0 ? execution.applied_at : execution.planned_at;
+        if (terminal && terminal_time < before) { has_candidate = true; break; }
+    }
+    if (!has_candidate)
+        for (const auto &[id, choice] : choices_)
+        {
+            (void)id;
+            if (choice.state != NarrativeChoiceState::Open && choice.closed_at.ticks != 0 && choice.closed_at < before)
+            { has_candidate = true; break; }
+        }
+    if (!has_candidate)
+        for (const auto &[id, rumor] : rumors_)
+        {
+            (void)id;
+            if (rumor.state == RumorState::Expired && rumor.expires_at.ticks != 0 && rumor.expires_at < before)
+            { has_candidate = true; break; }
+        }
+    if (!has_candidate)
+        for (const auto &[key, execution] : event_executions_)
+        {
+            (void)key;
+            if (execution.state == NarrativeEventExecutionState::Completed && execution.event.time < before)
+            { has_candidate = true; break; }
+        }
+    if (!has_candidate)
+        return 0;
+    auto next_revision = PrepareRevision();
+    if (!next_revision)
+        return 0;
+
     std::uint64_t removed = 0;
     for (auto it = consequences_.begin(); it != consequences_.end();)
     {
@@ -1639,30 +2227,21 @@ std::uint64_t NarrativeService::CompactTerminalExecutions(GameplayTimePoint befo
             it = consequences_.erase(it);
             ++removed;
         }
-        else
-            ++it;
+        else ++it;
     }
     for (auto it = choices_.begin(); it != choices_.end();)
     {
         if (it->second.state != NarrativeChoiceState::Open && it->second.closed_at.ticks != 0 &&
             it->second.closed_at < before)
-        {
-            it = choices_.erase(it);
-            ++removed;
-        }
-        else
-            ++it;
+        { it = choices_.erase(it); ++removed; }
+        else ++it;
     }
     for (auto it = rumors_.begin(); it != rumors_.end();)
     {
         if (it->second.state == RumorState::Expired && it->second.expires_at.ticks != 0 &&
             it->second.expires_at < before)
-        {
-            it = rumors_.erase(it);
-            ++removed;
-        }
-        else
-            ++it;
+        { it = rumors_.erase(it); ++removed; }
+        else ++it;
     }
     for (auto it = event_executions_.begin(); it != event_executions_.end();)
     {
@@ -1672,11 +2251,10 @@ std::uint64_t NarrativeService::CompactTerminalExecutions(GameplayTimePoint befo
             it = event_executions_.erase(it);
             ++removed;
         }
-        else
-            ++it;
+        else ++it;
     }
     if (removed > 0)
-        Bump();
+        CommitRevision(next_revision.Value());
     return removed;
 }
 
@@ -1793,6 +2371,8 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
                   "register and freeze current-build narrative definitions before restore"));
     const auto current_definition_revision = revision_;
 
+    try
+    {
     using ThreadMap = decltype(threads_);
     using ObjectiveMap = decltype(objectives_);
     using ConsequenceMap = decltype(consequences_);
@@ -1830,7 +2410,8 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
 
     for (const auto &value : snapshot.thread_states)
     {
-        if (!value.thread.IsValid() || !thread_defs_.contains(value.thread))
+        if (!value.thread.IsValid() || !thread_defs_.contains(value.thread) || !IsValid(value.state) ||
+            value.revision.value > snapshot.revision.value)
             return foundation::Result<void>::Failure(
                 Error("gameplay.narrative.restore_invalid", "thread state references missing current definition"));
         if (!threads.emplace(value.thread, value).second)
@@ -1838,7 +2419,8 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
     }
     for (const auto &value : snapshot.objective_states)
     {
-        if (!value.objective.IsValid() || !objective_defs_.contains(value.objective))
+        if (!value.objective.IsValid() || !objective_defs_.contains(value.objective) || !IsValid(value.state) ||
+            value.revision.value > snapshot.revision.value)
             return foundation::Result<void>::Failure(
                 Error("gameplay.narrative.restore_invalid", "objective state references missing current definition"));
         if (!objectives.emplace(value.objective, value).second)
@@ -1846,7 +2428,8 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
     }
     for (const auto &value : snapshot.consequences)
     {
-        if (!value.id.IsValid() || !value.consequence.IsValid() || !consequence_defs_.contains(value.consequence))
+        if (!value.id.IsValid() || !value.consequence.IsValid() || !consequence_defs_.contains(value.consequence) ||
+            !IsValid(value.state) || value.revision.value > snapshot.revision.value)
             return foundation::Result<void>::Failure(
                 Error("gameplay.narrative.restore_invalid", "consequence execution references missing definition"));
         if (value.thread.IsValid() && !thread_defs_.contains(value.thread))
@@ -1865,7 +2448,8 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
     }
     for (const auto &value : snapshot.journal_entries)
     {
-        if (!value.id.IsValid() || (value.thread.IsValid() && !thread_defs_.contains(value.thread)) ||
+        if (!value.id.IsValid() || !IsValid(value.visibility) || value.revision.value > snapshot.revision.value ||
+            (value.thread.IsValid() && !thread_defs_.contains(value.thread)) ||
             (value.objective.IsValid() && !objective_defs_.contains(value.objective)))
             return foundation::Result<void>::Failure(
                 Error("gameplay.narrative.restore_invalid", "invalid journal entry snapshot"));
@@ -1874,12 +2458,14 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
     }
     for (const auto &value : snapshot.clues)
     {
-        if (!value.id.IsValid() || !clues.emplace(value.id, value).second)
+        if (!value.id.IsValid() || value.revision.value > snapshot.revision.value ||
+            !clues.emplace(value.id, value).second)
             return foundation::Result<void>::Failure(Error("gameplay.narrative.restore_invalid", "invalid clue snapshot"));
     }
     for (const auto &value : snapshot.rumors)
     {
-        if (!value.id.IsValid() || !rumors.emplace(value.id, value).second)
+        if (!value.id.IsValid() || !IsValid(value.state) || value.revision.value > snapshot.revision.value ||
+            !rumors.emplace(value.id, value).second)
             return foundation::Result<void>::Failure(Error("gameplay.narrative.restore_invalid", "invalid rumor snapshot"));
     }
     for (const auto &[id, value] : rumors)
@@ -1894,24 +2480,28 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
     }
     for (const auto &value : snapshot.flags)
     {
-        if (!value.id.IsValid() || !flags.emplace(value.id, value).second)
+        if (!value.id.IsValid() || value.revision.value > snapshot.revision.value ||
+            !flags.emplace(value.id, value).second)
             return foundation::Result<void>::Failure(Error("gameplay.narrative.restore_invalid", "invalid flag snapshot"));
     }
     for (const auto &value : snapshot.variables)
     {
-        if (!value.id.IsValid() || !variables.emplace(value.id, value).second)
+        if (!value.id.IsValid() || value.revision.value > snapshot.revision.value ||
+            !variables.emplace(value.id, value).second)
             return foundation::Result<void>::Failure(
                 Error("gameplay.narrative.restore_invalid", "invalid variable snapshot"));
     }
     for (const auto &value : snapshot.choices)
     {
-        if (!value.id.IsValid() || (value.thread.IsValid() && !thread_defs_.contains(value.thread)) ||
+        if (!value.id.IsValid() || !IsValid(value.state) || value.revision.value > snapshot.revision.value ||
+            (value.thread.IsValid() && !thread_defs_.contains(value.thread)) ||
             !choices.emplace(value.id, value).second)
             return foundation::Result<void>::Failure(Error("gameplay.narrative.restore_invalid", "invalid choice snapshot"));
     }
     for (const auto &value : snapshot.storylet_runtime)
     {
-        if (!value.id.IsValid() || !storylet_defs_.contains(value.id) || !storylets.emplace(value.id, value).second)
+        if (!value.id.IsValid() || !storylet_defs_.contains(value.id) ||
+            value.revision.value > snapshot.revision.value || !storylets.emplace(value.id, value).second)
             return foundation::Result<void>::Failure(
                 Error("gameplay.narrative.restore_invalid", "storylet runtime references missing definition"));
     }
@@ -1934,7 +2524,8 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
 
     for (const auto &value : snapshot.event_executions)
     {
-        if (value.key != MakeEventKey(value.event) || value.next_beat > value.beat_plan.size() ||
+        if (value.key != MakeEventKey(value.event) || !IsValid(value.state) || !IsValid(value.phase) ||
+            value.revision.value > snapshot.revision.value || value.next_beat > value.beat_plan.size() ||
             value.next_objective > value.objective_plan.size() || value.next_storylet > value.storylet_plan.size())
             return foundation::Result<void>::Failure(
                 Error("gameplay.narrative.restore_invalid", "invalid event execution snapshot"));
@@ -2052,6 +2643,12 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
     evaluation_budget_exhausted_ = false;
     journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.narrative.allocation_failed", "failed to stage narrative snapshot restore"));
+    }
 }
 
 NarrativeDiagnostics NarrativeService::GetDiagnostics() const noexcept
@@ -2081,18 +2678,32 @@ NarrativeDiagnostics NarrativeService::GetDiagnostics() const noexcept
     d.storylets = storylet_defs_.size();
     return d;
 }
-void NarrativeService::Record(NarrativeChange c)
+void NarrativeService::Record(NarrativeChange c) noexcept
 {
     if (next_change_sequence_ == 0)
         return;
     c.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
-    changes_.push_back(std::move(c));
-    while (changes_.size() > kChangeJournalCapacity)
-        changes_.pop_front();
+    try
+    {
+        changes_.push_back(std::move(c));
+        if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+            next_change_sequence_ = 0;
+        else
+            ++next_change_sequence_;
+        while (changes_.size() > kChangeJournalCapacity)
+            changes_.pop_front();
+    }
+    catch (...)
+    {
+        changes_.clear();
+        if (const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_))
+        {
+            journal_epoch_ = *next_epoch;
+            next_change_sequence_ = 1;
+        }
+        else
+            next_change_sequence_ = 0;
+    }
 }
 NarrativeEventKey NarrativeService::MakeEventKey(const NarrativeEvent &e) const noexcept
 {

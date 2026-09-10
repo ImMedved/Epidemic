@@ -59,7 +59,17 @@ int main()
     recipe.footprint_size_mm = {100, 100, 100};
     if (!c.RegisterRecipe(recipe))
         return 3;
+    GameplayObjectRef wall{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("wall")};
+    PlacementSocket sock;
+    sock.id = PlacementSocketId::FromString("socket.wall.1");
+    sock.owner = wall;
+    if (!c.RegisterSocket(sock))
+        return 9;
     c.Freeze();
+    PlacementSocket late_socket = sock;
+    late_socket.id = PlacementSocketId::FromString("socket.wall.late");
+    if (c.RegisterSocket(late_socket))
+        return 54;
     GameplayObjectRef actor{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("actor")};
     GameplayObjectRef area{GameplayDomainId::FromString("test.area"), GameplayObjectId::FromString("river")};
     PlacementRequest req;
@@ -99,12 +109,6 @@ int main()
         return 40;
     if (c.CommitPlacement(plan.Value()))
         return 21;
-    GameplayObjectRef wall{GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString("wall")};
-    PlacementSocket sock;
-    sock.id = PlacementSocketId::FromString("socket.wall.1");
-    sock.owner = wall;
-    if (!c.RegisterSocket(sock))
-        return 9;
     PlacementRequest sreq;
     sreq.actor = actor;
     sreq.recipe = recipe.id;
@@ -149,20 +153,25 @@ int main()
     auto construction_journal_seed = restored.CaptureSnapshot();
     construction_journal_seed.journal.clear();
     construction_journal_seed.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
-    if (!restored.RestoreSnapshot(construction_journal_seed))
-        return 47;
     PlacementSocket journal_socket_a = sock;
     journal_socket_a.id = PlacementSocketId::FromString("test.journal.socket.a");
     journal_socket_a.state = SocketState::Free;
+    journal_socket_a.revision = construction_journal_seed.revision;
     PlacementSocket journal_socket_b = journal_socket_a;
     journal_socket_b.id = PlacementSocketId::FromString("test.journal.socket.b");
-    if (!restored.RegisterSocket(journal_socket_a) || !restored.RegisterSocket(journal_socket_b))
+    construction_journal_seed.sockets.push_back(journal_socket_a);
+    construction_journal_seed.sockets.push_back(journal_socket_b);
+    if (!restored.RestoreSnapshot(construction_journal_seed))
+        return 47;
+    const auto epoch_before_rollover = restored.LatestChangeCursor().epoch;
+    auto journal_reservation = restored.ReserveSocket(journal_socket_a.id, actor);
+    if (!journal_reservation)
         return 48;
     const auto construction_exhausted = restored.CaptureSnapshot();
-    if (construction_exhausted.next_change_sequence != 0 || construction_exhausted.journal.size() != 1 ||
-        construction_exhausted.journal.front().sequence != std::numeric_limits<std::uint64_t>::max())
+    if (construction_exhausted.change_epoch <= epoch_before_rollover || construction_exhausted.next_change_sequence != 2 ||
+        construction_exhausted.journal.size() != 1 || construction_exhausted.journal.front().sequence != 1)
         return 49;
-    if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)
+    if (!restored.ReadChangesSince(ChangeCursor{epoch_before_rollover, 0}).snapshot_required)
         return 50;
     ConstructionService construction_exhausted_restore;
     if (!construction_exhausted_restore.RegisterPlacementDefinition(free_def) ||
@@ -241,6 +250,16 @@ int main()
         return 44;
     if (expiring.CommitPlacement(expiring_plan.Value()))
         return 45;
+
+    // CST-03: time overflow is rejected before the placement-plan generator advances.
+    PlacementRequest overflow_plan_request = req;
+    overflow_plan_request.context.time = GameplayTimePoint{std::numeric_limits<std::int64_t>::max()};
+    const auto plan_generator_before = expiring.CaptureSnapshot().plan_ids;
+    auto overflow_plan = expiring.PreparePlacementPlan(overflow_plan_request);
+    const auto plan_generator_after = expiring.CaptureSnapshot().plan_ids;
+    if (overflow_plan || !overflow_plan.GetError().HasCode("gameplay.time_overflow") ||
+        plan_generator_before.scope != plan_generator_after.scope || plan_generator_before.next != plan_generator_after.next)
+        return 55;
 
     return 0;
 }

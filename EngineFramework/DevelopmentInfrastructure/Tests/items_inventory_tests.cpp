@@ -111,6 +111,16 @@ int main()
     ContainerRecord tiny;
     tiny.owner_object = Ref("actor", "tiny");
     tiny.max_weight = 1;
+    const auto before_invalid_container = restored.CaptureSnapshot();
+    ContainerRecord invalid_container;
+    invalid_container.owner_object = Ref("actor", "invalid-container-owner");
+    invalid_container.state = static_cast<ContainerState>(999);
+    Check(!restored.CreateContainer(invalid_container), "invalid container state rejected");
+    const auto after_invalid_container = restored.CaptureSnapshot();
+    Check(after_invalid_container.revision == before_invalid_container.revision, "invalid container changed revision");
+    Check(after_invalid_container.container_ids.next == before_invalid_container.container_ids.next,
+          "invalid container consumed generated id");
+
     auto tinyid = restored.CreateContainer(tiny);
     Check(static_cast<bool>(tinyid), "tiny container");
     ItemInstance too_heavy;

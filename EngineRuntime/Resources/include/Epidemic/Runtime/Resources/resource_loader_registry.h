@@ -18,5 +18,7 @@ class IResourceLoaderRegistry
     [[nodiscard]] virtual IResourceLoader* FindLoader(ResourceType type) = 0;
     [[nodiscard]] virtual const IResourceLoader* FindLoader(ResourceType type) const = 0;
     [[nodiscard]] virtual bool HasLoader(ResourceType type) const = 0;
+    [[nodiscard]] virtual foundation::Result<void> Freeze() = 0;
+    [[nodiscard]] virtual bool IsFrozen() const noexcept = 0;
 };
 } // namespace epidemic::runtime

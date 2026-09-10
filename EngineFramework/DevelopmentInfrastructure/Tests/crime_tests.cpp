@@ -223,11 +223,11 @@ int main()
     Check(!crime.GetBounty(fixture.player, fixture.jurisdiction), "expired bounty leaves active index");
 
     crime.SetChangeJournalCapacity(2);
-    Check(static_cast<bool>(crime.ChangeCaseState(*witnessed.Value().crime, CrimeCaseState::UnderInvestigation)),
-          "change case for journal test");
     Check(static_cast<bool>(crime.ChangeCaseState(*witnessed.Value().crime, CrimeCaseState::Reported)),
+          "change case for journal test");
+    Check(static_cast<bool>(crime.ChangeCaseState(*witnessed.Value().crime, CrimeCaseState::UnderInvestigation)),
           "second journal change");
-    Check(static_cast<bool>(crime.ChangeCaseState(*witnessed.Value().crime, CrimeCaseState::Open)),
+    Check(static_cast<bool>(crime.ChangeCaseState(*witnessed.Value().crime, CrimeCaseState::Wanted)),
           "third journal change");
     const auto old_batch = crime.ReadChangesSince(ChangeCursor{});
     Check(old_batch.snapshot_required, "bounded journal requires snapshot for stale reader");
@@ -287,6 +287,44 @@ int main()
 
     Check(static_cast<bool>(restored.PruneTerminalCrime(crime_id)), "prune terminal crime");
     Check(restored.FindCrime(crime_id) == nullptr, "terminal crime removed");
+
+    // CRM-06: invalid enum values and reverse case transitions are rejected without mutation.
+    const auto live_case = *epoch_crime.Value().crime;
+    const auto case_before_invalid = restored.FindCrime(live_case)->state;
+    auto invalid_case = restored.ChangeCaseState(live_case, static_cast<CrimeCaseState>(99));
+    Check(!invalid_case, "out-of-domain crime case state rejected");
+    Check(restored.FindCrime(live_case)->state == case_before_invalid, "invalid case state leaves record unchanged");
+    Check(static_cast<bool>(restored.ChangeCaseState(live_case, CrimeCaseState::Reported)), "forward case transition succeeds");
+    auto reverse_case = restored.ChangeCaseState(live_case, CrimeCaseState::Open);
+    Check(!reverse_case, "reverse case transition rejected");
+    Check(restored.FindCrime(live_case)->state == CrimeCaseState::Reported, "rejected reverse transition preserves state");
+
+    // CRM-07: bounty resolver accepts only declared terminal states.
+    BountyRecord invalid_state_bounty;
+    invalid_state_bounty.offender = fixture.player;
+    invalid_state_bounty.jurisdiction = fixture.jurisdiction;
+    invalid_state_bounty.amount = 5;
+    invalid_state_bounty.expires_at = GameplayTimePoint{500};
+    invalid_state_bounty.source_crimes = {live_case};
+    auto invalid_state_bounty_id = restored.CreateBounty(invalid_state_bounty);
+    Check(static_cast<bool>(invalid_state_bounty_id), "bounty for invalid-state regression");
+    auto invalid_bounty_state = restored.ResolveBounty(invalid_state_bounty_id.Value(), static_cast<BountyState>(99));
+    Check(!invalid_bounty_state, "out-of-domain bounty state rejected");
+    auto active_bounty_after_invalid = restored.GetBounty(fixture.player, fixture.jurisdiction);
+    Check(active_bounty_after_invalid && active_bounty_after_invalid->id == invalid_state_bounty_id.Value(),
+          "invalid bounty state leaves active index unchanged");
+
+    // CRM-08: revision exhaustion rejects a domain mutation with no state change.
+    auto exhausted_crime_snapshot = restored.CaptureSnapshot();
+    exhausted_crime_snapshot.revision = Revision{std::numeric_limits<std::uint64_t>::max()};
+    CrimeService revision_exhausted;
+    Check(static_cast<bool>(revision_exhausted.RestoreSnapshot(exhausted_crime_snapshot)), "max crime revision restores");
+    const auto exhausted_case_before = revision_exhausted.FindCrime(live_case)->state;
+    auto exhausted_case_change = revision_exhausted.ChangeCaseState(live_case, CrimeCaseState::UnderInvestigation);
+    Check(!exhausted_case_change && exhausted_case_change.GetError().HasCode("gameplay.revision_exhausted"),
+          "crime mutation rejects exhausted revision");
+    Check(revision_exhausted.FindCrime(live_case)->state == exhausted_case_before,
+          "exhausted crime mutation leaves case unchanged");
 
     return 0;
 }

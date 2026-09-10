@@ -229,5 +229,34 @@ int main()
     if (!navigation_exhausted_restore.RestoreSnapshot(navigation_exhausted))
         return 46;
 
+
+    // Forged link state must fail without advancing the service revision.
+    const auto navigation_invalid_revision = navigation_exhausted_restore.CurrentRevision();
+    const auto *navigation_invalid_link_before = navigation_exhausted_restore.FindLink(destroyed.id);
+    if (navigation_invalid_link_before == nullptr) return 48;
+    const auto navigation_invalid_state_before = navigation_invalid_link_before->state;
+    if (navigation_exhausted_restore.SetLinkState(destroyed.id, static_cast<LinkState>(999))) return 49;
+    const auto *navigation_invalid_link_after = navigation_exhausted_restore.FindLink(destroyed.id);
+    if (navigation_invalid_link_after == nullptr || navigation_exhausted_restore.CurrentRevision() != navigation_invalid_revision ||
+        navigation_invalid_link_after->state != navigation_invalid_state_before)
+        return 50;
+
+    // Revision exhaustion must reject the transition and preserve link state.
+    auto navigation_revision_exhausted = navigation_exhausted;
+    navigation_revision_exhausted.revision.value = std::numeric_limits<std::uint64_t>::max();
+    NavigationSemanticsService navigation_revision_service;
+    if (!navigation_revision_service.RegisterDomain(d) || !navigation_revision_service.RegisterRule(r)) return 51;
+    navigation_revision_service.Freeze();
+    if (!navigation_revision_service.RestoreSnapshot(navigation_revision_exhausted)) return 52;
+    const auto *navigation_revision_link_before = navigation_revision_service.FindLink(destroyed.id);
+    if (navigation_revision_link_before == nullptr) return 53;
+    const auto navigation_revision_state_before = navigation_revision_link_before->state;
+    if (navigation_revision_service.SetLinkState(destroyed.id, LinkState::Open)) return 54;
+    const auto *navigation_revision_link_after = navigation_revision_service.FindLink(destroyed.id);
+    if (navigation_revision_link_after == nullptr ||
+        navigation_revision_service.CurrentRevision().value != std::numeric_limits<std::uint64_t>::max() ||
+        navigation_revision_link_after->state != navigation_revision_state_before)
+        return 55;
+
     return 0;
 }

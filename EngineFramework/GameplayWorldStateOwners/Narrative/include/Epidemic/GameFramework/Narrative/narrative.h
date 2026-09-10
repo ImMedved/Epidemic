@@ -1026,11 +1026,13 @@ class NarrativeService
     }
 
   private:
-    void Bump() noexcept
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const noexcept;
+    [[nodiscard]] bool CanAdvanceRevisionBy(std::size_t count) const noexcept;
+    void CommitRevision(Revision revision) noexcept
     {
-        ++revision_.value;
+        revision_ = revision;
     }
-    void Record(NarrativeChange change);
+    void Record(NarrativeChange change) noexcept;
     [[nodiscard]] bool AllSatisfied(const std::vector<NarrativeConditionId> &conditions,
                                     const NarrativeEvaluationContext &context) const;
     [[nodiscard]] bool AnySatisfied(const std::vector<NarrativeConditionId> &conditions,

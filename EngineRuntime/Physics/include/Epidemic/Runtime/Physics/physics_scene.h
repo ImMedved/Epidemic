@@ -16,6 +16,8 @@ class ICollisionShapeRegistry
   public:
     virtual ~ICollisionShapeRegistry() = default;
 
+    // Shape registration is intentionally runtime-dynamic. Register/unregister remain
+    // legal after bootstrap; unregister is rejected while any body references the shape.
     [[nodiscard]] virtual foundation::Result<void> RegisterShape(const CollisionShapeDesc& desc) = 0;
     [[nodiscard]] virtual foundation::Result<void> UnregisterShape(CollisionShapeId id) = 0;
     [[nodiscard]] virtual bool HasShape(CollisionShapeId id) const = 0;

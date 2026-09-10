@@ -62,75 +62,20 @@ ctest --test-dir build -C Debug -R EpidemicRuntime --output-on-failure
 
 ## TODO
 
-- [ ] Framework Freeze
-  -   [ ] Foudation
-  -   [ ] SupportRandom
-  -   [ ] Queries
-  -   [ ] Facts
-  -   [ ] Time
-  -   [ ] Мир и основные объекты
-      -   [ ] RuntimeBridge
-      -   [ ] Entities
-      -   [ ] World
-      -   [ ] Environment
-      -   [ ] Materials
-  -   [ ] Состояния и воздействия
-      -   [ ] Conditions
-      -   [ ] Effects
-  -   [ ] Базовая деятельность
-      -   [ ] Interaction
-      -   [ ] ItemsInventory
-      -   [ ] Equipment
-      -   [ ] Dialogue
-      -   [ ] Economy
-  -   [ ] Combat loop
-      -   [ ] Combat
-      -   [ ] Abilities
-      -   [ ] Progression
-      -   [ ] Loot
-  -   [ ] Перемещение и строительство
-      -   [ ] Traversal
-      -   [ ] NavigationSemantics
-      -   [ ] Construction
-  -   [ ] Восприятие и интеллект
-      -   [ ] Perception
-      -   [ ] Knowledge
-      -   [ ] AI
-  -   [ ] Социальный слой
-      -   [ ] Ownership
-      -   [ ] Society
-      -   [ ] Crime
-  -   [ ] Массовая симуляция NPC
-      -   [ ] Population
-      -   [ ] Encounters
-      -   [ ] RolesJobs
-      -   [ ] NeedsLife
-  -   [ ] Производство и симуляция
-      -   [ ] Processes
-      -   [ ] ResourcesProduction
-      -   [ ] Simulation
-      -   [ ] SaveGame
-  -   [ ] Narrative
-      -   [ ] Narrative
-  -   [ ] Integration-слой
-      -   [ ] Integration
-      -   [ ] StateIntegration
-      -   [ ] GameplayIntegration
-      -   [ ] ExtendedGameplayIntegration
-      -   [ ] WorldIntegration
-      -   [ ] InteractionEffectsIntegration
-      -   [ ] InteractionTimeIntegration
-      -   [ ] TraversalNavigationConstructionIntegration
-      -   [ ] PerceptionKnowledgeAIIntegration
-      -   [ ] PopulationSimulationIntegration
-      -   [ ] ProcessResourceSimulationIntegration
-      -   [ ] SocialLegalIntegration
-      -   [ ] NarrativeIntegration
-  -   [ ] Служебные директории
-      -   [ ] Tests
+- [ ] Engine Freeze
+  - [x] Архитектурная целостность и freeze границ
+  - [ ] Correctness всех локальных модулей
+  - [ ] Persistence, snapshot и restore hardening
+  - [ ] Determinism и replayability
+  - [ ] Memory и lifetime hardening
+  - [ ] Concurrency и async safety
+  - [ ] Integration correctness между majors и слоями
+  - [ ] Load, scale и degradation tests
+  - [ ] Full regression suite и failure injection
+  - [ ] Whole-engine smoke qualification и freeze
 - [ ] Code cleanup
 - [ ] Framework Documentation
-- [ ] Base and Runtime checkup
+- [ ] Base and Runtime docs checkup
 - [ ] Комментарии
   -   [ ] Base перевод комментариев на русский
   -   [ ] Runtime добавить комментарии в код на английском и русском
@@ -140,3 +85,4 @@ ctest --test-dir build -C Debug -R EpidemicRuntime --output-on-failure
 - [ ] Интеграция Angel Script
 - [ ] Добавление инструментов мониторинга и контроля ресурсов приложения
 - [ ] Добавление дефолтного проекта
+- [ ] Полноценная мультиплатформенность Win/Mac/Android

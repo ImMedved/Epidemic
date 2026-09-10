@@ -11,6 +11,8 @@
 
 namespace epidemic::runtime
 {
+struct WorldRuntimeTestAccess;
+
 class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorldObjectRegistry, public IObjectMaterializer, public IDemotionCommitAuthority, public IWorldQuery
 {
   public:
@@ -21,6 +23,8 @@ class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorl
     [[nodiscard]] std::optional<ChunkDescriptor> FindChunk(ChunkId id) const override;
     [[nodiscard]] foundation::Result<ChunkSnapshot> GetChunkSnapshot(ChunkId id) const override;
     [[nodiscard]] foundation::Result<void> SetChunkState(ChangeChunkStateCommand command) override;
+    void Freeze() noexcept override;
+    [[nodiscard]] bool IsFrozen() const noexcept override;
 
     [[nodiscard]] foundation::Result<WorldCommandResult> Apply(const CreateObjectCommand& command) override;
     [[nodiscard]] foundation::Result<WorldCommandResult> Apply(const ChangePlacementCommand& command) override;
@@ -61,8 +65,13 @@ class WorldRuntime : public IRegionRegistry, public IChunkRegistry, public IWorl
     std::unordered_map<std::uint64_t, DemotionCommitToken> issued_demotion_tokens_;
     std::uint64_t next_runtime_object_value_ = 1;
     std::uint64_t next_demotion_token_value_ = 1;
+    bool topology_frozen_ = false;
+    bool fail_next_persistent_index_publication_for_testing_ = false;
+    bool fail_next_demotion_token_publication_for_testing_ = false;
 
   private:
+    friend struct WorldRuntimeTestAccess;
+
     void InvalidateDemotionTokensForObject(RuntimeObjectId object);
 };
-} 
+}

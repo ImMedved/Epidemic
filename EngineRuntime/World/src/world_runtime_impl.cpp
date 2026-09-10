@@ -4,7 +4,9 @@
 #include "Epidemic/Runtime/World/world_invariants.h"
 
 #include <algorithm>
+#include <exception>
 #include <limits>
+#include <new>
 #include <string_view>
 #include <utility>
 
@@ -81,10 +83,40 @@ template <typename TValue>
 {
     return reality == ObjectRealityLevel::Physical ? ResidencyState::Active : ResidencyState::Resident;
 }
+
+[[nodiscard]] foundation::Result<std::uint64_t> PeekMonotonicId(std::uint64_t next_value,
+                                                                 std::string_view code,
+                                                                 std::string_view message)
+{
+    if (next_value == 0)
+    {
+        return foundation::Result<std::uint64_t>::Failure(MakeWorldError(code, message));
+    }
+    return foundation::Result<std::uint64_t>::Success(next_value);
+}
+
+void CommitMonotonicId(std::uint64_t& next_value) noexcept
+{
+    next_value = next_value == std::numeric_limits<std::uint64_t>::max() ? 0 : next_value + 1;
+}
+
+[[nodiscard]] foundation::Result<std::uint64_t> NextObjectRevision(const WorldObjectRecord& object)
+{
+    if (object.revision == std::numeric_limits<std::uint64_t>::max())
+    {
+        return foundation::Result<std::uint64_t>::Failure(
+            MakeWorldError("world.revision_overflow", "world object revision cannot advance beyond UINT64_MAX"));
+    }
+    return foundation::Result<std::uint64_t>::Success(object.revision + 1);
+}
 } // namespace
 
 foundation::Result<void> WorldRuntime::RegisterRegion(RegionDescriptor region)
 {
+    if (topology_frozen_)
+    {
+        return foundation::Result<void>::Failure(MakeWorldError("world.topology_frozen", "region/chunk topology registry is frozen"));
+    }
     if (!region.id.IsValid())
     {
         return foundation::Result<void>::Failure(
@@ -101,6 +133,16 @@ foundation::Result<void> WorldRuntime::RegisterRegion(RegionDescriptor region)
     return foundation::Result<void>::Success();
 }
 
+void WorldRuntime::Freeze() noexcept
+{
+    topology_frozen_ = true;
+}
+
+bool WorldRuntime::IsFrozen() const noexcept
+{
+    return topology_frozen_;
+}
+
 std::optional<RegionDescriptor> WorldRuntime::FindRegion(RegionId id) const
 {
     const auto iterator = regions_.find(id);
@@ -114,6 +156,10 @@ std::optional<RegionDescriptor> WorldRuntime::FindRegion(RegionId id) const
 
 foundation::Result<void> WorldRuntime::RegisterChunk(ChunkDescriptor chunk)
 {
+    if (topology_frozen_)
+    {
+        return foundation::Result<void>::Failure(MakeWorldError("world.topology_frozen", "region/chunk topology registry is frozen"));
+    }
     if (!chunk.id.IsValid())
     {
         return foundation::Result<void>::Failure(
@@ -211,7 +257,8 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const CreateObjectCom
             MakeWorldError("world.duplicate_persistent_object", "persistent object id is already registered"));
     }
 
-    const auto runtime_value = AllocateMonotonicId(next_runtime_object_value_, "world.runtime_object_id_exhausted", "runtime object id allocator is exhausted");
+    const auto runtime_value = PeekMonotonicId(next_runtime_object_value_, "world.runtime_object_id_exhausted",
+                                                "runtime object id allocator is exhausted");
     if (!runtime_value)
     {
         return foundation::Result<WorldCommandResult>::Failure(runtime_value.GetError());
@@ -224,22 +271,48 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const CreateObjectCom
     {
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
     }
-    const auto [object_iterator, object_inserted] = world_objects_.emplace(runtime_id, record);
-    if (!object_inserted)
+
+    try
     {
-        return foundation::Result<WorldCommandResult>::Failure(
-            MakeWorldError("world.duplicate_runtime_object", "allocated runtime object id already exists"));
-    }
-    if (record.persistent_id.IsValid())
-    {
-        const auto [_, persistent_inserted] = persistent_to_runtime_.emplace(record.persistent_id, runtime_id);
-        if (!persistent_inserted)
+        const auto [object_iterator, object_inserted] = world_objects_.emplace(runtime_id, record);
+        if (!object_inserted)
         {
-            world_objects_.erase(object_iterator);
             return foundation::Result<WorldCommandResult>::Failure(
-                MakeWorldError("world.duplicate_persistent_object", "persistent object id is already registered"));
+                MakeWorldError("world.duplicate_runtime_object", "allocated runtime object id already exists"));
+        }
+
+        if (record.persistent_id.IsValid())
+        {
+            try
+            {
+                if (fail_next_persistent_index_publication_for_testing_)
+                {
+                    fail_next_persistent_index_publication_for_testing_ = false;
+                    throw std::bad_alloc{};
+                }
+                const auto [_, persistent_inserted] = persistent_to_runtime_.emplace(record.persistent_id, runtime_id);
+                if (!persistent_inserted)
+                {
+                    world_objects_.erase(object_iterator);
+                    return foundation::Result<WorldCommandResult>::Failure(
+                        MakeWorldError("world.duplicate_persistent_object", "persistent object id is already registered"));
+                }
+            }
+            catch (...)
+            {
+                world_objects_.erase(object_iterator);
+                return foundation::Result<WorldCommandResult>::Failure(
+                    MakeWorldError("world.allocation_failed", "failed to publish persistent object index"));
+            }
         }
     }
+    catch (...)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(
+            MakeWorldError("world.allocation_failed", "failed to publish world object"));
+    }
+
+    CommitMonotonicId(next_runtime_object_value_);
     return foundation::Result<WorldCommandResult>::Success(WorldCommandResult{runtime_id, std::nullopt, record});
 }
 
@@ -267,9 +340,14 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangePlacement
         return WorldFailureValue<WorldCommandResult>("world.destroyed_requires_destroy_command",
                                                      "destroyed placement may only be created by destroy command");
     }
+    const auto next_revision = NextObjectRevision(iterator->second);
+    if (!next_revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(next_revision.GetError());
+    }
     WorldObjectRecord candidate = iterator->second;
     candidate.placement = command.placement;
-    ++candidate.revision;
+    candidate.revision = next_revision.Value();
     const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
     if (!invariant)
     {
@@ -294,6 +372,10 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangeResidency
     {
         return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
     }
+    if (!IsValidResidencyState(command.residency))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_state_enum", "residency enum value is outside the supported domain");
+    }
     if (!CanTransition(iterator->second.residency, command.residency))
     {
         return WorldFailureValue<WorldCommandResult>("world.invalid_residency_transition",
@@ -305,9 +387,14 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const ChangeResidency
     {
         return WorldFailureValue<WorldCommandResult>("world.destroyed_terminal", "destroyed objects cannot change residency");
     }
+    const auto next_revision = NextObjectRevision(iterator->second);
+    if (!next_revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(next_revision.GetError());
+    }
     WorldObjectRecord candidate = iterator->second;
     candidate.residency = command.residency;
-    ++candidate.revision;
+    candidate.revision = next_revision.Value();
     const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
     if (!invariant)
     {
@@ -326,29 +413,36 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const PromotePersiste
     {
         return WorldFailureValue<WorldCommandResult>("world.object_not_found", "world object was not found for persistence update");
     }
-
     const auto revision = CheckExpectedRevision(iterator->second, command.expected_revision);
     if (!revision)
     {
         return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
+    }
+    if (!IsValidPersistenceTier(command.tier))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_state_enum", "persistence tier enum value is outside the supported domain");
     }
     if (!CanPromotePersistenceTier(iterator->second.persistence_tier, command.tier))
     {
         return WorldFailureValue<WorldCommandResult>("world.forbidden_persistence_downgrade",
                                                      "persistence tier cannot be downgraded by promotion command");
     }
-
-    WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
     if (IsDestroyed(iterator->second))
     {
         return WorldFailureValue<WorldCommandResult>("world.destroyed_terminal", "destroyed objects cannot change persistence tier");
     }
+
+    WorldCommandResult result{command.runtime_id, iterator->second, std::nullopt};
     WorldObjectRecord candidate = iterator->second;
     if (command.persistent_id)
     {
         if (!command.persistent_id->IsValid())
         {
             return WorldFailureValue<WorldCommandResult>("world.invalid_persistent_object", "persistent id must be valid for persistent tier promotion");
+        }
+        if (candidate.persistent_id.IsValid() && candidate.persistent_id != *command.persistent_id)
+        {
+            return WorldFailureValue<WorldCommandResult>("world.persistent_id_immutable", "persistent object identity cannot be renamed during promotion");
         }
         const auto existing = persistent_to_runtime_.find(*command.persistent_id);
         if (existing != persistent_to_runtime_.end() && existing->second != command.runtime_id)
@@ -361,19 +455,55 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const PromotePersiste
     {
         return WorldFailureValue<WorldCommandResult>("world.persistent_id_required", "persistent tier promotion requires a persistent object id");
     }
+    const auto next_revision = NextObjectRevision(iterator->second);
+    if (!next_revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(next_revision.GetError());
+    }
     candidate.persistence_tier = command.tier;
-    ++candidate.revision;
+    candidate.revision = next_revision.Value();
     const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
     if (!invariant)
     {
         return foundation::Result<WorldCommandResult>::Failure(invariant.GetError());
     }
-    InvalidateDemotionTokensForObject(command.runtime_id);
-    if (candidate.persistent_id.IsValid())
+
+    bool published_new_index = false;
+    if (candidate.persistent_id.IsValid() && !persistent_to_runtime_.contains(candidate.persistent_id))
     {
-        persistent_to_runtime_[candidate.persistent_id] = command.runtime_id;
+        try
+        {
+            if (fail_next_persistent_index_publication_for_testing_)
+            {
+                fail_next_persistent_index_publication_for_testing_ = false;
+                throw std::bad_alloc{};
+            }
+            const auto [_, inserted] = persistent_to_runtime_.emplace(candidate.persistent_id, command.runtime_id);
+            if (!inserted)
+            {
+                return WorldFailureValue<WorldCommandResult>("world.duplicate_persistent_object", "persistent object id is already registered");
+            }
+            published_new_index = true;
+        }
+        catch (...)
+        {
+            return WorldFailureValue<WorldCommandResult>("world.allocation_failed", "failed to publish persistent object index");
+        }
     }
-    iterator->second = candidate;
+
+    try
+    {
+        iterator->second = candidate;
+    }
+    catch (...)
+    {
+        if (published_new_index)
+        {
+            persistent_to_runtime_.erase(candidate.persistent_id);
+        }
+        return WorldFailureValue<WorldCommandResult>("world.allocation_failed", "failed to publish world object persistence state");
+    }
+    InvalidateDemotionTokensForObject(command.runtime_id);
     result.after = candidate;
     return foundation::Result<WorldCommandResult>::Success(std::move(result));
 }
@@ -384,6 +514,11 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const MaterializeObje
     {
         return WorldFailureValue<WorldCommandResult>("world.invalid_persistent_object",
                                                      "persistent object id must be valid before materialization");
+    }
+
+    if (!IsValidObjectRealityLevel(command.request.target_reality))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_state_enum", "materialization target reality enum is outside the supported domain");
     }
 
     const auto index = persistent_to_runtime_.find(command.request.persistent_id);
@@ -415,10 +550,15 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const MaterializeObje
         return WorldFailureValue<WorldCommandResult>("world.materialization_placement_incompatible",
                                                      "physical materialization requires a physical-compatible placement");
     }
+    const auto next_revision = NextObjectRevision(object);
+    if (!next_revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(next_revision.GetError());
+    }
     WorldObjectRecord candidate = object;
     candidate.reality = command.request.target_reality;
     candidate.residency = ResidencyForReality(command.request.target_reality);
-    ++candidate.revision;
+    candidate.revision = next_revision.Value();
     const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
     if (!invariant)
     {
@@ -443,6 +583,10 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DemoteObjectCom
     {
         return foundation::Result<WorldCommandResult>::Failure(revision.GetError());
     }
+    if (!IsValidObjectRealityLevel(command.request.target_reality))
+    {
+        return WorldFailureValue<WorldCommandResult>("world.invalid_state_enum", "demotion target reality enum is outside the supported domain");
+    }
     if (!CanDemoteReality(iterator->second.reality, command.request.target_reality))
     {
         return WorldFailureValue<WorldCommandResult>("world.invalid_reality_demotion",
@@ -462,11 +606,16 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DemoteObjectCom
                                                      "demotion requires a matching collapse commit token");
     }
     WorldCommandResult result{command.request.runtime_id, iterator->second, std::nullopt};
+    const auto next_revision = NextObjectRevision(iterator->second);
+    if (!next_revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(next_revision.GetError());
+    }
     WorldObjectRecord candidate = iterator->second;
     candidate.reality = command.request.target_reality;
     candidate.residency = ResidencyForReality(command.request.target_reality);
     candidate.placement = command.request.commit_token.collapsed_placement;
-    ++candidate.revision;
+    candidate.revision = next_revision.Value();
     const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
     if (!invariant)
     {
@@ -523,11 +672,16 @@ foundation::Result<WorldCommandResult> WorldRuntime::Apply(const DestroyObjectCo
         return foundation::Result<WorldCommandResult>::Success(std::move(result));
     }
 
+    const auto next_revision = NextObjectRevision(object);
+    if (!next_revision)
+    {
+        return foundation::Result<WorldCommandResult>::Failure(next_revision.GetError());
+    }
     WorldObjectRecord candidate = object;
     candidate.placement = DestroyedPlacement{command.destroyed_at, command.reason};
     candidate.reality = ObjectRealityLevel::Logical;
     candidate.residency = ResidencyState::Unloaded;
-    ++candidate.revision;
+    candidate.revision = next_revision.Value();
     const auto invariant = ValidateWorldObjectInvariant(candidate, *this, *this, *this);
     if (!invariant)
     {
@@ -697,6 +851,10 @@ foundation::Result<DemotionCommitToken> WorldRuntime::IssueDemotionCommitToken(D
     {
         return foundation::Result<DemotionCommitToken>::Failure(MakeWorldError("world.object_not_found", "world object was not found for demotion token"));
     }
+    if (!IsValidObjectRealityLevel(snapshot.target_reality))
+    {
+        return foundation::Result<DemotionCommitToken>::Failure(MakeWorldError("world.invalid_state_enum", "demotion target reality enum is outside the supported domain"));
+    }
     if (snapshot.source_revision != object->revision || !snapshot.collapse_record_id.IsValid() ||
         !CanDemoteReality(object->reality, snapshot.target_reality))
     {
@@ -711,7 +869,7 @@ foundation::Result<DemotionCommitToken> WorldRuntime::IssueDemotionCommitToken(D
     {
         return foundation::Result<DemotionCommitToken>::Failure(invariant.GetError());
     }
-    const auto token_value = AllocateMonotonicId(next_demotion_token_value_, "world.demotion_token_exhausted", "demotion token id allocator is exhausted");
+    const auto token_value = PeekMonotonicId(next_demotion_token_value_, "world.demotion_token_exhausted", "demotion token id allocator is exhausted");
     if (!token_value)
     {
         return foundation::Result<DemotionCommitToken>::Failure(token_value.GetError());
@@ -724,12 +882,26 @@ foundation::Result<DemotionCommitToken> WorldRuntime::IssueDemotionCommitToken(D
     token.collapsed_placement = snapshot.collapsed_placement;
     token.collapse_record_id = snapshot.collapse_record_id;
     token.source_revision = snapshot.source_revision;
-    const auto [_, inserted] = issued_demotion_tokens_.emplace(token.token_id, token);
-    if (!inserted)
+    try
+    {
+        if (fail_next_demotion_token_publication_for_testing_)
+        {
+            fail_next_demotion_token_publication_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
+        const auto [_, inserted] = issued_demotion_tokens_.emplace(token.token_id, token);
+        if (!inserted)
+        {
+            return foundation::Result<DemotionCommitToken>::Failure(
+                MakeWorldError("world.duplicate_demotion_token", "allocated demotion token id already exists"));
+        }
+    }
+    catch (...)
     {
         return foundation::Result<DemotionCommitToken>::Failure(
-            MakeWorldError("world.duplicate_demotion_token", "allocated demotion token id already exists"));
+            MakeWorldError("world.allocation_failed", "failed to publish demotion commit token"));
     }
+    CommitMonotonicId(next_demotion_token_value_);
     return foundation::Result<DemotionCommitToken>::Success(token);
 }
 
@@ -770,4 +942,4 @@ void WorldRuntime::InvalidateDemotionTokensForObject(RuntimeObjectId object)
         }
     }
 }
-} 
+}

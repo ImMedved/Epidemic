@@ -5,6 +5,7 @@
 
 #include "physics_runtime_impl.h"
 
+#include <exception>
 #include <utility>
 
 // Umbrella translation unit that anchors the public Physics contracts in the build.
@@ -25,7 +26,25 @@ foundation::Result<PhysicsServices> CreatePhysicsServices(PhysicsDependencies de
 {
     if (dependencies.backend)
     {
-        const auto initialized = dependencies.backend->Initialize(PhysicsBackendOptions{});
+        foundation::Result<void> initialized = foundation::Result<void>::Failure(
+            foundation::Error::Create("physics.backend_exception", "physics backend initialization did not run"));
+        try
+        {
+            initialized = dependencies.backend->Initialize(PhysicsBackendOptions{});
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<PhysicsServices>::Failure(
+                foundation::Error::Create("physics.backend_exception",
+                                          "physics backend threw during initialization",
+                                          exception.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<PhysicsServices>::Failure(
+                foundation::Error::Create("physics.backend_exception",
+                                          "physics backend threw during initialization"));
+        }
         if (!initialized)
         {
             return foundation::Result<PhysicsServices>::Failure(initialized.GetError());

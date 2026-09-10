@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <limits>
+#include <stdexcept>
 #include <vector>
 
 using namespace epidemic::gameplay::random;
@@ -101,7 +102,7 @@ int main()
     RandomSequence chance({7}, RandomStream::FromString("chance"));
     Check(!chance.RollMicroUnchecked(0), 32);
     Check(chance.RollMicroUnchecked(1'000'000), 33);
-    Check(chance.RollMicroUnchecked(1'000'001), 34);
+    Check(!chance.TryRollMicro(1'000'001).has_value(), 34);
     Check(RandomSequence({7}, RandomStream::FromString("chance")).RollMicroUnchecked(500'000) ==
               RandomSequence({7}, RandomStream::FromString("chance")).RollMicroUnchecked(500'000),
           35);
@@ -185,5 +186,25 @@ int main()
     const std::array<std::uint64_t, 2> needs_entropy_weights{1, 1};
     Check(!exhausted_weighted.WeightedIndex(needs_entropy_weights).has_value(), 69);
     Check(!exhausted_checked.TryRollMicro(500'000).has_value(), 70);
+    bool invalid_stream_rejected = false;
+    try
+    {
+        RandomSequence invalid_stream({1}, RandomStream{});
+        (void)invalid_stream;
+    }
+    catch (const std::invalid_argument &)
+    {
+        invalid_stream_rejected = true;
+    }
+    Check(invalid_stream_rejected, 72);
+
+    const double adjacent_min = 1.0;
+    const double adjacent_max = std::nextafter(adjacent_min, 2.0);
+    RandomSequence adjacent({123}, RandomStream::FromString("adjacent.real"));
+    for (int index = 0; index < 128; ++index)
+    {
+        const auto value = adjacent.TryUniformReal(adjacent_min, adjacent_max);
+        Check(value.has_value() && *value >= adjacent_min && *value < adjacent_max, 73);
+    }
     return 0;
 }

@@ -249,27 +249,13 @@ int Application::Shutdown()
         logger->Info("Application", "Lifecycle", "Shutdown started");
 
         std::exception_ptr first_error;
-        try
-        {
-            modules_.ShutdownAll(services_, *logger);
-        }
-        catch (const std::exception &exception)
-        {
-            logger->Error("Application", "Shutdown",
-                          "Module shutdown reported an error: " + std::string(exception.what()));
-            first_error = std::current_exception();
-        }
-        catch (...)
-        {
-            logger->Error("Application", "Shutdown", "Module shutdown reported an unknown error");
-            first_error = std::current_exception();
-        }
-
+        bool scheduler_quiesced = false;
         const auto scheduler = services_.Get<tasks::ITaskScheduler>();
         try
         {
             scheduler->RequestStop();
             scheduler->Join();
+            scheduler_quiesced = true;
         }
         catch (const std::exception &exception)
         {
@@ -290,26 +276,45 @@ int Application::Shutdown()
             }
         }
 
-        try
+        if (scheduler_quiesced)
         {
-            scheduler->WaitIdle();
-        }
-        catch (const std::exception &exception)
-        {
-            logger->Error("Application", "Shutdown",
-                          "Task scheduler drain reported an error during shutdown: " + std::string(exception.what()));
-            if (!first_error)
+            try
             {
+                scheduler->WaitIdle();
+            }
+            catch (const std::exception &exception)
+            {
+                logger->Error("Application", "Shutdown",
+                              "Task scheduler drain reported an error during shutdown: " + std::string(exception.what()));
                 first_error = std::current_exception();
             }
-        }
-        catch (...)
-        {
-            logger->Error("Application", "Shutdown",
-                          "Task scheduler drain reported an unknown error during shutdown");
-            if (!first_error)
+            catch (...)
             {
+                logger->Error("Application", "Shutdown",
+                              "Task scheduler drain reported an unknown error during shutdown");
                 first_error = std::current_exception();
+            }
+
+            try
+            {
+                modules_.ShutdownAll(services_, *logger);
+            }
+            catch (const std::exception &exception)
+            {
+                logger->Error("Application", "Shutdown",
+                              "Module shutdown reported an error: " + std::string(exception.what()));
+                if (!first_error)
+                {
+                    first_error = std::current_exception();
+                }
+            }
+            catch (...)
+            {
+                logger->Error("Application", "Shutdown", "Module shutdown reported an unknown error");
+                if (!first_error)
+                {
+                    first_error = std::current_exception();
+                }
             }
         }
 
@@ -360,7 +365,13 @@ void Application::AddFramePhaseHandler(FramePhase phase, FramePhaseCallback call
         throw std::invalid_argument("Frame phase handler must not be empty");
     }
 
-    phase_handlers_[ToIndex(phase)].push_back(PhaseHandler{std::move(callback), std::move(debug_name)});
+    const auto phase_index = ToIndex(phase);
+    if (phase_index >= FramePhaseCount())
+    {
+        throw std::invalid_argument("Frame phase handler requires a valid frame phase");
+    }
+
+    phase_handlers_[phase_index].push_back(PhaseHandler{std::move(callback), std::move(debug_name)});
 }
 
 void Application::ScheduleMainThreadTask(MainThreadTask task, std::string debug_name)

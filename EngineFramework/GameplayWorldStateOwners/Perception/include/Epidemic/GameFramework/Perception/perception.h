@@ -484,6 +484,8 @@ class PerceptionService
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
 
   private:
+    [[nodiscard]] bool CanAdvanceRevision(std::size_t count = 1) const noexcept;
+    [[nodiscard]] bool CanRecordChanges(std::size_t count = 1) const noexcept;
     void Bump() noexcept { ++revision_.value; }
     void Record(PerceptionChange change);
     void EnsureBudgetEpoch(GameplayTickId tick) noexcept;
@@ -499,8 +501,8 @@ class PerceptionService
     [[nodiscard]] foundation::Result<void> ActivateObservation(PendingPerceptionObservation pending,
                                                               GameplayContext context,
                                                               std::vector<PerceptionObservation> *activated);
-    void ExpireObservations(GameplayTimePoint now, GameplayContext context);
-    void DecayAwareness(GameplayTimePoint now, GameplayContext context);
+    [[nodiscard]] foundation::Result<void> ExpireObservations(GameplayTimePoint now, GameplayContext context);
+    [[nodiscard]] foundation::Result<void> DecayAwareness(GameplayTimePoint now, GameplayContext context);
     void CleanupUnaware();
     void IndexStimulus(const PerceptionStimulus &stimulus);
     void UnindexStimulus(const PerceptionStimulus &stimulus);

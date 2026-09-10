@@ -3,6 +3,7 @@
 #include "Epidemic/Foundation/error.h"
 
 #include <limits>
+#include <type_traits>
 
 namespace epidemic::gameplay::materials
 {
@@ -11,6 +12,14 @@ namespace
 [[nodiscard]] foundation::Error Error(std::string code, std::string message)
 {
     return foundation::Error::Create(std::move(code), std::move(message));
+}
+
+template <class E>
+[[nodiscard]] constexpr bool EnumInRange(E value, E last) noexcept
+{
+    using U = std::underlying_type_t<E>;
+    const auto raw = static_cast<U>(value);
+    return raw >= 0 && raw <= static_cast<U>(last);
 }
 
 [[nodiscard]] std::uint32_t ClampPpm(std::int64_t value) noexcept
@@ -98,7 +107,8 @@ foundation::Result<SubstanceId> MaterialService::RegisterSubstance(SubstanceDefi
     {
         return foundation::Result<SubstanceId>::Failure(Error("gameplay.substance_id_mismatch", "substance id does not match canonical name"));
     }
-    if (definition.density_micro < 0 || definition.viscosity_micro < 0 || definition.flammability_micro < 0 ||
+    if (!EnumInRange(definition.phase, SubstancePhase::Powder) ||
+        definition.density_micro < 0 || definition.viscosity_micro < 0 || definition.flammability_micro < 0 ||
         definition.volatility_micro < 0 || definition.toxicity_micro < 0 || definition.corrosiveness_micro < 0 ||
         definition.conductivity_micro < 0 || definition.freeze_point_micro > definition.boiling_point_micro)
     {
@@ -138,9 +148,11 @@ foundation::Result<MaterialReactionId> MaterialService::RegisterReaction(Materia
     {
         return foundation::Result<MaterialReactionId>::Failure(Error("gameplay.registry_frozen", "material reaction registry is frozen"));
     }
-    if (rule.canonical_name.empty() || !rule.response_type.IsValid())
+    if (rule.canonical_name.empty() || !rule.response_type.IsValid() ||
+        !EnumInRange(rule.stimulus, MaterialStimulusType::Chemical) ||
+        !EnumInRange(rule.threshold_field, ReactionThresholdField::ExposureAmount))
     {
-        return foundation::Result<MaterialReactionId>::Failure(Error("gameplay.material_reaction_invalid", "reaction name and response type must be valid"));
+        return foundation::Result<MaterialReactionId>::Failure(Error("gameplay.material_reaction_invalid", "reaction name, enum domains and response type must be valid"));
     }
     const auto expected = MaterialReactionId::FromString(rule.canonical_name);
     if (!rule.id.IsValid())
@@ -156,17 +168,17 @@ foundation::Result<MaterialReactionId> MaterialService::RegisterReaction(Materia
         return foundation::Result<MaterialReactionId>::Failure(Error("gameplay.already_registered", "material reaction is already registered"));
     }
     const auto id = rule.id;
-    reactions_.emplace(id, std::move(rule));
-    reaction_order_.push_back(id);
-    std::sort(reaction_order_.begin(), reaction_order_.end(), [this](MaterialReactionId left, MaterialReactionId right) {
-        const auto& a = reactions_.at(left);
-        const auto& b = reactions_.at(right);
+    auto staged_order = reaction_order_;
+    staged_order.push_back(id);
+    std::sort(staged_order.begin(), staged_order.end(), [&](MaterialReactionId left, MaterialReactionId right) {
+        const auto& a = left == id ? rule : reactions_.at(left);
+        const auto& b = right == id ? rule : reactions_.at(right);
         if (a.priority != b.priority)
-        {
             return a.priority < b.priority;
-        }
         return a.id < b.id;
     });
+    reactions_.emplace(id, std::move(rule));
+    reaction_order_.swap(staged_order);
     return foundation::Result<MaterialReactionId>::Success(id);
 }
 
@@ -261,20 +273,21 @@ foundation::Result<void> MaterialService::AssignComposition(
     if (!next) return foundation::Result<void>::Failure(next.GetError());
 
     const auto kind = found == states_.end() ? MaterialChangeKind::Assigned : MaterialChangeKind::CompositionChanged;
-    revision_ = next.Value();
+    const auto committed_revision = next.Value();
     if (found == states_.end())
     {
         MaterialSlotState state;
         state.key = key;
         state.composition = std::move(composition);
-        state.revision = revision_;
+        state.revision = committed_revision;
         found = states_.emplace(key, std::move(state)).first;
     }
     else
     {
         found->second.composition = std::move(composition);
-        found->second.revision = revision_;
+        found->second.revision = committed_revision;
     }
+    revision_ = committed_revision;
     RecordChange(MaterialChange{0, kind, key, {}, {}, {}, revision_, context});
     return foundation::Result<void>::Success();
 }
@@ -518,9 +531,9 @@ foundation::Result<std::vector<MaterialResponse>> MaterialService::EvaluateStimu
     const GameplayTagRegistry& tags) const
 {
     if (!frozen_) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
-    if (stimulus.magnitude_micro < 0)
+    if (!EnumInRange(stimulus.type, MaterialStimulusType::Chemical) || stimulus.magnitude_micro < 0)
     {
-        return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_stimulus_invalid", "stimulus magnitude must be non-negative"));
+        return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_stimulus_invalid", "stimulus type must be valid and magnitude non-negative"));
     }
     const auto found = states_.find(MaterialSlotKey{stimulus.target, stimulus.slot});
     if (found == states_.end())
@@ -535,7 +548,7 @@ foundation::Result<std::vector<MaterialResponse>> MaterialService::ApplyStimulus
     const GameplayTagRegistry& tags)
 {
     if (!frozen_) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.registry_not_frozen", "material service must be frozen before runtime operations"));
-    if (stimulus.magnitude_micro < 0) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_stimulus_invalid", "stimulus magnitude must be non-negative"));
+    if (!EnumInRange(stimulus.type, MaterialStimulusType::Chemical) || stimulus.magnitude_micro < 0) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_stimulus_invalid", "stimulus type must be valid and magnitude non-negative"));
     auto found = states_.find(MaterialSlotKey{stimulus.target, stimulus.slot});
     if (found == states_.end()) return foundation::Result<std::vector<MaterialResponse>>::Failure(Error("gameplay.material_state_unknown", "material slot state does not exist"));
 
@@ -644,11 +657,26 @@ std::vector<MaterialSlotState> MaterialService::FindByMaterialTag(TagId tag, con
 
 void MaterialService::RecordChange(MaterialChange change) noexcept
 {
-    change.sequence = next_change_sequence_;
-    last_change_sequence_ = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max()) next_change_sequence_ = 0;
-    else ++next_change_sequence_;
-    changes_.push_back(std::move(change));
+    if (next_change_sequence_ == 0)
+        return;
+    const auto sequence = next_change_sequence_;
+    change.sequence = sequence;
+    try
+    {
+        changes_.push_back(std::move(change));
+    }
+    catch (...)
+    {
+        changes_.clear();
+        const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_);
+        if (next_epoch)
+            journal_epoch_ = *next_epoch;
+        next_change_sequence_ = 1;
+        last_change_sequence_ = 0;
+        return;
+    }
+    last_change_sequence_ = sequence;
+    next_change_sequence_ = sequence == std::numeric_limits<std::uint64_t>::max() ? 0 : sequence + 1;
 }
 
 std::vector<MaterialChange> MaterialService::ChangesSinceSequence(std::uint64_t sequence) const

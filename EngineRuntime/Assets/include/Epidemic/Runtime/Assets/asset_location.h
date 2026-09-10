@@ -15,6 +15,19 @@ enum class AssetLocationKind
     Generated,
 };
 
+[[nodiscard]] constexpr bool IsValidAssetLocationKind(AssetLocationKind value) noexcept
+{
+    switch (value)
+    {
+    case AssetLocationKind::FilePath:
+    case AssetLocationKind::PackageEntry:
+    case AssetLocationKind::VirtualPath:
+    case AssetLocationKind::Generated:
+        return true;
+    }
+    return false;
+}
+
 struct AssetLocation
 {
     AssetLocationKind kind = AssetLocationKind::FilePath;

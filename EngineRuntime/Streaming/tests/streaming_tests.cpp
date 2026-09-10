@@ -8,6 +8,7 @@
 #include <chrono>
 #include <cstddef>
 #include <limits>
+#include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -47,6 +48,7 @@ using epidemic::runtime::streaming::StreamingRequest;
 using epidemic::runtime::streaming::StreamingRequestHandle;
 using epidemic::runtime::streaming::StreamingRuntime;
 using epidemic::runtime::streaming::StreamingState;
+using epidemic::runtime::streaming::StreamingStatistics;
 using epidemic::runtime::streaming::StreamingStepResult;
 using epidemic::runtime::streaming::StreamingTarget;
 
@@ -94,11 +96,16 @@ class PlanSource final : public IStreamingDataSource
     Result<ProgressiveLoadPlan> BuildLoadPlan(const StreamingRequest&) override
     {
         ++build_count;
+        if (throw_on_build)
+        {
+            throw std::runtime_error("build failure");
+        }
         return Result<ProgressiveLoadPlan>::Success(plan);
     }
 
     Result<StreamingStepResult> ExecuteStep(const StreamingRequest&, StreamingPlanStepRecord step, const epidemic::runtime::RuntimeBudget& budget) override
     {
+        if (throw_on_execute) throw std::runtime_error("execute failure");
         executed.push_back(step.step);
         last_budget = budget;
         if (fail_step && step.step == *fail_step)
@@ -130,6 +137,8 @@ class PlanSource final : public IStreamingDataSource
     int partial_remaining = 0;
     std::size_t partial_processed_bytes = 1;
     bool respect_budget = false;
+    bool throw_on_build = false;
+    bool throw_on_execute = false;
     epidemic::runtime::RuntimeBudget last_budget{};
     int build_count = 0;
     std::vector<StreamingPlanStep> executed;
@@ -141,12 +150,17 @@ class CommitTarget final : public IStreamingCommitTarget
     Result<void> Commit(const StreamingRequest&) override
     {
         ++commits;
+        if (throw_commit) throw std::runtime_error("commit threw");
         return Result<void>::Success();
     }
 
     Result<void> Rollback(const StreamingRequest&) override
     {
         ++rollbacks;
+        if (throw_rollback)
+        {
+            throw std::runtime_error("rollback threw");
+        }
         if (fail_rollback)
         {
             return Result<void>::Failure(epidemic::foundation::Error::Create("streaming.rollback_failed", "rollback failed for test"));
@@ -157,6 +171,8 @@ class CommitTarget final : public IStreamingCommitTarget
     int commits = 0;
     int rollbacks = 0;
     bool fail_rollback = false;
+    bool throw_commit = false;
+    bool throw_rollback = false;
 };
 
 class PriorityProvider final : public IStreamingPriorityProvider
@@ -165,10 +181,12 @@ class PriorityProvider final : public IStreamingPriorityProvider
     StreamingPriorityClass GetPriority(const StreamingTarget&) const override
     {
         ++const_cast<PriorityProvider*>(this)->calls;
+        if (throw_on_get) throw std::runtime_error("priority threw");
         return priority;
     }
 
     StreamingPriorityClass priority = StreamingPriorityClass::High;
+    bool throw_on_get = false;
     int calls = 0;
 };
 
@@ -178,12 +196,14 @@ class ResourceTracker final : public IStreamingResourceSource
     Result<void> PrepareChunkResources(const StreamingRequest&) override
     {
         ++prepares;
+        if (throw_prepare) throw std::runtime_error("resource prepare threw");
         return Result<void>::Success();
     }
 
     Result<void> ReleaseChunkResources(ChunkId) override
     {
         ++releases;
+        if (throw_release) throw std::runtime_error("resource release threw");
         if (fail_release_once)
         {
             fail_release_once = false;
@@ -195,6 +215,8 @@ class ResourceTracker final : public IStreamingResourceSource
     int prepares = 0;
     int releases = 0;
     bool fail_release_once = false;
+    bool throw_release = false;
+    bool throw_prepare = false;
 };
 
 class WorldTracker final : public IStreamingWorldSource
@@ -203,10 +225,12 @@ class WorldTracker final : public IStreamingWorldSource
     std::optional<RegionId> ResolveRegion(ChunkId) const override
     {
         ++const_cast<WorldTracker*>(this)->resolves;
+        if (throw_resolve) throw std::runtime_error("world resolve threw");
         return RegionId{77};
     }
 
     int resolves = 0;
+    bool throw_resolve = false;
 };
 
 class PersistenceTracker final : public IStreamingPersistenceSource
@@ -215,10 +239,12 @@ class PersistenceTracker final : public IStreamingPersistenceSource
     Result<void> PrepareChunkData(const StreamingRequest&) override
     {
         ++prepares;
+        if (throw_prepare) throw std::runtime_error("persistence prepare threw");
         return Result<void>::Success();
     }
 
     int prepares = 0;
+    bool throw_prepare = false;
 };
 
 class ResidencyTracker final : public IResidencyController
@@ -227,18 +253,31 @@ class ResidencyTracker final : public IResidencyController
     Result<void> ActivateChunk(ChunkId) override
     {
         ++activates;
+        if (throw_activate) throw std::runtime_error("activate threw");
+        if (fail_activate_once)
+        {
+            fail_activate_once = false;
+            return Result<void>::Failure(epidemic::foundation::Error::Create("streaming.activate_failed", "activate failed once"));
+        }
         return Result<void>::Success();
     }
 
     Result<void> DeactivateChunk(ChunkId) override
     {
         ++deactivates;
+        if (throw_deactivate) throw std::runtime_error("deactivate threw");
+        if (fail_deactivate_once)
+        {
+            fail_deactivate_once = false;
+            return Result<void>::Failure(epidemic::foundation::Error::Create("streaming.deactivate_failed", "deactivate failed once"));
+        }
         return Result<void>::Success();
     }
 
     Result<void> UnloadChunk(ChunkId) override
     {
         ++unloads;
+        if (throw_unload) throw std::runtime_error("unload threw");
         if (fail_unload_once)
         {
             fail_unload_once = false;
@@ -250,7 +289,12 @@ class ResidencyTracker final : public IResidencyController
     int activates = 0;
     int deactivates = 0;
     int unloads = 0;
+    bool fail_activate_once = false;
+    bool fail_deactivate_once = false;
     bool fail_unload_once = false;
+    bool throw_activate = false;
+    bool throw_deactivate = false;
+    bool throw_unload = false;
 };
 
 template <typename T>
@@ -962,6 +1006,339 @@ bool TestShutdownRetriesRollbackAndUnloadCleanup()
     return true;
 }
 
+
+bool TestRequestPublicationAndAllocatorAtomicity()
+{
+    StreamingRuntime runtime;
+    runtime.SetNextRequestValueForTesting(100);
+    runtime.SetNextDemandValueForTesting(200);
+    runtime.FailNextRequestPublicationForTesting();
+    const auto failed = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{801}}}, StreamingPriorityClass::Normal);
+    if (failed || !failed.GetError().HasCode("streaming.allocation_failed") || runtime.RecordCount() != 0u ||
+        runtime.NextRequestValueForTesting() != 100u || runtime.NextDemandValueForTesting() != 200u)
+    {
+        return false;
+    }
+    const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{801}}}, StreamingPriorityClass::Normal);
+    if (!first || first.Value().request.id.value != 100u || first.Value().id.value != 200u) return false;
+    const auto before = runtime.GetProgress(first.Value().request);
+    runtime.FailNextDemandPublicationForTesting();
+    const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{801}}}, StreamingPriorityClass::High);
+    const auto after = runtime.GetProgress(first.Value().request);
+    return !second && second.GetError().HasCode("streaming.allocation_failed") && before && after &&
+           before->demand_count == after->demand_count && runtime.NextDemandValueForTesting() == 201u;
+}
+
+bool TestLastReleaseFailureRetainsOwnershipAndRetries()
+{
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    commit->fail_rollback = true;
+    StreamingRuntime runtime(MakeDependencies(source, commit));
+    const ChunkId chunk{802};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand) return false;
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    const auto failed = runtime.ReleaseDemand(demand.Value());
+    const auto pending = runtime.GetProgress(demand.Value().request);
+    if (failed || !pending || pending->state != StreamingState::RollbackFailed || pending->demand_count != 1u) return false;
+    commit->fail_rollback = false;
+    const auto retried = runtime.ReleaseDemand(demand.Value());
+    const auto completed = runtime.GetProgress(demand.Value().request);
+    return retried && completed && completed->state == StreamingState::Cancelled && completed->demand_count == 0u &&
+           runtime.GetStatistics().cancelled == 1u;
+}
+
+bool TestCompletionExhaustionLeavesLastDemandAndGraphUntouched()
+{
+    StreamingRuntime runtime;
+    const ChunkId chunk{803};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand) return false;
+    runtime.SetNextCompletionSequenceForTesting(0);
+    const auto failed = runtime.ReleaseDemand(demand.Value());
+    const auto progress = runtime.GetProgress(demand.Value().request);
+    if (failed || !failed.GetError().HasCode("streaming.completion_sequence_overflow") || !progress ||
+        progress->state != StreamingState::Requested || progress->demand_count != 1u) return false;
+    runtime.SetNextCompletionSequenceForTesting(1);
+    return runtime.ReleaseDemand(demand.Value()).HasValue();
+}
+
+bool TestUnloadPhasesDoNotRepeatResourceRelease()
+{
+    auto resources = std::make_shared<ResourceTracker>();
+    auto residency = std::make_shared<ResidencyTracker>();
+    residency->fail_unload_once = true;
+    StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency, {}, {}, resources));
+    const ChunkId chunk{804};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand || !AdvanceTo(runtime, chunk, StreamingState::Active)) return false;
+    if (!runtime.ReleaseDemand(demand.Value())) return false;
+    (void)runtime.Tick(); // Deactivating -> Unloading.
+    const auto first_unload = runtime.Tick();
+    if (first_unload.failures.empty() || resources->releases != 1 || residency->unloads != 1 ||
+        runtime.GetChunkState(chunk) != StreamingState::Unloading) return false;
+    const auto retried = runtime.Tick();
+    return retried.failures.empty() && resources->releases == 1 && residency->unloads == 2 &&
+           runtime.GetChunkState(chunk) == StreamingState::Unloaded;
+}
+
+bool TestRollbackPreflightPreventsExternalCallAtSequenceExhaustion()
+{
+    auto source = std::make_shared<PlanSource>();
+    auto commit = std::make_shared<CommitTarget>();
+    StreamingRuntime runtime(MakeDependencies(source, commit));
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{805}}}, StreamingPriorityClass::Normal);
+    if (!demand) return false;
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    (void)runtime.Tick();
+    runtime.SetNextCompletionSequenceForTesting(0);
+    const auto failed = runtime.ReleaseDemand(demand.Value());
+    return !failed && failed.GetError().HasCode("streaming.completion_sequence_overflow") && commit->rollbacks == 0 &&
+           runtime.GetProgress(demand.Value().request)->demand_count == 1u;
+}
+
+bool TestRevisionAndPriorityDomainsAreChecked()
+{
+    StreamingRuntime runtime;
+    const auto invalid = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{806}}}, static_cast<StreamingPriorityClass>(99));
+    if (invalid || !invalid.GetError().HasCode("streaming.invalid_priority") || runtime.RecordCount() != 0u) return false;
+
+    auto priority = std::make_shared<PriorityProvider>();
+    priority->priority = static_cast<StreamingPriorityClass>(-1);
+    StreamingRuntime provider_runtime(MakeDependencies({}, {}, priority));
+    const auto provider_invalid = provider_runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{807}}}, StreamingPriorityClass::Normal);
+    if (provider_invalid || !provider_invalid.GetError().HasCode("streaming.invalid_priority")) return false;
+
+    StreamingRuntime revision_runtime;
+    const auto demand = revision_runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{808}}}, StreamingPriorityClass::Normal);
+    if (!demand || !revision_runtime.SetRevisionForTesting(demand.Value().request, std::numeric_limits<std::uint64_t>::max())) return false;
+    const auto before = revision_runtime.GetProgress(demand.Value().request);
+    const auto tick = revision_runtime.Tick();
+    const auto after = revision_runtime.GetProgress(demand.Value().request);
+    return before && after && tick.failures.size() == 1u && after->revision == before->revision && after->state == before->state;
+}
+
+bool TestMalformedPlansAndBuildExceptionsAreRejectedAtomically()
+{
+    auto source = std::make_shared<PlanSource>();
+    source->plan.cursor = 1;
+    StreamingRuntime runtime(MakeDependencies(source));
+    const auto invalid_cursor = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{809}}}, StreamingPriorityClass::Normal);
+    if (invalid_cursor || !invalid_cursor.GetError().HasCode("streaming.invalid_plan") || runtime.RecordCount() != 0u) return false;
+    source->plan.cursor = 0;
+    source->plan.steps.front().processed_bytes = 1;
+    const auto preprocessed = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{809}}}, StreamingPriorityClass::Normal);
+    if (preprocessed || !preprocessed.GetError().HasCode("streaming.invalid_plan")) return false;
+    source->plan.steps.front().processed_bytes = 0;
+    source->plan.steps.front().step = static_cast<StreamingPlanStep>(99);
+    const auto invalid_step = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{809}}}, StreamingPriorityClass::Normal);
+    if (invalid_step || !invalid_step.GetError().HasCode("streaming.invalid_plan_step")) return false;
+    source->plan.steps.front().step = StreamingPlanStep::ResolveTarget;
+    source->throw_on_build = true;
+    const auto thrown = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{809}}}, StreamingPriorityClass::Normal);
+    return !thrown && thrown.GetError().HasCode("streaming.data_source_exception") && runtime.RecordCount() == 0u;
+}
+
+bool TestNegativeBudgetNormalizesAndResidencyLifecycleValidates()
+{
+    StreamingRuntime runtime;
+    runtime.SetBudget(StreamingBudget{std::chrono::microseconds{-1}, 3, 4});
+    if (runtime.BudgetForTesting().cpu_budget.count() != 0 || runtime.BudgetForTesting().max_requests != 3u) return false;
+    InMemoryResidencyController controller;
+    const ChunkId chunk{810};
+    const auto bad_deactivate = controller.DeactivateChunk(chunk);
+    if (bad_deactivate || !bad_deactivate.GetError().HasCode("streaming.invalid_residency_transition")) return false;
+    if (!controller.ActivateChunk(chunk) || !controller.ActivateChunk(chunk) || !controller.DeactivateChunk(chunk) ||
+        !controller.DeactivateChunk(chunk) || !controller.UnloadChunk(chunk) || !controller.UnloadChunk(chunk)) return false;
+    return controller.GetResidencyState(chunk) == StreamingState::Unloaded;
+}
+
+bool TestShutdownLifecycleAndExceptionBoundary()
+{
+    auto residency = std::make_shared<ResidencyTracker>();
+    StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency));
+    const ChunkId chunk{811};
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!demand || !AdvanceTo(runtime, chunk, StreamingState::Active)) return false;
+    residency->throw_deactivate = true;
+    const auto failed = runtime.Shutdown();
+    if (failed || !runtime.IsShuttingDownForTesting()) return false;
+    const auto rejected = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{812}}}, StreamingPriorityClass::Normal);
+    if (rejected || !rejected.GetError().HasCode("streaming.shutdown")) return false;
+    residency->throw_deactivate = false;
+    const auto retried = runtime.Shutdown();
+    return retried && runtime.Shutdown();
+}
+
+bool TestStatisticsSaturateAndStaleDemandChecksRequestGeneration()
+{
+    StreamingRuntime runtime;
+    StreamingStatistics stats{};
+    stats.cancelled = std::numeric_limits<std::uint64_t>::max();
+    runtime.SetStatisticsForTesting(stats);
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{813}}}, StreamingPriorityClass::Normal);
+    if (!demand || !runtime.ReleaseDemand(demand.Value()) || runtime.GetStatistics().cancelled != std::numeric_limits<std::uint64_t>::max()) return false;
+
+    StreamingRuntime stale_runtime;
+    const auto valid = stale_runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{814}}}, StreamingPriorityClass::Normal);
+    if (!valid) return false;
+    StreamingDemandHandle stale = valid.Value();
+    ++stale.request.generation;
+    const auto rejected = stale_runtime.ReleaseDemand(stale);
+    const auto progress = stale_runtime.GetProgress(valid.Value().request);
+    return !rejected && rejected.GetError().HasCode("streaming.stale_handle") && progress && progress->demand_count == 1u;
+}
+
+
+bool TestWaitingSuccessorCancellationOverflowPreservesGraph()
+{
+    auto residency = std::make_shared<ResidencyTracker>();
+    StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency));
+    const ChunkId chunk{815};
+    const auto original = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!original || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(original.Value())) return false;
+    (void)runtime.Tick(); // Deactivating -> Unloading.
+    if (runtime.GetChunkState(chunk) != StreamingState::Unloading) return false;
+    const auto successor = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!successor || successor.Value().request == original.Value().request) return false;
+    runtime.SetNextCompletionSequenceForTesting(0);
+    const auto failed = runtime.ReleaseDemand(successor.Value());
+    const auto pending = runtime.GetProgress(successor.Value().request);
+    if (failed || !failed.GetError().HasCode("streaming.completion_sequence_overflow") || !pending ||
+        pending->state != StreamingState::WaitingForPredecessor || pending->demand_count != 1u) return false;
+    const auto joined = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::High);
+    const auto after = joined ? runtime.GetProgress(joined.Value().request) : std::nullopt;
+    return joined && joined.Value().request == successor.Value().request && after && after->demand_count == 2u;
+}
+
+bool TestAllStreamingExtensionExceptionsStayInsideResultBoundary()
+{
+    {
+        auto priority = std::make_shared<PriorityProvider>();
+        priority->throw_on_get = true;
+        StreamingRuntime runtime(MakeDependencies({}, {}, priority));
+        const auto r = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{816}}}, StreamingPriorityClass::Normal);
+        if (r || !r.GetError().HasCode("streaming.priority_exception")) return false;
+    }
+    {
+        auto source = std::make_shared<PlanSource>();
+        source->throw_on_execute = true;
+        StreamingRuntime runtime(MakeDependencies(source));
+        const auto d = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{817}}}, StreamingPriorityClass::Normal);
+        if (!d) return false;
+        (void)runtime.Tick(); (void)runtime.Tick();
+        const auto t = runtime.Tick();
+        if (t.failures.empty() || runtime.GetProgress(d.Value().request)->state != StreamingState::Failed) return false;
+    }
+    {
+        auto world = std::make_shared<WorldTracker>();
+        world->throw_resolve = true;
+        StreamingRuntime runtime(MakeDependencies({}, {}, {}, {}, world));
+        const auto d = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{818}}}, StreamingPriorityClass::Normal);
+        if (!d) return false;
+        (void)runtime.Tick(); (void)runtime.Tick();
+        const auto t = runtime.Tick();
+        if (t.failures.empty()) return false;
+    }
+    {
+        auto persistence = std::make_shared<PersistenceTracker>();
+        persistence->throw_prepare = true;
+        StreamingRuntime runtime(MakeDependencies({}, {}, {}, {}, {}, persistence));
+        const auto d = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{819}}}, StreamingPriorityClass::Normal);
+        if (!d) return false;
+        (void)runtime.Tick(); (void)runtime.Tick(); (void)runtime.Tick();
+        const auto t = runtime.Tick();
+        if (t.failures.empty()) return false;
+    }
+    {
+        auto resources = std::make_shared<ResourceTracker>();
+        resources->throw_prepare = true;
+        StreamingRuntime runtime(MakeDependencies({}, {}, {}, {}, {}, {}, resources));
+        const auto d = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{820}}}, StreamingPriorityClass::Normal);
+        if (!d) return false;
+        (void)runtime.Tick(); (void)runtime.Tick(); (void)runtime.Tick(); (void)runtime.Tick();
+        const auto t = runtime.Tick();
+        if (t.failures.empty()) return false;
+    }
+    {
+        auto source = std::make_shared<PlanSource>();
+        source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::Commit, 1}};
+        auto commit = std::make_shared<CommitTarget>();
+        commit->throw_commit = true;
+        StreamingRuntime runtime(MakeDependencies(source, commit));
+        const auto d = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{821}}}, StreamingPriorityClass::Normal);
+        if (!d) return false;
+        (void)runtime.Tick(); (void)runtime.Tick();
+        const auto t = runtime.Tick();
+        if (t.failures.empty()) return false;
+    }
+    {
+        auto source = std::make_shared<PlanSource>();
+        source->fail_step = StreamingPlanStep::ResolveTarget;
+        auto commit = std::make_shared<CommitTarget>();
+        commit->throw_rollback = true;
+        StreamingRuntime runtime(MakeDependencies(source, commit));
+        const auto d = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{822}}}, StreamingPriorityClass::Normal);
+        if (!d) return false;
+        (void)runtime.Tick(); (void)runtime.Tick();
+        const auto t = runtime.Tick();
+        if (t.failures.empty() || runtime.GetProgress(d.Value().request)->state != StreamingState::RollbackFailed) return false;
+    }
+    {
+        auto residency = std::make_shared<ResidencyTracker>();
+        residency->throw_activate = true;
+        StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency));
+        const auto d = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{823}}}, StreamingPriorityClass::Normal);
+        if (!d || !AdvanceTo(runtime, ChunkId{823}, StreamingState::Activating)) return false;
+        const auto t = runtime.Tick();
+        if (t.failures.empty() || runtime.GetChunkState(ChunkId{823}) != StreamingState::Activating) return false;
+        residency->throw_activate = false;
+        if (!runtime.Tick().failures.empty() || runtime.GetChunkState(ChunkId{823}) != StreamingState::Resident) return false;
+    }
+    return true;
+}
+
+
+bool TestStreamingIdentityAllocatorExhaustionBoundaries()
+{
+    {
+        StreamingRuntime runtime;
+        runtime.SetNextRequestValueForTesting(0);
+        const auto r = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{824}}}, StreamingPriorityClass::Normal);
+        if (r || !r.GetError().HasCode("streaming.id_overflow") || runtime.RecordCount() != 0u) return false;
+    }
+    {
+        StreamingRuntime runtime;
+        runtime.SetNextDemandValueForTesting(0);
+        const auto r = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{825}}}, StreamingPriorityClass::Normal);
+        if (r || !r.GetError().HasCode("streaming.id_overflow") || runtime.RecordCount() != 0u) return false;
+    }
+    {
+        StreamingRuntime runtime;
+        runtime.SetNextRequestValueForTesting(std::numeric_limits<std::uint64_t>::max());
+        const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{826}}}, StreamingPriorityClass::Normal);
+        if (!first || first.Value().request.id.value != std::numeric_limits<std::uint64_t>::max()) return false;
+        const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{827}}}, StreamingPriorityClass::Normal);
+        if (second || !second.GetError().HasCode("streaming.id_overflow")) return false;
+    }
+    {
+        StreamingRuntime runtime;
+        const auto d = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{828}}}, StreamingPriorityClass::Normal);
+        if (!d || !runtime.SetRevisionForTesting(d.Value().request, std::numeric_limits<std::uint64_t>::max() - 1u)) return false;
+        const auto first_tick = runtime.Tick();
+        const auto p1 = runtime.GetProgress(d.Value().request);
+        if (!first_tick.failures.empty() || !p1 || p1->revision != std::numeric_limits<std::uint64_t>::max()) return false;
+        const auto second_tick = runtime.Tick();
+        const auto p2 = runtime.GetProgress(d.Value().request);
+        if (second_tick.failures.empty() || !p2 || p2->revision != std::numeric_limits<std::uint64_t>::max()) return false;
+    }
+    return true;
+}
+
 bool TestLargeStepReceivesAvailableBudget()
 {
     auto source = std::make_shared<PlanSource>();
@@ -1025,6 +1402,19 @@ int main()
     if (!TestHistoryCleanupPreservesSuccessorMapping()) return 28;
     if (!TestRollbackFailedRequestIsNotReused()) return 21;
     if (!TestShutdownRetriesRollbackAndUnloadCleanup()) return 24;
+    if (!TestRequestPublicationAndAllocatorAtomicity()) return 31;
+    if (!TestLastReleaseFailureRetainsOwnershipAndRetries()) return 32;
+    if (!TestCompletionExhaustionLeavesLastDemandAndGraphUntouched()) return 33;
+    if (!TestUnloadPhasesDoNotRepeatResourceRelease()) return 34;
+    if (!TestRollbackPreflightPreventsExternalCallAtSequenceExhaustion()) return 35;
+    if (!TestRevisionAndPriorityDomainsAreChecked()) return 36;
+    if (!TestMalformedPlansAndBuildExceptionsAreRejectedAtomically()) return 37;
+    if (!TestNegativeBudgetNormalizesAndResidencyLifecycleValidates()) return 38;
+    if (!TestShutdownLifecycleAndExceptionBoundary()) return 39;
+    if (!TestStatisticsSaturateAndStaleDemandChecksRequestGeneration()) return 40;
+    if (!TestWaitingSuccessorCancellationOverflowPreservesGraph()) return 41;
+    if (!TestAllStreamingExtensionExceptionsStayInsideResultBoundary()) return 42;
+    if (!TestStreamingIdentityAllocatorExhaustionBoundaries()) return 43;
     if (!TestLargeStepReceivesAvailableBudget()) return 22;
     return 0;
 }

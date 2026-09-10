@@ -9,6 +9,7 @@
 #include <Epidemic/RHI/pixel_format.h>
 
 #include <stdexcept>
+#include <limits>
 #include <utility>
 
 namespace
@@ -98,6 +99,16 @@ void TestD3D11PositiveSmoke()
     Assert(graphics.Value().command_context->Clear(clear).HasValue(), "D3D11 Clear after resize must succeed");
     Assert(graphics.Value().command_context->EndFrame().HasValue(), "D3D11 EndFrame after resize must succeed");
     Assert(swap_chain.Value()->Present().HasValue(), "D3D11 Present after resize must succeed");
+
+    const auto failed_resize = swap_chain.Value()->Resize(std::numeric_limits<std::uint32_t>::max(),
+                                                          std::numeric_limits<std::uint32_t>::max());
+    Assert(!failed_resize.HasValue(), "D3D11 must report an impossible resize as a failure");
+    Assert(swap_chain.Value()->Width() == 400 && swap_chain.Value()->Height() == 300,
+           "Failed D3D11 resize must preserve the last usable logical dimensions");
+    const auto present_after_failed_resize = swap_chain.Value()->Present();
+    Assert(present_after_failed_resize.HasValue() ||
+               present_after_failed_resize.GetError().code == "rhi.d3d11.recreate_required",
+           "D3D11 failed resize must either recover the old target or expose recreate-required state");
 
     window_result.Value()->Close();
 }

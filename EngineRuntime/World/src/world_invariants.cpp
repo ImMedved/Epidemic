@@ -102,6 +102,10 @@ namespace
 
 foundation::Result<void> ValidateRealityResidencyCombination(ObjectRealityLevel reality, ResidencyState residency)
 {
+    if (!IsValidObjectRealityLevel(reality) || !IsValidResidencyState(residency))
+    {
+        return WorldInvariantFailure("world.invalid_state_enum", "world object reality/residency enum value is outside the supported domain");
+    }
     if (reality == ObjectRealityLevel::Physical && (residency == ResidencyState::Unloaded || residency == ResidencyState::Loading))
     {
         return WorldInvariantFailure("world.invalid_reality_residency", "physical objects must be resident or active");
@@ -121,6 +125,10 @@ foundation::Result<void> ValidateWorldObjectInvariant(const WorldObjectSnapshot&
     if (!object.runtime_id.IsValid())
     {
         return WorldInvariantFailure("world.invalid_object", "world object runtime id must be valid");
+    }
+    if (!IsValidPersistenceTier(object.persistence_tier) || !IsValidObjectRealityLevel(object.reality) || !IsValidResidencyState(object.residency))
+    {
+        return WorldInvariantFailure("world.invalid_state_enum", "world object contains an out-of-domain runtime state enum");
     }
     if (object.persistent_id.IsValid() && object.persistence_tier == PersistenceTier::Disposable)
     {

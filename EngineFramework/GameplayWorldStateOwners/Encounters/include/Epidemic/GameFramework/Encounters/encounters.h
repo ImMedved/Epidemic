@@ -453,11 +453,8 @@ class EncountersService
     }
 
   private:
-    void Bump() noexcept
-    {
-        revision_.value++;
-    }
-    void Record(EncounterChange change);
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    void Record(EncounterChange change) noexcept;
     [[nodiscard]] foundation::Result<std::vector<SpawnEntry>> ResolveEntries(const SpawnTable &table,
                                                                                const SpawnRequest &request) const;
     [[nodiscard]] bool EntryMatches(const SpawnEntry &entry, const SpawnRequest &request) const noexcept;

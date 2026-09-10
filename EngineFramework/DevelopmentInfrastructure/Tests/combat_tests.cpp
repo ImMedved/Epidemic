@@ -1,5 +1,8 @@
 #include "Epidemic/GameFramework/Combat/combat.h"
 
+#include <algorithm>
+#include <limits>
+
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::combat;
 
@@ -194,5 +197,72 @@ int main()
         before_invalid.Value().current_micro != after_invalid.Value().current_micro)
         return 36;
 
+
+    // CMB-01/CMB-02/CMB-03: resource reservation is atomic, range-safe and release is idempotent.
+    const auto reservation_before = restored.CaptureSnapshot();
+    const auto resource_before_reservation = restored.GetResource(target, hp.Value());
+    auto resource_reservation = restored.ReserveResource(target, hp.Value(), 1'000'000);
+    if (!resource_reservation)
+        return 37;
+    const auto resource_after_reservation = restored.GetResource(target, hp.Value());
+    if (!resource_before_reservation || !resource_after_reservation ||
+        resource_after_reservation.Value().current_micro != resource_before_reservation.Value().current_micro - 1'000'000)
+        return 38;
+    restored.ReleaseResourceReservation(resource_reservation.Value());
+    const auto resource_after_release = restored.GetResource(target, hp.Value());
+    if (!resource_after_release || resource_after_release.Value().current_micro != resource_before_reservation.Value().current_micro ||
+        restored.FindResourceReservation(resource_reservation.Value()) != nullptr)
+        return 39;
+    restored.ReleaseResourceReservation(resource_reservation.Value());
+    const auto resource_after_second_release = restored.GetResource(target, hp.Value());
+    if (!resource_after_second_release || resource_after_second_release.Value().current_micro != resource_before_reservation.Value().current_micro)
+        return 40;
+
+    const auto before_huge_reservation = restored.CaptureSnapshot();
+    auto huge_reservation = restored.ReserveResource(target, hp.Value(), std::numeric_limits<std::int64_t>::max());
+    if (huge_reservation || !huge_reservation.GetError().HasCode("gameplay.combat.resource_unavailable"))
+        return 41;
+    const auto after_huge_reservation = restored.CaptureSnapshot();
+    if (after_huge_reservation.resource_reservation_ids.next != before_huge_reservation.resource_reservation_ids.next ||
+        after_huge_reservation.resource_reservations.size() != before_huge_reservation.resource_reservations.size())
+        return 42;
+
+    // CMB-04/CMB-05: a failed replacement prepare cannot destroy the previously prepared plan.
+    auto preserved_plan = restored.PrepareDamage(
+        Request(attacker, target, physical.Value(), health_profile_id.Value(), 1'000'000, 150));
+    if (!preserved_plan)
+        return 43;
+    auto invalid_request = Request(attacker, target, physical.Value(), DamageProfileId::FromString("missing.profile"), 1'000'000, 150);
+    auto invalid_prepare = restored.PrepareDamage(invalid_request);
+    if (invalid_prepare || !invalid_prepare.GetError().HasCode("gameplay.combat.damage_invalid"))
+        return 44;
+    if (!restored.CommitDamage(preserved_plan.Value(), {150}))
+        return 45;
+
+    // CMB-07: revision exhaustion rejects the mutation without touching resource state.
+    auto exhausted_snapshot = restored.CaptureSnapshot();
+    auto exhausted_record = std::find_if(exhausted_snapshot.combatants.begin(), exhausted_snapshot.combatants.end(),
+                                         [&](const auto& record) { return record.subject == target; });
+    if (exhausted_record == exhausted_snapshot.combatants.end())
+        return 46;
+    exhausted_record->revision = Revision{std::numeric_limits<std::uint64_t>::max()};
+    CombatService revision_exhausted;
+    if (!revision_exhausted.RegisterResource(health) || !revision_exhausted.RegisterResource(posture) ||
+        !revision_exhausted.RegisterDamageType("game.damage.physical") ||
+        !revision_exhausted.RegisterDamageProfile(health_profile) || !revision_exhausted.RegisterDamageProfile(posture_profile) ||
+        !revision_exhausted.SetPreparePolicy({GameplayDuration{5}}))
+        return 47;
+    revision_exhausted.Freeze();
+    if (!revision_exhausted.RestoreSnapshot(std::move(exhausted_snapshot)))
+        return 48;
+    const auto exhausted_before = revision_exhausted.GetResource(target, hp.Value());
+    auto exhausted_mutation = revision_exhausted.ModifyResource(target, hp.Value(), -1);
+    const auto exhausted_after = revision_exhausted.GetResource(target, hp.Value());
+    if (exhausted_mutation || !exhausted_mutation.GetError().HasCode("gameplay.revision_exhausted") ||
+        !exhausted_before || !exhausted_after ||
+        exhausted_before.Value().current_micro != exhausted_after.Value().current_micro)
+        return 49;
+
+    (void)reservation_before;
     return 0;
 }

@@ -257,6 +257,7 @@ struct ProgressionSnapshot
 {
     std::vector<ProgressionProfileSnapshot> profiles;
     MonotonicIdGenerator<GameplayObjectId>::Snapshot modifier_ids{};
+    MonotonicIdGenerator<GameplayObjectId>::Snapshot grant_reservation_ids{};
     Revision revision{};
     std::vector<ProgressionChange> journal;
     std::uint64_t next_change_sequence = 1;
@@ -382,7 +383,8 @@ class ProgressionService
     [[nodiscard]] bool HasPendingProgressGrant(GameplayObjectRef subject) const noexcept;
     [[nodiscard]] foundation::Result<std::vector<MilestoneId>> EvaluateMilestonesUnlocked(
         Profile& profile, GameplayObjectRef subject, GameplayContext context);
-    void Bump(Profile& profile) noexcept;
+    bool Bump(Profile& profile) noexcept;
+    [[nodiscard]] bool CanBump(const Profile& profile) const noexcept;
     void Record(ProgressionChange change);
 
     std::unordered_map<AttributeTypeId, AttributeDefinition, IdHash> attributes_;

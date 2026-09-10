@@ -7,6 +7,7 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 #include <utility>
 
@@ -101,11 +102,16 @@ class TransformAdapter final : public IPhysicsTransformSource, public IPhysicsTr
     Result<void> WriteTransform(PhysicsTransformId, const Transform&) override
     {
         ++writes;
+        if (fail_write)
+        {
+            return Result<void>::Failure(Error::Create("physics.transform_write_failed", "transform write failed for test"));
+        }
         return Result<void>::Success();
     }
 
     mutable int reads = 0;
     int writes = 0;
+    bool fail_write = false;
 };
 
 class JournalBackend final : public IPhysicsBackend
@@ -124,13 +130,16 @@ class JournalBackend final : public IPhysicsBackend
     Result<BackendShapeHandle> CreateShape(const CollisionShapeDesc&) override
     {
         ++create_shapes;
-        return Result<BackendShapeHandle>::Success(shape);
+        if (throw_create_shape) throw std::runtime_error("create shape exception");
+        if (fail_create_shape) return Result<BackendShapeHandle>::Failure(Error::Create("physics.create_shape_failed", "create shape failed for test"));
+        return Result<BackendShapeHandle>::Success(duplicate_shape_handles ? shape : BackendShapeHandle{shape.value + static_cast<std::uint64_t>(create_shapes - 1)});
     }
 
     Result<void> DestroyShape(BackendShapeHandle handle) override
     {
         ++destroy_shapes;
         last_destroyed_shape = handle;
+        if (throw_destroy_shape) throw std::runtime_error("destroy shape exception");
         if (fail_destroy_shape)
         {
             return Result<void>::Failure(Error::Create("physics.destroy_shape_failed", "destroy shape failed for test"));
@@ -143,13 +152,16 @@ class JournalBackend final : public IPhysicsBackend
         ++create_bodies;
         last_shape_for_body = handle;
         last_initial_transform = desc.initial_transform;
-        return Result<BackendBodyHandle>::Success(BackendBodyHandle{body.value + static_cast<std::uint64_t>(create_bodies)});
+        if (throw_create_body) throw std::runtime_error("create body exception");
+        if (fail_create_body) return Result<BackendBodyHandle>::Failure(Error::Create("physics.create_body_failed", "create body failed for test"));
+        return Result<BackendBodyHandle>::Success(duplicate_body_handles ? body : BackendBodyHandle{body.value + static_cast<std::uint64_t>(create_bodies)});
     }
 
     Result<void> DestroyBody(BackendBodyHandle handle) override
     {
         ++destroy_bodies;
         last_destroyed_body = handle;
+        if (throw_destroy_body) throw std::runtime_error("destroy body exception");
         if (fail_destroy_body)
         {
             return Result<void>::Failure(Error::Create("physics.destroy_body_failed", "destroy body failed for test"));
@@ -160,12 +172,16 @@ class JournalBackend final : public IPhysicsBackend
     Result<void> ApplyImpulse(BackendBodyHandle, const Vec3&) override
     {
         ++impulses;
+        if (throw_impulse) throw std::runtime_error("impulse exception");
+        if (fail_impulse) return Result<void>::Failure(Error::Create("physics.impulse_failed", "impulse failed for test"));
         return Result<void>::Success();
     }
 
     Result<void> SimulateFixed(RuntimeFrameDuration) override
     {
         ++simulates;
+        if (throw_simulate) throw std::runtime_error("simulate exception");
+        if (fail_simulate) return Result<void>::Failure(Error::Create("physics.simulate_failed", "simulate failed for test"));
         snapshot.world_transform.position.x += 2.0f;
         return Result<void>::Success();
     }
@@ -173,6 +189,7 @@ class JournalBackend final : public IPhysicsBackend
     Result<BackendBodySnapshot> GetBodySnapshot(BackendBodyHandle) const override
     {
         ++snapshots;
+        if (throw_snapshot) throw std::runtime_error("snapshot exception");
         if (fail_snapshot || (fail_snapshot_at != 0 && snapshots == fail_snapshot_at))
         {
             return Result<BackendBodySnapshot>::Failure(Error::Create("physics.snapshot_failed", "snapshot failed for test"));
@@ -196,9 +213,22 @@ class JournalBackend final : public IPhysicsBackend
     }
 
     bool fail_initialize = false;
+    bool fail_create_shape = false;
+    bool fail_create_body = false;
     bool fail_destroy_body = false;
     bool fail_destroy_shape = false;
+    bool fail_impulse = false;
+    bool fail_simulate = false;
     bool fail_snapshot = false;
+    bool throw_create_shape = false;
+    bool throw_create_body = false;
+    bool throw_destroy_body = false;
+    bool throw_destroy_shape = false;
+    bool throw_impulse = false;
+    bool throw_simulate = false;
+    bool throw_snapshot = false;
+    bool duplicate_shape_handles = false;
+    bool duplicate_body_handles = false;
     int fail_snapshot_at = 0;
     BackendShapeHandle shape{101};
     BackendBodyHandle body{202};
@@ -678,6 +708,152 @@ bool TestShutdownRetriesBodyBeforeDestroyingShape()
            destroyed_shapes_after_failure == 0 && retried && backend->destroy_bodies >= 2 && backend->destroy_shapes == 1;
 }
 
+
+bool TestInvalidBodyInputsAreRejectedBeforeBackend()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    const CollisionShapeId shape{41};
+    if (!RegisterDefaultShape(runtime, shape)) return false;
+    const int creates_before = backend->create_bodies;
+    const auto rev_before = runtime.RevisionForTesting();
+
+    auto invalid_type = MakeBodyDesc(shape, PhysicsBodyType::Dynamic);
+    invalid_type.type = static_cast<PhysicsBodyType>(255);
+    const auto type_result = runtime.CreateBody(invalid_type);
+    auto invalid_transform = MakeBodyDesc(shape, PhysicsBodyType::Dynamic);
+    invalid_transform.initial_transform.position.x = std::numeric_limits<float>::quiet_NaN();
+    const auto transform_result = runtime.CreateBody(invalid_transform);
+    return !type_result && type_result.GetError().HasCode("physics.invalid_body_type") &&
+           !transform_result && transform_result.GetError().HasCode("physics.invalid_transform") &&
+           backend->create_bodies == creates_before && runtime.RevisionForTesting() == rev_before;
+}
+
+bool TestBackendPublicationRollbackAndDuplicateHandles()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    runtime.FailNextShapePublicationForTesting();
+    const auto failed_shape = runtime.RegisterShape({CollisionShapeId{42}, Aabb{{0,0,0},{1,1,1}}});
+    if (failed_shape || !failed_shape.GetError().HasCode("physics.allocation_failure") || backend->destroy_shapes != 1 || runtime.HasShape(CollisionShapeId{42}))
+        return false;
+    if (!RegisterDefaultShape(runtime, CollisionShapeId{42})) return false;
+
+    runtime.FailNextBodyPublicationForTesting();
+    const auto rev_before = runtime.RevisionForTesting();
+    const int destroy_before = backend->destroy_bodies;
+    const auto failed_body = runtime.CreateBody(MakeBodyDesc(CollisionShapeId{42}, PhysicsBodyType::Dynamic));
+    if (failed_body || !failed_body.GetError().HasCode("physics.allocation_failure") ||
+        backend->destroy_bodies != destroy_before + 1 || runtime.RevisionForTesting() != rev_before)
+        return false;
+
+    backend->duplicate_body_handles = true;
+    const auto first = runtime.CreateBody(MakeBodyDesc(CollisionShapeId{42}, PhysicsBodyType::Dynamic));
+    const auto after_first = runtime.RevisionForTesting();
+    const auto second = runtime.CreateBody(MakeBodyDesc(CollisionShapeId{42}, PhysicsBodyType::Dynamic));
+    return first && !second && second.GetError().HasCode("physics.duplicate_backend_body_handle") &&
+           runtime.RevisionForTesting() == after_first;
+}
+
+bool TestRevisionAndAllocatorExhaustionAreAtomic()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    const CollisionShapeId shape{43};
+    if (!RegisterDefaultShape(runtime, shape)) return false;
+    const auto body = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    if (!body) return false;
+
+    const auto local_before = runtime.GetLocalBodySnapshotForTesting(body.Value());
+    runtime.SetRevisionForTesting(std::numeric_limits<std::uint64_t>::max());
+    const int impulses_before = backend->impulses;
+    const int destroys_before = backend->destroy_bodies;
+    const int simulates_before = backend->simulates;
+    const auto impulse = runtime.ApplyImpulse(body.Value(), Vec3{1,0,0});
+    const auto destroy = runtime.DestroyBody(body.Value());
+    const auto step = runtime.StepFixed(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    const auto local_after = runtime.GetLocalBodySnapshotForTesting(body.Value());
+    if (impulse || destroy || step || backend->impulses != impulses_before || backend->destroy_bodies != destroys_before ||
+        backend->simulates != simulates_before || !local_before || !local_after ||
+        local_before.Value().world_transform.position != local_after.Value().world_transform.position)
+        return false;
+
+    PhysicsRuntime exhausted;
+    if (!RegisterDefaultShape(exhausted, CollisionShapeId{44})) return false;
+    exhausted.SetAllocatorStateForTesting(0, 1, 1);
+    const auto create = exhausted.CreateBody(MakeBodyDesc(CollisionShapeId{44}, PhysicsBodyType::Dynamic));
+    return !create && create.GetError().HasCode("physics.body_id_overflow");
+}
+
+bool TestTransformProjectionFailureIsRetryableAfterAuthoritativeCommit()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    auto adapter = std::make_shared<TransformAdapter>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, adapter, adapter}};
+    const CollisionShapeId shape{45};
+    if (!RegisterDefaultShape(runtime, shape)) return false;
+    const auto body = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    if (!body) return false;
+    adapter->fail_write = true;
+    const auto first = runtime.StepFixed(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    const auto snapshot = runtime.GetLocalBodySnapshotForTesting(body.Value());
+    if (!first || first.Value().pending_transform_projections != 1 || runtime.PendingProjectionCountForTesting() != 1 ||
+        !snapshot || snapshot.Value().world_transform.position.x != backend->snapshot.world_transform.position.x)
+        return false;
+    adapter->fail_write = false;
+    const auto second = runtime.StepFixed(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    return second && runtime.PendingProjectionCountForTesting() == 0 && adapter->writes >= 3;
+}
+
+bool TestTimeAndStepCounterOverflowAreRejectedBeforeMutation()
+{
+    PhysicsRuntime runtime;
+    runtime.SetFixedStep(RuntimeFrameDuration{std::chrono::microseconds{10}});
+    runtime.SetTimingStateForTesting(RuntimeFrameDuration{std::chrono::microseconds{std::numeric_limits<std::int64_t>::max()}},
+                                     RuntimeFrameDuration{std::chrono::microseconds{0}});
+    const auto accumulator_before = runtime.AccumulatorForTesting();
+    const auto overflow = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    if (overflow || !overflow.GetError().HasCode("physics.time_overflow") || runtime.AccumulatorForTesting().value != accumulator_before.value)
+        return false;
+    runtime.SetTimingStateForTesting({}, {});
+    runtime.SetFixedStepCountForTesting(std::numeric_limits<std::uint64_t>::max());
+    const auto step = runtime.StepFixed(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    return !step && step.GetError().HasCode("physics.step_overflow");
+}
+
+bool TestBackendExceptionsStayInsideResultBoundary()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    backend->throw_create_shape = true;
+    const auto shape = runtime.RegisterShape({CollisionShapeId{46}, Aabb{{0,0,0},{1,1,1}}});
+    if (shape || !shape.GetError().HasCode("physics.backend_exception")) return false;
+    backend->throw_create_shape = false;
+    if (!RegisterDefaultShape(runtime, CollisionShapeId{46})) return false;
+    const auto body = runtime.CreateBody(MakeBodyDesc(CollisionShapeId{46}, PhysicsBodyType::Dynamic));
+    if (!body) return false;
+    backend->throw_impulse = true;
+    const auto rev = runtime.RevisionForTesting();
+    const auto impulse = runtime.ApplyImpulse(body.Value(), Vec3{1,0,0});
+    return !impulse && impulse.GetError().HasCode("physics.backend_exception") && runtime.RevisionForTesting() == rev;
+}
+
+bool TestDefaultStaleAndRepeatedMutatorHandles()
+{
+    PhysicsRuntime runtime;
+    const CollisionShapeId shape{47};
+    if (!RegisterDefaultShape(runtime, shape)) return false;
+    const auto body = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    if (!body) return false;
+    const PhysicsBodyHandle stale{body.Value().id, body.Value().generation + 1};
+    const auto default_impulse = runtime.ApplyImpulse(PhysicsBodyHandle{}, Vec3{1,0,0});
+    const auto stale_destroy = runtime.DestroyBody(stale);
+    const auto first_destroy = runtime.DestroyBody(body.Value());
+    const auto second_destroy = runtime.DestroyBody(body.Value());
+    return !default_impulse && !stale_destroy && stale_destroy.GetError().HasCode("physics.stale_handle") &&
+           first_destroy && !second_destroy && second_destroy.GetError().HasCode("physics.unknown_handle");
+}
+
 bool TestFactoryReportsBackendInitializationFailure()
 {
     auto backend = std::make_shared<JournalBackend>();
@@ -743,5 +919,12 @@ int main()
     if (!TestShutdownRetriesBodyBeforeDestroyingShape()) return 19;
     if (!TestFactoryReportsBackendInitializationFailure()) return 9;
     if (!TestDirtyFlagsAndServicesFactory()) return 10;
+    if (!TestInvalidBodyInputsAreRejectedBeforeBackend()) return 23;
+    if (!TestBackendPublicationRollbackAndDuplicateHandles()) return 24;
+    if (!TestRevisionAndAllocatorExhaustionAreAtomic()) return 25;
+    if (!TestTransformProjectionFailureIsRetryableAfterAuthoritativeCommit()) return 26;
+    if (!TestTimeAndStepCounterOverflowAreRejectedBeforeMutation()) return 27;
+    if (!TestBackendExceptionsStayInsideResultBoundary()) return 28;
+    if (!TestDefaultStaleAndRepeatedMutatorHandles()) return 29;
     return 0;
 }

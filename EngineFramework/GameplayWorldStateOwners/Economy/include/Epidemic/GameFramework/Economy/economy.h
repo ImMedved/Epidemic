@@ -388,7 +388,7 @@ class EconomyService
     [[nodiscard]] foundation::Result<TradeTransactionId> AcceptOffer(OfferAcceptanceRequest request);
     [[nodiscard]] std::vector<EconomicOffer> FindOffers(GameplayObjectRef seller = {},
                                                         OfferState state = OfferState::Active) const;
-    [[nodiscard]] std::vector<OfferId> ExpireOffers(GameplayTimePoint now, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<std::vector<OfferId>> ExpireOffers(GameplayTimePoint now, GameplayContext context = {});
     [[nodiscard]] foundation::Result<TradeTransactionId> PrepareTrade(TradePlan plan);
     [[nodiscard]] foundation::Result<void> ReserveTrade(TradeTransactionId transaction);
     [[nodiscard]] foundation::Result<void> CommitTrade(TradeTransactionId transaction);
@@ -451,12 +451,8 @@ class EconomyService
             return a ^ (b + 0x9E3779B97F4A7C15ull + (a << 6u) + (a >> 2u));
         }
     };
-    void Bump() noexcept
-    {
-        if (const auto next = CheckedNext(revision_))
-            revision_ = *next;
-    }
-    void Record(EconomyChange c);
+    [[nodiscard]] std::optional<Revision> NextRevision() const noexcept;
+    void Record(EconomyChange c) noexcept;
     [[nodiscard]] foundation::Result<void> ValidateTransfer(const MonetaryTransfer &t) const;
     [[nodiscard]] foundation::Result<void> ValidateMoneyAmount(CurrencyId currency, Fixed amount,
                                                                bool allow_zero) const;

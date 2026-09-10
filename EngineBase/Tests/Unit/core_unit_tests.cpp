@@ -10,9 +10,11 @@
 #include <Epidemic/Diagnostics/counters.h>
 
 #include <atomic>
+#include <chrono>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace
@@ -97,6 +99,46 @@ class RecordingScheduler final : public epidemic::core::tasks::ITaskScheduler
     bool request_stop_called{false};
     bool join_called{false};
     bool wait_idle_called{false};
+};
+
+class AsyncShutdownProbe final : public epidemic::core::IModule
+{
+  public:
+    explicit AsyncShutdownProbe(std::atomic_bool &task_finished, bool &shutdown_saw_finished)
+        : task_finished_(task_finished), shutdown_saw_finished_(shutdown_saw_finished)
+    {
+    }
+
+    [[nodiscard]] const epidemic::core::ModuleManifest &Manifest() const override
+    {
+        return manifest_;
+    }
+
+    void Bootstrap(epidemic::core::ServiceContainer &) override
+    {
+    }
+
+    void Initialize(epidemic::core::ServiceContainer &services) override
+    {
+        static_cast<void>(services.Get<epidemic::core::tasks::ITaskScheduler>()->Schedule([this] {
+            std::this_thread::sleep_for(std::chrono::milliseconds(25));
+            task_finished_.store(true, std::memory_order_release);
+        }));
+    }
+
+    void Tick(epidemic::core::ServiceContainer &, const epidemic::core::FrameContext &) override
+    {
+    }
+
+    void Shutdown(epidemic::core::ServiceContainer &) override
+    {
+        shutdown_saw_finished_ = task_finished_.load(std::memory_order_acquire);
+    }
+
+  private:
+    epidemic::core::ModuleManifest manifest_{"async-shutdown-probe", "AsyncShutdownProbe", {}};
+    std::atomic_bool &task_finished_;
+    bool &shutdown_saw_finished_;
 };
 
 struct CountingServiceImpl final : CountingService
@@ -190,6 +232,20 @@ void TestEventBusContracts()
     Assert(queued_sum == 3, "Queued events must dispatch on drain");
     Assert(!event_bus.Unsubscribe(9999), "Unsubscribe must return false for unknown handlers");
 
+    int reentrant_deliveries = 0;
+    const auto reentrant_token = event_bus.SubscribeQueued<QueuedTestEvent>(
+        [&event_bus, &reentrant_deliveries](const QueuedTestEvent &) {
+            ++reentrant_deliveries;
+            event_bus.Enqueue(QueuedTestEvent{1});
+        });
+    event_bus.Enqueue(QueuedTestEvent{1});
+    Assert(event_bus.DrainQueued() == 1 && reentrant_deliveries == 1,
+           "DrainQueued must process only the events present at the start of its wave");
+    Assert(event_bus.DrainQueued() == 1 && reentrant_deliveries == 2,
+           "Events enqueued by handlers must remain queued for the next wave");
+    Assert(event_bus.Unsubscribe(reentrant_token), "Reentrant handler must unsubscribe cleanly");
+    Assert(event_bus.DrainQueued() == 1, "Pending event from the final wave must remain drainable");
+
     bool empty_handler_failed = false;
     try
     {
@@ -200,6 +256,32 @@ void TestEventBusContracts()
         empty_handler_failed = true;
     }
     Assert(empty_handler_failed, "Empty event handler must fail");
+}
+
+void TestFramePhaseValidation()
+{
+    epidemic::core::Application application({"FramePhaseValidation"});
+    bool count_rejected = false;
+    bool unknown_rejected = false;
+    try
+    {
+        application.AddFramePhaseHandler(epidemic::core::FramePhase::Count, [](const auto &) {});
+    }
+    catch (const std::invalid_argument &)
+    {
+        count_rejected = true;
+    }
+
+    try
+    {
+        application.AddFramePhaseHandler(static_cast<epidemic::core::FramePhase>(255), [](const auto &) {});
+    }
+    catch (const std::invalid_argument &)
+    {
+        unknown_rejected = true;
+    }
+
+    Assert(count_rejected && unknown_rejected, "Invalid frame phases must fail before indexing handler storage");
 }
 
 // Verifies scheduler grouping, exception propagation, and main-thread dispatch behavior.
@@ -277,6 +359,76 @@ void TestTaskSchedulerAndDispatcherContracts()
     }
     self_shutdown_scheduler.Shutdown();
     Assert(self_shutdown_failed_safely, "Shutdown from a worker must fail deterministically instead of self-joining");
+
+    epidemic::core::tasks::SimpleTaskScheduler worker_wait_scheduler(1);
+    std::atomic_bool handle_wait_rejected{false};
+    const auto parent_handle = worker_wait_scheduler.Schedule([&] {
+        const auto child_handle = worker_wait_scheduler.Schedule([] {});
+        try
+        {
+            worker_wait_scheduler.Wait(child_handle);
+        }
+        catch (const std::runtime_error &)
+        {
+            handle_wait_rejected.store(true, std::memory_order_release);
+        }
+    });
+    worker_wait_scheduler.Wait(parent_handle);
+    worker_wait_scheduler.WaitIdle();
+    Assert(handle_wait_rejected.load(std::memory_order_acquire), "Worker Wait(handle) must fail before blocking");
+
+    std::atomic_bool idle_wait_rejected{false};
+    const auto idle_wait_handle = worker_wait_scheduler.Schedule([&] {
+        try
+        {
+            worker_wait_scheduler.WaitIdle();
+        }
+        catch (const std::runtime_error &)
+        {
+            idle_wait_rejected.store(true, std::memory_order_release);
+        }
+    });
+    worker_wait_scheduler.Wait(idle_wait_handle);
+    Assert(idle_wait_rejected.load(std::memory_order_acquire), "Worker WaitIdle must fail before blocking");
+
+    epidemic::core::tasks::TaskGroup self_wait_group;
+    std::atomic_bool group_wait_rejected{false};
+    const auto group_wait_handle = worker_wait_scheduler.Schedule([&] {
+        try
+        {
+            worker_wait_scheduler.Wait(self_wait_group);
+        }
+        catch (const std::runtime_error &)
+        {
+            group_wait_rejected.store(true, std::memory_order_release);
+        }
+    }, self_wait_group);
+    worker_wait_scheduler.Wait(group_wait_handle);
+    worker_wait_scheduler.Wait(self_wait_group);
+    Assert(group_wait_rejected.load(std::memory_order_acquire), "Worker Wait(group) must fail before blocking");
+
+    std::atomic_bool release_owned_scheduler{false};
+    std::atomic_bool self_destroy_task_finished{false};
+    auto worker_owned_scheduler = std::make_shared<epidemic::core::tasks::SimpleTaskScheduler>(1);
+    static_cast<void>(worker_owned_scheduler->Schedule(
+        [owned_scheduler = worker_owned_scheduler, &release_owned_scheduler, &self_destroy_task_finished]() mutable {
+            while (!release_owned_scheduler.load(std::memory_order_acquire))
+            {
+                std::this_thread::yield();
+            }
+            owned_scheduler.reset();
+            self_destroy_task_finished.store(true, std::memory_order_release);
+        }));
+    worker_owned_scheduler.reset();
+    release_owned_scheduler.store(true, std::memory_order_release);
+    const auto self_destroy_deadline = std::chrono::steady_clock::now() + std::chrono::seconds(2);
+    while (!self_destroy_task_finished.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < self_destroy_deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    Assert(self_destroy_task_finished.load(std::memory_order_acquire),
+           "Scheduler facade may be released by its worker without self-join or use-after-free");
 
     std::vector<int> exception_order;
     dispatcher.Post([&exception_order] { exception_order.push_back(10); }, "before-throw");
@@ -435,6 +587,20 @@ void TestModuleRegistryContracts()
     }
     Assert(late_register_failed, "Registering a module after lifecycle start must fail");
 }
+
+void TestApplicationQuiescesSchedulerBeforeModuleShutdown()
+{
+    epidemic::core::Application application({"SchedulerQuiesce"});
+    RegisterCoreServices(application.Services());
+    std::atomic_bool task_finished{false};
+    bool shutdown_saw_finished = false;
+    application.Modules().Register(std::make_unique<AsyncShutdownProbe>(task_finished, shutdown_saw_finished));
+
+    Assert(application.Bootstrap() == 0, "Quiesce test application must bootstrap");
+    Assert(application.Initialize() == 0, "Quiesce test application must initialize");
+    Assert(application.Shutdown() == 0, "Quiesce test application must shut down");
+    Assert(shutdown_saw_finished, "Module state must not be destroyed before scheduled work finishes");
+}
 } // namespace
 
 // Runs the Core unit-test group.
@@ -443,7 +609,9 @@ int main()
     return epidemic::tests::RunNamedTests({
         {"ServiceContainerContracts", &TestServiceContainerContracts},
         {"EventBusContracts", &TestEventBusContracts},
+        {"FramePhaseValidation", &TestFramePhaseValidation},
         {"TaskSchedulerAndDispatcherContracts", &TestTaskSchedulerAndDispatcherContracts},
         {"ModuleRegistryContracts", &TestModuleRegistryContracts},
+        {"ApplicationQuiescesSchedulerBeforeModuleShutdown", &TestApplicationQuiescesSchedulerBeforeModuleShutdown},
     });
 }

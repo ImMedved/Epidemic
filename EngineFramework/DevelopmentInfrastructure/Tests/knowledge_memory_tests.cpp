@@ -310,5 +310,46 @@ int main()
 
     if (!k.RemoveProfile(npc) || k.FindProfile(npc) || !k.FindKnowledgeByOwner(npc).empty() || !k.FindMemoriesByOwner(npc).empty())
         return 35;
+
+    // Local-correctness boundaries: forged enums are rejected without publishing state.
+    const auto knowledge_before_invalid = k.CaptureSnapshot();
+    KnowledgeProfile invalid_profile;
+    invalid_profile.subject = Ref("invalid.profile");
+    invalid_profile.retention = static_cast<MemoryPersistencePolicy>(999);
+    if (k.CreateProfile(invalid_profile))
+        return 44;
+    const auto knowledge_after_invalid = k.CaptureSnapshot();
+    if (knowledge_after_invalid.revision != knowledge_before_invalid.revision ||
+        knowledge_after_invalid.profiles.size() != knowledge_before_invalid.profiles.size())
+        return 45;
+
+    auto invalid_learn = LearnReq(npc, belief, Topic("game.invalid.enum", player), player,
+                                  KnowledgeAssertionValue::Affirmed, KnowledgeEpistemicState::Known,
+                                  static_cast<KnowledgeConfidence>(999), GameplayTimePoint{30});
+    const auto invalid_learn_revision = k.CurrentRevision();
+    if (k.Learn(std::move(invalid_learn)) || k.CurrentRevision() != invalid_learn_revision)
+        return 46;
+
+    // Revision exhaustion must fail before consuming a memory id or changing records.
+    auto revision_exhausted_snapshot = snap;
+    revision_exhausted_snapshot.revision.value = std::numeric_limits<std::uint64_t>::max();
+    KnowledgeService revision_exhausted;
+    if (!revision_exhausted.RegisterDecayRule(decay) || !revision_exhausted.FreezeDefinitions() ||
+        !revision_exhausted.RestoreSnapshot(revision_exhausted_snapshot))
+        return 47;
+    CreateMemoryRequest exhausted_memory;
+    exhausted_memory.owner = npc;
+    exhausted_memory.type = MemoryTypeId::FromString("game.memory.revision_exhausted");
+    exhausted_memory.persistence = MemoryPersistencePolicy::Persistent;
+    exhausted_memory.context.time = GameplayTimePoint{31};
+    const auto knowledge_exhausted_before = revision_exhausted.CaptureSnapshot();
+    if (revision_exhausted.CreateMemory(exhausted_memory))
+        return 48;
+    const auto knowledge_exhausted_after = revision_exhausted.CaptureSnapshot();
+    if (knowledge_exhausted_after.revision != knowledge_exhausted_before.revision ||
+        knowledge_exhausted_after.memories.size() != knowledge_exhausted_before.memories.size() ||
+        knowledge_exhausted_after.memory_ids.next != knowledge_exhausted_before.memory_ids.next)
+        return 49;
+
     return 0;
 }

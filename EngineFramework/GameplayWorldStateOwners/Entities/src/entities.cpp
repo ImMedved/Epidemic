@@ -34,6 +34,26 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId>& gene
 {
     return state == EntityLifecycleState::Alive || state == EntityLifecycleState::Dormant;
 }
+[[nodiscard]] bool IsValid(EntityPersistencePolicy value) noexcept
+{
+    return value >= EntityPersistencePolicy::Transient && value <= EntityPersistencePolicy::Persistent;
+}
+[[nodiscard]] bool IsValid(EntityMaterializationPolicy value) noexcept
+{
+    return value >= EntityMaterializationPolicy::AbstractAllowed && value <= EntityMaterializationPolicy::RequireMaterialized;
+}
+[[nodiscard]] bool IsValid(EntityLifecycleState value) noexcept
+{
+    return value >= EntityLifecycleState::Creating && value <= EntityLifecycleState::Removed;
+}
+[[nodiscard]] bool IsValid(EntityMaterializationState value) noexcept
+{
+    return value >= EntityMaterializationState::Abstract && value <= EntityMaterializationState::Dematerializing;
+}
+[[nodiscard]] bool IsValid(EntityDestroyReason value) noexcept
+{
+    return value >= EntityDestroyReason::Destroyed && value <= EntityDestroyReason::OwnerRequest;
+}
 } // namespace
 
 EntityService::EntityService()
@@ -87,7 +107,8 @@ foundation::Result<void> EntityService::ValidateArchetypeParts(EntityArchetypeDe
 foundation::Result<EntityArchetypeId> EntityService::RegisterArchetype(EntityArchetypeDefinition definition)
 {
     if (frozen_) return foundation::Result<EntityArchetypeId>::Failure(Error("gameplay.registry_frozen", "entity archetype registry is frozen"));
-    if (definition.canonical_name.empty()) return foundation::Result<EntityArchetypeId>::Failure(Error("gameplay.entity_archetype_invalid", "entity archetype name must not be empty"));
+    if (definition.canonical_name.empty() || !IsValid(definition.persistence) || !IsValid(definition.materialization))
+        return foundation::Result<EntityArchetypeId>::Failure(Error("gameplay.entity_archetype_invalid", "entity archetype definition contains invalid fields"));
     const auto expected = EntityArchetypeId::FromString(definition.canonical_name);
     if (!definition.id.IsValid()) definition.id = expected;
     if (definition.id != expected) return foundation::Result<EntityArchetypeId>::Failure(Error("gameplay.entity_archetype_id_mismatch", "entity archetype id does not match canonical name"));
@@ -175,11 +196,25 @@ bool EntityService::CanRecordChanges(std::size_t count) const noexcept
 
 void EntityService::RecordChange(EntityChange change) noexcept
 {
-    change.sequence = next_change_sequence_;
-    last_change_sequence_ = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max()) next_change_sequence_ = 0;
-    else ++next_change_sequence_;
-    changes_.push_back(std::move(change));
+    if (next_change_sequence_ == 0) return;
+    const auto sequence = next_change_sequence_;
+    change.sequence = sequence;
+    try
+    {
+        changes_.push_back(std::move(change));
+    }
+    catch (...)
+    {
+        // Authoritative state is already committed. Invalidate the incremental journal
+        // instead of terminating or exposing an untracked sequence gap.
+        changes_.clear();
+        last_change_sequence_ = 0;
+        if (journal_epoch_ == std::numeric_limits<std::uint64_t>::max()) next_change_sequence_ = 0;
+        else { ++journal_epoch_; next_change_sequence_ = 1; }
+        return;
+    }
+    last_change_sequence_ = sequence;
+    next_change_sequence_ = sequence == std::numeric_limits<std::uint64_t>::max() ? 0 : sequence + 1;
 }
 
 foundation::Result<std::uint32_t> EntityService::AllocateSlot()
@@ -200,6 +235,8 @@ foundation::Result<CreateEntityResult> EntityService::Create(CreateEntityRequest
 {
     if (!frozen_) return foundation::Result<CreateEntityResult>::Failure(Error("gameplay.registry_not_frozen", "entity service must be frozen before runtime operations"));
     const auto* archetype = FindArchetype(request.archetype);
+    if (request.persistence && !IsValid(*request.persistence))
+        return foundation::Result<CreateEntityResult>::Failure(Error("gameplay.entity_persistence_invalid", "entity persistence policy is invalid"));
     if (archetype == nullptr) return foundation::Result<CreateEntityResult>::Failure(Error("gameplay.entity_archetype_unknown", "entity archetype is not registered"));
     if (!CanRecordChanges(1)) return foundation::Result<CreateEntityResult>::Failure(Error("gameplay.change_sequence_exhausted", "entity change sequence is exhausted"));
     auto next_revision = PrepareRevision();
@@ -218,12 +255,6 @@ foundation::Result<CreateEntityResult> EntityService::Create(CreateEntityRequest
     if (!id.IsValid()) return foundation::Result<CreateEntityResult>::Failure(Error("gameplay.entity_id_exhausted", "entity id is invalid or exhausted"));
     if (id_to_slot_.contains(id)) return foundation::Result<CreateEntityResult>::Failure(Error("gameplay.entity_duplicate", "entity id already exists"));
 
-    auto slot_result = AllocateSlot();
-    if (!slot_result) return foundation::Result<CreateEntityResult>::Failure(slot_result.GetError());
-    const auto slot_index = slot_result.Value();
-    auto& slot = slots_[slot_index];
-    if (slot.generation == 0) slot.generation = 1;
-
     EntityRecord record;
     record.id = id;
     record.archetype = request.archetype;
@@ -232,10 +263,29 @@ foundation::Result<CreateEntityResult> EntityService::Create(CreateEntityRequest
     record.instance_tags = std::move(request.additional_tags);
     record.persistence = request.persistence.value_or(archetype->persistence);
     record.revision = next_revision.Value();
-    revision_ = next_revision.Value();
-    slot.record = record;
+
+    const bool reusing_slot = !free_slots_.empty();
+    try { id_to_slot_.reserve(id_to_slot_.size() + 1); }
+    catch (...) { return foundation::Result<CreateEntityResult>::Failure(Error("gameplay.entity_storage_failed", "unable to reserve entity index storage")); }
+    auto slot_result = AllocateSlot();
+    if (!slot_result) return foundation::Result<CreateEntityResult>::Failure(slot_result.GetError());
+    const auto slot_index = slot_result.Value();
+    auto& slot = slots_[slot_index];
+    if (slot.generation == 0) slot.generation = 1;
+    slot.record = std::move(record);
     slot.occupied = true;
-    id_to_slot_.emplace(id, slot_index);
+    try
+    {
+        id_to_slot_.emplace(id, slot_index);
+    }
+    catch (...)
+    {
+        slot.record = {}; slot.occupied = false;
+        if (reusing_slot) free_slots_.push_back(slot_index);
+        else slots_.pop_back();
+        return foundation::Result<CreateEntityResult>::Failure(Error("gameplay.entity_storage_failed", "unable to publish entity index"));
+    }
+    revision_ = next_revision.Value();
     ids_ = staged_ids;
     if (creates_ != std::numeric_limits<std::uint64_t>::max()) ++creates_;
 
@@ -342,12 +392,24 @@ foundation::Result<void> EntityService::RequestDestroy(EntityId id, EntityDestro
     if (!IsMutableLifecycle(record->lifecycle)) return foundation::Result<void>::Failure(Error("gameplay.entity_invalid_state", "only alive or dormant entities can be requested for destruction"));
     if (!CanRecordChanges(1)) return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted", "entity change sequence is exhausted"));
     auto rev = PrepareRevision(); if (!rev) return foundation::Result<void>::Failure(rev.GetError());
+    if (!IsValid(reason)) return foundation::Result<void>::Failure(Error("gameplay.entity_destroy_reason_invalid", "entity destroy reason is invalid"));
     const auto previous = record->lifecycle;
+    bool queued = false, reason_inserted = false, context_inserted = false;
+    try
+    {
+        pending_destroy_.push_back(id); queued = true;
+        reason_inserted = pending_destroy_reasons_.emplace(id, reason).second;
+        context_inserted = pending_destroy_contexts_.emplace(id, context).second;
+    }
+    catch (...)
+    {
+        if (context_inserted) pending_destroy_contexts_.erase(id);
+        if (reason_inserted) pending_destroy_reasons_.erase(id);
+        if (queued) pending_destroy_.pop_back();
+        return foundation::Result<void>::Failure(Error("gameplay.entity_storage_failed", "unable to stage entity destruction metadata"));
+    }
     record->lifecycle = EntityLifecycleState::PendingDestroy;
     record->revision = rev.Value(); revision_ = rev.Value();
-    pending_destroy_.push_back(id);
-    pending_destroy_reasons_[id] = reason;
-    pending_destroy_contexts_[id] = context;
     RecordChange(EntityChange{0, EntityChangeKind::DestroyRequested, id, {}, record->archetype, previous, record->lifecycle,
                               record->materialization, record->materialization, {}, reason, context, revision_});
     return foundation::Result<void>::Success();
@@ -355,10 +417,11 @@ foundation::Result<void> EntityService::RequestDestroy(EntityId id, EntityDestro
 
 foundation::Result<std::vector<EntityRecord>> EntityService::CommitPendingDestruction()
 {
-    std::sort(pending_destroy_.begin(), pending_destroy_.end());
-    pending_destroy_.erase(std::unique(pending_destroy_.begin(), pending_destroy_.end()), pending_destroy_.end());
+    auto pending = pending_destroy_;
+    std::sort(pending.begin(), pending.end());
+    pending.erase(std::unique(pending.begin(), pending.end()), pending.end());
     std::vector<EntityId> valid;
-    for (const auto id : pending_destroy_)
+    for (const auto id : pending)
     {
         const auto* record = FindInternal(id);
         if (record != nullptr && record->lifecycle == EntityLifecycleState::PendingDestroy) valid.push_back(id);
@@ -370,9 +433,10 @@ foundation::Result<std::vector<EntityRecord>> EntityService::CommitPendingDestru
     }
     if (!CanRecordChanges(valid.size())) return foundation::Result<std::vector<EntityRecord>>::Failure(Error("gameplay.change_sequence_exhausted", "entity change sequence is exhausted"));
     auto rev = PrepareRevision(); if (!rev) return foundation::Result<std::vector<EntityRecord>>::Failure(rev.GetError());
-    revision_ = rev.Value();
     std::vector<EntityRecord> destroyed;
-    destroyed.reserve(valid.size());
+    try { destroyed.reserve(valid.size()); }
+    catch (...) { return foundation::Result<std::vector<EntityRecord>>::Failure(Error("gameplay.entity_storage_failed", "unable to stage destruction result")); }
+    revision_ = rev.Value();
     for (const auto id : valid)
     {
         auto* record = FindMutable(id);
@@ -406,6 +470,11 @@ foundation::Result<void> EntityService::Remove(EntityId id, GameplayContext cont
         return foundation::Result<void>::Failure(Error("gameplay.entity_invalid_state", "only destroyed entities can be permanently removed"));
     if (!CanRecordChanges(1)) return foundation::Result<void>::Failure(Error("gameplay.change_sequence_exhausted", "entity change sequence is exhausted"));
     auto rev = PrepareRevision(); if (!rev) return foundation::Result<void>::Failure(rev.GetError());
+    if (slot.generation != std::numeric_limits<std::uint32_t>::max())
+    {
+        try { free_slots_.reserve(free_slots_.size() + 1); }
+        catch (...) { return foundation::Result<void>::Failure(Error("gameplay.entity_storage_failed", "unable to reserve free-slot storage")); }
+    }
     auto final = slot.record;
     final.lifecycle = EntityLifecycleState::Removed;
     final.revision = rev.Value();
@@ -448,6 +517,7 @@ foundation::Result<void> EntityService::Convert(EntityId id, EntityArchetypeId n
 
 foundation::Result<void> EntityService::SetMaterializationState(EntityId id, EntityMaterializationState state, GameplayContext context)
 {
+    if (!IsValid(state)) return foundation::Result<void>::Failure(Error("gameplay.entity_materialization_invalid", "entity materialization state is invalid"));
     auto* record = FindMutable(id);
     if (record == nullptr) return foundation::Result<void>::Failure(Error("gameplay.entity_unknown", "entity does not exist"));
     if (record->lifecycle != EntityLifecycleState::Alive) return foundation::Result<void>::Failure(Error("gameplay.entity_invalid_state", "only alive entities can change materialization state"));
@@ -607,7 +677,8 @@ foundation::Result<void> EntityService::RestoreSnapshot(EntitySnapshot snapshot)
     for (const auto& record : snapshot.records)
     {
         if (!record.id.IsValid() || FindArchetype(record.archetype) == nullptr || !seen.insert(record.id).second || record.revision > snapshot.revision ||
-            record.persistence != EntityPersistencePolicy::Persistent || record.lifecycle == EntityLifecycleState::Removed)
+            record.persistence != EntityPersistencePolicy::Persistent || !IsValid(record.lifecycle) || !IsValid(record.materialization) ||
+            record.lifecycle == EntityLifecycleState::Creating || record.lifecycle == EntityLifecycleState::Removed)
             return foundation::Result<void>::Failure(Error("gameplay.entity_snapshot_invalid", "entity snapshot contains invalid or duplicate records"));
         if (record.id.High() == snapshot.id_generator.scope && record.id.Low() > max_generated_low) max_generated_low = record.id.Low();
     }
@@ -617,7 +688,7 @@ foundation::Result<void> EntityService::RestoreSnapshot(EntitySnapshot snapshot)
     std::unordered_map<EntityId, PendingEntityDestruction, EntityIdHash> pending_by_id;
     for (const auto& pending : snapshot.pending_destruction)
     {
-        if (!pending.entity.IsValid() || !pending_by_id.emplace(pending.entity, pending).second)
+        if (!pending.entity.IsValid() || !IsValid(pending.reason) || !pending_by_id.emplace(pending.entity, pending).second)
             return foundation::Result<void>::Failure(Error("gameplay.entity_snapshot_invalid", "pending destruction records are invalid or duplicated"));
         const auto record = std::find_if(snapshot.records.begin(), snapshot.records.end(), [&](const auto& r) { return r.id == pending.entity; });
         if (record == snapshot.records.end() || record->lifecycle != EntityLifecycleState::PendingDestroy)

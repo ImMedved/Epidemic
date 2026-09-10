@@ -432,7 +432,7 @@ class EffectService
         std::vector<EffectOperation> operations,
         EffectExecutionPolicy policy);
     [[nodiscard]] EffectOperationDisposition MapPrepareDisposition(EffectPrepareDisposition disposition) const noexcept;
-    void RecordChange(EffectChange change);
+    void RecordChange(EffectChange change) noexcept;
 
     std::unordered_map<EffectTypeId, HandlerEntry, EffectTypeIdHash> handlers_;
     std::unordered_map<EffectDefinitionId, EffectDefinition, EffectDefinitionIdHash> definitions_;

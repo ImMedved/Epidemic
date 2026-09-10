@@ -1,4 +1,4 @@
-﻿#include "scene_runtime_impl.h"
+#include "scene_runtime_impl.h"
 
 #include "Epidemic/Runtime/Scene/bounds.h"
 #include "Epidemic/Runtime/Scene/scene_node.h"
@@ -11,6 +11,7 @@
 #include "Epidemic/Runtime/Scene/transform_registry.h"
 
 #include <iostream>
+#include <limits>
 #include <cmath>
 #include <type_traits>
 #include <vector>
@@ -337,9 +338,9 @@ using epidemic::runtime::WorldTransformWriteMode;
         return false;
     }
 
-    runtime.MarkTransformClean(node.Value());
-    runtime.MarkBoundsClean(node.Value());
-    return !runtime.IsTransformDirty(node.Value()) && !runtime.IsBoundsDirty(node.Value());
+    const auto transform_clean = runtime.MarkTransformClean(node.Value());
+    const auto bounds_clean = runtime.MarkBoundsClean(node.Value());
+    return transform_clean && bounds_clean && !runtime.IsTransformDirty(node.Value()) && !runtime.IsBoundsDirty(node.Value());
 }
 
 [[nodiscard]] bool TestDirtyFlagsAreTransientForRevisionAndSnapshots()
@@ -353,7 +354,10 @@ using epidemic::runtime::WorldTransformWriteMode;
 
     const auto revision_after_change = runtime.GetRevision();
     const auto dirty_snapshot = runtime.CaptureSnapshot();
-    runtime.MarkTransformClean(node.Value());
+    if (!runtime.MarkTransformClean(node.Value()))
+    {
+        return false;
+    }
     const auto clean_revision = runtime.GetRevision();
     const auto clean_snapshot = runtime.CaptureSnapshot();
 
@@ -422,6 +426,129 @@ using epidemic::runtime::WorldTransformWriteMode;
     const auto snapshot = services.Value().snapshots->CaptureSnapshot();
     return query.size() == 1u && query.front() == node.Value() && snapshot.nodes.size() == 1u;
 }
+
+[[nodiscard]] bool SameSnapshot(const epidemic::runtime::SceneSnapshot& left, const epidemic::runtime::SceneSnapshot& right)
+{
+    if (left.revision != right.revision || left.nodes.size() != right.nodes.size())
+    {
+        return false;
+    }
+    for (std::size_t index = 0; index < left.nodes.size(); ++index)
+    {
+        const auto& a = left.nodes[index];
+        const auto& b = right.nodes[index];
+        if (a.id != b.id || a.parent != b.parent || a.local_transform != b.local_transform ||
+            a.world_transform != b.world_transform || a.local_bounds != b.local_bounds || a.world_bounds != b.world_bounds ||
+            a.attachment != b.attachment || a.mobility != b.mobility || a.visibility != b.visibility || a.revision != b.revision)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool TestFailedReparentIsTransactional()
+{
+    SceneRuntime runtime;
+    const auto old_parent = runtime.CreateNode();
+    const auto new_parent = runtime.CreateNode();
+    const auto child = runtime.CreateNode();
+    if (!old_parent || !new_parent || !child ||
+        !runtime.SetLocalTransform(new_parent.Value(), Transform{Vec3{}, Quat{}, Vec3{0.0000001f, 1.0f, 1.0f}}) ||
+        !runtime.AttachNode(child.Value(), old_parent.Value(), ReparentMode::KeepLocal))
+    {
+        return false;
+    }
+
+    const auto before = runtime.CaptureSnapshot();
+    const auto rejected = runtime.AttachNode(child.Value(), new_parent.Value(), ReparentMode::KeepWorld);
+    const auto after = runtime.CaptureSnapshot();
+    if (rejected || !rejected.GetError().HasCode("scene.non_invertible_parent_transform") || !SameSnapshot(before, after))
+    {
+        return false;
+    }
+
+    runtime.FailNextAllocationForTesting();
+    const auto allocation_before = runtime.CaptureSnapshot();
+    const auto allocation_failed = runtime.AttachNode(child.Value(), new_parent.Value(), ReparentMode::KeepLocal);
+    return !allocation_failed && allocation_failed.GetError().HasCode("scene.allocation_failed") &&
+           SameSnapshot(allocation_before, runtime.CaptureSnapshot());
+}
+
+[[nodiscard]] bool TestSceneBoundaryContracts()
+{
+    SceneRuntime runtime;
+    const auto first = runtime.CreateNode();
+    const auto second = runtime.CreateNode();
+    if (!first || !second)
+    {
+        return false;
+    }
+    const auto before = runtime.CaptureSnapshot();
+    const auto invalid_mode = runtime.AttachNode(second.Value(), first.Value(), static_cast<ReparentMode>(255));
+    const auto invalid_mobility = runtime.SetMobility(first.Value(), static_cast<SceneMobility>(255));
+    const auto invalid_visibility = runtime.SetVisibility(first.Value(), static_cast<SceneVisibilityState>(255));
+    const auto invalid_write = runtime.SetWorldTransform(first.Value(), Transform{}, static_cast<WorldTransformWriteMode>(255));
+    const auto stale_clean = runtime.MarkTransformClean(SceneNodeId{999999});
+    const auto stale_bounds = runtime.MarkBoundsClean(SceneNodeId{999999});
+    if (invalid_mode || invalid_mobility || invalid_visibility || invalid_write || stale_clean || stale_bounds ||
+        !SameSnapshot(before, runtime.CaptureSnapshot()))
+    {
+        return false;
+    }
+
+    runtime.SetRevisionForTesting(std::numeric_limits<std::uint64_t>::max() - 1u);
+    const auto final_revision = runtime.SetVisibility(first.Value(), SceneVisibilityState::Hidden);
+    if (!final_revision || runtime.GetRevision() != std::numeric_limits<std::uint64_t>::max())
+    {
+        return false;
+    }
+    const auto max_snapshot = runtime.CaptureSnapshot();
+    const auto exhausted = runtime.SetVisibility(first.Value(), SceneVisibilityState::Visible);
+    if (exhausted || !exhausted.GetError().HasCode("scene.revision_overflow") || !SameSnapshot(max_snapshot, runtime.CaptureSnapshot()))
+    {
+        return false;
+    }
+
+    SceneRuntime ids;
+    ids.SetAllocatorStateForTesting(std::numeric_limits<std::uint64_t>::max());
+    const auto last = ids.CreateNode();
+    const auto overflow = ids.CreateNode();
+    if (!last || last.Value().Raw() != std::numeric_limits<std::uint64_t>::max() || overflow ||
+        !overflow.GetError().HasCode("scene.node_id_exhausted"))
+    {
+        return false;
+    }
+    SceneRuntime allocation;
+    const auto revision_before = allocation.GetRevision();
+    allocation.FailNextAllocationForTesting();
+    const auto failed_create = allocation.CreateNode();
+    return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();
+}
+
+[[nodiscard]] bool TestDeepHierarchyUsesIterativeTraversal()
+{
+    SceneRuntime runtime;
+    constexpr std::size_t depth = 4096;
+    std::vector<SceneNodeId> nodes;
+    nodes.reserve(depth);
+    for (std::size_t index = 0; index < depth; ++index)
+    {
+        const auto node = runtime.CreateNode();
+        if (!node)
+        {
+            return false;
+        }
+        nodes.push_back(node.Value());
+        if (index > 0 && !runtime.AttachNode(nodes[index], nodes[index - 1], ReparentMode::KeepLocal))
+        {
+            return false;
+        }
+    }
+    const auto world = runtime.GetWorldTransform(nodes.back());
+    return world.has_value() && runtime.SetLocalTransform(nodes.front(), Transform{Vec3{1.0f, 0.0f, 0.0f}, Quat{}, Vec3{1.0f, 1.0f, 1.0f}}).HasValue();
+}
+
 } // namespace
 
 int main()
@@ -463,6 +590,9 @@ int main()
         {"QueriesAreVisibleAndDeterministic", TestQueriesAreVisibleAndDeterministic},
         {"SnapshotCapturesRevisionAndSortedNodes", TestSnapshotCapturesRevisionAndSortedNodes},
         {"FactoryCreatesSharedRuntimeServices", TestFactoryCreatesSharedRuntimeServices},
+        {"FailedReparentIsTransactional", TestFailedReparentIsTransactional},
+        {"SceneBoundaryContracts", TestSceneBoundaryContracts},
+        {"DeepHierarchyUsesIterativeTraversal", TestDeepHierarchyUsesIterativeTraversal},
     };
 
     for (const NamedTest& test : tests)

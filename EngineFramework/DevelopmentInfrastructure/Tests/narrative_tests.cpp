@@ -2,6 +2,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <stdexcept>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::narrative;
@@ -33,6 +34,23 @@ public:
         return {ConsequenceExecutionState::Applied,{}};
     }
     mutable int count=0;
+};
+
+class ThrowingResolver final:public INarrativeConditionResolver
+{
+public:
+    NarrativeConditionResult Evaluate(const NarrativeConditionDefinition&,const NarrativeEvaluationContext&) const override
+    {
+        throw std::runtime_error("resolver failure");
+    }
+};
+class ThrowingHandler final:public INarrativeConsequenceHandler
+{
+public:
+    NarrativeConsequenceResult Execute(const NarrativeConsequenceDefinition&,const NarrativeConsequenceExecution&,const NarrativeExecutionContext&) const override
+    {
+        throw std::runtime_error("handler failure");
+    }
 };
 std::vector<std::byte> Bytes(const char* s){std::vector<std::byte> out;while(*s){out.push_back(static_cast<std::byte>(*s));++s;}return out;}
 }
@@ -244,5 +262,89 @@ int main()
     Check(bounded.ReadChangesSince(bounded.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"max narrative cursor never wraps");
     NarrativeService empty_journal;
     Check(empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"max narrative cursor incompatible with empty journal");
+
+    // Local-correctness: forged enum input is rejected before ID/revision publication.
+    NarrativeService invalid_inputs;
+    const auto invalid_before = invalid_inputs.CaptureSnapshot();
+    RumorRecord invalid_rumor;
+    invalid_rumor.owner_or_scope = Ref("game.actor","invalid-rumor-owner");
+    invalid_rumor.topic = TypeId::FromString("topic.invalid");
+    invalid_rumor.state = static_cast<RumorState>(999);
+    Check(!static_cast<bool>(invalid_inputs.CreateRumor(invalid_rumor)),"invalid rumor enum rejected");
+    const auto invalid_after = invalid_inputs.CaptureSnapshot();
+    Check(invalid_after.revision == invalid_before.revision &&
+          invalid_after.rumor_ids.scope == invalid_before.rumor_ids.scope &&
+          invalid_after.rumor_ids.next == invalid_before.rumor_ids.next && invalid_after.rumors.empty(),
+          "invalid rumor does not consume id or revision");
+    NarrativeThreadDefinition invalid_thread;
+    invalid_thread.id = NarrativeThreadId::FromString("thread.invalid.enum");
+    invalid_thread.initial_state = static_cast<NarrativeRuntimeState>(999);
+    Check(!static_cast<bool>(invalid_inputs.RegisterThreadDefinition(invalid_thread)),"invalid thread enum rejected");
+    Check(invalid_inputs.CurrentRevision() == invalid_before.revision,"invalid definition leaves revision unchanged");
+
+    // Extension callbacks are contained and translated to stable narrative states.
+    NarrativeService callback_service;
+    ThrowingResolver throwing_resolver;
+    ThrowingHandler throwing_handler;
+    const auto throwing_condition_type = NarrativeConditionTypeId::FromString("condition.throwing");
+    const auto throwing_consequence_type = NarrativeConsequenceTypeId::FromString("consequence.throwing");
+    Check(static_cast<bool>(callback_service.RegisterConditionResolver(throwing_condition_type,throwing_resolver)),"register throwing resolver");
+    Check(static_cast<bool>(callback_service.RegisterConsequenceHandler(throwing_consequence_type,throwing_handler)),"register throwing handler");
+    NarrativeConditionDefinition throwing_condition;
+    throwing_condition.id = NarrativeConditionId::FromString("condition.throwing.instance");
+    throwing_condition.type = throwing_condition_type;
+    Check(static_cast<bool>(callback_service.RegisterConditionDefinition(throwing_condition)),"register throwing condition definition");
+    NarrativeConsequenceDefinition throwing_consequence;
+    throwing_consequence.id = NarrativeConsequenceId::FromString("consequence.throwing.instance");
+    throwing_consequence.type = throwing_consequence_type;
+    Check(static_cast<bool>(callback_service.RegisterConsequenceDefinition(throwing_consequence)),"register throwing consequence definition");
+    Check(static_cast<bool>(callback_service.FreezeDefinitions()),"freeze throwing callback definitions");
+    NarrativeEvent callback_event;
+    callback_event.type = NarrativeEventTypeId::FromString("callback.event");
+    callback_event.time = GameplayTimePoint{1};
+    Check(callback_service.EvaluateCondition(throwing_condition.id,{callback_event,{},callback_event.time}).state == ConditionEvaluationState::Unavailable,
+          "throwing resolver becomes unavailable");
+    NarrativeChoice callback_choice;
+    callback_choice.actor = Ref("game.actor","callback-owner");
+    NarrativeChoiceOption callback_option;
+    callback_option.id = NarrativeChoiceOptionId::FromString("option.callback");
+    callback_option.consequences.push_back(throwing_consequence.id);
+    callback_choice.options.push_back(callback_option);
+    auto callback_choice_id = callback_service.CreateChoice(callback_choice);
+    Check(static_cast<bool>(callback_choice_id),"create callback choice");
+    Check(static_cast<bool>(callback_service.ResolveChoice(callback_choice_id.Value(),callback_option.id)),"resolve callback choice");
+    Check(callback_service.ExecutePendingConsequences({.default_owner=callback_choice.actor,.now=GameplayTimePoint{2}}).empty(),
+          "throwing consequence does not escape");
+    Check(callback_service.FindConsequences(ConsequenceExecutionState::FailedRetryable).size()==1,
+          "throwing consequence remains retryable with stable execution state");
+
+    // Revision exhaustion rejects new mutations without publishing state.
+    auto exhausted_snapshot = resumed.CaptureSnapshot();
+    exhausted_snapshot.revision = Revision{std::numeric_limits<std::uint64_t>::max()};
+    NarrativeService exhausted_service;
+    Check(static_cast<bool>(exhausted_service.RegisterConditionResolver(NarrativeConditionTypeId::FromString("condition.event_tag"),tag_resolver)),"exhausted resolver");
+    Check(static_cast<bool>(exhausted_service.RegisterConsequenceHandler(NarrativeConsequenceTypeId::FromString("narrative.reward"),reward_handler)),"exhausted handler");
+    Check(static_cast<bool>(exhausted_service.RegisterConditionDefinition(r_cond)),"exhausted condition");
+    Check(static_cast<bool>(exhausted_service.RegisterConsequenceDefinition(r_cons)),"exhausted consequence");
+    Check(static_cast<bool>(exhausted_service.RegisterBeatDefinition(r_b)),"exhausted beat");
+    Check(static_cast<bool>(exhausted_service.RegisterThreadDefinition(r_t)),"exhausted thread");
+    Check(static_cast<bool>(exhausted_service.FreezeDefinitions()),"exhausted freeze");
+    Check(static_cast<bool>(exhausted_service.RestoreSnapshot(exhausted_snapshot)),"restore max narrative revision");
+    const auto exhausted_before = exhausted_service.CaptureSnapshot();
+    NarrativeFlag exhausted_flag;
+    exhausted_flag.id = NarrativeFlagId::FromString("flag.after.exhaustion");
+    Check(!static_cast<bool>(exhausted_service.SetFlag(exhausted_flag)),"revision exhaustion rejects mutation");
+    const auto exhausted_after = exhausted_service.CaptureSnapshot();
+    Check(exhausted_after.revision == exhausted_before.revision && exhausted_after.flags.size() == exhausted_before.flags.size(),
+          "revision exhaustion leaves narrative state unchanged");
+
+    // Restore rejects forged lifecycle enums before swapping live state.
+    auto corrupt_enum = exhausted_before;
+    if (!corrupt_enum.event_executions.empty())
+        corrupt_enum.event_executions.front().state = static_cast<NarrativeEventExecutionState>(999);
+    const auto stable_revision = exhausted_service.CurrentRevision();
+    Check(!corrupt_enum.event_executions.empty() && !static_cast<bool>(exhausted_service.RestoreSnapshot(corrupt_enum)),
+          "restore rejects invalid event execution enum");
+    Check(exhausted_service.CurrentRevision() == stable_revision,"failed enum restore is transactional");
     return 0;
 }

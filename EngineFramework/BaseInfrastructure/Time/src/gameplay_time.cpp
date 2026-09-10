@@ -28,38 +28,27 @@ foundation::Result<ClockId> GameplayTimeService::RegisterClock(
     std::optional<CalendarDefinition> calendar)
 {
     if (frozen_)
-    {
-        return foundation::Result<ClockId>::Failure(
-            foundation::Error::Create("gameplay.registry_frozen", "gameplay clock registry is frozen", std::string(canonical_name)));
-    }
+        return foundation::Result<ClockId>::Failure(foundation::Error::Create("gameplay.registry_frozen", "gameplay clock registry is frozen", std::string(canonical_name)));
     if (canonical_name.empty())
-    {
-        return foundation::Result<ClockId>::Failure(
-            foundation::Error::Create("gameplay.invalid_clock", "clock canonical name must not be empty"));
-    }
-    if (calendar.has_value() &&
-        (calendar->hours_per_day == 0 || calendar->days_per_month == 0 || calendar->months_per_year == 0))
-    {
-        return foundation::Result<ClockId>::Failure(
-            foundation::Error::Create("gameplay.invalid_calendar", "calendar units must be non-zero"));
-    }
-
+        return foundation::Result<ClockId>::Failure(foundation::Error::Create("gameplay.invalid_clock", "clock canonical name must not be empty"));
+    if (calendar.has_value() && (calendar->hours_per_day == 0 || calendar->days_per_month == 0 || calendar->months_per_year == 0))
+        return foundation::Result<ClockId>::Failure(foundation::Error::Create("gameplay.invalid_calendar", "calendar units must be non-zero"));
     const ClockId id = ClockId::FromString(canonical_name);
     const auto found = clock_definitions_.find(id);
-    if (found != clock_definitions_.end())
-    {
+    if (found != clock_definitions_.end()) {
         if (found->second.canonical_name != canonical_name)
-        {
-            return foundation::Result<ClockId>::Failure(
-                foundation::Error::Create("gameplay.id_collision", "clock id collision", std::string(canonical_name)));
-        }
-        return foundation::Result<ClockId>::Failure(
-            foundation::Error::Create("gameplay.already_registered", "clock already registered", std::string(canonical_name)));
+            return foundation::Result<ClockId>::Failure(foundation::Error::Create("gameplay.id_collision", "clock id collision", std::string(canonical_name)));
+        return foundation::Result<ClockId>::Failure(foundation::Error::Create("gameplay.already_registered", "clock already registered", std::string(canonical_name)));
     }
-
-    clock_definitions_.emplace(id, ClockDefinition{id, std::string(canonical_name), calendar});
-    clocks_.emplace(id, ClockState{id, {}, {}});
-    schedule_index_.emplace(id, std::set<ScheduleKey>{});
+    auto staged_definitions = clock_definitions_;
+    auto staged_clocks = clocks_;
+    auto staged_index = schedule_index_;
+    staged_definitions.emplace(id, ClockDefinition{id, std::string(canonical_name), calendar});
+    staged_clocks.emplace(id, ClockState{id, {}, {}});
+    staged_index.emplace(id, std::set<ScheduleKey>{});
+    clock_definitions_.swap(staged_definitions);
+    clocks_.swap(staged_clocks);
+    schedule_index_.swap(staged_index);
     return foundation::Result<ClockId>::Success(id);
 }
 
@@ -234,23 +223,32 @@ foundation::Result<void> GameplayTimeService::SetTimeScale(ClockId clock, std::u
 foundation::Result<void> GameplayTimeService::SynchronizeClock(ClockId clock, GameplayTimePoint now, Revision source_revision)
 {
     if (!source_revision.value)
-    {
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.clock_sync_revision_invalid", "clock synchronization requires a non-zero source revision"));
-    }
+        return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.clock_sync_revision_invalid", "clock synchronization requires a non-zero source revision"));
+    const auto current = clocks_.find(clock);
+    if (current == clocks_.end())
+        return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.clock_unknown", "gameplay clock is not registered"));
     const auto previous = synchronization_revisions_.find(clock);
     if (previous != synchronization_revisions_.end() && source_revision <= previous->second)
-    {
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.clock_sync_stale", "clock synchronization source revision is stale"));
+        return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.clock_sync_stale", "clock synchronization source revision is stale"));
+    if (now < current->second.now)
+        return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.clock_rewind", "gameplay clock cannot move backwards outside restore"));
+    auto staged_clocks = clocks_;
+    auto staged_sync = synchronization_revisions_;
+    auto staged_rebind = synchronization_rebind_required_;
+    auto& staged_clock = staged_clocks.at(clock);
+    if (now != staged_clock.now) {
+        const auto next_revision = CheckedNext(staged_clock.revision);
+        if (!next_revision)
+            return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.revision_exhausted", "clock revision is exhausted"));
+        staged_clock.now = now;
+        staged_clock.fractional_milli = 0;
+        staged_clock.revision = *next_revision;
     }
-    auto advanced = AdvanceTo(clock, now);
-    if (!advanced)
-    {
-        return advanced;
-    }
-    synchronization_revisions_[clock] = source_revision;
-    synchronization_rebind_required_.erase(clock);
+    staged_sync.insert_or_assign(clock, source_revision);
+    staged_rebind.erase(clock);
+    clocks_.swap(staged_clocks);
+    synchronization_revisions_.swap(staged_sync);
+    synchronization_rebind_required_.swap(staged_rebind);
     return foundation::Result<void>::Success();
 }
 
@@ -422,44 +420,34 @@ foundation::Result<void> GameplayTimeService::ValidateRecurrence(ClockId clock, 
 }
 
 foundation::Result<ScheduleId> GameplayTimeService::Schedule(
-    ClockId clock,
-    GameplayTimePoint due,
-    GameplayObjectRef owner,
-    ActionTypeId action,
-    RecurrenceRule recurrence,
-    CatchUpPolicy catch_up,
-    SchedulePersistence persistence)
+    ClockId clock, GameplayTimePoint due, GameplayObjectRef owner, ActionTypeId action,
+    RecurrenceRule recurrence, CatchUpPolicy catch_up, SchedulePersistence persistence)
 {
     if (!clock_definitions_.contains(clock))
-    {
         return foundation::Result<ScheduleId>::Failure(foundation::Error::Create("gameplay.clock_unknown", "schedule clock is not registered"));
-    }
     const auto action_info = action_types_.find(action);
     if (action_info == action_types_.end())
-    {
         return foundation::Result<ScheduleId>::Failure(foundation::Error::Create("gameplay.action_unknown", "schedule action is not registered"));
-    }
     if (!owner.IsValid() || owner.domain != action_info->second.owner_domain)
-    {
-        return foundation::Result<ScheduleId>::Failure(
-            foundation::Error::Create("gameplay.schedule_owner_mismatch", "schedule owner must be valid and match action owner domain"));
-    }
+        return foundation::Result<ScheduleId>::Failure(foundation::Error::Create("gameplay.schedule_owner_mismatch", "schedule owner must be valid and match action owner domain"));
     const auto recurrence_result = ValidateRecurrence(clock, recurrence);
-    if (!recurrence_result)
-    {
-        return foundation::Result<ScheduleId>::Failure(recurrence_result.GetError());
-    }
-
-    const ScheduleId id = schedule_ids_.Next();
+    if (!recurrence_result) return foundation::Result<ScheduleId>::Failure(recurrence_result.GetError());
+    const auto next_scheduler_revision = CheckedNext(scheduler_revision_);
+    if (!next_scheduler_revision)
+        return foundation::Result<ScheduleId>::Failure(foundation::Error::Create("gameplay.schedule_revision_exhausted", "scheduler revision is exhausted"));
+    auto staged_ids = schedule_ids_;
+    const ScheduleId id = staged_ids.Next();
     if (!id.IsValid())
-    {
-        return foundation::Result<ScheduleId>::Failure(
-            foundation::Error::Create("gameplay.schedule_id_exhausted", "schedule id generator is exhausted"));
-    }
-
-    ScheduleEntry entry{id, clock, due, owner, action, recurrence, catch_up, persistence};
-    schedules_.emplace(id, entry);
-    InsertScheduleIndex(entry);
+        return foundation::Result<ScheduleId>::Failure(foundation::Error::Create("gameplay.schedule_id_exhausted", "schedule id generator is exhausted"));
+    ScheduleEntry entry{id, clock, due, owner, action, recurrence, catch_up, persistence, Revision{1}};
+    auto staged_schedules = schedules_;
+    auto staged_index = schedule_index_;
+    staged_schedules.emplace(id, entry);
+    staged_index.at(clock).insert(ScheduleKey{entry.due, entry.id});
+    schedules_.swap(staged_schedules);
+    schedule_index_.swap(staged_index);
+    (void)schedule_ids_.Restore(staged_ids.GetSnapshot());
+    scheduler_revision_ = *next_scheduler_revision;
     return foundation::Result<ScheduleId>::Success(id);
 }
 
@@ -540,55 +528,53 @@ foundation::Result<void> GameplayTimeService::Cancel(ScheduleId schedule)
 {
     const auto found = schedules_.find(schedule);
     if (found == schedules_.end())
-    {
         return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.schedule_unknown", "schedule does not exist"));
-    }
-    RemoveScheduleIndex(found->second);
-    schedules_.erase(found);
-    ++cancelled_schedules_;
+    const auto next_scheduler_revision = CheckedNext(scheduler_revision_);
+    if (!next_scheduler_revision)
+        return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.schedule_revision_exhausted", "scheduler revision is exhausted"));
+    auto staged_schedules = schedules_; auto staged_index = schedule_index_;
+    const auto staged_found = staged_schedules.find(schedule);
+    staged_index.at(staged_found->second.clock).erase(ScheduleKey{staged_found->second.due, staged_found->second.id});
+    staged_schedules.erase(staged_found);
+    schedules_.swap(staged_schedules); schedule_index_.swap(staged_index); scheduler_revision_ = *next_scheduler_revision;
+    if (cancelled_schedules_ != std::numeric_limits<std::uint64_t>::max()) ++cancelled_schedules_;
     return foundation::Result<void>::Success();
 }
-
 std::uint64_t GameplayTimeService::CancelOwnedBy(GameplayObjectRef owner)
 {
     std::vector<ScheduleId> ids;
-    for (const auto& [id, entry] : schedules_)
-    {
-        if (entry.owner == owner)
-        {
-            ids.push_back(id);
-        }
-    }
-    for (const auto id : ids)
-    {
-        [[maybe_unused]] const auto result = Cancel(id);
-    }
+    for (const auto& [id, entry] : schedules_) if (entry.owner == owner) ids.push_back(id);
+    if (ids.empty()) return 0;
+    const auto next_scheduler_revision = CheckedNext(scheduler_revision_);
+    if (!next_scheduler_revision) return 0;
+    auto staged_schedules = schedules_; auto staged_index = schedule_index_;
+    for (const auto id : ids) { const auto found = staged_schedules.find(id); if (found != staged_schedules.end()) { staged_index.at(found->second.clock).erase(ScheduleKey{found->second.due, found->second.id}); staged_schedules.erase(found); } }
+    schedules_.swap(staged_schedules); schedule_index_.swap(staged_index); scheduler_revision_ = *next_scheduler_revision;
+    const auto room = std::numeric_limits<std::uint64_t>::max() - cancelled_schedules_;
+    cancelled_schedules_ += std::min<std::uint64_t>(room, ids.size());
     return ids.size();
 }
-
 foundation::Result<void> GameplayTimeService::Reschedule(ScheduleId schedule, GameplayTimePoint new_due)
 {
     const auto found = schedules_.find(schedule);
-    if (found == schedules_.end())
-    {
-        return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.schedule_unknown", "schedule does not exist"));
-    }
-    RemoveScheduleIndex(found->second);
-    found->second.due = new_due;
-    InsertScheduleIndex(found->second);
+    if (found == schedules_.end()) return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.schedule_unknown", "schedule does not exist"));
+    if (found->second.due == new_due) return foundation::Result<void>::Success();
+    const auto next_scheduler_revision = CheckedNext(scheduler_revision_); const auto next_entry_revision = CheckedNext(found->second.revision);
+    if (!next_scheduler_revision || !next_entry_revision)
+        return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.schedule_revision_exhausted", "schedule revision is exhausted"));
+    auto staged_schedules = schedules_; auto staged_index = schedule_index_; auto& staged = staged_schedules.at(schedule);
+    staged_index.at(staged.clock).insert(ScheduleKey{new_due, staged.id});
+    staged_index.at(staged.clock).erase(ScheduleKey{staged.due, staged.id});
+    staged.due = new_due; staged.revision = *next_entry_revision;
+    schedules_.swap(staged_schedules); schedule_index_.swap(staged_index); scheduler_revision_ = *next_scheduler_revision;
     return foundation::Result<void>::Success();
 }
-
-bool GameplayTimeService::HasSchedule(ScheduleId schedule) const noexcept
-{
-    return schedules_.contains(schedule);
-}
-
+bool GameplayTimeService::HasSchedule(ScheduleId schedule) const noexcept { return schedules_.contains(schedule); }
 std::optional<ScheduleEntry> GameplayTimeService::GetSchedule(ScheduleId schedule) const noexcept
 {
-    const auto found = schedules_.find(schedule);
-    return found == schedules_.end() ? std::nullopt : std::optional<ScheduleEntry>{found->second};
+    const auto found = schedules_.find(schedule); return found == schedules_.end() ? std::nullopt : std::optional<ScheduleEntry>{found->second};
 }
+
 foundation::Result<std::int64_t> GameplayTimeService::RecurrenceIntervalTicks(const ScheduleEntry& entry) const
 {
     if (entry.recurrence.kind == RecurrenceKind::Once)
@@ -677,164 +663,38 @@ foundation::Result<GameplayTimePoint> GameplayTimeService::AdvanceDue(const Sche
 
 foundation::Result<std::vector<ScheduledTrigger>> GameplayTimeService::CollectDue(ClockId clock, SchedulerBudget budget)
 {
-    const auto state = clocks_.find(clock);
-    const auto index = schedule_index_.find(clock);
+    const auto state = clocks_.find(clock); const auto index = schedule_index_.find(clock);
     if (state == clocks_.end() || index == schedule_index_.end())
-    {
-        return foundation::Result<std::vector<ScheduledTrigger>>::Failure(
-            foundation::Error::Create("gameplay.clock_unknown", "cannot collect schedules for unknown clock"));
-    }
+        return foundation::Result<std::vector<ScheduledTrigger>>::Failure(foundation::Error::Create("gameplay.clock_unknown", "cannot collect schedules for unknown clock"));
     if (budget.max_triggers == 0 || budget.max_catch_up_occurrences == 0)
-    {
-        return foundation::Result<std::vector<ScheduledTrigger>>::Failure(
-            foundation::Error::Create("gameplay.schedule_invalid_budget", "scheduler budgets must be non-zero"));
+        return foundation::Result<std::vector<ScheduledTrigger>>::Failure(foundation::Error::Create("gameplay.schedule_invalid_budget", "scheduler budgets must be non-zero"));
+    auto staged_schedules = schedules_; auto staged_index = schedule_index_; auto staged_scheduler_revision = scheduler_revision_;
+    auto staged_emitted=emitted_triggers_, staged_catchup=catch_up_occurrences_, staged_budget_exhaustions=budget_exhaustions_;
+    std::vector<ScheduledTrigger> triggers; triggers.reserve(static_cast<std::size_t>(std::min<std::uint64_t>(budget.max_triggers, staged_schedules.size())));
+    std::uint64_t materialized_catch_up=0; bool mutated=false;
+    auto sat=[](std::uint64_t& target,std::uint64_t value){ if(value>std::numeric_limits<std::uint64_t>::max()-target) target=std::numeric_limits<std::uint64_t>::max(); else target+=value; };
+    auto& staged_clock_index=staged_index.at(clock);
+    while(!staged_clock_index.empty()) {
+        const auto key=*staged_clock_index.begin(); if(key.due>state->second.now) break;
+        if(triggers.size()>=budget.max_triggers){sat(staged_budget_exhaustions,1);break;}
+        auto found_entry=staged_schedules.find(key.id); if(found_entry==staged_schedules.end()){staged_clock_index.erase(staged_clock_index.begin());mutated=true;continue;}
+        const ScheduleEntry entry=found_entry->second; const auto occurrence_result=CalculateOccurrences(entry,state->second.now);
+        if(!occurrence_result) return foundation::Result<std::vector<ScheduledTrigger>>::Failure(occurrence_result.GetError());
+        const auto occurrences=occurrence_result.Value(); if(occurrences==0) break; sat(staged_catchup,occurrences>1?occurrences-1:0);
+        const auto next_entry_revision=CheckedNext(found_entry->second.revision);
+        if(entry.recurrence.kind!=RecurrenceKind::Once && !next_entry_revision) return foundation::Result<std::vector<ScheduledTrigger>>::Failure(foundation::Error::Create("gameplay.schedule_revision_exhausted","schedule revision is exhausted"));
+        if(entry.recurrence.kind==RecurrenceKind::Once){ staged_clock_index.erase(ScheduleKey{entry.due,entry.id}); triggers.push_back({entry.id,entry.clock,entry.owner,entry.action,entry.due,state->second.now,1}); staged_schedules.erase(found_entry); mutated=true; continue; }
+        auto reindex=[&](GameplayTimePoint next_due){ staged_clock_index.insert(ScheduleKey{next_due,entry.id}); staged_clock_index.erase(ScheduleKey{entry.due,entry.id}); auto& e=staged_schedules.at(entry.id); e.due=next_due; e.revision=*next_entry_revision; mutated=true; };
+        switch(entry.catch_up){
+          case CatchUpPolicy::FireEach:{ auto trigger_room=budget.max_triggers-static_cast<std::uint64_t>(triggers.size()); auto catchup_room=budget.max_catch_up_occurrences-materialized_catch_up; auto to_fire=std::min<std::uint64_t>(occurrences,std::min(trigger_room,catchup_room)); if(to_fire==0){sat(staged_budget_exhaustions,1);break;} std::vector<GameplayTimePoint> due_times; due_times.reserve(static_cast<std::size_t>(to_fire)); for(std::uint64_t i=0;i<to_fire;++i){auto due=AdvanceDue(entry,i);if(!due)return foundation::Result<std::vector<ScheduledTrigger>>::Failure(due.GetError());due_times.push_back(due.Value());} auto next_due=AdvanceDue(entry,to_fire);if(!next_due)return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError()); for(auto due:due_times)triggers.push_back({entry.id,entry.clock,entry.owner,entry.action,due,state->second.now,1}); reindex(next_due.Value()); materialized_catch_up+=to_fire; if(to_fire<occurrences)sat(staged_budget_exhaustions,1); break;}
+          case CatchUpPolicy::FireOnce:{auto next_due=AdvanceDue(entry,occurrences);if(!next_due)return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());triggers.push_back({entry.id,entry.clock,entry.owner,entry.action,entry.due,state->second.now,1});reindex(next_due.Value());break;}
+          case CatchUpPolicy::SkipMissed:{auto next_due=AdvanceDue(entry,occurrences);if(!next_due)return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());if(occurrences==1&&entry.due==state->second.now)triggers.push_back({entry.id,entry.clock,entry.owner,entry.action,entry.due,state->second.now,1});reindex(next_due.Value());break;}
+          case CatchUpPolicy::Aggregate:{auto next_due=AdvanceDue(entry,occurrences);if(!next_due)return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());triggers.push_back({entry.id,entry.clock,entry.owner,entry.action,entry.due,state->second.now,occurrences});reindex(next_due.Value());break;}
+        }
+        if(entry.catch_up==CatchUpPolicy::FireEach && materialized_catch_up>=budget.max_catch_up_occurrences) break;
     }
-
-    std::vector<ScheduledTrigger> triggers;
-    std::uint64_t materialized_catch_up = 0;
-    auto add_catchup_diagnostic = [this](std::uint64_t value) {
-        if (value > std::numeric_limits<std::uint64_t>::max() - catch_up_occurrences_)
-        {
-            catch_up_occurrences_ = std::numeric_limits<std::uint64_t>::max();
-        }
-        else
-        {
-            catch_up_occurrences_ += value;
-        }
-    };
-
-    while (!index->second.empty())
-    {
-        const auto key = *index->second.begin();
-        if (key.due > state->second.now)
-        {
-            break;
-        }
-        if (triggers.size() >= budget.max_triggers)
-        {
-            ++budget_exhaustions_;
-            break;
-        }
-
-        const auto found_entry = schedules_.find(key.id);
-        if (found_entry == schedules_.end())
-        {
-            index->second.erase(index->second.begin());
-            continue;
-        }
-
-        const ScheduleEntry entry = found_entry->second;
-        const auto occurrence_result = CalculateOccurrences(entry, state->second.now);
-        if (!occurrence_result)
-        {
-            return foundation::Result<std::vector<ScheduledTrigger>>::Failure(occurrence_result.GetError());
-        }
-        const auto occurrences = occurrence_result.Value();
-        if (occurrences == 0)
-        {
-            break;
-        }
-        add_catchup_diagnostic(occurrences > 1 ? occurrences - 1 : 0);
-
-        if (entry.recurrence.kind == RecurrenceKind::Once)
-        {
-            RemoveScheduleIndex(found_entry->second);
-            triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, entry.due, state->second.now, 1});
-            schedules_.erase(found_entry);
-            continue;
-        }
-
-        switch (entry.catch_up)
-        {
-        case CatchUpPolicy::FireEach:
-        {
-            const auto trigger_room = budget.max_triggers - static_cast<std::uint64_t>(triggers.size());
-            const auto catchup_room = budget.max_catch_up_occurrences - materialized_catch_up;
-            const auto to_fire = std::min<std::uint64_t>(occurrences, std::min(trigger_room, catchup_room));
-            if (to_fire == 0)
-            {
-                ++budget_exhaustions_;
-                emitted_triggers_ += triggers.size();
-                return foundation::Result<std::vector<ScheduledTrigger>>::Success(std::move(triggers));
-            }
-            std::vector<GameplayTimePoint> due_times;
-            due_times.reserve(static_cast<std::size_t>(to_fire));
-            for (std::uint64_t index_value = 0; index_value < to_fire; ++index_value)
-            {
-                auto due = AdvanceDue(entry, index_value);
-                if (!due)
-                {
-                    return foundation::Result<std::vector<ScheduledTrigger>>::Failure(due.GetError());
-                }
-                due_times.push_back(due.Value());
-            }
-            auto next_due = AdvanceDue(entry, to_fire);
-            if (!next_due)
-            {
-                return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());
-            }
-            RemoveScheduleIndex(found_entry->second);
-            for (const auto due : due_times)
-            {
-                triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, due, state->second.now, 1});
-            }
-            found_entry->second.due = next_due.Value();
-            InsertScheduleIndex(found_entry->second);
-            materialized_catch_up += to_fire;
-            if (to_fire < occurrences)
-            {
-                ++budget_exhaustions_;
-                emitted_triggers_ += triggers.size();
-                return foundation::Result<std::vector<ScheduledTrigger>>::Success(std::move(triggers));
-            }
-            break;
-        }
-        case CatchUpPolicy::FireOnce:
-        {
-            auto next_due = AdvanceDue(entry, occurrences);
-            if (!next_due)
-            {
-                return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());
-            }
-            RemoveScheduleIndex(found_entry->second);
-            triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, entry.due, state->second.now, 1});
-            found_entry->second.due = next_due.Value();
-            InsertScheduleIndex(found_entry->second);
-            break;
-        }
-        case CatchUpPolicy::SkipMissed:
-        {
-            auto next_due = AdvanceDue(entry, occurrences);
-            if (!next_due)
-            {
-                return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());
-            }
-            RemoveScheduleIndex(found_entry->second);
-            if (occurrences == 1 && entry.due == state->second.now)
-            {
-                triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, entry.due, state->second.now, 1});
-            }
-            found_entry->second.due = next_due.Value();
-            InsertScheduleIndex(found_entry->second);
-            break;
-        }
-        case CatchUpPolicy::Aggregate:
-        {
-            auto next_due = AdvanceDue(entry, occurrences);
-            if (!next_due)
-            {
-                return foundation::Result<std::vector<ScheduledTrigger>>::Failure(next_due.GetError());
-            }
-            RemoveScheduleIndex(found_entry->second);
-            triggers.push_back(ScheduledTrigger{entry.id, entry.clock, entry.owner, entry.action, entry.due, state->second.now, occurrences});
-            found_entry->second.due = next_due.Value();
-            InsertScheduleIndex(found_entry->second);
-            break;
-        }
-        }
-    }
-
-    emitted_triggers_ += triggers.size();
+    if(mutated){const auto next_revision=CheckedNext(staged_scheduler_revision);if(!next_revision)return foundation::Result<std::vector<ScheduledTrigger>>::Failure(foundation::Error::Create("gameplay.schedule_revision_exhausted","scheduler revision is exhausted"));staged_scheduler_revision=*next_revision;}
+    sat(staged_emitted,triggers.size()); schedules_.swap(staged_schedules); schedule_index_.swap(staged_index); scheduler_revision_=staged_scheduler_revision; emitted_triggers_=staged_emitted; catch_up_occurrences_=staged_catchup; budget_exhaustions_=staged_budget_exhaustions;
     return foundation::Result<std::vector<ScheduledTrigger>>::Success(std::move(triggers));
 }
 
@@ -869,6 +729,7 @@ GameplayTimeSnapshot GameplayTimeService::CaptureSnapshot() const
     snapshot.externally_synchronized_clocks.assign(synchronized_clocks.begin(), synchronized_clocks.end());
 
     snapshot.schedule_ids = schedule_ids_.GetSnapshot();
+    snapshot.scheduler_revision = scheduler_revision_;
     return snapshot;
 }
 
@@ -937,6 +798,8 @@ foundation::Result<void> GameplayTimeService::RestoreSnapshot(GameplayTimeSnapsh
         {
             max_schedule_low = std::max(max_schedule_low, schedule.id.Low());
         }
+        if (!schedule.revision.value)
+            return foundation::Result<void>::Failure(foundation::Error::Create("gameplay.schedule_snapshot_invalid", "persistent schedule revision must be non-zero"));
         restored_schedules.emplace(schedule.id, schedule);
         restored_index[schedule.clock].insert(ScheduleKey{schedule.due, schedule.id});
     }
@@ -949,7 +812,8 @@ foundation::Result<void> GameplayTimeService::RestoreSnapshot(GameplayTimeSnapsh
     clocks_ = std::move(restored_clocks);
     schedules_ = std::move(restored_schedules);
     schedule_index_ = std::move(restored_index);
-    schedule_ids_.Restore(snapshot.schedule_ids);
+    (void)schedule_ids_.Restore(snapshot.schedule_ids);
+    scheduler_revision_ = snapshot.scheduler_revision;
     synchronization_revisions_.clear();
     synchronization_rebind_required_ = std::move(restored_synchronization_rebind_required);
     return foundation::Result<void>::Success();

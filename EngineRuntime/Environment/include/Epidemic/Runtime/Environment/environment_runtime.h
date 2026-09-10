@@ -65,5 +65,9 @@ class IEnvironmentRuntime : public IEnvironmentQuery, public IEnvironmentWriter
     ~IEnvironmentRuntime() override = default;
 
     virtual void SetUpdatePolicy(std::shared_ptr<const IEnvironmentUpdatePolicy> policy) = 0;
+
+    // Region definitions are boot-static once frozen. Runtime state updates remain available after freeze.
+    virtual void FreezeRegistration() noexcept = 0;
+    [[nodiscard]] virtual bool IsRegistrationFrozen() const noexcept = 0;
 };
 } // namespace epidemic::runtime

@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
+#include "allocation_fault_injection.h"
 
 #include <cstdlib>
 #include <limits>
@@ -42,7 +43,7 @@ int main()
     const auto first = generator.Next();
     const auto snapshot = generator.GetSnapshot();
     const auto second = generator.Next();
-    generator.Restore(snapshot);
+    Check(generator.Restore(snapshot), 701);
     Check(first.High() == 42 && second == generator.Next(), 7);
 
     MonotonicIdGenerator<ScheduleId> named = MonotonicIdGenerator<ScheduleId>::FromScopeName("framework.time.schedule_ids");
@@ -87,13 +88,82 @@ int main()
           909);
 
     MonotonicIdGenerator<ScheduleId> exhausted(7);
-    exhausted.Restore(MonotonicIdGenerator<ScheduleId>::Snapshot{7, std::numeric_limits<std::uint64_t>::max()});
+    Check(exhausted.Restore(MonotonicIdGenerator<ScheduleId>::Snapshot{7, std::numeric_limits<std::uint64_t>::max()}), 1001);
     const auto last = exhausted.Next();
     Check(last.IsValid() && last.High() == 7 && last.Low() == std::numeric_limits<std::uint64_t>::max(), 10);
     const auto exhausted_snapshot = exhausted.GetSnapshot();
     Check(exhausted.IsExhausted() && exhausted_snapshot.next == 0, 11);
-    exhausted.Restore(exhausted_snapshot);
+    Check(exhausted.Restore(exhausted_snapshot), 1201);
     Check(!exhausted.Next().IsValid(), 12);
+
+
+    MonotonicIdGenerator<ScheduleId> checked_restore(77);
+    (void)checked_restore.Next();
+    const auto before_invalid_restore = checked_restore.GetSnapshot();
+    Check(!checked_restore.Restore({0, 1}), 910);
+    Check(checked_restore.GetSnapshot().scope == before_invalid_restore.scope &&
+              checked_restore.GetSnapshot().next == before_invalid_restore.next,
+          911);
+    const auto restore_result = RestoreMonotonicIdGeneratorSnapshot<ScheduleId>(
+        checked_restore, {77, 9}, IdScopeId::FromRaw(77), 8);
+    Check(restore_result && checked_restore.GetSnapshot().next == 9, 912);
+    const auto before_stale_restore = checked_restore.GetSnapshot();
+    Check(!RestoreMonotonicIdGeneratorSnapshot<ScheduleId>(checked_restore, {77, 8}, IdScopeId::FromRaw(77), 8), 913);
+    Check(checked_restore.GetSnapshot().next == before_stale_restore.next, 914);
+
+    bool stable_fault_observed = false;
+    for (long long fail_after = 0; fail_after < 32 && !stable_fault_observed; ++fail_after)
+    {
+        StableTypeRegistry<TypeId> fault_registry;
+        Check(static_cast<bool>(fault_registry.Register("framework.fault.baseline")), 915);
+        const auto size_before = fault_registry.Size();
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_registry.Register("framework.fault.target");
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            stable_fault_observed = true;
+            Check(fault_registry.Size() == size_before && fault_registry.Find("framework.fault.target") == nullptr, 916);
+        }
+    }
+    Check(stable_fault_observed, 917);
+
+    bool tag_fault_observed = false;
+    for (long long fail_after = 0; fail_after < 64 && !tag_fault_observed; ++fail_after)
+    {
+        GameplayTagRegistry fault_tags;
+        Check(static_cast<bool>(fault_tags.Register("baseline.tag")), 918);
+        const auto size_before = fault_tags.Size();
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_tags.Register("fault.deep.hierarchy.leaf");
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            tag_fault_observed = true;
+            Check(fault_tags.Size() == size_before && fault_tags.Find(TagId::FromString("fault")) == nullptr &&
+                      fault_tags.Find(TagId::FromString("fault.deep.hierarchy.leaf")) == nullptr,
+                  919);
+        }
+    }
+    Check(tag_fault_observed, 920);
 
     StableTypeRegistry<TypeId> registry;
     const auto registered = registry.Register("framework.test.type");

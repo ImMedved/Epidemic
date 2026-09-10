@@ -3,6 +3,7 @@
 #include "Epidemic/Foundation/result.h"
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <deque>
@@ -485,9 +486,9 @@ class AIService
     void SetBudget(AIBudget budget) noexcept { budget_ = budget; }
     void SetChangeJournalCapacity(std::size_t capacity) noexcept
     {
-        change_journal_capacity_ = capacity == 0 ? 1 : capacity;
-        while (changes_.size() > change_journal_capacity_)
-            changes_.pop_front();
+        change_journal_capacity_ = std::clamp<std::size_t>(capacity == 0 ? 1 : capacity, 1, kMaxChangeJournalCapacity);
+        if (changes_.size() > change_journal_capacity_)
+            changes_.erase(changes_.begin(), changes_.begin() + static_cast<std::ptrdiff_t>(changes_.size() - change_journal_capacity_));
     }
 
     [[nodiscard]] std::vector<AIAgentState> FindAgentsByActivity(AIAgentActivity activity) const;
@@ -533,8 +534,10 @@ class AIService
     };
 
     [[nodiscard]] foundation::Result<void> RequireFrozen() const;
-    void Bump() noexcept;
-    void Record(AIChange change);
+    [[nodiscard]] bool CanBump() const noexcept;
+    [[nodiscard]] bool Bump() noexcept;
+    [[nodiscard]] bool CanRecord(std::size_t count = 1) const noexcept;
+    void Record(AIChange change) noexcept;
     void EnsureBudgetEpoch(GameplayTickId tick) noexcept;
     [[nodiscard]] AIAgentState *FindMutableAgent(GameplayObjectRef subject) noexcept;
     [[nodiscard]] AIAgentState *FindAgentByIntent(AIIntentId id) noexcept;
@@ -547,7 +550,7 @@ class AIService
                                                          GameplayContext context);
     void RemoveDueIndex(const AIAgentState &agent) noexcept;
     void AddDueIndex(const AIAgentState &agent);
-    void SetNextThink(AIAgentState &agent, GameplayTimePoint when);
+    [[nodiscard]] foundation::Result<void> SetNextThink(AIAgentState &agent, GameplayTimePoint when);
     [[nodiscard]] GameplayTimePoint NextThinkAfter(const AIProfile &profile, GameplayTimePoint now) const noexcept;
 
     bool frozen_ = false;
@@ -561,7 +564,8 @@ class AIService
     std::unordered_map<GameplayObjectRef, AIAgentState, RefHash> agents_;
     std::unordered_map<AIIntentId, GameplayObjectRef, IdHash> intent_to_agent_;
     std::set<DueKey> due_agents_;
-    std::deque<AIChange> changes_;
+    static constexpr std::size_t kMaxChangeJournalCapacity = 16384;
+    std::vector<AIChange> changes_;
     std::size_t change_journal_capacity_ = 4096;
     std::uint64_t next_change_sequence_ = 1;
     std::uint64_t journal_epoch_ = 1;

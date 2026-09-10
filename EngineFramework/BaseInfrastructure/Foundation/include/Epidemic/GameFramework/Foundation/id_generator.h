@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Epidemic/Foundation/error.h"
+#include "Epidemic/Foundation/result.h"
 #include "Epidemic/GameFramework/Foundation/ids.h"
 
 #include <cstdint>
 #include <limits>
+#include <string>
 #include <string_view>
 
 namespace epidemic::gameplay
@@ -56,10 +59,15 @@ template <typename TId> class MonotonicIdGenerator
     // persistent scope and the maximum restored low-part for its records.
     [[nodiscard]] static constexpr bool IsValidSnapshot(Snapshot snapshot) noexcept { return snapshot.scope != 0; }
 
-    void Restore(Snapshot snapshot) noexcept
+    [[nodiscard]] bool Restore(Snapshot snapshot) noexcept
     {
-        scope_ = NormalizeScope(snapshot.scope);
+        if (!IsValidSnapshot(snapshot))
+        {
+            return false;
+        }
+        scope_ = snapshot.scope;
         next_ = snapshot.next;
+        return true;
     }
 
   private:
@@ -154,4 +162,27 @@ template <typename TId>
     result.status = MonotonicIdGeneratorSnapshotStatus::Valid;
     return result;
 }
+
+template <typename TId>
+[[nodiscard]] foundation::Result<void> RestoreMonotonicIdGeneratorSnapshot(
+    MonotonicIdGenerator<TId>& generator,
+    typename MonotonicIdGenerator<TId>::Snapshot snapshot,
+    IdScopeId expected_scope,
+    std::uint64_t max_restored_low_part) noexcept
+{
+    const auto validation =
+        ValidateMonotonicIdGeneratorSnapshot<TId>(snapshot, expected_scope, max_restored_low_part);
+    if (!validation)
+    {
+        return foundation::Result<void>::Failure(foundation::Error::Create(
+            std::string(validation.Code()), "invalid monotonic id generator snapshot"));
+    }
+    if (!generator.Restore(snapshot))
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("gameplay.id_generator_snapshot_invalid", "invalid monotonic id generator snapshot"));
+    }
+    return foundation::Result<void>::Success();
+}
+
 } // namespace epidemic::gameplay

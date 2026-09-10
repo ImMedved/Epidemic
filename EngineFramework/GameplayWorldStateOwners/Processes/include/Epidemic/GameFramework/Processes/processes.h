@@ -295,7 +295,8 @@ enum class ProcessChangeKind
     OutputProduced,
     QualityResolved,
     ReconciliationRequired,
-    StationRegistered
+    StationRegistered,
+    Pruned
 };
 
 struct ProcessStepDefinition
@@ -437,6 +438,17 @@ struct ProcessChange
     Revision revision{};
     ProcessStationId station{};
 };
+struct ProcessCompletionFailure
+{
+    ProcessInstanceId process{};
+    foundation::Error error{};
+};
+struct ProcessBatchCompletionReport
+{
+    std::vector<ProcessInstanceId> completed;
+    std::vector<ProcessCompletionFailure> failures;
+    [[nodiscard]] bool AllCompleted() const noexcept { return failures.empty(); }
+};
 struct ProcessChangeBatch
 {
     bool snapshot_required = false;
@@ -555,11 +567,11 @@ class ProcessesService
                                                   GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> Complete(ProcessInstanceId id, GameplayTimePoint now,
                                                     GameplayContext context = {});
-    [[nodiscard]] foundation::Result<std::vector<ProcessInstanceId>> CompleteDue(GameplayTimePoint now);
+    [[nodiscard]] foundation::Result<ProcessBatchCompletionReport> CompleteDue(GameplayTimePoint now);
     [[nodiscard]] std::vector<ProcessInstance> FindDueProcessesForSimulation(GameplayObjectRef simulation_area,
                                                                               GameplayTimePoint from,
                                                                               GameplayTimePoint to) const;
-    [[nodiscard]] foundation::Result<std::vector<ProcessInstanceId>> CompletePreparedDueForSimulation(
+    [[nodiscard]] foundation::Result<ProcessBatchCompletionReport> CompletePreparedDueForSimulation(
         GameplayObjectRef simulation_area, std::span<const ProcessInstanceId> process_ids, GameplayTimePoint now,
         GameplayContext context = {});
 
@@ -593,10 +605,9 @@ class ProcessesService
     [[nodiscard]] ProcessesDiagnostics GetDiagnostics() const noexcept;
 
   private:
-    void Bump() noexcept
-    {
-        ++revision_.value;
-    }
+    [[nodiscard]] bool CanAdvanceRevision(std::size_t count = 1) const noexcept;
+    [[nodiscard]] bool CanRecordChanges(std::size_t count = 1) const noexcept;
+    void Bump() noexcept { ++revision_.value; }
     void Record(ProcessChange change);
     [[nodiscard]] foundation::Result<void> ReserveInputs(ProcessInstance &instance, const ProcessRecipe &recipe,
                                                          const StartProcessRequest &request);

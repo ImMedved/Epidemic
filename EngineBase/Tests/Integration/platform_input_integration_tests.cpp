@@ -5,8 +5,11 @@
 #include <Epidemic/EngineBase/engine_base_support.h>
 #include <Epidemic/Input/key_code.h>
 #include <Epidemic/Platform/platform_event.h>
+#include <Epidemic/Platform/windows_platform_runtime.h>
 
+#include <atomic>
 #include <stdexcept>
+#include <thread>
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -47,14 +50,42 @@ void TestPlatformAndInputIntegration()
     Assert(application.Services().Contains<epidemic::input::IInputSystem>(),
            "RegisterInputRuntime must register IInputSystem");
 
+    const auto runtime = application.Services().Get<epidemic::platform::IPlatformRuntime>();
+    const auto window_system = application.Services().Get<epidemic::platform::IWindowSystem>();
+    std::atomic_bool wrong_thread_create_rejected{false};
+    std::atomic_bool wrong_thread_pump_rejected{false};
+    std::thread wrong_thread([&] {
+        try
+        {
+            static_cast<void>(window_system->CreateWindow(
+                epidemic::platform::WindowCreateInfo{"Wrong Thread Window", 64, 64, false}));
+        }
+        catch (const std::runtime_error &)
+        {
+            wrong_thread_create_rejected.store(true, std::memory_order_release);
+        }
+
+        try
+        {
+            runtime->PumpEvents();
+        }
+        catch (const std::runtime_error &)
+        {
+            wrong_thread_pump_rejected.store(true, std::memory_order_release);
+        }
+    });
+    wrong_thread.join();
+    Assert(wrong_thread_create_rejected.load(std::memory_order_acquire),
+           "Wrong-thread CreateWindow must fail before native window creation");
+    Assert(wrong_thread_pump_rejected.load(std::memory_order_acquire),
+           "Wrong-thread PumpEvents must fail at the public boundary");
+    Assert(window_system->WindowCount() == 0, "Rejected wrong-thread creation must not add a native window");
+
     const auto window = RequireValue(epidemic::enginebase::CreateMainWindow(
         application, epidemic::platform::WindowCreateInfo{"Hidden Platform/Input Test", 320, 240, false}));
     Assert(window->GetNativeHandle().IsValid(), "Created window must expose a valid native handle");
 
     const HWND hwnd = window->GetNativeHandle().As<HWND>();
-    const auto runtime = application.Services().Get<epidemic::platform::IPlatformRuntime>();
-    const auto window_system = application.Services().Get<epidemic::platform::IWindowSystem>();
-
     SendMessageW(hwnd, WM_SETFOCUS, 0, 0);
     SendMessageW(hwnd, WM_MOUSEMOVE, 0, MAKELPARAM(123, 45));
     SendMessageW(hwnd, WM_KEYDOWN, VK_ESCAPE, 1);
@@ -102,6 +133,11 @@ void TestPlatformAndInputIntegration()
     }
     Assert(close_event_seen, "WM_CLOSE must emit a close-requested platform event");
     window->Close();
+
+    const auto windows_runtime = std::dynamic_pointer_cast<epidemic::platform::WindowsPlatformRuntime>(runtime);
+    Assert(windows_runtime != nullptr, "Registered Windows runtime must expose its concrete lifecycle API");
+    windows_runtime->Shutdown();
+    windows_runtime->Shutdown();
 }
 
 }

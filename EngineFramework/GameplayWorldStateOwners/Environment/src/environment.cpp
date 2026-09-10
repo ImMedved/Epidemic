@@ -43,6 +43,33 @@ bool SameLayer(const EnvironmentLayer &a, const EnvironmentLayer &b)
            std::equal(a.hazards.begin(), a.hazards.end(), b.hazards.begin(), SameHazard);
 }
 
+bool IsValid(EnvironmentBlendPolicy value) noexcept
+{
+    switch (value)
+    {
+    case EnvironmentBlendPolicy::Override:
+    case EnvironmentBlendPolicy::Add:
+    case EnvironmentBlendPolicy::Multiply:
+    case EnvironmentBlendPolicy::Min:
+    case EnvironmentBlendPolicy::Max:
+    case EnvironmentBlendPolicy::CustomRegistered:
+        return true;
+    }
+    return false;
+}
+
+bool IsValid(EnvironmentPersistence value) noexcept
+{
+    switch (value)
+    {
+    case EnvironmentPersistence::Transient:
+    case EnvironmentPersistence::Session:
+    case EnvironmentPersistence::Persistent:
+        return true;
+    }
+    return false;
+}
+
 std::int64_t FloorDiv(std::int64_t value, std::int64_t divisor) noexcept
 {
     const auto quotient = value / divisor;
@@ -180,14 +207,44 @@ bool EnvironmentService::CanRecordChanges(std::size_t count) const noexcept
 
 void EnvironmentService::Record(EnvironmentChange change) noexcept
 {
-    change.sequence = next_change_sequence_;
-    last_change_sequence_ = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
+    if (next_change_sequence_ == 0)
+    {
+        const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_);
+        if (!next_epoch)
+            return;
+        journal_epoch_ = *next_epoch;
+        next_change_sequence_ = 1;
+        last_change_sequence_ = 0;
+        changes_.clear();
+    }
 
-    changes_.push_back(std::move(change));
+    const auto sequence = next_change_sequence_;
+    change.sequence = sequence;
+    try
+    {
+        changes_.push_back(std::move(change));
+    }
+    catch (...)
+    {
+        // Authoritative state may already be committed. Drop the diagnostic history and rotate
+        // the epoch so every old cursor deterministically requests a full snapshot.
+        changes_.clear();
+        last_change_sequence_ = 0;
+        const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_);
+        if (next_epoch)
+        {
+            journal_epoch_ = *next_epoch;
+            next_change_sequence_ = 1;
+        }
+        else
+        {
+            next_change_sequence_ = 0;
+        }
+        return;
+    }
+
+    last_change_sequence_ = sequence;
+    next_change_sequence_ = sequence == std::numeric_limits<std::uint64_t>::max() ? 0 : sequence + 1;
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();
 }
@@ -214,6 +271,7 @@ foundation::Result<void> EnvironmentService::ValidateValues(const EnvironmentVal
 foundation::Result<void> EnvironmentService::ValidateLayer(const EnvironmentLayer &layer) const
 {
     if (!layer.id.IsValid() || !layer.type.IsValid() || !types_.contains(layer.type) ||
+        !IsValid(layer.blend) || !IsValid(layer.persistence) ||
         (layer.bounds && !layer.bounds->IsValid()) ||
         (layer.blend == EnvironmentBlendPolicy::CustomRegistered && !blend_handlers_.contains(layer.custom_blend)))
     {
@@ -294,9 +352,10 @@ foundation::Result<EnvironmentLayerId> EnvironmentService::AddLayer(EnvironmentL
         return foundation::Result<EnvironmentLayerId>::Failure(
             Error("gameplay.registry_not_frozen", "environment service must be frozen before runtime operations"));
 
+    auto staged_ids = ids_;
     const bool caller_supplied_id = layer.id.IsValid();
     if (!caller_supplied_id)
-        layer.id = EnvironmentLayerId{ids_.Next()};
+        layer.id = EnvironmentLayerId{staged_ids.Next()};
     if (!layer.id.IsValid())
         return foundation::Result<EnvironmentLayerId>::Failure(
             Error("gameplay.environment.layer_id_exhausted", "environment layer id generator is exhausted"));
@@ -313,12 +372,42 @@ foundation::Result<EnvironmentLayerId> EnvironmentService::AddLayer(EnvironmentL
     if (!revision)
         return foundation::Result<EnvironmentLayerId>::Failure(revision.GetError());
 
+    if (caller_supplied_id && layer.id.value.High() == staged_ids.Scope().Raw())
+    {
+        auto snapshot = staged_ids.GetSnapshot();
+        if (snapshot.next != 0 && layer.id.value.Low() >= snapshot.next)
+        {
+            snapshot.next = layer.id.value.Low() == std::numeric_limits<std::uint64_t>::max()
+                                ? 0
+                                : layer.id.value.Low() + 1;
+            staged_ids.Restore(snapshot);
+        }
+    }
+
+    layer.revision = revision.Value();
+    try
+    {
+        EnvironmentService staged = *this;
+        staged.layers_.emplace(layer.id, layer);
+        staged.RebuildSpatialIndex();
+        layers_.swap(staged.layers_);
+        spatial_index_.swap(staged.spatial_index_);
+        global_layers_.swap(staged.global_layers_);
+        large_layers_.swap(staged.large_layers_);
+    }
+    catch (const std::exception &)
+    {
+        return foundation::Result<EnvironmentLayerId>::Failure(
+            Error("gameplay.environment.storage_failed", "failed to stage environment layer storage"));
+    }
+    catch (...)
+    {
+        return foundation::Result<EnvironmentLayerId>::Failure(
+            Error("gameplay.environment.storage_failed", "failed to stage environment layer storage"));
+    }
+
+    ids_ = staged_ids;
     revision_ = revision.Value();
-    layer.revision = revision_;
-    layers_.emplace(layer.id, layer);
-    IndexLayer(layer);
-    if (caller_supplied_id)
-        AdvanceGeneratorPast(layer.id);
     Record({0, EnvironmentChangeKind::Added, layer.id, revision_, layer.context});
     return foundation::Result<EnvironmentLayerId>::Success(layer.id);
 }
@@ -329,7 +418,7 @@ foundation::Result<void> EnvironmentService::UpdateLayer(EnvironmentLayer layer)
         return foundation::Result<void>::Failure(
             Error("gameplay.registry_not_frozen", "environment service must be frozen before runtime operations"));
 
-    auto found = layers_.find(layer.id);
+    const auto found = layers_.find(layer.id);
     if (found == layers_.end())
         return foundation::Result<void>::Failure(
             Error("gameplay.environment.layer_missing", "invalid environment layer update"));
@@ -344,14 +433,26 @@ foundation::Result<void> EnvironmentService::UpdateLayer(EnvironmentLayer layer)
     auto revision = PrepareRevision();
     if (!revision)
         return foundation::Result<void>::Failure(revision.GetError());
+    layer.revision = revision.Value();
 
-    const auto old_layer = found->second;
+    try
+    {
+        EnvironmentService staged = *this;
+        staged.layers_.at(layer.id) = layer;
+        staged.RebuildSpatialIndex();
+        layers_.swap(staged.layers_);
+        spatial_index_.swap(staged.spatial_index_);
+        global_layers_.swap(staged.global_layers_);
+        large_layers_.swap(staged.large_layers_);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.environment.storage_failed", "failed to stage environment layer update"));
+    }
+
     revision_ = revision.Value();
-    layer.revision = revision_;
-    UnindexLayer(old_layer);
-    found->second = std::move(layer);
-    IndexLayer(found->second);
-    Record({0, EnvironmentChangeKind::Changed, found->first, revision_, found->second.context});
+    Record({0, EnvironmentChangeKind::Changed, layer.id, revision_, layer.context});
     return foundation::Result<void>::Success();
 }
 
@@ -656,13 +757,27 @@ foundation::Result<void> EnvironmentService::RestoreSnapshot(EnvironmentSnapshot
         return foundation::Result<void>::Failure(Error(
             "gameplay.environment.restore_invalid", "environment id generator can reproduce restored ids"));
 
-    layers_ = std::move(rebuilt);
+    try
+    {
+        EnvironmentService staged = *this;
+        staged.layers_ = std::move(rebuilt);
+        staged.RebuildSpatialIndex();
+        layers_.swap(staged.layers_);
+        spatial_index_.swap(staged.spatial_index_);
+        global_layers_.swap(staged.global_layers_);
+        large_layers_.swap(staged.large_layers_);
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.environment.storage_failed", "failed to stage environment snapshot indexes"));
+    }
+
     ids_.Restore(snapshot.ids);
     revision_ = snapshot.revision;
     changes_.clear();
     next_change_sequence_ = 1;
     last_change_sequence_ = 0;
-    RebuildSpatialIndex();
     journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }

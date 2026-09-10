@@ -315,11 +315,8 @@ class InteractionService
             return std::hash<GameplayObjectId>{}(id.value);
         }
     };
-    void Record(InteractionChange c);
-    void Bump() noexcept
-    {
-        ++revision_.value;
-    }
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    void Record(InteractionChange c) noexcept;
     [[nodiscard]] bool MaterializationAllowed(const InteractionDefinition &d, const InteractionContext &c) const;
     std::unordered_map<InteractionTypeId, InteractionDefinition, TypeHash> definitions_;
     std::unordered_map<InteractionProviderId, const IInteractionProvider *, ProviderHash> providers_;

@@ -7,6 +7,7 @@
 #include "Epidemic/Runtime/Serialization/serialization_error.h"
 #include "Epidemic/Runtime/Serialization/serialization_services.h"
 
+#include <exception>
 #include <memory>
 #include <string_view>
 
@@ -78,27 +79,81 @@ foundation::Result<SerializedDocument> ApplyMigrations(
                                                                 "migration path contains a null migration");
         }
 
-        const MigrationKey key = migration->GetKey();
+        MigrationKey key{};
+        try
+        {
+            key = migration->GetKey();
+        }
+        catch (const std::exception& error)
+        {
+            return MigrationExecutorFailure<SerializedDocument>("serialization.migration.exception", error.what());
+        }
+        catch (...)
+        {
+            return MigrationExecutorFailure<SerializedDocument>("serialization.migration.exception",
+                                                                "migration metadata callback threw an unknown exception");
+        }
+
         if (key.type_id != document.GetTypeId() || !(key.from == current_version))
         {
             return MigrationExecutorFailure<SerializedDocument>("serialization.migration.metadata_mismatch",
                                                                 "migration metadata does not match the current document");
         }
 
-        auto reader = archives.CreateReader(current);
+        foundation::Result<std::unique_ptr<IArchiveReader>> reader =
+            foundation::Result<std::unique_ptr<IArchiveReader>>::Failure(CreateSerializationError("serialization.internal", "uninitialized reader"));
+        try
+        {
+            reader = archives.CreateReader(current);
+        }
+        catch (const std::exception& error)
+        {
+            return MigrationExecutorFailure<SerializedDocument>("serialization.archive_factory_exception", error.what());
+        }
+        catch (...)
+        {
+            return MigrationExecutorFailure<SerializedDocument>("serialization.archive_factory_exception",
+                                                                "archive factory threw an unknown exception creating a reader");
+        }
         if (!reader)
         {
             return foundation::Result<SerializedDocument>::Failure(reader.GetError());
         }
 
-        auto writer = archives.CreateWriter();
+        std::unique_ptr<IArchiveWriter> writer;
+        try
+        {
+            writer = archives.CreateWriter();
+        }
+        catch (const std::exception& error)
+        {
+            return MigrationExecutorFailure<SerializedDocument>("serialization.archive_factory_exception", error.what());
+        }
+        catch (...)
+        {
+            return MigrationExecutorFailure<SerializedDocument>("serialization.archive_factory_exception",
+                                                                "archive factory threw an unknown exception creating a writer");
+        }
         if (!writer)
         {
             return MigrationExecutorFailure<SerializedDocument>("serialization.archive_factory_failed",
                                                                 "archive factory returned a null writer");
         }
 
-        const auto applied = migration->Apply(*reader.Value(), *writer);
+        foundation::Result<void> applied = foundation::Result<void>::Failure(CreateSerializationError("serialization.internal", "uninitialized migration result"));
+        try
+        {
+            applied = migration->Apply(*reader.Value(), *writer);
+        }
+        catch (const std::exception& error)
+        {
+            return MigrationExecutorFailure<SerializedDocument>("serialization.migration.exception", error.what());
+        }
+        catch (...)
+        {
+            return MigrationExecutorFailure<SerializedDocument>("serialization.migration.exception",
+                                                                "migration body threw an unknown exception");
+        }
         if (!applied)
         {
             return foundation::Result<SerializedDocument>::Failure(applied.GetError());

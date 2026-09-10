@@ -44,6 +44,21 @@ void ObserveMaxLow(TId id, std::uint64_t scope, std::uint64_t& max_low) noexcept
 {
     if (id.IsValid() && id.value.High() == scope && id.value.Low() > max_low) max_low = id.value.Low();
 }
+
+bool IsValid(EncounterState v) noexcept { return v >= EncounterState::AwaitingPopulationBinding && v <= EncounterState::Expired; }
+bool IsValid(SpawnPointState v) noexcept { return v >= SpawnPointState::Available && v <= SpawnPointState::Consumed; }
+bool IsValid(SpawnRollPolicy v) noexcept { return v >= SpawnRollPolicy::GuaranteedAll && v <= SpawnRollPolicy::PopulationBacked; }
+bool IsValid(SpawnPersistencePolicy v) noexcept { return v >= SpawnPersistencePolicy::Transient && v <= SpawnPersistencePolicy::PopulationBacked; }
+bool IsValid(SpawnResultState v) noexcept { return v >= SpawnResultState::Succeeded && v <= SpawnResultState::Failed; }
+}
+
+
+foundation::Result<Revision> EncountersService::PrepareRevision() const
+{
+    const auto next = CheckedNext(revision_);
+    if (!next)
+        return foundation::Result<Revision>::Failure(Error("gameplay.revision_exhausted", "encounters revision counter is exhausted"));
+    return foundation::Result<Revision>::Success(*next);
 }
 
 foundation::Result<void> EncountersService::RegisterSpawnTable(SpawnTable t)
@@ -54,6 +69,8 @@ foundation::Result<void> EncountersService::RegisterSpawnTable(SpawnTable t)
         return foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_table", "invalid spawn table"));
     if (tables_.contains(t.id))
         return foundation::Result<void>::Failure(Error("gameplay.encounters.duplicate_table", "duplicate spawn table"));
+    if (!IsValid(t.roll_policy))
+        return foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_roll_policy", "invalid spawn roll policy"));
     if (t.selection_min_count > t.selection_max_count)
         return foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_selection_count", "invalid spawn table selection count"));
     if ((t.roll_policy == SpawnRollPolicy::WeightedMany || t.roll_policy == SpawnRollPolicy::PickNWithoutReplacement) &&
@@ -64,9 +81,11 @@ foundation::Result<void> EncountersService::RegisterSpawnTable(SpawnTable t)
         if (!e.id.IsValid() || !e.archetype.IsValid() || e.min_count > e.max_count)
             return foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_entry", "invalid spawn entry"));
     }
-    Bump();
-    t.revision = revision_;
+    const auto next_revision = PrepareRevision();
+    if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    t.revision = next_revision.Value();
     tables_.emplace(t.id, std::move(t));
+    revision_ = next_revision.Value();
     return foundation::Result<void>::Success();
 }
 
@@ -74,11 +93,15 @@ foundation::Result<void> EncountersService::RegisterEncounterDefinition(Encounte
 {
     if (definitions_frozen_)
         return foundation::Result<void>::Failure(Error("gameplay.encounters.definitions_frozen", "encounter definitions are frozen"));
-    if (!d.id.IsValid() || !d.spawn_table.IsValid() || !tables_.contains(d.spawn_table))
+    if (!d.id.IsValid() || !d.spawn_table.IsValid() || !tables_.contains(d.spawn_table) || !IsValid(d.persistence))
         return foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_definition", "invalid encounter definition"));
     if (definitions_.contains(d.id))
         return foundation::Result<void>::Failure(Error("gameplay.encounters.duplicate_definition", "duplicate encounter definition"));
-    Bump(); d.revision = revision_; definitions_.emplace(d.id, std::move(d));
+    const auto next_revision = PrepareRevision();
+    if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    d.revision = next_revision.Value();
+    definitions_.emplace(d.id, std::move(d));
+    revision_ = next_revision.Value();
     return foundation::Result<void>::Success();
 }
 
@@ -94,22 +117,26 @@ foundation::Result<void> EncountersService::FreezeDefinitions()
 
 foundation::Result<SpawnPointId> EncountersService::AddSpawnPoint(SpawnPoint p)
 {
-    if (!p.area.IsValid() || !p.position.IsValid())
+    if (!p.area.IsValid() || !p.position.IsValid() || !IsValid(p.state))
         return foundation::Result<SpawnPointId>::Failure(Error("gameplay.encounters.invalid_spawn_point", "spawn point requires valid area and position"));
+    auto staged_point_ids = point_ids_;
     if (!p.id.IsValid())
     {
-        const auto next = point_ids_.Next();
+        const auto next = staged_point_ids.Next();
         if (!next.IsValid()) return foundation::Result<SpawnPointId>::Failure(Error("gameplay.encounters.id_exhausted", "spawn point id exhausted"));
         p.id = SpawnPointId{next};
     }
-    else AdvanceForCallerId(point_ids_, p.id);
+    else AdvanceForCallerId(staged_point_ids, p.id);
     if (points_.contains(p.id))
         return foundation::Result<SpawnPointId>::Failure(Error("gameplay.encounters.duplicate_spawn_point", "duplicate spawn point"));
-    Bump();
-    p.revision = revision_;
+    const auto next_revision = PrepareRevision();
+    if (!next_revision) return foundation::Result<SpawnPointId>::Failure(next_revision.GetError());
+    p.revision = next_revision.Value();
     const auto id = p.id;
     const auto area = p.area;
     points_.emplace(id, std::move(p));
+    point_ids_ = staged_point_ids;
+    revision_ = next_revision.Value();
     Record({0, EncounterChangeKind::SpawnPointAdded, {}, {}, area, {}, revision_, id});
     return foundation::Result<SpawnPointId>::Success(id);
 }
@@ -344,12 +371,26 @@ SpawnResult EncountersService::SpawnEncounter(SpawnRequest r){
         staged_records.push_back(rec); instance.spawned_entities.push_back(rec.id); result.spawned_records.push_back(rec.id);
     }
 
-    Bump(); instance.revision = revision_;
-    for (auto& rec : staged_records) { rec.revision = revision_; spawned_.emplace(rec.id, rec); }
-    instance_ids_ = staged_instance_ids; spawned_ids_ = staged_spawned_ids;
+    const auto next_revision = PrepareRevision();
+    if (!next_revision) { ++diagnostics_.spawn_failures; result.state = SpawnResultState::Failed; return store_request(result); }
+    instance.revision = next_revision.Value();
+    for (auto& rec : staged_records) rec.revision = next_revision.Value();
+    try
+    {
+        spawned_.reserve(spawned_.size() + staged_records.size());
+        instances_.reserve(instances_.size() + 1);
+        for (auto& rec : staged_records) spawned_.emplace(rec.id, rec);
+        instances_.emplace(instance.id, instance);
+    }
+    catch (...)
+    {
+        for (const auto& rec : staged_records) spawned_.erase(rec.id);
+        instances_.erase(instance.id);
+        ++diagnostics_.spawn_failures; result.state = SpawnResultState::Failed; return store_request(result);
+    }
+    instance_ids_ = staged_instance_ids; spawned_ids_ = staged_spawned_ids; revision_ = next_revision.Value();
     result.encounter_instance = instance.id; result.state = population_backed ? SpawnResultState::Deferred : SpawnResultState::Succeeded;
-    result.revision = revision_; instances_.emplace(instance.id, instance); instances_by_area_[instance.area].push_back(instance.id);
-    std::sort(instances_by_area_[instance.area].begin(), instances_by_area_[instance.area].end()); instances_by_state_[instance.state].push_back(instance.id); std::sort(instances_by_state_[instance.state].begin(), instances_by_state_[instance.state].end());
+    result.revision = revision_;
     spawn_operations_used_ += static_cast<std::uint32_t>(total); ++diagnostics_.spawn_successes;
     Record({0, EncounterChangeKind::EncounterCreated, instance.id, {}, r.area, r.context, revision_});
     if (!population_backed) Record({0, EncounterChangeKind::EncounterActivated, instance.id, {}, r.area, r.context, revision_});
@@ -368,7 +409,8 @@ foundation::Result<void> EncountersService::BindPopulationUnit(SpawnedEntityReco
         return it->second.population_unit == unit ? foundation::Result<void>::Success() : foundation::Result<void>::Failure(Error("gameplay.encounters.population_already_bound", "spawn record already bound to another population unit"));
     for (const auto& [rid, rec] : spawned_) if (rid != id && rec.population_unit == unit)
         return foundation::Result<void>::Failure(Error("gameplay.encounters.population_unit_in_use", "population unit already bound to another spawn record"));
-    Bump(); it->second.population_unit = unit; it->second.revision = revision_; encounter->second.revision = revision_; encounter->second.last_updated_at = c.time;
+    const auto next_revision = PrepareRevision(); if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    revision_ = next_revision.Value(); it->second.population_unit = unit; it->second.revision = revision_; encounter->second.revision = revision_; encounter->second.last_updated_at = c.time;
     return foundation::Result<void>::Success();
 }
 
@@ -385,7 +427,8 @@ foundation::Result<void> EncountersService::ActivatePopulationBackedEncounter(En
         if (rec == spawned_.end() || !rec->second.population_unit.IsValid())
             return foundation::Result<void>::Failure(Error("gameplay.encounters.population_binding_incomplete", "all population-backed spawn slots must be bound"));
     }
-    Bump(); it->second.state = EncounterState::Active; it->second.last_updated_at = c.time; it->second.revision = revision_; RebuildIndexes();
+    const auto next_revision = PrepareRevision(); if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    revision_ = next_revision.Value(); it->second.state = EncounterState::Active; it->second.last_updated_at = c.time; it->second.revision = revision_;
     Record({0, EncounterChangeKind::EncounterActivated, id, {}, it->second.area, c, revision_});
     return foundation::Result<void>::Success();
 }
@@ -395,7 +438,8 @@ foundation::Result<void> EncountersService::BindSpawnedEntity(SpawnedEntityRecor
     auto it = spawned_.find(id);
     if (it == spawned_.end() || !entity.IsValid()) return foundation::Result<void>::Failure(Error("gameplay.encounters.spawned_record_missing", "spawned record missing or entity invalid"));
     if (it->second.entity.IsValid()) return it->second.entity == entity ? foundation::Result<void>::Success() : foundation::Result<void>::Failure(Error("gameplay.encounters.spawned_record_already_bound", "spawned record already bound"));
-    Bump(); it->second.entity = entity; it->second.revision = revision_;
+    const auto next_revision = PrepareRevision(); if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    revision_ = next_revision.Value(); it->second.entity = entity; it->second.revision = revision_;
     Record({0, EncounterChangeKind::EntitySpawned, it->second.encounter, entity, {}, c, revision_});
     return foundation::Result<void>::Success();
 }
@@ -404,14 +448,16 @@ foundation::Result<void> EncountersService::CompleteEncounter(EncounterInstanceI
 {
     auto it = instances_.find(id); if (it == instances_.end()) return foundation::Result<void>::Failure(Error("gameplay.encounters.instance_missing", "encounter missing"));
     if (IsTerminal(it->second.state)) return it->second.state == EncounterState::Completed ? foundation::Result<void>::Success() : foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_state", "encounter already terminal"));
-    Bump(); it->second.state = EncounterState::Completed; it->second.last_updated_at = c.time; it->second.revision = revision_; RebuildIndexes();
+    const auto next_revision = PrepareRevision(); if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    revision_ = next_revision.Value(); it->second.state = EncounterState::Completed; it->second.last_updated_at = c.time; it->second.revision = revision_;
     Record({0, EncounterChangeKind::EncounterCompleted, id, {}, it->second.area, c, revision_}); return foundation::Result<void>::Success();
 }
 foundation::Result<void> EncountersService::FailEncounter(EncounterInstanceId id, GameplayContext c)
 {
     auto it = instances_.find(id); if (it == instances_.end()) return foundation::Result<void>::Failure(Error("gameplay.encounters.instance_missing", "encounter missing"));
     if (IsTerminal(it->second.state)) return it->second.state == EncounterState::Failed ? foundation::Result<void>::Success() : foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_state", "encounter already terminal"));
-    Bump(); it->second.state = EncounterState::Failed; it->second.last_updated_at = c.time; it->second.revision = revision_; RebuildIndexes();
+    const auto next_revision = PrepareRevision(); if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    revision_ = next_revision.Value(); it->second.state = EncounterState::Failed; it->second.last_updated_at = c.time; it->second.revision = revision_;
     Record({0, EncounterChangeKind::EncounterFailed, id, {}, it->second.area, c, revision_}); return foundation::Result<void>::Success();
 }
 foundation::Result<void> EncountersService::BeginDespawningEncounter(EncounterInstanceId id, GameplayContext c)
@@ -419,13 +465,15 @@ foundation::Result<void> EncountersService::BeginDespawningEncounter(EncounterIn
     auto it = instances_.find(id); if (it == instances_.end()) return foundation::Result<void>::Failure(Error("gameplay.encounters.instance_missing", "encounter missing"));
     if (it->second.state != EncounterState::Active)
         return foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_state", "only active encounter can despawn"));
-    Bump(); it->second.state = EncounterState::Despawning; it->second.last_updated_at = c.time; it->second.revision = revision_; RebuildIndexes(); return foundation::Result<void>::Success();
+    const auto next_revision = PrepareRevision(); if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    revision_ = next_revision.Value(); it->second.state = EncounterState::Despawning; it->second.last_updated_at = c.time; it->second.revision = revision_; return foundation::Result<void>::Success();
 }
 foundation::Result<void> EncountersService::ExpireEncounter(EncounterInstanceId id, GameplayContext c)
 {
     auto it = instances_.find(id); if (it == instances_.end()) return foundation::Result<void>::Failure(Error("gameplay.encounters.instance_missing", "encounter missing"));
     if (IsTerminal(it->second.state)) return it->second.state == EncounterState::Expired ? foundation::Result<void>::Success() : foundation::Result<void>::Failure(Error("gameplay.encounters.invalid_state", "encounter already terminal"));
-    Bump(); it->second.state = EncounterState::Expired; it->second.last_updated_at = c.time; it->second.revision = revision_; RebuildIndexes();
+    const auto next_revision = PrepareRevision(); if (!next_revision) return foundation::Result<void>::Failure(next_revision.GetError());
+    revision_ = next_revision.Value(); it->second.state = EncounterState::Expired; it->second.last_updated_at = c.time; it->second.revision = revision_;
     Record({0, EncounterChangeKind::EncounterExpired, id, {}, it->second.area, c, revision_}); return foundation::Result<void>::Success();
 }
 
@@ -441,7 +489,6 @@ std::size_t EncountersService::PruneTerminalEncounters(std::size_t max_to_prune)
         instances_.erase(id);
         for (auto it = requests_.begin(); it != requests_.end();) it = it->second.result.encounter_instance == id ? requests_.erase(it) : std::next(it);
     }
-    if (!ids.empty()) RebuildIndexes();
     return ids.size();
 }
 
@@ -455,15 +502,18 @@ foundation::Result<RespawnRuleId> EncountersService::ScheduleRespawn(RespawnRule
         if (pit == points_.end() || pit->second.area != r.area)
             return foundation::Result<RespawnRuleId>::Failure(Error("gameplay.encounters.invalid_respawn_point", "respawn point missing or in another area"));
     }
+    const auto due = CheckedAdd(c.time, r.delay); if (!due) return foundation::Result<RespawnRuleId>::Failure(Error("gameplay.encounters.respawn_time_overflow", "respawn due time overflow"));
+    auto staged_respawn_ids = respawn_ids_;
     if (!r.id.IsValid())
     {
-        const auto raw = respawn_ids_.Next(); if (!raw.IsValid()) return foundation::Result<RespawnRuleId>::Failure(Error("gameplay.encounters.id_exhausted", "respawn id exhausted"));
+        const auto raw = staged_respawn_ids.Next(); if (!raw.IsValid()) return foundation::Result<RespawnRuleId>::Failure(Error("gameplay.encounters.id_exhausted", "respawn id exhausted"));
         r.id = RespawnRuleId{raw};
     }
-    else AdvanceForCallerId(respawn_ids_, r.id);
+    else AdvanceForCallerId(staged_respawn_ids, r.id);
     if (respawns_.contains(r.id)) return foundation::Result<RespawnRuleId>::Failure(Error("gameplay.encounters.duplicate_respawn", "duplicate respawn rule"));
-    const auto due = CheckedAdd(c.time, r.delay); if (!due) return foundation::Result<RespawnRuleId>::Failure(Error("gameplay.encounters.respawn_time_overflow", "respawn due time overflow"));
-    r.next_due_at = *due; Bump(); r.revision = revision_; const auto id = r.id; respawns_.emplace(id, r); ++diagnostics_.respawn_schedules;
+    const auto next_revision = PrepareRevision(); if (!next_revision) return foundation::Result<RespawnRuleId>::Failure(next_revision.GetError());
+    r.next_due_at = *due; r.revision = next_revision.Value(); const auto id = r.id; respawns_.emplace(id, r);
+    respawn_ids_ = staged_respawn_ids; revision_ = next_revision.Value(); ++diagnostics_.respawn_schedules;
     Record({0, EncounterChangeKind::RespawnScheduled, {}, {}, r.area, c, revision_}); return foundation::Result<RespawnRuleId>::Success(id);
 }
 
@@ -484,7 +534,8 @@ std::vector<SpawnResult> EncountersService::ProcessDueRespawns(GameplayTimePoint
         auto result = SpawnEncounter(request); results.push_back(result);
         if (result.state == SpawnResultState::Deferred || result.state == SpawnResultState::Rejected) continue;
         if (result.state == SpawnResultState::Failed) continue;
-        Bump(); ++rule.trigger_count; rule.revision = revision_;
+        const auto next_revision = PrepareRevision(); if (!next_revision) break;
+        revision_ = next_revision.Value(); ++rule.trigger_count; rule.revision = revision_;
         Record({0, EncounterChangeKind::RespawnTriggered, result.encounter_instance, {}, rule.area, request.context, revision_});
         if (rule.remaining_limit > 0)
         {
@@ -508,15 +559,15 @@ const SpawnedEntityRecord* EncountersService::GetSpawnedEntityRecord(SpawnedEnti
 
 std::vector<EncounterInstance> EncountersService::FindActiveEncountersInArea(GameplayObjectRef area) const
 {
-    std::vector<EncounterInstance> out; const auto found=instances_by_area_.find(area); if(found==instances_by_area_.end()) return out;
-    for(const auto id:found->second){const auto it=instances_.find(id); if(it!=instances_.end() && CountsAgainstActiveBudget(it->second.state)) out.push_back(it->second);}
+    std::vector<EncounterInstance> out;
+    for (const auto& [id, instance] : instances_) { (void)id; if (instance.area == area && CountsAgainstActiveBudget(instance.state)) out.push_back(instance); }
     std::sort(out.begin(),out.end(),[](const auto&a,const auto&b){return a.id<b.id;}); return out;
 }
 std::vector<EncounterInstance> EncountersService::FindEncountersByState(EncounterState state) const
 {
-    std::vector<EncounterInstance> out; const auto found=instances_by_state_.find(state); if(found==instances_by_state_.end()) return out;
-    for(const auto id:found->second){const auto it=instances_.find(id);if(it!=instances_.end())out.push_back(it->second);}
-    return out;
+    std::vector<EncounterInstance> out;
+    for (const auto& [id, instance] : instances_) { (void)id; if (instance.state == state) out.push_back(instance); }
+    std::sort(out.begin(),out.end(),[](const auto&a,const auto&b){return a.id<b.id;}); return out;
 }
 
 std::vector<SpawnPoint> EncountersService::FindSpawnPointsInArea(GameplayObjectRef area) const
@@ -581,19 +632,19 @@ foundation::Result<void> EncountersService::RestoreSnapshot(EncountersSnapshot s
     }
     else
     {
-        for(auto& t:s.tables){if(!t.id.IsValid()||tables.contains(t.id)||t.selection_min_count>t.selection_max_count)return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid or duplicate table")); for(const auto&e:t.entries)if(!e.id.IsValid()||!e.archetype.IsValid()||e.min_count>e.max_count)return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid spawn entry")); tables.emplace(t.id,t);}
-        for(auto& d:s.definitions){if(!d.id.IsValid()||definitions.contains(d.id)||!tables.contains(d.spawn_table))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid definition"));definitions.emplace(d.id,d);}
+        for(auto& t:s.tables){if(!t.id.IsValid()||tables.contains(t.id)||!IsValid(t.roll_policy)||t.selection_min_count>t.selection_max_count)return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid or duplicate table")); for(const auto&e:t.entries)if(!e.id.IsValid()||!e.archetype.IsValid()||e.min_count>e.max_count)return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid spawn entry")); tables.emplace(t.id,t);}
+        for(auto& d:s.definitions){if(!d.id.IsValid()||definitions.contains(d.id)||!tables.contains(d.spawn_table)||!IsValid(d.persistence))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid definition"));definitions.emplace(d.id,d);}
     }
     std::uint64_t max_point=0,max_instance=0,max_spawned=0,max_respawn=0,max_request=0;
-    for(auto& p:s.points){if(!p.id.IsValid()||!p.area.IsValid()||!p.position.IsValid()||points.contains(p.id))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid point"));ObserveMaxLow(p.id,s.point_ids.scope,max_point);points.emplace(p.id,p);}
-    for(auto& i:s.instances){if(!i.id.IsValid()||!i.area.IsValid()||!definitions.contains(i.definition)||instances.contains(i.id)||(i.spawn_point&&!points.contains(*i.spawn_point)))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid instance"));ObserveMaxLow(i.id,s.instance_ids.scope,max_instance);instances.emplace(i.id,i);}
+    for(auto& p:s.points){if(!p.id.IsValid()||!p.area.IsValid()||!p.position.IsValid()||!IsValid(p.state)||points.contains(p.id))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid point"));ObserveMaxLow(p.id,s.point_ids.scope,max_point);points.emplace(p.id,p);}
+    for(auto& i:s.instances){if(!i.id.IsValid()||!i.area.IsValid()||!definitions.contains(i.definition)||!IsValid(i.state)||instances.contains(i.id)||(i.spawn_point&&!points.contains(*i.spawn_point)))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid instance"));ObserveMaxLow(i.id,s.instance_ids.scope,max_instance);instances.emplace(i.id,i);}
     for(auto& e:s.spawned){if(!e.id.IsValid()||!instances.contains(e.encounter)||spawned.contains(e.id))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid spawned record"));ObserveMaxLow(e.id,s.spawned_ids.scope,max_spawned);spawned.emplace(e.id,e);}
     for(const auto&[id,i]:instances){for(const auto rid:i.spawned_entities){const auto it=spawned.find(rid);if(it==spawned.end()||it->second.encounter!=id)return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","instance spawn reference mismatch"));}}
     for(auto& r:s.respawn_rules){if(!r.id.IsValid()||!definitions.contains(r.encounter)||!r.area.IsValid()||r.delay.ticks<=0||respawns.contains(r.id))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid respawn")); if(r.spawn_point&&!points.contains(*r.spawn_point))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","respawn point missing"));ObserveMaxLow(r.id,s.respawn_ids.scope,max_respawn);respawns.emplace(r.id,r);}
-    for(auto& r:s.requests){if(!r.request.id.IsValid()||requests.contains(r.request.id))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid request record")); if(r.result.encounter_instance.IsValid()&&!instances.contains(r.result.encounter_instance))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","request references missing encounter"));ObserveMaxLow(r.request.id,s.request_ids.scope,max_request);requests.emplace(r.request.id,r);}
+    for(auto& r:s.requests){if(!r.request.id.IsValid()||!IsValid(r.request.persistence)||!IsValid(r.result.state)||requests.contains(r.request.id))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid request record")); if(r.result.encounter_instance.IsValid()&&!instances.contains(r.result.encounter_instance))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","request references missing encounter"));ObserveMaxLow(r.request.id,s.request_ids.scope,max_request);requests.emplace(r.request.id,r);}
     if(!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.instance_ids,instance_ids_.Scope(),max_instance)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.point_ids,point_ids_.Scope(),max_point)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.request_ids,request_ids_.Scope(),max_request)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.spawned_ids,spawned_ids_.Scope(),max_spawned)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.respawn_ids,respawn_ids_.Scope(),max_respawn))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid_generator","invalid encounter id generator snapshot"));
     definitions_=std::move(definitions);tables_=std::move(tables);points_=std::move(points);instances_=std::move(instances);spawned_=std::move(spawned);respawns_=std::move(respawns);requests_=std::move(requests);
-    instance_ids_.Restore(s.instance_ids);point_ids_.Restore(s.point_ids);request_ids_.Restore(s.request_ids);spawned_ids_.Restore(s.spawned_ids);respawn_ids_.Restore(s.respawn_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;spawn_budget_tick_={};spawn_operations_used_=0;RebuildIndexes();journal_epoch_ = *next_journal_epoch;
+    instance_ids_.Restore(s.instance_ids);point_ids_.Restore(s.point_ids);request_ids_.Restore(s.request_ids);spawned_ids_.Restore(s.spawned_ids);respawn_ids_.Restore(s.respawn_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;spawn_budget_tick_={};spawn_operations_used_=0;instances_by_area_.clear();instances_by_state_.clear();journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 
@@ -607,9 +658,23 @@ EncounterDiagnostics EncountersService::GetDiagnostics() const noexcept
     auto d=diagnostics_;d.definitions=definitions_.size();d.tables=tables_.size();d.active_encounters=0;for(const auto&[id,e]:instances_){(void)id;if(CountsAgainstActiveBudget(e.state))++d.active_encounters;}d.spawned_entities=spawned_.size();d.respawn_schedules=respawns_.size();return d;
 }
 
-void EncountersService::Record(EncounterChange c)
+void EncountersService::Record(EncounterChange c) noexcept
 {
-    if(next_change_sequence_==0)return;c.sequence=next_change_sequence_;if(next_change_sequence_==std::numeric_limits<std::uint64_t>::max())next_change_sequence_=0;else++next_change_sequence_;
-    changes_.push_back(std::move(c));const auto capacity=budgets_.change_journal_capacity;while(changes_.size()>capacity)changes_.pop_front();
+    if (next_change_sequence_ == 0)
+    {
+        if (journal_epoch_ == std::numeric_limits<std::uint64_t>::max()) return;
+        ++journal_epoch_; changes_.clear(); next_change_sequence_ = 1;
+    }
+    const auto sequence = next_change_sequence_; c.sequence = sequence;
+    try { changes_.push_back(std::move(c)); }
+    catch (...)
+    {
+        changes_.clear();
+        if (journal_epoch_ == std::numeric_limits<std::uint64_t>::max()) next_change_sequence_ = 0;
+        else { ++journal_epoch_; next_change_sequence_ = 1; }
+        return;
+    }
+    next_change_sequence_ = sequence == std::numeric_limits<std::uint64_t>::max() ? 0 : sequence + 1;
+    const auto capacity=budgets_.change_journal_capacity;while(changes_.size()>capacity)changes_.pop_front();
 }
 } // namespace epidemic::gameplay::encounters

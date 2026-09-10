@@ -45,6 +45,43 @@ bool ValidGeneratorSnapshot(MonotonicIdGenerator<GameplayObjectId>::Snapshot sna
     if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot) || snapshot.scope != expected_scope) return false;
     return snapshot.next == 0 || snapshot.next > max_low;
 }
+bool IsValidAccountState(AccountState s) noexcept
+{
+    return s == AccountState::Active || s == AccountState::Frozen || s == AccountState::Closed;
+}
+bool IsValidReservationState(FundsReservationState s) noexcept
+{
+    return s == FundsReservationState::Active || s == FundsReservationState::Committed || s == FundsReservationState::Released;
+}
+bool IsValidOfferState(OfferState s) noexcept
+{
+    return s == OfferState::Active || s == OfferState::Accepted || s == OfferState::Expired || s == OfferState::Cancelled;
+}
+bool IsValidTradeState(TradeTransactionState s) noexcept
+{
+    switch (s)
+    {
+    case TradeTransactionState::Prepared:
+    case TradeTransactionState::Reserved:
+    case TradeTransactionState::Committing:
+    case TradeTransactionState::Committed:
+    case TradeTransactionState::Compensating:
+    case TradeTransactionState::Cancelled:
+    case TradeTransactionState::Failed:
+        return true;
+    }
+    return false;
+}
+bool IsValidDebtState(DebtState s) noexcept
+{
+    return s == DebtState::Active || s == DebtState::Paid || s == DebtState::Forgiven ||
+           s == DebtState::Defaulted || s == DebtState::Expired;
+}
+bool IsValidContractState(ContractState s) noexcept
+{
+    return s == ContractState::Draft || s == ContractState::Active || s == ContractState::Fulfilled ||
+           s == ContractState::Breached || s == ContractState::Cancelled || s == ContractState::Expired;
+}
 bool IsTerminalReservation(FundsReservationState s) noexcept
 {
     return s == FundsReservationState::Committed || s == FundsReservationState::Released;
@@ -63,6 +100,11 @@ bool SameObject(GameplayObjectRef a, GameplayObjectRef b) noexcept
 }
 } // namespace
 EconomyService::EconomyService() = default;
+
+std::optional<Revision> EconomyService::NextRevision() const noexcept
+{
+    return CheckedNext(revision_);
+}
 void EconomyService::Freeze() noexcept
 {
     std::sort(price_providers_.begin(), price_providers_.end(), [](const auto &a, const auto &b) {
@@ -105,26 +147,41 @@ foundation::Result<CurrencyId> EconomyService::RegisterCurrency(CurrencyDefiniti
 }
 foundation::Result<EconomicAccountId> EconomyService::CreateAccount(EconomicAccount a)
 {
-    if (!CheckedNext(revision_))
+    if (!frozen_)
         return foundation::Result<EconomicAccountId>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
-    if (!frozen_) return foundation::Result<EconomicAccountId>::Failure(Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
-    auto amount_valid = ValidateMoneyAmount(a.currency, a.balance, true);
-    if (!a.owner.IsValid() || !currencies_.contains(a.currency) || a.balance < 0 || !amount_valid)
+            Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
+    if (!IsValidAccountState(a.state) || a.state != AccountState::Active || !a.owner.IsValid() ||
+        !currencies_.contains(a.currency) || a.balance < 0 || !ValidateMoneyAmount(a.currency, a.balance, true))
         return foundation::Result<EconomicAccountId>::Failure(
             Error("gameplay.economy.invalid_account", "invalid account"));
-    if (!a.id.IsValid()) a.id = EconomicAccountId{account_ids_.Next()};
-    else AdvanceGeneratorForExplicitId(account_ids_, a.id);
-    if (!a.id.IsValid() || accounts_.contains(a.id))
+    const auto next_revision = NextRevision();
+    if (!next_revision)
         return foundation::Result<EconomicAccountId>::Failure(
-            Error("gameplay.economy.duplicate_account", "duplicate account"));
-    Bump();
-    a.revision = revision_;
-    const auto id = a.id;
-    accounts_.emplace(id, a);
-    ++diagnostics_.accounts;
-    Record({0, EconomyChangeKind::AccountCreated, a.owner, id, {}, a.balance, {}, revision_});
-    return foundation::Result<EconomicAccountId>::Success(id);
+            Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
+    {
+        auto staged_ids = account_ids_;
+        if (!a.id.IsValid()) a.id = EconomicAccountId{staged_ids.Next()};
+        else AdvanceGeneratorForExplicitId(staged_ids, a.id);
+        if (!a.id.IsValid() || accounts_.contains(a.id))
+            return foundation::Result<EconomicAccountId>::Failure(
+                Error("gameplay.economy.duplicate_account", "duplicate account"));
+        a.revision = *next_revision;
+        auto staged_accounts = accounts_;
+        const auto id = a.id;
+        staged_accounts.emplace(id, a);
+        accounts_.swap(staged_accounts);
+        account_ids_ = staged_ids;
+        revision_ = *next_revision;
+        ++diagnostics_.accounts;
+        Record({0, EconomyChangeKind::AccountCreated, a.owner, id, {}, a.balance, {}, revision_});
+        return foundation::Result<EconomicAccountId>::Success(id);
+    }
+    catch (...)
+    {
+        return foundation::Result<EconomicAccountId>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to publish economic account"));
+    }
 }
 const EconomicAccount *EconomyService::FindAccount(EconomicAccountId id) const noexcept
 {
@@ -138,19 +195,23 @@ std::optional<EconomicAccount> EconomyService::FindAccountCopy(EconomicAccountId
 }
 foundation::Result<void> EconomyService::SetAccountState(EconomicAccountId id, AccountState state, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    if (!IsValidAccountState(state))
+        return foundation::Result<void>::Failure(Error("gameplay.economy.account_state", "invalid account state"));
     auto it = accounts_.find(id);
-    if (it == accounts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.account_missing", "account missing"));
+    if (it == accounts_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.economy.account_missing", "account missing"));
     const auto old = it->second.state;
     if (old == state) return foundation::Result<void>::Success();
     const bool allowed = (old == AccountState::Active && (state == AccountState::Frozen || state == AccountState::Closed)) ||
                          (old == AccountState::Frozen && (state == AccountState::Active || state == AccountState::Closed));
-    if (!allowed) return foundation::Result<void>::Failure(Error("gameplay.economy.account_state", "invalid account state transition"));
-    Bump();
+    if (!allowed)
+        return foundation::Result<void>::Failure(Error("gameplay.economy.account_state", "invalid account state transition"));
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     it->second.state = state;
-    it->second.revision = revision_;
+    it->second.revision = *next_revision;
+    revision_ = *next_revision;
     EconomyChange change{0, EconomyChangeKind::AccountStateChanged, it->second.owner, id, {}, 0, c, revision_};
     change.currency = it->second.currency;
     change.old_account_state = old;
@@ -182,38 +243,37 @@ Fixed EconomyService::GetAvailableBalance(EconomicAccountId id) const noexcept
 }
 foundation::Result<void> EconomyService::Credit(EconomicAccountId id, Fixed amount, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = accounts_.find(id);
-    if (it == accounts_.end() || it->second.state == AccountState::Closed || !ValidateMoneyAmount(it->second.currency, amount, true))
+    if (it == accounts_.end() || it->second.state == AccountState::Closed ||
+        !ValidateMoneyAmount(it->second.currency, amount, true))
         return foundation::Result<void>::Failure(Error("gameplay.economy.credit_invalid", "credit invalid"));
-    if (amount == 0)
-        return foundation::Result<void>::Success();
+    if (amount == 0) return foundation::Result<void>::Success();
     Fixed next = 0;
     if (!CheckedAdd(it->second.balance, amount, next))
         return foundation::Result<void>::Failure(Error("gameplay.economy.balance_overflow", "balance overflow"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     it->second.balance = next;
-    it->second.revision = revision_;
+    it->second.revision = *next_revision;
+    revision_ = *next_revision;
     Record({0, EconomyChangeKind::BalanceChanged, it->second.owner, id, {}, amount, c, revision_});
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> EconomyService::Debit(EconomicAccountId id, Fixed amount, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = accounts_.find(id);
     if (it == accounts_.end() || it->second.state != AccountState::Active ||
         !ValidateMoneyAmount(it->second.currency, amount, true) || GetAvailableBalance(id) < amount)
         return foundation::Result<void>::Failure(
             Error("gameplay.economy.insufficient_funds", "debit exceeds available funds"));
-    if (amount == 0)
-        return foundation::Result<void>::Success();
-    Bump();
+    if (amount == 0) return foundation::Result<void>::Success();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     it->second.balance -= amount;
-    it->second.revision = revision_;
+    it->second.revision = *next_revision;
+    revision_ = *next_revision;
     Record({0, EconomyChangeKind::BalanceChanged, it->second.owner, id, {}, -amount, c, revision_});
     return foundation::Result<void>::Success();
 }
@@ -226,44 +286,65 @@ foundation::Result<FundsReservationId> EconomyService::ReserveFunds(EconomicAcco
                                                                     GameplayObjectRef beneficiary, TypeId reason,
                                                                     GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<FundsReservationId>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     const auto *a = FindAccount(account);
-    if (!a || a->state != AccountState::Active || !ValidateMoneyAmount(a->currency, amount, false) || GetAvailableBalance(account) < amount)
+    if (!a || a->state != AccountState::Active || !ValidateMoneyAmount(a->currency, amount, false) ||
+        GetAvailableBalance(account) < amount)
         return foundation::Result<FundsReservationId>::Failure(
             Error("gameplay.economy.insufficient_funds", "funds unavailable"));
-    FundsReservation r;
-    r.id = FundsReservationId{reservation_ids_.Next()};
-    if (!r.id.IsValid())
-        return foundation::Result<FundsReservationId>::Failure(Error("gameplay.economy.id_exhausted", "reservation id exhausted"));
-    r.account = account;
-    r.amount = amount;
-    r.beneficiary = beneficiary;
-    r.reason = reason;
-    Bump();
-    r.revision = revision_;
-    const auto id = r.id;
-    reservations_.emplace(id, r);
-    ++diagnostics_.active_reservations;
-    Record({0, EconomyChangeKind::FundsReserved, a->owner, account, {}, amount, c, revision_});
-    return foundation::Result<FundsReservationId>::Success(id);
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<FundsReservationId>::Failure(
+            Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
+    {
+        auto staged_ids = reservation_ids_;
+        FundsReservation r;
+        r.id = FundsReservationId{staged_ids.Next()};
+        if (!r.id.IsValid())
+            return foundation::Result<FundsReservationId>::Failure(
+                Error("gameplay.economy.id_exhausted", "reservation id exhausted"));
+        r.account = account;
+        r.amount = amount;
+        r.beneficiary = beneficiary;
+        r.reason = reason;
+        r.revision = *next_revision;
+        auto staged_reservations = reservations_;
+        const auto id = r.id;
+        staged_reservations.emplace(id, r);
+        reservations_.swap(staged_reservations);
+        reservation_ids_ = staged_ids;
+        revision_ = *next_revision;
+        ++diagnostics_.active_reservations;
+        EconomyChange change{0, EconomyChangeKind::FundsReserved, a->owner, account, {}, amount, c, revision_};
+        change.reservation = id;
+        change.source_account = account;
+        change.currency = a->currency;
+        Record(std::move(change));
+        return foundation::Result<FundsReservationId>::Success(id);
+    }
+    catch (...)
+    {
+        return foundation::Result<FundsReservationId>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to publish funds reservation"));
+    }
 }
 foundation::Result<void> EconomyService::ReleaseFunds(FundsReservationId id, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = reservations_.find(id);
     if (it == reservations_.end() || it->second.state != FundsReservationState::Active)
-        return foundation::Result<void>::Failure(Error("gameplay.economy.reservation_missing", "active funds reservation missing"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.economy.reservation_missing", "active funds reservation missing"));
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     const auto copy = it->second;
-    Bump();
     reservations_.erase(it);
     if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
+    revision_ = *next_revision;
     EconomyChange change{0, EconomyChangeKind::FundsReleased, {}, copy.account, {}, copy.amount, c, revision_};
     change.reservation = copy.id;
     change.source_account = copy.account;
+    if (const auto* account = FindAccount(copy.account)) change.currency = account->currency;
     Record(std::move(change));
     return foundation::Result<void>::Success();
 }
@@ -271,9 +352,6 @@ foundation::Result<void> EconomyService::ReleaseFunds(FundsReservationId id, Gam
 foundation::Result<void> EconomyService::CommitFunds(FundsReservationId id, EconomicAccountId destination,
                                                      GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto *r = MutableReservation(id);
     auto from = r ? accounts_.find(r->account) : accounts_.end();
     auto to = accounts_.find(destination);
@@ -286,13 +364,16 @@ foundation::Result<void> EconomyService::CommitFunds(FundsReservationId id, Econ
     Fixed to_balance = 0;
     if (!CheckedAdd(to->second.balance, r->amount, to_balance))
         return foundation::Result<void>::Failure(Error("gameplay.economy.balance_overflow", "balance overflow"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    const auto reservation_copy = *r;
     from->second.balance -= r->amount;
     to->second.balance = to_balance;
-    from->second.revision = to->second.revision = revision_;
-    const auto reservation_copy = *r;
+    from->second.revision = to->second.revision = *next_revision;
     reservations_.erase(id);
     if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
+    revision_ = *next_revision;
     EconomyChange change{0, EconomyChangeKind::FundsCommitted, to->second.owner, destination, {}, reservation_copy.amount, c, revision_};
     change.reservation = reservation_copy.id;
     change.currency = from->second.currency;
@@ -303,33 +384,45 @@ foundation::Result<void> EconomyService::CommitFunds(FundsReservationId id, Econ
 }
 foundation::Result<MarketId> EconomyService::CreateMarket(MarketState m)
 {
-    if (!CheckedNext(revision_))
+    if (!frozen_)
         return foundation::Result<MarketId>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
-    if (!frozen_) return foundation::Result<MarketId>::Failure(Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
-    if (!m.area.IsValid()) return foundation::Result<MarketId>::Failure(Error("gameplay.economy.invalid_market", "market area missing"));
-    if (!m.id.IsValid()) m.id = MarketId{market_ids_.Next()};
-    else AdvanceGeneratorForExplicitId(market_ids_, m.id);
-    if (!m.id.IsValid() || markets_.contains(m.id))
-        return foundation::Result<MarketId>::Failure(Error("gameplay.economy.duplicate_market", "invalid or duplicate market"));
-    Bump();
-    m.revision = revision_;
-    const auto id = m.id;
-    markets_.emplace(id, m);
-    ++diagnostics_.markets;
-    EconomyChange change{};
-    change.kind = EconomyChangeKind::MarketCreated;
-    change.subject = m.area;
-    change.market = id;
-    change.revision = revision_;
-    Record(std::move(change));
-    return foundation::Result<MarketId>::Success(id);
+            Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
+    if (!m.area.IsValid())
+        return foundation::Result<MarketId>::Failure(Error("gameplay.economy.invalid_market", "market area missing"));
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<MarketId>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
+    {
+        auto staged_ids = market_ids_;
+        if (!m.id.IsValid()) m.id = MarketId{staged_ids.Next()};
+        else AdvanceGeneratorForExplicitId(staged_ids, m.id);
+        if (!m.id.IsValid() || markets_.contains(m.id))
+            return foundation::Result<MarketId>::Failure(Error("gameplay.economy.duplicate_market", "invalid or duplicate market"));
+        m.revision = *next_revision;
+        auto staged_markets = markets_;
+        const auto id = m.id;
+        staged_markets.emplace(id, m);
+        markets_.swap(staged_markets);
+        market_ids_ = staged_ids;
+        revision_ = *next_revision;
+        ++diagnostics_.markets;
+        EconomyChange change{};
+        change.kind = EconomyChangeKind::MarketCreated;
+        change.subject = m.area;
+        change.market = id;
+        change.revision = revision_;
+        Record(std::move(change));
+        return foundation::Result<MarketId>::Success(id);
+    }
+    catch (...)
+    {
+        return foundation::Result<MarketId>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to publish market"));
+    }
 }
 foundation::Result<void> EconomyService::SetMarketIndicator(MarketIndicator i)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     if (!markets_.contains(i.market) || !i.commodity.IsValid() || i.supply < 0 || i.demand < 0 || i.price_index_micro < 0)
         return foundation::Result<void>::Failure(Error("gameplay.economy.invalid_indicator", "invalid market indicator"));
     const IndicatorKey key{i.market, i.commodity};
@@ -342,14 +435,27 @@ foundation::Result<void> EconomyService::SetMarketIndicator(MarketIndicator i)
             i.price_index_micro == current->second.price_index_micro && i.updated_at == current->second.updated_at)
             return foundation::Result<void>::Success();
     }
-    Bump();
-    i.revision = revision_;
-    indicators_[key] = i;
-    EconomyChange change{0, EconomyChangeKind::MarketChanged, {}, {}, {}, i.price_index_micro, {}, revision_};
-    change.market = i.market;
-    change.commodity = i.commodity;
-    Record(std::move(change));
-    return foundation::Result<void>::Success();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
+    {
+        i.revision = *next_revision;
+        auto staged_indicators = indicators_;
+        staged_indicators.insert_or_assign(key, i);
+        indicators_.swap(staged_indicators);
+        revision_ = *next_revision;
+        EconomyChange change{0, EconomyChangeKind::MarketChanged, {}, {}, {}, i.price_index_micro, {}, revision_};
+        change.market = i.market;
+        change.commodity = i.commodity;
+        Record(std::move(change));
+        return foundation::Result<void>::Success();
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to publish market indicator"));
+    }
 }
 
 std::optional<MarketIndicator> EconomyService::GetMarketIndicator(MarketId m, EconomicCommodityId c) const
@@ -386,39 +492,58 @@ std::optional<PriceQuote> EconomyService::GetPriceQuote(const PriceQuoteRequest 
 }
 foundation::Result<OfferId> EconomyService::CreateOffer(EconomicOffer o)
 {
-    if (!CheckedNext(revision_))
+    if (!frozen_)
         return foundation::Result<OfferId>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
-    if (!o.seller.IsValid() || !o.type.IsValid() || !o.subject.type.IsValid() || !currencies_.contains(o.currency) ||
-        o.quantity <= 0 || !ValidateMoneyAmount(o.currency, o.unit_price, true))
+            Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
+    if (!IsValidOfferState(o.state) || o.state != OfferState::Active || !o.seller.IsValid() || !o.type.IsValid() ||
+        !o.subject.type.IsValid() || !currencies_.contains(o.currency) || o.quantity <= 0 ||
+        !ValidateMoneyAmount(o.currency, o.unit_price, true))
         return foundation::Result<OfferId>::Failure(Error("gameplay.economy.invalid_offer", "invalid economic offer"));
-    if (!o.id.IsValid()) o.id = OfferId{offer_ids_.Next()};
-    else AdvanceGeneratorForExplicitId(offer_ids_, o.id);
-    if (!o.id.IsValid() || offers_.contains(o.id))
-        return foundation::Result<OfferId>::Failure(Error("gameplay.economy.duplicate_offer", "duplicate offer"));
-    Bump();
-    o.revision = revision_;
-    const auto id = o.id;
-    offers_.emplace(id, o);
-    ++diagnostics_.offers;
-    Record({0, EconomyChangeKind::OfferCreated, o.seller, {}, {}, o.unit_price, {}, revision_});
-    return foundation::Result<OfferId>::Success(id);
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<OfferId>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
+    {
+        auto staged_ids = offer_ids_;
+        if (!o.id.IsValid()) o.id = OfferId{staged_ids.Next()};
+        else AdvanceGeneratorForExplicitId(staged_ids, o.id);
+        if (!o.id.IsValid() || offers_.contains(o.id))
+            return foundation::Result<OfferId>::Failure(Error("gameplay.economy.duplicate_offer", "duplicate offer"));
+        o.revision = *next_revision;
+        auto staged_offers = offers_;
+        const auto id = o.id;
+        staged_offers.emplace(id, o);
+        offers_.swap(staged_offers);
+        offer_ids_ = staged_ids;
+        revision_ = *next_revision;
+        ++diagnostics_.offers;
+        EconomyChange change{0, EconomyChangeKind::OfferCreated, o.seller, {}, {}, o.unit_price, {}, revision_};
+        change.offer = id;
+        change.currency = o.currency;
+        Record(std::move(change));
+        return foundation::Result<OfferId>::Success(id);
+    }
+    catch (...)
+    {
+        return foundation::Result<OfferId>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to publish offer"));
+    }
 }
 foundation::Result<void> EconomyService::CancelOffer(OfferId id, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = offers_.find(id);
     if (it == offers_.end())
         return foundation::Result<void>::Failure(Error("gameplay.economy.offer_missing", "offer missing"));
-    if (it->second.state == OfferState::Cancelled)
-        return foundation::Result<void>::Success();
+    if (it->second.state == OfferState::Cancelled) return foundation::Result<void>::Success();
     if (it->second.state != OfferState::Active)
         return foundation::Result<void>::Failure(Error("gameplay.economy.offer_state", "offer is not active"));
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     const auto copy = it->second;
-    Bump();
     offers_.erase(it);
+    if (diagnostics_.offers > 0) --diagnostics_.offers;
+    revision_ = *next_revision;
     EconomyChange change{0, EconomyChangeKind::OfferChanged, copy.seller, {}, {}, 0, c, revision_};
     change.offer = copy.id;
     change.currency = copy.currency;
@@ -427,9 +552,9 @@ foundation::Result<void> EconomyService::CancelOffer(OfferId id, GameplayContext
 }
 foundation::Result<TradeTransactionId> EconomyService::AcceptOffer(OfferAcceptanceRequest request)
 {
-    if (!CheckedNext(revision_))
+    if (!frozen_)
         return foundation::Result<TradeTransactionId>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+            Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
     auto offer_it = offers_.find(request.offer);
     if (offer_it == offers_.end())
         return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_missing", "offer missing"));
@@ -441,8 +566,10 @@ foundation::Result<TradeTransactionId> EconomyService::AcceptOffer(OfferAcceptan
         return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_state", "offer cannot be accepted"));
 
     Fixed total = 0;
-    if (!CheckedMultiply(offer.unit_price, request.accepted_quantity, total) || !ValidateMoneyAmount(offer.currency, total, true))
-        return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_total_overflow", "offer settlement total is invalid"));
+    if (!CheckedMultiply(offer.unit_price, request.accepted_quantity, total) ||
+        !ValidateMoneyAmount(offer.currency, total, true))
+        return foundation::Result<TradeTransactionId>::Failure(
+            Error("gameplay.economy.offer_total_overflow", "offer settlement total is invalid"));
 
     TradePlan plan;
     plan.buyer = request.buyer;
@@ -453,47 +580,68 @@ foundation::Result<TradeTransactionId> EconomyService::AcceptOffer(OfferAcceptan
     {
         const auto *from = FindAccount(request.buyer_funding_account);
         const auto *to = FindAccount(request.seller_destination_account);
-        if (!from || !to || !SameObject(from->owner, request.buyer) || !SameObject(to->owner, offer.seller) ||
-            from->currency != offer.currency || to->currency != offer.currency)
-            return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_accounts", "offer settlement accounts do not match parties/currency"));
-        plan.monetary_transfers.push_back({request.buyer_funding_account, request.seller_destination_account, total, offer.currency});
+        if (!from || !to || from->state != AccountState::Active || to->state == AccountState::Closed ||
+            !SameObject(from->owner, request.buyer) || !SameObject(to->owner, offer.seller) ||
+            from->currency != offer.currency || to->currency != offer.currency || GetAvailableBalance(from->id) < total)
+            return foundation::Result<TradeTransactionId>::Failure(
+                Error("gameplay.economy.offer_accounts", "offer settlement accounts do not match parties/currency"));
+        plan.monetary_transfers.push_back(
+            {request.buyer_funding_account, request.seller_destination_account, total, offer.currency});
     }
 
-    auto prepared = PrepareTrade(std::move(plan));
-    if (!prepared) return prepared;
-
-    auto accepted_it = offers_.find(request.offer);
-    if (accepted_it == offers_.end() || accepted_it->second.state != OfferState::Active ||
-        accepted_it->second.revision != request.expected_offer_revision || accepted_it->second.quantity < request.accepted_quantity)
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<TradeTransactionId>::Failure(
+            Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
     {
-        (void)CancelTrade(prepared.Value());
-        return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.offer_state", "offer changed while accepting"));
-    }
+        auto staged_ids = transaction_ids_;
+        plan.id = TradeTransactionId{staged_ids.Next()};
+        if (!plan.id.IsValid() || transactions_.contains(plan.id))
+            return foundation::Result<TradeTransactionId>::Failure(
+                Error("gameplay.economy.id_exhausted", "trade transaction id exhausted"));
 
-    Bump();
-    auto tx_it = transactions_.find(prepared.Value());
-    tx_it->second.source_offer = offer.id;
-    tx_it->second.source_offer_revision = offer.revision;
-    tx_it->second.accepted_quantity = request.accepted_quantity;
-    tx_it->second.accepted_subject = offer.subject;
-    tx_it->second.revision = revision_;
+        TradeTransaction tx;
+        tx.id = plan.id;
+        tx.plan = plan;
+        tx.source_offer = offer.id;
+        tx.source_offer_revision = offer.revision;
+        tx.accepted_quantity = request.accepted_quantity;
+        tx.accepted_subject = offer.subject;
+        tx.state = TradeTransactionState::Prepared;
+        tx.revision = *next_revision;
 
-    accepted_it->second.quantity -= request.accepted_quantity;
-    if (accepted_it->second.quantity == 0)
-    {
-        offers_.erase(accepted_it);
-        if (diagnostics_.offers > 0) --diagnostics_.offers;
+        auto staged_transactions = transactions_;
+        staged_transactions.emplace(tx.id, tx);
+        auto staged_offers = offers_;
+        auto staged_offer_it = staged_offers.find(offer.id);
+        staged_offer_it->second.quantity -= request.accepted_quantity;
+        const bool consumed_offer = staged_offer_it->second.quantity == 0;
+        if (consumed_offer) staged_offers.erase(staged_offer_it);
+        else staged_offer_it->second.revision = *next_revision;
+
+        EconomyChange offer_change{0, EconomyChangeKind::OfferChanged, offer.seller, {}, tx.id, total,
+                                   request.context, *next_revision};
+        offer_change.offer = offer.id;
+        offer_change.currency = offer.currency;
+        EconomyChange trade_change{0, EconomyChangeKind::TradeChanged, request.buyer, {}, tx.id, total,
+                                   request.context, *next_revision};
+
+        transactions_.swap(staged_transactions);
+        offers_.swap(staged_offers);
+        transaction_ids_ = staged_ids;
+        revision_ = *next_revision;
+        ++diagnostics_.transactions;
+        if (consumed_offer && diagnostics_.offers > 0) --diagnostics_.offers;
+        Record(std::move(offer_change));
+        Record(std::move(trade_change));
+        return foundation::Result<TradeTransactionId>::Success(tx.id);
     }
-    else
+    catch (...)
     {
-        accepted_it->second.revision = revision_;
+        return foundation::Result<TradeTransactionId>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to accept offer"));
     }
-    EconomyChange change{0, EconomyChangeKind::OfferChanged, offer.seller, {}, prepared.Value(), total, request.context, revision_};
-    change.offer = offer.id;
-    change.currency = offer.currency;
-    Record(std::move(change));
-    Record({0, EconomyChangeKind::TradeChanged, request.buyer, {}, prepared.Value(), total, request.context, revision_});
-    return foundation::Result<TradeTransactionId>::Success(prepared.Value());
 }
 std::vector<EconomicOffer> EconomyService::FindOffers(GameplayObjectRef seller, OfferState state) const
 {
@@ -507,25 +655,44 @@ std::vector<EconomicOffer> EconomyService::FindOffers(GameplayObjectRef seller, 
     std::sort(out.begin(), out.end(), [](auto &a, auto &b) { return a.id < b.id; });
     return out;
 }
-std::vector<OfferId> EconomyService::ExpireOffers(GameplayTimePoint now, GameplayContext c)
+foundation::Result<std::vector<OfferId>> EconomyService::ExpireOffers(GameplayTimePoint now, GameplayContext c)
 {
-    std::vector<OfferId> out;
-    for (const auto &[id, o] : offers_)
-        if (o.state == OfferState::Active && o.expires_at.ticks != 0 && o.expires_at <= now) out.push_back(id);
-    std::sort(out.begin(), out.end());
-    for (const auto id : out)
+    try
     {
-        const auto it = offers_.find(id);
-        if (it == offers_.end()) continue;
-        const auto copy = it->second;
-        Bump();
-        offers_.erase(it);
-        EconomyChange change{0, EconomyChangeKind::OfferChanged, copy.seller, {}, {}, 0, c, revision_};
-        change.offer = copy.id;
-        change.currency = copy.currency;
-        Record(std::move(change));
+        std::vector<OfferId> out;
+        for (const auto &[id, o] : offers_)
+            if (o.state == OfferState::Active && o.expires_at.ticks != 0 && o.expires_at <= now) out.push_back(id);
+        std::sort(out.begin(), out.end());
+        if (out.empty()) return foundation::Result<std::vector<OfferId>>::Success(std::move(out));
+        const auto next_revision = NextRevision();
+        if (!next_revision)
+            return foundation::Result<std::vector<OfferId>>::Failure(
+                Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+        auto staged_offers = offers_;
+        std::vector<EconomyChange> changes;
+        changes.reserve(out.size());
+        for (const auto id : out)
+        {
+            const auto it = staged_offers.find(id);
+            if (it == staged_offers.end()) continue;
+            const auto copy = it->second;
+            staged_offers.erase(it);
+            EconomyChange change{0, EconomyChangeKind::OfferChanged, copy.seller, {}, {}, 0, c, *next_revision};
+            change.offer = copy.id;
+            change.currency = copy.currency;
+            changes.push_back(std::move(change));
+        }
+        offers_.swap(staged_offers);
+        revision_ = *next_revision;
+        diagnostics_.offers = diagnostics_.offers >= changes.size() ? diagnostics_.offers - changes.size() : 0;
+        for (auto &change : changes) Record(std::move(change));
+        return foundation::Result<std::vector<OfferId>>::Success(std::move(out));
     }
-    return out;
+    catch (...)
+    {
+        return foundation::Result<std::vector<OfferId>>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to expire offers"));
+    }
 }
 
 foundation::Result<void> EconomyService::ValidateMoneyAmount(CurrencyId currency, Fixed amount, bool allow_zero) const
@@ -548,189 +715,299 @@ foundation::Result<void> EconomyService::ValidateTransfer(const MonetaryTransfer
 }
 foundation::Result<TradeTransactionId> EconomyService::PrepareTrade(TradePlan p)
 {
-    if (!CheckedNext(revision_))
+    if (!frozen_)
         return foundation::Result<TradeTransactionId>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
-    if (!frozen_) return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
+            Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
     if (!p.buyer.IsValid() || !p.seller.IsValid() || SameObject(p.buyer, p.seller))
-        return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.trade_invalid", "trade requires distinct valid buyer and seller"));
+        return foundation::Result<TradeTransactionId>::Failure(
+            Error("gameplay.economy.trade_invalid", "trade requires distinct valid buyer and seller"));
     for (const auto &t : p.monetary_transfers)
     {
         auto v = ValidateTransfer(t);
         if (!v) return foundation::Result<TradeTransactionId>::Failure(v.GetError());
     }
-    if (!p.id.IsValid()) p.id = TradeTransactionId{transaction_ids_.Next()};
-    else AdvanceGeneratorForExplicitId(transaction_ids_, p.id);
-    if (!p.id.IsValid() || transactions_.contains(p.id))
-        return foundation::Result<TradeTransactionId>::Failure(Error("gameplay.economy.duplicate_trade", "invalid or duplicate trade transaction id"));
-    TradeTransaction tx;
-    tx.id = p.id;
-    tx.plan = std::move(p);
-    tx.state = TradeTransactionState::Prepared;
-    Bump();
-    tx.revision = revision_;
-    const auto id = tx.id;
-    const auto context = tx.plan.context;
-    transactions_.emplace(id, std::move(tx));
-    ++diagnostics_.transactions;
-    Record({0, EconomyChangeKind::TradeChanged, {}, {}, id, 0, context, revision_});
-    return foundation::Result<TradeTransactionId>::Success(id);
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<TradeTransactionId>::Failure(
+            Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
+    {
+        auto staged_ids = transaction_ids_;
+        if (!p.id.IsValid()) p.id = TradeTransactionId{staged_ids.Next()};
+        else AdvanceGeneratorForExplicitId(staged_ids, p.id);
+        if (!p.id.IsValid() || transactions_.contains(p.id))
+            return foundation::Result<TradeTransactionId>::Failure(
+                Error("gameplay.economy.duplicate_trade", "invalid or duplicate trade transaction id"));
+        TradeTransaction tx;
+        tx.id = p.id;
+        tx.plan = std::move(p);
+        tx.state = TradeTransactionState::Prepared;
+        tx.revision = *next_revision;
+        const auto id = tx.id;
+        const auto context = tx.plan.context;
+        auto staged_transactions = transactions_;
+        staged_transactions.emplace(id, std::move(tx));
+        transactions_.swap(staged_transactions);
+        transaction_ids_ = staged_ids;
+        revision_ = *next_revision;
+        ++diagnostics_.transactions;
+        Record({0, EconomyChangeKind::TradeChanged, {}, {}, id, 0, context, revision_});
+        return foundation::Result<TradeTransactionId>::Success(id);
+    }
+    catch (...)
+    {
+        return foundation::Result<TradeTransactionId>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to prepare trade"));
+    }
 }
 
 foundation::Result<void> EconomyService::ReserveTrade(TradeTransactionId id)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = transactions_.find(id);
     if (it == transactions_.end() || it->second.state != TradeTransactionState::Prepared)
         return foundation::Result<void>::Failure(Error("gameplay.economy.trade_state", "trade not prepared"));
-    std::unordered_map<EconomicAccountId, Fixed, IdHash> outgoing;
-    std::vector<FundsReservationId> made;
-    made.reserve(it->second.plan.monetary_transfers.size());
-    for (const auto &t : it->second.plan.monetary_transfers)
+
+    try
     {
-        auto v = ValidateTransfer(t);
-        if (!v)
-            return foundation::Result<void>::Failure(v.GetError());
-        Fixed next = 0;
-        if (!CheckedAdd(outgoing[t.from], t.amount, next))
-            return foundation::Result<void>::Failure(Error("gameplay.economy.balance_overflow", "trade amount overflow"));
-        outgoing[t.from] = next;
-        auto rid = FundsReservationId{reservation_ids_.Next()};
-        if (!rid.IsValid())
-            return foundation::Result<void>::Failure(Error("gameplay.economy.id_exhausted", "reservation id exhausted"));
-        made.push_back(rid);
+        std::unordered_map<EconomicAccountId, Fixed, IdHash> outgoing;
+        for (const auto &t : it->second.plan.monetary_transfers)
+        {
+            auto v = ValidateTransfer(t);
+            if (!v) return foundation::Result<void>::Failure(v.GetError());
+            Fixed next = 0;
+            const auto existing = outgoing.find(t.from);
+            const Fixed current = existing == outgoing.end() ? 0 : existing->second;
+            if (!CheckedAdd(current, t.amount, next))
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.economy.balance_overflow", "trade amount overflow"));
+            outgoing[t.from] = next;
+        }
+        for (const auto &[account, amount] : outgoing)
+            if (GetAvailableBalance(account) < amount)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.economy.insufficient_funds", "trade funds unavailable"));
+
+        const auto next_revision = NextRevision();
+        if (!next_revision)
+            return foundation::Result<void>::Failure(
+                Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+
+        auto staged_ids = reservation_ids_;
+        std::vector<FundsReservation> prepared;
+        prepared.reserve(it->second.plan.monetary_transfers.size());
+        std::vector<FundsReservationId> ids;
+        ids.reserve(it->second.plan.monetary_transfers.size());
+        for (const auto &t : it->second.plan.monetary_transfers)
+        {
+            FundsReservation r;
+            r.id = FundsReservationId{staged_ids.Next()};
+            if (!r.id.IsValid())
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.economy.id_exhausted", "reservation id exhausted"));
+            r.account = t.from;
+            r.amount = t.amount;
+            r.reason = TypeId::FromString("economy.trade");
+            r.state = FundsReservationState::Active;
+            r.revision = *next_revision;
+            ids.push_back(r.id);
+            prepared.push_back(r);
+        }
+
+        auto staged_reservations = reservations_;
+        for (const auto &r : prepared)
+            staged_reservations.emplace(r.id, r);
+        auto staged_transactions = transactions_;
+        auto &staged_tx = staged_transactions.at(id);
+        staged_tx.reservations = ids;
+        staged_tx.state = TradeTransactionState::Reserved;
+        staged_tx.revision = *next_revision;
+
+        std::vector<EconomyChange> changes;
+        changes.reserve(prepared.size() + 1);
+        for (std::size_t i = 0; i < prepared.size(); ++i)
+        {
+            const auto &t = it->second.plan.monetary_transfers[i];
+            EconomyChange change{0, EconomyChangeKind::FundsReserved, accounts_.at(t.from).owner, t.from, id, t.amount,
+                                 it->second.plan.context, *next_revision};
+            change.reservation = prepared[i].id;
+            change.currency = t.currency;
+            change.source_account = t.from;
+            changes.push_back(std::move(change));
+        }
+        changes.push_back({0, EconomyChangeKind::TradeChanged, {}, {}, id, 0, it->second.plan.context, *next_revision});
+
+        reservations_.swap(staged_reservations);
+        transactions_.swap(staged_transactions);
+        reservation_ids_ = staged_ids;
+        revision_ = *next_revision;
+        diagnostics_.active_reservations += prepared.size();
+        for (auto &change : changes) Record(std::move(change));
+        return foundation::Result<void>::Success();
     }
-    for (const auto &[account, amount] : outgoing)
-        if (GetAvailableBalance(account) < amount)
-            return foundation::Result<void>::Failure(Error("gameplay.economy.insufficient_funds", "trade funds unavailable"));
-    Bump();
-    std::vector<FundsReservationId> committed;
-    committed.reserve(made.size());
-    for (std::size_t i = 0; i < made.size(); ++i)
+    catch (...)
     {
-        const auto &t = it->second.plan.monetary_transfers[i];
-        FundsReservation r;
-        r.id = made[i];
-        r.account = t.from;
-        r.amount = t.amount;
-        r.reason = TypeId::FromString("economy.trade");
-        r.revision = revision_;
-        reservations_.emplace(r.id, r);
-        committed.push_back(r.id);
-        ++diagnostics_.active_reservations;
-        Record({0, EconomyChangeKind::FundsReserved, accounts_.at(t.from).owner, t.from, id, t.amount, it->second.plan.context, revision_});
+        return foundation::Result<void>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to reserve trade"));
     }
-    it->second.reservations = std::move(committed);
-    it->second.state = TradeTransactionState::Reserved;
-    it->second.revision = revision_;
-    Record({0, EconomyChangeKind::TradeChanged, {}, {}, id, 0, it->second.plan.context, revision_});
-    return foundation::Result<void>::Success();
 }
 foundation::Result<void> EconomyService::CommitTrade(TradeTransactionId id)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = transactions_.find(id);
-    if (it == transactions_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.trade_missing", "trade missing"));
+    if (it == transactions_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.economy.trade_missing", "trade missing"));
     if (it->second.state != TradeTransactionState::Reserved ||
         it->second.reservations.size() != it->second.plan.monetary_transfers.size())
         return foundation::Result<void>::Failure(Error("gameplay.economy.trade_state", "trade not reserved"));
 
-    std::unordered_map<EconomicAccountId, Fixed, IdHash> outgoing, incoming, final_balances;
-    for (std::size_t i = 0; i < it->second.reservations.size(); ++i)
+    try
     {
-        const auto rid = it->second.reservations[i];
-        const auto r = reservations_.find(rid);
-        const auto& t = it->second.plan.monetary_transfers[i];
-        const auto from = accounts_.find(t.from), to = accounts_.find(t.to);
-        if (r == reservations_.end() || r->second.state != FundsReservationState::Active ||
-            r->second.account != t.from || r->second.amount != t.amount || from == accounts_.end() || to == accounts_.end() ||
-            from->second.state != AccountState::Active || to->second.state == AccountState::Closed || t.from == t.to ||
-            from->second.currency != t.currency || to->second.currency != t.currency)
-            return foundation::Result<void>::Failure(Error("gameplay.economy.trade_invalidated", "reserved trade was invalidated"));
-        Fixed value = 0;
-        if (!CheckedAdd(outgoing[t.from], t.amount, value))
-            return foundation::Result<void>::Failure(Error("gameplay.economy.balance_overflow", "trade outgoing amount overflow"));
-        outgoing[t.from] = value;
-        if (!CheckedAdd(incoming[t.to], t.amount, value))
-            return foundation::Result<void>::Failure(Error("gameplay.economy.balance_overflow", "trade incoming amount overflow"));
-        incoming[t.to] = value;
-    }
-    for (const auto& [account_id, account] : accounts_)
-    {
-        const Fixed out = outgoing.contains(account_id) ? outgoing.at(account_id) : 0;
-        const Fixed in = incoming.contains(account_id) ? incoming.at(account_id) : 0;
-        if (out > account.balance)
-            return foundation::Result<void>::Failure(Error("gameplay.economy.trade_invalidated", "reserved trade funds unavailable"));
-        Fixed after_out = account.balance - out, final_value = 0;
-        if (!CheckedAdd(after_out, in, final_value))
-            return foundation::Result<void>::Failure(Error("gameplay.economy.balance_overflow", "trade final balance overflow"));
-        final_balances[account_id] = final_value;
-    }
-
-    const auto transaction = it->second;
-    Bump();
-    for (const auto& [account_id, value] : final_balances)
-        if (outgoing.contains(account_id) || incoming.contains(account_id))
+        std::unordered_map<EconomicAccountId, Fixed, IdHash> outgoing, incoming, final_balances;
+        for (std::size_t i = 0; i < it->second.reservations.size(); ++i)
         {
-            auto& account = accounts_.at(account_id);
-            account.balance = value;
-            account.revision = revision_;
+            const auto rid = it->second.reservations[i];
+            const auto r = reservations_.find(rid);
+            const auto &t = it->second.plan.monetary_transfers[i];
+            const auto from = accounts_.find(t.from), to = accounts_.find(t.to);
+            if (r == reservations_.end() || r->second.state != FundsReservationState::Active ||
+                r->second.account != t.from || r->second.amount != t.amount || from == accounts_.end() || to == accounts_.end() ||
+                from->second.state != AccountState::Active || to->second.state == AccountState::Closed || t.from == t.to ||
+                from->second.currency != t.currency || to->second.currency != t.currency)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.economy.trade_invalidated", "reserved trade was invalidated"));
+            Fixed value = 0;
+            const Fixed current_out = outgoing.contains(t.from) ? outgoing.at(t.from) : 0;
+            if (!CheckedAdd(current_out, t.amount, value))
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.economy.balance_overflow", "trade outgoing amount overflow"));
+            outgoing[t.from] = value;
+            const Fixed current_in = incoming.contains(t.to) ? incoming.at(t.to) : 0;
+            if (!CheckedAdd(current_in, t.amount, value))
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.economy.balance_overflow", "trade incoming amount overflow"));
+            incoming[t.to] = value;
         }
-    for (std::size_t i = 0; i < transaction.reservations.size(); ++i)
-    {
-        const auto rid = transaction.reservations[i];
-        const auto transfer = transaction.plan.monetary_transfers[i];
-        reservations_.erase(rid);
-        if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
-        EconomyChange change{0, EconomyChangeKind::FundsCommitted, accounts_.at(transfer.to).owner, transfer.to, id, transfer.amount,
-                             transaction.plan.context, revision_};
-        change.reservation = rid;
-        change.currency = transfer.currency;
-        change.source_account = transfer.from;
-        change.destination_account = transfer.to;
-        Record(std::move(change));
+        for (const auto &[account_id, account] : accounts_)
+        {
+            const Fixed out = outgoing.contains(account_id) ? outgoing.at(account_id) : 0;
+            const Fixed in = incoming.contains(account_id) ? incoming.at(account_id) : 0;
+            if (out > account.balance)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.economy.trade_invalidated", "reserved trade funds unavailable"));
+            Fixed final_value = 0;
+            if (!CheckedAdd(account.balance - out, in, final_value))
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.economy.balance_overflow", "trade final balance overflow"));
+            if (out != 0 || in != 0) final_balances.emplace(account_id, final_value);
+        }
+
+        const auto next_revision = NextRevision();
+        if (!next_revision)
+            return foundation::Result<void>::Failure(
+                Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+
+        const auto transaction = it->second;
+        auto staged_accounts = accounts_;
+        auto staged_reservations = reservations_;
+        auto staged_transactions = transactions_;
+        for (const auto &[account_id, value] : final_balances)
+        {
+            auto &account = staged_accounts.at(account_id);
+            account.balance = value;
+            account.revision = *next_revision;
+        }
+        for (const auto rid : transaction.reservations) staged_reservations.erase(rid);
+        staged_transactions.erase(id);
+
+        std::vector<EconomyChange> changes;
+        changes.reserve(transaction.reservations.size() + 1);
+        for (std::size_t i = 0; i < transaction.reservations.size(); ++i)
+        {
+            const auto rid = transaction.reservations[i];
+            const auto &transfer = transaction.plan.monetary_transfers[i];
+            EconomyChange change{0, EconomyChangeKind::FundsCommitted, accounts_.at(transfer.to).owner, transfer.to, id,
+                                 transfer.amount, transaction.plan.context, *next_revision};
+            change.reservation = rid;
+            change.currency = transfer.currency;
+            change.source_account = transfer.from;
+            change.destination_account = transfer.to;
+            changes.push_back(std::move(change));
+        }
+        changes.push_back({0, EconomyChangeKind::TradeChanged, {}, {}, id, 0, transaction.plan.context, *next_revision});
+
+        accounts_.swap(staged_accounts);
+        reservations_.swap(staged_reservations);
+        transactions_.swap(staged_transactions);
+        revision_ = *next_revision;
+        diagnostics_.active_reservations = diagnostics_.active_reservations >= transaction.reservations.size()
+                                               ? diagnostics_.active_reservations - transaction.reservations.size()
+                                               : 0;
+        if (diagnostics_.transactions > 0) --diagnostics_.transactions;
+        for (auto &change : changes) Record(std::move(change));
+        return foundation::Result<void>::Success();
     }
-    Record({0, EconomyChangeKind::TradeChanged, {}, {}, id, 0, transaction.plan.context, revision_});
-    transactions_.erase(id);
-    if (diagnostics_.transactions > 0) --diagnostics_.transactions;
-    return foundation::Result<void>::Success();
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to commit trade"));
+    }
 }
 
 foundation::Result<void> EconomyService::CancelTrade(TradeTransactionId id)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = transactions_.find(id);
-    if (it == transactions_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.trade_missing", "trade missing"));
+    if (it == transactions_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.economy.trade_missing", "trade missing"));
     if (it->second.state != TradeTransactionState::Prepared && it->second.state != TradeTransactionState::Reserved)
-        return foundation::Result<void>::Failure(Error("gameplay.economy.trade_state", "trade cannot be cancelled from current state"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.economy.trade_state", "trade cannot be cancelled from current state"));
     const auto tx = it->second;
     for (const auto rid : tx.reservations)
     {
         const auto r = reservations_.find(rid);
         if (r == reservations_.end() || r->second.state != FundsReservationState::Active)
-            return foundation::Result<void>::Failure(Error("gameplay.economy.trade_invalidated", "trade reservation missing"));
+            return foundation::Result<void>::Failure(
+                Error("gameplay.economy.trade_invalidated", "trade reservation missing"));
     }
-    Bump();
-    for (const auto rid : tx.reservations)
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
     {
-        const auto copy = reservations_.at(rid);
-        reservations_.erase(rid);
-        if (diagnostics_.active_reservations > 0) --diagnostics_.active_reservations;
-        EconomyChange change{0, EconomyChangeKind::FundsReleased, {}, copy.account, id, copy.amount, tx.plan.context, revision_};
-        change.reservation = rid;
-        change.source_account = copy.account;
-        Record(std::move(change));
+        auto staged_reservations = reservations_;
+        auto staged_transactions = transactions_;
+        for (const auto rid : tx.reservations) staged_reservations.erase(rid);
+        staged_transactions.erase(id);
+
+        std::vector<EconomyChange> changes;
+        changes.reserve(tx.reservations.size() + 1);
+        for (const auto rid : tx.reservations)
+        {
+            const auto &copy = reservations_.at(rid);
+            EconomyChange change{0, EconomyChangeKind::FundsReleased, {}, copy.account, id, copy.amount,
+                                 tx.plan.context, *next_revision};
+            change.reservation = rid;
+            change.source_account = copy.account;
+            if (const auto *account = FindAccount(copy.account)) change.currency = account->currency;
+            changes.push_back(std::move(change));
+        }
+        changes.push_back({0, EconomyChangeKind::TradeChanged, {}, {}, id, 0, tx.plan.context, *next_revision});
+
+        reservations_.swap(staged_reservations);
+        transactions_.swap(staged_transactions);
+        revision_ = *next_revision;
+        diagnostics_.active_reservations = diagnostics_.active_reservations >= tx.reservations.size()
+                                               ? diagnostics_.active_reservations - tx.reservations.size()
+                                               : 0;
+        if (diagnostics_.transactions > 0) --diagnostics_.transactions;
+        for (auto &change : changes) Record(std::move(change));
+        return foundation::Result<void>::Success();
     }
-    Record({0, EconomyChangeKind::TradeChanged, {}, {}, id, 0, tx.plan.context, revision_});
-    transactions_.erase(it);
-    if (diagnostics_.transactions > 0) --diagnostics_.transactions;
-    return foundation::Result<void>::Success();
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to cancel trade"));
+    }
 }
 
 const TradeTransaction *EconomyService::FindTransaction(TradeTransactionId id) const noexcept
@@ -756,37 +1033,59 @@ std::vector<EconomicAccount> EconomyService::FindAccounts(GameplayObjectRef owne
 }
 foundation::Result<DebtId> EconomyService::CreateDebt(DebtRecord d)
 {
-    if (!CheckedNext(revision_))
+    if (!frozen_)
         return foundation::Result<DebtId>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
-    if (!d.debtor.IsValid() || !d.creditor.IsValid() || SameObject(d.debtor, d.creditor) || !currencies_.contains(d.currency) ||
+            Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
+    if (!IsValidDebtState(d.state) || d.state != DebtState::Active || !d.debtor.IsValid() || !d.creditor.IsValid() ||
+        SameObject(d.debtor, d.creditor) || !currencies_.contains(d.currency) ||
         !ValidateMoneyAmount(d.currency, d.principal, false))
         return foundation::Result<DebtId>::Failure(Error("gameplay.economy.invalid_debt", "invalid debt"));
-    if (!d.id.IsValid()) d.id = DebtId{debt_ids_.Next()};
-    else AdvanceGeneratorForExplicitId(debt_ids_, d.id);
-    if (!d.id.IsValid() || debts_.contains(d.id))
-        return foundation::Result<DebtId>::Failure(Error("gameplay.economy.duplicate_debt", "duplicate debt"));
-    Bump();
-    d.revision = revision_;
-    const auto id = d.id;
-    debts_[id] = d;
-    ++diagnostics_.debts;
-    Record({0, EconomyChangeKind::DebtChanged, d.debtor, {}, {}, d.principal, {}, revision_});
-    return foundation::Result<DebtId>::Success(id);
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<DebtId>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
+    {
+        auto staged_ids = debt_ids_;
+        if (!d.id.IsValid()) d.id = DebtId{staged_ids.Next()};
+        else AdvanceGeneratorForExplicitId(staged_ids, d.id);
+        if (!d.id.IsValid() || debts_.contains(d.id))
+            return foundation::Result<DebtId>::Failure(Error("gameplay.economy.duplicate_debt", "duplicate debt"));
+        d.revision = *next_revision;
+        auto staged_debts = debts_;
+        const auto id = d.id;
+        staged_debts.emplace(id, d);
+        debts_.swap(staged_debts);
+        debt_ids_ = staged_ids;
+        revision_ = *next_revision;
+        ++diagnostics_.debts;
+        EconomyChange change{0, EconomyChangeKind::DebtChanged, d.debtor, {}, {}, d.principal, {}, revision_};
+        change.debt = id;
+        change.currency = d.currency;
+        Record(std::move(change));
+        return foundation::Result<DebtId>::Success(id);
+    }
+    catch (...)
+    {
+        return foundation::Result<DebtId>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to publish debt"));
+    }
 }
 foundation::Result<void> EconomyService::ResolveDebt(DebtId id, DebtState state, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    if (!IsValidDebtState(state))
+        return foundation::Result<void>::Failure(Error("gameplay.economy.debt_state", "invalid debt state"));
     auto it = debts_.find(id);
-    if (it == debts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.debt_missing", "debt missing"));
+    if (it == debts_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.economy.debt_missing", "debt missing"));
     if (it->second.state == state) return foundation::Result<void>::Success();
     if (it->second.state != DebtState::Active || state == DebtState::Active)
         return foundation::Result<void>::Failure(Error("gameplay.economy.debt_state", "invalid debt state transition"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     it->second.state = state;
-    it->second.revision = revision_;
+    it->second.revision = *next_revision;
+    revision_ = *next_revision;
     EconomyChange change{0, EconomyChangeKind::DebtChanged, it->second.debtor, {}, {}, it->second.principal, c, revision_};
     change.debt = id;
     change.currency = it->second.currency;
@@ -796,18 +1095,22 @@ foundation::Result<void> EconomyService::ResolveDebt(DebtId id, DebtState state,
 
 foundation::Result<void> EconomyService::CompactDebt(DebtId id, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = debts_.find(id);
-    if (it == debts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.debt_missing", "debt missing"));
-    if (it->second.state == DebtState::Active) return foundation::Result<void>::Failure(Error("gameplay.economy.debt_state", "active debt cannot be compacted"));
+    if (it == debts_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.economy.debt_missing", "debt missing"));
+    if (it->second.state == DebtState::Active)
+        return foundation::Result<void>::Failure(Error("gameplay.economy.debt_state", "active debt cannot be compacted"));
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     const auto copy = it->second;
-    Bump();
     debts_.erase(it);
     if (diagnostics_.debts > 0) --diagnostics_.debts;
+    revision_ = *next_revision;
     EconomyChange change{0, EconomyChangeKind::DebtCompacted, copy.debtor, {}, {}, copy.principal, c, revision_};
-    change.debt = id; change.currency = copy.currency; Record(std::move(change));
+    change.debt = id;
+    change.currency = copy.currency;
+    Record(std::move(change));
     return foundation::Result<void>::Success();
 }
 std::vector<DebtRecord> EconomyService::FindDebts(GameplayObjectRef s) const
@@ -824,48 +1127,73 @@ std::vector<DebtRecord> EconomyService::FindDebts(GameplayObjectRef s) const
 }
 foundation::Result<EconomicContractId> EconomyService::CreateContract(EconomicContract c)
 {
-    if (!CheckedNext(revision_))
+    if (!frozen_)
         return foundation::Result<EconomicContractId>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+            Error("gameplay.registry_not_frozen", "economy definitions must be frozen before runtime mutation"));
     std::unordered_set<GameplayObjectRef> unique_parties;
-    const bool parties_valid = std::all_of(c.parties.begin(), c.parties.end(), [&](const auto& party){ return party.IsValid() && unique_parties.insert(party).second; });
+    const bool parties_valid = std::all_of(c.parties.begin(), c.parties.end(),
+                                           [&](const auto &party) { return party.IsValid() && unique_parties.insert(party).second; });
     const auto schema_it = contract_terms_schemas_.find(c.type);
-    const bool terms_valid = c.terms_payload.empty() && !c.terms_schema.IsValid() ? true :
-        (schema_it != contract_terms_schemas_.end() && c.terms_schema == schema_it->second.schema &&
-         c.terms_payload.size() <= schema_it->second.max_payload_bytes);
-    if (c.parties.size() < 2 || !parties_valid || !c.type.IsValid() || !currencies_.contains(c.currency) ||
-        !ValidateMoneyAmount(c.currency, c.amount, true) || !terms_valid)
+    const bool terms_valid = c.terms_payload.empty() && !c.terms_schema.IsValid()
+                                 ? true
+                                 : (schema_it != contract_terms_schemas_.end() && c.terms_schema == schema_it->second.schema &&
+                                    c.terms_payload.size() <= schema_it->second.max_payload_bytes);
+    if (!IsValidContractState(c.state) || c.state != ContractState::Draft || c.parties.size() < 2 || !parties_valid ||
+        !c.type.IsValid() || !currencies_.contains(c.currency) || !ValidateMoneyAmount(c.currency, c.amount, true) || !terms_valid)
         return foundation::Result<EconomicContractId>::Failure(
             Error("gameplay.economy.invalid_contract", "invalid economic contract"));
-    if (!c.id.IsValid()) c.id = EconomicContractId{contract_ids_.Next()};
-    else AdvanceGeneratorForExplicitId(contract_ids_, c.id);
-    if (!c.id.IsValid() || contracts_.contains(c.id))
+    const auto next_revision = NextRevision();
+    if (!next_revision)
         return foundation::Result<EconomicContractId>::Failure(
-            Error("gameplay.economy.duplicate_contract", "duplicate economic contract"));
-    Bump();
-    c.revision = revision_;
-    const auto id = c.id;
-    contracts_[id] = std::move(c);
-    Record({0, EconomyChangeKind::ContractChanged, {}, {}, {}, 0, {}, revision_});
-    return foundation::Result<EconomicContractId>::Success(id);
+            Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    try
+    {
+        auto staged_ids = contract_ids_;
+        if (!c.id.IsValid()) c.id = EconomicContractId{staged_ids.Next()};
+        else AdvanceGeneratorForExplicitId(staged_ids, c.id);
+        if (!c.id.IsValid() || contracts_.contains(c.id))
+            return foundation::Result<EconomicContractId>::Failure(
+                Error("gameplay.economy.duplicate_contract", "duplicate economic contract"));
+        c.revision = *next_revision;
+        auto staged_contracts = contracts_;
+        const auto id = c.id;
+        staged_contracts.emplace(id, c);
+        contracts_.swap(staged_contracts);
+        contract_ids_ = staged_ids;
+        revision_ = *next_revision;
+        EconomyChange change{0, EconomyChangeKind::ContractChanged, {}, {}, {}, c.amount, {}, revision_};
+        change.contract = id;
+        change.currency = c.currency;
+        Record(std::move(change));
+        return foundation::Result<EconomicContractId>::Success(id);
+    }
+    catch (...)
+    {
+        return foundation::Result<EconomicContractId>::Failure(
+            Error("gameplay.economy.allocation_failure", "failed to publish economic contract"));
+    }
 }
 foundation::Result<void> EconomyService::SetContractState(EconomicContractId id, ContractState state, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
+    if (!IsValidContractState(state))
+        return foundation::Result<void>::Failure(Error("gameplay.economy.contract_state", "invalid contract state"));
     auto it = contracts_.find(id);
-    if (it == contracts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.contract_missing", "contract missing"));
+    if (it == contracts_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.economy.contract_missing", "contract missing"));
     const auto old = it->second.state;
     if (old == state) return foundation::Result<void>::Success();
     const bool from_draft = old == ContractState::Draft && (state == ContractState::Active || state == ContractState::Cancelled);
-    const bool from_active = old == ContractState::Active && (state == ContractState::Fulfilled || state == ContractState::Breached ||
-                                                               state == ContractState::Cancelled || state == ContractState::Expired);
+    const bool from_active = old == ContractState::Active &&
+                             (state == ContractState::Fulfilled || state == ContractState::Breached ||
+                              state == ContractState::Cancelled || state == ContractState::Expired);
     if (!from_draft && !from_active)
         return foundation::Result<void>::Failure(Error("gameplay.economy.contract_state", "invalid contract state transition"));
-    Bump();
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     it->second.state = state;
-    it->second.revision = revision_;
+    it->second.revision = *next_revision;
+    revision_ = *next_revision;
     EconomyChange change{0, EconomyChangeKind::ContractChanged, {}, {}, {}, it->second.amount, c, revision_};
     change.contract = id;
     change.currency = it->second.currency;
@@ -875,17 +1203,21 @@ foundation::Result<void> EconomyService::SetContractState(EconomicContractId id,
 
 foundation::Result<void> EconomyService::CompactContract(EconomicContractId id, GameplayContext c)
 {
-    if (!CheckedNext(revision_))
-        return foundation::Result<void>::Failure(
-            foundation::Error::Create("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     auto it = contracts_.find(id);
-    if (it == contracts_.end()) return foundation::Result<void>::Failure(Error("gameplay.economy.contract_missing", "contract missing"));
+    if (it == contracts_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.economy.contract_missing", "contract missing"));
     if (it->second.state == ContractState::Draft || it->second.state == ContractState::Active)
         return foundation::Result<void>::Failure(Error("gameplay.economy.contract_state", "live contract cannot be compacted"));
+    const auto next_revision = NextRevision();
+    if (!next_revision)
+        return foundation::Result<void>::Failure(Error("gameplay.revision_exhausted", "economy revision counter is exhausted"));
     const auto copy = it->second;
-    Bump(); contracts_.erase(it);
+    contracts_.erase(it);
+    revision_ = *next_revision;
     EconomyChange change{0, EconomyChangeKind::ContractCompacted, {}, {}, {}, copy.amount, c, revision_};
-    change.contract = id; change.currency = copy.currency; Record(std::move(change));
+    change.contract = id;
+    change.currency = copy.currency;
+    Record(std::move(change));
     return foundation::Result<void>::Success();
 }
 EconomyChangeBatch EconomyService::ReadChangesSinceSequence(std::uint64_t seq) const
@@ -983,8 +1315,9 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     std::unordered_map<EconomicAccountId, EconomicAccount, IdHash> a;
     for (auto &v : s.accounts)
     {
-        if (!v.id.IsValid() || !v.owner.IsValid() || !currencies_.contains(v.currency) || v.balance < 0 ||
-            !ValidateMoneyAmount(v.currency, v.balance, true) || v.revision.value > s.revision.value || a.contains(v.id))
+        if (!v.id.IsValid() || !v.owner.IsValid() || !currencies_.contains(v.currency) || !IsValidAccountState(v.state) ||
+            v.balance < 0 || !ValidateMoneyAmount(v.currency, v.balance, true) ||
+            v.revision.value > s.revision.value || a.contains(v.id))
             return foundation::Result<void>::Failure(
                 Error("gameplay.economy.restore_invalid", "invalid account snapshot"));
         a.emplace(v.id, std::move(v));
@@ -992,8 +1325,9 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     std::unordered_map<FundsReservationId, FundsReservation, IdHash> r;
     for (auto &v : s.reservations)
     {
-        if (!v.id.IsValid() || !a.contains(v.account) || r.contains(v.id) || v.state != FundsReservationState::Active ||
-            v.amount <= 0 || !ValidateMoneyAmount(a.at(v.account).currency, v.amount, false) || v.revision.value > s.revision.value)
+        if (!v.id.IsValid() || !a.contains(v.account) || r.contains(v.id) || !IsValidReservationState(v.state) ||
+            v.state != FundsReservationState::Active || a.at(v.account).state != AccountState::Active || v.amount <= 0 ||
+            !ValidateMoneyAmount(a.at(v.account).currency, v.amount, false) || v.revision.value > s.revision.value)
             return foundation::Result<void>::Failure(
                 Error("gameplay.economy.restore_invalid", "invalid reservation snapshot"));
         r.emplace(v.id, std::move(v));
@@ -1020,8 +1354,9 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     for (auto &v : s.offers)
     {
         if (!v.id.IsValid() || !v.seller.IsValid() || !v.type.IsValid() || !v.subject.type.IsValid() ||
-            !currencies_.contains(v.currency) || v.quantity <= 0 || !ValidateMoneyAmount(v.currency, v.unit_price, true) ||
-            offers.contains(v.id) || IsTerminalOffer(v.state) || v.revision.value > s.revision.value)
+            !currencies_.contains(v.currency) || !IsValidOfferState(v.state) || v.state != OfferState::Active || v.quantity <= 0 ||
+            !ValidateMoneyAmount(v.currency, v.unit_price, true) || offers.contains(v.id) ||
+            v.revision.value > s.revision.value)
             return foundation::Result<void>::Failure(
                 Error("gameplay.economy.restore_invalid", "invalid offer snapshot"));
         offers.emplace(v.id, std::move(v));
@@ -1029,7 +1364,7 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     std::unordered_map<TradeTransactionId, TradeTransaction, IdHash> transactions;
     for (auto &v : s.transactions)
     {
-        if (!v.id.IsValid() || transactions.contains(v.id) || !IsLiveTrade(v.state) ||
+        if (!v.id.IsValid() || transactions.contains(v.id) || !IsValidTradeState(v.state) || !IsLiveTrade(v.state) ||
             !v.plan.buyer.IsValid() || !v.plan.seller.IsValid() || SameObject(v.plan.buyer, v.plan.seller) ||
             v.revision.value > s.revision.value ||
             (v.source_offer.IsValid() && (!v.source_offer_revision.value || v.accepted_quantity <= 0 || !v.accepted_subject.type.IsValid())))
@@ -1039,6 +1374,7 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
         {
             const auto from = a.find(transfer.from), to = a.find(transfer.to);
             if (from == a.end() || to == a.end() || transfer.from == transfer.to || transfer.amount <= 0 ||
+                from->second.state != AccountState::Active || to->second.state == AccountState::Closed ||
                 from->second.currency != transfer.currency || to->second.currency != transfer.currency ||
                 !ValidateMoneyAmount(transfer.currency, transfer.amount, false))
                 return foundation::Result<void>::Failure(
@@ -1067,8 +1403,8 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     for (auto &v : s.debts)
     {
         if (!v.id.IsValid() || !v.debtor.IsValid() || !v.creditor.IsValid() || SameObject(v.debtor, v.creditor) ||
-            !currencies_.contains(v.currency) || !ValidateMoneyAmount(v.currency, v.principal, false) ||
-            v.revision.value > s.revision.value || debts.contains(v.id))
+            !currencies_.contains(v.currency) || !IsValidDebtState(v.state) ||
+            !ValidateMoneyAmount(v.currency, v.principal, false) || v.revision.value > s.revision.value || debts.contains(v.id))
             return foundation::Result<void>::Failure(
                 Error("gameplay.economy.restore_invalid", "invalid debt snapshot"));
         debts.emplace(v.id, std::move(v));
@@ -1085,7 +1421,7 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
             (schema_it != contract_terms_schemas_.end() && v.terms_schema == schema_it->second.schema &&
              v.terms_payload.size() <= schema_it->second.max_payload_bytes);
         if (!v.id.IsValid() || !parties_valid || !v.type.IsValid() || !currencies_.contains(v.currency) ||
-            !ValidateMoneyAmount(v.currency, v.amount, true) || !terms_valid ||
+            !IsValidContractState(v.state) || !ValidateMoneyAmount(v.currency, v.amount, true) || !terms_valid ||
             v.revision.value > s.revision.value || contracts.contains(v.id))
             return foundation::Result<void>::Failure(
                 Error("gameplay.economy.restore_invalid", "invalid contract snapshot"));
@@ -1119,14 +1455,26 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
         !ValidGeneratorSnapshot(s.contract_ids, 0x3706, max_low(contracts, 0x3706)))
         return foundation::Result<void>::Failure(Error("gameplay.economy.restore_invalid", "invalid id generator snapshot"));
 
-    accounts_ = std::move(a);
-    reservations_ = std::move(r);
-    markets_ = std::move(markets);
-    indicators_ = std::move(indicators);
-    offers_ = std::move(offers);
-    transactions_ = std::move(transactions);
-    debts_ = std::move(debts);
-    contracts_ = std::move(contracts);
+    EconomyDiagnostics staged_diagnostics{};
+    staged_diagnostics.accounts = a.size();
+    staged_diagnostics.markets = markets.size();
+    staged_diagnostics.offers = offers.size();
+    staged_diagnostics.transactions = transactions.size();
+    staged_diagnostics.debts = debts.size();
+    for (const auto &[id, v] : r)
+    {
+        (void)id;
+        if (v.state == FundsReservationState::Active) ++staged_diagnostics.active_reservations;
+    }
+
+    accounts_.swap(a);
+    reservations_.swap(r);
+    markets_.swap(markets);
+    indicators_.swap(indicators);
+    offers_.swap(offers);
+    transactions_.swap(transactions);
+    debts_.swap(debts);
+    contracts_.swap(contracts);
     account_ids_.Restore(s.account_ids);
     reservation_ids_.Restore(s.reservation_ids);
     market_ids_.Restore(s.market_ids);
@@ -1137,18 +1485,7 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;
-    diagnostics_ = {};
-    diagnostics_.accounts = accounts_.size();
-    diagnostics_.markets = markets_.size();
-    diagnostics_.offers = offers_.size();
-    diagnostics_.transactions = transactions_.size();
-    diagnostics_.debts = debts_.size();
-    for (const auto &[id, v] : reservations_)
-    {
-        (void)id;
-        if (v.state == FundsReservationState::Active)
-            ++diagnostics_.active_reservations;
-    }
+    diagnostics_ = staged_diagnostics;
     journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
@@ -1156,12 +1493,34 @@ EconomyDiagnostics EconomyService::GetDiagnostics() const noexcept
 {
     return diagnostics_;
 }
-void EconomyService::Record(EconomyChange c)
+void EconomyService::Record(EconomyChange c) noexcept
 {
-    if (next_change_sequence_ == 0) return;
-    c.sequence = next_change_sequence_;
-    next_change_sequence_ = next_change_sequence_ == std::numeric_limits<std::uint64_t>::max() ? 0 : next_change_sequence_ + 1;
-    changes_.push_back(std::move(c));
-    while (changes_.size() > kChangeJournalCapacity) changes_.pop_front();
+    try
+    {
+        if (next_change_sequence_ == 0 || next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
+        {
+            if (const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_))
+            {
+                journal_epoch_ = *next_epoch;
+                changes_.clear();
+                next_change_sequence_ = 1;
+            }
+            else
+            {
+                changes_.clear();
+                return;
+            }
+        }
+        c.sequence = next_change_sequence_;
+        changes_.push_back(std::move(c));
+        ++next_change_sequence_;
+        if (changes_.size() > kChangeJournalCapacity) changes_.pop_front();
+    }
+    catch (...)
+    {
+        changes_.clear();
+        if (const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_)) journal_epoch_ = *next_epoch;
+        next_change_sequence_ = 1;
+    }
 }
 } // namespace epidemic::gameplay::economy

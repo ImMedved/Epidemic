@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Epidemic/Runtime/Environment/climate_profile.h"
 #include "Epidemic/Runtime/Environment/environment_runtime.h"
@@ -27,19 +27,33 @@ class EnvironmentRuntime final : public IEnvironmentRuntime
     [[nodiscard]] foundation::Result<void> ApplyUpdate(const EnvironmentStateUpdate& update) override;
     [[nodiscard]] foundation::Result<void> Update(const EnvironmentUpdateInput& input) override;
     void SetUpdatePolicy(std::shared_ptr<const IEnvironmentUpdatePolicy> policy) override;
+    void FreezeRegistration() noexcept override;
+    [[nodiscard]] bool IsRegistrationFrozen() const noexcept override;
+
+    void SetRevisionForTesting(std::uint64_t revision) noexcept;
+    void FailNextAllocationForTesting() noexcept;
 
   private:
+    struct RegionEnvironmentRecord
+    {
+        WeatherState weather{};
+        SeasonState season{};
+        ClimateProfile climate{};
+        std::uint64_t revision = 0;
+    };
+
     [[nodiscard]] bool IsRegionRegistered(RegionId region) const;
     [[nodiscard]] foundation::Result<void> EnsureRegisteredRegion(RegionId region) const;
     [[nodiscard]] std::uint64_t LookupRegionRevision(RegionId region) const;
-    [[nodiscard]] foundation::Result<std::uint64_t> AdvanceRevision();
+    [[nodiscard]] foundation::Result<std::uint64_t> PeekNextRevision() const;
+    [[nodiscard]] foundation::Result<void> ValidateSurfaceMutation(const SurfaceState* existing, const SurfaceState& candidate) const;
+    [[nodiscard]] bool ConsumeAllocationFailureForTesting() noexcept;
 
-    std::unordered_map<RegionId, WeatherState> weather_by_region_;
-    std::unordered_map<RegionId, SeasonState> season_by_region_;
-    std::unordered_map<RegionId, ClimateProfile> climate_by_region_;
-    std::unordered_map<RegionId, std::uint64_t> revision_by_region_;
+    std::unordered_map<RegionId, RegionEnvironmentRecord> regions_;
     std::unordered_map<SurfaceId, SurfaceState> surface_states_;
     std::shared_ptr<const IEnvironmentUpdatePolicy> update_policy_;
     std::uint64_t revision_ = 0;
+    bool registration_frozen_ = false;
+    bool fail_next_allocation_for_testing_ = false;
 };
 } // namespace epidemic::runtime

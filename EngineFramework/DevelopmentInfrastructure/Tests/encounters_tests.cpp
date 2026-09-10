@@ -27,6 +27,15 @@ EncounterDefinition BasicDefinition(EncounterDefinitionId id, SpawnTableId table
 
 int main()
 {
+    {
+        EncountersService invalid_service;
+        SpawnTable invalid_table;
+        invalid_table.id = SpawnTableId::FromString("invalid.table");
+        invalid_table.roll_policy = static_cast<SpawnRollPolicy>(999);
+        const auto before_revision = invalid_service.CurrentRevision();
+        Check(!invalid_service.RegisterSpawnTable(invalid_table), "invalid roll policy rejected");
+        Check(invalid_service.CurrentRevision() == before_revision, "invalid table leaves revision unchanged");
+    }
     const auto forest=Ref("world.area","forest");
     const auto clearing=Ref("world.position","forest.clearing");
     EncountersService service;

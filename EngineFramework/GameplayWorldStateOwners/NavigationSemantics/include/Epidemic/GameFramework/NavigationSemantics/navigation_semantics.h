@@ -409,11 +409,9 @@ class NavigationSemanticsService
     }
 
   private:
-    void Bump() noexcept
-    {
-        ++revision_.value;
-    }
-    void Record(NavigationChange change);
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    [[nodiscard]] bool CanAdvanceRevisionBy(std::size_t count) const noexcept;
+    void Record(NavigationChange change) noexcept;
     [[nodiscard]] NavigationPermissionResult EvaluatePermission(const NavigationPermissionQuery &query,
                                                                   std::optional<NavigationLinkId> required_link) const;
     [[nodiscard]] NavigationPermissionResult EvaluateAreaForProfile(const NavigationSemanticProfile *profile,

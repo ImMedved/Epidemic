@@ -26,12 +26,6 @@ class InMemoryAssetCatalog final : public IAssetCatalog, public IAssetCatalogWri
 
   private:
     [[nodiscard]] foundation::Result<AssetMetadata> ValidateAndNormalize(const AssetMetadata& metadata) const;
-    [[nodiscard]] bool BuildDependencyManifestDepthFirst(
-        AssetId current,
-        AssetDependencyManifest& manifest,
-        std::unordered_set<AssetId>& visiting,
-        std::unordered_set<AssetId>& visited,
-        bool& missing_required_dependency) const;
 
     std::unordered_map<AssetId, AssetMetadata> assets_;
     bool sealed_ = false;

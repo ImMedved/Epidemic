@@ -1,6 +1,7 @@
 #include "Epidemic/GameFramework/Interaction/interaction.h"
 #include <cstdlib>
 #include <iostream>
+#include <stdexcept>
 #define CHECK(expr)                                                                                                    \
     do                                                                                                                 \
     {                                                                                                                  \
@@ -16,12 +17,14 @@ struct Provider final : IInteractionProvider
 {
     InteractionTypeId type;
     InteractionProviderId id = InteractionProviderId::FromString("test.provider");
+    bool throw_on_collect = false;
     InteractionProviderId Id() const noexcept override
     {
         return id;
     }
     std::vector<InteractionCandidate> Collect(const InteractionContext &c) const override
     {
+        if (throw_on_collect) throw std::runtime_error("provider failed");
         return {{type, c.actor, c.target, id, 10, InteractionAvailability::Available, {}, {}}};
     }
 };
@@ -75,6 +78,12 @@ int main()
     c.gameplay.time = GameplayTimePoint{5};
     c.actor_revision = {2};
     c.target_revision = {2};
+    const auto before_provider_failure = s.CurrentRevision();
+    p.throw_on_collect = true;
+    CHECK(s.GetAvailableInteractions(c).empty());
+    CHECK(s.CurrentRevision() == before_provider_failure);
+    p.throw_on_collect = false;
+
     auto cs = s.GetAvailableInteractions(c);
     CHECK(cs.size() == 1);
     auto plan = s.Prepare(c, cs[0]);

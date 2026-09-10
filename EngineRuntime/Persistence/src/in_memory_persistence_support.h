@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "Epidemic/Runtime/Persistence/persistence_backend.h"
 #include "Epidemic/Runtime/Persistence/persistence_operation.h"
@@ -12,6 +12,8 @@
 
 namespace epidemic::runtime
 {
+struct PersistenceRuntimeTestAccess;
+
 struct PersistenceLocationHash
 {
     [[nodiscard]] size_t operator()(const PersistenceLocation& location) const noexcept;
@@ -22,6 +24,10 @@ class InMemoryPersistenceStore;
 struct PersistenceCandidateState
 {
     PersistenceSnapshot snapshot{};
+    std::unordered_map<PersistentObjectId, PersistentObjectRecord> objects{};
+    std::unordered_map<LazyRuleId, LazyRuleRecord> lazy_rules{};
+    std::unordered_map<PersistentObjectId, TombstoneRecord> tombstones{};
+    std::unordered_map<PersistenceLocation, ZoneOverrideSnapshot, PersistenceLocationHash> zone_overrides{};
     std::unordered_set<PersistentObjectId> dirty_ids{};
 };
 
@@ -47,13 +53,16 @@ class InMemorySaveTransaction final : public ISaveTransaction, public IPersisten
 
   private:
     friend class InMemoryPersistenceStore;
+    friend struct PersistenceRuntimeTestAccess;
 
     [[nodiscard]] foundation::Result<void> EnsureOpen() const;
+    [[nodiscard]] foundation::Result<void> StageOperation(PersistenceOperation operation);
 
     InMemoryPersistenceStore& store_;
     PersistenceRevision base_revision_ = 0;
     SaveTransactionState state_ = SaveTransactionState::Open;
     std::vector<PersistenceOperation> operations_;
+    bool fail_next_operation_allocation_for_testing_ = false;
 };
 
 class InMemoryPersistenceStore final : public IPersistenceStore
@@ -88,6 +97,7 @@ class InMemoryPersistenceStore final : public IPersistenceStore
 
   private:
     friend class InMemorySaveTransaction;
+    friend struct PersistenceRuntimeTestAccess;
 
     [[nodiscard]] foundation::Result<PersistenceCandidateState> BuildCandidateSnapshot(const InMemorySaveTransaction& transaction) const;
     [[nodiscard]] foundation::Result<void> PublishSnapshot(PersistenceCandidateState candidate);
@@ -100,6 +110,7 @@ class InMemoryPersistenceStore final : public IPersistenceStore
     PersistenceRevision revision_ = 0;
     std::shared_ptr<IPersistenceBackend> backend_;
     PersistenceDurability durability_ = PersistenceDurability::MemoryOnly;
+    mutable bool fail_next_candidate_build_allocation_for_testing_ = false;
 };
 
 [[nodiscard]] foundation::Result<void> ValidatePersistenceSnapshot(const PersistenceSnapshot& snapshot);

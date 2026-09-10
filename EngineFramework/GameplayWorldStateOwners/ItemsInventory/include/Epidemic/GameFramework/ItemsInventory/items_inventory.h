@@ -422,12 +422,9 @@ class ItemsInventoryService
     }
 
   private:
-    void Bump() noexcept
-    {
-        ++revision_.value;
-    }
-    void Record(ItemChange change);
-    void RebuildIndexes();
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    void Record(ItemChange change) noexcept;
+    void RebuildIndexes() noexcept;
     [[nodiscard]] bool EquivalentForStack(const ItemInstance &a, const ItemInstance &b) const noexcept;
     [[nodiscard]] bool ValidateContainerTarget(ItemInstanceId moving, ContainerId target,
                                                Fixed quantity) const noexcept;
@@ -449,6 +446,7 @@ class ItemsInventoryService
     std::unordered_map<ContainerId, std::vector<ItemInstanceId>, IdHash> container_items_;
     std::unordered_map<ItemDefinitionId, std::vector<ItemInstanceId>, IdHash> definition_items_;
     std::unordered_map<ItemInstanceId, Fixed, IdHash> active_reserved_quantities_;
+    bool indexes_valid_ = true;
     MonotonicIdGenerator<GameplayObjectId> item_ids_{0x3400};
     MonotonicIdGenerator<GameplayObjectId> container_ids_{0x3401};
     MonotonicIdGenerator<GameplayObjectId> transfer_ids_{0x3402};

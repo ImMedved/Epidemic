@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <cmath>
+#include <exception>
 #include <limits>
 #include <map>
 #include <optional>
@@ -35,6 +37,45 @@ template <typename TValue>
 [[nodiscard]] foundation::Result<void> FailureVoid(std::string_view code, std::string_view message)
 {
     return foundation::Result<void>::Failure(SupportError(code, message));
+}
+
+struct RuntimeSupportTestFaults
+{
+    bool fail_next_render_lease_publication = false;
+    std::optional<std::size_t> fail_streaming_lease_publication_after{};
+    bool fail_next_streaming_plan_construction = false;
+    bool fail_next_persistence_exception = false;
+    bool fail_next_streaming_cleanup_world_transition = false;
+    bool fail_next_main_view_creation = false;
+    bool fail_next_main_view_publication = false;
+};
+
+RuntimeSupportTestFaults g_runtime_support_test_faults{};
+
+[[nodiscard]] bool ConsumeTestFault(bool& fault) noexcept
+{
+    if (!fault)
+    {
+        return false;
+    }
+    fault = false;
+    return true;
+}
+
+[[nodiscard]] bool ConsumeStreamingLeasePublicationFault() noexcept
+{
+    auto& countdown = g_runtime_support_test_faults.fail_streaming_lease_publication_after;
+    if (!countdown)
+    {
+        return false;
+    }
+    if (*countdown == 0)
+    {
+        countdown.reset();
+        return true;
+    }
+    --*countdown;
+    return false;
 }
 
 template <typename TService>
@@ -120,7 +161,16 @@ class RuntimeRenderResourceBridge final : public renderer::IRenderResourceBridge
 
     ~RuntimeRenderResourceBridge() override
     {
-        (void)Shutdown();
+        // Explicit coordinator-driven Shutdown() is the ownership protocol. Destruction is
+        // only an emergency best-effort fallback because a failed manager Release() must
+        // remain retryable while the manager is still alive.
+        if (!shutdown_complete_)
+        {
+            (void)Shutdown();
+        }
+#ifndef NDEBUG
+        assert(leases_.empty() && "RuntimeRenderResourceBridge destroyed with unreleased resource leases");
+#endif
     }
 
     [[nodiscard]] foundation::Result<void> AcquirePayloads(ResourceId mesh, ResourceId material) override
@@ -137,7 +187,12 @@ class RuntimeRenderResourceBridge final : public renderer::IRenderResourceBridge
         const auto material_result = AcquireResource(material, MaterialType());
         if (!material_result)
         {
-            (void)ReleaseResource(mesh, MeshType());
+            const auto rollback = ReleaseResource(mesh, MeshType());
+            if (!rollback)
+            {
+                return FailureVoid("runtime_support.render_payload_cleanup_pending",
+                                   "material acquisition failed and mesh rollback is still pending");
+            }
             return material_result;
         }
         return foundation::Result<void>::Success();
@@ -182,7 +237,7 @@ class RuntimeRenderResourceBridge final : public renderer::IRenderResourceBridge
         std::optional<foundation::Error> first;
         for (auto iterator = leases_.begin(); iterator != leases_.end();)
         {
-            const auto released = manager_->Release(iterator->second.lease);
+            const auto released = ReleaseManagerLease(iterator->second.lease);
             if (released)
             {
                 iterator = leases_.erase(iterator);
@@ -223,6 +278,48 @@ class RuntimeRenderResourceBridge final : public renderer::IRenderResourceBridge
         std::size_t references = 0;
     };
 
+    [[nodiscard]] foundation::Result<ResourceLease> RequestManagerLease(ResourceRequest request)
+    {
+        try
+        {
+            return manager_->RequestLease(request);
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<ResourceLease>::Failure(
+                foundation::Error::Create("runtime_support.resource_manager_exception",
+                                          "resource manager threw while acquiring a render lease",
+                                          exception.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<ResourceLease>::Failure(
+                foundation::Error::Create("runtime_support.resource_manager_exception",
+                                          "resource manager threw while acquiring a render lease"));
+        }
+    }
+
+    [[nodiscard]] foundation::Result<void> ReleaseManagerLease(ResourceLease lease)
+    {
+        try
+        {
+            return manager_->Release(lease);
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("runtime_support.resource_manager_exception",
+                                          "resource manager threw while releasing a render lease",
+                                          exception.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("runtime_support.resource_manager_exception",
+                                          "resource manager threw while releasing a render lease"));
+        }
+    }
+
     [[nodiscard]] foundation::Result<void> AcquireResource(ResourceId id, ResourceType type)
     {
         if (!id.IsValid() || !type.IsValid())
@@ -239,12 +336,67 @@ class RuntimeRenderResourceBridge final : public renderer::IRenderResourceBridge
             ++iterator->second.references;
             return foundation::Result<void>::Success();
         }
-        const auto lease = manager_->RequestLease(ResourceRequest{id, type});
+
+        // Allocate the local ownership slot before touching the external manager. This
+        // removes the map-node allocation from the post-acquisition failure window.
+        decltype(leases_)::iterator slot{};
+        try
+        {
+            const auto inserted = leases_.try_emplace(key, Entry{});
+            slot = inserted.first;
+            if (!inserted.second)
+            {
+                return FailureVoid("runtime_support.render_lease_publication_conflict",
+                                   "render resource ownership slot already exists");
+            }
+        }
+        catch (const std::bad_alloc&)
+        {
+            return FailureVoid("runtime_support.allocation_failure",
+                               "could not allocate render resource ownership state");
+        }
+
+        const auto lease = RequestManagerLease(ResourceRequest{id, type});
         if (!lease)
         {
+            leases_.erase(slot);
             return foundation::Result<void>::Failure(lease.GetError());
         }
-        leases_.emplace(key, Entry{lease.Value(), 1});
+
+        if (ConsumeTestFault(g_runtime_support_test_faults.fail_next_render_lease_publication))
+        {
+            const auto rollback = ReleaseManagerLease(lease.Value());
+            if (rollback)
+            {
+                leases_.erase(slot);
+                return FailureVoid("runtime_support.allocation_failure",
+                                   "injected render lease publication failure");
+            }
+            slot->second = Entry{lease.Value(), 1};
+            return FailureVoid("runtime_support.render_payload_cleanup_pending",
+                               "injected render lease publication failure left cleanup pending");
+        }
+
+        // Publishing into an already allocated slot is non-allocating. Keep the acquired
+        // lease in that slot if an unexpected publication exception ever occurs, so the
+        // caller can explicitly ReleasePayloads()/Shutdown() instead of losing ownership.
+        try
+        {
+            slot->second = Entry{lease.Value(), 1};
+        }
+        catch (...)
+        {
+            const auto rollback = ReleaseManagerLease(lease.Value());
+            if (rollback)
+            {
+                leases_.erase(slot);
+                return FailureVoid("runtime_support.render_lease_publication_failed",
+                                   "render lease could not be published locally");
+            }
+            slot->second = Entry{lease.Value(), 1};
+            return FailureVoid("runtime_support.render_payload_cleanup_pending",
+                               "render lease publication failed and rollback is pending");
+        }
         return foundation::Result<void>::Success();
     }
 
@@ -260,7 +412,7 @@ class RuntimeRenderResourceBridge final : public renderer::IRenderResourceBridge
             --iterator->second.references;
             return foundation::Result<void>::Success();
         }
-        const auto released = manager_->Release(iterator->second.lease);
+        const auto released = ReleaseManagerLease(iterator->second.lease);
         if (!released)
         {
             return foundation::Result<void>::Failure(released.GetError());
@@ -1342,6 +1494,19 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
     {
     }
 
+    [[nodiscard]] foundation::Result<void> SetPreparedRevisionForTesting(std::uint64_t request_id,
+                                                                         std::uint64_t revision)
+    {
+        const auto iterator = records_.find(request_id);
+        if (iterator == records_.end())
+        {
+            return FailureVoid("runtime_support.streaming_record_missing",
+                               "streaming request has no preparation record");
+        }
+        iterator->second.prepared_revision = revision;
+        return foundation::Result<void>::Success();
+    }
+
     [[nodiscard]] foundation::Result<streaming::ProgressiveLoadPlan>
         BuildLoadPlan(const streaming::StreamingRequest& request) override
     {
@@ -1355,6 +1520,16 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
         {
             return Failure<streaming::ProgressiveLoadPlan>("streaming.unsupported_target",
                                                            "runtime streaming adapter supports chunk targets only");
+        }
+        if (!request.id.IsValid() || !request.handle.IsValid() || request.handle.id != request.id)
+        {
+            return Failure<streaming::ProgressiveLoadPlan>("runtime_support.invalid_streaming_request",
+                                                           "streaming request identity must be valid and consistent");
+        }
+        if (records_.contains(request.id.value))
+        {
+            return Failure<streaming::ProgressiveLoadPlan>("runtime_support.duplicate_streaming_request",
+                                                           "streaming request id already has a preparation record");
         }
         const auto snapshot = world_->chunks->GetChunkSnapshot(*chunk);
         if (!snapshot)
@@ -1383,22 +1558,46 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
             resource_bytes += requirement.estimated_bytes;
         }
 
-        PreparedRecord record{};
-        record.request = request.handle;
-        record.chunk = *chunk;
-        record.original = snapshot.Value();
-        record.manifest = manifest.Value();
-        records_[request.id.value] = std::move(record);
+        try
+        {
+            PreparedRecord record{};
+            record.request = request.handle;
+            record.chunk = *chunk;
+            record.original = snapshot.Value();
+            record.manifest = manifest.Value();
+            // Reserve all transient lease bookkeeping before any resource acquisition.
+            record.temporary_leases.reserve(record.manifest.resources.size());
 
-        streaming::ProgressiveLoadPlan plan{};
-        plan.steps = {
-            streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::ResolveTarget, 1},
-            streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::PrepareData, 1},
-            streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::PrepareResources,
-                                               std::max<std::size_t>(resource_bytes, 1)},
-            streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::Commit, 1},
-        };
-        return foundation::Result<streaming::ProgressiveLoadPlan>::Success(std::move(plan));
+            streaming::ProgressiveLoadPlan plan{};
+            plan.steps.reserve(4);
+            plan.steps.push_back(streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::ResolveTarget, 1});
+            plan.steps.push_back(streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::PrepareData, 1});
+            plan.steps.push_back(streaming::StreamingPlanStepRecord{
+                streaming::StreamingPlanStep::PrepareResources,
+                std::max<std::size_t>(resource_bytes, 1)});
+            plan.steps.push_back(streaming::StreamingPlanStepRecord{streaming::StreamingPlanStep::Commit, 1});
+
+            if (ConsumeTestFault(g_runtime_support_test_faults.fail_next_streaming_plan_construction))
+            {
+                throw std::bad_alloc{};
+            }
+
+            // Publish the fully constructed record only after the returned plan is also
+            // complete. try_emplace preserves any pre-existing record on failure.
+            const auto [iterator, inserted] = records_.try_emplace(request.id.value, std::move(record));
+            (void)iterator;
+            if (!inserted)
+            {
+                return Failure<streaming::ProgressiveLoadPlan>("runtime_support.duplicate_streaming_request",
+                                                               "streaming request id already has a preparation record");
+            }
+            return foundation::Result<streaming::ProgressiveLoadPlan>::Success(std::move(plan));
+        }
+        catch (const std::bad_alloc&)
+        {
+            return Failure<streaming::ProgressiveLoadPlan>("runtime_support.allocation_failure",
+                                                           "could not allocate streaming preparation state");
+        }
     }
 
     [[nodiscard]] foundation::Result<streaming::StreamingStepResult>
@@ -1463,15 +1662,50 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
         {
             return FailureVoid("runtime_support.invalid_chunk_state", "streaming commit requires Loading chunk state");
         }
-        const auto changed = world_->chunks->SetChunkState(
-            ChangeChunkStateCommand{record->chunk, snapshot.Value().revision, ChunkState::Resident});
+        // Reserve the local active index before the World mutation.  Publication into
+        // std::map is the last fallible local operation; if it cannot be prepared,
+        // the external chunk state remains Loading.
+        bool active_index_inserted = false;
+        try
+        {
+            const auto [iterator, inserted] = active_by_chunk_.try_emplace(record->chunk.Raw(), request.id.value);
+            if (!inserted && iterator->second != request.id.value)
+            {
+                return FailureVoid("runtime_support.chunk_already_active",
+                                   "streaming chunk is already owned by another active request");
+            }
+            active_index_inserted = inserted;
+        }
+        catch (const std::bad_alloc&)
+        {
+            return FailureVoid("runtime_support.allocation_failure",
+                               "could not reserve active streaming ownership before World commit");
+        }
+
+        foundation::Result<void> changed = foundation::Result<void>::Success();
+        try
+        {
+            changed = world_->chunks->SetChunkState(
+                ChangeChunkStateCommand{record->chunk, snapshot.Value().revision, ChunkState::Resident});
+        }
+        catch (const std::exception&)
+        {
+            changed = FailureVoid("runtime_support.world_exception", "World chunk transition threw an exception");
+        }
+        catch (...)
+        {
+            changed = FailureVoid("runtime_support.world_exception", "World chunk transition threw a non-standard exception");
+        }
         if (!changed)
         {
+            if (active_index_inserted)
+            {
+                active_by_chunk_.erase(record->chunk.Raw());
+            }
             return changed;
         }
         record->active_leases = std::move(record->temporary_leases);
         record->committed = true;
-        active_by_chunk_[record->chunk.Raw()] = request.id.value;
         return foundation::Result<void>::Success();
     }
 
@@ -1534,12 +1768,14 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
             const auto record = records_.find(active->second);
             if (record != records_.end())
             {
-                std::optional<foundation::Error> first;
-                ReleaseLeases(record->second.active_leases, first);
-                if (first)
+                const auto cleaned = CleanupRecord(record->second);
+                if (!cleaned)
                 {
-                    return foundation::Result<void>::Failure(*first);
+                    return cleaned;
                 }
+                records_.erase(record);
+                active_by_chunk_.erase(active);
+                return foundation::Result<void>::Success();
             }
         }
         const auto result = TransitionChunk(chunk, {ChunkState::Unloading}, ChunkState::Unloaded,
@@ -1599,9 +1835,18 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
             active_by_chunk_.erase(active);
             return foundation::Result<void>::Success();
         }
+        if (record->second.cleanup_resources_released)
+        {
+            return foundation::Result<void>::Success();
+        }
         std::optional<foundation::Error> first;
         ReleaseLeases(record->second.active_leases, first);
-        return first ? foundation::Result<void>::Failure(*first) : foundation::Result<void>::Success();
+        if (first)
+        {
+            return foundation::Result<void>::Failure(*first);
+        }
+        record->second.cleanup_resources_released = true;
+        return foundation::Result<void>::Success();
     }
 
     [[nodiscard]] foundation::Result<PreparedChunkDataSnapshot>
@@ -1668,6 +1913,9 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
         std::size_t accounted_resource_bytes = 0;
         bool world_loading = false;
         bool committed = false;
+        bool cleanup_resources_released = false;
+        bool cleanup_world_unloaded = false;
+        std::optional<ResourceLease> pending_acquisition_rollback{};
         std::uint64_t prepared_revision = 0;
     };
 
@@ -1714,7 +1962,35 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
 
     [[nodiscard]] foundation::Result<void> PrepareData(PreparedRecord& record)
     {
-        record.persisted = persistence_->query->FindZoneOverride(record.manifest.persistence_location);
+        if (record.prepared_revision == std::numeric_limits<std::uint64_t>::max())
+        {
+            return FailureVoid("runtime_support.prepared_revision_overflow",
+                               "prepared streaming data revision is exhausted");
+        }
+
+        std::optional<ZoneOverrideSnapshot> candidate;
+        try
+        {
+            if (ConsumeTestFault(g_runtime_support_test_faults.fail_next_persistence_exception))
+            {
+                throw std::runtime_error("injected persistence callback failure");
+            }
+            candidate = persistence_->query->FindZoneOverride(record.manifest.persistence_location);
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("runtime_support.persistence_exception",
+                                          "persistence query threw while preparing chunk data",
+                                          exception.what()));
+        }
+        catch (...)
+        {
+            return FailureVoid("runtime_support.persistence_exception",
+                               "persistence query threw while preparing chunk data");
+        }
+
+        record.persisted.swap(candidate);
         ++record.prepared_revision;
         return foundation::Result<void>::Success();
     }
@@ -1724,23 +2000,92 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
                          streaming::StreamingPlanStepRecord step,
                          const RuntimeBudget& available_budget)
     {
+        if (record.pending_acquisition_rollback)
+        {
+            const auto rolled_back = ReleaseLease(*record.pending_acquisition_rollback);
+            if (!rolled_back)
+            {
+                return foundation::Result<streaming::StreamingStepResult>::Failure(rolled_back.GetError());
+            }
+            record.pending_acquisition_rollback.reset();
+        }
+
+        if (record.temporary_leases.capacity() < record.manifest.resources.size())
+        {
+            try
+            {
+                record.temporary_leases.reserve(record.manifest.resources.size());
+            }
+            catch (const std::bad_alloc&)
+            {
+                return Failure<streaming::StreamingStepResult>("runtime_support.allocation_failure",
+                                                               "could not reserve streaming lease bookkeeping");
+            }
+        }
+
         while (record.acquired_resource_count < record.manifest.resources.size())
         {
             const ChunkResourceRequirement& requirement =
                 record.manifest.resources[record.acquired_resource_count];
-            const auto lease = resources_->manager->RequestLease(
-                ResourceRequest{requirement.resource, requirement.type});
+            const auto lease = RequestLease(ResourceRequest{requirement.resource, requirement.type});
             if (!lease)
             {
                 return foundation::Result<streaming::StreamingStepResult>::Failure(lease.GetError());
             }
-            record.temporary_leases.push_back(lease.Value());
+
+            if (ConsumeStreamingLeasePublicationFault())
+            {
+                const auto rollback = ReleaseLease(lease.Value());
+                if (!rollback)
+                {
+                    record.pending_acquisition_rollback = lease.Value();
+                    return Failure<streaming::StreamingStepResult>(
+                        "runtime_support.streaming_cleanup_pending",
+                        "injected streaming lease publication failure left cleanup pending");
+                }
+                return Failure<streaming::StreamingStepResult>("runtime_support.allocation_failure",
+                                                               "injected streaming lease publication failure");
+            }
+
+            try
+            {
+                record.temporary_leases.push_back(lease.Value());
+            }
+            catch (...)
+            {
+                const auto rollback = ReleaseLease(lease.Value());
+                if (!rollback)
+                {
+                    record.pending_acquisition_rollback = lease.Value();
+                    return Failure<streaming::StreamingStepResult>(
+                        "runtime_support.streaming_cleanup_pending",
+                        "streaming lease publication failed and rollback is pending");
+                }
+                return Failure<streaming::StreamingStepResult>("runtime_support.allocation_failure",
+                                                               "could not publish acquired streaming lease");
+            }
             ++record.acquired_resource_count;
         }
 
         for (const ResourceLease& lease : record.temporary_leases)
         {
-            const ResourceState state = resources_->manager->GetState(lease.resource);
+            ResourceState state = ResourceState::Unknown;
+            try
+            {
+                state = resources_->manager->GetState(lease.resource);
+            }
+            catch (const std::exception& exception)
+            {
+                return foundation::Result<streaming::StreamingStepResult>::Failure(
+                    foundation::Error::Create("runtime_support.resource_manager_exception",
+                                              "resource manager threw while reading streaming resource state",
+                                              exception.what()));
+            }
+            catch (...)
+            {
+                return Failure<streaming::StreamingStepResult>("runtime_support.resource_manager_exception",
+                                                               "resource manager threw while reading streaming resource state");
+            }
             if (state == ResourceState::Failed || state == ResourceState::Evicted || state == ResourceState::Unknown)
             {
                 return Failure<streaming::StreamingStepResult>("runtime_support.streaming_resource_failed",
@@ -1812,16 +2157,29 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
                 return FailureVoid("runtime_support.streaming_ownership_mismatch",
                                    "streaming adapter does not own the existing Loading transition");
             }
-            ReleaseLeases(record.temporary_leases, first);
-            if (first)
+            if (!record.cleanup_resources_released)
             {
-                return foundation::Result<void>::Failure(*first);
+                ReleaseLeases(record.temporary_leases, first);
+                if (first)
+                {
+                    return foundation::Result<void>::Failure(*first);
+                }
+                record.cleanup_resources_released = true;
             }
-            const auto unloaded = world_->chunks->SetChunkState(
-                ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloaded});
-            if (!unloaded)
+            if (!record.cleanup_world_unloaded)
             {
-                return unloaded;
+                if (ConsumeTestFault(g_runtime_support_test_faults.fail_next_streaming_cleanup_world_transition))
+                {
+                    return FailureVoid("runtime_support.injected_world_transition_failure",
+                                       "injected streaming cleanup World transition failure");
+                }
+                const auto unloaded = world_->chunks->SetChunkState(
+                    ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloaded});
+                if (!unloaded)
+                {
+                    return unloaded;
+                }
+                record.cleanup_world_unloaded = true;
             }
             record.persisted.reset();
             return foundation::Result<void>::Success();
@@ -1829,17 +2187,30 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
 
         if (current.state == ChunkState::Unloading)
         {
-            ReleaseLeases(record.active_leases, first);
-            ReleaseLeases(record.temporary_leases, first);
-            if (first)
+            if (!record.cleanup_resources_released)
             {
-                return foundation::Result<void>::Failure(*first);
+                ReleaseLeases(record.active_leases, first);
+                ReleaseLeases(record.temporary_leases, first);
+                if (first)
+                {
+                    return foundation::Result<void>::Failure(*first);
+                }
+                record.cleanup_resources_released = true;
             }
-            const auto unloaded = world_->chunks->SetChunkState(
-                ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloaded});
-            if (!unloaded)
+            if (!record.cleanup_world_unloaded)
             {
-                return unloaded;
+                if (ConsumeTestFault(g_runtime_support_test_faults.fail_next_streaming_cleanup_world_transition))
+                {
+                    return FailureVoid("runtime_support.injected_world_transition_failure",
+                                       "injected streaming cleanup World transition failure");
+                }
+                const auto unloaded = world_->chunks->SetChunkState(
+                    ChangeChunkStateCommand{record.chunk, current.revision, ChunkState::Unloaded});
+                if (!unloaded)
+                {
+                    return unloaded;
+                }
+                record.cleanup_world_unloaded = true;
             }
             record.persisted.reset();
             return foundation::Result<void>::Success();
@@ -1847,12 +2218,17 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
 
         if (current.state == ChunkState::Unloaded)
         {
-            ReleaseLeases(record.temporary_leases, first);
-            ReleaseLeases(record.active_leases, first);
-            if (first)
+            if (!record.cleanup_resources_released)
             {
-                return foundation::Result<void>::Failure(*first);
+                ReleaseLeases(record.temporary_leases, first);
+                ReleaseLeases(record.active_leases, first);
+                if (first)
+                {
+                    return foundation::Result<void>::Failure(*first);
+                }
+                record.cleanup_resources_released = true;
             }
+            record.cleanup_world_unloaded = true;
             record.persisted.reset();
             return foundation::Result<void>::Success();
         }
@@ -1887,10 +2263,22 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
     void ReleaseLeases(std::vector<ResourceLease>& leases, std::optional<foundation::Error>& first)
     {
         std::vector<ResourceLease> retry;
-        retry.reserve(leases.size());
+        try
+        {
+            retry.reserve(leases.size());
+        }
+        catch (const std::bad_alloc&)
+        {
+            if (!first)
+            {
+                first = foundation::Error::Create("runtime_support.allocation_failure",
+                                                  "could not allocate streaming cleanup bookkeeping");
+            }
+            return;
+        }
         for (const ResourceLease& lease : leases)
         {
-            const auto released = resources_->manager->Release(lease);
+            const auto released = ReleaseLease(lease);
             if (!released)
             {
                 if (!first)
@@ -1901,6 +2289,48 @@ class RuntimeStreamingAdapter final : public streaming::IStreamingDataSource,
             }
         }
         leases.swap(retry);
+    }
+
+    [[nodiscard]] foundation::Result<ResourceLease> RequestLease(ResourceRequest request)
+    {
+        try
+        {
+            return resources_->manager->RequestLease(request);
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<ResourceLease>::Failure(
+                foundation::Error::Create("runtime_support.resource_manager_exception",
+                                          "resource manager threw while acquiring a streaming lease",
+                                          exception.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<ResourceLease>::Failure(
+                foundation::Error::Create("runtime_support.resource_manager_exception",
+                                          "resource manager threw while acquiring a streaming lease"));
+        }
+    }
+
+    [[nodiscard]] foundation::Result<void> ReleaseLease(ResourceLease lease)
+    {
+        try
+        {
+            return resources_->manager->Release(lease);
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("runtime_support.resource_manager_exception",
+                                          "resource manager threw while releasing a streaming lease",
+                                          exception.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("runtime_support.resource_manager_exception",
+                                          "resource manager threw while releasing a streaming lease"));
+        }
     }
 
     std::shared_ptr<WorldServices> world_;
@@ -2685,21 +3115,254 @@ void AddAdapter(RuntimeIntegrationServices& integrations, RuntimeAdapterKind kin
     {
         return foundation::Result<void>::Success();
     }
-    const auto node = scene->nodes->CreateNode();
+    foundation::Result<SceneNodeId> node = foundation::Result<SceneNodeId>::Failure(
+        foundation::Error::Create("runtime_support.main_view_creation_failed", "main-view node creation did not run"));
+    try
+    {
+        node = scene->nodes->CreateNode();
+    }
+    catch (const std::exception& exception)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("runtime_support.scene_exception",
+                                      "scene threw while creating the main-view node",
+                                      exception.what()));
+    }
+    catch (...)
+    {
+        return FailureVoid("runtime_support.scene_exception",
+                           "scene threw while creating the main-view node");
+    }
     if (!node)
     {
         return foundation::Result<void>::Failure(node.GetError());
     }
-    const auto view = renderer_services.views->CreateView(
-        renderer::ViewDesc{RuntimeObjectId{node.Value().Raw()}});
+
+    auto rollback_node = [&]() -> foundation::Result<void> {
+        try
+        {
+            return scene->nodes->DestroyNode(node.Value());
+        }
+        catch (const std::exception& exception)
+        {
+            return foundation::Result<void>::Failure(
+                foundation::Error::Create("runtime_support.scene_exception",
+                                          "scene threw while rolling back the main-view node",
+                                          exception.what()));
+        }
+        catch (...)
+        {
+            return FailureVoid("runtime_support.scene_exception",
+                               "scene threw while rolling back the main-view node");
+        }
+    };
+
+    foundation::Result<renderer::ViewId> view = foundation::Result<renderer::ViewId>::Failure(
+        foundation::Error::Create("runtime_support.main_view_creation_failed", "main view creation did not run"));
+    if (ConsumeTestFault(g_runtime_support_test_faults.fail_next_main_view_creation))
+    {
+        const auto cleanup = rollback_node();
+        return cleanup ? FailureVoid("runtime_support.injected_view_creation_failure",
+                                     "injected main-view creation failure")
+                       : FailureVoid("runtime_support.main_view_cleanup_pending",
+                                     "injected view creation failure and scene-node rollback failed");
+    }
+    try
+    {
+        view = renderer_services.views->CreateView(
+            renderer::ViewDesc{RuntimeObjectId{node.Value().Raw()}});
+    }
+    catch (const std::exception& exception)
+    {
+        const auto cleanup = rollback_node();
+        if (!cleanup)
+        {
+            return FailureVoid("runtime_support.main_view_cleanup_pending",
+                               "view creation threw and scene-node rollback failed");
+        }
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("runtime_support.renderer_exception",
+                                      "renderer threw while creating the main view",
+                                      exception.what()));
+    }
+    catch (...)
+    {
+        const auto cleanup = rollback_node();
+        if (!cleanup)
+        {
+            return FailureVoid("runtime_support.main_view_cleanup_pending",
+                               "view creation threw and scene-node rollback failed");
+        }
+        return FailureVoid("runtime_support.renderer_exception",
+                           "renderer threw while creating the main view");
+    }
     if (!view)
     {
-        return foundation::Result<void>::Failure(view.GetError());
+        const auto cleanup = rollback_node();
+        return cleanup ? foundation::Result<void>::Failure(view.GetError())
+                       : FailureVoid("runtime_support.main_view_cleanup_pending",
+                                     "view creation failed and scene-node rollback failed");
     }
-    return renderer_services.views->SetMainView(view.Value());
+
+    auto rollback_view_and_node = [&]() -> foundation::Result<void> {
+        std::optional<foundation::Error> first;
+        try
+        {
+            const auto destroyed = renderer_services.views->DestroyView(view.Value());
+            if (!destroyed)
+            {
+                first = destroyed.GetError();
+            }
+        }
+        catch (const std::exception& exception)
+        {
+            first = foundation::Error::Create("runtime_support.renderer_exception",
+                                              "renderer threw while rolling back the main view",
+                                              exception.what());
+        }
+        catch (...)
+        {
+            first = foundation::Error::Create("runtime_support.renderer_exception",
+                                              "renderer threw while rolling back the main view");
+        }
+
+        const auto node_cleanup = rollback_node();
+        if (!node_cleanup && !first)
+        {
+            first = node_cleanup.GetError();
+        }
+        return first ? foundation::Result<void>::Failure(*first) : foundation::Result<void>::Success();
+    };
+
+    foundation::Result<void> published = foundation::Result<void>::Failure(
+        foundation::Error::Create("runtime_support.main_view_creation_failed", "main-view publication did not run"));
+    if (ConsumeTestFault(g_runtime_support_test_faults.fail_next_main_view_publication))
+    {
+        const auto cleanup = rollback_view_and_node();
+        return cleanup ? FailureVoid("runtime_support.injected_main_view_publication_failure",
+                                     "injected main-view publication failure")
+                       : FailureVoid("runtime_support.main_view_cleanup_pending",
+                                     "injected main-view publication failure and rollback failed");
+    }
+    try
+    {
+        published = renderer_services.views->SetMainView(view.Value());
+    }
+    catch (const std::exception& exception)
+    {
+        const auto cleanup = rollback_view_and_node();
+        if (!cleanup)
+        {
+            return FailureVoid("runtime_support.main_view_cleanup_pending",
+                               "main-view publication threw and rollback failed");
+        }
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("runtime_support.renderer_exception",
+                                      "renderer threw while publishing the main view",
+                                      exception.what()));
+    }
+    catch (...)
+    {
+        const auto cleanup = rollback_view_and_node();
+        if (!cleanup)
+        {
+            return FailureVoid("runtime_support.main_view_cleanup_pending",
+                               "main-view publication threw and rollback failed");
+        }
+        return FailureVoid("runtime_support.renderer_exception",
+                           "renderer threw while publishing the main view");
+    }
+
+    if (!published)
+    {
+        const auto cleanup = rollback_view_and_node();
+        return cleanup ? published
+                       : FailureVoid("runtime_support.main_view_cleanup_pending",
+                                     "main-view publication failed and rollback did not complete");
+    }
+    return foundation::Result<void>::Success();
 }
 
 } // namespace
+
+namespace support_testing
+{
+std::shared_ptr<renderer::IRenderResourceBridge>
+CreateRenderResourceBridge(std::shared_ptr<IResourceManager> manager)
+{
+    return std::make_shared<RuntimeRenderResourceBridge>(std::move(manager));
+}
+
+std::shared_ptr<streaming::IStreamingDataSource>
+CreateStreamingAdapter(std::shared_ptr<WorldServices> world,
+                       std::shared_ptr<ResourceServices> resources,
+                       std::shared_ptr<PersistenceServices> persistence,
+                       std::shared_ptr<IChunkStreamingManifestSource> manifests)
+{
+    return std::make_shared<RuntimeStreamingAdapter>(std::move(world),
+                                                     std::move(resources),
+                                                     std::move(persistence),
+                                                     std::move(manifests));
+}
+
+void FailNextRenderLeasePublication() noexcept
+{
+    g_runtime_support_test_faults.fail_next_render_lease_publication = true;
+}
+
+void FailStreamingLeasePublicationAfter(std::size_t successful_publications) noexcept
+{
+    g_runtime_support_test_faults.fail_streaming_lease_publication_after = successful_publications;
+}
+
+void FailNextStreamingLeasePublication() noexcept
+{
+    FailStreamingLeasePublicationAfter(0);
+}
+
+void FailNextStreamingPlanConstruction() noexcept
+{
+    g_runtime_support_test_faults.fail_next_streaming_plan_construction = true;
+}
+
+void FailNextPersistenceException() noexcept
+{
+    g_runtime_support_test_faults.fail_next_persistence_exception = true;
+}
+
+void FailNextStreamingCleanupWorldTransition() noexcept
+{
+    g_runtime_support_test_faults.fail_next_streaming_cleanup_world_transition = true;
+}
+
+void FailNextMainViewCreation() noexcept
+{
+    g_runtime_support_test_faults.fail_next_main_view_creation = true;
+}
+
+void FailNextMainViewPublication() noexcept
+{
+    g_runtime_support_test_faults.fail_next_main_view_publication = true;
+}
+
+foundation::Result<void> EnsureMainView(renderer::RendererServices& renderer_services,
+                                        const std::shared_ptr<SceneServices>& scene)
+{
+    return ::epidemic::runtime::EnsureMainView(renderer_services, scene);
+}
+
+foundation::Result<void> SetPreparedRevision(streaming::IStreamingDataSource& source,
+                                             std::uint64_t request_id,
+                                             std::uint64_t revision)
+{
+    auto* adapter = dynamic_cast<RuntimeStreamingAdapter*>(&source);
+    if (!adapter)
+    {
+        return FailureVoid("runtime_support.test_invalid_adapter", "streaming test adapter type mismatch");
+    }
+    return adapter->SetPreparedRevisionForTesting(request_id, revision);
+}
+} // namespace support_testing
 
 foundation::Result<PreparedEngineRuntime> PrepareEngineRuntime(const EngineRuntimeOptions& options,
                                                                EngineRuntimeDependencies dependencies)

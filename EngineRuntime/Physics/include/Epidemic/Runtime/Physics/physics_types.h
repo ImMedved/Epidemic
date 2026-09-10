@@ -194,6 +194,10 @@ struct PhysicsStepResult
     RuntimeFrameDuration accumulated_time{};
     RuntimeFrameDuration dropped_time{};
     std::uint64_t revision = 0;
+    // Transform publication is a derived projection. A non-zero count means the
+    // authoritative physics step committed successfully but one or more sink writes
+    // remain retryable and will be retried by subsequent physics updates.
+    std::uint32_t pending_transform_projections = 0;
 };
 
 struct PhysicsBodySnapshot

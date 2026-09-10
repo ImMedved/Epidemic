@@ -5,6 +5,7 @@
 #include <optional>
 #include <unordered_map>
 #include <vector>
+#include <string_view>
 
 namespace epidemic::runtime::animation
 {
@@ -23,6 +24,8 @@ public:
     [[nodiscard]] bool HasSkeleton(SkeletonId id) const override;
     [[nodiscard]] foundation::Result<void> RegisterClip(AnimationClipDesc desc) override;
     [[nodiscard]] bool HasClip(AnimationClipId id) const override;
+    [[nodiscard]] foundation::Result<void> Freeze() override;
+    [[nodiscard]] bool IsFrozen() const noexcept override;
 
     [[nodiscard]] foundation::Result<AnimatorHandle> CreateAnimatorHandle(const AnimatorDesc& desc) override;
     [[nodiscard]] foundation::Result<void> DestroyAnimator(AnimatorHandle handle) override;
@@ -38,6 +41,9 @@ public:
     [[nodiscard]] foundation::Result<PoseBuffer> GetPoseBuffer(AnimatorHandle handle) const override;
     [[nodiscard]] std::span<const AnimationEvent> Events() const override;
     void Clear() override;
+
+    void SetRevisionForTesting(AnimatorHandle handle, std::uint64_t revision) noexcept;
+    void SetNextIdentityForTesting(std::uint64_t id, std::uint32_t generation) noexcept;
 
 private:
     struct AnimatorRecord
@@ -63,9 +69,12 @@ private:
     [[nodiscard]] PoseBuffer BuildPoseBuffer(const AnimatorRecord& animator) const;
     [[nodiscard]] foundation::Result<PoseBuffer> EvaluatePose(const AnimatorRecord& animator);
     [[nodiscard]] foundation::Result<void> PublishPose(const AnimatorRecord& animator);
-    void AdvancePlayback(AnimatorRecord& animator, FrameDuration delta);
-    void AdvanceCrossfade(AnimatorRecord& animator, FrameDuration delta);
-    void QueueEvent(AnimatorInstanceId animator, std::string name, float time);
+    [[nodiscard]] foundation::Result<void> AdvancePlayback(AnimatorRecord& animator, FrameDuration delta);
+    [[nodiscard]] foundation::Result<void> AdvanceCrossfade(AnimatorRecord& animator, FrameDuration delta);
+    void QueueEvent(AnimatorInstanceId animator, std::string_view name, float time) noexcept;
+    [[nodiscard]] foundation::Result<std::uint64_t> NextRevision(const AnimatorRecord& animator) const;
+    [[nodiscard]] foundation::Result<void> ValidateSkeleton(const SkeletonDesc& desc) const;
+    [[nodiscard]] foundation::Result<void> ValidateClip(const AnimationClipDesc& desc) const;
 
     AnimationOptions options_{};
     AnimationDependencies dependencies_{};
@@ -75,5 +84,6 @@ private:
     std::unordered_map<AnimationClipId, AnimationClipDesc> clips_;
     std::unordered_map<AnimatorInstanceId, AnimatorRecord> animators_;
     std::vector<AnimationEvent> events_;
+    bool registries_frozen_ = false;
 };
 } // namespace epidemic::runtime::animation

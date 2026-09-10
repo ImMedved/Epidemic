@@ -307,6 +307,8 @@ foundation::Result<void> ProcessesSimulationLayer::Commit(const simulation::Simu
     context.time = task.to;
     auto completed = processes_.CompletePreparedDueForSimulation(task.area, process_ids, task.to, context);
     if (!completed) return foundation::Result<void>::Failure(completed.GetError());
+    if (!completed.Value().failures.empty())
+        return foundation::Result<void>::Failure(completed.Value().failures.front().error);
     return foundation::Result<void>::Success();
 }
 }

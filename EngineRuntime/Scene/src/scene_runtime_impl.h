@@ -1,10 +1,12 @@
-﻿#pragma once
+#pragma once
 
 #include "Epidemic/Runtime/Scene/scene_node_registry.h"
 #include "Epidemic/Runtime/Scene/scene_query.h"
 #include "Epidemic/Runtime/Scene/spatial_index.h"
 #include "Epidemic/Runtime/Scene/transform_registry.h"
 
+#include <cstddef>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -36,18 +38,23 @@ class SceneRuntime final : public ISceneNodeRegistry,
         WorldTransformWriteMode mode = WorldTransformWriteMode::RejectNonInvertibleParent) override;
     [[nodiscard]] std::optional<Transform> GetLocalTransform(SceneNodeId node) const override;
     [[nodiscard]] std::optional<Transform> GetWorldTransform(SceneNodeId node) const override;
-    void MarkTransformClean(SceneNodeId node) override;
+    [[nodiscard]] foundation::Result<void> MarkTransformClean(SceneNodeId node) override;
     [[nodiscard]] bool IsTransformDirty(SceneNodeId node) const override;
 
     [[nodiscard]] foundation::Result<void> SetLocalBounds(SceneNodeId node, const Aabb& bounds) override;
     [[nodiscard]] std::optional<Aabb> GetLocalBounds(SceneNodeId node) const override;
     [[nodiscard]] std::optional<Aabb> GetWorldBounds(SceneNodeId node) const override;
-    void MarkBoundsClean(SceneNodeId node) override;
+    [[nodiscard]] foundation::Result<void> MarkBoundsClean(SceneNodeId node) override;
     [[nodiscard]] bool IsBoundsDirty(SceneNodeId node) const override;
 
     [[nodiscard]] std::vector<SceneNodeId> QueryAabb(const Aabb& bounds) const override;
     [[nodiscard]] std::vector<SceneNodeId> QuerySphere(const Vec3& center, float radius) const override;
     [[nodiscard]] SceneSnapshot CaptureSnapshot() const override;
+
+    // Deterministic boundary seams used by the module contract suite.
+    void SetAllocatorStateForTesting(std::uint64_t next_node_value) noexcept;
+    void SetRevisionForTesting(std::uint64_t revision) noexcept;
+    void FailNextAllocationForTesting() noexcept;
 
   private:
     struct SceneNodeRecord
@@ -68,13 +75,15 @@ class SceneRuntime final : public ISceneNodeRegistry,
     [[nodiscard]] Transform ComputeWorldTransform(SceneNodeId node) const;
     [[nodiscard]] foundation::Result<Transform> ComputeLocalTransform(SceneNodeId parent, const Transform& world_transform) const;
     [[nodiscard]] std::optional<Aabb> ComputeWorldBounds(SceneNodeId node) const;
-    void MarkSubtreeDirty(SceneNodeId node, SceneDirtyMask flags);
-    void BumpRevision(SceneNodeRecord& record, SceneDirtyMask flags);
-    void RemoveChild(SceneNodeId parent, SceneNodeId child);
+    [[nodiscard]] std::vector<SceneNodeId> CollectSubtree(SceneNodeId node) const;
+    [[nodiscard]] foundation::Result<std::uint64_t> ReserveRevisionRange(std::size_t count) const;
+    void MarkNodesDirty(std::span<const SceneNodeId> nodes, SceneDirtyMask flags, std::uint64_t& next_revision) noexcept;
+    void BumpRevisionCommitted(SceneNodeRecord& record, SceneDirtyMask flags, std::uint64_t revision) noexcept;
     [[nodiscard]] std::vector<SceneNodeId> SortedNodeIds() const;
 
     std::unordered_map<SceneNodeId, SceneNodeRecord> nodes_;
     std::uint64_t next_node_value_ = 1;
     std::uint64_t revision_ = 0;
+    bool fail_next_allocation_for_testing_ = false;
 };
 } // namespace epidemic::runtime

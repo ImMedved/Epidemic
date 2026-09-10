@@ -286,7 +286,15 @@ EffectOperationDisposition EffectService::ValidateCapabilities(
                    ? EffectOperationDisposition::Unavailable
                    : EffectOperationDisposition::Applied;
     }
-    const auto state = target_state_provider_->Resolve(target);
+    EffectTargetState state;
+    try
+    {
+        state = target_state_provider_->Resolve(target);
+    }
+    catch (...)
+    {
+        return EffectOperationDisposition::Failed;
+    }
     if (!state.known)
     {
         return EffectOperationDisposition::InvalidTarget;
@@ -417,7 +425,8 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
     {
         return foundation::Result<EffectExecutionResult>::Failure(Error("gameplay.effect_definition_unknown", "effect definition is not registered"));
     }
-    const auto raw_execution = execution_ids_.Next();
+    auto staged_execution_ids = execution_ids_;
+    const auto raw_execution = staged_execution_ids.Next();
     if (!raw_execution.IsValid())
     {
         return foundation::Result<EffectExecutionResult>::Failure(Error("gameplay.effect_execution_id_exhausted", "effect execution id generator is exhausted"));
@@ -429,13 +438,29 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
         return foundation::Result<EffectExecutionResult>::Failure(expanded.GetError());
     }
 
+    EffectExecutionResult result;
+    result.execution = execution;
+    std::vector<EffectOperation> wave = std::move(expanded).Value();
+    std::vector<EffectOperation> next_wave;
+    try
+    {
+        result.operations.reserve(budget.max_effects);
+        wave.reserve(budget.max_effects);
+        next_wave.reserve(budget.max_effects);
+    }
+    catch (const std::exception&)
+    {
+        return foundation::Result<EffectExecutionResult>::Failure(
+            Error("gameplay.effect_execution_storage_failed", "unable to stage effect execution storage"));
+    }
+
+    // From this point the execution is accepted and all framework-owned result scratch
+    // storage needed by commit has been prepared. Publish the ID only now.
+    execution_ids_ = staged_execution_ids;
     ++executions_;
     targets_ += request.targets.size();
     RecordChange(EffectChange{0, EffectChangeKind::ExecutionStarted, execution, {}, {}, {}, EffectOperationDisposition::Applied, request.context});
 
-    EffectExecutionResult result;
-    result.execution = execution;
-    std::vector<EffectOperation> wave = std::move(expanded).Value();
     std::uint64_t total_operations = 0;
     bool any_applied = false;
     bool any_rejected = false;
@@ -466,7 +491,7 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
             return foundation::Result<EffectExecutionResult>::Failure(prepared_result.GetError());
         }
         auto prepared = std::move(prepared_result).Value();
-        std::vector<EffectOperation> next_wave;
+        next_wave.clear();
         std::uint64_t derived_sequence = 0;
 
         for (auto& item : prepared)
@@ -553,7 +578,8 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
 
         ++result.waves;
         ++waves_;
-        wave = std::move(next_wave);
+        wave.clear();
+        wave.swap(next_wave);
     }
 
     if (any_failed)
@@ -595,7 +621,8 @@ foundation::Result<DeferredEffectId> EffectService::Defer(
     {
         return foundation::Result<DeferredEffectId>::Failure(Error("gameplay.deferred_effect_invalid", "deferred effect requires valid registered definition, clock and targets"));
     }
-    const auto raw = deferred_ids_.Next();
+    auto staged_deferred_ids = deferred_ids_;
+    const auto raw = staged_deferred_ids.Next();
     if (!raw.IsValid())
     {
         return foundation::Result<DeferredEffectId>::Failure(Error("gameplay.deferred_effect_id_exhausted", "deferred effect id generator is exhausted"));
@@ -609,7 +636,12 @@ foundation::Result<DeferredEffectId> EffectService::Defer(
             request.targets.push_back(operation.target);
         }
     }
-    deferred_.emplace(id, DeferredEffectRecord{id, std::move(request), clock, due, std::nullopt, persistence});
+    const auto inserted = deferred_.emplace(id, DeferredEffectRecord{id, std::move(request), clock, due, std::nullopt, persistence});
+    if (!inserted.second)
+    {
+        return foundation::Result<DeferredEffectId>::Failure(Error("gameplay.deferred_effect_id_conflict", "deferred effect id already exists"));
+    }
+    deferred_ids_ = staged_deferred_ids;
     RecordChange(EffectChange{0, EffectChangeKind::DeferredCreated, {}, {}, {}, id, EffectOperationDisposition::Applied, deferred_.at(id).request.context});
     return foundation::Result<DeferredEffectId>::Success(id);
 }
@@ -629,8 +661,11 @@ foundation::Result<void> EffectService::BindDeferredSchedule(DeferredEffectId id
     const auto existing = deferred_by_schedule_.find(schedule);
     if (existing != deferred_by_schedule_.end() && existing->second != id)
         return foundation::Result<void>::Failure(Error("gameplay.deferred_effect_schedule_conflict", "schedule is already bound to another deferred effect"));
+    const auto inserted = deferred_by_schedule_.emplace(schedule, id);
+    if (!inserted.second && inserted.first->second != id)
+        return foundation::Result<void>::Failure(Error("gameplay.deferred_effect_schedule_conflict", "schedule is already bound to another deferred effect"));
+    // optional<ScheduleId> assignment is non-allocating; publish it only after the reverse index exists.
     found->second.schedule = schedule;
-    deferred_by_schedule_[schedule] = id;
     return foundation::Result<void>::Success();
 }
 
@@ -773,19 +808,58 @@ foundation::Result<EffectRequest> EffectService::TakeDeferredBySchedule(Schedule
     return request;
 }
 
-void EffectService::RecordChange(EffectChange change)
+void EffectService::RecordChange(EffectChange change) noexcept
 {
+    // Journal loss must never unwind through an effect commit. Rotate the journal epoch on
+    // storage failure so every existing cursor deterministically requests a full snapshot.
     if (next_change_sequence_ == 0)
+    {
+        if (journal_epoch_ == std::numeric_limits<std::uint64_t>::max())
+            return;
+        ++journal_epoch_;
+        next_change_sequence_ = 1;
+        changes_.clear();
+    }
+
+    const auto sequence = next_change_sequence_;
+    change.sequence = sequence;
+    try
+    {
+        changes_.push_back(std::move(change));
+    }
+    catch (...)
+    {
+        changes_.clear();
+        if (journal_epoch_ != std::numeric_limits<std::uint64_t>::max())
+        {
+            ++journal_epoch_;
+            next_change_sequence_ = 1;
+        }
+        else
+        {
+            next_change_sequence_ = 0;
+        }
         return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
-    changes_.push_back(std::move(change));
+    }
+
+    next_change_sequence_ = sequence == std::numeric_limits<std::uint64_t>::max() ? 0 : sequence + 1;
     while (changes_.size() > kChangeJournalCapacity)
     {
-        changes_.erase(changes_.begin());
+        try
+        {
+            changes_.erase(changes_.begin());
+        }
+        catch (...)
+        {
+            changes_.clear();
+            if (journal_epoch_ != std::numeric_limits<std::uint64_t>::max())
+            {
+                ++journal_epoch_;
+                next_change_sequence_ = 1;
+            }
+            else next_change_sequence_ = 0;
+            return;
+        }
     }
 }
 

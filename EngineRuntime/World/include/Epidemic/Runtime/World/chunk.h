@@ -65,5 +65,7 @@ class IChunkRegistry
     [[nodiscard]] virtual std::optional<ChunkDescriptor> FindChunk(ChunkId id) const = 0;
     [[nodiscard]] virtual foundation::Result<ChunkSnapshot> GetChunkSnapshot(ChunkId id) const = 0;
     [[nodiscard]] virtual foundation::Result<void> SetChunkState(ChangeChunkStateCommand command) = 0;
+    virtual void Freeze() noexcept = 0;
+    [[nodiscard]] virtual bool IsFrozen() const noexcept = 0;
 };
-} 
+}

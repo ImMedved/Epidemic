@@ -10,6 +10,7 @@
 #include <limits>
 #include <memory>
 #include <span>
+#include <stdexcept>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -61,6 +62,10 @@ struct TestBackend final : IAudioBackend
     bool fail_create = false;
     bool fail_destroy = false;
     bool fail_play = false;
+    bool fail_stop = false;
+    bool fail_gain = false;
+    bool throw_update = false;
+    bool throw_play = false;
     bool fail_spatial = false;
     bool fail_update = false;
     bool fail_destroy_listener_once = false;
@@ -122,6 +127,10 @@ struct TestBackend final : IAudioBackend
 
     epidemic::foundation::Result<void> Play(BackendVoiceHandle) override
     {
+        if (throw_play)
+        {
+            throw std::runtime_error("test backend play exception");
+        }
         if (fail_play)
         {
             return epidemic::foundation::Result<void>::Failure(
@@ -135,6 +144,11 @@ struct TestBackend final : IAudioBackend
 
     epidemic::foundation::Result<void> Stop(BackendVoiceHandle) override
     {
+        if (fail_stop)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("audio.backend_failed", "test backend stop failed"));
+        }
         ++stopped;
         return epidemic::foundation::Result<void>::Success();
     }
@@ -146,6 +160,11 @@ struct TestBackend final : IAudioBackend
 
     epidemic::foundation::Result<void> SetGain(BackendVoiceHandle, float gain) override
     {
+        if (fail_gain)
+        {
+            return epidemic::foundation::Result<void>::Failure(
+                epidemic::foundation::Error::Create("audio.backend_failed", "test backend gain failed"));
+        }
         ++gain_updates;
         last_gain = gain;
         return epidemic::foundation::Result<void>::Success();
@@ -195,6 +214,10 @@ struct TestBackend final : IAudioBackend
 
     epidemic::foundation::Result<void> Update(RuntimeFrameDuration) override
     {
+        if (throw_update)
+        {
+            throw std::runtime_error("test backend update exception");
+        }
         if (fail_update)
         {
             return epidemic::foundation::Result<void>::Failure(
@@ -807,6 +830,195 @@ bool TestMainListenerSelectionIsAtomic()
                  "failed SetMainListener should keep previous main listener");
     return ok;
 }
+
+bool SameMixerGroup(const std::optional<MixerGroupState>& left, const std::optional<MixerGroupState>& right)
+{
+    if (left.has_value() != right.has_value())
+    {
+        return false;
+    }
+    if (!left.has_value())
+    {
+        return true;
+    }
+    return left->id == right->id && left->volume == right->volume && left->fade_state == right->fade_state &&
+           left->parent == right->parent && left->fade_duration == right->fade_duration && left->fade_progress == right->fade_progress;
+}
+
+bool SameEmitterSnapshot(const epidemic::runtime::audio::AudioEmitterSnapshot& left,
+                         const epidemic::runtime::audio::AudioEmitterSnapshot& right)
+{
+    return left.id == right.id && left.handle == right.handle && left.sound == right.sound && left.transform == right.transform &&
+           left.state == right.state && left.fade_duration == right.fade_duration && left.fade_progress == right.fade_progress &&
+           left.revision == right.revision;
+}
+
+bool TestPlayAndFadeFailuresAreAtomic()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, resources, transforms}};
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    if (!emitter)
+    {
+        return false;
+    }
+    const auto before_play = runtime.GetEmitterSnapshot(emitter.Value());
+    backend->fail_gain = true;
+    const auto failed_play = runtime.Play(emitter.Value());
+    const auto after_play = runtime.GetEmitterSnapshot(emitter.Value());
+    bool ok = Expect(!failed_play && before_play && after_play && SameEmitterSnapshot(before_play.Value(), after_play.Value()),
+                     "failed Play must leave emitter snapshot unchanged");
+    backend->fail_gain = false;
+    backend->throw_play = true;
+    const auto before_throw = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto thrown_play = runtime.Play(emitter.Value());
+    const auto after_throw = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!thrown_play && thrown_play.GetError().HasCode("audio.backend_exception") && before_throw && after_throw &&
+                     SameEmitterSnapshot(before_throw.Value(), after_throw.Value()),
+                 "throwing backend Play must be contained and atomic");
+    backend->throw_play = false;
+    ok &= Expect(runtime.Play(emitter.Value()).HasValue(), "emitter should play after retry");
+
+    backend->fail_gain = true;
+    const auto before_fade = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto failed_fade = runtime.FadeOut(emitter.Value(), RuntimeFrameDuration{std::chrono::microseconds{10}});
+    const auto after_fade = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!failed_fade && before_fade && after_fade && SameEmitterSnapshot(before_fade.Value(), after_fade.Value()),
+                 "failed FadeOut must leave emitter snapshot unchanged");
+    backend->fail_gain = false;
+    backend->fail_stop = true;
+    const auto before_zero = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto failed_zero = runtime.FadeOut(emitter.Value(), RuntimeFrameDuration{});
+    const auto after_zero = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!failed_zero && before_zero && after_zero && SameEmitterSnapshot(before_zero.Value(), after_zero.Value()),
+                 "failed zero-duration FadeOut must leave emitter snapshot unchanged");
+    return ok;
+}
+
+bool TestTickFailureDoesNotAdvanceLocalState()
+{
+    auto backend = std::make_shared<TestBackend>();
+    auto resources = std::make_shared<TestResourceSource>();
+    auto transforms = std::make_shared<TestTransformSource>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend, resources, transforms}};
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    if (!emitter || !runtime.Play(emitter.Value()) ||
+        !runtime.FadeOut(emitter.Value(), RuntimeFrameDuration{std::chrono::microseconds{10}}))
+    {
+        return false;
+    }
+    const auto before = runtime.GetEmitterSnapshot(emitter.Value());
+    backend->fail_update = true;
+    const auto failed = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{4}});
+    const auto after = runtime.GetEmitterSnapshot(emitter.Value());
+    bool ok = Expect(!failed && before && after && SameEmitterSnapshot(before.Value(), after.Value()),
+                     "failed Tick must not advance emitter fade state");
+    backend->fail_update = false;
+    const auto retry = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{4}});
+    const auto retried = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(retry && retried && retried.Value().fade_progress > 0.39f && retried.Value().fade_progress < 0.41f,
+                 "Tick retry should advance the delta exactly once");
+
+    backend->throw_update = true;
+    const auto before_throw = runtime.GetEmitterSnapshot(emitter.Value());
+    const auto thrown = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    const auto after_throw = runtime.GetEmitterSnapshot(emitter.Value());
+    ok &= Expect(!thrown && thrown.GetError().HasCode("audio.backend_exception") && before_throw && after_throw &&
+                     SameEmitterSnapshot(before_throw.Value(), after_throw.Value()),
+                 "throwing backend Update must not advance local tick state");
+    return ok;
+}
+
+bool TestAudioNumericEnumAndRevisionContracts()
+{
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = true, .max_queued_events = 1}};
+    bool ok = Expect(SeedSound(runtime), "audio contract sound should seed");
+    const auto before_events = runtime.Events().size();
+    AudioEvent invalid_space{SoundId{1}, Vec3{}, 1.0f, static_cast<epidemic::runtime::audio::AudioEventSpace>(255)};
+    ok &= Expect(!runtime.SubmitOneShot(invalid_space) && runtime.Events().size() == before_events,
+                 "invalid event space must fail without queue mutation");
+    AudioEvent invalid_position{SoundId{1}, Vec3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}, 1.0f,
+                                epidemic::runtime::audio::AudioEventSpace::WorldPosition};
+    ok &= Expect(!runtime.SubmitOneShot(invalid_position) && runtime.Events().size() == before_events,
+                 "non-finite one-shot position must fail without queue mutation");
+
+    const MixerGroupState valid_group{MixerGroupId{1}, 0.5f, MixerFadeState::Stable, {}, RuntimeFrameDuration{}, 0.0f};
+    ok &= Expect(runtime.SetMixerGroup(valid_group).HasValue(), "valid mixer group should be accepted");
+    const auto group_before = runtime.GetMixerGroup(MixerGroupId{1});
+    MixerGroupState invalid_group = valid_group;
+    invalid_group.fade_state = static_cast<MixerFadeState>(255);
+    ok &= Expect(!runtime.SetMixerGroup(invalid_group) && SameMixerGroup(runtime.GetMixerGroup(MixerGroupId{1}), group_before),
+                 "invalid mixer enum must fail atomically");
+    invalid_group = valid_group;
+    invalid_group.fade_progress = std::numeric_limits<float>::infinity();
+    ok &= Expect(!runtime.SetMixerGroup(invalid_group) && SameMixerGroup(runtime.GetMixerGroup(MixerGroupId{1}), group_before),
+                 "non-finite mixer progress must fail atomically");
+    invalid_group = valid_group;
+    invalid_group.fade_duration = RuntimeFrameDuration{std::chrono::microseconds{-1}};
+    ok &= Expect(!runtime.SetMixerGroup(invalid_group) && SameMixerGroup(runtime.GetMixerGroup(MixerGroupId{1}), group_before),
+                 "negative mixer fade duration must fail atomically");
+
+    AudioVoiceDesc voice_desc{};
+    voice_desc.clip = AudioClipPayload{SoundId{1}, SoundState::Ready, std::make_shared<TestClipResource>()};
+    const auto voice = runtime.CreateVoice(voice_desc);
+    ok &= Expect(voice.HasValue(), "mock voice should create for backend setter contract");
+    if (voice)
+    {
+        ok &= Expect(!runtime.SetGain(voice.Value(), std::numeric_limits<float>::quiet_NaN()),
+                     "backend SetGain must reject NaN");
+        AudioSpatialState bad_spatial{};
+        bad_spatial.transform.position.x = std::numeric_limits<float>::infinity();
+        ok &= Expect(!runtime.SetSpatialState(voice.Value(), bad_spatial), "backend spatial setter must reject infinity");
+    }
+
+    const auto emitter = runtime.CreateEmitterHandle(MakeEmitterDesc());
+    ok &= Expect(emitter.HasValue() && runtime.Play(emitter.Value()).HasValue(), "revision test emitter should play");
+    if (emitter)
+    {
+        ok &= Expect(runtime.SetEmitterRevisionForTesting(emitter.Value(), std::numeric_limits<std::uint64_t>::max()).HasValue(),
+                     "revision seam should set max revision");
+        const auto before_stop = runtime.GetEmitterSnapshot(emitter.Value());
+        const auto exhausted = runtime.Stop(emitter.Value());
+        const auto after_stop = runtime.GetEmitterSnapshot(emitter.Value());
+        ok &= Expect(!exhausted && exhausted.GetError().HasCode("audio.revision_overflow") && before_stop && after_stop &&
+                         SameEmitterSnapshot(before_stop.Value(), after_stop.Value()),
+                     "revision exhaustion must reject mutation without wraparound");
+    }
+
+    AudioRuntime invalid_policy{AudioOptions{.enable_mock_backend = true,
+                                             .max_queued_events = 1,
+                                             .event_overflow_policy = static_cast<AudioEventOverflowPolicy>(255)}};
+    ok &= Expect(SeedSound(invalid_policy), "invalid-policy runtime sound should seed");
+    ok &= Expect(!invalid_policy.SubmitOneShot(AudioEvent{SoundId{1}, Vec3{}, 1.0f,
+                                                           epidemic::runtime::audio::AudioEventSpace::WorldPosition}) &&
+                     invalid_policy.Events().empty(),
+                 "invalid overflow policy must fail without queue mutation");
+    return ok;
+}
+
+bool TestListenerPublicationRollbackRetainsCleanupOwnership()
+{
+    auto backend = std::make_shared<TestBackend>();
+    AudioRuntime runtime{AudioOptions{.enable_mock_backend = false}, AudioDependencies{backend}};
+    runtime.FailNextListenerPublicationForTesting();
+    backend->fail_destroy_listener_once = true;
+
+    const auto created = runtime.CreateListenerHandle(AudioListenerDesc{RuntimeObjectId{700}});
+    bool ok = Expect(!created && created.GetError().HasCode("audio.allocation_failed"),
+                     "listener publication failure should be reported");
+    ok &= Expect(backend->backend_listeners_created == 1 && backend->backend_listener_destroy_attempts == 1 &&
+                     backend->backend_listeners_destroyed == 0 && runtime.PendingListenerCleanupCountForTesting() == 1,
+                 "failed listener rollback must retain backend ownership for retry");
+
+    const auto shutdown = runtime.Shutdown();
+    ok &= Expect(shutdown && backend->backend_listener_destroy_attempts == 2 &&
+                     backend->backend_listeners_destroyed == 1 && runtime.PendingListenerCleanupCountForTesting() == 0,
+                 "shutdown should retry and complete pending listener cleanup");
+    return ok;
+}
+
 } // namespace
 
 int main()
@@ -833,5 +1045,9 @@ int main()
     ok &= TestPostShutdownOperationsRejected();
     ok &= TestAllocatorOverflowDoesNotMutateState();
     ok &= TestMainListenerSelectionIsAtomic();
+    ok &= TestPlayAndFadeFailuresAreAtomic();
+    ok &= TestTickFailureDoesNotAdvanceLocalState();
+    ok &= TestAudioNumericEnumAndRevisionContracts();
+    ok &= TestListenerPublicationRollbackRetainsCleanupOwnership();
     return ok ? 0 : 1;
 }

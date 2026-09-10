@@ -67,13 +67,18 @@ foundation::Result<TagId> GameplayTagRegistry::Register(std::string_view canonic
             "gameplay.already_registered", "tag is already registered", std::string(canonical_name)));
     }
 
+    // Build the complete post-registration registry off-state. If any allocation/copy throws,
+    // the live hierarchy remains exactly as it was before the call.
+    auto staged_entries = entries_;
+    staged_entries.reserve(entries_.size() + pending.size());
     for (const auto& tag : pending)
     {
         if (!tag.exists)
         {
-            entries_.emplace(tag.id, Entry{tag.id, tag.parent, tag.canonical_name});
+            staged_entries.emplace(tag.id, Entry{tag.id, tag.parent, tag.canonical_name});
         }
     }
+    entries_.swap(staged_entries);
     return foundation::Result<TagId>::Success(pending.back().id);
 }
 

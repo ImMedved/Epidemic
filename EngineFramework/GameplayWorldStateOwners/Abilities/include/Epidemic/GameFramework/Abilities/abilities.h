@@ -7,7 +7,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <cstring>
 #include <optional>
 #include <span>
@@ -467,9 +466,11 @@ class AbilityService
     [[nodiscard]] AbilitiesDiagnostics GetDiagnostics() const noexcept;
 
   private:
-    [[nodiscard]] foundation::Result<void> AcquireStartCosts(const AbilityDefinition &def, AbilityExecution &execution);
+    [[nodiscard]] foundation::Result<void> AcquireStartCosts(const AbilityDefinition &def, AbilityExecution &execution,
+                                                               std::vector<AbilityResourceReservation> &pay_on_start);
     [[nodiscard]] foundation::Result<void> AcquireExecuteCosts(const AbilityDefinition &def,
-                                                               AbilityExecution &execution);
+                                                               AbilityExecution &execution,
+                                                               std::vector<AbilityResourceReservation> &pay_on_execute);
     void CommitReservations(AbilityExecution &execution) noexcept;
     [[nodiscard]] AbilityAvailabilityResult ValidateTargets(const AbilityDefinition &definition, const AbilityInstance &instance,
                                                            const AbilityTargetSet &targets) const;
@@ -479,14 +480,16 @@ class AbilityService
                                                             const AbilityExecution &execution,
                                                             GameplayTimePoint now) const;
     void ReleaseReservations(AbilityExecution &execution, GameplayContext context) noexcept;
-    void FinalizeExecution(AbilityExecutionId id, AbilityExecutionState terminal_state, AbilityChangeKind change_kind,
-                           GameplayTimePoint now, GameplayContext context, TypeId reason = {});
+    [[nodiscard]] foundation::Result<void> FinalizeExecution(AbilityExecutionId id, AbilityExecutionState terminal_state,
+                                                               AbilityChangeKind change_kind, GameplayTimePoint now,
+                                                               GameplayContext context, TypeId reason = {});
     void StartCooldown(const AbilityDefinition &def, GameplayObjectRef owner, GameplayTimePoint now,
                        GameplayContext context, AbilityInstanceId ability, AbilityExecutionId execution);
     [[nodiscard]] std::vector<AbilityOutput> BuildOutputs(const AbilityDefinition &def,
                                                           const AbilityExecution &execution,
                                                           GameplayTimePoint occurrence_at) const;
-    void Record(AbilityChange change);
+    [[nodiscard]] bool CanRecord(std::size_t count = 1) const noexcept;
+    void Record(AbilityChange change) noexcept;
 
     std::unordered_map<AbilityDefinitionId, AbilityDefinition, IdHash> definitions_;
     std::unordered_map<AbilityInstanceId, AbilityInstance, IdHash> instances_;
@@ -502,9 +505,10 @@ class AbilityService
     bool resource_reconciliation_required_ = false;
     static constexpr std::size_t kChangeJournalCapacity = 4096;
     static constexpr std::uint64_t kMaxChannelOccurrencesPerCall = 1024;
-    std::deque<AbilityChange> changes_;
+    std::vector<AbilityChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     std::uint64_t journal_epoch_ = 1;
+    std::vector<AbilityReservationId> reconciled_reservations_;
     AbilitiesDiagnostics diagnostics_{};
 };
 } // namespace epidemic::gameplay::abilities

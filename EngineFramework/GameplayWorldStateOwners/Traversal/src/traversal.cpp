@@ -49,6 +49,75 @@ void TrackMaxLow(TId id, std::uint64_t expected_scope, std::uint64_t& max_low) n
     if (id.IsValid() && id.value.High() == expected_scope && id.value.Low() > max_low)
         max_low = id.value.Low();
 }
+
+[[nodiscard]] bool IsValidTraversalMaterializationPolicy(TraversalMaterializationPolicy policy) noexcept
+{
+    switch (policy)
+    {
+    case TraversalMaterializationPolicy::AbstractCapable:
+    case TraversalMaterializationPolicy::RequiresMaterialized:
+    case TraversalMaterializationPolicy::RequiresRuntimeProjection:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidTraversalRouteLifetime(TraversalRouteLifetime lifetime) noexcept
+{
+    switch (lifetime)
+    {
+    case TraversalRouteLifetime::Persistent:
+    case TraversalRouteLifetime::Session:
+    case TraversalRouteLifetime::Transient:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidTraversalSessionState(TraversalSessionState state) noexcept
+{
+    switch (state)
+    {
+    case TraversalSessionState::Active:
+    case TraversalSessionState::Suspended:
+    case TraversalSessionState::Completed:
+    case TraversalSessionState::Cancelled:
+    case TraversalSessionState::Failed:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidTraversalChangeKind(TraversalChangeKind kind) noexcept
+{
+    switch (kind)
+    {
+    case TraversalChangeKind::ProfileAssigned:
+    case TraversalChangeKind::ModeChanged:
+    case TraversalChangeKind::RequestRejected:
+    case TraversalChangeKind::SessionStarted:
+    case TraversalChangeKind::SessionCompleted:
+    case TraversalChangeKind::SessionCancelled:
+    case TraversalChangeKind::CarrierBoarded:
+    case TraversalChangeKind::CarrierDisembarked:
+    case TraversalChangeKind::CapabilityGranted:
+    case TraversalChangeKind::CapabilityRevoked:
+    case TraversalChangeKind::SessionSuspended:
+    case TraversalChangeKind::SessionResumed:
+    case TraversalChangeKind::SessionFailed:
+    case TraversalChangeKind::RouteRegistered:
+    case TraversalChangeKind::RouteRemoved:
+    case TraversalChangeKind::StateRemoved:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool RevisionWithin(Revision revision, Revision snapshot_revision) noexcept
+{
+    return revision.value <= snapshot_revision.value;
+}
+
 }
 
 TraversalService::TraversalService()
@@ -66,7 +135,9 @@ foundation::Result<void> TraversalService::RegisterMode(TraversalModeDefinition 
     const auto expected = TraversalModeId::FromString(definition.canonical_name);
     if (!definition.id.IsValid())
         definition.id = expected;
-    if (definition.id != expected || modes_.contains(definition.id) || definition.base_speed_micro < 0 ||
+    if (definition.id != expected || modes_.contains(definition.id) ||
+        !IsValidTraversalMaterializationPolicy(definition.materialization_policy) ||
+        definition.base_speed_micro < 0 ||
         definition.acceleration_modifier_micro < 0 || definition.required_capability_parameter_micro < 0)
         return foundation::Result<void>::Failure(
             Error("gameplay.traversal.invalid_mode", "invalid or duplicate traversal mode"));
@@ -254,7 +325,8 @@ foundation::Result<void> TraversalService::AssignProfile(GameplayObjectRef subje
     if (existing != states_.end() && existing->second.active_session)
         return foundation::Result<void>::Failure(
             Error("gameplay.traversal.session_active", "cannot replace traversal profile during an active session"));
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
     auto& state = states_[subject];
     state.subject = subject;
     state.profile = profile;
@@ -289,8 +361,6 @@ foundation::Result<void> TraversalService::RemoveState(GameplayObjectRef subject
         if (grant.subject == subject)
             grant_ids.push_back(id);
     std::sort(grant_ids.begin(), grant_ids.end());
-    for (const auto id : grant_ids)
-        capability_grants_.erase(id);
 
     std::vector<TraversalRouteId> route_ids;
     for (const auto& [id, route] : routes_)
@@ -302,11 +372,16 @@ foundation::Result<void> TraversalService::RemoveState(GameplayObjectRef subject
         if (IsRouteInUse(id))
             return foundation::Result<void>::Failure(
                 Error("gameplay.traversal.route_in_use", "cannot remove traversal state with an active route"));
-        routes_.erase(id);
     }
 
+    for (const auto id : grant_ids)
+        capability_grants_.erase(id);
+    for (const auto id : route_ids)
+        routes_.erase(id);
+
     states_.erase(state_it);
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
     Record({0, TraversalChangeKind::StateRemoved, subject, {}, {}, {}, {}, context, revision_});
     return foundation::Result<void>::Success();
 }
@@ -780,12 +855,14 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     {
         const auto profile = profiles_.find(state.profile);
         if (!state.subject.IsValid() || profile == profiles_.end() || !modes_.contains(state.current_mode) ||
+            !RevisionWithin(state.revision, snapshot.revision) ||
             !ProfileAllows(profile->second, state.current_mode) || !restored_states.emplace(state.subject, state).second)
             return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid traversal state"));
     }
     for (const auto& route : snapshot.routes)
     {
         if (!route.id.IsValid() || !route.subject.IsValid() || !modes_.contains(route.mode) ||
+            !IsValidTraversalRouteLifetime(route.lifetime) || !RevisionWithin(route.revision, snapshot.revision) ||
             route.lifetime != TraversalRouteLifetime::Persistent || !restored_states.contains(route.subject) ||
             !restored_routes.emplace(route.id, route).second)
             return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid traversal route"));
@@ -794,6 +871,7 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     for (const auto& grant : snapshot.capability_grants)
     {
         if (!grant.id.IsValid() || !grant.subject.IsValid() || !grant.capability.IsValid() || grant.parameter_micro < 0 ||
+            !RevisionWithin(grant.revision, snapshot.revision) ||
             !grant.persistent || !restored_states.contains(grant.subject) || !restored_grants.emplace(grant.id, grant).second)
             return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid capability grant"));
         TrackMaxLow(grant.id, grant_scope, max_grant_low);
@@ -802,7 +880,9 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     for (const auto& session : snapshot.sessions)
     {
         if (!session.id.IsValid() || !restored_states.contains(session.subject) || !modes_.contains(session.mode) ||
-            !IsLiveSession(session.state) || (session.route.IsValid() && !restored_routes.contains(session.route)) ||
+            !IsValidTraversalSessionState(session.state) || !IsLiveSession(session.state) ||
+            !RevisionWithin(session.revision, snapshot.revision) ||
+            (session.route.IsValid() && !restored_routes.contains(session.route)) ||
             !live_subjects.insert(session.subject).second || !restored_sessions.emplace(session.id, session).second)
             return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid traversal session"));
         const auto& state = restored_states.at(session.subject);
@@ -816,6 +896,7 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     for (const auto& binding : snapshot.carrier_bindings)
     {
         if (!binding.passenger.IsValid() || !binding.carrier.IsValid() || binding.passenger == binding.carrier ||
+            !RevisionWithin(binding.revision, snapshot.revision) ||
             !restored_states.contains(binding.passenger) || !modes_.contains(binding.carrier_mode) ||
             (binding.previous_mode.IsValid() && !modes_.contains(binding.previous_mode)) ||
             restored_states.at(binding.passenger).active_session ||
@@ -831,7 +912,8 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     for (const auto& change : snapshot.journal)
     {
         const bool reaches_next = snapshot.next_change_sequence != 0 && change.sequence >= snapshot.next_change_sequence;
-        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) || reaches_next)
+        if (change.sequence == 0 || (previous != 0 && change.sequence <= previous) || reaches_next ||
+            !IsValidTraversalChangeKind(change.kind) || !RevisionWithin(change.revision, snapshot.revision))
             return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid journal sequence"));
         restored_changes.push_back(change);
         previous = change.sequence;
@@ -884,12 +966,10 @@ void TraversalService::Record(TraversalChange change)
 {
     if (next_change_sequence_ == 0)
         return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
+    const auto assigned = next_change_sequence_;
+    change.sequence = assigned;
     changes_.push_back(std::move(change));
+    next_change_sequence_ = assigned == std::numeric_limits<std::uint64_t>::max() ? 0 : assigned + 1;
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();
 }

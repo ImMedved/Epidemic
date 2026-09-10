@@ -29,7 +29,28 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     [[nodiscard]] foundation::Result<void> ValidateOptions() const;
     [[nodiscard]] foundation::Result<void> ValidateDate(CalendarDate date) const;
     [[nodiscard]] DayPhase DetermineDayPhase(const CalendarDate& date) const;
+    struct TimeMutableState
+    {
+        TimeOptions options{};
+        GameTimePoint now{};
+        GameDuration last_delta{};
+        TimeScale time_scale{};
+        bool paused = false;
+        TimeRuntimeState state = TimeRuntimeState::Running;
+        TimeSnapshot snapshot{};
+        std::vector<TimeEvent> events{};
+        std::int64_t tick_remainder_numerator = 0;
+        std::uint64_t revision = 0;
+    };
+
     [[nodiscard]] TimeAdvanceResult MakeResult(TimeSnapshot previous) const;
+    [[nodiscard]] foundation::Result<TimeSnapshot> BuildSnapshot(const TimeMutableState& state, bool changed) const;
+    [[nodiscard]] foundation::Result<void> PreflightRevision(bool changed) const;
+    [[nodiscard]] static bool IsValidDayPhase(DayPhase phase) noexcept;
+    [[nodiscard]] static std::uint64_t NextRevision(std::uint64_t current) noexcept;
+    [[nodiscard]] static foundation::Result<void> AppendBoundaryEvents(TimeMutableState& candidate, const TimeSnapshot& previous);
+    [[nodiscard]] static foundation::Result<void> PushEvent(TimeMutableState& candidate, TimeEventKind kind);
+    void Commit(TimeMutableState candidate) noexcept;
 
     void RefreshSnapshot(bool changed);
     void PushEvent(TimeEventKind kind);

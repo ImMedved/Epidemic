@@ -250,5 +250,43 @@ int main()
     LootService empty_journal;
     if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;
 
+
+    // Forged public enum values are rejected at registration rather than entering frozen content.
+    Handler invalid_policy_handler("test.reward.invalid_policy");
+    LootService invalid_policy_service;
+    if (!invalid_policy_service.RegisterRewardHandler("test.reward.invalid_policy", &invalid_policy_handler)) return 44;
+    RewardDefinition invalid_policy_reward;
+    invalid_policy_reward.canonical_name = "test.reward.invalid_policy.value";
+    invalid_policy_reward.type = invalid_policy_handler.Type();
+    invalid_policy_reward.min_quantity_micro = invalid_policy_reward.max_quantity_micro = 1;
+    auto invalid_policy_reward_id = invalid_policy_service.RegisterRewardDefinition(invalid_policy_reward);
+    if (!invalid_policy_reward_id) return 45;
+    LootTableDefinition invalid_policy_table;
+    invalid_policy_table.canonical_name = "test.invalid_policy.table";
+    invalid_policy_table.policy = static_cast<LootRollPolicy>(999);
+    invalid_policy_table.entries.push_back({LootEntryId::FromString("invalid-policy-entry"), 1, 1'000'000,
+                                            invalid_policy_reward_id.Value(), {}, {}});
+    if (invalid_policy_service.RegisterLootTable(invalid_policy_table)) return 46;
+
+    // Pending-record revision exhaustion is a controlled failure and preserves the pending record.
+    ConfiguredLoot pending_revision;
+    if (!Configure(pending_revision) || !pending_revision.service.Freeze()) return 47;
+    LootContext pending_revision_context = c;
+    pending_revision_context.seed = {777};
+    auto pending_revision_bundle = pending_revision.service.GenerateTracked(pending_revision.table_id, pending_revision_context);
+    if (!pending_revision_bundle) return 48;
+    auto pending_revision_id = pending_revision.service.MakePending(std::move(pending_revision_bundle).Value());
+    if (!pending_revision_id) return 49;
+    auto pending_revision_snapshot = pending_revision.service.CaptureSnapshot();
+    if (pending_revision_snapshot.pending.size() != 1) return 50;
+    pending_revision_snapshot.pending.front().revision.value = std::numeric_limits<std::uint64_t>::max();
+    if (!pending_revision.service.RestoreSnapshot(pending_revision_snapshot)) return 51;
+    const auto schedule_before = pending_revision.service.FindPending(pending_revision_id.Value())->schedule;
+    if (pending_revision.service.BindSchedule(pending_revision_id.Value(), ScheduleId::FromString("test.schedule.exhausted"))) return 52;
+    const auto *pending_after_exhaustion = pending_revision.service.FindPending(pending_revision_id.Value());
+    if (pending_after_exhaustion == nullptr || pending_after_exhaustion->revision.value != std::numeric_limits<std::uint64_t>::max() ||
+        pending_after_exhaustion->schedule != schedule_before)
+        return 53;
+
     return 0;
 }

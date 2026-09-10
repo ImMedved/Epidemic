@@ -16,6 +16,44 @@ foundation::Error Error(std::string_view code, std::string_view message)
     return foundation::Error::Create(code, message);
 }
 
+
+[[nodiscard]] constexpr bool IsValidPopulationGroupState(PopulationGroupState state) noexcept
+{
+    switch(state){case PopulationGroupState::Active:case PopulationGroupState::Dormant:case PopulationGroupState::Depleted:case PopulationGroupState::Removed:return true;} return false;
+}
+[[nodiscard]] constexpr bool IsValidPopulationUnitState(PopulationUnitState state) noexcept
+{
+    switch(state){case PopulationUnitState::Latent:case PopulationUnitState::Abstract:case PopulationUnitState::Materialized:case PopulationUnitState::Dead:case PopulationUnitState::Removed:return true;} return false;
+}
+[[nodiscard]] constexpr bool IsValidResidenceState(ResidenceState state) noexcept
+{
+    switch(state){case ResidenceState::Assigned:case ResidenceState::Unavailable:case ResidenceState::Abandoned:case ResidenceState::Destroyed:return true;} return false;
+}
+[[nodiscard]] constexpr bool IsValidMigrationState(MigrationState state) noexcept
+{
+    switch(state){case MigrationState::Planned:case MigrationState::Active:case MigrationState::Completed:case MigrationState::Cancelled:case MigrationState::Failed:return true;} return false;
+}
+[[nodiscard]] constexpr bool IsValidPopulationAllocationState(PopulationAllocationState state) noexcept
+{
+    switch(state){case PopulationAllocationState::Active:case PopulationAllocationState::Committed:case PopulationAllocationState::Released:return true;} return false;
+}
+
+bool AppendStagedChange(std::deque<PopulationChange> &journal, std::uint64_t &next_sequence,
+                                     PopulationChange change, std::size_t capacity)
+{
+    if (next_sequence == 0)
+        return false;
+    change.sequence = next_sequence;
+    journal.push_back(std::move(change));
+    if (next_sequence == std::numeric_limits<std::uint64_t>::max())
+        next_sequence = 0;
+    else
+        ++next_sequence;
+    while (journal.size() > capacity)
+        journal.pop_front();
+    return true;
+}
+
 [[nodiscard]] constexpr bool IsTerminalUnitState(PopulationUnitState state) noexcept
 {
     return state == PopulationUnitState::Dead || state == PopulationUnitState::Removed;
@@ -67,6 +105,19 @@ template <class TWrappedId>
 }
 } // namespace
 
+bool PopulationService::CanAdvanceRevision(std::size_t count) const noexcept
+{
+    if(count==0)return true;
+    return count <= std::numeric_limits<std::uint64_t>::max()-revision_.value;
+}
+
+bool PopulationService::CanRecordChanges(std::size_t count) const noexcept
+{
+    if(count==0)return true;
+    if(next_change_sequence_==0)return false;
+    return count-1 <= std::numeric_limits<std::uint64_t>::max()-next_change_sequence_;
+}
+
 PopulationUnit *PopulationService::FindMutableUnit(PopulationUnitId id) noexcept
 {
     auto it = units_.find(id);
@@ -81,20 +132,13 @@ PopulationGroup *PopulationService::FindMutableGroup(PopulationGroupId id) noexc
 
 foundation::Result<void> PopulationService::RegisterTemplate(PopulationTemplate definition)
 {
-    if (definitions_frozen_)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.definitions_frozen", "population definitions are frozen"));
-    if (!definition.id.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_template", "invalid population template"));
-    if (templates_.contains(definition.id))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.duplicate_template", "duplicate population template"));
-
-    Bump();
-    definition.revision = revision_;
-    templates_.emplace(definition.id, std::move(definition));
-    return foundation::Result<void>::Success();
+    if(definitions_frozen_)return foundation::Result<void>::Failure(Error("gameplay.population.definitions_frozen","population definitions are frozen"));
+    if(!definition.id.IsValid())return foundation::Result<void>::Failure(Error("gameplay.population.invalid_template","invalid population template"));
+    if(templates_.contains(definition.id))return foundation::Result<void>::Failure(Error("gameplay.population.duplicate_template","duplicate population template"));
+    if(!CanAdvanceRevision())return foundation::Result<void>::Failure(Error("gameplay.population.revision_exhausted","population revision is exhausted"));
+    const Revision next{revision_.value+1}; definition.revision=next;
+    try{templates_.emplace(definition.id,std::move(definition));}catch(...){return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","population template publication failed"));}
+    revision_=next;return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> PopulationService::FreezeDefinitions()
@@ -107,103 +151,67 @@ foundation::Result<void> PopulationService::FreezeDefinitions()
 
 foundation::Result<PopulationGroupId> PopulationService::CreateGroup(PopulationGroup group)
 {
-    if (!group.area.IsValid())
-        return foundation::Result<PopulationGroupId>::Failure(
-            Error("gameplay.population.invalid_group", "invalid population group"));
-    if (group.state == PopulationGroupState::Removed)
-        return foundation::Result<PopulationGroupId>::Failure(
-            Error("gameplay.population.invalid_group_state", "cannot create a removed population group"));
-
-    if (!group.id.IsValid())
-        group.id = PopulationGroupId{group_ids_.Next()};
-    if (!group.id.IsValid())
-        return foundation::Result<PopulationGroupId>::Failure(
-            Error("gameplay.population.id_exhausted", "population group id generator exhausted"));
-    if (groups_.contains(group.id))
-        return foundation::Result<PopulationGroupId>::Failure(
-            Error("gameplay.population.duplicate_group", "duplicate population group"));
-
-    AdvanceGeneratorPast(group_ids_, group.id);
-    group.current_known_count = 0;
-    group.materialized_count = 0;
-    Bump();
-    group.revision = revision_;
-    const auto id = group.id;
-    const auto area = group.area;
-    groups_.emplace(id, std::move(group));
-    Record({0, PopulationChangeKind::GroupCreated, id, {}, {}, area, {}, revision_});
-    return foundation::Result<PopulationGroupId>::Success(id);
+    if(!group.area.IsValid()||!IsValidPopulationGroupState(group.state))return foundation::Result<PopulationGroupId>::Failure(Error("gameplay.population.invalid_group","invalid population group"));
+    if(group.state==PopulationGroupState::Removed)return foundation::Result<PopulationGroupId>::Failure(Error("gameplay.population.invalid_group_state","cannot create a removed population group"));
+    auto staged_ids=group_ids_;
+    if(!group.id.IsValid())group.id=PopulationGroupId{staged_ids.Next()};
+    if(!group.id.IsValid())return foundation::Result<PopulationGroupId>::Failure(Error("gameplay.population.id_exhausted","population group id generator exhausted"));
+    if(groups_.contains(group.id))return foundation::Result<PopulationGroupId>::Failure(Error("gameplay.population.duplicate_group","duplicate population group"));
+    AdvanceGeneratorPast(staged_ids,group.id);
+    if(!CanAdvanceRevision())return foundation::Result<PopulationGroupId>::Failure(Error("gameplay.population.revision_exhausted","population revision is exhausted"));
+    if(!CanRecordChanges())return foundation::Result<PopulationGroupId>::Failure(Error("gameplay.population.change_sequence_exhausted","population change sequence is exhausted"));
+    group.current_known_count=0;group.materialized_count=0;group.revision=Revision{revision_.value+1};const auto id=group.id;const auto area=group.area;bool inserted=false;
+    try{groups_.emplace(id,group);inserted=true;Record({0,PopulationChangeKind::GroupCreated,id,{},{},area,{},group.revision});}
+    catch(...){if(inserted)groups_.erase(id);return foundation::Result<PopulationGroupId>::Failure(Error("gameplay.population.publication_failed","population group publication failed"));}
+    group_ids_.Restore(staged_ids.GetSnapshot());revision_=group.revision;return foundation::Result<PopulationGroupId>::Success(id);
 }
 
 foundation::Result<PopulationUnitId> PopulationService::CreateUnit(PopulationUnit unit, GameplayContext context)
 {
-    if (!unit.group.IsValid() || !groups_.contains(unit.group))
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.invalid_unit_group", "invalid population group"));
-    if (unit.template_id.IsValid() && !templates_.contains(unit.template_id))
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.unknown_template", "unknown population template"));
-    if (IsTerminalUnitState(unit.state))
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.invalid_unit_state", "invalid initial population unit state"));
-    if (unit.state == PopulationUnitState::Materialized && (!unit.entity || !unit.entity->IsValid()))
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.invalid_entity_link", "materialized unit requires an entity binding"));
-    if (unit.state != PopulationUnitState::Materialized && unit.entity)
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.invalid_entity_link", "abstract population unit cannot own an entity binding"));
-    if (unit.entity && unit_by_entity_.contains(*unit.entity))
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.entity_already_bound", "entity is already bound to another population unit"));
+    if(!unit.group.IsValid()||!groups_.contains(unit.group))return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.invalid_unit_group","invalid population group"));
+    if(unit.template_id.IsValid()&&!templates_.contains(unit.template_id))return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.unknown_template","unknown population template"));
+    if(!IsValidPopulationUnitState(unit.state)||IsTerminalUnitState(unit.state))return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.invalid_unit_state","invalid initial population unit state"));
+    if(unit.state==PopulationUnitState::Materialized&&(!unit.entity||!unit.entity->IsValid()))return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.invalid_entity_link","materialized unit requires an entity binding"));
+    if(unit.state!=PopulationUnitState::Materialized&&unit.entity)return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.invalid_entity_link","abstract population unit cannot own an entity binding"));
+    if(unit.entity&&unit_by_entity_.contains(*unit.entity))return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.entity_already_bound","entity is already bound to another population unit"));
 
-    if (!unit.id.IsValid())
-        unit.id = PopulationUnitId{unit_ids_.Next()};
-    if (!unit.id.IsValid())
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.id_exhausted", "population unit id generator exhausted"));
-    if (units_.contains(unit.id))
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.duplicate_unit", "duplicate population unit"));
+    if(!unit.current_area.IsValid())unit.current_area=groups_.at(unit.group).area;
+    if(!unit.home_area.IsValid())unit.home_area=unit.current_area;
+    if(!unit.current_area.IsValid()||!unit.home_area.IsValid())return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.invalid_unit_area","population unit requires valid current and home areas"));
 
-    AdvanceGeneratorPast(unit_ids_, unit.id);
-    if (!unit.current_area.IsValid())
-        unit.current_area = groups_.at(unit.group).area;
-    if (!unit.home_area.IsValid())
-        unit.home_area = unit.current_area;
-    if (!unit.current_area.IsValid() || !unit.home_area.IsValid())
-        return foundation::Result<PopulationUnitId>::Failure(
-            Error("gameplay.population.invalid_unit_area", "population unit requires valid current and home areas"));
-
-    Bump();
-    unit.revision = revision_;
-    const auto id = unit.id;
-    const auto group = unit.group;
-    const auto entity = unit.entity.value_or(GameplayObjectRef{});
-    const auto area = unit.current_area;
-    units_.emplace(id, unit);
-    IndexUnit(unit);
-    if (unit.entity)
-        unit_by_entity_.emplace(*unit.entity, id);
-    RecountGroup(group);
-    Record({0, PopulationChangeKind::UnitCreated, group, id, entity, area, context, revision_});
-    return foundation::Result<PopulationUnitId>::Success(id);
+    auto staged_ids=unit_ids_; if(!unit.id.IsValid())unit.id=PopulationUnitId{staged_ids.Next()};
+    if(!unit.id.IsValid())return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.id_exhausted","population unit id generator exhausted"));
+    if(units_.contains(unit.id))return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.duplicate_unit","duplicate population unit"));
+    AdvanceGeneratorPast(staged_ids,unit.id);
+    if(!CanAdvanceRevision())return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.revision_exhausted","population revision is exhausted"));
+    if(!CanRecordChanges())return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.change_sequence_exhausted","population change sequence is exhausted"));
+    unit.revision=Revision{revision_.value+1};const auto id=unit.id;const auto group=unit.group;const auto entity=unit.entity.value_or(GameplayObjectRef{});const auto area=unit.current_area;bool inserted=false;
+    try
+    {
+        units_.emplace(id,unit);inserted=true;IndexUnit(unit);if(unit.entity)unit_by_entity_.emplace(*unit.entity,id);
+        Record({0,PopulationChangeKind::UnitCreated,group,id,entity,area,context,unit.revision});
+    }
+    catch(...)
+    {
+        if(inserted){UnindexUnit(unit);if(unit.entity)unit_by_entity_.erase(*unit.entity);units_.erase(id);}
+        return foundation::Result<PopulationUnitId>::Failure(Error("gameplay.population.publication_failed","population unit publication failed"));
+    }
+    unit_ids_.Restore(staged_ids.GetSnapshot());revision_=unit.revision;RecountGroup(group);return foundation::Result<PopulationUnitId>::Success(id);
 }
 
 foundation::Result<void> PopulationService::BindEntity(PopulationUnit &unit, GameplayObjectRef entity)
 {
-    if (!entity.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_entity_link", "invalid entity link"));
-    auto existing = unit_by_entity_.find(entity);
-    if (existing != unit_by_entity_.end() && existing->second != unit.id)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.entity_already_bound", "entity is already bound to another population unit"));
-
-    if (unit.entity && *unit.entity != entity)
-        unit_by_entity_.erase(*unit.entity);
-    unit.entity = entity;
-    unit_by_entity_[entity] = unit.id;
-    return foundation::Result<void>::Success();
+    if(!entity.IsValid())return foundation::Result<void>::Failure(Error("gameplay.population.invalid_entity_link","invalid entity link"));
+    auto existing=unit_by_entity_.find(entity);if(existing!=unit_by_entity_.end()&&existing->second!=unit.id)return foundation::Result<void>::Failure(Error("gameplay.population.entity_already_bound","entity is already bound to another population unit"));
+    if(unit.entity&&*unit.entity==entity)return foundation::Result<void>::Success();
+    bool inserted=false;
+    if(existing==unit_by_entity_.end())
+    {
+        try{unit_by_entity_.emplace(entity,unit.id);inserted=true;}catch(...){return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","entity binding publication failed"));}
+    }
+    const auto old=unit.entity;unit.entity=entity;
+    if(old&&*old!=entity)unit_by_entity_.erase(*old);
+    (void)inserted;return foundation::Result<void>::Success();
 }
 
 void PopulationService::RemoveEntityBinding(PopulationUnit &unit) noexcept
@@ -214,76 +222,50 @@ void PopulationService::RemoveEntityBinding(PopulationUnit &unit) noexcept
     unit.entity.reset();
 }
 
-foundation::Result<void> PopulationService::SetUnitEntity(PopulationUnitId id, GameplayObjectRef entity,
-                                                           GameplayContext context)
+foundation::Result<void> PopulationService::SetUnitEntity(PopulationUnitId id, GameplayObjectRef entity, GameplayContext context)
 {
-    auto *unit = FindMutableUnit(id);
-    if (!unit)
-        return foundation::Result<void>::Failure(Error("gameplay.population.unit_missing", "population unit missing"));
-    if (unit->state != PopulationUnitState::Materialized)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_entity_link_state", "entity binding is only valid for materialized units"));
-    auto bound = BindEntity(*unit, entity);
-    if (!bound)
-        return bound;
-
-    Bump();
-    unit->revision = revision_;
-    Record({0, PopulationChangeKind::EntityBindingChanged, unit->group, id, entity, unit->current_area, context,
-            revision_});
-    return foundation::Result<void>::Success();
+    auto *unit=FindMutableUnit(id);if(!unit)return foundation::Result<void>::Failure(Error("gameplay.population.unit_missing","population unit missing"));
+    if(unit->state!=PopulationUnitState::Materialized)return foundation::Result<void>::Failure(Error("gameplay.population.invalid_entity_link_state","entity binding is only valid for materialized units"));
+    if(!entity.IsValid())return foundation::Result<void>::Failure(Error("gameplay.population.invalid_entity_link","invalid entity link"));
+    auto existing=unit_by_entity_.find(entity);if(existing!=unit_by_entity_.end()&&existing->second!=id)return foundation::Result<void>::Failure(Error("gameplay.population.entity_already_bound","entity is already bound to another population unit"));
+    if(unit->entity&&*unit->entity==entity)return foundation::Result<void>::Success();
+    if(!CanAdvanceRevision())return foundation::Result<void>::Failure(Error("gameplay.population.revision_exhausted","population revision is exhausted"));
+    if(!CanRecordChanges())return foundation::Result<void>::Failure(Error("gameplay.population.change_sequence_exhausted","population change sequence is exhausted"));
+    const Revision next{revision_.value+1};bool inserted=false;
+    try{if(existing==unit_by_entity_.end()){unit_by_entity_.emplace(entity,id);inserted=true;}Record({0,PopulationChangeKind::EntityBindingChanged,unit->group,id,entity,unit->current_area,context,next});}
+    catch(...){if(inserted)unit_by_entity_.erase(entity);return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","entity binding update failed"));}
+    const auto old=unit->entity;unit->entity=entity;unit->revision=next;if(old&&*old!=entity)unit_by_entity_.erase(*old);revision_=next;return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> PopulationService::MaterializeUnit(PopulationUnitId id, GameplayObjectRef entity,
-                                                             GameplayContext context)
+foundation::Result<void> PopulationService::MaterializeUnit(PopulationUnitId id, GameplayObjectRef entity, GameplayContext context)
 {
-    auto *unit = FindMutableUnit(id);
-    if (!unit || !entity.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_materialize", "invalid materialization request"));
-    if (!CanMaterialize(unit->state))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_materialize_state", "population unit cannot be materialized from its current state"));
-    if (unit->entity)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_materialize_binding", "abstract population unit already has an entity binding"));
-
-    auto bound = BindEntity(*unit, entity);
-    if (!bound)
-        return bound;
-
-    UnindexUnit(*unit);
-    unit->state = PopulationUnitState::Materialized;
-    Bump();
-    unit->revision = revision_;
-    IndexUnit(*unit);
-    ++diagnostics_.materialization_requests;
-    RecountGroup(unit->group);
-    Record({0, PopulationChangeKind::UnitMaterialized, unit->group, id, entity, unit->current_area, context, revision_});
-    return foundation::Result<void>::Success();
+    auto *unit=FindMutableUnit(id);if(!unit||!entity.IsValid())return foundation::Result<void>::Failure(Error("gameplay.population.invalid_materialize","invalid materialization request"));
+    if(!CanMaterialize(unit->state))return foundation::Result<void>::Failure(Error("gameplay.population.invalid_materialize_state","population unit cannot be materialized from its current state"));
+    if(unit->entity)return foundation::Result<void>::Failure(Error("gameplay.population.invalid_materialize_binding","abstract population unit already has an entity binding"));
+    if(auto e=unit_by_entity_.find(entity);e!=unit_by_entity_.end()&&e->second!=id)return foundation::Result<void>::Failure(Error("gameplay.population.entity_already_bound","entity is already bound to another population unit"));
+    if(!CanAdvanceRevision())return foundation::Result<void>::Failure(Error("gameplay.population.revision_exhausted","population revision is exhausted"));
+    if(!CanRecordChanges())return foundation::Result<void>::Failure(Error("gameplay.population.change_sequence_exhausted","population change sequence is exhausted"));
+    const Revision next{revision_.value+1};const auto old_state=unit->state;bool state_inserted=false,entity_inserted=false;
+    try
+    {
+        state_inserted=units_by_state_[StateIndex(PopulationUnitState::Materialized)].insert(id).second;
+        entity_inserted=unit_by_entity_.emplace(entity,id).second;
+        Record({0,PopulationChangeKind::UnitMaterialized,unit->group,id,entity,unit->current_area,context,next});
+    }
+    catch(...){if(state_inserted)units_by_state_[StateIndex(PopulationUnitState::Materialized)].erase(id);if(entity_inserted)unit_by_entity_.erase(entity);return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","materialization publication failed"));}
+    units_by_state_[StateIndex(old_state)].erase(id);unit->entity=entity;unit->state=PopulationUnitState::Materialized;unit->revision=next;revision_=next;++diagnostics_.materialization_requests;RecountGroup(unit->group);return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> PopulationService::DematerializeUnit(PopulationUnitId id, GameplayContext context)
 {
-    auto *unit = FindMutableUnit(id);
-    if (!unit)
-        return foundation::Result<void>::Failure(Error("gameplay.population.unit_missing", "population unit missing"));
-    if (unit->state != PopulationUnitState::Materialized || !unit->entity)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_dematerialize_state", "only a materialized unit can be dematerialized"));
-
-    const auto old_entity = *unit->entity;
-    UnindexUnit(*unit);
-    RemoveEntityBinding(*unit);
-    unit->state = PopulationUnitState::Abstract;
-    Bump();
-    unit->revision = revision_;
-    IndexUnit(*unit);
-    ++diagnostics_.dematerialization_requests;
-    RecountGroup(unit->group);
-    Record({0, PopulationChangeKind::UnitDematerialized, unit->group, id, old_entity, unit->current_area, context,
-            revision_});
-    return foundation::Result<void>::Success();
+    auto *unit=FindMutableUnit(id);if(!unit)return foundation::Result<void>::Failure(Error("gameplay.population.unit_missing","population unit missing"));
+    if(unit->state!=PopulationUnitState::Materialized||!unit->entity)return foundation::Result<void>::Failure(Error("gameplay.population.invalid_dematerialize_state","only a materialized unit can be dematerialized"));
+    if(!CanAdvanceRevision())return foundation::Result<void>::Failure(Error("gameplay.population.revision_exhausted","population revision is exhausted"));
+    if(!CanRecordChanges())return foundation::Result<void>::Failure(Error("gameplay.population.change_sequence_exhausted","population change sequence is exhausted"));
+    const Revision next{revision_.value+1};const auto old_entity=*unit->entity;bool state_inserted=false;
+    try{state_inserted=units_by_state_[StateIndex(PopulationUnitState::Abstract)].insert(id).second;Record({0,PopulationChangeKind::UnitDematerialized,unit->group,id,old_entity,unit->current_area,context,next});}
+    catch(...){if(state_inserted)units_by_state_[StateIndex(PopulationUnitState::Abstract)].erase(id);return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","dematerialization publication failed"));}
+    units_by_state_[StateIndex(PopulationUnitState::Materialized)].erase(id);unit_by_entity_.erase(old_entity);unit->entity.reset();unit->state=PopulationUnitState::Abstract;unit->revision=next;revision_=next;++diagnostics_.dematerialization_requests;RecountGroup(unit->group);return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> PopulationService::MarkUnitDead(PopulationUnitId id, GameplayContext context)
@@ -295,49 +277,60 @@ foundation::Result<void> PopulationService::MarkUnitDead(PopulationUnitId id, Ga
         return foundation::Result<void>::Failure(
             Error("gameplay.population.invalid_terminal_transition", "population unit is already terminal"));
 
+    const bool releases_allocation = active_allocation_by_unit_.contains(id);
+    const std::size_t change_count = 1 + (releases_allocation ? 1u : 0u);
+    if (!CanAdvanceRevision() || !CanRecordChanges(change_count))
+        return foundation::Result<void>::Failure(Error(!CanAdvanceRevision() ? "gameplay.population.revision_exhausted" :
+                                                      "gameplay.population.change_sequence_exhausted",
+                                                      "population mutation metadata is exhausted"));
+    const Revision next{revision_.value + 1};
     const auto old_entity = unit->entity.value_or(GameplayObjectRef{});
-    UnindexUnit(*unit);
+
+    bool inserted_dead = false;
+    std::deque<PopulationChange> staged_changes;
+    std::uint64_t staged_sequence = next_change_sequence_;
+    try
+    {
+        inserted_dead = units_by_state_[StateIndex(PopulationUnitState::Dead)].insert(id).second;
+        staged_changes = changes_;
+        if (releases_allocation)
+            AppendStagedChange(staged_changes, staged_sequence,
+                               {0, PopulationChangeKind::AllocationReleased, unit->group, id, {}, unit->current_area,
+                                context, next}, change_journal_capacity_);
+        AppendStagedChange(staged_changes, staged_sequence,
+                           {0, PopulationChangeKind::UnitDied, unit->group, id, old_entity, unit->current_area,
+                            context, next}, change_journal_capacity_);
+    }
+    catch (...)
+    {
+        if (inserted_dead) units_by_state_[StateIndex(PopulationUnitState::Dead)].erase(id);
+        return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed", "population death publication failed"));
+    }
+
+    units_by_state_[StateIndex(unit->state)].erase(id);
     RemoveEntityBinding(*unit);
     unit->state = PopulationUnitState::Dead;
-    Bump();
-    unit->revision = revision_;
-    IndexUnit(*unit);
-
+    unit->revision = next;
     if (auto active = active_migration_by_unit_.find(id); active != active_migration_by_unit_.end())
     {
-        auto migration = migrations_.find(active->second);
-        if (migration != migrations_.end())
-        {
-            migration->second.state = MigrationState::Failed;
-            migration->second.revision = revision_;
-        }
+        if (auto migration = migrations_.find(active->second); migration != migrations_.end())
+        { migration->second.state = MigrationState::Failed; migration->second.revision = next; }
         active_migration_by_unit_.erase(active);
     }
     if (auto residence = active_residence_by_unit_.find(id); residence != active_residence_by_unit_.end())
     {
-        auto record = residences_.find(residence->second);
-        if (record != residences_.end() && record->second.state == ResidenceState::Assigned)
-        {
-            record->second.state = ResidenceState::Abandoned;
-            record->second.revision = revision_;
-        }
+        if (auto record = residences_.find(residence->second); record != residences_.end() && record->second.state == ResidenceState::Assigned)
+        { record->second.state = ResidenceState::Abandoned; record->second.revision = next; }
         active_residence_by_unit_.erase(residence);
     }
     if (auto allocation = active_allocation_by_unit_.find(id); allocation != active_allocation_by_unit_.end())
     {
-        auto record = allocations_.find(allocation->second);
-        if (record != allocations_.end() && record->second.state == PopulationAllocationState::Active)
-        {
-            record->second.state = PopulationAllocationState::Released;
-            record->second.revision = revision_;
-            Record({0, PopulationChangeKind::AllocationReleased, unit->group, id, {}, unit->current_area, context,
-                    revision_});
-        }
+        if (auto record = allocations_.find(allocation->second); record != allocations_.end() && record->second.state == PopulationAllocationState::Active)
+        { record->second.state = PopulationAllocationState::Released; record->second.revision = next; }
         active_allocation_by_unit_.erase(allocation);
     }
-
+    changes_.swap(staged_changes); next_change_sequence_ = staged_sequence; revision_ = next;
     RecountGroup(unit->group);
-    Record({0, PopulationChangeKind::UnitDied, unit->group, id, old_entity, unit->current_area, context, revision_});
     return foundation::Result<void>::Success();
 }
 
@@ -346,200 +339,70 @@ foundation::Result<void> PopulationService::RetireUnit(PopulationUnitId id, Game
     auto *unit = FindMutableUnit(id);
     if (!unit)
         return foundation::Result<void>::Failure(Error("gameplay.population.unit_missing", "population unit missing"));
-    if (unit->state == PopulationUnitState::Removed)
-        return foundation::Result<void>::Success();
+    if (unit->state == PopulationUnitState::Removed) return foundation::Result<void>::Success();
     if (unit->state == PopulationUnitState::Dead)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_terminal_transition", "terminal population unit cannot be retired"));
-
-    const auto old_entity = unit->entity.value_or(GameplayObjectRef{});
-    UnindexUnit(*unit);
-    RemoveEntityBinding(*unit);
-    unit->state = PopulationUnitState::Removed;
-    Bump();
-    unit->revision = revision_;
-    IndexUnit(*unit);
-
-    if (auto active = active_migration_by_unit_.find(id); active != active_migration_by_unit_.end())
-    {
-        auto migration = migrations_.find(active->second);
-        if (migration != migrations_.end())
-        {
-            migration->second.state = MigrationState::Cancelled;
-            migration->second.revision = revision_;
-        }
-        active_migration_by_unit_.erase(active);
-    }
-    if (auto residence = active_residence_by_unit_.find(id); residence != active_residence_by_unit_.end())
-    {
-        auto record = residences_.find(residence->second);
-        if (record != residences_.end() && record->second.state == ResidenceState::Assigned)
-        {
-            record->second.state = ResidenceState::Abandoned;
-            record->second.revision = revision_;
-        }
-        active_residence_by_unit_.erase(residence);
-    }
-    if (auto allocation = active_allocation_by_unit_.find(id); allocation != active_allocation_by_unit_.end())
-    {
-        auto record = allocations_.find(allocation->second);
-        if (record != allocations_.end() && record->second.state == PopulationAllocationState::Active)
-        {
-            record->second.state = PopulationAllocationState::Released;
-            record->second.revision = revision_;
-            Record({0, PopulationChangeKind::AllocationReleased, unit->group, id, {}, unit->current_area, context,
-                    revision_});
-        }
-        active_allocation_by_unit_.erase(allocation);
-    }
-
-    RecountGroup(unit->group);
-    Record({0, PopulationChangeKind::UnitRetired, unit->group, id, old_entity, unit->current_area, context, revision_});
-    return foundation::Result<void>::Success();
+        return foundation::Result<void>::Failure(Error("gameplay.population.invalid_terminal_transition", "terminal population unit cannot be retired"));
+    const bool releases_allocation = active_allocation_by_unit_.contains(id);
+    const std::size_t change_count = 1 + (releases_allocation ? 1u : 0u);
+    if (!CanAdvanceRevision() || !CanRecordChanges(change_count))
+        return foundation::Result<void>::Failure(Error(!CanAdvanceRevision() ? "gameplay.population.revision_exhausted" : "gameplay.population.change_sequence_exhausted", "population mutation metadata is exhausted"));
+    const Revision next{revision_.value + 1}; const auto old_entity=unit->entity.value_or(GameplayObjectRef{});
+    bool inserted_removed=false; std::deque<PopulationChange> staged_changes; auto staged_sequence=next_change_sequence_;
+    try {
+        inserted_removed=units_by_state_[StateIndex(PopulationUnitState::Removed)].insert(id).second;
+        staged_changes=changes_;
+        if(releases_allocation) AppendStagedChange(staged_changes,staged_sequence,{0,PopulationChangeKind::AllocationReleased,unit->group,id,{},unit->current_area,context,next},change_journal_capacity_);
+        AppendStagedChange(staged_changes,staged_sequence,{0,PopulationChangeKind::UnitRetired,unit->group,id,old_entity,unit->current_area,context,next},change_journal_capacity_);
+    } catch(...) { if(inserted_removed) units_by_state_[StateIndex(PopulationUnitState::Removed)].erase(id); return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","population retirement publication failed")); }
+    units_by_state_[StateIndex(unit->state)].erase(id); RemoveEntityBinding(*unit); unit->state=PopulationUnitState::Removed; unit->revision=next;
+    if(auto active=active_migration_by_unit_.find(id);active!=active_migration_by_unit_.end()){ if(auto m=migrations_.find(active->second);m!=migrations_.end()){m->second.state=MigrationState::Cancelled;m->second.revision=next;} active_migration_by_unit_.erase(active); }
+    if(auto r=active_residence_by_unit_.find(id);r!=active_residence_by_unit_.end()){if(auto rec=residences_.find(r->second);rec!=residences_.end()&&rec->second.state==ResidenceState::Assigned){rec->second.state=ResidenceState::Abandoned;rec->second.revision=next;}active_residence_by_unit_.erase(r);}
+    if(auto a=active_allocation_by_unit_.find(id);a!=active_allocation_by_unit_.end()){if(auto rec=allocations_.find(a->second);rec!=allocations_.end()&&rec->second.state==PopulationAllocationState::Active){rec->second.state=PopulationAllocationState::Released;rec->second.revision=next;}active_allocation_by_unit_.erase(a);}
+    changes_.swap(staged_changes);next_change_sequence_=staged_sequence;revision_=next;RecountGroup(unit->group);return foundation::Result<void>::Success();
 }
 
 foundation::Result<PopulationResidenceId> PopulationService::AssignResidence(PopulationResidence residence,
                                                                               GameplayContext context)
 {
-    auto *unit = FindMutableUnit(residence.unit);
-    if (!unit || !residence.home_area.IsValid() || IsTerminalUnitState(unit->state))
-        return foundation::Result<PopulationResidenceId>::Failure(
-            Error("gameplay.population.invalid_residence", "invalid residence"));
-
-    auto existing = active_residence_by_unit_.find(residence.unit);
-    if (existing != active_residence_by_unit_.end())
-    {
-        auto it = residences_.find(existing->second);
-        if (it == residences_.end() || it->second.state != ResidenceState::Assigned)
-            return foundation::Result<PopulationResidenceId>::Failure(
-                Error("gameplay.population.residence_index_corrupt", "active residence index is inconsistent"));
-
-        Bump();
-        it->second.home_area = residence.home_area;
-        it->second.home_property = residence.home_property;
-        it->second.revision = revision_;
-        unit->home_area = residence.home_area;
-        unit->revision = revision_;
-        Record({0, PopulationChangeKind::ResidenceChanged, unit->group, unit->id,
-                unit->entity.value_or(GameplayObjectRef{}), residence.home_area, context, revision_});
-        return foundation::Result<PopulationResidenceId>::Success(it->second.id);
+    auto *unit=FindMutableUnit(residence.unit);
+    if(!unit||!residence.home_area.IsValid()||IsTerminalUnitState(unit->state)||!IsValidResidenceState(residence.state))
+        return foundation::Result<PopulationResidenceId>::Failure(Error("gameplay.population.invalid_residence","invalid residence"));
+    if(!CanAdvanceRevision()||!CanRecordChanges()) return foundation::Result<PopulationResidenceId>::Failure(Error(!CanAdvanceRevision()?"gameplay.population.revision_exhausted":"gameplay.population.change_sequence_exhausted","population mutation metadata is exhausted"));
+    const Revision next{revision_.value+1};
+    if(auto existing=active_residence_by_unit_.find(residence.unit);existing!=active_residence_by_unit_.end()){
+        auto it=residences_.find(existing->second);if(it==residences_.end()||it->second.state!=ResidenceState::Assigned)return foundation::Result<PopulationResidenceId>::Failure(Error("gameplay.population.residence_index_corrupt","active residence index is inconsistent"));
+        std::deque<PopulationChange> staged=changes_;auto seq=next_change_sequence_;
+        try{AppendStagedChange(staged,seq,{0,PopulationChangeKind::ResidenceChanged,unit->group,unit->id,unit->entity.value_or(GameplayObjectRef{}),residence.home_area,context,next},change_journal_capacity_);}catch(...){return foundation::Result<PopulationResidenceId>::Failure(Error("gameplay.population.publication_failed","residence publication failed"));}
+        it->second.home_area=residence.home_area;it->second.home_property=residence.home_property;it->second.revision=next;unit->home_area=residence.home_area;unit->revision=next;changes_.swap(staged);next_change_sequence_=seq;revision_=next;return foundation::Result<PopulationResidenceId>::Success(it->second.id);
     }
-
-    if (!residence.id.IsValid())
-        residence.id = PopulationResidenceId{residence_ids_.Next()};
-    if (!residence.id.IsValid())
-        return foundation::Result<PopulationResidenceId>::Failure(
-            Error("gameplay.population.id_exhausted", "population residence id generator exhausted"));
-    if (residences_.contains(residence.id))
-        return foundation::Result<PopulationResidenceId>::Failure(
-            Error("gameplay.population.duplicate_residence", "duplicate residence"));
-
-    AdvanceGeneratorPast(residence_ids_, residence.id);
-    residence.state = ResidenceState::Assigned;
-    Bump();
-    residence.revision = revision_;
-    unit->home_area = residence.home_area;
-    unit->revision = revision_;
-    const auto id = residence.id;
-    const auto area = residence.home_area;
-    residences_.emplace(id, residence);
-    active_residence_by_unit_[residence.unit] = id;
-    Record({0, PopulationChangeKind::ResidenceAssigned, unit->group, unit->id,
-            unit->entity.value_or(GameplayObjectRef{}), area, context, revision_});
-    return foundation::Result<PopulationResidenceId>::Success(id);
+    auto staged_ids=residence_ids_; if(!residence.id.IsValid())residence.id=PopulationResidenceId{staged_ids.Next()}; if(!residence.id.IsValid())return foundation::Result<PopulationResidenceId>::Failure(Error("gameplay.population.id_exhausted","population residence id generator exhausted")); if(residences_.contains(residence.id))return foundation::Result<PopulationResidenceId>::Failure(Error("gameplay.population.duplicate_residence","duplicate residence")); AdvanceGeneratorPast(staged_ids,residence.id);
+    residence.state=ResidenceState::Assigned;residence.revision=next;const auto rid=residence.id;bool primary=false,indexed=false;std::deque<PopulationChange> staged;auto seq=next_change_sequence_;
+    try{residences_.reserve(residences_.size()+1);active_residence_by_unit_.reserve(active_residence_by_unit_.size()+1);staged=changes_;AppendStagedChange(staged,seq,{0,PopulationChangeKind::ResidenceAssigned,unit->group,unit->id,unit->entity.value_or(GameplayObjectRef{}),residence.home_area,context,next},change_journal_capacity_);primary=residences_.emplace(rid,residence).second;indexed=active_residence_by_unit_.emplace(residence.unit,rid).second;if(!primary||!indexed)throw 1;}catch(...){if(indexed)active_residence_by_unit_.erase(residence.unit);if(primary)residences_.erase(rid);return foundation::Result<PopulationResidenceId>::Failure(Error("gameplay.population.publication_failed","residence publication failed"));}
+    unit->home_area=residence.home_area;unit->revision=next;changes_.swap(staged);next_change_sequence_=seq;residence_ids_.Restore(staged_ids.GetSnapshot());revision_=next;return foundation::Result<PopulationResidenceId>::Success(rid);
 }
 
 foundation::Result<PopulationMigrationId> PopulationService::StartMigration(PopulationMigration migration,
                                                                              GameplayContext context)
 {
-    auto *unit = FindMutableUnit(migration.unit);
-    if (!unit || !migration.to.IsValid() || IsTerminalUnitState(unit ? unit->state : PopulationUnitState::Removed))
-        return foundation::Result<PopulationMigrationId>::Failure(
-            Error("gameplay.population.invalid_migration", "invalid migration"));
-    if (active_migration_by_unit_.contains(migration.unit))
-        return foundation::Result<PopulationMigrationId>::Failure(
-            Error("gameplay.population.migration_already_active", "population unit already has an active migration"));
-
-    if (!migration.from.IsValid())
-        migration.from = unit->current_area;
-    if (migration.from != unit->current_area)
-        return foundation::Result<PopulationMigrationId>::Failure(
-            Error("gameplay.population.migration_source_stale", "migration source area does not match unit current area"));
-    if (migration.to == migration.from)
-        return foundation::Result<PopulationMigrationId>::Failure(
-            Error("gameplay.population.invalid_migration", "migration destination must differ from source"));
-
-    if (!migration.id.IsValid())
-        migration.id = PopulationMigrationId{migration_ids_.Next()};
-    if (!migration.id.IsValid())
-        return foundation::Result<PopulationMigrationId>::Failure(
-            Error("gameplay.population.id_exhausted", "population migration id generator exhausted"));
-    if (migrations_.contains(migration.id))
-        return foundation::Result<PopulationMigrationId>::Failure(
-            Error("gameplay.population.duplicate_migration", "duplicate migration"));
-
-    AdvanceGeneratorPast(migration_ids_, migration.id);
-    migration.state = MigrationState::Active;
-    if (migration.started_at.ticks == 0)
-        migration.started_at = context.time;
-    Bump();
-    migration.revision = revision_;
-    const auto id = migration.id;
-    const auto destination = migration.to;
-    migrations_.emplace(id, migration);
-    active_migration_by_unit_[migration.unit] = id;
-    Record({0, PopulationChangeKind::MigrationStarted, unit->group, unit->id,
-            unit->entity.value_or(GameplayObjectRef{}), destination, context, revision_});
-    return foundation::Result<PopulationMigrationId>::Success(id);
+    auto *unit=FindMutableUnit(migration.unit);if(!unit||!migration.to.IsValid()||IsTerminalUnitState(unit?unit->state:PopulationUnitState::Removed)||!IsValidMigrationState(migration.state))return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.invalid_migration","invalid migration"));
+    if(active_migration_by_unit_.contains(migration.unit))return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.migration_already_active","population unit already has an active migration"));
+    if(!migration.from.IsValid())migration.from=unit->current_area;if(migration.from!=unit->current_area)return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.migration_source_stale","migration source area does not match unit current area"));if(migration.to==migration.from)return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.invalid_migration","migration destination must differ from source"));
+    auto staged_ids=migration_ids_;if(!migration.id.IsValid())migration.id=PopulationMigrationId{staged_ids.Next()};if(!migration.id.IsValid())return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.id_exhausted","population migration id generator exhausted"));if(migrations_.contains(migration.id))return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.duplicate_migration","duplicate migration"));AdvanceGeneratorPast(staged_ids,migration.id);
+    if(!CanAdvanceRevision()||!CanRecordChanges())return foundation::Result<PopulationMigrationId>::Failure(Error(!CanAdvanceRevision()?"gameplay.population.revision_exhausted":"gameplay.population.change_sequence_exhausted","population mutation metadata is exhausted"));const Revision next{revision_.value+1};migration.state=MigrationState::Active;if(migration.started_at.ticks==0)migration.started_at=context.time;migration.revision=next;const auto mid=migration.id;bool primary=false,indexed=false;std::deque<PopulationChange> staged;auto seq=next_change_sequence_;
+    try{migrations_.reserve(migrations_.size()+1);active_migration_by_unit_.reserve(active_migration_by_unit_.size()+1);staged=changes_;AppendStagedChange(staged,seq,{0,PopulationChangeKind::MigrationStarted,unit->group,unit->id,unit->entity.value_or(GameplayObjectRef{}),migration.to,context,next},change_journal_capacity_);primary=migrations_.emplace(mid,migration).second;indexed=active_migration_by_unit_.emplace(migration.unit,mid).second;if(!primary||!indexed)throw 1;}catch(...){if(indexed)active_migration_by_unit_.erase(migration.unit);if(primary)migrations_.erase(mid);return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.publication_failed","migration publication failed"));}
+    changes_.swap(staged);next_change_sequence_=seq;migration_ids_.Restore(staged_ids.GetSnapshot());revision_=next;return foundation::Result<PopulationMigrationId>::Success(mid);
 }
 
 foundation::Result<void> PopulationService::FinishMigration(PopulationMigrationId id, MigrationState final_state,
                                                              GameplayContext context)
 {
-    auto it = migrations_.find(id);
-    if (it == migrations_.end())
-        return foundation::Result<void>::Failure(Error("gameplay.population.migration_missing", "migration missing"));
-    if (it->second.state != MigrationState::Active)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.migration_not_active", "migration is not active"));
-
-    auto *unit = FindMutableUnit(it->second.unit);
-    if (!unit)
-        return foundation::Result<void>::Failure(Error("gameplay.population.unit_missing", "population unit missing"));
-    if (IsTerminalUnitState(unit->state))
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.invalid_migration_unit_state", "terminal population unit cannot finish migration"));
-
-    if (final_state == MigrationState::Completed && unit->current_area != it->second.from)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.migration_source_stale", "population unit moved since migration started"));
-
-    Bump();
-    it->second.state = final_state;
-    it->second.revision = revision_;
-    active_migration_by_unit_.erase(unit->id);
-
-    PopulationChangeKind kind = PopulationChangeKind::MigrationFailed;
-    GameplayObjectRef area = unit->current_area;
-    if (final_state == MigrationState::Completed)
-    {
-        UnindexUnit(*unit);
-        unit->current_area = it->second.to;
-        unit->revision = revision_;
-        IndexUnit(*unit);
-        area = unit->current_area;
-        kind = PopulationChangeKind::MigrationCompleted;
-    }
-    else if (final_state == MigrationState::Cancelled)
-    {
-        kind = PopulationChangeKind::MigrationCancelled;
-    }
-
-    Record({0, kind, unit->group, unit->id, unit->entity.value_or(GameplayObjectRef{}), area, context, revision_});
-    if (final_state == MigrationState::Completed)
-        Record({0, PopulationChangeKind::UnitMigrated, unit->group, unit->id,
-                unit->entity.value_or(GameplayObjectRef{}), area, context, revision_});
-    return foundation::Result<void>::Success();
+    if(final_state!=MigrationState::Completed&&final_state!=MigrationState::Cancelled&&final_state!=MigrationState::Failed)return foundation::Result<void>::Failure(Error("gameplay.population.invalid_migration_state","invalid final migration state"));
+    auto it=migrations_.find(id);if(it==migrations_.end())return foundation::Result<void>::Failure(Error("gameplay.population.migration_missing","migration missing"));if(it->second.state!=MigrationState::Active)return foundation::Result<void>::Failure(Error("gameplay.population.migration_not_active","migration is not active"));auto *unit=FindMutableUnit(it->second.unit);if(!unit)return foundation::Result<void>::Failure(Error("gameplay.population.unit_missing","population unit missing"));if(IsTerminalUnitState(unit->state))return foundation::Result<void>::Failure(Error("gameplay.population.invalid_migration_unit_state","terminal population unit cannot finish migration"));if(final_state==MigrationState::Completed&&unit->current_area!=it->second.from)return foundation::Result<void>::Failure(Error("gameplay.population.migration_source_stale","population unit moved since migration started"));
+    const std::size_t changes=final_state==MigrationState::Completed?2:1;if(!CanAdvanceRevision()||!CanRecordChanges(changes))return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.population.revision_exhausted":"gameplay.population.change_sequence_exhausted","population mutation metadata is exhausted"));const Revision next{revision_.value+1};
+    bool new_area_inserted=false; if(final_state==MigrationState::Completed){try{new_area_inserted=units_by_area_[it->second.to].insert(unit->id).second;}catch(...){return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","migration area index publication failed"));}}
+    std::deque<PopulationChange> staged;auto seq=next_change_sequence_;PopulationChangeKind kind=final_state==MigrationState::Completed?PopulationChangeKind::MigrationCompleted:(final_state==MigrationState::Cancelled?PopulationChangeKind::MigrationCancelled:PopulationChangeKind::MigrationFailed);GameplayObjectRef area=final_state==MigrationState::Completed?it->second.to:unit->current_area;
+    try{staged=changes_;AppendStagedChange(staged,seq,{0,kind,unit->group,unit->id,unit->entity.value_or(GameplayObjectRef{}),area,context,next},change_journal_capacity_);if(final_state==MigrationState::Completed)AppendStagedChange(staged,seq,{0,PopulationChangeKind::UnitMigrated,unit->group,unit->id,unit->entity.value_or(GameplayObjectRef{}),area,context,next},change_journal_capacity_);}catch(...){if(new_area_inserted){auto x=units_by_area_.find(it->second.to);if(x!=units_by_area_.end()){x->second.erase(unit->id);if(x->second.empty())units_by_area_.erase(x);}}return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","migration publication failed"));}
+    it->second.state=final_state;it->second.revision=next;active_migration_by_unit_.erase(unit->id);if(final_state==MigrationState::Completed){auto old=units_by_area_.find(unit->current_area);if(old!=units_by_area_.end()){old->second.erase(unit->id);if(old->second.empty())units_by_area_.erase(old);}unit->current_area=it->second.to;unit->revision=next;}changes_.swap(staged);next_change_sequence_=seq;revision_=next;return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> PopulationService::CompleteMigration(PopulationMigrationId id, GameplayContext context)
@@ -560,185 +423,36 @@ foundation::Result<void> PopulationService::FailMigration(PopulationMigrationId 
 foundation::Result<PopulationAllocationBatch> PopulationService::ReserveAllocations(
     PopulationAllocationRequest request, GameplayContext context)
 {
-    if (!request.purpose.IsValid() || request.units.empty())
-        return foundation::Result<PopulationAllocationBatch>::Failure(
-            Error("gameplay.population.invalid_allocation", "population allocation requires a purpose and units"));
-
-    std::vector<PopulationUnitId> canonical_units = request.units;
-    std::sort(canonical_units.begin(), canonical_units.end());
-    if (std::adjacent_find(canonical_units.begin(), canonical_units.end()) != canonical_units.end())
-        return foundation::Result<PopulationAllocationBatch>::Failure(
-            Error("gameplay.population.duplicate_allocation_unit", "population allocation contains duplicate units"));
-
-    if (request.correlation.IsValid())
-    {
-        auto existing_index = allocations_by_correlation_.find(request.correlation);
-        if (existing_index != allocations_by_correlation_.end())
-        {
-            std::vector<PopulationUnitId> existing_units;
-            PopulationAllocationBatch existing_batch;
-            existing_batch.correlation = request.correlation;
-            for (const auto allocation_id : existing_index->second)
-            {
-                auto allocation = allocations_.find(allocation_id);
-                if (allocation == allocations_.end() || allocation->second.purpose != request.purpose ||
-                    allocation->second.state == PopulationAllocationState::Released)
-                    return foundation::Result<PopulationAllocationBatch>::Failure(
-                        Error("gameplay.population.allocation_correlation_conflict",
-                              "population allocation correlation already belongs to a different or released allocation"));
-                existing_units.push_back(allocation->second.unit);
-                existing_batch.tokens.push_back({allocation->second.id, allocation->second.unit});
-            }
-            std::sort(existing_units.begin(), existing_units.end());
-            if (existing_units != canonical_units)
-                return foundation::Result<PopulationAllocationBatch>::Failure(
-                    Error("gameplay.population.allocation_correlation_conflict",
-                          "population allocation correlation payload does not match the existing allocation"));
-            std::sort(existing_batch.tokens.begin(), existing_batch.tokens.end(), [](const auto &a, const auto &b) {
-                return a.allocation < b.allocation;
-            });
-            return foundation::Result<PopulationAllocationBatch>::Success(std::move(existing_batch));
-        }
+    if(request.units.empty()||!request.purpose.IsValid())return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.invalid_allocation_request","population allocation request is invalid"));
+    auto canonical=request.units;std::sort(canonical.begin(),canonical.end());if(std::adjacent_find(canonical.begin(),canonical.end())!=canonical.end())return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.duplicate_allocation_unit","population allocation request contains duplicate units"));
+    if(request.correlation.IsValid()){
+        auto existing=allocations_by_correlation_.find(request.correlation);if(existing!=allocations_by_correlation_.end()){PopulationAllocationBatch batch;batch.correlation=request.correlation;std::vector<PopulationUnitId> eu;for(auto aid:existing->second){auto a=allocations_.find(aid);if(a==allocations_.end()||a->second.purpose!=request.purpose||a->second.state==PopulationAllocationState::Released)return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.allocation_correlation_conflict","population allocation correlation conflicts with existing allocation"));eu.push_back(a->second.unit);batch.tokens.push_back({a->second.id,a->second.unit});}std::sort(eu.begin(),eu.end());if(eu!=canonical)return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.allocation_correlation_conflict","population allocation correlation payload does not match"));std::sort(batch.tokens.begin(),batch.tokens.end(),[](auto&a,auto&b){return a.allocation<b.allocation;});return foundation::Result<PopulationAllocationBatch>::Success(std::move(batch));}
     }
-
-    for (const auto unit_id : canonical_units)
-    {
-        const auto *unit = GetUnit(unit_id);
-        if (!unit || !CanMaterialize(unit->state) || unit->entity)
-            return foundation::Result<PopulationAllocationBatch>::Failure(
-                Error("gameplay.population.unit_not_allocatable", "population unit cannot be allocated"));
-        if (active_allocation_by_unit_.contains(unit_id))
-            return foundation::Result<PopulationAllocationBatch>::Failure(
-                Error("gameplay.population.unit_already_allocated", "population unit already has an active allocation"));
-    }
-
-    if (!request.correlation.IsValid())
-    {
-        request.correlation = allocation_correlation_ids_.Next();
-        if (!request.correlation.IsValid())
-            return foundation::Result<PopulationAllocationBatch>::Failure(
-                Error("gameplay.population.id_exhausted", "population allocation correlation id generator exhausted"));
-    }
-
-    const auto generator_before = allocation_ids_.GetSnapshot();
-    std::vector<PopulationAllocationId> generated_ids;
-    generated_ids.reserve(canonical_units.size());
-    for (std::size_t i = 0; i < canonical_units.size(); ++i)
-    {
-        auto id = PopulationAllocationId{allocation_ids_.Next()};
-        if (!id.IsValid())
-        {
-            allocation_ids_.Restore(generator_before);
-            return foundation::Result<PopulationAllocationBatch>::Failure(
-                Error("gameplay.population.id_exhausted", "population allocation id generator exhausted"));
-        }
-        generated_ids.push_back(id);
-    }
-
-    Bump();
-    PopulationAllocationBatch batch;
-    batch.correlation = request.correlation;
-    auto &correlation_index = allocations_by_correlation_[request.correlation];
-    correlation_index.reserve(correlation_index.size() + canonical_units.size());
-    for (std::size_t i = 0; i < canonical_units.size(); ++i)
-    {
-        PopulationAllocation allocation;
-        allocation.id = generated_ids[i];
-        allocation.unit = canonical_units[i];
-        allocation.purpose = request.purpose;
-        allocation.correlation = request.correlation;
-        allocation.expires_at = request.expires_at;
-        allocation.revision = revision_;
-        allocations_.emplace(allocation.id, allocation);
-        active_allocation_by_unit_[allocation.unit] = allocation.id;
-        correlation_index.push_back(allocation.id);
-        batch.tokens.push_back({allocation.id, allocation.unit});
-        const auto *unit = GetUnit(allocation.unit);
-        Record({0, PopulationChangeKind::AllocationReserved, unit ? unit->group : PopulationGroupId{}, allocation.unit,
-                {}, unit ? unit->current_area : GameplayObjectRef{}, context, revision_});
-    }
-    std::sort(batch.tokens.begin(), batch.tokens.end(), [](const auto &a, const auto &b) {
-        return a.allocation < b.allocation;
-    });
-    return foundation::Result<PopulationAllocationBatch>::Success(std::move(batch));
+    for(auto uid:canonical){auto *u=GetUnit(uid);if(!u||!CanMaterialize(u->state)||u->entity)return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.unit_not_allocatable","population unit cannot be allocated"));if(active_allocation_by_unit_.contains(uid))return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.unit_already_allocated","population unit already has an active allocation"));}
+    if(!CanAdvanceRevision()||!CanRecordChanges(canonical.size()))return foundation::Result<PopulationAllocationBatch>::Failure(Error(!CanAdvanceRevision()?"gameplay.population.revision_exhausted":"gameplay.population.change_sequence_exhausted","population mutation metadata is exhausted"));
+    auto staged_alloc_ids=allocation_ids_;auto staged_corr_ids=allocation_correlation_ids_;if(!request.correlation.IsValid())request.correlation=staged_corr_ids.Next();else AdvanceGeneratorPast(staged_corr_ids,PopulationAllocationId{request.correlation});if(!request.correlation.IsValid())return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.id_exhausted","population allocation correlation id generator exhausted"));
+    std::vector<PopulationAllocationId> ids;try{ids.reserve(canonical.size());for(size_t i=0;i<canonical.size();++i){PopulationAllocationId aid{staged_alloc_ids.Next()};if(!aid.IsValid())return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.id_exhausted","population allocation id generator exhausted"));ids.push_back(aid);}}catch(...){return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.publication_failed","population allocation staging failed"));}
+    const Revision next{revision_.value+1};PopulationAllocationBatch batch;batch.correlation=request.correlation;
+    try{
+        auto new_allocations=allocations_;auto new_active=active_allocation_by_unit_;auto new_corr=allocations_by_correlation_;auto new_changes=changes_;auto seq=next_change_sequence_;auto &corr=new_corr[request.correlation];corr.reserve(corr.size()+canonical.size());batch.tokens.reserve(canonical.size());
+        for(size_t i=0;i<canonical.size();++i){PopulationAllocation a;a.id=ids[i];a.unit=canonical[i];a.purpose=request.purpose;a.correlation=request.correlation;a.expires_at=request.expires_at;a.state=PopulationAllocationState::Active;a.revision=next;new_allocations.emplace(a.id,a);new_active.emplace(a.unit,a.id);corr.push_back(a.id);batch.tokens.push_back({a.id,a.unit});auto *u=GetUnit(a.unit);AppendStagedChange(new_changes,seq,{0,PopulationChangeKind::AllocationReserved,u?u->group:PopulationGroupId{},a.unit,{},u?u->current_area:GameplayObjectRef{},context,next},change_journal_capacity_);}
+        allocations_.swap(new_allocations);active_allocation_by_unit_.swap(new_active);allocations_by_correlation_.swap(new_corr);changes_.swap(new_changes);next_change_sequence_=seq;
+    }catch(...){return foundation::Result<PopulationAllocationBatch>::Failure(Error("gameplay.population.publication_failed","population allocation publication failed"));}
+    allocation_ids_.Restore(staged_alloc_ids.GetSnapshot());allocation_correlation_ids_.Restore(staged_corr_ids.GetSnapshot());revision_=next;std::sort(batch.tokens.begin(),batch.tokens.end(),[](auto&a,auto&b){return a.allocation<b.allocation;});return foundation::Result<PopulationAllocationBatch>::Success(std::move(batch));
 }
 
 foundation::Result<void> PopulationService::CommitAllocation(PopulationAllocationId id, GameplayObjectRef entity,
                                                               GameplayContext context)
 {
-    auto allocation = allocations_.find(id);
-    if (allocation == allocations_.end() || !entity.IsValid())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.allocation_missing", "population allocation missing or entity invalid"));
-    if (allocation->second.state == PopulationAllocationState::Committed)
-    {
-        if (allocation->second.bound_entity == entity)
-            return foundation::Result<void>::Success();
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.allocation_commit_conflict", "population allocation is already committed to another entity"));
-    }
-    if (allocation->second.state != PopulationAllocationState::Active)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.allocation_not_active", "population allocation is not active"));
-
-    auto active = active_allocation_by_unit_.find(allocation->second.unit);
-    if (active == active_allocation_by_unit_.end() || active->second != id)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.allocation_index_corrupt", "population allocation index is inconsistent"));
-
-    auto *unit = FindMutableUnit(allocation->second.unit);
-    if (!unit || !CanMaterialize(unit->state) || unit->entity)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.unit_not_allocatable", "population unit cannot commit the allocation"));
-    auto existing = unit_by_entity_.find(entity);
-    if (existing != unit_by_entity_.end() && existing->second != unit->id)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.entity_already_bound", "entity is already bound to another population unit"));
-
-    UnindexUnit(*unit);
-    auto bound = BindEntity(*unit, entity);
-    if (!bound)
-    {
-        IndexUnit(*unit);
-        return bound;
-    }
-    unit->state = PopulationUnitState::Materialized;
-    Bump();
-    unit->revision = revision_;
-    allocation->second.state = PopulationAllocationState::Committed;
-    allocation->second.bound_entity = entity;
-    allocation->second.revision = revision_;
-    active_allocation_by_unit_.erase(active);
-    IndexUnit(*unit);
-    ++diagnostics_.materialization_requests;
-    RecountGroup(unit->group);
-    Record({0, PopulationChangeKind::UnitMaterialized, unit->group, unit->id, entity, unit->current_area, context,
-            revision_});
-    Record({0, PopulationChangeKind::AllocationCommitted, unit->group, unit->id, entity, unit->current_area, context,
-            revision_});
-    return foundation::Result<void>::Success();
+    auto a=allocations_.find(id);if(a==allocations_.end()||!entity.IsValid())return foundation::Result<void>::Failure(Error("gameplay.population.allocation_missing","population allocation missing or entity invalid"));if(a->second.state==PopulationAllocationState::Committed)return a->second.bound_entity==entity?foundation::Result<void>::Success():foundation::Result<void>::Failure(Error("gameplay.population.allocation_commit_conflict","population allocation is already committed to another entity"));if(a->second.state!=PopulationAllocationState::Active)return foundation::Result<void>::Failure(Error("gameplay.population.allocation_not_active","population allocation is not active"));auto active=active_allocation_by_unit_.find(a->second.unit);if(active==active_allocation_by_unit_.end()||active->second!=id)return foundation::Result<void>::Failure(Error("gameplay.population.allocation_index_corrupt","population allocation index is inconsistent"));auto *unit=FindMutableUnit(a->second.unit);if(!unit||!CanMaterialize(unit->state)||unit->entity)return foundation::Result<void>::Failure(Error("gameplay.population.unit_not_allocatable","population unit cannot commit the allocation"));if(auto ex=unit_by_entity_.find(entity);ex!=unit_by_entity_.end()&&ex->second!=unit->id)return foundation::Result<void>::Failure(Error("gameplay.population.entity_already_bound","entity is already bound"));if(!CanAdvanceRevision()||!CanRecordChanges(2))return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.population.revision_exhausted":"gameplay.population.change_sequence_exhausted","population mutation metadata is exhausted"));const Revision next{revision_.value+1};
+    bool entity_insert=false,state_insert=false;std::deque<PopulationChange> staged;auto seq=next_change_sequence_;
+    try{entity_insert=unit_by_entity_.emplace(entity,unit->id).second;state_insert=units_by_state_[StateIndex(PopulationUnitState::Materialized)].insert(unit->id).second;staged=changes_;AppendStagedChange(staged,seq,{0,PopulationChangeKind::UnitMaterialized,unit->group,unit->id,entity,unit->current_area,context,next},change_journal_capacity_);AppendStagedChange(staged,seq,{0,PopulationChangeKind::AllocationCommitted,unit->group,unit->id,entity,unit->current_area,context,next},change_journal_capacity_);}catch(...){if(entity_insert)unit_by_entity_.erase(entity);if(state_insert)units_by_state_[StateIndex(PopulationUnitState::Materialized)].erase(unit->id);return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","population allocation commit publication failed"));}
+    units_by_state_[StateIndex(unit->state)].erase(unit->id);unit->entity=entity;unit->state=PopulationUnitState::Materialized;unit->revision=next;a->second.state=PopulationAllocationState::Committed;a->second.bound_entity=entity;a->second.revision=next;active_allocation_by_unit_.erase(active);changes_.swap(staged);next_change_sequence_=seq;revision_=next;++diagnostics_.materialization_requests;RecountGroup(unit->group);return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> PopulationService::ReleaseAllocation(PopulationAllocationId id, GameplayContext context)
 {
-    auto allocation = allocations_.find(id);
-    if (allocation == allocations_.end())
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.allocation_missing", "population allocation missing"));
-    if (allocation->second.state == PopulationAllocationState::Released)
-        return foundation::Result<void>::Success();
-    if (allocation->second.state == PopulationAllocationState::Committed)
-        return foundation::Result<void>::Failure(
-            Error("gameplay.population.allocation_already_committed", "committed population allocation cannot be released"));
-
-    auto *unit = FindMutableUnit(allocation->second.unit);
-    Bump();
-    allocation->second.state = PopulationAllocationState::Released;
-    allocation->second.revision = revision_;
-    active_allocation_by_unit_.erase(allocation->second.unit);
-    Record({0, PopulationChangeKind::AllocationReleased, unit ? unit->group : PopulationGroupId{}, allocation->second.unit,
-            {}, unit ? unit->current_area : GameplayObjectRef{}, context, revision_});
-    return foundation::Result<void>::Success();
+    auto a=allocations_.find(id);if(a==allocations_.end())return foundation::Result<void>::Failure(Error("gameplay.population.allocation_missing","population allocation missing"));if(a->second.state==PopulationAllocationState::Released)return foundation::Result<void>::Success();if(a->second.state==PopulationAllocationState::Committed)return foundation::Result<void>::Failure(Error("gameplay.population.allocation_already_committed","committed population allocation cannot be released"));if(!CanAdvanceRevision()||!CanRecordChanges())return foundation::Result<void>::Failure(Error(!CanAdvanceRevision()?"gameplay.population.revision_exhausted":"gameplay.population.change_sequence_exhausted","population mutation metadata is exhausted"));const Revision next{revision_.value+1};auto *u=FindMutableUnit(a->second.unit);std::deque<PopulationChange> staged;auto seq=next_change_sequence_;try{staged=changes_;AppendStagedChange(staged,seq,{0,PopulationChangeKind::AllocationReleased,u?u->group:PopulationGroupId{},a->second.unit,{},u?u->current_area:GameplayObjectRef{},context,next},change_journal_capacity_);}catch(...){return foundation::Result<void>::Failure(Error("gameplay.population.publication_failed","population allocation release publication failed"));}a->second.state=PopulationAllocationState::Released;a->second.revision=next;active_allocation_by_unit_.erase(a->second.unit);changes_.swap(staged);next_change_sequence_=seq;revision_=next;return foundation::Result<void>::Success();
 }
 
 void PopulationService::PruneTerminalAllocations(GameplayObjectId correlation)
@@ -752,12 +466,14 @@ void PopulationService::PruneTerminalAllocations(GameplayObjectId correlation)
         if (allocation != allocations_.end() && allocation->second.state == PopulationAllocationState::Active)
             return;
     }
+    if (!CanAdvanceRevision())
+        return;
     bool changed = false;
     for (const auto id : index->second)
         changed = allocations_.erase(id) != 0 || changed;
     allocations_by_correlation_.erase(index);
     if (changed)
-        Bump();
+        revision_.value += 1;
 }
 
 const PopulationGroup *PopulationService::GetGroup(PopulationGroupId id) const noexcept
@@ -1082,8 +798,8 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
 
     for (auto group : snapshot.groups)
     {
-        if (!group.id.IsValid() || !group.area.IsValid() || group.revision > snapshot.revision ||
-            !new_groups.emplace(group.id, group).second)
+        if (!group.id.IsValid() || !group.area.IsValid() || !IsValidPopulationGroupState(group.state) ||
+            group.revision > snapshot.revision || !new_groups.emplace(group.id, group).second)
             return foundation::Result<void>::Failure(
                 Error("gameplay.population.restore_invalid", "invalid or duplicate population group snapshot"));
         group_ids.push_back(group.id);
@@ -1092,7 +808,8 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
     for (auto unit : snapshot.units)
     {
         if (!unit.id.IsValid() || !unit.group.IsValid() || !new_groups.contains(unit.group) ||
-            !unit.current_area.IsValid() || !unit.home_area.IsValid() || unit.revision > snapshot.revision)
+            !unit.current_area.IsValid() || !unit.home_area.IsValid() || !IsValidPopulationUnitState(unit.state) ||
+            unit.revision > snapshot.revision)
             return foundation::Result<void>::Failure(
                 Error("gameplay.population.restore_invalid", "invalid population unit snapshot"));
         if (unit.template_id.IsValid() && !templates_.contains(unit.template_id))
@@ -1118,7 +835,8 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
     for (auto residence : snapshot.residences)
     {
         if (!residence.id.IsValid() || !residence.unit.IsValid() || !new_units.contains(residence.unit) ||
-            !residence.home_area.IsValid() || residence.revision > snapshot.revision ||
+            !residence.home_area.IsValid() || !IsValidResidenceState(residence.state) ||
+            residence.revision > snapshot.revision ||
             !new_residences.emplace(residence.id, residence).second)
             return foundation::Result<void>::Failure(
                 Error("gameplay.population.restore_invalid", "invalid or duplicate population residence snapshot"));
@@ -1133,7 +851,7 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
     {
         if (!migration.id.IsValid() || !migration.unit.IsValid() || !new_units.contains(migration.unit) ||
             !migration.from.IsValid() || !migration.to.IsValid() || migration.from == migration.to ||
-            migration.revision > snapshot.revision || !new_migrations.emplace(migration.id, migration).second)
+            !IsValidMigrationState(migration.state) || migration.revision > snapshot.revision || !new_migrations.emplace(migration.id, migration).second)
             return foundation::Result<void>::Failure(
                 Error("gameplay.population.restore_invalid", "invalid or duplicate population migration snapshot"));
         if (migration.state == MigrationState::Active)
@@ -1151,7 +869,7 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
     {
         if (!allocation.id.IsValid() || !allocation.unit.IsValid() || !new_units.contains(allocation.unit) ||
             !allocation.purpose.IsValid() || !allocation.correlation.IsValid() ||
-            allocation.revision > snapshot.revision || !new_allocations.emplace(allocation.id, allocation).second)
+            !IsValidPopulationAllocationState(allocation.state) || allocation.revision > snapshot.revision || !new_allocations.emplace(allocation.id, allocation).second)
             return foundation::Result<void>::Failure(
                 Error("gameplay.population.restore_invalid_allocation", "invalid or duplicate population allocation snapshot"));
         if (allocation.state == PopulationAllocationState::Active)
@@ -1173,6 +891,39 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
         allocation_correlations.push_back(PopulationAllocationId{allocation.correlation});
     }
 
+    std::unordered_map<PopulationGroupId, std::unordered_set<PopulationUnitId, IdHash>, IdHash> new_units_by_group;
+    std::unordered_map<GameplayObjectRef, std::unordered_set<PopulationUnitId, IdHash>> new_units_by_area;
+    std::unordered_map<PopulationTemplateId, std::unordered_set<PopulationUnitId, IdHash>, IdHash> new_units_by_template;
+    std::array<std::unordered_set<PopulationUnitId, IdHash>, 5> new_units_by_state;
+    try
+    {
+        for (const auto &[id, unit] : new_units)
+        {
+            new_units_by_group[unit.group].insert(id);
+            new_units_by_area[unit.current_area].insert(id);
+            if (unit.template_id.IsValid()) new_units_by_template[unit.template_id].insert(id);
+            new_units_by_state[StateIndex(unit.state)].insert(id);
+        }
+        for (auto &[gid, group] : new_groups)
+        {
+            std::uint32_t known = 0, materialized = 0;
+            if (auto it = new_units_by_group.find(gid); it != new_units_by_group.end())
+                for (auto uid : it->second)
+                {
+                    const auto &unit = new_units.at(uid);
+                    if (unit.state != PopulationUnitState::Removed) ++known;
+                    if (unit.state == PopulationUnitState::Materialized) ++materialized;
+                }
+            group.current_known_count = known;
+            group.materialized_count = materialized;
+        }
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.population.restore_allocation_failed",
+                                                        "population restore index staging failed"));
+    }
+
     const auto group_generator = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(
         snapshot.group_ids, group_ids_.Scope(), MaxLowForScope(group_ids, group_ids_.Scope()));
     const auto unit_generator = ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(
@@ -1191,16 +942,20 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
         return foundation::Result<void>::Failure(
             Error("gameplay.population.restore_generator_invalid", "invalid population id generator snapshot"));
 
-    groups_ = std::move(new_groups);
-    units_ = std::move(new_units);
-    residences_ = std::move(new_residences);
-    migrations_ = std::move(new_migrations);
-    allocations_ = std::move(new_allocations);
-    unit_by_entity_ = std::move(new_unit_by_entity);
-    active_migration_by_unit_ = std::move(new_active_migrations);
-    active_residence_by_unit_ = std::move(new_active_residences);
-    active_allocation_by_unit_ = std::move(new_active_allocations);
-    allocations_by_correlation_ = std::move(new_allocations_by_correlation);
+    groups_.swap(new_groups);
+    units_.swap(new_units);
+    residences_.swap(new_residences);
+    migrations_.swap(new_migrations);
+    allocations_.swap(new_allocations);
+    unit_by_entity_.swap(new_unit_by_entity);
+    active_migration_by_unit_.swap(new_active_migrations);
+    active_residence_by_unit_.swap(new_active_residences);
+    active_allocation_by_unit_.swap(new_active_allocations);
+    allocations_by_correlation_.swap(new_allocations_by_correlation);
+    units_by_group_.swap(new_units_by_group);
+    units_by_area_.swap(new_units_by_area);
+    units_by_template_.swap(new_units_by_template);
+    units_by_state_.swap(new_units_by_state);
     group_ids_.Restore(snapshot.group_ids);
     unit_ids_.Restore(snapshot.unit_ids);
     residence_ids_.Restore(snapshot.residence_ids);
@@ -1210,12 +965,6 @@ foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot s
     revision_ = snapshot.revision;
     changes_.clear();
     next_change_sequence_ = 1;
-    RebuildIndexes();
-    for (const auto &[id, group] : groups_)
-    {
-        (void)group;
-        RecountGroup(id);
-    }
     journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
@@ -1333,15 +1082,12 @@ void PopulationService::RecountGroup(PopulationGroupId id)
 
 void PopulationService::Record(PopulationChange change)
 {
-    if (next_change_sequence_ == 0)
-        return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
+    if (next_change_sequence_ == 0) return;
+    const auto sequence = next_change_sequence_;
+    change.sequence = sequence;
     changes_.push_back(std::move(change));
-    while (changes_.size() > change_journal_capacity_)
-        changes_.pop_front();
+    if (sequence == std::numeric_limits<std::uint64_t>::max()) next_change_sequence_ = 0;
+    else next_change_sequence_ = sequence + 1;
+    while (changes_.size() > change_journal_capacity_) changes_.pop_front();
 }
 } // namespace epidemic::gameplay::population

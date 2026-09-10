@@ -54,6 +54,32 @@ namespace
 #endif
 }
 
+
+[[nodiscard]] bool IsValidResourceStoragePolicy(ResourceStoragePolicy policy) noexcept
+{
+    switch (policy)
+    {
+    case ResourceStoragePolicy::Abstract:
+    case ResourceStoragePolicy::Stockpile:
+    case ResourceStoragePolicy::Node:
+    case ResourceStoragePolicy::Virtual:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidResourceDecayPolicy(ResourceDecayPolicy policy) noexcept
+{
+    switch (policy)
+    {
+    case ResourceDecayPolicy::None:
+    case ResourceDecayPolicy::Linear:
+    case ResourceDecayPolicy::External:
+        return true;
+    }
+    return false;
+}
+
 [[nodiscard]] bool IsValidStockpileState(StockpileState state) noexcept
 {
     switch (state)
@@ -115,6 +141,28 @@ namespace
     case ProductionPlanState::Paused:
     case ProductionPlanState::Cancelled:
         return true;
+    }
+    return false;
+}
+
+
+[[nodiscard]] bool IsAllowedPlanTransition(ProductionPlanState from, ProductionPlanState to) noexcept
+{
+    if (!IsValidPlanState(from) || !IsValidPlanState(to))
+        return false;
+    if (from == to)
+        return true;
+    switch (from)
+    {
+    case ProductionPlanState::Planned:
+        return to == ProductionPlanState::Active || to == ProductionPlanState::Paused || to == ProductionPlanState::Cancelled;
+    case ProductionPlanState::Active:
+        return to == ProductionPlanState::Paused || to == ProductionPlanState::Satisfied || to == ProductionPlanState::Cancelled;
+    case ProductionPlanState::Paused:
+        return to == ProductionPlanState::Active || to == ProductionPlanState::Cancelled;
+    case ProductionPlanState::Satisfied:
+    case ProductionPlanState::Cancelled:
+        return false;
     }
     return false;
 }
@@ -189,10 +237,12 @@ foundation::Result<ResourceTypeId> ResourcesProductionService::RegisterResourceT
     const auto canonical = ResourceTypeId::FromString(type.canonical_name);
     if (!type.id.IsValid())
         type.id = canonical;
-    if (type.id != canonical || types_.contains(type.id))
+    if (type.id != canonical || types_.contains(type.id) || !IsValidResourceStoragePolicy(type.storage_policy) ||
+        !IsValidResourceDecayPolicy(type.decay_policy))
         return foundation::Result<ResourceTypeId>::Failure(
             Error("gameplay.resources.invalid_type", "invalid or duplicate resource type"));
-    Bump();
+    if (!Bump())
+        return foundation::Result<ResourceTypeId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     type.revision = revision_;
     const auto id = type.id;
     types_.emplace(id, std::move(type));
@@ -226,7 +276,8 @@ foundation::Result<ProductionRecipeId> ResourcesProductionService::RegisterProdu
     recipe.inputs = std::move(canonical_inputs.Value());
     recipe.outputs = std::move(canonical_outputs.Value());
 
-    Bump();
+    if (!Bump())
+        return foundation::Result<ProductionRecipeId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     recipe.revision = revision_;
     const auto id = recipe.id;
     recipes_.emplace(id, std::move(recipe));
@@ -327,7 +378,7 @@ std::uint64_t ResourcesProductionService::LowPart(GameplayObjectId id) noexcept
     return id.IsValid() ? id.Low() : 0;
 }
 
-void ResourcesProductionService::AddReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount) noexcept
+void ResourcesProductionService::AddReservedIndex(ResourceStockpileId stockpile, ResourceTypeId type, Fixed amount)
 {
     auto &reserved = reserved_amounts_[{stockpile, type}];
     Fixed next = 0;
@@ -375,7 +426,8 @@ foundation::Result<ResourceStockpileId> ResourcesProductionService::CreateStockp
         return foundation::Result<ResourceStockpileId>::Failure(
             Error("gameplay.resources.invalid_stockpile", "duplicate stockpile"));
     AdvanceGeneratorPastAcceptedId(stockpile_ids_, stockpile.id);
-    Bump();
+    if (!Bump())
+        return foundation::Result<ResourceStockpileId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     stockpile.revision = revision_;
     const auto id = stockpile.id;
     stockpiles_.emplace(id, std::move(stockpile));
@@ -415,7 +467,8 @@ foundation::Result<ResourceNodeId> ResourcesProductionService::CreateNode(Resour
         return foundation::Result<ResourceNodeId>::Failure(
             Error("gameplay.resources.invalid_node", "duplicate resource node"));
     AdvanceGeneratorPastAcceptedId(node_ids_, node.id);
-    Bump();
+    if (!Bump())
+        return foundation::Result<ResourceNodeId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     node.revision = revision_;
     const auto id = node.id;
     nodes_.emplace(id, std::move(node));
@@ -445,7 +498,8 @@ foundation::Result<ProductionSiteId> ResourcesProductionService::CreateProductio
         return foundation::Result<ProductionSiteId>::Failure(
             Error("gameplay.resources.invalid_site", "duplicate production site"));
     AdvanceGeneratorPastAcceptedId(site_ids_, site.id);
-    Bump();
+    if (!Bump())
+        return foundation::Result<ProductionSiteId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     site.revision = revision_;
     const auto id = site.id;
     sites_.emplace(id, std::move(site));
@@ -482,7 +536,8 @@ foundation::Result<void> ResourcesProductionService::SetStockpileState(ResourceS
             }
         }
     }
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     it->second.state = state;
     it->second.revision = revision_;
     Record({0, ResourceChangeKind::StockpileStateChanged, id, {}, {}, 0, context.time, context, revision_});
@@ -526,7 +581,8 @@ foundation::Result<void> ResourcesProductionService::Add(ResourceStockpileId sto
         return foundation::Result<void>::Failure(
             Error("gameplay.resources.amount_overflow", "resource amount overflow"));
     }
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     amounts_[key] = next;
     Record({0, ResourceChangeKind::ResourceAdded, stockpile, q.type, {}, q.amount, context.time, context, revision_});
     return foundation::Result<void>::Success();
@@ -552,7 +608,8 @@ foundation::Result<void> ResourcesProductionService::Remove(ResourceStockpileId 
         return foundation::Result<void>::Failure(
             Error("gameplay.resources.shortage", "insufficient unreserved resource amount"));
     }
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     auto key = AmountKey{stockpile, q.type};
     auto &amount = amounts_[key];
     amount -= q.amount;
@@ -614,7 +671,8 @@ foundation::Result<ResourceReservationId> ResourcesProductionService::Reserve(Re
     reservation.quantities = std::move(canonical.Value());
     reservation.owner = owner;
     reservation.reason = reason;
-    Bump();
+    if (!Bump())
+        return foundation::Result<ResourceReservationId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     reservation.revision = revision_;
     const auto id = reservation.id;
     reservations_.emplace(id, reservation);
@@ -641,7 +699,8 @@ foundation::Result<void> ResourcesProductionService::ReleaseReservation(Resource
         return foundation::Result<void>::Failure(
             Error("gameplay.resources.reservation_missing", "active resource reservation missing"));
     const auto reservation = it->second;
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     for (const auto &q : reservation.quantities)
     {
         RemoveReservedIndex(reservation.stockpile, q.type, q.amount);
@@ -672,7 +731,8 @@ foundation::Result<void> ResourcesProductionService::ConsumeReservation(Resource
         }
     }
 
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     for (const auto &q : reservation.quantities)
     {
         auto key = AmountKey{reservation.stockpile, q.type};
@@ -734,7 +794,8 @@ foundation::Result<ResourceTransactionId> ResourcesProductionService::Transfer(R
         return foundation::Result<ResourceTransactionId>::Failure(
             Error("gameplay.resources.id_exhausted", "transaction id generator exhausted"));
 
-    Bump();
+    if (!Bump())
+        return foundation::Result<ResourceTransactionId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     for (const auto &q : canonical.Value())
     {
         auto from_key = AmountKey{from, q.type};
@@ -783,7 +844,8 @@ foundation::Result<void> ResourcesProductionService::DepleteNode(ResourceNodeId 
         return foundation::Result<void>::Failure(Error("gameplay.resources.node_disabled", "resource node disabled"));
     if (amount == 0)
         return foundation::Result<void>::Success();
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     it->second.remaining_amount = amount >= it->second.remaining_amount ? 0 : it->second.remaining_amount - amount;
     it->second.state = it->second.remaining_amount == 0 ? ResourceNodeState::Depleted : ResourceNodeState::Active;
     it->second.revision = revision_;
@@ -820,7 +882,8 @@ foundation::Result<void> ResourcesProductionService::RegenerateNode(ResourceNode
     }
     if (it->second.remaining_amount == before)
         return foundation::Result<void>::Success();
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     it->second.state = it->second.remaining_amount == 0 ? ResourceNodeState::Depleted : ResourceNodeState::Active;
     it->second.revision = revision_;
     Record({0, ResourceChangeKind::NodeRegenerated, {}, it->second.type, {}, it->second.remaining_amount, context.time,
@@ -854,7 +917,8 @@ foundation::Result<void> ResourcesProductionService::RegenerateNode(ResourceNode
             produced = std::numeric_limits<Fixed>::max();
         }
     }
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     if (produced > 0)
     {
         if (produced >= it->second.maximum_amount - std::min(it->second.remaining_amount, it->second.maximum_amount))
@@ -893,7 +957,8 @@ foundation::Result<ProductionCapabilityId> ResourcesProductionService::CreatePro
         return foundation::Result<ProductionCapabilityId>::Failure(
             Error("gameplay.resources.duplicate_capability", "duplicate production capability"));
     AdvanceGeneratorPastAcceptedId(capability_ids_, capability.id);
-    Bump();
+    if (!Bump())
+        return foundation::Result<ProductionCapabilityId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     capability.revision = revision_;
     const auto id = capability.id;
     capabilities_.emplace(id, std::move(capability));
@@ -927,7 +992,8 @@ foundation::Result<ProductionPlanId> ResourcesProductionService::CreateProductio
         return foundation::Result<ProductionPlanId>::Failure(
             Error("gameplay.resources.duplicate_plan", "duplicate production plan"));
     AdvanceGeneratorPastAcceptedId(plan_ids_, plan.id);
-    Bump();
+    if (!Bump())
+        return foundation::Result<ProductionPlanId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     plan.revision = revision_;
     const auto id = plan.id;
     plans_.emplace(id, std::move(plan));
@@ -944,7 +1010,8 @@ foundation::Result<void> ResourcesProductionService::SetProductionPlanState(Prod
         return foundation::Result<void>::Failure(Error("gameplay.resources.plan_missing", "production plan missing"));
     if (it->second.state == state)
         return foundation::Result<void>::Success();
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
     it->second.state = state;
     it->second.revision = revision_;
     Record({0, ResourceChangeKind::ProductionPlanChanged, {}, it->second.desired_output, {},
@@ -1284,17 +1351,15 @@ void ResourcesProductionService::Record(ResourceChange change)
 {
     if (next_change_sequence_ == 0)
         return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
-    changes_.push_back(change);
+    const auto assigned = next_change_sequence_;
+    change.sequence = assigned;
+    changes_.push_back(std::move(change));
+    next_change_sequence_ = assigned == std::numeric_limits<std::uint64_t>::max() ? 0 : assigned + 1;
     while (changes_.size() > change_retention_)
         changes_.pop_front();
 }
 
-void ResourcesProductionService::RebuildDerivedState() noexcept
+void ResourcesProductionService::RebuildDerivedState()
 {
     reserved_amounts_.clear();
     diagnostics_ = {};

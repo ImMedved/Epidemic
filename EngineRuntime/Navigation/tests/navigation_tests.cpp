@@ -1,6 +1,9 @@
 #include "navigation_runtime_impl.h"
 
+#include <cmath>
 #include <iostream>
+#include <limits>
+#include <stdexcept>
 #include <memory>
 #include <span>
 #include <string_view>
@@ -72,6 +75,23 @@ struct FixedNavigationBackend final : INavigationBackend
         result.nav_revision = revision.value;
         result.revision = 1;
         return epidemic::foundation::Result<PathResult>::Success(result);
+    }
+};
+
+
+struct ThrowingNavigationDataSource final : INavigationDataSource
+{
+    NavigationRevision CurrentRevision(RegionId) const override
+    {
+        throw std::runtime_error("revision boom");
+    }
+};
+
+struct ThrowingCostProvider final : INavCostProvider
+{
+    float GetTraversalCost(const NavCostQuery&) const override
+    {
+        throw std::runtime_error("cost boom");
     }
 };
 
@@ -320,6 +340,74 @@ bool TestHandleReleaseTtlAndStaleRevision()
     return ok;
 }
 
+
+bool TestSourceRevisionZeroBecomesStaleAfterAdvance()
+{
+    auto data_source = std::make_shared<FixedNavigationDataSource>();
+    data_source->revision = NavigationRevision{0};
+    NavigationRuntime runtime{NavigationOptions{}, NavigationDependencies{{}, data_source, {}, {}}};
+    const auto query = runtime.RequestPathHandle(MakeRequest());
+    if (!Expect(query.HasValue(), "zero-revision source request should succeed"))
+    {
+        return false;
+    }
+    data_source->revision = NavigationRevision{1};
+    return ExpectPathState(runtime, query.Value(), PathQueryState::Stale, "zero source revision must not be absence sentinel");
+}
+
+bool TestInvalidNumericPathRequestsAreRejected()
+{
+    NavigationRuntime runtime{NavigationOptions{}};
+    auto nan = MakeRequest();
+    nan.start.x = std::numeric_limits<float>::quiet_NaN();
+    auto inf = MakeRequest();
+    inf.target.z = std::numeric_limits<float>::infinity();
+    auto negative_ttl = MakeRequest();
+    negative_ttl.result_ttl = std::chrono::microseconds{-1};
+
+    const auto nan_result = runtime.RequestPathHandle(nan);
+    const auto inf_result = runtime.RequestPathHandle(inf);
+    const auto ttl_result = runtime.RequestPathHandle(negative_ttl);
+    return Expect(!nan_result && nan_result.GetError().HasCode("navigation.invalid_coordinate"), "NaN must be rejected") &&
+           Expect(!inf_result && inf_result.GetError().HasCode("navigation.invalid_coordinate"), "Inf must be rejected") &&
+           Expect(!ttl_result && ttl_result.GetError().HasCode("navigation.invalid_ttl"), "negative TTL must be rejected");
+}
+
+bool TestProviderExceptionsBecomeFailures()
+{
+    auto throwing_source = std::make_shared<ThrowingNavigationDataSource>();
+    NavigationRuntime source_runtime{NavigationOptions{}, NavigationDependencies{{}, throwing_source, {}, {}}};
+    const auto source_query = source_runtime.RequestPathHandle(MakeRequest());
+    if (!Expect(!source_query && source_query.GetError().HasCode("navigation.provider_exception"),
+                "data source exception should be a Result failure"))
+    {
+        return false;
+    }
+
+    auto throwing_cost = std::make_shared<ThrowingCostProvider>();
+    NavigationRuntime cost_runtime{NavigationOptions{}, NavigationDependencies{{}, {}, throwing_cost, {}}};
+    const auto cost_query = cost_runtime.RequestPathHandle(MakeRequest());
+    if (!Expect(cost_query.HasValue(), "cost-provider query should be accepted before provider use"))
+    {
+        return false;
+    }
+    (void)cost_runtime.Tick(RuntimeBudget{});
+    (void)cost_runtime.Tick(RuntimeBudget{});
+    (void)cost_runtime.Tick(RuntimeBudget{});
+    return ExpectPathState(cost_runtime, cost_query.Value(), PathQueryState::Failed,
+                           "provider exception should fail the individual query");
+}
+
+bool TestRepeatedDirtyIsNoOp()
+{
+    NavigationRuntime runtime{NavigationOptions{}};
+    bool ok = Expect(runtime.RegisterTile(NavTileId{1}, NavTileState::Ready).HasValue(), "tile should register");
+    ok &= Expect(runtime.MarkTileDirty(NavTileId{1}).HasValue(), "first dirty should succeed");
+    ok &= Expect(runtime.MarkTileDirty(NavTileId{1}).HasValue(), "second dirty should be idempotent no-op");
+    ok &= Expect(runtime.GetTileState(NavTileId{1}) == NavTileState::Dirty, "tile should remain dirty");
+    return ok;
+}
+
 bool TestByteBudgetLimitsCompletion()
 {
     auto obstacle_source = std::make_shared<FixedObstacleSource>();
@@ -354,6 +442,10 @@ int main()
     ok &= TestInvalidInputsReturnFailures();
     ok &= TestFactoryBackendSelectionAndFailure();
     ok &= TestHandleReleaseTtlAndStaleRevision();
+    ok &= TestSourceRevisionZeroBecomesStaleAfterAdvance();
+    ok &= TestInvalidNumericPathRequestsAreRejected();
+    ok &= TestProviderExceptionsBecomeFailures();
+    ok &= TestRepeatedDirtyIsNoOp();
     ok &= TestByteBudgetLimitsCompletion();
     return ok ? 0 : 1;
 }

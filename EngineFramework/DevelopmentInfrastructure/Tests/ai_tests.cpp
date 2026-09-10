@@ -1,7 +1,9 @@
 #include "Epidemic/GameFramework/AI/ai.h"
+#include "allocation_fault_injection.h"
 
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::ai;
@@ -22,6 +24,27 @@ AIInputValue FixedInput(AIInputKeyId key, Fixed value, AIAccessFlag access)
     input.fixed_value = value;
     return input;
 }
+
+
+class FlakyEvaluator final : public IAIConsiderationEvaluator
+{
+  public:
+    mutable std::uint32_t calls = 0;
+    mutable bool fail_next = true;
+
+    epidemic::foundation::Result<Fixed> Evaluate(const AIConsideration &, const AIContextSnapshot &,
+                                                 const AITargetCandidate *) const override
+    {
+        ++calls;
+        if (fail_next)
+        {
+            fail_next = false;
+            return epidemic::foundation::Result<Fixed>::Failure(
+                epidemic::foundation::Error::Create("test.flaky", "forced evaluator failure"));
+        }
+        return epidemic::foundation::Result<Fixed>::Success(kFixedOne);
+    }
+};
 
 class ThrowingEvaluator final : public IAIConsiderationEvaluator
 {
@@ -361,6 +384,171 @@ int main()
     if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||
         max_batch.changes.front().sequence != std::numeric_limits<std::uint64_t>::max())
         return 55;
+
+    // AI-01/09: invalid caller context must not consume the tick's agent budget.
+    AIService invalid_budget;
+    if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||
+        !invalid_budget.Freeze() || !invalid_budget.RegisterAgent(guard, profile_id))
+        return 57;
+    invalid_budget.SetBudget({1, 10, 10, 10});
+    AIContextSnapshot duplicate_context;
+    duplicate_context.now = {0};
+    duplicate_context.targets = {
+        {target_a, AITargetSource::Perceived, {FixedInput(score_key, 500'000, AIAccessFlag::PerceivedState)}},
+        {target_a, AITargetSource::Perceived, {FixedInput(score_key, 600'000, AIAccessFlag::PerceivedState)}}};
+    GameplayContext same_tick;
+    same_tick.tick = {700};
+    same_tick.time = {0};
+    if (invalid_budget.Think(guard, duplicate_context, same_tick))
+        return 58;
+    AIContextSnapshot valid_after_invalid;
+    valid_after_invalid.now = {0};
+    valid_after_invalid.targets = {
+        {target_a, AITargetSource::Perceived, {FixedInput(score_key, 700'000, AIAccessFlag::PerceivedState)}}};
+    auto valid_same_tick = invalid_budget.Think(guard, valid_after_invalid, same_tick);
+    if (!valid_same_tick || !valid_same_tick.Value().intent)
+        return 59;
+
+    // AI-02/09: evaluator failure must not commit staged budget counters.
+    FlakyEvaluator flaky;
+    AIService evaluator_budget;
+    const auto flaky_id = AIConsiderationEvaluatorId::FromString("test.flaky");
+    if (!evaluator_budget.RegisterConsiderationEvaluator(flaky_id, flaky))
+        return 60;
+    AIGoalDefinition flaky_goal;
+    flaky_goal.id = AIGoalId::FromString("game.flaky_goal");
+    flaky_goal.canonical_name = "game.flaky_goal";
+    flaky_goal.intent_type = intent_type;
+    flaky_goal.target_policy = AITargetPolicy::Targetless;
+    AIConsideration flaky_consideration;
+    flaky_consideration.id = AIConsiderationId::FromString("game.flaky_consideration");
+    flaky_consideration.evaluator = flaky_id;
+    flaky_consideration.scope = AIConsiderationScope::Context;
+    flaky_consideration.weight_micro = kFixedOne;
+    flaky_goal.considerations = {flaky_consideration};
+    if (!evaluator_budget.RegisterGoal(flaky_goal))
+        return 61;
+    AIProfile flaky_profile;
+    flaky_profile.id = AIProfileId::FromString("game.flaky_profile");
+    flaky_profile.canonical_name = "game.flaky_profile";
+    flaky_profile.default_goals = {flaky_goal.id};
+    if (!evaluator_budget.RegisterProfile(flaky_profile) || !evaluator_budget.Freeze() ||
+        !evaluator_budget.RegisterAgent(guard, flaky_profile.id))
+        return 62;
+    evaluator_budget.SetBudget({1, 1, 1, 1});
+    AIContextSnapshot flaky_context;
+    flaky_context.now = {0};
+    GameplayContext flaky_tick;
+    flaky_tick.tick = {701};
+    flaky_tick.time = {0};
+    if (evaluator_budget.Think(guard, flaky_context, flaky_tick))
+        return 63;
+    auto flaky_retry = evaluator_budget.Think(guard, flaky_context, flaky_tick);
+    if (!flaky_retry || !flaky_retry.Value().intent || flaky.calls != 2)
+        return 64;
+
+    // AI-03/04/05/09: allocation failures in staged registry/index publication are controlled and atomic.
+    AIService profile_atomic;
+    AIGoalDefinition profile_goal;
+    profile_goal.id = AIGoalId::FromString("game.profile_atomic_goal");
+    profile_goal.canonical_name = "game.profile_atomic_goal";
+    profile_goal.intent_type = intent_type;
+    profile_goal.target_policy = AITargetPolicy::Targetless;
+    if (!profile_atomic.RegisterGoal(profile_goal))
+        return 65;
+    AIProfile atomic_profile;
+    atomic_profile.id = AIProfileId::FromString("game.profile_atomic");
+    atomic_profile.canonical_name = "game.profile_atomic";
+    atomic_profile.default_goals = {profile_goal.id};
+    const auto profile_revision_before = profile_atomic.CurrentRevision();
+    {
+        epidemic::tests::allocation_fault::FailAfter fault(0);
+        auto registered = profile_atomic.RegisterProfile(std::move(atomic_profile));
+        if (registered)
+            return 66;
+    }
+    if (profile_atomic.FindProfile(atomic_profile.id) || profile_atomic.CurrentRevision() != profile_revision_before)
+        return 67;
+
+    AIService agent_atomic;
+    if (!RegisterCoreDefinitions(agent_atomic, profile_id, goal_id, intent_type, score_key) || !agent_atomic.Freeze())
+        return 68;
+    const auto agent_revision_before = agent_atomic.CurrentRevision();
+    {
+        epidemic::tests::allocation_fault::FailAfter fault(0);
+        auto registered = agent_atomic.RegisterAgent(guard, profile_id, {10});
+        if (registered)
+            return 69;
+    }
+    if (agent_atomic.FindAgent(guard) || agent_atomic.CurrentRevision() != agent_revision_before ||
+        !agent_atomic.FindDueAgents({100}, 10).empty())
+        return 70;
+    if (!agent_atomic.RegisterAgent(guard, profile_id, {10}))
+        return 71;
+    const auto schedule_revision_before = agent_atomic.CurrentRevision();
+    const auto schedule_time_before = agent_atomic.FindAgent(guard)->next_think_at;
+    {
+        epidemic::tests::allocation_fault::FailAfter fault(0);
+        auto scheduled = agent_atomic.ScheduleThink(guard, {20});
+        if (scheduled)
+            return 72;
+    }
+    if (agent_atomic.CurrentRevision() != schedule_revision_before ||
+        agent_atomic.FindAgent(guard)->next_think_at != schedule_time_before ||
+        agent_atomic.FindDueAgents({10}, 10).size() != 1)
+        return 73;
+
+    // AI-06/09: failure while staging the selected intent leaves agent/index/ID/revision unchanged.
+    bool saw_decision_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32 && !saw_decision_allocation_failure; ++fail_after)
+    {
+        AIService decision_atomic;
+        if (!RegisterCoreDefinitions(decision_atomic, profile_id, goal_id, intent_type, score_key) ||
+            !decision_atomic.Freeze() || !decision_atomic.RegisterAgent(guard, profile_id))
+            return 74;
+        const auto before = decision_atomic.CaptureSnapshot();
+        AIContextSnapshot decision_context;
+        decision_context.now = {0};
+        decision_context.targets = {
+            {target_a, AITargetSource::Perceived, {FixedInput(score_key, 800'000, AIAccessFlag::PerceivedState)}}};
+        GameplayContext decision_tick;
+        decision_tick.tick = {702};
+        epidemic::foundation::Result<AIThinkResult> result = epidemic::foundation::Result<AIThinkResult>::Failure(
+            epidemic::foundation::Error::Create("test", "not run"));
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            result = decision_atomic.Think(guard, decision_context, decision_tick);
+        }
+        if (!result && result.GetError().HasCode("gameplay.ai.allocation_failed"))
+        {
+            saw_decision_allocation_failure = true;
+            const auto after = decision_atomic.CaptureSnapshot();
+            if (after.revision != before.revision || after.intent_ids.scope != before.intent_ids.scope ||
+                after.intent_ids.next != before.intent_ids.next || after.agents.size() != 1 ||
+                after.agents.front().current_intent || after.agents.front().activity != AIAgentActivity::Idle)
+                return 75;
+        }
+    }
+    if (!saw_decision_allocation_failure)
+        return 76;
+
+    // AI-07/09: revision exhaustion is a hard mutation boundary.
+    AIService revision_source;
+    if (!RegisterCoreDefinitions(revision_source, profile_id, goal_id, intent_type, score_key) ||
+        !revision_source.Freeze() || !revision_source.RegisterAgent(guard, profile_id, {1}))
+        return 77;
+    auto exhausted_snapshot = revision_source.CaptureSnapshot();
+    exhausted_snapshot.revision.value = std::numeric_limits<std::uint64_t>::max();
+    exhausted_snapshot.agents.front().revision = exhausted_snapshot.revision;
+    AIService revision_target;
+    if (!RegisterCoreDefinitions(revision_target, profile_id, goal_id, intent_type, score_key) ||
+        !revision_target.Freeze() || !revision_target.RestoreSnapshot(exhausted_snapshot))
+        return 78;
+    const auto exhausted_time = revision_target.FindAgent(guard)->next_think_at;
+    if (revision_target.ScheduleThink(guard, {2}) ||
+        revision_target.CurrentRevision().value != std::numeric_limits<std::uint64_t>::max() ||
+        revision_target.FindAgent(guard)->next_think_at != exhausted_time)
+        return 79;
 
     return 0;
 }

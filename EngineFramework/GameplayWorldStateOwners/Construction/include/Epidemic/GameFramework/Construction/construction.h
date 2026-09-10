@@ -590,8 +590,8 @@ class ConstructionService
     [[nodiscard]] Revision CurrentRevision() const noexcept { return revision_; }
 
   private:
-    void Bump() noexcept;
-    void Record(ConstructionChange change);
+    [[nodiscard]] std::optional<Revision> NextRevision() const noexcept;
+    void Record(ConstructionChange change) noexcept;
     [[nodiscard]] PlacementSocket *FindMutableSocket(PlacementSocketId id) noexcept;
     [[nodiscard]] ConstructionSite *FindMutableSite(ConstructionSiteId id) noexcept;
     [[nodiscard]] foundation::Result<std::vector<ConstructionCostReservation>> ReserveCosts(const PlacementPlan &plan);
@@ -603,9 +603,9 @@ class ConstructionService
     [[nodiscard]] foundation::Result<std::vector<PlacementOutputEnvelope>> StageOutputs(
         PlacementExecutionId execution,
         const std::vector<PlacementOutputOperation> &outputs) const;
-    void QueueOutputs(std::vector<PlacementOutputEnvelope> outputs,
+    [[nodiscard]] foundation::Result<void> QueueOutputs(std::vector<PlacementOutputEnvelope> outputs,
                       PlacementPlanId plan, ConstructionSiteId site,
-                      GameplayObjectRef actor, GameplayContext context);
+                      GameplayObjectRef actor, GameplayContext context, Revision publication_revision);
     [[nodiscard]] foundation::Result<PlacementValidationResult> ValidatePlacementInternal(
         const PlacementRequest &request, bool count_diagnostics) const;
 

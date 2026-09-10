@@ -377,7 +377,7 @@ class LootService
                                                      std::vector<RewardOperation> &out, std::uint32_t depth);
     [[nodiscard]] foundation::Result<bool> EntryAllowed(const LootEntry &entry, const LootContext &context) const;
     [[nodiscard]] foundation::Result<void> ValidateNestedTables() const;
-    void Record(LootChange change);
+    void Record(LootChange change) noexcept;
 
     std::unordered_map<RewardTypeId, IRewardHandler *, IdHash> handlers_;
     std::unordered_map<RewardDefinitionId, RewardDefinition, IdHash> rewards_;

@@ -167,8 +167,9 @@ public:
     [[nodiscard]] KnowledgeDiagnostics GetDiagnostics()const noexcept;
     [[nodiscard]] Revision CurrentRevision()const noexcept{return revision_;}
 private:
-    void Bump()noexcept{revision_.value++;}
-    void Record(KnowledgeChange change);
+    [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
+    [[nodiscard]] bool CanAdvanceRevisionBy(std::size_t count) const noexcept;
+    void Record(KnowledgeChange change) noexcept;
     [[nodiscard]] KnowledgeConfidence Degrade(KnowledgeConfidence c,KnowledgeShareMode mode)const noexcept;
     [[nodiscard]] foundation::Result<KnowledgeRecordId> LearnInternal(LearnKnowledgeRequest request,KnowledgeRecordId derived_from,KnowledgeSourceId original_source_kind,GameplayObjectRef original_source,std::uint32_t transmission_depth);
     [[nodiscard]] KnowledgeRecord* FindMutableKnowledge(KnowledgeRecordId id)noexcept;

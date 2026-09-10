@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <type_traits>
+#include <string>
 #include <vector>
 
 namespace
@@ -312,6 +313,103 @@ bool TestDependencyManifestDeduplicatesDiamondAndMissingPolicy()
            optional_manifest.Value().dependencies.front().asset_id == optional_id;
 }
 
+
+bool TestEnumTagAndFailureAtomicity()
+{
+    InMemoryAssetCatalog catalog;
+    const auto baseline = MakeMetadata("baseline.asset", "itemdef", "valid", AssetLocationKind::VirtualPath);
+    if (!catalog.RegisterAsset(baseline)) return false;
+
+    auto invalid_kind = MakeMetadata("bad-kind.asset", "itemdef", "valid", AssetLocationKind::VirtualPath);
+    invalid_kind.location.kind = static_cast<AssetLocationKind>(255);
+    auto invalid_state = MakeMetadata("bad-state.asset", "itemdef", "valid", AssetLocationKind::VirtualPath);
+    invalid_state.state = static_cast<AssetState>(255);
+    auto invalid_tag = MakeMetadata("bad-tag.asset", "itemdef", "valid", AssetLocationKind::VirtualPath);
+    invalid_tag.tags = {StringId{}};
+    auto mixed_tag = MakeMetadata("mixed-tag.asset", "itemdef", "valid", AssetLocationKind::VirtualPath);
+    mixed_tag.tags.push_back(StringId{});
+
+    const auto k = catalog.RegisterAsset(invalid_kind);
+    const auto st = catalog.RegisterAsset(invalid_state);
+    const auto t = catalog.RegisterAsset(invalid_tag);
+    const auto mt = catalog.RegisterAsset(mixed_tag);
+    return !k && k.GetError().HasCode("asset.invalid_location") &&
+           !st && st.GetError().HasCode("asset.invalid_state") &&
+           !t && t.GetError().HasCode("asset.invalid_tag") &&
+           !mt && mt.GetError().HasCode("asset.invalid_tag") &&
+           catalog.FindById(baseline.id).has_value() &&
+           !catalog.FindById(invalid_kind.id).has_value() &&
+           !catalog.FindById(invalid_state.id).has_value() &&
+           !catalog.FindById(invalid_tag.id).has_value();
+}
+
+bool TestWindowsDriveRelativeAndHostRootPaths()
+{
+    InMemoryAssetCatalog catalog;
+    const char* rejected[] = {"C:foo.asset", "C:", "C:/foo.asset", "C:\\foo.asset", "\\\\server\\share.asset", "../foo.asset", "a/../../foo.asset"};
+    for (const char* path : rejected)
+    {
+        auto metadata = MakeMetadata(path, "itemdef", "path", AssetLocationKind::FilePath);
+        const auto result = catalog.RegisterAsset(metadata);
+        if (result || !result.GetError().HasCode("asset.invalid_location") || catalog.FindById(metadata.id).has_value())
+            return false;
+    }
+    const auto valid = MakeMetadata("content/items/foo.asset", "itemdef", "path", AssetLocationKind::FilePath);
+    return catalog.RegisterAsset(valid).HasValue() && catalog.FindById(valid.id).has_value();
+}
+
+bool TestSealIdempotenceAndEmptyCatalogContracts()
+{
+    InMemoryAssetCatalog catalog;
+    const auto missing = AssetId::FromString("missing/root.asset");
+    const auto empty_manifest = catalog.BuildDependencyManifest(missing);
+    if (empty_manifest || !empty_manifest.GetError().HasCode("asset.not_found") ||
+        !catalog.FindByType(AssetType{StringId::FromString("itemdef")}).empty() ||
+        !catalog.FindByTag(StringId::FromString("tag")).empty())
+        return false;
+    const auto first = catalog.Seal();
+    const auto second = catalog.Seal();
+    return first && second && catalog.IsSealed();
+}
+
+bool TestDeepDependencyManifestIsIterative()
+{
+    constexpr int kDepth = 6000;
+    InMemoryAssetCatalog catalog;
+    std::vector<AssetMetadata> chain;
+    chain.reserve(kDepth);
+    for (int i = 0; i < kDepth; ++i)
+    {
+        const std::string path = "deep/" + std::to_string(i) + ".asset";
+        chain.push_back(MakeMetadata(path.c_str(), "itemdef", "deep", AssetLocationKind::VirtualPath));
+    }
+    for (int i = 0; i + 1 < kDepth; ++i)
+        chain[i].dependencies.push_back(AssetDependency{chain[i + 1].id, true});
+    for (const auto& metadata : chain)
+        if (!catalog.RegisterAsset(metadata)) return false;
+    const auto manifest = catalog.BuildDependencyManifest(chain.front().id);
+    return manifest && manifest.Value().dependencies.size() == static_cast<std::size_t>(kDepth - 1);
+}
+
+bool TestMetadataBoundsRejectBeforeMutation()
+{
+    InMemoryAssetCatalog catalog;
+    auto too_long = MakeMetadata("bounded.asset", "itemdef", "tag", AssetLocationKind::VirtualPath);
+    too_long.location.path.assign(epidemic::runtime::kMaxAssetPathBytes + 1, 'a');
+    const auto path_result = catalog.RegisterAsset(too_long);
+
+    auto too_many_tags = MakeMetadata("many-tags.asset", "itemdef", "tag", AssetLocationKind::VirtualPath);
+    too_many_tags.tags.clear();
+    too_many_tags.tags.reserve(epidemic::runtime::kMaxAssetTags + 1);
+    for (std::size_t i = 0; i <= epidemic::runtime::kMaxAssetTags; ++i)
+        too_many_tags.tags.push_back(StringId::FromString(("tag-" + std::to_string(i)).c_str()));
+    const auto tags_result = catalog.RegisterAsset(too_many_tags);
+
+    return !path_result && path_result.GetError().HasCode("asset.metadata_too_large") &&
+           !tags_result && tags_result.GetError().HasCode("asset.metadata_too_large") &&
+           !catalog.FindById(too_long.id).has_value() && !catalog.FindById(too_many_tags.id).has_value();
+}
+
 bool TestAssetServicesFactory()
 {
     const auto services = CreateAssetServices();
@@ -349,6 +447,11 @@ int main()
     if (!TestDependencyManifestAndCycle()) return 13;
     if (!TestDependencyManifestDeduplicatesDiamondAndMissingPolicy()) return 14;
     if (!TestAssetServicesFactory()) return 15;
+    if (!TestEnumTagAndFailureAtomicity()) return 16;
+    if (!TestWindowsDriveRelativeAndHostRootPaths()) return 17;
+    if (!TestSealIdempotenceAndEmptyCatalogContracts()) return 18;
+    if (!TestDeepDependencyManifestIsIterative()) return 19;
+    if (!TestMetadataBoundsRejectBeforeMutation()) return 20;
 
     return 0;
 }

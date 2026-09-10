@@ -1,4 +1,7 @@
 #include "Epidemic/GameFramework/Time/gameplay_time.h"
+#include "allocation_fault_injection.h"
+
+#include <new>
 
 using namespace epidemic;
 using namespace epidemic::gameplay;
@@ -265,6 +268,194 @@ int main()
     {
         return 39;
     }
+
+
+    // Allocation failure during clock registration must not publish a partial clock.
+    bool register_clock_fault = false;
+    for (long long fail_after = 0; fail_after < 64 && !register_clock_fault; ++fail_after)
+    {
+        GameplayTimeService fault_service;
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_service.RegisterClock("framework.clock.fault", CalendarDefinition{});
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            register_clock_fault = true;
+            if (fault_service.GetClockDefinition(ClockId::FromString("framework.clock.fault")).has_value() ||
+                fault_service.GetClock(ClockId::FromString("framework.clock.fault")).has_value())
+                return 40;
+        }
+    }
+    if (!register_clock_fault)
+        return 41;
+
+    // Schedule publication is atomic across the record, due index, ID generator and service revision.
+    bool schedule_fault = false;
+    for (long long fail_after = 0; fail_after < 96 && !schedule_fault; ++fail_after)
+    {
+        GameplayTimeService fault_service;
+        const auto fc = fault_service.RegisterClock("framework.clock.schedule_fault", CalendarDefinition{});
+        const auto fa = fault_service.RegisterAction("framework.action.schedule_fault", domain);
+        if (!fc || !fa)
+            return 42;
+        fault_service.Freeze();
+        const auto before = fault_service.CaptureSnapshot();
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_service.Schedule(fc.Value(), GameplayTimePoint{10}, owner, fa.Value());
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            schedule_fault = true;
+            const auto after = fault_service.CaptureSnapshot();
+            if (!after.schedules.empty() || after.schedule_ids.next != before.schedule_ids.next ||
+                after.scheduler_revision != before.scheduler_revision)
+                return 43;
+        }
+    }
+    if (!schedule_fault)
+        return 44;
+
+    // Reschedule never destroys the old due-index entry before the replacement is prepared.
+    bool reschedule_fault = false;
+    for (long long fail_after = 0; fail_after < 96 && !reschedule_fault; ++fail_after)
+    {
+        GameplayTimeService fault_service;
+        const auto fc = fault_service.RegisterClock("framework.clock.reschedule_fault", CalendarDefinition{});
+        const auto fa = fault_service.RegisterAction("framework.action.reschedule_fault", domain);
+        if (!fc || !fa)
+            return 45;
+        fault_service.Freeze();
+        const auto fs = fault_service.Schedule(fc.Value(), GameplayTimePoint{10}, owner, fa.Value());
+        if (!fs)
+            return 46;
+        const auto before_revision = fault_service.SchedulerRevision();
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_service.Reschedule(fs.Value(), GameplayTimePoint{20});
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            reschedule_fault = true;
+            const auto entry = fault_service.GetSchedule(fs.Value());
+            if (!entry || entry->due.ticks != 10 || fault_service.SchedulerRevision() != before_revision)
+                return 47;
+        }
+    }
+    if (!reschedule_fault)
+        return 48;
+
+    // CollectDue stages both triggers and scheduler state, so a throw loses neither work nor index membership.
+    bool collect_fault = false;
+    for (long long fail_after = 0; fail_after < 160 && !collect_fault; ++fail_after)
+    {
+        GameplayTimeService fault_service;
+        const auto fc = fault_service.RegisterClock("framework.clock.collect_fault", CalendarDefinition{});
+        const auto fa = fault_service.RegisterAction("framework.action.collect_fault", domain);
+        if (!fc || !fa)
+            return 49;
+        fault_service.Freeze();
+        const auto fs = fault_service.Schedule(fc.Value(), GameplayTimePoint{1}, owner, fa.Value());
+        if (!fs || !fault_service.AdvanceTo(fc.Value(), GameplayTimePoint{2}))
+            return 50;
+        const auto before_revision = fault_service.SchedulerRevision();
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_service.CollectDue(fc.Value());
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            collect_fault = true;
+            if (!fault_service.HasSchedule(fs.Value()) || fault_service.SchedulerRevision() != before_revision)
+                return 51;
+            const auto retry = fault_service.CollectDue(fc.Value());
+            if (!retry || retry.Value().size() != 1 || fault_service.HasSchedule(fs.Value()))
+                return 52;
+        }
+    }
+    if (!collect_fault)
+        return 53;
+
+    // Synchronization metadata insertion is staged with the clock update.
+    bool sync_fault = false;
+    for (long long fail_after = 0; fail_after < 96 && !sync_fault; ++fail_after)
+    {
+        GameplayTimeService fault_service;
+        const auto fc = fault_service.RegisterClock("framework.clock.sync_fault", CalendarDefinition{});
+        if (!fc)
+            return 54;
+        fault_service.Freeze();
+        const auto before_clock = fault_service.GetClock(fc.Value());
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_service.SynchronizeClock(fc.Value(), GameplayTimePoint{7}, Revision{1});
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            sync_fault = true;
+            const auto after_clock = fault_service.GetClock(fc.Value());
+            if (!before_clock || !after_clock || after_clock->now != before_clock->now ||
+                after_clock->revision != before_clock->revision)
+                return 55;
+        }
+    }
+    if (!sync_fault)
+        return 56;
+
+    // Service/schedule revisions are monotonic and survive snapshot restore.
+    GameplayTimeService revision_service;
+    const auto rc = revision_service.RegisterClock("framework.clock.revision", CalendarDefinition{});
+    const auto ra = revision_service.RegisterAction("framework.action.revision", domain);
+    if (!rc || !ra)
+        return 57;
+    revision_service.Freeze();
+    const auto before_scheduler_revision = revision_service.SchedulerRevision();
+    const auto rs = revision_service.Schedule(rc.Value(), GameplayTimePoint{3}, owner, ra.Value());
+    if (!rs || revision_service.SchedulerRevision().Raw() <= before_scheduler_revision.Raw() ||
+        !revision_service.GetSchedule(rs.Value()) || revision_service.GetSchedule(rs.Value())->revision.Raw() == 0)
+        return 58;
+
 
     return 0;
 }

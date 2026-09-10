@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <limits>
 #include <optional>
+#include <cmath>
 
 namespace epidemic::runtime
 {
@@ -25,6 +26,55 @@ struct RuntimeFrameDuration
     [[nodiscard]] constexpr bool operator==(const RuntimeFrameDuration&) const noexcept = default;
     [[nodiscard]] constexpr auto operator<=>(const RuntimeFrameDuration&) const noexcept = default;
 };
+
+
+[[nodiscard]] inline std::optional<RuntimeFrameDuration> CheckedSecondsToMicroseconds(double seconds) noexcept
+{
+    if (!std::isfinite(seconds) || seconds < 0.0)
+    {
+        return std::nullopt;
+    }
+    constexpr double maximum = static_cast<double>(std::numeric_limits<std::int64_t>::max());
+    const double microseconds = seconds * 1000000.0;
+    if (!std::isfinite(microseconds) || microseconds > maximum)
+    {
+        return std::nullopt;
+    }
+    return RuntimeFrameDuration{std::chrono::microseconds{static_cast<std::int64_t>(microseconds)}};
+}
+
+[[nodiscard]] inline std::optional<RuntimeFrameDuration> CheckedScaleDuration(
+    RuntimeFrameDuration duration, double rate) noexcept
+{
+    if (duration.IsNegative() || !std::isfinite(rate) || rate < 0.0)
+    {
+        return std::nullopt;
+    }
+    constexpr long double maximum = static_cast<long double>(std::numeric_limits<std::int64_t>::max());
+    const long double scaled = static_cast<long double>(duration.value.count()) * static_cast<long double>(rate);
+    if (!std::isfinite(static_cast<double>(scaled)) || scaled > maximum)
+    {
+        return std::nullopt;
+    }
+    return RuntimeFrameDuration{std::chrono::microseconds{static_cast<std::int64_t>(scaled)}};
+}
+
+[[nodiscard]] constexpr std::optional<RuntimeFrameDuration> CheckedAdd(
+    RuntimeFrameDuration left, RuntimeFrameDuration right) noexcept
+{
+    const auto a = left.value.count();
+    const auto b = right.value.count();
+    if (b > 0 && a > std::numeric_limits<std::int64_t>::max() - b)
+    {
+        return std::nullopt;
+    }
+    if (b < 0 && a < std::numeric_limits<std::int64_t>::min() - b)
+    {
+        return std::nullopt;
+    }
+    return RuntimeFrameDuration{std::chrono::microseconds{a + b}};
+}
+
 
 struct GameDuration
 {

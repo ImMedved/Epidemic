@@ -411,8 +411,8 @@ class ConditionService
     [[nodiscard]] std::optional<GameplayTimePoint> ComputeExpiration(GameplayTimePoint now, GameplayDuration duration) const noexcept;
     void IndexInstance(const ConditionInstance& instance);
     void UnindexInstance(const ConditionInstance& instance);
-    void RecordChange(ConditionChange change);
-    void BumpRevision(ConditionInstance& instance) noexcept;
+    void RecordChange(ConditionChange change) noexcept;
+    [[nodiscard]] std::optional<Revision> NextRevision() const noexcept;
 
     std::unordered_map<ConditionTypeId, DefinitionEntry, ConditionTypeIdHash> definitions_;
     const IConditionSubjectStateProvider* subject_state_provider_ = nullptr;

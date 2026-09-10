@@ -58,8 +58,25 @@ public:
 
     void SetJobStateForTesting(SimulationJobHandle handle, SimulationJobState state);
     [[nodiscard]] std::optional<ScheduledSimulationTaskId> ActiveScheduleForTesting(SimulationJobHandle handle) const;
+    void SetNextJobIdentityForTesting(std::uint64_t id, std::uint32_t generation) noexcept;
+    void SetNextMemoryIdForTesting(std::uint64_t id) noexcept;
+    void SetNextTaskIdForTesting(std::uint64_t id) noexcept;
+    void SetFactRevisionForTesting(std::uint64_t revision) noexcept;
 
 private:
+    struct RegionAttentionRecord
+    {
+        AttentionScore score{};
+        SimulationZoneState zone_state = SimulationZoneState::Dormant;
+    };
+
+    enum class ShutdownState
+    {
+        Running,
+        ShuttingDown,
+        Shutdown
+    };
+
     struct JobRecord
     {
         SimulationJobDesc desc{};
@@ -97,13 +114,11 @@ private:
     std::uint64_t fact_revision_ = 0;
     std::unordered_map<SimulationJobId, JobRecord> jobs_;
     std::unordered_map<RuntimeObjectId, AttentionScore> object_attention_;
-    std::unordered_map<RegionId, AttentionScore> region_attention_;
-    std::unordered_map<RegionId, SimulationZoneState> region_zone_states_;
+    std::unordered_map<RegionId, RegionAttentionRecord> region_attention_;
     std::unordered_map<WorldMemoryEventId, WorldMemoryEvent> memory_events_;
     std::vector<AbstractFact> facts_;
     std::vector<SimulationProposalBatch> proposal_batches_;
     std::unordered_map<ScheduledSimulationTaskId, ScheduledSimulationTask> scheduled_tasks_;
-    bool accepting_jobs_ = true;
-    bool shutdown_ = false;
+    ShutdownState shutdown_state_ = ShutdownState::Running;
 };
 } // namespace epidemic::runtime::simulation

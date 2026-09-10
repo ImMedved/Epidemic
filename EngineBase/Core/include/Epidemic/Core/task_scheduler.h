@@ -154,6 +154,8 @@ class SimpleTaskScheduler final : public ITaskScheduler
     [[nodiscard]] std::vector<std::string> WorkerThreadNames() const override;
 
   private:
+    struct SharedState;
+
     struct QueuedTask
     {
         Task task;
@@ -164,20 +166,16 @@ class SimpleTaskScheduler final : public ITaskScheduler
     // Shared implementation for grouped and ungrouped scheduling requests.
     [[nodiscard]] TaskHandle ScheduleImpl(Task task, std::shared_ptr<TaskGroup::State> group_state, std::string debug_name);
 
-    // Worker-thread loop that waits for queued tasks, executes them, and updates completion state.
-    void WorkerLoop(std::stop_token stop_token);
+    // Worker-thread loop owns shared state independently from the scheduler facade lifetime.
+    static void WorkerLoop(std::shared_ptr<SharedState> state, std::stop_token stop_token);
 
-    mutable std::mutex mutex_;
-    std::condition_variable cv_;
-    std::condition_variable idle_cv_;
-    std::queue<QueuedTask> tasks_;
+    // Detaches the calling worker and joins all remaining workers during worker-owned destruction.
+    void DetachCurrentWorkerAndJoinOthers() noexcept;
+
+    std::shared_ptr<SharedState> state_;
     std::vector<std::jthread> workers_;
     std::vector<std::thread::id> worker_thread_ids_;
     std::vector<std::string> worker_names_;
-    std::size_t active_tasks_{0};
-    std::size_t completed_tasks_{0};
-    std::exception_ptr first_exception_;
-    bool stopping_{false};
 
     [[nodiscard]] bool IsWorkerThread(std::thread::id thread_id) const noexcept;
 };

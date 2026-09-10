@@ -7,9 +7,30 @@
 
 #include <limits>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 #include <unordered_set>
 #include <vector>
+
+namespace epidemic::runtime::renderer
+{
+struct RendererRuntimeTestAccess
+{
+    static void SetNextProxyValue(RendererRuntime& runtime, std::uint64_t value) { runtime.next_proxy_value_ = value; }
+    static std::uint64_t NextProxyValue(const RendererRuntime& runtime) { return runtime.next_proxy_value_; }
+    static void SetNextViewValue(RendererRuntime& runtime, std::uint64_t value) { runtime.next_view_value_ = value; }
+    static std::uint64_t NextViewValue(const RendererRuntime& runtime) { return runtime.next_view_value_; }
+    static void FailNextProxyPublication(RendererRuntime& runtime) { runtime.fail_next_proxy_publication_for_testing_ = true; }
+    static std::size_t ProxyCount(const RendererRuntime& runtime) { return runtime.proxies_.size(); }
+    static bool IsShutdownStarted(const RendererRuntime& runtime) { return runtime.shutdown_started_; }
+    static bool IsShutdown(const RendererRuntime& runtime) { return runtime.shutdown_; }
+    static std::uint64_t CachedRevision(const RendererRuntime& runtime, RenderProxyId id)
+    {
+        const auto it = runtime.proxies_.find(id);
+        return it == runtime.proxies_.end() ? 0u : it->second.cached_transform.revision;
+    }
+};
+} // namespace epidemic::runtime::renderer
 
 namespace
 {
@@ -64,6 +85,9 @@ class TestResourceBridge final : public IRenderResourceBridge
 
     bool ready = true;
     bool fail_release = false;
+    bool throw_acquire = false;
+    bool throw_release = false;
+    bool throw_get = false;
     MissingMode missing_mode = MissingMode::Temporary;
     std::unordered_set<ResourceId> missing_resources;
     int acquire_count = 0;
@@ -71,6 +95,7 @@ class TestResourceBridge final : public IRenderResourceBridge
 
     [[nodiscard]] Result<void> AcquirePayloads(ResourceId mesh, ResourceId material) override
     {
+        if (throw_acquire) throw std::runtime_error("acquire");
         if (!mesh.IsValid() || !material.IsValid())
         {
             return Result<void>::Failure(
@@ -82,6 +107,7 @@ class TestResourceBridge final : public IRenderResourceBridge
 
     [[nodiscard]] Result<void> ReleasePayloads(ResourceId mesh, ResourceId material) override
     {
+        if (throw_release) throw std::runtime_error("release");
         (void)mesh;
         (void)material;
         ++release_count;
@@ -94,6 +120,7 @@ class TestResourceBridge final : public IRenderResourceBridge
 
     [[nodiscard]] Result<RenderResourcePayloads> GetPayloads(ResourceId mesh, ResourceId material) const override
     {
+        if (throw_get) throw std::runtime_error("get");
         if (!ready || !mesh.IsValid() || !material.IsValid() || missing_resources.contains(mesh) || missing_resources.contains(material))
         {
             const char* code = missing_mode == MissingMode::Temporary ? "renderer.resource_not_ready" : "renderer.resource_failed";
@@ -122,15 +149,20 @@ class TestSceneSource final : public IRenderSceneSource
     [[nodiscard]] Result<RenderTransformSnapshot> GetTransformSnapshot(RenderTransformId node) const override
     {
         ++requests;
+        if (throw_on_read) throw std::runtime_error("scene");
         if (!nodes.contains(node))
         {
             return Result<RenderTransformSnapshot>::Failure(
                 epidemic::foundation::Error::Create("renderer.transform_missing", "test scene node is missing"));
         }
-        return Result<RenderTransformSnapshot>::Success(RenderTransformSnapshot{node, Transform{}, revision});
+        Transform transform{};
+        if (return_non_finite) transform.position.x = std::numeric_limits<float>::infinity();
+        return Result<RenderTransformSnapshot>::Success(RenderTransformSnapshot{node, transform, revision});
     }
 
     std::unordered_set<RenderTransformId> nodes;
+    bool throw_on_read = false;
+    bool return_non_finite = false;
     mutable int requests = 0;
     std::uint64_t revision = 7u;
 };
@@ -141,6 +173,7 @@ class TestCommandSink final : public IRenderCommandSink
     [[nodiscard]] Result<void> BeginFrame(const RenderFrameContext& context) override
     {
         ++begin_count;
+        if (throw_begin) throw std::runtime_error("begin");
         last_view = context.view;
         last_view_revision = context.transform.revision;
         return Result<void>::Success();
@@ -149,6 +182,7 @@ class TestCommandSink final : public IRenderCommandSink
     [[nodiscard]] Result<void> SubmitProxy(const RenderProxySubmission& submission) override
     {
         ++submit_count;
+        if (throw_submit) throw std::runtime_error("submit");
         last_revision = submission.transform.revision;
         submitted.push_back(submission.proxy);
         if (fail_submit)
@@ -161,6 +195,7 @@ class TestCommandSink final : public IRenderCommandSink
     [[nodiscard]] Result<void> EndFrame() override
     {
         ++end_count;
+        if (throw_end) throw std::runtime_error("end");
         if (fail_end)
         {
             return Result<void>::Failure(epidemic::foundation::Error::Create("renderer.end_failed", "end failed for test"));
@@ -171,6 +206,7 @@ class TestCommandSink final : public IRenderCommandSink
     [[nodiscard]] Result<void> AbortFrame() override
     {
         ++abort_count;
+        if (throw_abort) throw std::runtime_error("abort");
         return Result<void>::Success();
     }
 
@@ -180,6 +216,10 @@ class TestCommandSink final : public IRenderCommandSink
     int abort_count = 0;
     bool fail_submit = false;
     bool fail_end = false;
+    bool throw_begin = false;
+    bool throw_submit = false;
+    bool throw_end = false;
+    bool throw_abort = false;
     epidemic::runtime::renderer::ViewId last_view{};
     std::uint64_t last_view_revision = 0;
     std::uint64_t last_revision = 0;
@@ -505,6 +545,193 @@ class TestCommandSink final : public IRenderCommandSink
            runtime.GetProxyLifecycle(proxy.Value()) == RenderProxyLifecycle::DestroyPending;
 }
 
+[[nodiscard]] bool TestShutdownFailureStartsTerminalLifecycleAndIsRetryable()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    scene.AddNode(RenderTransformId{60});
+    RendererRuntime runtime(&bridge, &scene);
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{60}, ResourceId::FromString("mesh/shutdown-retry"), ResourceId::FromString("mat/shutdown-retry")));
+    if (!proxy) return false;
+
+    bridge.fail_release = true;
+    const auto failed = runtime.Shutdown();
+    if (failed || !failed.GetError().HasCode("renderer.release_failed") ||
+        !epidemic::runtime::renderer::RendererRuntimeTestAccess::IsShutdownStarted(runtime) ||
+        epidemic::runtime::renderer::RendererRuntimeTestAccess::IsShutdown(runtime))
+    {
+        return false;
+    }
+    const auto dirty_during_shutdown = runtime.MarkMaterialDirty(proxy.Value());
+    const auto register_during_shutdown = runtime.RegisterProxy(
+        MakeProxyDesc(RenderTransformId{60}, ResourceId::FromString("mesh/late-during-shutdown"),
+                      ResourceId::FromString("mat/late-during-shutdown")));
+    if (dirty_during_shutdown || register_during_shutdown ||
+        !dirty_during_shutdown.GetError().HasCode("renderer.shutdown_in_progress") ||
+        !register_during_shutdown.GetError().HasCode("renderer.shutdown_in_progress"))
+    {
+        return false;
+    }
+
+    bridge.fail_release = false;
+    if (!runtime.Shutdown() || !epidemic::runtime::renderer::RendererRuntimeTestAccess::IsShutdown(runtime)) return false;
+    const auto reg = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{60}, ResourceId::FromString("mesh/late"), ResourceId::FromString("mat/late")));
+    const auto destroy = runtime.DestroyProxy(proxy.Value());
+    const auto flush = runtime.FlushDeferredDestroys();
+    const auto dirty = runtime.MarkTransformDirty(proxy.Value());
+    const auto material = runtime.MarkMaterialDirty(proxy.Value());
+    const auto visibility = runtime.SetProxyVisibility(proxy.Value(), RenderProxyVisibility::Hidden);
+    const auto view = runtime.CreateView(ViewDesc{RenderTransformId{60}, 60.0f, 0.1f, 100.0f});
+    const auto destroy_view = runtime.DestroyView(epidemic::runtime::renderer::ViewId{1});
+    const auto main = runtime.SetMainView(epidemic::runtime::renderer::ViewId{1});
+    const auto prepare = runtime.PrepareFrame();
+    const auto render = runtime.RenderFrame();
+    return !reg && !destroy && !flush && !dirty && !material && !visibility && !view && !destroy_view && !main && !prepare && !render &&
+           reg.GetError().HasCode("renderer.shutdown_complete") && render.GetError().HasCode("renderer.shutdown_complete");
+}
+
+[[nodiscard]] bool TestProxyPublicationFailureDoesNotAcquireOrConsumeId()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    scene.AddNode(RenderTransformId{61});
+    RendererRuntime runtime(&bridge, &scene);
+    const auto before = epidemic::runtime::renderer::RendererRuntimeTestAccess::NextProxyValue(runtime);
+    epidemic::runtime::renderer::RendererRuntimeTestAccess::FailNextProxyPublication(runtime);
+    const auto failed = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{61}, ResourceId::FromString("mesh/fault"), ResourceId::FromString("mat/fault")));
+    if (failed || !failed.GetError().HasCode("renderer.allocation_failed") || bridge.acquire_count != 0 ||
+        epidemic::runtime::renderer::RendererRuntimeTestAccess::ProxyCount(runtime) != 0u ||
+        epidemic::runtime::renderer::RendererRuntimeTestAccess::NextProxyValue(runtime) != before)
+    {
+        return false;
+    }
+    const auto retry = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{61}, ResourceId::FromString("mesh/fault"), ResourceId::FromString("mat/fault")));
+    return retry && retry.Value().value == before && bridge.acquire_count == 1;
+}
+
+[[nodiscard]] bool TestRendererEnumValidationAndIdExhaustion()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    scene.AddNode(RenderTransformId{62});
+    RendererRuntime runtime(&bridge, &scene);
+    auto invalid_layer = MakeProxyDesc(RenderTransformId{62}, ResourceId::FromString("mesh/enum"), ResourceId::FromString("mat/enum"));
+    invalid_layer.layer = static_cast<RenderLayer>(999);
+    auto invalid_visibility = invalid_layer;
+    invalid_visibility.layer = RenderLayer::Opaque;
+    invalid_visibility.visibility = static_cast<RenderProxyVisibility>(999);
+    const auto a = runtime.RegisterProxy(invalid_layer);
+    const auto b = runtime.RegisterProxy(invalid_visibility);
+    if (a || b || epidemic::runtime::renderer::RendererRuntimeTestAccess::NextProxyValue(runtime) != 1u || bridge.acquire_count != 0) return false;
+
+    epidemic::runtime::renderer::RendererRuntimeTestAccess::SetNextProxyValue(runtime, std::numeric_limits<std::uint64_t>::max());
+    const auto last_proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{62}, ResourceId::FromString("mesh/last"), ResourceId::FromString("mat/last")));
+    const auto exhausted_proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{62}, ResourceId::FromString("mesh/next"), ResourceId::FromString("mat/next")));
+    epidemic::runtime::renderer::RendererRuntimeTestAccess::SetNextViewValue(runtime, std::numeric_limits<std::uint64_t>::max());
+    const auto last_view = runtime.CreateView(ViewDesc{RenderTransformId{62}, 60.0f, 0.1f, 100.0f});
+    const auto exhausted_view = runtime.CreateView(ViewDesc{RenderTransformId{62}, 60.0f, 0.1f, 100.0f});
+    if (!last_proxy || exhausted_proxy || !last_view || exhausted_view) return false;
+    const auto old_visibility = runtime.GetProxyVisibility(last_proxy.Value());
+    const auto bad_set = runtime.SetProxyVisibility(last_proxy.Value(), static_cast<RenderProxyVisibility>(999));
+    return !bad_set && bad_set.GetError().HasCode("renderer.invalid_enum") && runtime.GetProxyVisibility(last_proxy.Value()) == old_visibility &&
+           exhausted_proxy.GetError().HasCode("renderer.proxy_id_exhausted") && exhausted_view.GetError().HasCode("renderer.view_id_exhausted");
+}
+
+[[nodiscard]] bool TestPrepareFrameFailureDoesNotPublishStagedTransforms()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    TestCommandSink sink;
+    scene.AddNode(RenderTransformId{63});
+    scene.AddNode(RenderTransformId{64});
+    RendererRuntime runtime(&bridge, &scene, &sink);
+    const auto first = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{63}, ResourceId::FromString("mesh/stage-a"), ResourceId::FromString("mat/stage-a")));
+    const auto second = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{64}, ResourceId::FromString("mesh/stage-b"), ResourceId::FromString("mat/stage-b")));
+    const auto view = runtime.CreateView(ViewDesc{RenderTransformId{63}, 60.0f, 0.1f, 100.0f});
+    if (!first || !second || !view || !runtime.SetMainView(view.Value()) || !runtime.PrepareFrame() || !runtime.RenderFrame()) return false;
+    const auto before_a = epidemic::runtime::renderer::RendererRuntimeTestAccess::CachedRevision(runtime, first.Value());
+    const auto before_b = epidemic::runtime::renderer::RendererRuntimeTestAccess::CachedRevision(runtime, second.Value());
+    scene.SetRevision(10u);
+    if (!runtime.MarkTransformDirty(first.Value()) || !runtime.MarkTransformDirty(second.Value())) return false;
+    scene.nodes.erase(RenderTransformId{64});
+    const auto failed = runtime.PrepareFrame();
+    return !failed && failed.GetError().HasCode("renderer.transform_missing") &&
+           epidemic::runtime::renderer::RendererRuntimeTestAccess::CachedRevision(runtime, first.Value()) == before_a &&
+           epidemic::runtime::renderer::RendererRuntimeTestAccess::CachedRevision(runtime, second.Value()) == before_b &&
+           HasRenderDirtyFlag(runtime.GetProxyDirtyFlags(first.Value()), RenderProxyDirtyFlags::Transform) &&
+           HasRenderDirtyFlag(runtime.GetProxyDirtyFlags(second.Value()), RenderProxyDirtyFlags::Transform);
+}
+
+[[nodiscard]] bool TestSceneAndCommandExceptionsAreContainedAndAbortAfterBegin()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    TestCommandSink sink;
+    scene.AddNode(RenderTransformId{65});
+    RendererRuntime runtime(&bridge, &scene, &sink);
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{65}, ResourceId::FromString("mesh/ex"), ResourceId::FromString("mat/ex")));
+    const auto view = runtime.CreateView(ViewDesc{RenderTransformId{65}, 60.0f, 0.1f, 100.0f});
+    if (!proxy || !view || !runtime.SetMainView(view.Value())) return false;
+
+    scene.throw_on_read = true;
+    const auto source_error = runtime.PrepareFrame();
+    scene.throw_on_read = false;
+    if (source_error || !source_error.GetError().HasCode("renderer.backend_exception")) return false;
+    if (!runtime.PrepareFrame()) return false;
+
+    sink.throw_submit = true;
+    sink.throw_abort = true;
+    const auto submit_error = runtime.RenderFrame();
+    if (submit_error || !submit_error.GetError().HasCode("renderer.backend_exception") || sink.begin_count != 1 || sink.abort_count != 1) return false;
+
+    sink.throw_submit = false;
+    sink.throw_abort = false;
+    if (!runtime.PrepareFrame()) return false;
+    sink.throw_end = true;
+    const auto end_error = runtime.RenderFrame();
+    return !end_error && end_error.GetError().HasCode("renderer.backend_exception") && sink.abort_count == 2;
+}
+
+[[nodiscard]] bool TestInvalidOrderAndNoMainViewDoNotBecomeStickyFailed()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    TestCommandSink sink;
+    RendererRuntime runtime(&bridge, &scene, &sink);
+    const auto early = runtime.RenderFrame();
+    if (early || !early.GetError().HasCode("renderer.frame_not_prepared") || runtime.GetFrameState() != RenderFrameState::NotPrepared) return false;
+    if (!runtime.PrepareFrame() || runtime.GetFrameState() != RenderFrameState::ReadyToRender) return false;
+    const auto no_view = runtime.RenderFrame();
+    return !no_view && no_view.GetError().HasCode("renderer.main_view_missing") && runtime.GetFrameState() == RenderFrameState::ReadyToRender;
+}
+
+[[nodiscard]] bool TestDeferredDestroyReleaseFailureIsRetryablePrefixProgress()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    scene.AddNode(RenderTransformId{66});
+    RendererRuntime runtime(&bridge, &scene);
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{66}, ResourceId::FromString("mesh/drain"), ResourceId::FromString("mat/drain")));
+    if (!proxy || !runtime.DestroyProxy(proxy.Value())) return false;
+    bridge.fail_release = true;
+    const auto failed = runtime.FlushDeferredDestroys();
+    if (failed || runtime.GetProxyLifecycle(proxy.Value()) != RenderProxyLifecycle::DestroyPending) return false;
+    bridge.fail_release = false;
+    const auto retry = runtime.FlushDeferredDestroys();
+    return retry && runtime.GetProxyLifecycle(proxy.Value()) == RenderProxyLifecycle::Unregistered && bridge.release_count == 2;
+}
+
+[[nodiscard]] bool TestNonFiniteSceneTransformIsRejectedBeforeBackendUse()
+{
+    TestResourceBridge bridge;
+    TestSceneSource scene;
+    scene.AddNode(RenderTransformId{67});
+    scene.return_non_finite = true;
+    RendererRuntime runtime(&bridge, &scene);
+    const auto proxy = runtime.RegisterProxy(MakeProxyDesc(RenderTransformId{67}, ResourceId::FromString("mesh/nan"), ResourceId::FromString("mat/nan")));
+    return !proxy && proxy.GetError().HasCode("renderer.invalid_transform") && bridge.acquire_count == 0;
+}
+
 [[nodiscard]] bool TestStrictAndMockFactories()
 {
     const auto strict_missing = CreateRendererServices({});
@@ -559,5 +786,13 @@ int main()
     if (!TestReleaseErrorsSurfaceFromDeferredDestroy()) return 9;
     if (!TestRenderFrameAbortOnSubmitFailure()) return 10;
     if (!TestStrictAndMockFactories()) return 11;
+    if (!TestShutdownFailureStartsTerminalLifecycleAndIsRetryable()) return 16;
+    if (!TestProxyPublicationFailureDoesNotAcquireOrConsumeId()) return 17;
+    if (!TestRendererEnumValidationAndIdExhaustion()) return 18;
+    if (!TestPrepareFrameFailureDoesNotPublishStagedTransforms()) return 19;
+    if (!TestSceneAndCommandExceptionsAreContainedAndAbortAfterBegin()) return 20;
+    if (!TestInvalidOrderAndNoMainViewDoNotBecomeStickyFailed()) return 21;
+    if (!TestDeferredDestroyReleaseFailureIsRetryablePrefixProgress()) return 22;
+    if (!TestNonFiniteSceneTransformIsRejectedBeforeBackendUse()) return 23;
     return 0;
 }

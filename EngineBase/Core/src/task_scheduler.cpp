@@ -32,6 +32,18 @@ struct TaskGroup::State
     std::exception_ptr first_exception;
 };
 
+struct SimpleTaskScheduler::SharedState
+{
+    std::mutex mutex;
+    std::condition_variable cv;
+    std::condition_variable idle_cv;
+    std::queue<QueuedTask> tasks;
+    std::size_t active_tasks{0};
+    std::size_t completed_tasks{0};
+    std::exception_ptr first_exception;
+    bool stopping{false};
+};
+
 // Returns whether this handle references live scheduler state.
 bool TaskHandle::IsValid() const noexcept
 {
@@ -58,7 +70,7 @@ bool TaskGroup::IsValid() const noexcept
 }
 
 // Starts worker threads and assigns stable diagnostic names.
-SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count)
+SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count) : state_(std::make_shared<SharedState>())
 {
     if (worker_count == 0)
     {
@@ -71,9 +83,9 @@ SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count)
     {
         const auto worker_name = "EpidemicWorker-" + std::to_string(index);
         worker_names_.push_back(worker_name);
-        workers_.emplace_back([this, worker_name](std::stop_token stop_token) {
+        workers_.emplace_back([state = state_, worker_name](std::stop_token stop_token) {
             diagnostics::SetCurrentThreadName(worker_name);
-            WorkerLoop(stop_token);
+            WorkerLoop(std::move(state), stop_token);
         });
         worker_thread_ids_.push_back(workers_.back().get_id());
     }
@@ -85,7 +97,11 @@ SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count)
 SimpleTaskScheduler::~SimpleTaskScheduler()
 {
     RequestStop();
-    if (!IsWorkerThread(std::this_thread::get_id()))
+    if (IsWorkerThread(std::this_thread::get_id()))
+    {
+        DetachCurrentWorkerAndJoinOthers();
+    }
+    else
     {
         try
         {
@@ -117,6 +133,14 @@ void SimpleTaskScheduler::Wait(const TaskHandle &handle)
         return;
     }
 
+    {
+        std::scoped_lock lock(state_->mutex);
+        if (IsWorkerThread(std::this_thread::get_id()))
+        {
+            throw std::runtime_error("Task scheduler Wait cannot block one of its own worker threads");
+        }
+    }
+
     std::unique_lock lock(handle.state_->mutex);
     handle.state_->cv.wait(lock, [&handle] { return handle.state_->completed; });
     const auto exception = handle.state_->exception;
@@ -136,6 +160,14 @@ void SimpleTaskScheduler::Wait(const TaskGroup &group)
         return;
     }
 
+    {
+        std::scoped_lock lock(state_->mutex);
+        if (IsWorkerThread(std::this_thread::get_id()))
+        {
+            throw std::runtime_error("Task scheduler Wait cannot block one of its own worker threads");
+        }
+    }
+
     std::unique_lock lock(group.state_->mutex);
     group.state_->cv.wait(lock, [&group] { return group.state_->remaining_tasks == 0; });
     const auto exception = std::exchange(group.state_->first_exception, nullptr);
@@ -151,11 +183,15 @@ void SimpleTaskScheduler::Wait(const TaskGroup &group)
 void SimpleTaskScheduler::WaitIdle()
 {
     EPIDEMIC_PROFILE_SCOPE("TaskScheduler::WaitIdle");
-    std::unique_lock lock(mutex_);
-    idle_cv_.wait(lock, [this] { return tasks_.empty() && active_tasks_ == 0; });
+    std::unique_lock lock(state_->mutex);
+    if (IsWorkerThread(std::this_thread::get_id()))
+    {
+        throw std::runtime_error("Task scheduler WaitIdle cannot block one of its own worker threads");
+    }
+    state_->idle_cv.wait(lock, [state = state_] { return state->tasks.empty() && state->active_tasks == 0; });
 
-    const auto first_exception = first_exception_;
-    first_exception_ = nullptr;
+    const auto first_exception = state_->first_exception;
+    state_->first_exception = nullptr;
     lock.unlock();
 
     if (first_exception)
@@ -170,16 +206,16 @@ void SimpleTaskScheduler::RequestStop() noexcept
     try
     {
         {
-            std::scoped_lock lock(mutex_);
-            stopping_ = true;
+            std::scoped_lock lock(state_->mutex);
+            state_->stopping = true;
             for (auto &worker : workers_)
             {
                 worker.request_stop();
             }
         }
 
-        cv_.notify_all();
-        idle_cv_.notify_all();
+        state_->cv.notify_all();
+        state_->idle_cv.notify_all();
     }
     catch (...)
     {
@@ -191,7 +227,7 @@ void SimpleTaskScheduler::Join()
 {
     std::vector<std::jthread> workers_to_join;
     {
-        std::scoped_lock lock(mutex_);
+        std::scoped_lock lock(state_->mutex);
         if (IsWorkerThread(std::this_thread::get_id()))
         {
             throw std::runtime_error("Task scheduler Join/Shutdown cannot be called from a scheduler worker thread");
@@ -202,7 +238,7 @@ void SimpleTaskScheduler::Join()
             return;
         }
 
-        stopping_ = true;
+        state_->stopping = true;
         for (auto &worker : workers_)
         {
             worker.request_stop();
@@ -211,9 +247,9 @@ void SimpleTaskScheduler::Join()
         worker_thread_ids_.clear();
     }
 
-    cv_.notify_all();
+    state_->cv.notify_all();
     workers_to_join.clear();
-    idle_cv_.notify_all();
+    state_->idle_cv.notify_all();
 }
 
 // Stops accepting new work, wakes workers, and joins the worker thread list.
@@ -226,21 +262,21 @@ void SimpleTaskScheduler::Shutdown()
 // Returns the number of worker threads owned by the scheduler.
 std::size_t SimpleTaskScheduler::WorkerCount() const noexcept
 {
-    std::scoped_lock lock(mutex_);
+    std::scoped_lock lock(state_->mutex);
     return worker_names_.size();
 }
 
 // Returns a snapshot of pending, active, completed, and worker counts.
 TaskDiagnostics SimpleTaskScheduler::GetDiagnostics() const noexcept
 {
-    std::scoped_lock lock(mutex_);
-    return TaskDiagnostics{tasks_.size(), active_tasks_, completed_tasks_, worker_names_.size()};
+    std::scoped_lock lock(state_->mutex);
+    return TaskDiagnostics{state_->tasks.size(), state_->active_tasks, state_->completed_tasks, worker_names_.size()};
 }
 
 // Returns the worker names assigned during construction.
 std::vector<std::string> SimpleTaskScheduler::WorkerThreadNames() const
 {
-    std::scoped_lock lock(mutex_);
+    std::scoped_lock lock(state_->mutex);
     return worker_names_;
 }
 
@@ -256,8 +292,8 @@ TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGrou
     handle_state->debug_name = std::move(debug_name);
 
     {
-        std::scoped_lock lock(mutex_);
-        if (stopping_)
+        std::scoped_lock lock(state_->mutex);
+        if (state_->stopping)
         {
             throw std::runtime_error("Task scheduler is shutting down");
         }
@@ -272,7 +308,7 @@ TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGrou
 
         try
         {
-            tasks_.push(QueuedTask{std::move(task), handle_state, group_state});
+            state_->tasks.push(QueuedTask{std::move(task), handle_state, group_state});
             diagnostics::GlobalCounters().Increment(diagnostics::CounterId::TasksScheduled);
         }
         catch (...)
@@ -287,28 +323,30 @@ TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGrou
         }
     }
 
-    cv_.notify_one();
+    state_->cv.notify_one();
     return TaskHandle(std::move(handle_state));
 }
 
 // Waits for work, executes tasks, records failures, and updates handle/group completion state.
-void SimpleTaskScheduler::WorkerLoop(std::stop_token stop_token)
+void SimpleTaskScheduler::WorkerLoop(std::shared_ptr<SharedState> state, std::stop_token stop_token)
 {
     while (true)
     {
         QueuedTask queued_task;
         {
-            std::unique_lock lock(mutex_);
-            cv_.wait(lock, [this, &stop_token] { return stopping_ || stop_token.stop_requested() || !tasks_.empty(); });
+            std::unique_lock lock(state->mutex);
+            state->cv.wait(lock, [&state, &stop_token] {
+                return state->stopping || stop_token.stop_requested() || !state->tasks.empty();
+            });
 
-            if ((stopping_ || stop_token.stop_requested()) && tasks_.empty())
+            if ((state->stopping || stop_token.stop_requested()) && state->tasks.empty())
             {
                 return;
             }
 
-            queued_task = std::move(tasks_.front());
-            tasks_.pop();
-            ++active_tasks_;
+            queued_task = std::move(state->tasks.front());
+            state->tasks.pop();
+            ++state->active_tasks;
         }
 
         std::exception_ptr task_exception;
@@ -341,17 +379,46 @@ void SimpleTaskScheduler::WorkerLoop(std::stop_token stop_token)
         }
 
         {
-            std::scoped_lock lock(mutex_);
-            if (task_exception && first_exception_ == nullptr)
+            std::scoped_lock lock(state->mutex);
+            if (task_exception && state->first_exception == nullptr)
             {
-                first_exception_ = task_exception;
+                state->first_exception = task_exception;
             }
-            --active_tasks_;
-            ++completed_tasks_;
+            --state->active_tasks;
+            ++state->completed_tasks;
             diagnostics::GlobalCounters().Increment(diagnostics::CounterId::TasksCompleted);
         }
 
-        idle_cv_.notify_all();
+        state->idle_cv.notify_all();
+    }
+}
+
+void SimpleTaskScheduler::DetachCurrentWorkerAndJoinOthers() noexcept
+{
+    try
+    {
+        const auto current_thread = std::this_thread::get_id();
+        std::vector<std::jthread> workers_to_release;
+        {
+            std::scoped_lock lock(state_->mutex);
+            workers_to_release = std::move(workers_);
+            worker_thread_ids_.clear();
+        }
+
+        state_->cv.notify_all();
+        for (auto &worker : workers_to_release)
+        {
+            if (worker.joinable() && worker.get_id() == current_thread)
+            {
+                worker.detach();
+            }
+        }
+        workers_to_release.clear();
+        state_->idle_cv.notify_all();
+    }
+    catch (...)
+    {
+        std::terminate();
     }
 }
 // Returns whether a thread id belongs to one of the scheduler-owned workers.

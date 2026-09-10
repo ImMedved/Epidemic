@@ -77,6 +77,15 @@ int main()
         !service.Resolve(first_handle).has_value()) return 13;
     if (service.RequestDestroy(first_id, EntityDestroyReason::Destroyed)) return 131;
 
+    {
+        const auto before_invalid_revision = service.CurrentRevision();
+        CreateEntityRequest invalid_create;
+        invalid_create.archetype = actor_id.Value();
+        invalid_create.persistence = static_cast<EntityPersistencePolicy>(999);
+        if (service.Create(invalid_create)) return 132;
+        if (service.CurrentRevision() != before_invalid_revision) return 133;
+    }
+
     CreateEntityRequest second_create;
     second_create.archetype = actor_id.Value();
     const auto second = service.Create(second_create);

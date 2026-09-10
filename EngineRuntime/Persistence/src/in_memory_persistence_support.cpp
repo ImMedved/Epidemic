@@ -1,7 +1,9 @@
-﻿#include "in_memory_persistence_support.h"
+#include "in_memory_persistence_support.h"
 
 #include <algorithm>
+#include <exception>
 #include <limits>
+#include <new>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -25,6 +27,91 @@ namespace
     return time.ticks >= 0;
 }
 
+[[nodiscard]] constexpr bool IsValidPersistentObjectKind(PersistentObjectKind kind) noexcept
+{
+    switch (kind)
+    {
+    case PersistentObjectKind::Unknown:
+    case PersistentObjectKind::Object:
+    case PersistentObjectKind::ContainerEntry:
+    case PersistentObjectKind::SurfaceState:
+    case PersistentObjectKind::ZoneOverride:
+    case PersistentObjectKind::AbstractFact:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] constexpr bool IsValidPersistenceTierValue(PersistenceTier tier) noexcept
+{
+    switch (tier)
+    {
+    case PersistenceTier::Disposable:
+    case PersistenceTier::TemporaryObserved:
+    case PersistenceTier::PlayerTouched:
+    case PersistenceTier::Protected:
+    case PersistenceTier::QuestCritical:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] constexpr bool IsValidPersistenceStateValue(PersistenceState state) noexcept
+{
+    switch (state)
+    {
+    case PersistenceState::Clean:
+    case PersistenceState::Dirty:
+    case PersistenceState::PendingSave:
+    case PersistenceState::Saving:
+    case PersistenceState::Saved:
+    case PersistenceState::LoadPending:
+    case PersistenceState::Loaded:
+    case PersistenceState::Deleted:
+    case PersistenceState::Tombstoned:
+    case PersistenceState::Conflict:
+    case PersistenceState::Corrupted:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] constexpr bool IsValidLazyRuleKindValue(LazyRuleKind kind) noexcept
+{
+    switch (kind)
+    {
+    case LazyRuleKind::Decay:
+    case LazyRuleKind::Theft:
+    case LazyRuleKind::Cleanup:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] constexpr bool IsValidLazyRuleStateValue(LazyRuleState state) noexcept
+{
+    switch (state)
+    {
+    case LazyRuleState::Pending:
+    case LazyRuleState::Evaluated:
+    case LazyRuleState::Applied:
+    case LazyRuleState::Cancelled:
+    case LazyRuleState::Expired:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] constexpr bool HasOnlyKnownProtectionBits(ObjectProtectionMask mask) noexcept
+{
+    constexpr std::uint32_t kKnown = ToProtectionMask(ObjectProtectionFlags::PreventTheft) |
+                                     ToProtectionMask(ObjectProtectionFlags::PreventDecay) |
+                                     ToProtectionMask(ObjectProtectionFlags::PreventCleanup) |
+                                     ToProtectionMask(ObjectProtectionFlags::PreserveTransform) |
+                                     ToProtectionMask(ObjectProtectionFlags::PreserveCondition);
+    return (mask.value & ~kKnown) == 0u;
+}
+
 [[nodiscard]] foundation::Result<void> ValidateObject(const PersistentObjectRecord& record)
 {
     if (!record.persistent_id.IsValid())
@@ -34,6 +121,15 @@ namespace
     if (!record.payload.IsValid())
     {
         return PersistenceFailure("persistence.invalid_payload", "persistent object payload must declare schema and bytes");
+    }
+    if (!IsValidPersistentObjectKind(record.kind) || !IsValidPersistenceTierValue(record.tier) ||
+        !IsValidPersistenceStateValue(record.state))
+    {
+        return PersistenceFailure("persistence.invalid_enum", "persistent object contains an out-of-domain enum value");
+    }
+    if (!HasOnlyKnownProtectionBits(record.protection_flags))
+    {
+        return PersistenceFailure("persistence.invalid_protection_mask", "persistent object protection mask contains unknown bits");
     }
     if (!IsValidGameTime(record.created_game_time) || !IsValidGameTime(record.last_observed_game_time))
     {
@@ -55,6 +151,10 @@ namespace
     if (!record.target_id.IsValid())
     {
         return PersistenceFailure("persistence.invalid_id", "lazy rule target id must be valid");
+    }
+    if (!IsValidLazyRuleKindValue(record.kind) || !IsValidLazyRuleStateValue(record.state))
+    {
+        return PersistenceFailure("persistence.invalid_enum", "lazy rule contains an out-of-domain enum value");
     }
     if (!IsValidGameTime(record.created_game_time) || !IsValidGameTime(record.evaluate_after_game_time))
     {
@@ -203,6 +303,24 @@ foundation::Result<void> InMemorySaveTransaction::EnsureOpen() const
     return foundation::Result<void>::Success();
 }
 
+foundation::Result<void> InMemorySaveTransaction::StageOperation(PersistenceOperation operation)
+{
+    try
+    {
+        if (fail_next_operation_allocation_for_testing_)
+        {
+            fail_next_operation_allocation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
+        operations_.push_back(std::move(operation));
+    }
+    catch (const std::bad_alloc&)
+    {
+        return PersistenceFailure("persistence.allocation_failed", "failed to stage persistence transaction operation");
+    }
+    return foundation::Result<void>::Success();
+}
+
 foundation::Result<void> InMemorySaveTransaction::UpsertObject(PersistentObjectRecord record)
 {
     const auto open = EnsureOpen();
@@ -215,8 +333,7 @@ foundation::Result<void> InMemorySaveTransaction::UpsertObject(PersistentObjectR
     {
         return valid;
     }
-    operations_.push_back(UpsertObjectOperation{std::move(record)});
-    return foundation::Result<void>::Success();
+    return StageOperation(UpsertObjectOperation{std::move(record)});
 }
 
 foundation::Result<void> InMemorySaveTransaction::AdminRemoveObject(PersistentObjectId id)
@@ -230,8 +347,7 @@ foundation::Result<void> InMemorySaveTransaction::AdminRemoveObject(PersistentOb
     {
         return PersistenceFailure("persistence.invalid_id", "persistent object id must be valid before removal");
     }
-    operations_.push_back(AdminRemoveObjectOperation{id});
-    return foundation::Result<void>::Success();
+    return StageOperation(AdminRemoveObjectOperation{id});
 }
 
 foundation::Result<void> InMemorySaveTransaction::DeleteObject(TombstoneRecord tombstone)
@@ -246,8 +362,7 @@ foundation::Result<void> InMemorySaveTransaction::DeleteObject(TombstoneRecord t
     {
         return valid;
     }
-    operations_.push_back(DeleteObjectOperation{std::move(tombstone)});
-    return foundation::Result<void>::Success();
+    return StageOperation(DeleteObjectOperation{std::move(tombstone)});
 }
 
 foundation::Result<void> InMemorySaveTransaction::UpsertLazyRule(LazyRuleRecord record)
@@ -262,8 +377,7 @@ foundation::Result<void> InMemorySaveTransaction::UpsertLazyRule(LazyRuleRecord 
     {
         return valid;
     }
-    operations_.push_back(UpsertLazyRuleOperation{std::move(record)});
-    return foundation::Result<void>::Success();
+    return StageOperation(UpsertLazyRuleOperation{std::move(record)});
 }
 
 foundation::Result<void> InMemorySaveTransaction::UpdateLazyRule(LazyRuleRecord record)
@@ -278,8 +392,7 @@ foundation::Result<void> InMemorySaveTransaction::UpdateLazyRule(LazyRuleRecord 
     {
         return valid;
     }
-    operations_.push_back(UpdateLazyRuleOperation{std::move(record)});
-    return foundation::Result<void>::Success();
+    return StageOperation(UpdateLazyRuleOperation{std::move(record)});
 }
 
 foundation::Result<void> InMemorySaveTransaction::RemoveLazyRule(LazyRuleId id)
@@ -293,8 +406,7 @@ foundation::Result<void> InMemorySaveTransaction::RemoveLazyRule(LazyRuleId id)
     {
         return PersistenceFailure("persistence.invalid_lazy_rule_id", "lazy rule id must be valid before removal");
     }
-    operations_.push_back(RemoveLazyRuleOperation{id});
-    return foundation::Result<void>::Success();
+    return StageOperation(RemoveLazyRuleOperation{id});
 }
 
 foundation::Result<void> InMemorySaveTransaction::AdminAddTombstone(TombstoneRecord tombstone)
@@ -309,8 +421,7 @@ foundation::Result<void> InMemorySaveTransaction::AdminAddTombstone(TombstoneRec
     {
         return valid;
     }
-    operations_.push_back(AdminAddTombstoneOperation{std::move(tombstone)});
-    return foundation::Result<void>::Success();
+    return StageOperation(AdminAddTombstoneOperation{std::move(tombstone)});
 }
 
 foundation::Result<void> InMemorySaveTransaction::UpsertZoneOverride(ZoneOverrideSnapshot snapshot)
@@ -325,8 +436,7 @@ foundation::Result<void> InMemorySaveTransaction::UpsertZoneOverride(ZoneOverrid
     {
         return valid;
     }
-    operations_.push_back(UpsertZoneOverrideOperation{std::move(snapshot)});
-    return foundation::Result<void>::Success();
+    return StageOperation(UpsertZoneOverrideOperation{std::move(snapshot)});
 }
 
 foundation::Result<void> InMemorySaveTransaction::RemoveZoneOverride(const PersistenceLocation& location)
@@ -340,32 +450,46 @@ foundation::Result<void> InMemorySaveTransaction::RemoveZoneOverride(const Persi
     {
         return PersistenceFailure("persistence.invalid_location", "zone override removal location must contain at least one valid component");
     }
-    operations_.push_back(RemoveZoneOverrideOperation{location});
-    return foundation::Result<void>::Success();
+    return StageOperation(RemoveZoneOverrideOperation{location});
 }
 
 foundation::Result<void> InMemorySaveTransaction::Commit()
 {
-    const auto open = EnsureOpen();
-    if (!open)
+    if (state_ == SaveTransactionState::Committed)
     {
-        state_ = SaveTransactionState::Failed;
-        return open;
+        return foundation::Result<void>::Success();
+    }
+    if (state_ != SaveTransactionState::Open)
+    {
+        return PersistenceFailure("persistence.transaction_invalid_state", "transaction can commit only while open");
     }
 
     state_ = SaveTransactionState::Committing;
-    const auto candidate = store_.BuildCandidateSnapshot(*this);
-    if (!candidate)
+    try
     {
-        state_ = SaveTransactionState::Failed;
-        return foundation::Result<void>::Failure(candidate.GetError());
-    }
+        auto candidate = store_.BuildCandidateSnapshot(*this);
+        if (!candidate)
+        {
+            state_ = SaveTransactionState::Failed;
+            return foundation::Result<void>::Failure(candidate.GetError());
+        }
 
-    const auto published = store_.PublishSnapshot(candidate.Value());
-    if (!published)
+        auto published = store_.PublishSnapshot(std::move(candidate.Value()));
+        if (!published)
+        {
+            state_ = SaveTransactionState::Failed;
+            return published;
+        }
+    }
+    catch (const std::bad_alloc&)
     {
         state_ = SaveTransactionState::Failed;
-        return published;
+        return PersistenceFailure("persistence.allocation_failed", "persistence commit allocation failed");
+    }
+    catch (...)
+    {
+        state_ = SaveTransactionState::Failed;
+        return PersistenceFailure("persistence.backend_exception", "persistence commit dependency threw an exception");
     }
 
     state_ = SaveTransactionState::Committed;
@@ -720,6 +844,12 @@ foundation::Result<void> ValidatePersistenceSnapshot(const PersistenceSnapshot& 
 
 foundation::Result<PersistenceCandidateState> InMemoryPersistenceStore::BuildCandidateSnapshot(const InMemorySaveTransaction& transaction) const
 {
+    if (fail_next_candidate_build_allocation_for_testing_)
+    {
+        fail_next_candidate_build_allocation_for_testing_ = false;
+        return foundation::Result<PersistenceCandidateState>::Failure(
+            foundation::Error::Create("persistence.allocation_failed", "failed to allocate prepared persistence state"));
+    }
     if (transaction.base_revision_ != revision_)
     {
         return foundation::Result<PersistenceCandidateState>::Failure(
@@ -864,6 +994,12 @@ foundation::Result<PersistenceCandidateState> InMemoryPersistenceStore::BuildCan
         }
     }
 
+    for (auto& [location, zone] : candidate_zone_overrides)
+    {
+        (void)location;
+        SortZoneOverrideSnapshot(zone);
+    }
+
     PersistenceSnapshot candidate{};
     candidate.current_revision = candidate_revision;
     candidate.objects.reserve(candidate_objects.size());
@@ -899,6 +1035,10 @@ foundation::Result<PersistenceCandidateState> InMemoryPersistenceStore::BuildCan
     }
     PersistenceCandidateState candidate_state{};
     candidate_state.snapshot = std::move(candidate);
+    candidate_state.objects = std::move(candidate_objects);
+    candidate_state.lazy_rules = std::move(candidate_lazy_rules);
+    candidate_state.tombstones = std::move(candidate_tombstones);
+    candidate_state.zone_overrides = std::move(candidate_zone_overrides);
     candidate_state.dirty_ids = std::move(candidate_dirty);
     return foundation::Result<PersistenceCandidateState>::Success(std::move(candidate_state));
 }
@@ -912,36 +1052,28 @@ foundation::Result<void> InMemoryPersistenceStore::PublishSnapshot(PersistenceCa
         {
             return PersistenceFailure("persistence.backend_missing", "persistence backend is required by durability policy");
         }
-        const auto committed = backend_->CommitSnapshot(snapshot, durability_);
-        if (!committed)
+        try
         {
-            return committed;
+            const auto committed = backend_->CommitSnapshot(snapshot, durability_);
+            if (!committed)
+            {
+                return committed;
+            }
+        }
+        catch (...)
+        {
+            return PersistenceFailure("persistence.backend_exception", "persistence backend threw while committing snapshot");
         }
         candidate.dirty_ids.clear();
     }
 
-    objects_.clear();
-    tombstones_.clear();
-    lazy_rules_.clear();
-    zone_overrides_.clear();
-    dirty_ids_ = std::move(candidate.dirty_ids);
+    // All potentially allocating work is complete. These swaps publish the complete candidate as one no-allocation commit.
+    objects_.swap(candidate.objects);
+    tombstones_.swap(candidate.tombstones);
+    lazy_rules_.swap(candidate.lazy_rules);
+    zone_overrides_.swap(candidate.zone_overrides);
+    dirty_ids_.swap(candidate.dirty_ids);
     revision_ = snapshot.current_revision;
-    for (PersistentObjectRecord record : snapshot.objects)
-    {
-        objects_[record.persistent_id] = std::move(record);
-    }
-    for (TombstoneRecord tombstone : snapshot.tombstones)
-    {
-        tombstones_[tombstone.persistent_id] = std::move(tombstone);
-    }
-    for (LazyRuleRecord rule : snapshot.lazy_rules)
-    {
-        lazy_rules_[rule.rule_id] = std::move(rule);
-    }
-    for (ZoneOverrideSnapshot zone : snapshot.zone_overrides)
-    {
-        zone_overrides_[zone.location] = std::move(zone);
-    }
     return foundation::Result<void>::Success();
 }
 

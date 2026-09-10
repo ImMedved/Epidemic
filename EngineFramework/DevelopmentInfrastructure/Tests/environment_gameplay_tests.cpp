@@ -151,6 +151,14 @@ int main()
     invalid_values.values.wind_x = kEnvironmentOne + 1;
     CHECK(!environment.AddLayer(invalid_values));
 
+    // Invalid enum values are rejected before any authoritative mutation.
+    const auto before_invalid_enum_revision = environment.CurrentRevision();
+    EnvironmentLayer invalid_blend;
+    invalid_blend.type = weather;
+    invalid_blend.blend = static_cast<EnvironmentBlendPolicy>(999);
+    CHECK(!environment.AddLayer(invalid_blend));
+    CHECK(environment.CurrentRevision() == before_invalid_enum_revision);
+
     // Spatial updates are incremental: moving a layer removes its old cell membership and adds the new one.
     EnvironmentLayer moving;
     moving.type = fog;

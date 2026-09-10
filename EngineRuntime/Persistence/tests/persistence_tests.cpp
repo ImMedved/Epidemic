@@ -6,8 +6,30 @@
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
+
+namespace epidemic::runtime
+{
+struct PersistenceRuntimeTestAccess
+{
+    static void FailNextOperationAllocation(ISaveTransaction& transaction)
+    {
+        auto* concrete = dynamic_cast<InMemorySaveTransaction*>(&transaction);
+        if (concrete != nullptr) concrete->fail_next_operation_allocation_for_testing_ = true;
+    }
+    static void FailNextCandidateBuildAllocation(InMemoryPersistenceStore& store)
+    {
+        store.fail_next_candidate_build_allocation_for_testing_ = true;
+    }
+    static std::size_t OperationCount(const ISaveTransaction& transaction)
+    {
+        const auto* concrete = dynamic_cast<const InMemorySaveTransaction*>(&transaction);
+        return concrete == nullptr ? 0u : concrete->operations_.size();
+    }
+};
+} // namespace epidemic::runtime
 
 namespace
 {
@@ -47,12 +69,14 @@ class ControlledBackend final : public IPersistenceBackend
     [[nodiscard]] epidemic::foundation::Result<PersistenceSnapshot> Load() override
     {
         ++load_count;
+        if (throw_load) throw std::runtime_error("load");
         return epidemic::foundation::Result<PersistenceSnapshot>::Success(snapshot);
     }
 
     [[nodiscard]] epidemic::foundation::Result<void> CommitSnapshot(const PersistenceSnapshot& next_snapshot, PersistenceDurability durability) override
     {
         ++save_count;
+        if (throw_commit) throw std::runtime_error("commit");
         if (fail_save)
         {
             return epidemic::foundation::Result<void>::Failure(
@@ -74,6 +98,8 @@ class ControlledBackend final : public IPersistenceBackend
     PersistenceSnapshot snapshot{};
     bool fail_save = false;
     bool fail_flush = false;
+    bool throw_load = false;
+    bool throw_commit = false;
     int load_count = 0;
     int save_count = 0;
     int flush_count = 0;
@@ -572,6 +598,142 @@ concept HasOpenTransaction = requires(T& value) { value.OpenTransaction(); };
            store.GetRevision() == std::numeric_limits<epidemic::runtime::PersistenceRevision>::max();
 }
 
+[[nodiscard]] bool TestBackendExceptionsAreContainedAndRollbackRemainsPossible()
+{
+    auto load_backend = std::make_shared<ControlledBackend>();
+    load_backend->throw_load = true;
+    PersistenceOptions load_options{};
+    load_options.backend = load_backend;
+    const auto load = CreatePersistenceServices(load_options);
+    if (load || !load.GetError().HasCode("persistence.backend_exception")) return false;
+
+    auto backend = std::make_shared<ControlledBackend>();
+    PersistenceOptions options{};
+    options.backend = backend;
+    options.durability = PersistenceDurability::SaveRequired;
+    const auto services = CreatePersistenceServices(options);
+    if (!services) return false;
+    auto transaction = services.Value().store->OpenTransaction();
+    if (!transaction || !transaction->UpsertObject(MakeRecord(6101))) return false;
+    backend->throw_commit = true;
+    const auto commit = transaction->Commit();
+    if (commit || !commit.GetError().HasCode("persistence.backend_exception") || transaction->GetState() != SaveTransactionState::Failed ||
+        services.Value().store->GetRevision() != 0u || services.Value().store->FindObject(PersistentObjectId{6101}) ||
+        backend->snapshot.current_revision != 0u)
+    {
+        return false;
+    }
+    transaction->Rollback();
+    return transaction->GetState() == SaveTransactionState::RolledBack;
+}
+
+[[nodiscard]] bool TestTerminalTransactionCallsPreserveTerminalStates()
+{
+    InMemoryPersistenceStore store;
+    auto committed = store.OpenTransaction();
+    if (!committed || !committed->UpsertObject(MakeRecord(6201)) || !committed->Commit()) return false;
+    const auto repeated_commit = committed->Commit();
+    committed->Rollback();
+    if (!repeated_commit || committed->GetState() != SaveTransactionState::Committed) return false;
+
+    auto rolled = store.OpenTransaction();
+    rolled->Rollback();
+    const auto commit_after_rollback = rolled->Commit();
+    rolled->Rollback();
+    return !commit_after_rollback && commit_after_rollback.GetError().HasCode("persistence.transaction_invalid_state") &&
+           rolled->GetState() == SaveTransactionState::RolledBack;
+}
+
+[[nodiscard]] bool TestPersistedEnumAndProtectionDomainsAreValidated()
+{
+    InMemoryPersistenceStore store;
+    const auto run_object_case = [&store](auto mutate) {
+        auto tx = store.OpenTransaction();
+        auto record = MakeRecord(6301);
+        mutate(record);
+        const auto result = tx->UpsertObject(record);
+        return !result && tx->GetState() == SaveTransactionState::Open && store.GetRevision() == 0u;
+    };
+    if (!run_object_case([](auto& r) { r.kind = static_cast<PersistentObjectKind>(999); }) ||
+        !run_object_case([](auto& r) { r.tier = static_cast<epidemic::runtime::PersistenceTier>(999); }) ||
+        !run_object_case([](auto& r) { r.state = static_cast<PersistenceState>(999); }) ||
+        !run_object_case([](auto& r) { r.protection_flags.value = 1u << 31; }))
+    {
+        return false;
+    }
+    auto tx = store.OpenTransaction();
+    auto invalid_kind = MakeLazyRule(6302, 6301);
+    invalid_kind.kind = static_cast<LazyRuleKind>(999);
+    auto invalid_state = MakeLazyRule(6303, 6301);
+    invalid_state.state = static_cast<LazyRuleState>(999);
+    const auto a = tx->UpsertLazyRule(invalid_kind);
+    const auto b = tx->UpsertLazyRule(invalid_state);
+    if (a || b || !a.GetError().HasCode("persistence.invalid_enum") || !b.GetError().HasCode("persistence.invalid_enum")) return false;
+
+    auto backend = std::make_shared<ControlledBackend>();
+    auto invalid_loaded = MakeRecord(6304);
+    invalid_loaded.revision = 1u;
+    invalid_loaded.state = static_cast<PersistenceState>(999);
+    backend->snapshot.current_revision = 1u;
+    backend->snapshot.objects.push_back(invalid_loaded);
+    PersistenceOptions options{};
+    options.backend = backend;
+    const auto loaded = CreatePersistenceServices(options);
+    return !loaded && loaded.GetError().HasCode("persistence.invalid_snapshot");
+}
+
+[[nodiscard]] bool TestTransactionAllocationFailureDoesNotStageOperation()
+{
+    InMemoryPersistenceStore store;
+    auto transaction = store.OpenTransaction();
+    if (!transaction) return false;
+    epidemic::runtime::PersistenceRuntimeTestAccess::FailNextOperationAllocation(*transaction);
+    const auto failed = transaction->UpsertObject(MakeRecord(6401));
+    if (failed || !failed.GetError().HasCode("persistence.allocation_failed") ||
+        epidemic::runtime::PersistenceRuntimeTestAccess::OperationCount(*transaction) != 0u || transaction->GetState() != SaveTransactionState::Open)
+    {
+        return false;
+    }
+    return transaction->UpsertObject(MakeRecord(6401)) && transaction->Commit() && store.FindObject(PersistentObjectId{6401}).has_value();
+}
+
+[[nodiscard]] bool TestCandidateAllocationFailureLeavesBackendAndLiveStateOld()
+{
+    auto backend = std::make_shared<ControlledBackend>();
+    PersistenceOptions options{};
+    options.backend = backend;
+    options.durability = PersistenceDurability::SaveRequired;
+    const auto services = CreatePersistenceServices(options);
+    if (!services) return false;
+    auto* concrete = dynamic_cast<InMemoryPersistenceStore*>(services.Value().store.get());
+    if (concrete == nullptr) return false;
+    auto transaction = concrete->OpenTransaction();
+    if (!transaction || !transaction->UpsertObject(MakeRecord(6501))) return false;
+    epidemic::runtime::PersistenceRuntimeTestAccess::FailNextCandidateBuildAllocation(*concrete);
+    const auto failed = transaction->Commit();
+    return !failed && failed.GetError().HasCode("persistence.allocation_failed") && transaction->GetState() == SaveTransactionState::Failed &&
+           concrete->GetRevision() == 0u && !concrete->FindObject(PersistentObjectId{6501}) && backend->save_count == 0 && backend->snapshot.current_revision == 0u;
+}
+
+[[nodiscard]] bool TestEmptyTransactionCommitAndDuplicateSnapshotIds()
+{
+    InMemoryPersistenceStore store;
+    auto empty = store.OpenTransaction();
+    if (!empty || !empty->Commit() || store.GetRevision() != 1u || empty->GetState() != SaveTransactionState::Committed) return false;
+
+    auto backend = std::make_shared<ControlledBackend>();
+    auto first = MakeRecord(6601);
+    first.revision = 1u;
+    auto duplicate = first;
+    duplicate.asset_id = epidemic::runtime::AssetId::FromString("items/other.itemdef");
+    backend->snapshot.current_revision = 1u;
+    backend->snapshot.objects = {first, duplicate};
+    PersistenceOptions options{};
+    options.backend = backend;
+    const auto services = CreatePersistenceServices(options);
+    return !services && services.GetError().HasCode("persistence.invalid_snapshot");
+}
+
 [[nodiscard]] bool TestSnapshotOrderIsDeterministic()
 {
     InMemoryPersistenceStore store;
@@ -639,6 +801,12 @@ int main()
         {"FactoryCreatesUsableStore", TestFactoryCreatesUsableStore},
         {"BackendLoadsFactoryStore", TestBackendLoadsFactoryStore},
         {"RevisionOverflowRejected", TestRevisionOverflowRejected},
+        {"BackendExceptionsContained", TestBackendExceptionsAreContainedAndRollbackRemainsPossible},
+        {"TerminalTransactionCalls", TestTerminalTransactionCallsPreserveTerminalStates},
+        {"PersistedEnumDomains", TestPersistedEnumAndProtectionDomainsAreValidated},
+        {"TransactionAllocationFailure", TestTransactionAllocationFailureDoesNotStageOperation},
+        {"CandidateAllocationFailure", TestCandidateAllocationFailureLeavesBackendAndLiveStateOld},
+        {"EmptyCommitAndDuplicateSnapshotIds", TestEmptyTransactionCommitAndDuplicateSnapshotIds},
         {"SnapshotOrderIsDeterministic", TestSnapshotOrderIsDeterministic},
     };
 

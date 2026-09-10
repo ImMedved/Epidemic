@@ -19,6 +19,8 @@ public:
     [[nodiscard]] virtual foundation::Result<void> RegisterSkeleton(SkeletonDesc desc) = 0;
 
     [[nodiscard]] virtual bool HasSkeleton(SkeletonId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<void> Freeze() = 0;
+    [[nodiscard]] virtual bool IsFrozen() const noexcept = 0;
 };
 
 class IAnimationClipRegistry
@@ -29,6 +31,8 @@ public:
     [[nodiscard]] virtual foundation::Result<void> RegisterClip(AnimationClipDesc desc) = 0;
 
     [[nodiscard]] virtual bool HasClip(AnimationClipId id) const = 0;
+    [[nodiscard]] virtual foundation::Result<void> Freeze() = 0;
+    [[nodiscard]] virtual bool IsFrozen() const noexcept = 0;
 };
 
 class IAnimationRuntime

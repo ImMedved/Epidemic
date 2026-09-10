@@ -1,5 +1,7 @@
 #include "in_memory_archive.h"
 
+#include <algorithm>
+#include <exception>
 #include <utility>
 
 namespace epidemic::runtime
@@ -25,14 +27,30 @@ InMemoryArchiveWriter::InMemoryArchiveWriter() : root_(std::make_shared<ArchiveO
 
 foundation::Result<void> InMemoryArchiveWriter::BeginObject(std::string_view name)
 {
-    auto object = std::make_shared<ArchiveObject>();
-    auto write = WriteValue(name, ArchiveValue{object});
-    if (!write)
+    try
     {
-        return write;
+        auto valid = ValidateFieldWrite(name);
+        if (!valid)
+        {
+            return valid;
+        }
+
+        std::string field_name{name};
+        stack_.reserve(stack_.size() + 1);
+        auto object = std::make_shared<ArchiveObject>();
+        auto [iterator, inserted] = stack_.back().object->fields.emplace(std::move(field_name), ArchiveValue{object});
+        (void)iterator;
+        if (!inserted)
+        {
+            return Invalid("serialization.duplicate_field", "archive field is already written", name);
+        }
+        stack_.push_back(Context{ContextKind::Object, object, {}});
+        return foundation::Result<void>::Success();
     }
-    stack_.push_back(Context{ContextKind::Object, object, {}});
-    return foundation::Result<void>::Success();
+    catch (const std::bad_alloc&)
+    {
+        return Invalid("serialization.out_of_memory", "archive writer could not allocate object context", name);
+    }
 }
 
 foundation::Result<void> InMemoryArchiveWriter::EndObject()
@@ -47,32 +65,67 @@ foundation::Result<void> InMemoryArchiveWriter::EndObject()
 
 foundation::Result<void> InMemoryArchiveWriter::BeginArray(std::string_view name, std::size_t size)
 {
-    auto array = std::make_shared<ArchiveArray>();
-    array->elements.resize(size);
-    auto write = WriteValue(name, ArchiveValue{array});
-    if (!write)
+    try
     {
-        return write;
+        auto valid = ValidateFieldWrite(name);
+        if (!valid)
+        {
+            return valid;
+        }
+
+        std::string field_name{name};
+        stack_.reserve(stack_.size() + 1);
+        auto array = std::make_shared<ArchiveArray>();
+        array->elements.resize(size);
+        array->initialized.assign(size, false);
+        auto [iterator, inserted] = stack_.back().object->fields.emplace(std::move(field_name), ArchiveValue{array});
+        (void)iterator;
+        if (!inserted)
+        {
+            return Invalid("serialization.duplicate_field", "archive field is already written", name);
+        }
+        stack_.push_back(Context{ContextKind::Array, {}, array});
+        return foundation::Result<void>::Success();
     }
-    stack_.push_back(Context{ContextKind::Array, {}, array});
-    return foundation::Result<void>::Success();
+    catch (const std::bad_alloc&)
+    {
+        return Invalid("serialization.out_of_memory", "archive writer could not allocate array context", name);
+    }
 }
 
 foundation::Result<void> InMemoryArchiveWriter::BeginArrayElement(std::size_t index)
 {
-    auto writable = EnsureWritable();
-    if (!writable)
+    try
     {
-        return writable;
+        auto writable = EnsureWritable();
+        if (!writable)
+        {
+            return writable;
+        }
+        if (stack_.empty() || stack_.back().kind != ContextKind::Array || index >= stack_.back().array->elements.size())
+        {
+            return Invalid("serialization.invalid_array_index", "array element index is invalid");
+        }
+        if (index >= stack_.back().array->initialized.size())
+        {
+            return Invalid("serialization.invalid_array_index", "array initialization state is malformed");
+        }
+        if (stack_.back().array->initialized[index])
+        {
+            return Invalid("serialization.duplicate_array_element", "array element is already written");
+        }
+
+        stack_.reserve(stack_.size() + 1);
+        auto object = std::make_shared<ArchiveObject>();
+        stack_.back().array->elements[index] = ArchiveValue{object};
+        stack_.back().array->initialized[index] = true;
+        stack_.push_back(Context{ContextKind::ArrayElement, object, {}});
+        return foundation::Result<void>::Success();
     }
-    if (stack_.empty() || stack_.back().kind != ContextKind::Array || index >= stack_.back().array->elements.size())
+    catch (const std::bad_alloc&)
     {
-        return Invalid("serialization.invalid_array_index", "array element index is invalid");
+        return Invalid("serialization.out_of_memory", "archive writer could not allocate array element context");
     }
-    auto object = std::make_shared<ArchiveObject>();
-    stack_.back().array->elements[index] = ArchiveValue{object};
-    stack_.push_back(Context{ContextKind::ArrayElement, object, {}});
-    return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> InMemoryArchiveWriter::EndArrayElement()
@@ -90,6 +143,11 @@ foundation::Result<void> InMemoryArchiveWriter::EndArray()
     if (stack_.size() <= 1 || stack_.back().kind != ContextKind::Array)
     {
         return Invalid("serialization.malformed", "EndArray without matching BeginArray");
+    }
+    const auto& initialized = stack_.back().array->initialized;
+    if (std::find(initialized.begin(), initialized.end(), false) != initialized.end())
+    {
+        return Invalid("serialization.array_incomplete", "array contains uninitialized elements");
     }
     stack_.pop_back();
     return foundation::Result<void>::Success();
@@ -144,14 +202,26 @@ foundation::Result<SerializedDocument> InMemoryArchiveWriter::Finalize(foundatio
     {
         return InvalidValue<SerializedDocument>("serialization.malformed", "archive contains unclosed object or array");
     }
+    if (HasUninitializedArrays())
+    {
+        return InvalidValue<SerializedDocument>("serialization.array_incomplete", "archive contains uninitialized array elements");
+    }
 
-    finalized_ = true;
-    auto impl = std::make_shared<SerializedDocument::Impl>();
-    impl->type_id = type_id;
-    impl->schema_version = schema_version;
-    impl->format_version = 1u;
-    impl->root = Snapshot();
-    return foundation::Result<SerializedDocument>::Success(SerializedDocument{std::move(impl)});
+    try
+    {
+        auto impl = std::make_shared<SerializedDocument::Impl>();
+        impl->type_id = type_id;
+        impl->schema_version = schema_version;
+        impl->format_version = 1u;
+        impl->root = Snapshot();
+
+        finalized_ = true;
+        return foundation::Result<SerializedDocument>::Success(SerializedDocument{std::move(impl)});
+    }
+    catch (const std::bad_alloc&)
+    {
+        return InvalidValue<SerializedDocument>("serialization.out_of_memory", "archive writer could not allocate finalized document");
+    }
 }
 
 ArchiveObjectPtr InMemoryArchiveWriter::Snapshot() const
@@ -168,7 +238,7 @@ foundation::Result<void> InMemoryArchiveWriter::EnsureWritable() const
     return foundation::Result<void>::Success();
 }
 
-foundation::Result<void> InMemoryArchiveWriter::WriteValue(std::string_view name, ArchiveValue value)
+foundation::Result<void> InMemoryArchiveWriter::ValidateFieldWrite(std::string_view name) const
 {
     auto writable = EnsureWritable();
     if (!writable)
@@ -183,13 +253,113 @@ foundation::Result<void> InMemoryArchiveWriter::WriteValue(std::string_view name
     {
         return Invalid("serialization.malformed", "current archive context is not an object");
     }
-    auto [iterator, inserted] = stack_.back().object->fields.emplace(std::string(name), std::move(value));
-    (void)iterator;
-    if (!inserted)
+    if (stack_.back().object == nullptr)
     {
-        return Invalid("serialization.duplicate_field", "archive field is already written", name);
+        return Invalid("serialization.malformed", "current object context is missing");
     }
     return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> InMemoryArchiveWriter::WriteValue(std::string_view name, ArchiveValue value)
+{
+    try
+    {
+        auto valid = ValidateFieldWrite(name);
+        if (!valid)
+        {
+            return valid;
+        }
+        auto [iterator, inserted] = stack_.back().object->fields.emplace(std::string(name), std::move(value));
+        (void)iterator;
+        if (!inserted)
+        {
+            return Invalid("serialization.duplicate_field", "archive field is already written", name);
+        }
+        return foundation::Result<void>::Success();
+    }
+    catch (const std::bad_alloc&)
+    {
+        return Invalid("serialization.out_of_memory", "archive writer could not allocate field", name);
+    }
+}
+
+foundation::Result<void> InMemoryArchiveWriter::MergeRootFieldsTransactional(const ArchiveObject& source)
+{
+    try
+    {
+        auto writable = EnsureWritable();
+        if (!writable)
+        {
+            return writable;
+        }
+        if (stack_.size() != 1 || stack_.back().kind != ContextKind::Object)
+        {
+            return Invalid("serialization.malformed", "transactional merge requires the root object context");
+        }
+        if (HasUninitializedArrays(source))
+        {
+            return Invalid("serialization.array_incomplete", "transactional merge source contains uninitialized arrays");
+        }
+
+        ArchiveObject candidate = *root_;
+        for (const auto& [name, value] : source.fields)
+        {
+            auto [iterator, inserted] = candidate.fields.emplace(name, value);
+            (void)iterator;
+            if (!inserted)
+            {
+                return Invalid("serialization.duplicate_field", "archive field is already written", name);
+            }
+        }
+        *root_ = std::move(candidate);
+        stack_.front().object = root_;
+        return foundation::Result<void>::Success();
+    }
+    catch (const std::bad_alloc&)
+    {
+        return Invalid("serialization.out_of_memory", "archive writer could not merge transaction");
+    }
+}
+
+bool InMemoryArchiveWriter::HasUninitializedArrays() const
+{
+    return root_ != nullptr && HasUninitializedArrays(*root_);
+}
+
+bool InMemoryArchiveWriter::HasUninitializedArrays(const ArchiveObject& object)
+{
+    for (const auto& [_, value] : object.fields)
+    {
+        if (HasUninitializedArrays(value))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool InMemoryArchiveWriter::HasUninitializedArrays(const ArchiveValue& value)
+{
+    if (const auto object = std::get_if<ArchiveObjectPtr>(&value.storage); object != nullptr && *object)
+    {
+        return HasUninitializedArrays(**object);
+    }
+    if (const auto array = std::get_if<ArchiveArrayPtr>(&value.storage); array != nullptr && *array)
+    {
+        if ((*array)->initialized.size() != (*array)->elements.size() ||
+            std::find((*array)->initialized.begin(), (*array)->initialized.end(), false) != (*array)->initialized.end())
+        {
+            return true;
+        }
+        for (const ArchiveValue& element : (*array)->elements)
+        {
+            if (HasUninitializedArrays(element))
+            {
+                return true;
+            }
+        }
+    }
+    return false;
 }
 
 InMemoryArchiveReader::InMemoryArchiveReader(SerializedDocument document) : document_(std::move(document))

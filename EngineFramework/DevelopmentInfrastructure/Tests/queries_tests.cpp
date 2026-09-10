@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Queries/gameplay_queries.h"
+#include "allocation_fault_injection.h"
 
 #include <atomic>
 #include <cstdlib>
@@ -456,6 +457,84 @@ int main()
 
     const auto diagnostics = snapshots.GetDiagnostics();
     Check(diagnostics.executed >= 68 && diagnostics.partial_results >= 1, 29);
+
+    // Provider contract rejection must not consume a QueryId.
+    bool emit_bad_order = true;
+    GameplayQueryService publish_id_service{std::numeric_limits<std::uint64_t>::max() - 1};
+    Check(publish_id_service.RegisterProvider<NumberQuery>(
+              "framework.test.numbers", {},
+              [&emit_bad_order](const NumberQuery &, const QueryContext &) {
+                  auto metadata = MakeMetadata(Revision{1}, QueryCoverage::Complete, 1);
+                  metadata.deterministic_order = !emit_bad_order;
+                  return foundation::Result<QueryResponse<NumberQuery::ResultType>>::Success(
+                      {std::vector<int>{1}, metadata});
+              }),
+          30);
+    Check(publish_id_service.Freeze(), 31);
+    Check(!publish_id_service.Execute(NumberQuery{1}), 32);
+    emit_bad_order = false;
+    Check(publish_id_service.Execute(NumberQuery{1}), 33);
+
+    bool registration_fault_observed = false;
+    for (long long fail_after = 0; fail_after < 64 && !registration_fault_observed; ++fail_after)
+    {
+        GameplayQueryService fault_service;
+        const auto before_count = fault_service.ProviderCount();
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_service.RegisterProvider<TextQuery>(
+                    "framework.test.text", {}, [](const TextQuery &, const QueryContext &) {
+                        return foundation::Result<QueryResponse<TextQuery::ResultType>>::Success(
+                            {std::string{"ok"}, MakeMetadata(Revision{1}, QueryCoverage::Complete, 1)});
+                    });
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            registration_fault_observed = true;
+            Check(fault_service.ProviderCount() == before_count && !fault_service.IsFrozen(), 34);
+        }
+    }
+    Check(registration_fault_observed, 35);
+
+    bool freeze_fault_observed = false;
+    for (long long fail_after = 0; fail_after < 64 && !freeze_fault_observed; ++fail_after)
+    {
+        GameplayQueryService fault_service;
+        Check(fault_service.RegisterProvider<TextQuery>(
+                  "framework.test.text", {}, [](const TextQuery &, const QueryContext &) {
+                      return foundation::Result<QueryResponse<TextQuery::ResultType>>::Success(
+                          {std::string{"ok"}, MakeMetadata(Revision{1}, QueryCoverage::Complete, 1)});
+                  }),
+              36);
+        const auto before_count = fault_service.ProviderCount();
+        bool threw = false;
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)fault_service.Freeze();
+            }
+            catch (const std::bad_alloc &)
+            {
+                threw = true;
+            }
+        }
+        if (threw)
+        {
+            freeze_fault_observed = true;
+            Check(!fault_service.IsFrozen() && fault_service.ProviderCount() == before_count, 37);
+            Check(fault_service.Freeze(), 38);
+        }
+    }
+    Check(freeze_fault_observed, 39);
 
     return 0;
 }

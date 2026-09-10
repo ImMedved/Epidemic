@@ -1,6 +1,8 @@
 #include "Epidemic/GameFramework/Conditions/conditions.h"
 
+#include <algorithm>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 
 using namespace epidemic::gameplay;
@@ -250,6 +252,95 @@ int main()
     no_provider_request.subject = subject;
     no_provider_request.context = context;
     if (no_provider_service.Apply(no_provider_request)) return 210;
+
+    // COND-01: expiration overflow is rejected before consuming a condition ID.
+    const auto generator_before_overflow = service.CaptureSnapshot().id_generator;
+    ApplyConditionRequest time_overflow_request;
+    time_overflow_request.type = refresh_id.Value();
+    time_overflow_request.subject = {GameplayDomainId::FromString("test"), GameplayObjectId::FromString("overflow-new")};
+    time_overflow_request.context = context;
+    time_overflow_request.context.time = GameplayTimePoint{std::numeric_limits<std::int64_t>::max() - 2};
+    auto time_overflow_result = service.Apply(time_overflow_request);
+    const auto generator_after_overflow = service.CaptureSnapshot().id_generator;
+    if (time_overflow_result || !time_overflow_result.GetError().HasCode("gameplay.time_overflow") ||
+        generator_before_overflow.scope != generator_after_overflow.scope ||
+        generator_before_overflow.next != generator_after_overflow.next)
+        return 217;
+
+    // COND-05: an engaged optional containing an invalid ScheduleId is caller-invalid input.
+    const auto current_conditions = service.AllConditions();
+    if (current_conditions.empty()) return 218;
+    const auto link_target = current_conditions.front().id;
+    const auto link_before = service.FindCopy(link_target);
+    const std::optional<ScheduleId> invalid_schedule{ScheduleId{}};
+    auto invalid_links = service.SetScheduleLinks(link_target, invalid_schedule, std::nullopt, context);
+    const auto link_after = service.FindCopy(link_target);
+    if (invalid_links || !link_before || !link_after || link_before->expiration_schedule != link_after->expiration_schedule ||
+        link_before->periodic_schedule != link_after->periodic_schedule || link_before->revision != link_after->revision)
+        return 219;
+
+    // COND-06: batch materialization is preflighted as a whole. A late overflow leaves earlier conditions unchanged.
+    ConditionService batch_service;
+    TestSubjectStateProvider batch_provider;
+    if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;
+    ConditionDefinition batch_definition;
+    batch_definition.canonical_name = "test.condition.batch_pause";
+    batch_definition.clock = clock;
+    batch_definition.persistence = ConditionPersistencePolicy::Persistent;
+    batch_definition.materialization = ConditionMaterializationPolicy::MaterializedOnly;
+    batch_definition.dematerialization = ConditionDematerializationPolicy::Pause;
+    batch_definition.stacking = ConditionStackingPolicy::Independent;
+    auto batch_type = batch_service.RegisterCondition(batch_definition);
+    if (!batch_type) return 221;
+    batch_service.Freeze();
+    const GameplayObjectRef batch_subject{GameplayDomainId::FromString("test"), GameplayObjectId::FromString("batch-subject")};
+    ApplyConditionRequest batch_request;
+    batch_request.type = batch_type.Value();
+    batch_request.subject = batch_subject;
+    batch_request.context.time = GameplayTimePoint{0};
+    auto batch_a = batch_service.Apply(batch_request);
+    auto batch_b = batch_service.Apply(batch_request);
+    if (!batch_a || !batch_b) return 222;
+    GameplayContext batch_pause_context;
+    batch_pause_context.time = GameplayTimePoint{0};
+    if (!batch_service.NotifySubjectMaterialization(batch_subject, false, batch_pause_context)) return 223;
+    auto batch_snapshot = batch_service.CaptureSnapshot();
+    if (batch_snapshot.instances.size() != 2) return 224;
+    std::sort(batch_snapshot.instances.begin(), batch_snapshot.instances.end(), [](const auto& lhs, const auto& rhs) { return lhs.id < rhs.id; });
+    batch_snapshot.instances[0].materialization_paused_at = GameplayTimePoint{std::numeric_limits<std::int64_t>::max() - 10};
+    batch_snapshot.instances[1].materialization_paused_at = GameplayTimePoint{std::numeric_limits<std::int64_t>::min()};
+    if (!batch_service.RestoreSnapshot(batch_snapshot)) return 225;
+    const auto batch_before = batch_service.AllConditions();
+    GameplayContext batch_resume_context;
+    batch_resume_context.time = GameplayTimePoint{std::numeric_limits<std::int64_t>::max()};
+    auto batch_resume = batch_service.NotifySubjectMaterialization(batch_subject, true, batch_resume_context);
+    const auto batch_after = batch_service.AllConditions();
+    if (batch_resume || !batch_resume.GetError().HasCode("gameplay.time_overflow") || batch_before.size() != batch_after.size())
+        return 226;
+    for (std::size_t i = 0; i < batch_before.size(); ++i)
+    {
+        if (batch_before[i].id != batch_after[i].id || batch_before[i].applied_at != batch_after[i].applied_at ||
+            batch_before[i].expires_at != batch_after[i].expires_at ||
+            batch_before[i].materialization_paused_at != batch_after[i].materialization_paused_at ||
+            batch_before[i].paused_for_materialization != batch_after[i].paused_for_materialization ||
+            batch_before[i].revision != batch_after[i].revision)
+            return 227;
+    }
+
+    // COND-04: global revision exhaustion rejects a valid mutation before ID/state publication.
+    auto exhausted_condition_snapshot = service.CaptureSnapshot();
+    exhausted_condition_snapshot.revision = Revision{std::numeric_limits<std::uint64_t>::max()};
+    if (!service.RestoreSnapshot(exhausted_condition_snapshot)) return 228;
+    const auto exhausted_generator_before = service.CaptureSnapshot().id_generator;
+    ApplyConditionRequest exhausted_apply;
+    exhausted_apply.type = refresh_id.Value();
+    exhausted_apply.subject = {GameplayDomainId::FromString("test"), GameplayObjectId::FromString("revision-exhausted")};
+    exhausted_apply.context.time = GameplayTimePoint{200};
+    auto exhausted_result = service.Apply(exhausted_apply);
+    const auto exhausted_generator_after = service.CaptureSnapshot().id_generator;
+    if (exhausted_result || !exhausted_result.GetError().HasCode("gameplay.revision_exhausted") ||
+        exhausted_generator_before.next != exhausted_generator_after.next)
+        return 229;
 
     return 0;
 }

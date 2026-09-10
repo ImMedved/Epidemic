@@ -49,12 +49,15 @@ class ResourceLoadQueue
 {
   public:
     void Enqueue(ResourceLoadJob job);
+    void PopBack() noexcept;
+    void FailNextEnqueueForTesting() noexcept;
     [[nodiscard]] bool IsEmpty() const noexcept;
     [[nodiscard]] std::optional<ResourceLoadJob> Dequeue();
     [[nodiscard]] std::size_t Size() const noexcept;
 
   private:
     std::deque<ResourceLoadJob> jobs_;
+    bool fail_next_enqueue_for_testing_ = false;
 };
 
 class ResourceCache
@@ -93,13 +96,25 @@ class ResourceManager final : public IResourceManager
 
     [[nodiscard]] const ResourceSlot* InspectSlot(ResourceId id) const;
 
+    // Internal deterministic seams used only by the module contract tests.
+    void FailNextQueueEnqueueForTesting() noexcept { load_queue_.FailNextEnqueueForTesting(); }
+    void SetNextAcquisitionIdForTesting(ResourceAcquisitionId value) noexcept { next_acquisition_id_ = value; }
+    [[nodiscard]] ResourceAcquisitionId NextAcquisitionIdForTesting() const noexcept { return next_acquisition_id_; }
+    void SetSlotReferenceCountForTesting(ResourceId id, std::uint32_t value) { if (auto* slot = cache_.Find(id)) slot->reference_count = value; }
+    void SetSlotGenerationForTesting(ResourceId id, ResourceGeneration value) { if (auto* slot = cache_.Find(id)) slot->generation = value; }
+    void SetResidentBytesForTesting(std::size_t value) noexcept { resident_bytes_ = value; }
+    void FailNextDependencyPublishForTesting() noexcept { fail_next_dependency_publish_for_testing_ = true; }
+    void FailNextAcquisitionPublishForTesting() noexcept { fail_next_acquisition_publish_for_testing_ = true; }
+    void SetDependenciesForTesting(ResourceId id, std::vector<ResourceDependency> dependencies) { dependency_graph_.SetDependencies(id, std::move(dependencies)); }
+    [[nodiscard]] bool HasDependencyPathForTesting(ResourceId from, ResourceId to) const { return HasDependencyPath(from, to); }
+
   private:
-    [[nodiscard]] foundation::Result<ResourceHandle> Acquire(ResourceRequest request);
-    [[nodiscard]] foundation::Result<ResourceAcquisitionId> NextAcquisitionId();
+    [[nodiscard]] foundation::Result<ResourceHandle> Acquire(ResourceRequest request, ResourceAcquisitionId acquisition);
+    [[nodiscard]] foundation::Result<ResourceAcquisitionId> PeekAcquisitionId() const;
+    void CommitAcquisitionId() noexcept;
     [[nodiscard]] static bool IsHandleCurrent(const ResourceSlot& slot, ResourceHandle handle);
-    [[nodiscard]] static ResourceGeneration NextGeneration(ResourceGeneration generation);
+    [[nodiscard]] static foundation::Result<ResourceGeneration> NextGeneration(ResourceGeneration generation);
     [[nodiscard]] static foundation::Result<void> ValidateRequest(const ResourceRequest& request);
-    static void QueueSlot(ResourceLoadQueue& queue, ResourceSlot& slot, ResourceRequest request);
 
     [[nodiscard]] foundation::Result<void> ReleaseDependencyHandles(ResourceSlot& slot);
     [[nodiscard]] foundation::Result<void> ReleaseDependencyHandles(std::vector<OwnedResourceDependency>& handles);
@@ -108,7 +123,7 @@ class ResourceManager final : public IResourceManager
     [[nodiscard]] foundation::Result<void> LoadSlot(ResourceSlot& slot, const ResourceRequest& request, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<void> FinishLoadedArtifact(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<bool> ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact);
-    [[nodiscard]] bool HasDependencyPath(ResourceId from, ResourceId to, std::unordered_set<ResourceId>& visited) const;
+    [[nodiscard]] bool HasDependencyPath(ResourceId from, ResourceId to) const;
     [[nodiscard]] foundation::Result<void> CommitReadyPayload(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
     [[nodiscard]] bool CanFit(std::size_t bytes) const noexcept;
     void RemovePayload(ResourceSlot& slot);
@@ -122,5 +137,7 @@ class ResourceManager final : public IResourceManager
     std::size_t memory_budget_bytes_ = 0;
     std::size_t invariant_failure_count_ = 0;
     ResourceAcquisitionId next_acquisition_id_ = 1;
+    bool fail_next_dependency_publish_for_testing_ = false;
+    bool fail_next_acquisition_publish_for_testing_ = false;
 };
 } // namespace epidemic::runtime

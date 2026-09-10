@@ -84,6 +84,8 @@ class ISimulationJob
 public:
     virtual ~ISimulationJob() = default;
 
+    // Result failure or exception means Runtime may retry only according to the job's own documented semantics;
+    // Runtime itself never leaves a synthetic Running state published across the callback boundary.
     [[nodiscard]] virtual foundation::Result<SimulationStepResult> ExecuteStep(const RuntimeBudget& budget) = 0;
     [[nodiscard]] virtual foundation::Result<void> Cancel() = 0;
 };
@@ -93,6 +95,8 @@ class ISimulationCommitTarget
 public:
     virtual ~ISimulationCommitTarget() = default;
 
+    // Failure must mean that no externally visible commit occurred. Implementations with non-transactional
+    // side effects must deduplicate retries by the stable batch job/source_revision identity.
     [[nodiscard]] virtual foundation::Result<void> Commit(const SimulationProposalBatch& batch) = 0;
 };
 

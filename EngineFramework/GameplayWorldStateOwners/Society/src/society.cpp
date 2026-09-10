@@ -87,6 +87,60 @@ void EraseId(std::vector<T> &values, const T &value)
 {
     values.erase(std::remove(values.begin(), values.end(), value), values.end());
 }
+
+[[nodiscard]] bool IsValidMembershipState(MembershipState state) noexcept
+{
+    switch (state)
+    {
+    case MembershipState::Active:
+    case MembershipState::Suspended:
+    case MembershipState::Former:
+    case MembershipState::Banned:
+    case MembershipState::Applicant:
+    case MembershipState::Honorary:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsValidRelationshipState(RelationshipState state) noexcept
+{
+    switch (state)
+    {
+    case RelationshipState::Neutral:
+    case RelationshipState::Friendly:
+    case RelationshipState::Hostile:
+    case RelationshipState::Allied:
+    case RelationshipState::Feared:
+    case RelationshipState::Trusted:
+    case RelationshipState::Unknown:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsAllowedMembershipTransition(MembershipState from, MembershipState to) noexcept
+{
+    if (!IsValidMembershipState(from) || !IsValidMembershipState(to))
+        return false;
+    if (from == to)
+        return true;
+    switch (from)
+    {
+    case MembershipState::Applicant:
+        return to == MembershipState::Active || to == MembershipState::Former || to == MembershipState::Banned;
+    case MembershipState::Active:
+    case MembershipState::Honorary:
+        return to == MembershipState::Suspended || to == MembershipState::Former || to == MembershipState::Banned;
+    case MembershipState::Suspended:
+        return to == MembershipState::Active || to == MembershipState::Former || to == MembershipState::Banned;
+    case MembershipState::Former:
+    case MembershipState::Banned:
+        return false;
+    }
+    return false;
+}
+
 } // namespace
 
 std::size_t SocietyService::MembershipKeyHash::operator()(const MembershipKey &key) const noexcept
@@ -113,7 +167,8 @@ foundation::Result<void> SocietyService::RegisterGroup(SocialGroupDefinition gro
             Error("gameplay.society.definitions_frozen", "society definitions are frozen"));
     if (!group.group.IsValid() || !group.type.IsValid() || groups_.contains(group.group))
         return foundation::Result<void>::Failure(Error("gameplay.society.invalid_group", "invalid or duplicate group"));
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
     group.revision = revision_;
     const auto group_ref = group.group;
     groups_.emplace(group_ref, std::move(group));
@@ -146,14 +201,16 @@ foundation::Result<void> SocietyService::RegisterRelationshipType(RelationshipTy
     for (std::size_t i = 0; i < definition.state_thresholds.size(); ++i)
     {
         const auto threshold = definition.state_thresholds[i].minimum_value_micro;
-        if (threshold < definition.minimum_value_micro || threshold > definition.maximum_value_micro ||
+        if (!IsValidRelationshipState(definition.state_thresholds[i].state) ||
+            threshold < definition.minimum_value_micro || threshold > definition.maximum_value_micro ||
             (i > 0 && threshold == definition.state_thresholds[i - 1].minimum_value_micro))
         {
             return foundation::Result<void>::Failure(Error("gameplay.society.invalid_relationship_threshold",
                                                            "invalid or duplicate relationship threshold"));
         }
     }
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
     definition.revision = revision_;
     relationship_types_.emplace(definition.id, std::move(definition));
     return foundation::Result<void>::Success();
@@ -187,7 +244,8 @@ foundation::Result<void> SocietyService::RegisterReputationTrack(ReputationTrack
                                                            "invalid or duplicate reputation standing threshold"));
         }
     }
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
     definition.revision = revision_;
     reputation_tracks_.emplace(definition.id, std::move(definition));
     return foundation::Result<void>::Success();
@@ -204,7 +262,8 @@ foundation::Result<MembershipId> SocietyService::AddMembership(MembershipRecord 
     if (!definitions_frozen_)
         return foundation::Result<MembershipId>::Failure(
             Error("gameplay.society.definitions_not_frozen", "freeze society definitions before runtime membership"));
-    if (!record.member.IsValid() || !record.group.IsValid() || !groups_.contains(record.group))
+    if (!record.member.IsValid() || !record.group.IsValid() || !groups_.contains(record.group) ||
+        !IsValidMembershipState(record.state))
         return foundation::Result<MembershipId>::Failure(
             Error("gameplay.society.invalid_membership", "invalid membership or unknown group"));
 
@@ -221,6 +280,9 @@ foundation::Result<MembershipId> SocietyService::AddMembership(MembershipRecord 
             Error("gameplay.society.membership_conflict", "membership already exists for member and group"));
     }
 
+    if (record.id.IsValid() && memberships_.contains(record.id))
+        return foundation::Result<MembershipId>::Failure(
+            Error("gameplay.society.duplicate_membership", "duplicate membership id"));
     if (!record.id.IsValid())
     {
         record.id = MembershipId{membership_ids_.Next()};
@@ -236,7 +298,8 @@ foundation::Result<MembershipId> SocietyService::AddMembership(MembershipRecord 
         return foundation::Result<MembershipId>::Failure(
             Error("gameplay.society.duplicate_membership", "duplicate membership id"));
 
-    Bump();
+    if (!Bump())
+        return foundation::Result<MembershipId>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
     record.revision = revision_;
     const auto id = record.id;
     memberships_.emplace(id, record);
@@ -250,9 +313,12 @@ foundation::Result<void> SocietyService::SetMembershipState(MembershipId id, Mem
     auto it = memberships_.find(id);
     if (it == memberships_.end())
         return foundation::Result<void>::Failure(Error("gameplay.society.membership_missing", "membership missing"));
+    if (!IsValidMembershipState(state) || !IsAllowedMembershipTransition(it->second.state, state))
+        return foundation::Result<void>::Failure(Error("gameplay.society.invalid_membership_transition", "invalid membership state transition"));
     if (it->second.state == state)
         return foundation::Result<void>::Success();
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
     it->second.state = state;
     it->second.revision = revision_;
     Record({0, SocietyChangeKind::MembershipChanged, it->second.member, it->second.group, {}, {}, id, context, revision_});
@@ -325,6 +391,9 @@ foundation::Result<RelationshipId> SocietyService::SetRelationship(RelationshipR
         return foundation::Result<RelationshipId>::Success(existing.id);
     }
 
+    if (record.id.IsValid() && relationships_.contains(record.id))
+        return foundation::Result<RelationshipId>::Failure(
+            Error("gameplay.society.duplicate_relationship", "duplicate relationship id"));
     if (!record.id.IsValid())
     {
         record.id = RelationshipId{relationship_ids_.Next()};
@@ -842,7 +911,8 @@ foundation::Result<void> SocietyService::RestoreSnapshot(SocietySnapshot snapsho
     for (const auto &membership : snapshot.memberships)
     {
         if (!membership.id.IsValid() || !membership.member.IsValid() || !membership.group.IsValid() ||
-            membership.revision.value > snapshot.revision.value || !new_groups.contains(membership.group))
+            !IsValidMembershipState(membership.state) || membership.revision.value > snapshot.revision.value ||
+            !new_groups.contains(membership.group))
             return foundation::Result<void>::Failure(
                 Error("gameplay.society.restore_invalid_membership", "invalid membership snapshot"));
         const MembershipKey key{membership.member, membership.group};
@@ -879,7 +949,7 @@ foundation::Result<void> SocietyService::RestoreSnapshot(SocietySnapshot snapsho
                                           return value < threshold.minimum_value_micro;
                                       });
         const auto derived_state = found == thresholds.begin() ? thresholds.front().state : std::prev(found)->state;
-        if (relationship.state != derived_state)
+        if (!IsValidRelationshipState(relationship.state) || relationship.state != derived_state)
             return foundation::Result<void>::Failure(
                 Error("gameplay.society.restore_relationship_state_mismatch", "relationship state does not match definition"));
         new_relationships.emplace(relationship.id, relationship);
@@ -918,8 +988,10 @@ foundation::Result<void> SocietyService::RestoreSnapshot(SocietySnapshot snapsho
     if (snapshot.next_change_sequence == 0 || snapshot.journal.size() > kChangeJournalCapacity)
         return foundation::Result<void>::Failure(
             Error("gameplay.society.restore_invalid_journal", "invalid society change journal snapshot"));
+    std::deque<SocietyChange> new_journal;
+    new_journal.assign(snapshot.journal.begin(), snapshot.journal.end());
     std::uint64_t previous_sequence = 0;
-    for (const auto &change : snapshot.journal)
+    for (const auto &change : new_journal)
     {
         if (change.sequence == 0 || change.sequence <= previous_sequence || change.sequence >= snapshot.next_change_sequence ||
             change.revision.value > snapshot.revision.value)
@@ -944,7 +1016,7 @@ foundation::Result<void> SocietyService::RestoreSnapshot(SocietySnapshot snapsho
     membership_ids_.Restore(snapshot.membership_ids);
     relationship_ids_.Restore(snapshot.relationship_ids);
     revision_ = snapshot.revision;
-    changes_.assign(snapshot.journal.begin(), snapshot.journal.end());
+    changes_ = std::move(new_journal);
     next_change_sequence_ = snapshot.next_change_sequence;
     journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
@@ -964,12 +1036,10 @@ void SocietyService::Record(SocietyChange change)
 {
     if (next_change_sequence_ == 0)
         return;
-    change.sequence = next_change_sequence_;
-    if (next_change_sequence_ == std::numeric_limits<std::uint64_t>::max())
-        next_change_sequence_ = 0;
-    else
-        ++next_change_sequence_;
+    const auto assigned = next_change_sequence_;
+    change.sequence = assigned;
     changes_.push_back(std::move(change));
+    next_change_sequence_ = assigned == std::numeric_limits<std::uint64_t>::max() ? 0 : assigned + 1;
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();
 }
