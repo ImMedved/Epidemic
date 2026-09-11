@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Environment/environment.h"
 
 #include <array>
@@ -280,5 +281,30 @@ int main()
     const auto current_batch = journal.ReadChangesSince(journal.LatestChangeCursor());
     CHECK(!current_batch.snapshot_required && current_batch.changes.empty());
 
+    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    const auto allocation_before = restored.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        if (restored.CaptureSnapshot().revision != allocation_before.revision)
+            return 907;
+    }
+    if (!saw_restore_allocation_failure)
+        return 908;
     return 0;
 }

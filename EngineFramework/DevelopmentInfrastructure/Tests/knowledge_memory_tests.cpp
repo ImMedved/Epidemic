@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Knowledge/knowledge.h"
 
 #include <limits>
@@ -351,5 +352,30 @@ int main()
         knowledge_exhausted_after.memory_ids.next != knowledge_exhausted_before.memory_ids.next)
         return 49;
 
+    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    const auto allocation_before = k.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = k.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        if (k.CaptureSnapshot().revision != allocation_before.revision)
+            return 913;
+    }
+    if (!saw_restore_allocation_failure)
+        return 914;
     return 0;
 }

@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Loot/loot.h"
 
 #include <limits>
@@ -288,5 +289,34 @@ int main()
         pending_after_exhaustion->schedule != schedule_before)
         return 53;
 
+    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    const auto allocation_before = recovery.service.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = recovery.service.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        const auto allocation_after = recovery.service.CaptureSnapshot();
+        if (allocation_after.generated.size() != allocation_before.generated.size() ||
+            allocation_after.pending.size() != allocation_before.pending.size() ||
+            allocation_after.execution_ids.next != allocation_before.execution_ids.next ||
+            allocation_after.next_change_sequence != allocation_before.next_change_sequence)
+            return 915;
+    }
+    if (!saw_restore_allocation_failure)
+        return 916;
     return 0;
 }

@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Narrative/narrative.h"
 #include <cstdlib>
 #include <iostream>
@@ -346,5 +347,30 @@ int main()
     Check(!corrupt_enum.event_executions.empty() && !static_cast<bool>(exhausted_service.RestoreSnapshot(corrupt_enum)),
           "restore rejects invalid event execution enum");
     Check(exhausted_service.CurrentRevision() == stable_revision,"failed enum restore is transactional");
+    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    const auto allocation_before = resumed.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = resumed.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        if (resumed.CaptureSnapshot().revision != allocation_before.revision)
+            return 919;
+    }
+    if (!saw_restore_allocation_failure)
+        return 920;
     return 0;
 }

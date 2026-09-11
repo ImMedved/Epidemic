@@ -14,8 +14,15 @@ inline void Disable() noexcept
     allocations_before_failure.store(-1, std::memory_order_relaxed);
 }
 
-inline bool ShouldFail() noexcept
+inline bool ShouldFail(std::size_t size) noexcept
 {
+#if defined(_MSC_VER) && defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL > 0
+    // MSVC checked iterators use a two-pointer node allocated inside noexcept STL
+    // bookkeeping. Failing that implementation detail terminates before user code
+    // can observe bad_alloc.
+    if (size == sizeof(void *) * 2)
+        return false;
+#endif
     auto remaining = allocations_before_failure.load(std::memory_order_relaxed);
     while (remaining >= 0)
     {
@@ -37,7 +44,10 @@ class FailAfter
     {
         allocations_before_failure.store(successful_allocations_before_failure, std::memory_order_relaxed);
     }
-    ~FailAfter() { Disable(); }
+    ~FailAfter()
+    {
+        Disable();
+    }
     FailAfter(const FailAfter &) = delete;
     FailAfter &operator=(const FailAfter &) = delete;
 };
@@ -45,7 +55,7 @@ class FailAfter
 
 void *operator new(std::size_t size)
 {
-    if (epidemic::tests::allocation_fault::ShouldFail())
+    if (epidemic::tests::allocation_fault::ShouldFail(size))
         throw std::bad_alloc();
     if (void *memory = std::malloc(size == 0 ? 1 : size))
         return memory;

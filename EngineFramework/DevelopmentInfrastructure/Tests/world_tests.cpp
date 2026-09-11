@@ -1,5 +1,7 @@
 #include "Epidemic/GameFramework/World/world.h"
 
+#include "allocation_fault_injection.h"
+
 #include <cstdlib>
 
 #define CHECK(expr)                                                                                                    \
@@ -14,7 +16,7 @@ using namespace epidemic::gameplay::world;
 
 namespace
 {
-void RegisterTypes(WorldService& world, WorldAlterationTypeId alteration, WorldFeatureTypeId feature)
+void RegisterTypes(WorldService &world, WorldAlterationTypeId alteration, WorldFeatureTypeId feature)
 {
     CHECK(world.RegisterAlterationType(alteration, "game.test.terrain"));
     CHECK(world.RegisterFeatureType(feature, "game.test.road"));
@@ -67,7 +69,8 @@ int main()
     frozen.canonical_name = "x";
     CHECK(!world.RegisterRegion(frozen));
 
-    // One committed transaction has one authoritative revision for every mutation.
+    // One committed transaction has one authoritative revision for every
+    // mutation.
     auto transaction = world.BeginTransaction();
     WorldAlterationRecord first;
     first.type = alteration_type;
@@ -83,7 +86,8 @@ int main()
     CHECK(first_after_commit && second_after_commit);
     CHECK(first_after_commit->revision == second_after_commit->revision);
 
-    // A transaction cannot mutate the same alteration twice in an order-dependent way.
+    // A transaction cannot mutate the same alteration twice in an order-dependent
+    // way.
     auto duplicate_mutation = world.BeginTransaction();
     WorldAlterationUpdate updated;
     updated.payload = std::vector<std::byte>{std::byte{1}};
@@ -91,7 +95,8 @@ int main()
     CHECK(!duplicate_mutation.Remove(first_id.Value()));
     duplicate_mutation.Cancel();
 
-    const GameplayObjectRef placed{GameplayDomainId::FromString("test.world"), GameplayObjectId::FromString("object.placed")};
+    const GameplayObjectRef placed{GameplayDomainId::FromString("test.world"),
+                                   GameplayObjectId::FromString("object.placed")};
     ObjectPlacementRecord placement;
     placement.object = placed;
     placement.location = child.id;
@@ -100,7 +105,8 @@ int main()
     CHECK(world.PlaceObject(placement));
     CHECK(world.FindObjectPlacement(placed).has_value());
 
-    // Update patches cannot rewrite immutable origin fields and update the spatial index incrementally.
+    // Update patches cannot rewrite immutable origin fields and update the
+    // spatial index incrementally.
     auto patch_tx = world.BeginTransaction();
     WorldAlterationUpdate patch;
     patch.affected_area = WorldAabb{{5000, 0, 0}, {6000, 1000, 1000}};
@@ -150,9 +156,11 @@ int main()
     corrupt.alterations.push_back(corrupt.alterations.front());
     const auto revision_before_corrupt = restored.CurrentRevision();
     CHECK(!restored.RestoreSnapshot(corrupt));
-    CHECK(restored.CurrentRevision() == revision_before_corrupt && restored.FindAlteration(first_id.Value()).has_value());
+    CHECK(restored.CurrentRevision() == revision_before_corrupt &&
+          restored.FindAlteration(first_id.Value()).has_value());
 
-    // Caller-supplied IDs in the service scope advance the generator and cannot be reproduced later.
+    // Caller-supplied IDs in the service scope advance the generator and cannot
+    // be reproduced later.
     auto id_snapshot = restored.CaptureSnapshot();
     const auto requested_low = id_snapshot.alteration_ids.next + 100;
     auto requested_tx = restored.BeginTransaction();
@@ -166,11 +174,76 @@ int main()
     CHECK(following_id && following_id.Value().value.Low() > requested_low);
     CHECK(following_tx.Commit());
 
-    // The change journal is bounded and reports when a consumer must resync from a snapshot.
+    // Cancelled transactions and failed commits do not consume alteration IDs.
+    const auto generator_before_cancel = restored.CaptureSnapshot().alteration_ids;
+    auto cancelled_id_tx = restored.BeginTransaction();
+    WorldAlterationRecord cancelled_record = first;
+    CHECK(cancelled_id_tx.Create(cancelled_record));
+    cancelled_id_tx.Cancel();
+    const auto generator_after_cancel = restored.CaptureSnapshot().alteration_ids;
+    CHECK(generator_after_cancel.scope == generator_before_cancel.scope &&
+          generator_after_cancel.next == generator_before_cancel.next);
+
+    // All public alteration enum inputs are validated before publication.
+    auto invalid_state_tx = restored.BeginTransaction();
+    WorldAlterationRecord invalid_state = first;
+    invalid_state.state = static_cast<WorldAlterationState>(255);
+    const auto invalid_state_id = invalid_state_tx.Create(invalid_state);
+    CHECK(invalid_state_id && !invalid_state_tx.Commit());
+    CHECK(!restored.FindAlteration(invalid_state_id.Value()));
+
+    auto invalid_persistence_tx = restored.BeginTransaction();
+    WorldAlterationRecord invalid_persistence = first;
+    invalid_persistence.persistence = static_cast<WorldAlterationPersistence>(255);
+    const auto invalid_persistence_id = invalid_persistence_tx.Create(invalid_persistence);
+    CHECK(invalid_persistence_id && !invalid_persistence_tx.Commit());
+    CHECK(!restored.FindAlteration(invalid_persistence_id.Value()));
+
+    auto invalid_enum_snapshot = restored.CaptureSnapshot();
+    invalid_enum_snapshot.alterations.front().state = static_cast<WorldAlterationState>(255);
+    CHECK(!restored.RestoreSnapshot(std::move(invalid_enum_snapshot)));
+
+    // Allocation failure leaves direct mutations, transactions, indexes, journals
+    // and generators unchanged.
+    WorldFeatureRecord fault_feature;
+    fault_feature.id = WorldFeatureId::FromString("feature.fault");
+    fault_feature.type = feature_type;
+    fault_feature.bounds = {{0, 0, 0}, {10, 10, 10}};
+    const auto direct_revision_before = restored.CurrentRevision();
+    const auto direct_cursor_before = restored.LatestChangeCursor();
+    {
+        epidemic::tests::allocation_fault::FailAfter fault(0);
+        CHECK(!restored.AddDynamicFeature(fault_feature));
+    }
+    CHECK(!restored.FindFeature(fault_feature.id));
+    CHECK(restored.CurrentRevision() == direct_revision_before &&
+          restored.LatestChangeCursor() == direct_cursor_before);
+
+    const auto transaction_before = restored.CaptureSnapshot();
+    const auto transaction_cursor_before = restored.LatestChangeCursor();
+    auto fault_tx = restored.BeginTransaction();
+    WorldAlterationRecord fault_alteration = first;
+    fault_alteration.affected_area = {{7000, 0, 0}, {8000, 1000, 1000}};
+    const auto fault_id = fault_tx.Create(fault_alteration);
+    CHECK(fault_id);
+    {
+        epidemic::tests::allocation_fault::FailAfter fault(0);
+        CHECK(!fault_tx.Commit());
+    }
+    const auto transaction_after = restored.CaptureSnapshot();
+    CHECK(!restored.FindAlteration(fault_id.Value()));
+    CHECK(transaction_after.revision == transaction_before.revision &&
+          transaction_after.alteration_ids.next == transaction_before.alteration_ids.next &&
+          restored.LatestChangeCursor() == transaction_cursor_before);
+    // The change journal is bounded and reports when a consumer must resync from
+    // a snapshot.
     for (int i = 0; i < 4200; ++i)
     {
-        const GameplayObjectRef object{GameplayDomainId::FromString("test.world.journal"), GameplayObjectId::FromRaw(1, static_cast<std::uint64_t>(i + 1))};
-        ObjectPlacementRecord p; p.object = object; p.area = area.id;
+        const GameplayObjectRef object{GameplayDomainId::FromString("test.world.journal"),
+                                       GameplayObjectId::FromRaw(1, static_cast<std::uint64_t>(i + 1))};
+        ObjectPlacementRecord p;
+        p.object = object;
+        p.area = area.id;
         CHECK(restored.PlaceObject(p));
     }
     const auto stale_batch = restored.ReadChangesSince(ChangeCursor{});
@@ -204,7 +277,8 @@ int main()
     CHECK(cycle.RegisterLocation(cycle_b));
     CHECK(!cycle.Freeze());
 
-    // Asymmetric adjacency is also invalid; adjacency is a symmetric topology relation.
+    // Asymmetric adjacency is also invalid; adjacency is a symmetric topology
+    // relation.
     WorldService adjacency;
     RegisterTypes(adjacency, alteration_type, feature_type);
     WorldAreaDefinition left;

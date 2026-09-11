@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Encounters/encounters.h"
 #include <cstdlib>
 #include <iostream>
@@ -118,5 +119,30 @@ int main()
     // Caller supplied IDs from the service scope advance the matching generator.
     EncountersService id_service; SpawnPoint explicit_point; explicit_point.id=SpawnPointId::FromRaw(0x2701,50); explicit_point.area=forest; explicit_point.position=clearing; Check(static_cast<bool>(id_service.AddSpawnPoint(explicit_point)),"explicit point id"); SpawnPoint next_point; next_point.area=forest; next_point.position=Ref("world.position","forest.next"); auto next_id=id_service.AddSpawnPoint(next_point); Check(static_cast<bool>(next_id) && next_id.Value().value.Low()>50,"caller id advances generator");
 
+    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    const auto allocation_before = restored.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        if (restored.CaptureSnapshot().revision != allocation_before.revision)
+            return 903;
+    }
+    if (!saw_restore_allocation_failure)
+        return 904;
     return 0;
 }

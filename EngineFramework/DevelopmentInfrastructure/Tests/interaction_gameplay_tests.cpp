@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Interaction/interaction.h"
 #include <cstdlib>
 #include <iostream>
@@ -110,6 +111,27 @@ int main()
     CHECK(s.Complete(result.Value().execution, completion_context));
     CHECK(x.commits == 1);
     CHECK(s.FindActive(c.actor).empty());
+    const auto allocation_before = s.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            failed = !s.RestoreSnapshot(std::move(allocation_target));
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        CHECK(s.CaptureSnapshot().revision == allocation_before.revision);
+    }
+    CHECK(saw_restore_allocation_failure);
     return 0;
 }
 

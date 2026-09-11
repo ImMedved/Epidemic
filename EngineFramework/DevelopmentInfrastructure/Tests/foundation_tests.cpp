@@ -46,7 +46,8 @@ int main()
     Check(generator.Restore(snapshot), 701);
     Check(first.High() == 42 && second == generator.Next(), 7);
 
-    MonotonicIdGenerator<ScheduleId> named = MonotonicIdGenerator<ScheduleId>::FromScopeName("framework.time.schedule_ids");
+    MonotonicIdGenerator<ScheduleId> named =
+        MonotonicIdGenerator<ScheduleId>::FromScopeName("framework.time.schedule_ids");
     Check(named.Scope() == IdScopeId::FromString("framework.time.schedule_ids"), 8);
     Check(MonotonicIdGenerator<ScheduleId>::IsValidSnapshot(named.GetSnapshot()), 9);
 
@@ -54,16 +55,15 @@ int main()
         MonotonicIdGenerator<ScheduleId>::Snapshot{42, second.Low() + 1}, IdScopeId::FromRaw(42), second.Low());
     Check(generator_restore_ok.IsValid(), 901);
     Check(generator_restore_ok.Code() == "gameplay.id_generator_snapshot_valid", 902);
-    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
-               MonotonicIdGenerator<ScheduleId>::Snapshot{0, 1}, IdScopeId::FromRaw(42), 0)
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(MonotonicIdGenerator<ScheduleId>::Snapshot{0, 1},
+                                                            IdScopeId::FromRaw(42), 0)
                .IsValid(),
           903);
-    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
-               MonotonicIdGenerator<ScheduleId>::Snapshot{42, 1}, {}, 0)
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(MonotonicIdGenerator<ScheduleId>::Snapshot{42, 1}, {}, 0)
                .IsValid(),
           904);
-    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
-               MonotonicIdGenerator<ScheduleId>::Snapshot{43, 1}, IdScopeId::FromRaw(42), 0)
+    Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(MonotonicIdGenerator<ScheduleId>::Snapshot{43, 1},
+                                                            IdScopeId::FromRaw(42), 0)
                .IsValid(),
           905);
     Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
@@ -74,28 +74,26 @@ int main()
                MonotonicIdGenerator<ScheduleId>::Snapshot{42, second.Low() - 1}, IdScopeId::FromRaw(42), second.Low())
                .IsValid(),
           907);
-    Check(ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
-              MonotonicIdGenerator<ScheduleId>::Snapshot{42, 0},
-              IdScopeId::FromRaw(42),
-              std::numeric_limits<std::uint64_t>::max())
+    Check(ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(MonotonicIdGenerator<ScheduleId>::Snapshot{42, 0},
+                                                           IdScopeId::FromRaw(42),
+                                                           std::numeric_limits<std::uint64_t>::max())
               .IsValid(),
           908);
     Check(!ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(
                MonotonicIdGenerator<ScheduleId>::Snapshot{42, std::numeric_limits<std::uint64_t>::max()},
-               IdScopeId::FromRaw(42),
-               std::numeric_limits<std::uint64_t>::max())
+               IdScopeId::FromRaw(42), std::numeric_limits<std::uint64_t>::max())
                .IsValid(),
           909);
 
     MonotonicIdGenerator<ScheduleId> exhausted(7);
-    Check(exhausted.Restore(MonotonicIdGenerator<ScheduleId>::Snapshot{7, std::numeric_limits<std::uint64_t>::max()}), 1001);
+    Check(exhausted.Restore(MonotonicIdGenerator<ScheduleId>::Snapshot{7, std::numeric_limits<std::uint64_t>::max()}),
+          1001);
     const auto last = exhausted.Next();
     Check(last.IsValid() && last.High() == 7 && last.Low() == std::numeric_limits<std::uint64_t>::max(), 10);
     const auto exhausted_snapshot = exhausted.GetSnapshot();
     Check(exhausted.IsExhausted() && exhausted_snapshot.next == 0, 11);
     Check(exhausted.Restore(exhausted_snapshot), 1201);
     Check(!exhausted.Next().IsValid(), 12);
-
 
     MonotonicIdGenerator<ScheduleId> checked_restore(77);
     (void)checked_restore.Next();
@@ -104,12 +102,29 @@ int main()
     Check(checked_restore.GetSnapshot().scope == before_invalid_restore.scope &&
               checked_restore.GetSnapshot().next == before_invalid_restore.next,
           911);
-    const auto restore_result = RestoreMonotonicIdGeneratorSnapshot<ScheduleId>(
-        checked_restore, {77, 9}, IdScopeId::FromRaw(77), 8);
+    const auto restore_result =
+        RestoreMonotonicIdGeneratorSnapshot<ScheduleId>(checked_restore, {77, 9}, IdScopeId::FromRaw(77), 8);
     Check(restore_result && checked_restore.GetSnapshot().next == 9, 912);
     const auto before_stale_restore = checked_restore.GetSnapshot();
     Check(!RestoreMonotonicIdGeneratorSnapshot<ScheduleId>(checked_restore, {77, 8}, IdScopeId::FromRaw(77), 8), 913);
     Check(checked_restore.GetSnapshot().next == before_stale_restore.next, 914);
+
+    bool restore_error_allocation_threw = false;
+    {
+        epidemic::tests::allocation_fault::FailAfter fault(0);
+        try
+        {
+            (void)RestoreMonotonicIdGeneratorSnapshot<ScheduleId>(checked_restore, {0, 1}, IdScopeId::FromRaw(77), 0);
+        }
+        catch (const std::bad_alloc &)
+        {
+            restore_error_allocation_threw = true;
+        }
+    }
+    Check(restore_error_allocation_threw, 921);
+    Check(checked_restore.GetSnapshot().scope == before_stale_restore.scope &&
+              checked_restore.GetSnapshot().next == before_stale_restore.next,
+          922);
 
     bool stable_fault_observed = false;
     for (long long fail_after = 0; fail_after < 32 && !stable_fault_observed; ++fail_after)
@@ -132,7 +147,8 @@ int main()
         if (threw)
         {
             stable_fault_observed = true;
-            Check(fault_registry.Size() == size_before && fault_registry.Find("framework.fault.target") == nullptr, 916);
+            Check(fault_registry.Size() == size_before && fault_registry.Find("framework.fault.target") == nullptr,
+                  916);
         }
     }
     Check(stable_fault_observed, 917);

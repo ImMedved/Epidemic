@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/ResourcesProduction/resources_production.h"
 
 #include <limits>
@@ -152,5 +153,30 @@ int main()
     if (!empty_journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 56;
     if (journal.ReadChangesSince(journal.LatestChangeCursor()).changes.size() != 0) return 45;
 
+    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
+    const auto allocation_before = restored.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        if (restored.CaptureSnapshot().revision != allocation_before.revision)
+            return 941;
+    }
+    if (!saw_restore_allocation_failure)
+        return 942;
     return 0;
 }

@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/Foundation/error.h"
 #include "Epidemic/GameFramework/SaveGame/save_game.h"
 #include <algorithm>
@@ -393,5 +394,33 @@ int main()
           "cycle participants");
     Check(!cycle.ResolveOrder(), "dependency cycle rejected");
 
+    // Allocation failure during orchestration must not cross the participant commit boundary.
+    commit_order.clear();
+    commit_order.reserve(2);
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 64; ++fail_after)
+    {
+        auto allocation_image = image.Value();
+        a.value = 100;
+        b.value = 200;
+        commit_order.clear();
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            failed = !orchestrator.Restore(std::move(allocation_image), ExactRestoreCtx());
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        Check(a.value == 100 && b.value == 200, "allocation failure leaves participants untouched");
+        Check(commit_order.empty(), "allocation failure does not enter participant commit");
+        Check(!barrier.active, "allocation failure releases restore barrier");
+    }
+    Check(saw_restore_allocation_failure, "save restore exercised allocation failure");
     return 0;
 }

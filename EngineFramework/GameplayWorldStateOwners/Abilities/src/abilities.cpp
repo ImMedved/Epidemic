@@ -674,36 +674,44 @@ foundation::Result<AbilityExecutionId> AbilityService::BeginActivation(AbilityAc
             resources_->Release(reservation, execution.context);
     };
 
-    std::unordered_map<AbilityExecutionId, AbilityExecution, IdHash> staged_executions;
-    std::vector<AbilityCooldownState> staged_cooldowns;
+    bool execution_inserted = false;
+    std::optional<std::size_t> existing_cooldown;
+    const auto cooldown_end = starts_cooldown ? Add(request.now, definition->cooldown.duration) : GameplayTimePoint{};
+    if (starts_cooldown)
+    {
+        const auto cooldown = std::find_if(cooldowns_.begin(), cooldowns_.end(), [&](const auto &state) {
+            return state.owner == instance->owner && state.group == definition->cooldown.group;
+        });
+        if (cooldown != cooldowns_.end())
+            existing_cooldown = static_cast<std::size_t>(std::distance(cooldowns_.begin(), cooldown));
+    }
     try
     {
-        staged_executions = executions_;
-        staged_executions.emplace(execution.id, execution);
-        staged_cooldowns = cooldowns_;
-        if (starts_cooldown)
+        const auto [execution_it, inserted] = executions_.emplace(execution.id, execution);
+        (void)execution_it;
+        if (!inserted)
         {
-            const auto end = Add(request.now, definition->cooldown.duration);
-            auto cooldown = std::find_if(staged_cooldowns.begin(), staged_cooldowns.end(), [&](const auto &c) {
-                return c.owner == instance->owner && c.group == definition->cooldown.group;
-            });
-            if (cooldown == staged_cooldowns.end())
-                staged_cooldowns.push_back({instance->owner, definition->cooldown.group, end});
-            else if (end.ticks > cooldown->ends_at.ticks)
-                cooldown->ends_at = end;
+            rollback_resources();
+            return foundation::Result<AbilityExecutionId>::Failure(
+                Error("gameplay.ability.execution_collision", "ability execution id already exists"));
         }
+        execution_inserted = true;
+        if (starts_cooldown && !existing_cooldown)
+            cooldowns_.push_back({instance->owner, definition->cooldown.group, cooldown_end});
     }
-    catch (...)
+    catch (const std::bad_alloc &)
     {
+        if (execution_inserted)
+            executions_.erase(execution.id);
         rollback_resources();
         return foundation::Result<AbilityExecutionId>::Failure(
             Error("gameplay.ability.allocation_failed", "failed to prepare ability activation state"));
     }
 
+    if (existing_cooldown && cooldown_end.ticks > cooldowns_[*existing_cooldown].ends_at.ticks)
+        cooldowns_[*existing_cooldown].ends_at = cooldown_end;
     for (const auto &reservation : pay_on_start)
         resources_->Commit(reservation, execution.context);
-    executions_.swap(staged_executions);
-    cooldowns_.swap(staged_cooldowns);
     (void)execution_ids_.Restore(staged_ids.GetSnapshot());
     diagnostics_.activation_attempts = diagnostics_.activation_attempts == std::numeric_limits<std::uint64_t>::max()
                                            ? diagnostics_.activation_attempts

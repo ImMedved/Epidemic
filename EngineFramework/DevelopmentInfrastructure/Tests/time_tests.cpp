@@ -309,19 +309,20 @@ int main()
             return 42;
         fault_service.Freeze();
         const auto before = fault_service.CaptureSnapshot();
-        bool threw = false;
+        bool allocation_failed = false;
         {
             epidemic::tests::allocation_fault::FailAfter fault(fail_after);
             try
             {
-                (void)fault_service.Schedule(fc.Value(), GameplayTimePoint{10}, owner, fa.Value());
+                const auto scheduled = fault_service.Schedule(fc.Value(), GameplayTimePoint{10}, owner, fa.Value());
+                allocation_failed = !scheduled && scheduled.GetError().HasCode("gameplay.schedule_allocation_failed");
             }
             catch (const std::bad_alloc &)
             {
-                threw = true;
+                allocation_failed = true;
             }
         }
-        if (threw)
+        if (allocation_failed)
         {
             schedule_fault = true;
             const auto after = fault_service.CaptureSnapshot();

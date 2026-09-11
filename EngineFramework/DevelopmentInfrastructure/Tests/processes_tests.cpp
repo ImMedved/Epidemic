@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/Foundation/error.h"
 #include "Epidemic/GameFramework/Processes/processes.h"
 
@@ -494,5 +495,32 @@ int main()
         return 12;
     if (!TestJournalSequenceSurvivesSnapshot())
         return 13;
+    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
+    ProcessesService restore_fault_service;
+    (void)Configure(restore_fault_service, ProcessTimingPolicy::Timed, ProcessPersistencePolicy::Transient, 0, {});
+    const auto allocation_before = restore_fault_service.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = restore_fault_service.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        if (restore_fault_service.CaptureSnapshot().revision != allocation_before.revision)
+            return 937;
+    }
+    if (!saw_restore_allocation_failure)
+        return 938;
     return 0;
 }

@@ -44,8 +44,8 @@ class InputEvaluator final : public IAIConsiderationEvaluator
 {
   public:
     [[nodiscard]] foundation::Result<Fixed> Evaluate(const AIConsideration &definition,
-                                                      const AIContextSnapshot &context,
-                                                      const AITargetCandidate *target) const override
+                                                     const AIContextSnapshot &context,
+                                                     const AITargetCandidate *target) const override
     {
         if (!definition.input_key.IsValid())
             return foundation::Result<Fixed>::Failure(
@@ -69,8 +69,8 @@ class InputEvaluator final : public IAIConsiderationEvaluator
         case AIInputValueKind::Boolean:
             return foundation::Result<Fixed>::Success(input->bool_value ? kFixedOne : 0);
         default:
-            return foundation::Result<Fixed>::Failure(
-                Error("gameplay.ai.input_type_unsupported", "builtin input evaluator supports fixed and boolean values"));
+            return foundation::Result<Fixed>::Failure(Error(
+                "gameplay.ai.input_type_unsupported", "builtin input evaluator supports fixed and boolean values"));
         }
     }
 };
@@ -128,7 +128,7 @@ foundation::Result<void> AIService::RegisterAccessPolicy(AIAccessPolicy policy)
 }
 
 foundation::Result<void> AIService::RegisterConsiderationEvaluator(AIConsiderationEvaluatorId id,
-                                                                    const IAIConsiderationEvaluator &evaluator)
+                                                                   const IAIConsiderationEvaluator &evaluator)
 {
     if (frozen_)
         return foundation::Result<void>::Failure(Error("gameplay.ai.registry_frozen", "ai registry frozen"));
@@ -226,7 +226,8 @@ foundation::Result<void> AIService::Freeze()
     {
         (void)id;
         if (!policies_.contains(profile.access_policy))
-            return foundation::Result<void>::Failure(Error("gameplay.ai.unknown_policy", "profile references unknown policy"));
+            return foundation::Result<void>::Failure(
+                Error("gameplay.ai.unknown_policy", "profile references unknown policy"));
         const auto *access_policy = FindAccessPolicy(profile.access_policy);
         if (access_policy && (access_policy->flags & static_cast<std::uint32_t>(AIAccessFlag::OmniscientDebug)) != 0 &&
             !profile.debug_profile)
@@ -275,7 +276,8 @@ const BlackboardKeyDefinition *AIService::FindBlackboardKey(BlackboardKeyId id) 
 foundation::Result<void> AIService::RequireFrozen() const
 {
     if (!frozen_)
-        return foundation::Result<void>::Failure(Error("gameplay.ai.registry_not_frozen", "ai definitions must be frozen"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.registry_not_frozen", "ai definitions must be frozen"));
     return foundation::Result<void>::Success();
 }
 
@@ -309,7 +311,8 @@ foundation::Result<void> AIService::RegisterAgent(GameplayObjectRef subject, AIP
     if (!subject.IsValid() || !profiles_.contains(profile) || agents_.contains(subject))
         return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_agent", "invalid or duplicate ai agent"));
     if (!CanBump() || !CanRecord())
-        return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
     const Revision next{revision_.value + 1};
     AIAgentState state;
     state.subject = subject;
@@ -317,26 +320,30 @@ foundation::Result<void> AIService::RegisterAgent(GameplayObjectRef subject, AIP
     state.activity = AIAgentActivity::Idle;
     state.next_think_at = next_think;
     state.revision = next;
-    std::unordered_map<GameplayObjectRef, AIAgentState, RefHash> staged_agents;
-    std::set<DueKey> staged_due;
+    bool agent_inserted = false;
     try
     {
-        staged_agents = agents_;
-        staged_due = due_agents_;
-        auto [it, inserted] = staged_agents.emplace(subject, std::move(state));
+        const auto [agent_it, inserted] = agents_.emplace(subject, std::move(state));
         if (!inserted)
             return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_agent", "duplicate ai agent"));
-        staged_due.insert(DueKey{it->second.next_think_at, subject});
+        agent_inserted = true;
+        const auto [due_it, due_inserted] = due_agents_.insert(DueKey{agent_it->second.next_think_at, subject});
+        (void)due_it;
+        if (!due_inserted)
+        {
+            agents_.erase(agent_it);
+            return foundation::Result<void>::Failure(
+                Error("gameplay.ai.schedule_collision", "duplicate ai schedule entry"));
+        }
     }
-    catch (...)
+    catch (const std::bad_alloc &)
     {
-        return foundation::Result<void>::Failure(
-            Error("gameplay.ai.allocation_failed", "failed to publish ai agent"));
+        if (agent_inserted)
+            agents_.erase(subject);
+        return foundation::Result<void>::Failure(Error("gameplay.ai.allocation_failed", "failed to publish ai agent"));
     }
-    agents_.swap(staged_agents);
-    due_agents_.swap(staged_due);
     revision_ = next;
-    Record({0, AIChangeKind::AgentRegistered, subject, {}, {}, {}, {}, {}, revision_});
+    Record({0, AIChangeKind::AgentRegistered, subject, {}, {}, {}, {}, {}, next});
     return foundation::Result<void>::Success();
 }
 
@@ -346,7 +353,8 @@ foundation::Result<void> AIService::UnregisterAgent(GameplayObjectRef subject, G
     if (it == agents_.end())
         return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
     if (!CanBump() || !CanRecord())
-        return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
     RemoveDueIndex(it->second);
     if (it->second.current_intent)
         intent_to_agent_.erase(it->second.current_intent->id);
@@ -381,26 +389,26 @@ foundation::Result<void> AIService::SetNextThink(AIAgentState &agent, GameplayTi
 {
     if (agent.next_think_at == when)
         return foundation::Result<void>::Success();
-    std::set<DueKey> staged_due;
-    try
+    if (agent.activity == AIAgentActivity::Idle)
     {
-        staged_due = due_agents_;
-        if (agent.activity == AIAgentActivity::Idle)
+        try
         {
-            staged_due.erase(DueKey{agent.next_think_at, agent.subject});
-            staged_due.insert(DueKey{when, agent.subject});
+            const auto [it, inserted] = due_agents_.insert(DueKey{when, agent.subject});
+            (void)it;
+            if (!inserted)
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.ai.schedule_collision", "ai due index already contains the requested key"));
         }
+        catch (const std::bad_alloc &)
+        {
+            return foundation::Result<void>::Failure(
+                Error("gameplay.ai.allocation_failed", "failed to update ai due index"));
+        }
+        due_agents_.erase(DueKey{agent.next_think_at, agent.subject});
     }
-    catch (...)
-    {
-        return foundation::Result<void>::Failure(
-            Error("gameplay.ai.allocation_failed", "failed to update ai due index"));
-    }
-    due_agents_.swap(staged_due);
     agent.next_think_at = when;
     return foundation::Result<void>::Success();
-}
-GameplayTimePoint AIService::NextThinkAfter(const AIProfile &profile, GameplayTimePoint now) const noexcept
+}GameplayTimePoint AIService::NextThinkAfter(const AIProfile &profile, GameplayTimePoint now) const noexcept
 {
     return SaturatingAdd(now, profile.think_interval);
 }
@@ -408,19 +416,33 @@ GameplayTimePoint AIService::NextThinkAfter(const AIProfile &profile, GameplayTi
 foundation::Result<void> AIService::DisableAgent(GameplayObjectRef subject, GameplayContext context)
 {
     auto *agent = FindMutableAgent(subject);
-    if (!agent) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
-    if (agent->current_intent) return foundation::Result<void>::Failure(Error("gameplay.ai.intent_active", "cancel the current intent before disabling the agent"));
-    if (agent->activity == AIAgentActivity::Disabled) return foundation::Result<void>::Success();
-    if (!CanBump() || !CanRecord()) return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
-    RemoveDueIndex(*agent); (void)Bump(); agent->activity=AIAgentActivity::Disabled; agent->revision=revision_;
-    Record({0,AIChangeKind::AgentDisabled,subject,{},{},{},{},context,revision_});
+    if (!agent)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
+    if (agent->current_intent)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.intent_active", "cancel the current intent before disabling the agent"));
+    if (agent->activity == AIAgentActivity::Disabled)
+        return foundation::Result<void>::Success();
+    if (!CanBump() || !CanRecord())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+    RemoveDueIndex(*agent);
+    (void)Bump();
+    agent->activity = AIAgentActivity::Disabled;
+    agent->revision = revision_;
+    Record({0, AIChangeKind::AgentDisabled, subject, {}, {}, {}, {}, context, revision_});
     return foundation::Result<void>::Success();
 }
 foundation::Result<void> AIService::EnableAgent(GameplayObjectRef subject, GameplayContext context)
 {
-    auto *agent=FindMutableAgent(subject); if(!agent) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing","agent missing"));
-    if(agent->activity!=AIAgentActivity::Disabled) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_not_disabled","agent is not disabled"));
-    if(!CanBump()||!CanRecord()) return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or journal exhausted"));
+    auto *agent = FindMutableAgent(subject);
+    if (!agent)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
+    if (agent->activity != AIAgentActivity::Disabled)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_not_disabled", "agent is not disabled"));
+    if (!CanBump() || !CanRecord())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
     const auto when = agent->next_think_at < context.time ? context.time : agent->next_think_at;
     std::set<DueKey> staged_due;
     try
@@ -430,8 +452,7 @@ foundation::Result<void> AIService::EnableAgent(GameplayObjectRef subject, Gamep
     }
     catch (...)
     {
-        return foundation::Result<void>::Failure(
-            Error("gameplay.ai.allocation_failed", "failed to enable ai agent"));
+        return foundation::Result<void>::Failure(Error("gameplay.ai.allocation_failed", "failed to enable ai agent"));
     }
     due_agents_.swap(staged_due);
     (void)Bump();
@@ -443,18 +464,38 @@ foundation::Result<void> AIService::EnableAgent(GameplayObjectRef subject, Gamep
 }
 foundation::Result<void> AIService::SuspendAgent(GameplayObjectRef subject, GameplayContext context)
 {
-    auto *agent=FindMutableAgent(subject); if(!agent) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing","agent missing"));
-    if(agent->current_intent) return foundation::Result<void>::Failure(Error("gameplay.ai.intent_active","cancel the current intent before suspending the agent"));
-    if(agent->activity==AIAgentActivity::Suspended) return foundation::Result<void>::Success();
-    if(agent->activity==AIAgentActivity::Disabled) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_disabled","disabled agent cannot be suspended"));
-    if(!CanBump()||!CanRecord()) return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or journal exhausted"));
-    RemoveDueIndex(*agent); (void)Bump(); agent->activity=AIAgentActivity::Suspended; agent->revision=revision_; Record({0,AIChangeKind::AgentSuspended,subject,{},{},{},{},context,revision_}); return foundation::Result<void>::Success();
+    auto *agent = FindMutableAgent(subject);
+    if (!agent)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
+    if (agent->current_intent)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.intent_active", "cancel the current intent before suspending the agent"));
+    if (agent->activity == AIAgentActivity::Suspended)
+        return foundation::Result<void>::Success();
+    if (agent->activity == AIAgentActivity::Disabled)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.agent_disabled", "disabled agent cannot be suspended"));
+    if (!CanBump() || !CanRecord())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+    RemoveDueIndex(*agent);
+    (void)Bump();
+    agent->activity = AIAgentActivity::Suspended;
+    agent->revision = revision_;
+    Record({0, AIChangeKind::AgentSuspended, subject, {}, {}, {}, {}, context, revision_});
+    return foundation::Result<void>::Success();
 }
-foundation::Result<void> AIService::ResumeAgent(GameplayObjectRef subject, GameplayTimePoint when, GameplayContext context)
+foundation::Result<void> AIService::ResumeAgent(GameplayObjectRef subject, GameplayTimePoint when,
+                                                GameplayContext context)
 {
-    auto *agent=FindMutableAgent(subject); if(!agent) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing","agent missing"));
-    if(agent->activity!=AIAgentActivity::Suspended) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_not_suspended","agent is not suspended"));
-    if(!CanBump()||!CanRecord()) return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or journal exhausted"));
+    auto *agent = FindMutableAgent(subject);
+    if (!agent)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
+    if (agent->activity != AIAgentActivity::Suspended)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_not_suspended", "agent is not suspended"));
+    if (!CanBump() || !CanRecord())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
     std::set<DueKey> staged_due;
     try
     {
@@ -463,8 +504,7 @@ foundation::Result<void> AIService::ResumeAgent(GameplayObjectRef subject, Gamep
     }
     catch (...)
     {
-        return foundation::Result<void>::Failure(
-            Error("gameplay.ai.allocation_failed", "failed to resume ai agent"));
+        return foundation::Result<void>::Failure(Error("gameplay.ai.allocation_failed", "failed to resume ai agent"));
     }
     due_agents_.swap(staged_due);
     (void)Bump();
@@ -474,21 +514,54 @@ foundation::Result<void> AIService::ResumeAgent(GameplayObjectRef subject, Gamep
     Record({0, AIChangeKind::AgentResumed, subject, {}, {}, {}, {}, context, revision_});
     return foundation::Result<void>::Success();
 }
-foundation::Result<void> AIService::ScheduleThink(GameplayObjectRef subject, GameplayTimePoint when, GameplayContext context)
+foundation::Result<void> AIService::ScheduleThink(GameplayObjectRef subject, GameplayTimePoint when,
+                                                  GameplayContext context)
 {
-    auto *agent=FindMutableAgent(subject); if(!agent) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing","agent missing"));
-    if(!CanBump()||!CanRecord()) return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or journal exhausted"));
-    auto moved=SetNextThink(*agent,when); if(!moved)return moved; (void)Bump(); agent->revision=revision_; Record({0,AIChangeKind::ThinkScheduled,subject,{},{},{},{},context,revision_}); return foundation::Result<void>::Success();
+    auto *agent = FindMutableAgent(subject);
+    if (!agent)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
+    if (!CanBump() || !CanRecord())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+    auto moved = SetNextThink(*agent, when);
+    if (!moved)
+        return moved;
+    (void)Bump();
+    agent->revision = revision_;
+    Record({0, AIChangeKind::ThinkScheduled, subject, {}, {}, {}, {}, context, revision_});
+    return foundation::Result<void>::Success();
 }
-foundation::Result<void> AIService::RequestReplan(GameplayObjectRef subject, AIReplanReasonId reason, GameplayTimePoint when, GameplayContext context)
+foundation::Result<void> AIService::RequestReplan(GameplayObjectRef subject, AIReplanReasonId reason,
+                                                  GameplayTimePoint when, GameplayContext context)
 {
-    auto *agent=FindMutableAgent(subject); if(!agent) return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing","agent missing"));
-    if(!reason.IsValid()) return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_replan_reason","invalid replan reason"));
-    if(!CanBump()||!CanRecord()) return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or journal exhausted"));
-    if(!agent->current_intent&&agent->activity==AIAgentActivity::Idle&&when<agent->next_think_at){auto moved=SetNextThink(*agent,when);if(!moved)return moved;}
-    (void)Bump(); if(agent->current_intent){agent->pending_replan=true;agent->pending_replan_reason=reason;agent->pending_replan_at=when;} agent->revision=revision_;
-    if(diagnostics_.replans_requested!=std::numeric_limits<std::uint64_t>::max())++diagnostics_.replans_requested;
-    Record({0,AIChangeKind::ReplanRequested,subject,agent->active_goal?agent->active_goal->id:AIGoalId{},agent->current_intent?agent->current_intent->id:AIIntentId{},agent->current_intent?agent->current_intent->type:AIIntentTypeId{},ReplanReasonType(reason),context,revision_});
+    auto *agent = FindMutableAgent(subject);
+    if (!agent)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
+    if (!reason.IsValid())
+        return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_replan_reason", "invalid replan reason"));
+    if (!CanBump() || !CanRecord())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+    if (!agent->current_intent && agent->activity == AIAgentActivity::Idle && when < agent->next_think_at)
+    {
+        auto moved = SetNextThink(*agent, when);
+        if (!moved)
+            return moved;
+    }
+    (void)Bump();
+    if (agent->current_intent)
+    {
+        agent->pending_replan = true;
+        agent->pending_replan_reason = reason;
+        agent->pending_replan_at = when;
+    }
+    agent->revision = revision_;
+    if (diagnostics_.replans_requested != std::numeric_limits<std::uint64_t>::max())
+        ++diagnostics_.replans_requested;
+    Record({0, AIChangeKind::ReplanRequested, subject, agent->active_goal ? agent->active_goal->id : AIGoalId{},
+            agent->current_intent ? agent->current_intent->id : AIIntentId{},
+            agent->current_intent ? agent->current_intent->type : AIIntentTypeId{}, ReplanReasonType(reason), context,
+            revision_});
     return foundation::Result<void>::Success();
 }
 
@@ -520,9 +593,8 @@ foundation::Result<Fixed> AIService::ScoreGoal(const AIProfile &profile, const A
                 return foundation::Result<Fixed>::Failure(evaluated.GetError());
             if (evaluated.Value() < 0 || evaluated.Value() > kFixedOne)
             {
-                return foundation::Result<Fixed>::Failure(
-                    Error("gameplay.ai.evaluator_range",
-                          "consideration evaluator returned a value outside [0, 1000000]"));
+                return foundation::Result<Fixed>::Failure(Error(
+                    "gameplay.ai.evaluator_range", "consideration evaluator returned a value outside [0, 1000000]"));
             }
             const auto contribution = (evaluated.Value() * consideration.weight_micro) / kFixedOne;
             score = SaturatingAddFixed(score, contribution);
@@ -547,88 +619,214 @@ foundation::Result<AIThinkResult> AIService::Think(GameplayObjectRef subject, co
     if (auto frozen = RequireFrozen(); !frozen)
         return foundation::Result<AIThinkResult>::Failure(frozen.GetError());
     auto *agent = FindMutableAgent(subject);
-    if (!agent) return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
+    if (!agent)
+        return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
     auto *profile = FindProfile(agent->profile);
-    if (!profile) return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.profile_missing", "profile missing"));
-    auto deferred=[&](AIThinkDeferReason reason){return foundation::Result<AIThinkResult>::Success(AIThinkResult{subject,{},{},true,reason,revision_});};
-    if(agent->activity==AIAgentActivity::Disabled)return deferred(AIThinkDeferReason::Disabled);
-    if(agent->activity==AIAgentActivity::Suspended)return deferred(AIThinkDeferReason::Suspended);
-    if(agent->current_intent||agent->activity==AIAgentActivity::ExecutingIntent)return deferred(AIThinkDeferReason::ActiveIntent);
-    if(source_context.now<agent->next_think_at)return deferred(AIThinkDeferReason::NotDue);
-    if(profile->materialization_policy==AIMaterializationPolicy::RequiresMaterialized&&!source_context.materialized)return deferred(AIThinkDeferReason::MaterializationUnavailable);
-    if(profile->materialization_policy==AIMaterializationPolicy::RequiresRuntimeProjection&&!source_context.runtime_projection_available)return deferred(AIThinkDeferReason::MaterializationUnavailable);
+    if (!profile)
+        return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.profile_missing", "profile missing"));
+    auto deferred = [&](AIThinkDeferReason reason) {
+        return foundation::Result<AIThinkResult>::Success(AIThinkResult{subject, {}, {}, true, reason, revision_});
+    };
+    if (agent->activity == AIAgentActivity::Disabled)
+        return deferred(AIThinkDeferReason::Disabled);
+    if (agent->activity == AIAgentActivity::Suspended)
+        return deferred(AIThinkDeferReason::Suspended);
+    if (agent->current_intent || agent->activity == AIAgentActivity::ExecutingIntent)
+        return deferred(AIThinkDeferReason::ActiveIntent);
+    if (source_context.now < agent->next_think_at)
+        return deferred(AIThinkDeferReason::NotDue);
+    if (profile->materialization_policy == AIMaterializationPolicy::RequiresMaterialized &&
+        !source_context.materialized)
+        return deferred(AIThinkDeferReason::MaterializationUnavailable);
+    if (profile->materialization_policy == AIMaterializationPolicy::RequiresRuntimeProjection &&
+        !source_context.runtime_projection_available)
+        return deferred(AIThinkDeferReason::MaterializationUnavailable);
 
     AIContextSnapshot context;
-    try {
-        context.now=source_context.now; context.materialized=source_context.materialized; context.runtime_projection_available=source_context.runtime_projection_available;
-        for(const auto& input:source_context.inputs) if(input.key.IsValid()&&AccessAllows(*profile,input.access)) context.inputs.push_back(input);
-        std::sort(context.inputs.begin(),context.inputs.end(),InputLess);
-        for(std::size_t i=1;i<context.inputs.size();++i) if(context.inputs[i-1].key==context.inputs[i].key)
-            return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.invalid_context","ai context contains duplicate global input keys"));
-        for(auto candidate:source_context.targets){
-            if(!candidate.target.IsValid()||!TargetSourceAllowed(*profile,candidate.source))continue;
-            candidate.inputs.erase(std::remove_if(candidate.inputs.begin(),candidate.inputs.end(),[&](const AIInputValue& input){return !input.key.IsValid()||!AccessAllows(*profile,input.access);}),candidate.inputs.end());
-            std::sort(candidate.inputs.begin(),candidate.inputs.end(),InputLess);
-            for(std::size_t i=1;i<candidate.inputs.size();++i) if(candidate.inputs[i-1].key==candidate.inputs[i].key)
-                return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.invalid_context","ai target candidate contains duplicate input keys"));
+    try
+    {
+        context.now = source_context.now;
+        context.materialized = source_context.materialized;
+        context.runtime_projection_available = source_context.runtime_projection_available;
+        for (const auto &input : source_context.inputs)
+            if (input.key.IsValid() && AccessAllows(*profile, input.access))
+                context.inputs.push_back(input);
+        std::sort(context.inputs.begin(), context.inputs.end(), InputLess);
+        for (std::size_t i = 1; i < context.inputs.size(); ++i)
+            if (context.inputs[i - 1].key == context.inputs[i].key)
+                return foundation::Result<AIThinkResult>::Failure(
+                    Error("gameplay.ai.invalid_context", "ai context contains duplicate global input keys"));
+        for (auto candidate : source_context.targets)
+        {
+            if (!candidate.target.IsValid() || !TargetSourceAllowed(*profile, candidate.source))
+                continue;
+            candidate.inputs.erase(std::remove_if(candidate.inputs.begin(), candidate.inputs.end(),
+                                                  [&](const AIInputValue &input) {
+                                                      return !input.key.IsValid() ||
+                                                             !AccessAllows(*profile, input.access);
+                                                  }),
+                                   candidate.inputs.end());
+            std::sort(candidate.inputs.begin(), candidate.inputs.end(), InputLess);
+            for (std::size_t i = 1; i < candidate.inputs.size(); ++i)
+                if (candidate.inputs[i - 1].key == candidate.inputs[i].key)
+                    return foundation::Result<AIThinkResult>::Failure(
+                        Error("gameplay.ai.invalid_context", "ai target candidate contains duplicate input keys"));
             context.targets.push_back(std::move(candidate));
         }
-        std::sort(context.targets.begin(),context.targets.end(),[](const AITargetCandidate&a,const AITargetCandidate&b){if(a.target!=b.target)return a.target<b.target;return a.source<b.source;});
-        for(std::size_t i=1;i<context.targets.size();++i) if(context.targets[i-1].target==context.targets[i].target&&context.targets[i-1].source==context.targets[i].source)
-            return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.invalid_context","ai context contains duplicate target candidates"));
-    } catch(const std::exception& e){return foundation::Result<AIThinkResult>::Failure(foundation::Error::Create("gameplay.ai.context_exception","failed to canonicalize ai context",e.what()));}
-      catch(...){return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.context_exception","failed to canonicalize ai context"));}
+        std::sort(context.targets.begin(), context.targets.end(),
+                  [](const AITargetCandidate &a, const AITargetCandidate &b) {
+                      if (a.target != b.target)
+                          return a.target < b.target;
+                      return a.source < b.source;
+                  });
+        for (std::size_t i = 1; i < context.targets.size(); ++i)
+            if (context.targets[i - 1].target == context.targets[i].target &&
+                context.targets[i - 1].source == context.targets[i].source)
+                return foundation::Result<AIThinkResult>::Failure(
+                    Error("gameplay.ai.invalid_context", "ai context contains duplicate target candidates"));
+    }
+    catch (const std::exception &e)
+    {
+        return foundation::Result<AIThinkResult>::Failure(
+            foundation::Error::Create("gameplay.ai.context_exception", "failed to canonicalize ai context", e.what()));
+    }
+    catch (...)
+    {
+        return foundation::Result<AIThinkResult>::Failure(
+            Error("gameplay.ai.context_exception", "failed to canonicalize ai context"));
+    }
 
-    AITickBudgetState staged_budget=tick_budget_;
-    if(!gameplay_context.tick.IsValid()||staged_budget.tick!=gameplay_context.tick){staged_budget={};staged_budget.tick=gameplay_context.tick;}
-    auto staged_diagnostics=diagnostics_;
-    if(staged_budget.agents_thought>=budget_.max_agents_thinking_per_tick){
-        if(!CanRecord())return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.journal_exhausted","ai journal exhausted"));
-        if(staged_diagnostics.budget_exhaustions!=std::numeric_limits<std::uint64_t>::max())++staged_diagnostics.budget_exhaustions;
-        tick_budget_=staged_budget; diagnostics_=staged_diagnostics; Record({0,AIChangeKind::BudgetExceeded,subject,{},{},{},{},gameplay_context,revision_}); return deferred(AIThinkDeferReason::BudgetExceeded);
+    AITickBudgetState staged_budget = tick_budget_;
+    if (!gameplay_context.tick.IsValid() || staged_budget.tick != gameplay_context.tick)
+    {
+        staged_budget = {};
+        staged_budget.tick = gameplay_context.tick;
     }
-    ++staged_budget.agents_thought; if(staged_diagnostics.agents_thinking!=std::numeric_limits<std::uint64_t>::max())++staged_diagnostics.agents_thinking;
-    Fixed best_score=std::numeric_limits<Fixed>::min(); AIGoalId best_goal{}; GameplayObjectRef best_target{}; AITargetSource best_source=AITargetSource::Perceived; const AIGoalDefinition* best_definition=nullptr; bool budget_exhausted=false;
-    auto evaluate_pair=[&](const AIGoalDefinition& goal,const AITargetCandidate* target)->foundation::Result<void>{
-        if(staged_budget.target_evaluations>=budget_.max_target_evaluations_per_tick){budget_exhausted=true;return foundation::Result<void>::Success();}
-        ++staged_budget.target_evaluations; if(staged_diagnostics.target_evaluations!=std::numeric_limits<std::uint64_t>::max())++staged_diagnostics.target_evaluations;
-        auto score=ScoreGoal(*profile,goal,context,target); if(!score)return foundation::Result<void>::Failure(score.GetError());
-        const auto target_ref=target?target->target:GameplayObjectRef{}; const auto target_source=target?target->source:AITargetSource::Perceived;
-        bool better=!best_definition||score.Value()>best_score; if(!better&&score.Value()==best_score){if(goal.id<best_goal)better=true;else if(goal.id==best_goal){if(target_ref<best_target)better=true;else if(target_ref==best_target&&target&&target_source<best_source)better=true;}}
-        if(better){best_score=score.Value();best_goal=goal.id;best_target=target_ref;best_source=target_source;best_definition=&goal;} return foundation::Result<void>::Success();};
-    for(auto goal_id:profile->default_goals){
-        if(staged_budget.goals_evaluated>=budget_.max_goals_evaluated){budget_exhausted=true;break;} auto* goal=FindGoal(goal_id);if(!goal)continue;
-        if(agent->previous_goal==goal_id&&profile->goal_repeat_cooldown.ticks>0&&context.now<SaturatingAdd(agent->previous_goal_terminal_at,profile->goal_repeat_cooldown))continue;
-        ++staged_budget.goals_evaluated;if(staged_diagnostics.goals_evaluated!=std::numeric_limits<std::uint64_t>::max())++staged_diagnostics.goals_evaluated;
-        if(goal->target_policy!=AITargetPolicy::Required){auto e=evaluate_pair(*goal,nullptr);if(!e)return foundation::Result<AIThinkResult>::Failure(e.GetError());if(budget_exhausted)break;}
-        if(goal->target_policy!=AITargetPolicy::Targetless){for(const auto& candidate:context.targets){auto e=evaluate_pair(*goal,&candidate);if(!e)return foundation::Result<AIThinkResult>::Failure(e.GetError());if(budget_exhausted)break;}}
-        if(budget_exhausted)break;
+    auto staged_diagnostics = diagnostics_;
+    if (staged_budget.agents_thought >= budget_.max_agents_thinking_per_tick)
+    {
+        if (!CanRecord())
+            return foundation::Result<AIThinkResult>::Failure(
+                Error("gameplay.ai.journal_exhausted", "ai journal exhausted"));
+        if (staged_diagnostics.budget_exhaustions != std::numeric_limits<std::uint64_t>::max())
+            ++staged_diagnostics.budget_exhaustions;
+        tick_budget_ = staged_budget;
+        diagnostics_ = staged_diagnostics;
+        Record({0, AIChangeKind::BudgetExceeded, subject, {}, {}, {}, {}, gameplay_context, revision_});
+        return deferred(AIThinkDeferReason::BudgetExceeded);
     }
-    if(budget_exhausted||(best_definition&&staged_budget.intents_issued>=budget_.max_intents_issued)){
-        if(!CanRecord())return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.journal_exhausted","ai journal exhausted"));
-        if(staged_diagnostics.budget_exhaustions!=std::numeric_limits<std::uint64_t>::max())++staged_diagnostics.budget_exhaustions;
-        tick_budget_=staged_budget; diagnostics_=staged_diagnostics; Record({0,AIChangeKind::BudgetExceeded,subject,best_goal,{},{},{},gameplay_context,revision_}); return deferred(AIThinkDeferReason::BudgetExceeded);
+    ++staged_budget.agents_thought;
+    if (staged_diagnostics.agents_thinking != std::numeric_limits<std::uint64_t>::max())
+        ++staged_diagnostics.agents_thinking;
+    Fixed best_score = std::numeric_limits<Fixed>::min();
+    AIGoalId best_goal{};
+    GameplayObjectRef best_target{};
+    AITargetSource best_source = AITargetSource::Perceived;
+    const AIGoalDefinition *best_definition = nullptr;
+    bool budget_exhausted = false;
+    auto evaluate_pair = [&](const AIGoalDefinition &goal,
+                             const AITargetCandidate *target) -> foundation::Result<void> {
+        if (staged_budget.target_evaluations >= budget_.max_target_evaluations_per_tick)
+        {
+            budget_exhausted = true;
+            return foundation::Result<void>::Success();
+        }
+        ++staged_budget.target_evaluations;
+        if (staged_diagnostics.target_evaluations != std::numeric_limits<std::uint64_t>::max())
+            ++staged_diagnostics.target_evaluations;
+        auto score = ScoreGoal(*profile, goal, context, target);
+        if (!score)
+            return foundation::Result<void>::Failure(score.GetError());
+        const auto target_ref = target ? target->target : GameplayObjectRef{};
+        const auto target_source = target ? target->source : AITargetSource::Perceived;
+        bool better = !best_definition || score.Value() > best_score;
+        if (!better && score.Value() == best_score)
+        {
+            if (goal.id < best_goal)
+                better = true;
+            else if (goal.id == best_goal)
+            {
+                if (target_ref < best_target)
+                    better = true;
+                else if (target_ref == best_target && target && target_source < best_source)
+                    better = true;
+            }
+        }
+        if (better)
+        {
+            best_score = score.Value();
+            best_goal = goal.id;
+            best_target = target_ref;
+            best_source = target_source;
+            best_definition = &goal;
+        }
+        return foundation::Result<void>::Success();
+    };
+    for (auto goal_id : profile->default_goals)
+    {
+        if (staged_budget.goals_evaluated >= budget_.max_goals_evaluated)
+        {
+            budget_exhausted = true;
+            break;
+        }
+        auto *goal = FindGoal(goal_id);
+        if (!goal)
+            continue;
+        if (agent->previous_goal == goal_id && profile->goal_repeat_cooldown.ticks > 0 &&
+            context.now < SaturatingAdd(agent->previous_goal_terminal_at, profile->goal_repeat_cooldown))
+            continue;
+        ++staged_budget.goals_evaluated;
+        if (staged_diagnostics.goals_evaluated != std::numeric_limits<std::uint64_t>::max())
+            ++staged_diagnostics.goals_evaluated;
+        if (goal->target_policy != AITargetPolicy::Required)
+        {
+            auto e = evaluate_pair(*goal, nullptr);
+            if (!e)
+                return foundation::Result<AIThinkResult>::Failure(e.GetError());
+            if (budget_exhausted)
+                break;
+        }
+        if (goal->target_policy != AITargetPolicy::Targetless)
+        {
+            for (const auto &candidate : context.targets)
+            {
+                auto e = evaluate_pair(*goal, &candidate);
+                if (!e)
+                    return foundation::Result<AIThinkResult>::Failure(e.GetError());
+                if (budget_exhausted)
+                    break;
+            }
+        }
+        if (budget_exhausted)
+            break;
     }
-    if(!CanBump()||!CanRecord(best_definition?4:2))return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or change journal exhausted"));
+    if (budget_exhausted || (best_definition && staged_budget.intents_issued >= budget_.max_intents_issued))
+    {
+        if (!CanRecord())
+            return foundation::Result<AIThinkResult>::Failure(
+                Error("gameplay.ai.journal_exhausted", "ai journal exhausted"));
+        if (staged_diagnostics.budget_exhaustions != std::numeric_limits<std::uint64_t>::max())
+            ++staged_diagnostics.budget_exhaustions;
+        tick_budget_ = staged_budget;
+        diagnostics_ = staged_diagnostics;
+        Record({0, AIChangeKind::BudgetExceeded, subject, best_goal, {}, {}, {}, gameplay_context, revision_});
+        return deferred(AIThinkDeferReason::BudgetExceeded);
+    }
+    if (!CanBump() || !CanRecord(best_definition ? 4 : 2))
+        return foundation::Result<AIThinkResult>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or change journal exhausted"));
     const Revision next_revision{revision_.value + 1};
-    std::unordered_map<GameplayObjectRef, AIAgentState, RefHash> staged_agents;
-    std::set<DueKey> staged_due;
-    std::unordered_map<AIIntentId, GameplayObjectRef, IdHash> staged_intents;
     auto staged_intent_ids = intent_ids_;
+    AIAgentState staged_agent;
     AIThinkResult result;
     result.subject = subject;
     result.revision = next_revision;
     AIIntentId intent_id{};
+    DueKey next_due{};
+    bool due_key_changed = false;
     try
     {
-        staged_agents = agents_;
-        staged_due = due_agents_;
-        staged_intents = intent_to_agent_;
-        auto staged_agent_it = staged_agents.find(subject);
-        if (staged_agent_it == staged_agents.end())
-            return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.agent_missing", "agent disappeared"));
-        auto &staged_agent = staged_agent_it->second;
-        staged_due.erase(DueKey{staged_agent.next_think_at, staged_agent.subject});
+        staged_agent = *agent;
         if (best_definition)
         {
             intent_id = AIIntentId{staged_intent_ids.Next()};
@@ -636,8 +834,15 @@ foundation::Result<AIThinkResult> AIService::Think(GameplayObjectRef subject, co
                 return foundation::Result<AIThinkResult>::Failure(
                     Error("gameplay.ai.intent_id_exhausted", "intent id generator exhausted"));
             AIGoalInstance goal{best_goal, best_score, next_revision};
-            AIIntent intent{intent_id, subject, best_definition->intent_type, best_score, AIIntentStatus::Issued,
-                            best_target, best_definition->payload, gameplay_context, next_revision};
+            AIIntent intent{intent_id,
+                            subject,
+                            best_definition->intent_type,
+                            best_score,
+                            AIIntentStatus::Issued,
+                            best_target,
+                            best_definition->payload,
+                            gameplay_context,
+                            next_revision};
             staged_agent.active_goal = goal;
             staged_agent.current_intent = intent;
             staged_agent.activity = AIAgentActivity::ExecutingIntent;
@@ -645,19 +850,32 @@ foundation::Result<AIThinkResult> AIService::Think(GameplayObjectRef subject, co
             staged_agent.pending_replan_reason = {};
             staged_agent.pending_replan_at = {};
             staged_agent.revision = next_revision;
-            staged_intents.emplace(intent.id, subject);
             ++staged_budget.intents_issued;
             if (staged_diagnostics.intents_issued != std::numeric_limits<std::uint64_t>::max())
                 ++staged_diagnostics.intents_issued;
             result.goal = goal;
             result.intent = intent;
+
+            const auto [_, inserted] = intent_to_agent_.emplace(intent.id, subject);
+            if (!inserted)
+                return foundation::Result<AIThinkResult>::Failure(
+                    Error("gameplay.ai.intent_id_collision", "generated intent id already exists"));
         }
         else
         {
             staged_agent.activity = AIAgentActivity::Idle;
             staged_agent.next_think_at = NextThinkAfter(*profile, context.now);
             staged_agent.revision = next_revision;
-            staged_due.insert(DueKey{staged_agent.next_think_at, subject});
+            next_due = DueKey{staged_agent.next_think_at, subject};
+            const DueKey previous_due{agent->next_think_at, subject};
+            due_key_changed = next_due.when != previous_due.when;
+            if (due_key_changed)
+            {
+                const auto [_, inserted] = due_agents_.insert(next_due);
+                if (!inserted)
+                    return foundation::Result<AIThinkResult>::Failure(
+                        Error("gameplay.ai.due_index_collision", "next think index entry already exists"));
+            }
         }
     }
     catch (...)
@@ -665,15 +883,40 @@ foundation::Result<AIThinkResult> AIService::Think(GameplayObjectRef subject, co
         return foundation::Result<AIThinkResult>::Failure(
             Error("gameplay.ai.allocation_failed", "failed to publish ai decision state"));
     }
-    agents_.swap(staged_agents);
-    due_agents_.swap(staged_due);
-    intent_to_agent_.swap(staged_intents);
+
+    const DueKey previous_due{agent->next_think_at, subject};
+    if (best_definition || due_key_changed)
+        due_agents_.erase(previous_due);
+    using std::swap;
+    swap(*agent, staged_agent);
     if (best_definition)
         (void)intent_ids_.Restore(staged_intent_ids.GetSnapshot());
     revision_ = next_revision;
     tick_budget_ = staged_budget;
     diagnostics_ = staged_diagnostics;
-    Record({0,AIChangeKind::ThinkStarted,subject,{},{},{},{},gameplay_context,revision_});if(best_definition){Record({0,AIChangeKind::GoalSelected,subject,best_goal,{},{},{},gameplay_context,revision_});Record({0,AIChangeKind::IntentIssued,subject,best_goal,intent_id,best_definition->intent_type,{},gameplay_context,revision_});}Record({0,AIChangeKind::ThinkCompleted,subject,best_goal,intent_id,best_definition?best_definition->intent_type:AIIntentTypeId{},{},gameplay_context,revision_});
+    Record({0, AIChangeKind::ThinkStarted, subject, {}, {}, {}, {}, gameplay_context, revision_});
+    if (best_definition)
+    {
+        Record({0, AIChangeKind::GoalSelected, subject, best_goal, {}, {}, {}, gameplay_context, revision_});
+        Record({0,
+                AIChangeKind::IntentIssued,
+                subject,
+                best_goal,
+                intent_id,
+                best_definition->intent_type,
+                {},
+                gameplay_context,
+                revision_});
+    }
+    Record({0,
+            AIChangeKind::ThinkCompleted,
+            subject,
+            best_goal,
+            intent_id,
+            best_definition ? best_definition->intent_type : AIIntentTypeId{},
+            {},
+            gameplay_context,
+            revision_});
     return foundation::Result<AIThinkResult>::Success(std::move(result));
 }
 
@@ -689,15 +932,24 @@ foundation::Result<void> AIService::MarkIntentAccepted(AIIntentId id, GameplayCo
     if (!agent || !agent->current_intent)
         return foundation::Result<void>::Failure(Error("gameplay.ai.intent_missing", "intent missing"));
     if (agent->current_intent->status != AIIntentStatus::Issued)
-        return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_intent_transition", "intent must be issued"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.invalid_intent_transition", "intent must be issued"));
     if (!CanBump() || !CanRecord())
-        return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
     (void)Bump();
     agent->current_intent->status = AIIntentStatus::Accepted;
     agent->current_intent->revision = revision_;
     agent->revision = revision_;
-    Record({0, AIChangeKind::IntentAccepted, agent->subject, agent->active_goal ? agent->active_goal->id : AIGoalId{}, id,
-            agent->current_intent->type, {}, context, revision_});
+    Record({0,
+            AIChangeKind::IntentAccepted,
+            agent->subject,
+            agent->active_goal ? agent->active_goal->id : AIGoalId{},
+            id,
+            agent->current_intent->type,
+            {},
+            context,
+            revision_});
     return foundation::Result<void>::Success();
 }
 
@@ -707,32 +959,84 @@ foundation::Result<void> AIService::MarkIntentRunning(AIIntentId id, GameplayCon
     if (!agent || !agent->current_intent)
         return foundation::Result<void>::Failure(Error("gameplay.ai.intent_missing", "intent missing"));
     if (agent->current_intent->status != AIIntentStatus::Accepted)
-        return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_intent_transition", "intent must be accepted"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.invalid_intent_transition", "intent must be accepted"));
     if (!CanBump() || !CanRecord())
-        return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
     (void)Bump();
     agent->current_intent->status = AIIntentStatus::Running;
     agent->current_intent->revision = revision_;
     agent->revision = revision_;
-    Record({0, AIChangeKind::IntentRunning, agent->subject, agent->active_goal ? agent->active_goal->id : AIGoalId{}, id,
-            agent->current_intent->type, {}, context, revision_});
+    Record({0,
+            AIChangeKind::IntentRunning,
+            agent->subject,
+            agent->active_goal ? agent->active_goal->id : AIGoalId{},
+            id,
+            agent->current_intent->type,
+            {},
+            context,
+            revision_});
     return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> AIService::FinalizeIntent(AIIntentId id, AIIntentStatus final_status, TypeId reason,
                                                    GameplayContext context)
 {
-    auto *agent=FindAgentByIntent(id);if(!agent||!agent->current_intent)return foundation::Result<void>::Failure(Error("gameplay.ai.intent_missing","intent missing"));
-    const auto current_status=agent->current_intent->status;if(!IsLiveIntentStatus(current_status))return foundation::Result<void>::Failure(Error("gameplay.ai.intent_terminal","intent is already terminal"));
-    if(final_status==AIIntentStatus::Succeeded&&current_status!=AIIntentStatus::Running)return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_intent_transition","successful intent must be running"));
-    if(final_status!=AIIntentStatus::Succeeded&&final_status!=AIIntentStatus::Failed&&final_status!=AIIntentStatus::Cancelled&&final_status!=AIIntentStatus::TimedOut)return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_intent_transition","invalid terminal state"));
-    auto* profile=FindProfile(agent->profile);if(!profile)return foundation::Result<void>::Failure(Error("gameplay.ai.profile_missing","profile missing"));
-    if(!CanBump()||!CanRecord(2))return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or journal exhausted"));
-    const auto goal=agent->active_goal?agent->active_goal->id:AIGoalId{};const auto type=agent->current_intent->type;GameplayTimePoint next=NextThinkAfter(*profile,context.time);if(agent->pending_replan)next=agent->pending_replan_at<context.time?context.time:agent->pending_replan_at;
-    auto staged_due=due_agents_;staged_due.insert(DueKey{next,agent->subject});
-    (void)Bump();intent_to_agent_.erase(id);agent->current_intent.reset();agent->active_goal.reset();agent->activity=AIAgentActivity::Idle;agent->previous_goal=goal;agent->previous_goal_terminal_at=context.time;agent->pending_replan=false;agent->pending_replan_reason={};agent->pending_replan_at={};agent->next_think_at=next;agent->revision=revision_;due_agents_.swap(staged_due);
-    AIChangeKind intent_kind=AIChangeKind::IntentFailed,goal_kind=AIChangeKind::GoalFailed;if(final_status==AIIntentStatus::Succeeded){intent_kind=AIChangeKind::IntentSucceeded;goal_kind=AIChangeKind::GoalCompleted;}else if(final_status==AIIntentStatus::Cancelled)intent_kind=AIChangeKind::IntentCancelled;else if(final_status==AIIntentStatus::TimedOut)intent_kind=AIChangeKind::IntentTimedOut;else if(diagnostics_.intents_failed!=std::numeric_limits<std::uint64_t>::max())++diagnostics_.intents_failed;
-    Record({0,intent_kind,agent->subject,goal,id,type,reason,context,revision_});Record({0,goal_kind,agent->subject,goal,id,type,reason,context,revision_});return foundation::Result<void>::Success();
+    auto *agent = FindAgentByIntent(id);
+    if (!agent || !agent->current_intent)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.intent_missing", "intent missing"));
+    const auto current_status = agent->current_intent->status;
+    if (!IsLiveIntentStatus(current_status))
+        return foundation::Result<void>::Failure(Error("gameplay.ai.intent_terminal", "intent is already terminal"));
+    if (final_status == AIIntentStatus::Succeeded && current_status != AIIntentStatus::Running)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.invalid_intent_transition", "successful intent must be running"));
+    if (final_status != AIIntentStatus::Succeeded && final_status != AIIntentStatus::Failed &&
+        final_status != AIIntentStatus::Cancelled && final_status != AIIntentStatus::TimedOut)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.invalid_intent_transition", "invalid terminal state"));
+    auto *profile = FindProfile(agent->profile);
+    if (!profile)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.profile_missing", "profile missing"));
+    if (!CanBump() || !CanRecord(2))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+    const auto goal = agent->active_goal ? agent->active_goal->id : AIGoalId{};
+    const auto type = agent->current_intent->type;
+    GameplayTimePoint next = NextThinkAfter(*profile, context.time);
+    if (agent->pending_replan)
+        next = agent->pending_replan_at < context.time ? context.time : agent->pending_replan_at;
+    auto staged_due = due_agents_;
+    staged_due.insert(DueKey{next, agent->subject});
+    (void)Bump();
+    intent_to_agent_.erase(id);
+    agent->current_intent.reset();
+    agent->active_goal.reset();
+    agent->activity = AIAgentActivity::Idle;
+    agent->previous_goal = goal;
+    agent->previous_goal_terminal_at = context.time;
+    agent->pending_replan = false;
+    agent->pending_replan_reason = {};
+    agent->pending_replan_at = {};
+    agent->next_think_at = next;
+    agent->revision = revision_;
+    due_agents_.swap(staged_due);
+    AIChangeKind intent_kind = AIChangeKind::IntentFailed, goal_kind = AIChangeKind::GoalFailed;
+    if (final_status == AIIntentStatus::Succeeded)
+    {
+        intent_kind = AIChangeKind::IntentSucceeded;
+        goal_kind = AIChangeKind::GoalCompleted;
+    }
+    else if (final_status == AIIntentStatus::Cancelled)
+        intent_kind = AIChangeKind::IntentCancelled;
+    else if (final_status == AIIntentStatus::TimedOut)
+        intent_kind = AIChangeKind::IntentTimedOut;
+    else if (diagnostics_.intents_failed != std::numeric_limits<std::uint64_t>::max())
+        ++diagnostics_.intents_failed;
+    Record({0, intent_kind, agent->subject, goal, id, type, reason, context, revision_});
+    Record({0, goal_kind, agent->subject, goal, id, type, reason, context, revision_});
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<void> AIService::MarkIntentSucceeded(AIIntentId id, GameplayContext context)
@@ -758,16 +1062,51 @@ foundation::Result<void> AIService::SetBlackboard(GameplayObjectRef subject, Bla
 {
     if (auto frozen = RequireFrozen(); !frozen)
         return frozen;
-    auto* agent = FindMutableAgent(subject);
+    auto *agent = FindMutableAgent(subject);
     if (!agent)
         return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
-    auto* definition=FindBlackboardKey(key);if(!definition||definition->value_type!=value_type||value.size()>definition->max_payload_bytes)return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_blackboard_value","blackboard value does not match key definition"));
-    if(!CanBump()||!CanRecord())return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or journal exhausted"));
-    const Revision next{revision_.value+1};auto staged=agent->blackboard;auto it=std::lower_bound(staged.begin(),staged.end(),key,[](const AIBlackboardEntry&entry,BlackboardKeyId wanted){return entry.key<wanted;});AIBlackboardEntry entry{key,value_type,std::move(value),now,next};if(it!=staged.end()&&it->key==key)*it=std::move(entry);else staged.insert(it,std::move(entry));agent->blackboard.swap(staged);revision_=next;agent->revision=revision_;Record({0,AIChangeKind::BlackboardChanged,subject,{},{},{},key.value,context,revision_});return foundation::Result<void>::Success();
+    auto *definition = FindBlackboardKey(key);
+    if (!definition || definition->value_type != value_type || value.size() > definition->max_payload_bytes)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.invalid_blackboard_value", "blackboard value does not match key definition"));
+    if (!CanBump() || !CanRecord())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+    const Revision next{revision_.value + 1};
+    auto staged = agent->blackboard;
+    auto it =
+        std::lower_bound(staged.begin(), staged.end(), key,
+                         [](const AIBlackboardEntry &entry, BlackboardKeyId wanted) { return entry.key < wanted; });
+    AIBlackboardEntry entry{key, value_type, std::move(value), now, next};
+    if (it != staged.end() && it->key == key)
+        *it = std::move(entry);
+    else
+        staged.insert(it, std::move(entry));
+    agent->blackboard.swap(staged);
+    revision_ = next;
+    agent->revision = revision_;
+    Record({0, AIChangeKind::BlackboardChanged, subject, {}, {}, {}, key.value, context, revision_});
+    return foundation::Result<void>::Success();
 }
-foundation::Result<void> AIService::RemoveBlackboard(GameplayObjectRef subject, BlackboardKeyId key, GameplayContext context)
+foundation::Result<void> AIService::RemoveBlackboard(GameplayObjectRef subject, BlackboardKeyId key,
+                                                     GameplayContext context)
 {
-    auto* agent=FindMutableAgent(subject);if(!agent)return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing","agent missing"));auto it=std::lower_bound(agent->blackboard.begin(),agent->blackboard.end(),key,[](const AIBlackboardEntry&entry,BlackboardKeyId wanted){return entry.key<wanted;});if(it==agent->blackboard.end()||it->key!=key)return foundation::Result<void>::Failure(Error("gameplay.ai.blackboard_missing","blackboard entry missing"));if(!CanBump()||!CanRecord())return foundation::Result<void>::Failure(Error("gameplay.ai.revision_exhausted","ai revision or journal exhausted"));agent->blackboard.erase(it);(void)Bump();agent->revision=revision_;Record({0,AIChangeKind::BlackboardRemoved,subject,{},{},{},key.value,context,revision_});return foundation::Result<void>::Success();
+    auto *agent = FindMutableAgent(subject);
+    if (!agent)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.agent_missing", "agent missing"));
+    auto it =
+        std::lower_bound(agent->blackboard.begin(), agent->blackboard.end(), key,
+                         [](const AIBlackboardEntry &entry, BlackboardKeyId wanted) { return entry.key < wanted; });
+    if (it == agent->blackboard.end() || it->key != key)
+        return foundation::Result<void>::Failure(Error("gameplay.ai.blackboard_missing", "blackboard entry missing"));
+    if (!CanBump() || !CanRecord())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ai.revision_exhausted", "ai revision or journal exhausted"));
+    agent->blackboard.erase(it);
+    (void)Bump();
+    agent->revision = revision_;
+    Record({0, AIChangeKind::BlackboardRemoved, subject, {}, {}, {}, key.value, context, revision_});
+    return foundation::Result<void>::Success();
 }
 
 const AIBlackboardEntry *AIService::FindBlackboard(GameplayObjectRef subject, BlackboardKeyId key) const noexcept
@@ -775,8 +1114,9 @@ const AIBlackboardEntry *AIService::FindBlackboard(GameplayObjectRef subject, Bl
     auto *agent = FindAgent(subject);
     if (!agent)
         return nullptr;
-    auto it = std::lower_bound(agent->blackboard.begin(), agent->blackboard.end(), key,
-                               [](const AIBlackboardEntry &entry, BlackboardKeyId wanted) { return entry.key < wanted; });
+    auto it =
+        std::lower_bound(agent->blackboard.begin(), agent->blackboard.end(), key,
+                         [](const AIBlackboardEntry &entry, BlackboardKeyId wanted) { return entry.key < wanted; });
     return it != agent->blackboard.end() && it->key == key ? &*it : nullptr;
 }
 
@@ -818,12 +1158,12 @@ std::vector<GameplayObjectRef> AIService::FindDueAgents(GameplayTimePoint now, s
 AIChangeBatch AIService::ReadChangesSinceSequence(std::uint64_t sequence) const
 {
     AIChangeBatch batch;
-    batch.latest_sequence = next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                                       : next_change_sequence_ - 1;
-    batch.oldest_available_sequence = changes_.empty()
-                                          ? (next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                                                        : next_change_sequence_)
-                                          : changes_.front().sequence;
+    batch.latest_sequence =
+        next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1;
+    batch.oldest_available_sequence =
+        changes_.empty()
+            ? (next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_)
+            : changes_.front().sequence;
     if (sequence > batch.latest_sequence)
     {
         batch.snapshot_required = true;
@@ -854,12 +1194,13 @@ AISnapshot AIService::CaptureSnapshot() const
     {
         (void)ref;
         auto copy = agent;
-        copy.blackboard.erase(
-            std::remove_if(copy.blackboard.begin(), copy.blackboard.end(), [&](const AIBlackboardEntry &entry) {
-                auto *definition = FindBlackboardKey(entry.key);
-                return !definition || definition->persistence != BlackboardPersistencePolicy::Persistent;
-            }),
-            copy.blackboard.end());
+        copy.blackboard.erase(std::remove_if(copy.blackboard.begin(), copy.blackboard.end(),
+                                             [&](const AIBlackboardEntry &entry) {
+                                                 auto *definition = FindBlackboardKey(entry.key);
+                                                 return !definition || definition->persistence !=
+                                                                           BlackboardPersistencePolicy::Persistent;
+                                             }),
+                              copy.blackboard.end());
         snapshot.agents.push_back(std::move(copy));
     }
     std::sort(snapshot.agents.begin(), snapshot.agents.end(),
@@ -873,7 +1214,8 @@ AISnapshot AIService::CaptureSnapshot() const
 
 foundation::Result<void> AIService::RestoreSnapshot(AISnapshot snapshot)
 {
-    const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
+    const auto next_journal_epoch =
+        CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
     if (!next_journal_epoch)
     {
         return foundation::Result<void>::Failure(
@@ -893,11 +1235,13 @@ foundation::Result<void> AIService::RestoreSnapshot(AISnapshot snapshot)
     std::uint64_t max_intent_low = 0;
     for (auto &agent : snapshot.agents)
     {
-        if (!agent.subject.IsValid() || !profiles_.contains(agent.profile) || agent.revision.value > snapshot.revision.value ||
-            new_agents.contains(agent.subject))
-            return foundation::Result<void>::Failure(Error("gameplay.ai.restore_invalid", "invalid or duplicate agent"));
+        if (!agent.subject.IsValid() || !profiles_.contains(agent.profile) ||
+            agent.revision.value > snapshot.revision.value || new_agents.contains(agent.subject))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.ai.restore_invalid", "invalid or duplicate agent"));
         if (agent.activity == AIAgentActivity::Thinking)
-            return foundation::Result<void>::Failure(Error("gameplay.ai.restore_invalid", "thinking is transient state"));
+            return foundation::Result<void>::Failure(
+                Error("gameplay.ai.restore_invalid", "thinking is transient state"));
         const bool executing = agent.activity == AIAgentActivity::ExecutingIntent;
         if (executing != static_cast<bool>(agent.current_intent) || executing != static_cast<bool>(agent.active_goal))
             return foundation::Result<void>::Failure(
@@ -908,8 +1252,8 @@ foundation::Result<void> AIService::RestoreSnapshot(AISnapshot snapshot)
         if (agent.pending_replan && !agent.pending_replan_reason.IsValid())
             return foundation::Result<void>::Failure(
                 Error("gameplay.ai.restore_invalid", "pending replan is missing a reason"));
-        if (agent.active_goal && (!goals_.contains(agent.active_goal->id) ||
-                                  agent.active_goal->revision.value > snapshot.revision.value))
+        if (agent.active_goal &&
+            (!goals_.contains(agent.active_goal->id) || agent.active_goal->revision.value > snapshot.revision.value))
             return foundation::Result<void>::Failure(Error("gameplay.ai.restore_invalid", "invalid active goal"));
         if (agent.previous_goal.IsValid() && !goals_.contains(agent.previous_goal))
             return foundation::Result<void>::Failure(Error("gameplay.ai.restore_invalid", "invalid previous goal"));
@@ -917,8 +1261,8 @@ foundation::Result<void> AIService::RestoreSnapshot(AISnapshot snapshot)
         {
             auto &intent = *agent.current_intent;
             if (!intent.id.IsValid() || intent.id.value.High() != kIntentScope || intent.actor != agent.subject ||
-                !intent.type.IsValid() || !IsLiveIntentStatus(intent.status) || intent.revision.value > snapshot.revision.value ||
-                new_intent_index.contains(intent.id))
+                !intent.type.IsValid() || !IsLiveIntentStatus(intent.status) ||
+                intent.revision.value > snapshot.revision.value || new_intent_index.contains(intent.id))
                 return foundation::Result<void>::Failure(Error("gameplay.ai.restore_invalid", "invalid live intent"));
             const auto *goal_definition = agent.active_goal ? FindGoal(agent.active_goal->id) : nullptr;
             if (!goal_definition || goal_definition->intent_type != intent.type ||
@@ -936,7 +1280,8 @@ foundation::Result<void> AIService::RestoreSnapshot(AISnapshot snapshot)
             if (!definition || definition->persistence != BlackboardPersistencePolicy::Persistent ||
                 definition->value_type != entry.value_type || entry.value.size() > definition->max_payload_bytes ||
                 entry.revision.value > snapshot.revision.value)
-                return foundation::Result<void>::Failure(Error("gameplay.ai.restore_invalid", "invalid blackboard entry"));
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.ai.restore_invalid", "invalid blackboard entry"));
             if (previous_key.IsValid() && !(previous_key < entry.key))
                 return foundation::Result<void>::Failure(
                     Error("gameplay.ai.restore_invalid", "blackboard entries are not canonical"));
@@ -986,8 +1331,7 @@ void AIService::Record(AIChange change) noexcept
     if (changes_.size() == change_journal_capacity_)
         changes_.erase(changes_.begin());
     changes_.push_back(std::move(change));
-    next_change_sequence_ = next_change_sequence_ == std::numeric_limits<std::uint64_t>::max()
-                                ? 0
-                                : next_change_sequence_ + 1;
+    next_change_sequence_ =
+        next_change_sequence_ == std::numeric_limits<std::uint64_t>::max() ? 0 : next_change_sequence_ + 1;
 }
 } // namespace epidemic::gameplay::ai

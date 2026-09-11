@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Entities/entities.h"
 
 using namespace epidemic::gameplay;
@@ -162,7 +163,32 @@ int main()
         if (!replacement || service.Resolve(transient.Value().handle).has_value() || !service.Resolve(replacement.Value().handle).has_value()) return 193;
     }
 
-    // Basic capacity/stability stress.
+    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    const auto allocation_before = service.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = service.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        if (service.CaptureSnapshot().revision != allocation_before.revision)
+            return 905;
+    }
+    if (!saw_restore_allocation_failure)
+        return 906;
+        // Basic capacity/stability stress.
     for (int i = 0; i < 100000; ++i)
     {
         CreateEntityRequest stress;
@@ -174,5 +200,5 @@ int main()
 
     const auto changes = service.ReadChangesSince(ChangeCursor{}).changes;
     if (changes.empty() || changes.back().sequence != service.LatestChangeCursor().sequence) return 21;
-    return 0;
+return 0;
 }

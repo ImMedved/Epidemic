@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Materials/materials.h"
 
 #include <array>
@@ -141,6 +142,31 @@ int main()
         !(material_exhausted_after->dynamic == material_exhausted_before.dynamic))
         return 36;
 
+    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    const auto allocation_before = service.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = service.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        if (service.CaptureSnapshot().revision != allocation_before.revision)
+            return 917;
+    }
+    if (!saw_restore_allocation_failure)
+        return 918;
     return 0;
 }
 

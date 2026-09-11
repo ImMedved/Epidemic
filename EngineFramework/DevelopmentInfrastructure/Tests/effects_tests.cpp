@@ -1,3 +1,4 @@
+#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Effects/effects.h"
 
 #include <limits>
@@ -242,6 +243,34 @@ int main()
     behind.deferred_ids.next = behind.deferred.front().id.value.Low();
     if (service.RestoreSnapshot(std::move(behind))) return 18;
 
+    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    const auto allocation_before = service.CaptureSnapshot();
+    bool saw_restore_allocation_failure = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        auto allocation_target = allocation_before;
+        bool failed = false;
+        try
+        {
+            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
+            const auto restored_under_fault = service.RestoreSnapshot(std::move(allocation_target));
+            failed = !restored_under_fault;
+        }
+        catch (const std::bad_alloc &)
+        {
+            failed = true;
+        }
+        if (!failed)
+            break;
+        saw_restore_allocation_failure = true;
+        const auto allocation_after = service.CaptureSnapshot();
+        if (allocation_after.deferred.size() != allocation_before.deferred.size() ||
+            allocation_after.execution_ids.next != allocation_before.execution_ids.next ||
+            allocation_after.deferred_ids.next != allocation_before.deferred_ids.next)
+            return 901;
+    }
+    if (!saw_restore_allocation_failure)
+        return 902;
     return 0;
 }
 

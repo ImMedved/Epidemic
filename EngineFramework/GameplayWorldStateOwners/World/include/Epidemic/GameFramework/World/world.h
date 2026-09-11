@@ -302,6 +302,7 @@ class WorldTransaction
   private:
     WorldService *owner_{};
     GameplayContext context_{};
+    MonotonicIdGenerator<GameplayObjectId> staged_alteration_ids_;
     std::vector<Mutation> mutations_;
     bool committed_ = false, cancelled_ = false;
 };
@@ -344,10 +345,12 @@ class WorldService
         const WorldAabb &bounds, std::optional<WorldAlterationTypeId> type = std::nullopt) const;
 
     [[nodiscard]] foundation::Result<WorldFeatureId> AddDynamicFeature(WorldFeatureRecord feature);
-    [[nodiscard]] foundation::Result<void> UpdateDynamicFeature(WorldFeatureId id, WorldAabb bounds, GameplayTagSet tags, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> UpdateDynamicFeature(WorldFeatureId id, WorldAabb bounds,
+                                                                GameplayTagSet tags, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> RemoveDynamicFeature(WorldFeatureId id, GameplayContext context = {});
     [[nodiscard]] foundation::Result<void> PlaceObject(ObjectPlacementRecord placement);
-    [[nodiscard]] foundation::Result<void> RemoveObjectPlacement(GameplayObjectRef object, GameplayContext context = {});
+    [[nodiscard]] foundation::Result<void> RemoveObjectPlacement(GameplayObjectRef object,
+                                                                 GameplayContext context = {});
     [[nodiscard]] std::vector<ObjectPlacementRecord> FindObjectsInArea(WorldAreaId area) const;
     [[nodiscard]] std::vector<ObjectPlacementRecord> FindObjectsInLocation(LocationId location) const;
     [[nodiscard]] WorldTransaction BeginTransaction(GameplayContext context = {})
@@ -361,16 +364,18 @@ class WorldService
 
     [[nodiscard]] WorldSnapshot CaptureSnapshot() const;
     [[nodiscard]] foundation::Result<void> RestoreSnapshot(WorldSnapshot snapshot);
-    private:
-        [[nodiscard]] std::vector<WorldChange> ChangesSinceSequence(std::uint64_t sequence) const;
-        [[nodiscard]] WorldChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
-    public:
+
+  private:
+    [[nodiscard]] std::vector<WorldChange> ChangesSinceSequence(std::uint64_t sequence) const;
+    [[nodiscard]] WorldChangeBatch ReadChangesSinceSequence(std::uint64_t sequence) const;
+
+  public:
     [[nodiscard]] WorldChangeBatch ReadChangesSince(ChangeCursor cursor) const
     {
         auto batch = ReadChangesSinceSequence(cursor.sequence);
         batch.oldest_available_cursor = {journal_epoch_, batch.oldest_available_sequence};
         batch.latest_cursor = {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                                                    : next_change_sequence_ - 1};
+                                                                          : next_change_sequence_ - 1};
         if ((!cursor.IsValid() && cursor.sequence != 0) || (cursor.IsValid() && cursor.epoch != journal_epoch_))
         {
             batch.changes.clear();
@@ -380,8 +385,8 @@ class WorldService
     }
     [[nodiscard]] ChangeCursor LatestChangeCursor() const noexcept
     {
-        return {journal_epoch_, next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max()
-                                                          : next_change_sequence_ - 1};
+        return {journal_epoch_,
+                next_change_sequence_ == 0 ? std::numeric_limits<std::uint64_t>::max() : next_change_sequence_ - 1};
     }
     void PruneChangesBefore(std::uint64_t sequence);
     [[nodiscard]] Revision CurrentRevision() const noexcept
@@ -397,10 +402,10 @@ class WorldService
                                                            GameplayContext context);
     [[nodiscard]] foundation::Result<Revision> PrepareRevision() const;
     [[nodiscard]] bool CanRecordChanges(std::size_t count) const noexcept;
-    void Record(WorldChange change) noexcept;
     [[nodiscard]] foundation::Result<void> ValidateTopology() const;
     [[nodiscard]] foundation::Result<void> ValidateAlteration(const WorldAlterationRecord &record) const;
-    [[nodiscard]] foundation::Result<WorldAlterationRecord> ApplyAlterationUpdate(const WorldAlterationRecord& current, const WorldAlterationUpdate& update) const;
+    [[nodiscard]] foundation::Result<WorldAlterationRecord> ApplyAlterationUpdate(
+        const WorldAlterationRecord &current, const WorldAlterationUpdate &update) const;
     [[nodiscard]] foundation::Result<void> SynchronizeRequestedAlterationId(WorldAlterationId id);
     void RebuildTopologyIndexes();
 
@@ -421,11 +426,14 @@ class WorldService
     };
     static constexpr std::int64_t kSpatialCellMm = 100000;
     static constexpr std::uint64_t kMaxIndexedCells = 4096;
+    struct IdHash;
     void IndexArea(const WorldAreaDefinition &area);
     void IndexLocation(const LocationDefinition &location);
-    void RebuildAlterationIndex();
-    void IndexAlteration(const WorldAlterationRecord& alteration);
-    void UnindexAlteration(const WorldAlterationRecord& alteration);
+    void BuildAlterationIndex(const std::unordered_map<WorldAlterationId, WorldAlterationRecord, IdHash> &alterations,
+                              std::unordered_map<CellKey, std::vector<WorldAlterationId>, CellHash> &alteration_index,
+                              std::vector<WorldAlterationId> &large_alterations) const;
+    void IndexAlteration(const WorldAlterationRecord &alteration);
+    void UnindexAlteration(const WorldAlterationRecord &alteration);
     [[nodiscard]] std::vector<CellKey> CellsFor(const WorldAabb &bounds) const;
     [[nodiscard]] CellKey CellFor(WorldPosition position) const noexcept;
     struct IdHash
