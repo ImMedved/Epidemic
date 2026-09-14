@@ -1,4 +1,6 @@
 #include "allocation_fault_injection.h"
+#include "pre_state_verification.h"
+#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Interaction/interaction.h"
 #include <cstdlib>
 #include <iostream>
@@ -112,26 +114,57 @@ int main()
     CHECK(x.commits == 1);
     CHECK(s.FindActive(c.actor).empty());
     const auto allocation_before = s.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
-    {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            failed = !s.RestoreSnapshot(std::move(allocation_target));
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        CHECK(s.CaptureSnapshot().revision == allocation_before.revision);
-    }
-    CHECK(saw_restore_allocation_failure);
+    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
+        "Interaction.RestoreSnapshot",
+        2,
+        [&] { return allocation_before; },
+        [&](auto snapshot) { return s.RestoreSnapshot(std::move(snapshot)); },
+        [&] { return s.CaptureSnapshot(); },
+        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+                return true;
+            const auto allocation_after = s.CaptureSnapshot();
+            const auto diagnostics = s.GetDiagnostics();
+            const auto pre_state = epidemic::tests::pre_state::StateComparator("Interaction.RestoreSnapshot.pre_state")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
+                                                     allocation_baseline.sessions.size(), allocation_after.sessions.size(),
+                                                     "session count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
+                                                     allocation_baseline.sessions.size(), allocation_after.sessions.size(),
+                                                     "session payload count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
+                                                     s.FindActive(c.actor).size(), std::size_t{0},
+                                                     "active session index")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
+                                                     allocation_baseline.ids.next, allocation_after.ids.next,
+                                                     "execution id generator next")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
+                                                     allocation_baseline.revision, allocation_after.revision,
+                                                     "revision")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
+                                                     s.ReadChangesSince(s.LatestChangeCursor()).changes.size(), std::size_t{0},
+                                                     "latest cursor has no unread changes")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
+                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
+                                                     "journal epoch")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
+                                                     s.LatestChangeCursor(), s.LatestChangeCursor(),
+                                                     "latest change cursor stable")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
+                                                     diagnostics.sessions,
+                                                     static_cast<std::uint64_t>(allocation_baseline.sessions.size()),
+                                                     "retained session diagnostics")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
+                                                     s.LatestChangeCursor(), s.LatestChangeCursor(),
+                                                     "latest cursor")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
+                                                     diagnostics.sessions,
+                                                     static_cast<std::uint64_t>(allocation_baseline.sessions.size()),
+                                                     "public diagnostics read model")
+                                       .Finish();
+            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
+        });
+    CHECK(epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report));
     return 0;
 }
 

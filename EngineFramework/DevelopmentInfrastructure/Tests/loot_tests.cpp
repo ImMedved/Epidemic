@@ -1,4 +1,6 @@
 #include "allocation_fault_injection.h"
+#include "pre_state_verification.h"
+#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Loot/loot.h"
 
 #include <limits>
@@ -289,34 +291,61 @@ int main()
         pending_after_exhaustion->schedule != schedule_before)
         return 53;
 
-    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
     const auto allocation_before = recovery.service.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
-    {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = recovery.service.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        const auto allocation_after = recovery.service.CaptureSnapshot();
-        if (allocation_after.generated.size() != allocation_before.generated.size() ||
-            allocation_after.pending.size() != allocation_before.pending.size() ||
-            allocation_after.execution_ids.next != allocation_before.execution_ids.next ||
-            allocation_after.next_change_sequence != allocation_before.next_change_sequence)
-            return 915;
-    }
-    if (!saw_restore_allocation_failure)
+    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
+        "Loot.RestoreSnapshot",
+        2,
+        [&] { return allocation_before; },
+        [&](auto snapshot) { return recovery.service.RestoreSnapshot(std::move(snapshot)); },
+        [&] { return recovery.service.CaptureSnapshot(); },
+        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+                return true;
+            const auto allocation_after = recovery.service.CaptureSnapshot();
+            const auto diagnostics = recovery.service.GetDiagnostics();
+            const auto pre_state = epidemic::tests::pre_state::StateComparator("Loot.RestoreSnapshot.pre_state")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
+                                                     allocation_baseline.generated.size() + allocation_baseline.pending.size(),
+                                                     allocation_after.generated.size() + allocation_after.pending.size(),
+                                                     "generated and pending reward count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
+                                                     allocation_baseline.claimed.size(), allocation_after.claimed.size(),
+                                                     "claimed reward history count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
+                                                     diagnostics.pending,
+                                                     static_cast<std::uint64_t>(allocation_baseline.pending.size()),
+                                                     "pending index diagnostics")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
+                                                     allocation_baseline.execution_ids.next, allocation_after.execution_ids.next,
+                                                     "execution id generator next")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
+                                                     allocation_baseline.next_change_sequence,
+                                                     allocation_after.next_change_sequence,
+                                                     "next change sequence")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
+                                                     allocation_baseline.journal.size(), allocation_after.journal.size(),
+                                                     "journal entry count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
+                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
+                                                     "journal epoch")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
+                                                     allocation_baseline.next_change_sequence,
+                                                     allocation_after.next_change_sequence,
+                                                     "next change sequence")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
+                                                     allocation_baseline.journal.size(), allocation_after.journal.size(),
+                                                     "retained journal count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
+                                                     recovery.service.LatestChangeCursor(), recovery.service.LatestChangeCursor(),
+                                                     "latest cursor")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
+                                                     recovery.service.AllPending().size(), allocation_baseline.pending.size(),
+                                                     "public pending read model")
+                                       .Finish();
+            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
+        });
+    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
         return 916;
     return 0;
 }

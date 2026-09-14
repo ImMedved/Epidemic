@@ -1,4 +1,6 @@
 #include "allocation_fault_injection.h"
+#include "pre_state_verification.h"
+#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/NeedsLife/needs_life.h"
 
 #include <cstdlib>
@@ -253,30 +255,63 @@ int main()
               needs_revision_exhausted.CurrentRevision().value == std::numeric_limits<std::uint64_t>::max(),
           "needs revision exhaustion leaves state unchanged");
 
-    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
     const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
-    {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
-            return 923;
-    }
-    if (!saw_restore_allocation_failure)
+    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
+        "NeedsLife.RestoreSnapshot",
+        2,
+        [&] { return allocation_before; },
+        [&](auto snapshot) { return restored.RestoreSnapshot(std::move(snapshot)); },
+        [&] { return restored.CaptureSnapshot(); },
+        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+                return true;
+            const auto allocation_after = restored.CaptureSnapshot();
+            const auto diagnostics = restored.GetDiagnostics();
+            const auto pre_state = epidemic::tests::pre_state::StateComparator("NeedsLife.RestoreSnapshot.pre_state")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
+                                                     allocation_baseline.profiles.size() + allocation_baseline.states.size(),
+                                                     allocation_after.profiles.size() + allocation_after.states.size(),
+                                                     "profile and need state count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
+                                                     allocation_baseline.pressures.size() + allocation_baseline.routines.size(),
+                                                     allocation_after.pressures.size() + allocation_after.routines.size(),
+                                                     "pressure and routine payload count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
+                                                     diagnostics.profiles,
+                                                     static_cast<std::uint64_t>(allocation_baseline.profiles.size()),
+                                                     "profile index diagnostics")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
+                                                     allocation_baseline.profile_ids.next, allocation_after.profile_ids.next,
+                                                     "profile id generator next")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
+                                                     allocation_baseline.revision, allocation_after.revision,
+                                                     "revision")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
+                                                     restored.ReadChangesSince(restored.LatestChangeCursor()).changes.size(),
+                                                     std::size_t{0},
+                                                     "latest cursor has no unread changes")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
+                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
+                                                     "journal epoch")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
+                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
+                                                     "latest change cursor stable")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
+                                                     diagnostics.life_pressures,
+                                                     static_cast<std::uint64_t>(allocation_baseline.pressures.size()),
+                                                     "retained pressure diagnostics")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
+                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
+                                                     "latest cursor")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
+                                                     diagnostics.routines,
+                                                     static_cast<std::uint64_t>(allocation_baseline.routines.size()),
+                                                     "public diagnostics read model")
+                                       .Finish();
+            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
+        });
+    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
         return 924;
     return 0;
 }

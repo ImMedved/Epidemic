@@ -1,14 +1,28 @@
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
 #include "allocation_fault_injection.h"
+#include "pre_state_verification.h"
 
 #include <cstdlib>
 #include <limits>
 #include <type_traits>
+#include <vector>
 
 using namespace epidemic::gameplay;
 
 namespace
 {
+struct PreStateFixture
+{
+    int primary_record{0};
+    int secondary_index{0};
+    int generator_next{0};
+    int revision{0};
+    int journal_sequence{0};
+    int callback_count{0};
+
+    [[nodiscard]] bool operator==(const PreStateFixture &) const = default;
+};
+
 void Check(bool condition, int code)
 {
     if (!condition)
@@ -125,6 +139,151 @@ int main()
     Check(checked_restore.GetSnapshot().scope == before_stale_restore.scope &&
               checked_restore.GetSnapshot().next == before_stale_restore.next,
           922);
+
+    {
+        using namespace epidemic::tests::allocation_fault;
+
+        int value = 0;
+        const auto report = RunBoundedSweep(
+            "foundation.test.vector_resize",
+            0,
+            [&](SweepRunContext &context) {
+                context.MarkMethodInvoked();
+                std::vector<int> values;
+                values.resize(5);
+                value = 7;
+                return InvocationResult::Success();
+            },
+            [&](const SweepIteration &iteration) {
+                return iteration.failure == FailureKind::None ? value == 7 : value == 0;
+            });
+        Check(report.Passed() && report.saw_failure && report.iterations.size() == 2, 923);
+        Check(report.iterations.front().failure == FailureKind::BadAlloc && report.iterations.front().method_invoked, 924);
+        Check(report.iterations.back().failure == FailureKind::None, 925);
+
+        const auto controlled = RunBoundedSweep(
+            "foundation.test.controlled_allocation_result",
+            0,
+            [](long long fault_index) {
+                if (fault_index >= 0)
+                {
+                    return epidemic::foundation::Result<void>::Failure(epidemic::foundation::Error{"alloc", "", ""});
+                }
+                return epidemic::foundation::Result<void>::Success();
+            });
+        Check(controlled.Passed() && controlled.saw_failure &&
+                  controlled.iterations.front().failure == FailureKind::ControlledAllocationFailure,
+              926);
+        const auto mixed_case_controlled = RunBoundedSweep(
+            "foundation.test.controlled_memory_result",
+            0,
+            [](long long fault_index) {
+                if (fault_index >= 0)
+                {
+                    return epidemic::foundation::Result<void>::Failure(
+                        epidemic::foundation::Error{"OutOfMemory", "", ""});
+                }
+                return epidemic::foundation::Result<void>::Success();
+            });
+        Check(mixed_case_controlled.Passed() && mixed_case_controlled.saw_failure &&
+                  mixed_case_controlled.iterations.front().failure == FailureKind::ControlledAllocationFailure,
+              931);
+
+        const auto exhausted_report = RunBoundedSweep(
+            "foundation.test.never_succeeds",
+            1,
+            [](long long) {
+                return InvocationResult::CallbackFailure("synthetic callback failure");
+            });
+        Check(!exhausted_report.Passed() && exhausted_report.exhausted_without_success &&
+                  exhausted_report.iterations.back().failure == FailureKind::CallbackFailure,
+              927);
+
+        const auto observed_report = RunObservedBoundedSweep(
+            "foundation.test.observed_vector_resize",
+            1,
+            [] {
+                return [](SweepRunContext &context) {
+                    context.MarkMethodInvoked();
+                    std::vector<int> values;
+                    values.resize(8);
+                    return InvocationResult::Success();
+                };
+            },
+            [](const SweepIteration &iteration) {
+                return iteration.method_invoked;
+            });
+        Check(observed_report.Passed() && observed_report.saw_failure && observed_report.observed_allocations > 0,
+              932);
+        Check(observed_report.max_fault_index >= observed_report.observed_allocations &&
+                  observed_report.observed_allocation_spare == 1,
+              933);
+    }
+
+    {
+        using epidemic::tests::pre_state::StateComparator;
+        using epidemic::tests::pre_state::StateFacet;
+        using epidemic::tests::pre_state::RequiredJournaledMutationFacets;
+
+        const PreStateFixture before{1, 2, 3, 4, 5, 6};
+        const PreStateFixture after = before;
+        const auto report = StateComparator("foundation.test.full_pre_state")
+                                .RequireEqual(StateFacet::PrimaryRecords, before.primary_record, after.primary_record,
+                                              "primary records")
+                                .RequireEqual(StateFacet::RecordPayloads, before, after, "record payloads")
+                                .RequireEqual(StateFacet::SecondaryIndexes, before.secondary_index,
+                                              after.secondary_index, "secondary indexes")
+                                .RequireEqual(StateFacet::IdGenerators, before.generator_next, after.generator_next,
+                                              "id generators")
+                                .RequireEqual(StateFacet::Revisions, before.revision, after.revision, "revisions")
+                                .RequireEqual(StateFacet::Journal, before.journal_sequence, after.journal_sequence,
+                                              "journal")
+                                .RequireEqual(StateFacet::JournalEpoch, before.journal_sequence,
+                                              after.journal_sequence, "journal epoch")
+                                .RequireEqual(StateFacet::JournalSequence, before.journal_sequence,
+                                              after.journal_sequence, "journal sequence")
+                                .RequireEqual(StateFacet::JournalRetainedRecords, before.journal_sequence,
+                                              after.journal_sequence, "journal retained records")
+                                .RequireEqual(StateFacet::JournalLatestCursor, before.journal_sequence,
+                                              after.journal_sequence, "journal latest cursor")
+                                .RequireEqual(StateFacet::ExternalCallbacks, before.callback_count, after.callback_count,
+                                              "external callbacks")
+                                .RequireEqual(StateFacet::PublicReadModels, before, after, "public read models")
+                                .Finish();
+        Check(report.PassedAndCovers({StateFacet::PrimaryRecords,
+                                      StateFacet::RecordPayloads,
+                                      StateFacet::SecondaryIndexes,
+                                      StateFacet::IdGenerators,
+                                      StateFacet::Revisions,
+                                      StateFacet::Journal,
+                                      StateFacet::JournalEpoch,
+                                      StateFacet::JournalSequence,
+                                      StateFacet::JournalRetainedRecords,
+                                      StateFacet::JournalLatestCursor,
+                                      StateFacet::ExternalCallbacks,
+                                      StateFacet::PublicReadModels}),
+              928);
+        Check(report.PassedAndCovers(RequiredJournaledMutationFacets), 934);
+
+        const auto revision_only = StateComparator("foundation.test.revision_only")
+                                       .RequireEqual(StateFacet::Revisions, before.revision, after.revision,
+                                                     "revisions")
+                                       .Finish();
+        Check(!revision_only.PassedAndCovers({StateFacet::PrimaryRecords,
+                                              StateFacet::RecordPayloads,
+                                              StateFacet::SecondaryIndexes,
+                                              StateFacet::Revisions,
+                                              StateFacet::JournalLatestCursor}),
+              929);
+
+        PreStateFixture changed = before;
+        changed.secondary_index = 99;
+        const auto mismatch = StateComparator("foundation.test.index_mismatch")
+                                  .RequireEqual(StateFacet::SecondaryIndexes, before.secondary_index,
+                                                changed.secondary_index, "secondary indexes")
+                                  .Finish();
+        Check(!mismatch.Passed(), 930);
+    }
 
     bool stable_fault_observed = false;
     for (long long fail_after = 0; fail_after < 32 && !stable_fault_observed; ++fail_after)

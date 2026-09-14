@@ -345,7 +345,21 @@ foundation::Result<std::vector<EffectService::PreparedOperation>> EffectService:
         return left.local_sequence < right.local_sequence;
     });
 
-    std::vector<PreparedOperation> prepared(operations.size());
+    std::vector<PreparedOperation> prepared;
+    try
+    {
+        prepared.resize(operations.size());
+    }
+    catch (const std::exception&)
+    {
+        return foundation::Result<std::vector<PreparedOperation>>::Failure(
+            Error("gameplay.effect_prepare_storage_failed", "unable to stage prepared effect operations"));
+    }
+    catch (...)
+    {
+        return foundation::Result<std::vector<PreparedOperation>>::Failure(
+            Error("gameplay.effect_prepare_storage_failed", "unable to stage prepared effect operations"));
+    }
     for (std::size_t i = 0; i < operations.size(); ++i)
     {
         auto& output = prepared[i];
@@ -442,6 +456,8 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
     result.execution = execution;
     std::vector<EffectOperation> wave = std::move(expanded).Value();
     std::vector<EffectOperation> next_wave;
+    std::vector<PreparedOperation> first_wave_prepared;
+    bool use_prepared_first_wave = false;
     try
     {
         result.operations.reserve(budget.max_effects);
@@ -452,6 +468,21 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
     {
         return foundation::Result<EffectExecutionResult>::Failure(
             Error("gameplay.effect_execution_storage_failed", "unable to stage effect execution storage"));
+    }
+
+    if (!wave.empty() && budget.max_waves > 0 && wave.size() <= budget.max_effects)
+    {
+        for (auto& operation : wave)
+        {
+            operation.wave = 0;
+        }
+        auto prepared_result = PrepareWave(std::move(wave), definition->policy);
+        if (!prepared_result)
+        {
+            return foundation::Result<EffectExecutionResult>::Failure(prepared_result.GetError());
+        }
+        first_wave_prepared = std::move(prepared_result).Value();
+        use_prepared_first_wave = true;
     }
 
     // From this point the execution is accepted and all framework-owned result scratch
@@ -467,7 +498,7 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
     bool any_failed = false;
     bool any_noop = false;
 
-    for (std::uint32_t wave_index = 0; !wave.empty(); ++wave_index)
+    for (std::uint32_t wave_index = 0; use_prepared_first_wave || !wave.empty(); ++wave_index)
     {
         if (wave_index >= budget.max_waves || total_operations + wave.size() > budget.max_effects)
         {
@@ -481,16 +512,26 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
             break;
         }
 
-        for (auto& operation : wave)
+        std::vector<PreparedOperation> prepared;
+        if (use_prepared_first_wave && wave_index == 0)
         {
-            operation.wave = wave_index;
+            prepared = std::move(first_wave_prepared);
+            use_prepared_first_wave = false;
+            wave.clear();
         }
-        auto prepared_result = PrepareWave(std::move(wave), definition->policy);
-        if (!prepared_result)
+        else
         {
-            return foundation::Result<EffectExecutionResult>::Failure(prepared_result.GetError());
+            for (auto& operation : wave)
+            {
+                operation.wave = wave_index;
+            }
+            auto prepared_result = PrepareWave(std::move(wave), definition->policy);
+            if (!prepared_result)
+            {
+                return foundation::Result<EffectExecutionResult>::Failure(prepared_result.GetError());
+            }
+            prepared = std::move(prepared_result).Value();
         }
-        auto prepared = std::move(prepared_result).Value();
         next_wave.clear();
         std::uint64_t derived_sequence = 0;
 
@@ -969,8 +1010,8 @@ foundation::Result<void> EffectService::RestoreSnapshot(EffectsSnapshot snapshot
 
     deferred_ = std::move(rebuilt);
     deferred_by_schedule_.clear();
-    execution_ids_.Restore(snapshot.execution_ids);
-    deferred_ids_.Restore(snapshot.deferred_ids);
+    [[maybe_unused]] const auto execution_ids_restored = execution_ids_.Restore(snapshot.execution_ids);
+    [[maybe_unused]] const auto deferred_ids_restored = deferred_ids_.Restore(snapshot.deferred_ids);
     changes_.clear();
     next_change_sequence_ = 1;
     executions_ = operations_ = targets_ = derived_effects_ = waves_ = rejections_ = budget_exhaustions_ = 0;

@@ -1,4 +1,6 @@
 #include "allocation_fault_injection.h"
+#include "pre_state_verification.h"
+#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Encounters/encounters.h"
 #include <cstdlib>
 #include <iostream>
@@ -119,30 +121,57 @@ int main()
     // Caller supplied IDs from the service scope advance the matching generator.
     EncountersService id_service; SpawnPoint explicit_point; explicit_point.id=SpawnPointId::FromRaw(0x2701,50); explicit_point.area=forest; explicit_point.position=clearing; Check(static_cast<bool>(id_service.AddSpawnPoint(explicit_point)),"explicit point id"); SpawnPoint next_point; next_point.area=forest; next_point.position=Ref("world.position","forest.next"); auto next_id=id_service.AddSpawnPoint(next_point); Check(static_cast<bool>(next_id) && next_id.Value().value.Low()>50,"caller id advances generator");
 
-    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
     const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
-    {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
-            return 903;
-    }
-    if (!saw_restore_allocation_failure)
+    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
+        "Encounters.RestoreSnapshot",
+        2,
+        [&] { return allocation_before; },
+        [&](auto snapshot) { return restored.RestoreSnapshot(std::move(snapshot)); },
+        [&] { return restored.CaptureSnapshot(); },
+        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+                return true;
+            const auto allocation_after = restored.CaptureSnapshot();
+            const auto pre_state = epidemic::tests::pre_state::StateComparator("Encounters.RestoreSnapshot.pre_state")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
+                                                     allocation_baseline.instances.size(), allocation_after.instances.size(),
+                                                     "encounter instance count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
+                                                     allocation_baseline.points.size(), allocation_after.points.size(),
+                                                     "spawn point payload count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
+                                                     restored.GetEncounterInstance(first.encounter_instance) != nullptr, true,
+                                                     "encounter lookup by id")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
+                                                     allocation_baseline.instance_ids.next, allocation_after.instance_ids.next,
+                                                     "instance id generator next")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
+                                                     allocation_baseline.revision, allocation_after.revision,
+                                                     "revision")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
+                                                     restored.ReadChangesSince(restored.LatestChangeCursor()).changes.size(),
+                                                     std::size_t{0},
+                                                     "latest cursor has no unread changes")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
+                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
+                                                     "journal epoch")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
+                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
+                                                     "latest change cursor stable")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
+                                                     allocation_baseline.requests.size(), allocation_after.requests.size(),
+                                                     "request record count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
+                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
+                                                     "latest cursor")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
+                                                     restored.GetEncounterInstance(first.encounter_instance) != nullptr, true,
+                                                     "public encounter read model")
+                                       .Finish();
+            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
+        });
+    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
         return 904;
     return 0;
 }

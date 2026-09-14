@@ -1,4 +1,7 @@
 #include "allocation_fault_injection.h"
+#include "mutation_fault_sweep.h"
+#include "pre_state_verification.h"
+#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Effects/effects.h"
 
 #include <limits>
@@ -105,6 +108,374 @@ class ThrowingPrepareHandler final : public IEffectHandler
   private:
     EffectTypeId type_{};
 };
+
+struct EffectsFaultState
+{
+    EffectsSnapshot snapshot;
+    EffectsDiagnostics diagnostics;
+    ChangeCursor latest_cursor;
+    std::uint64_t oldest_change_sequence = 0;
+    std::vector<DeferredEffectRecord> all_deferred;
+    std::vector<DeferredEffectRecord> unscheduled_deferred;
+    std::size_t scheduled_lookup_count = 0;
+    std::size_t scheduled_lookup_successes = 0;
+    int callback_total = 0;
+};
+
+[[nodiscard]] bool SameRequestShape(const EffectRequest& left, const EffectRequest& right)
+{
+    return left.definition == right.definition && left.targets == right.targets && left.scale_micro == right.scale_micro &&
+           left.context.tick == right.context.tick && left.context.time == right.context.time &&
+           left.context.actor == right.context.actor && left.context.instigator == right.context.instigator &&
+           left.context.source == right.context.source && left.context.operation == right.context.operation &&
+           left.context.correlation == right.context.correlation && left.context.parent_operation == right.context.parent_operation &&
+           left.context.cause_event == right.context.cause_event;
+}
+
+[[nodiscard]] bool SameDeferredRecords(const std::vector<DeferredEffectRecord>& left,
+                                       const std::vector<DeferredEffectRecord>& right)
+{
+    if (left.size() != right.size())
+    {
+        return false;
+    }
+
+    for (std::size_t index = 0; index < left.size(); ++index)
+    {
+        const auto& before = left[index];
+        const auto& after = right[index];
+        if (before.id != after.id || !SameRequestShape(before.request, after.request) || before.clock != after.clock ||
+            before.due != after.due || before.schedule != after.schedule || before.persistence != after.persistence)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool SameDiagnostics(const EffectsDiagnostics& left, const EffectsDiagnostics& right)
+{
+    return left.executions == right.executions && left.operations == right.operations && left.targets == right.targets &&
+           left.derived_effects == right.derived_effects && left.waves == right.waves &&
+           left.rejections == right.rejections && left.budget_exhaustions == right.budget_exhaustions &&
+           left.deferred_effects == right.deferred_effects;
+}
+
+[[nodiscard]] int SumValues(const std::unordered_map<GameplayObjectRef, int>& values)
+{
+    int total = 0;
+    for (const auto& [_, value] : values)
+    {
+        total += value;
+    }
+    return total;
+}
+
+struct EffectsFaultFixture
+{
+    EffectService service;
+    std::shared_ptr<TargetState> target_state = std::make_shared<TargetState>();
+    std::shared_ptr<std::unordered_map<GameplayObjectRef, int>> values =
+        std::make_shared<std::unordered_map<GameplayObjectRef, int>>();
+    EffectTypeId root_type = EffectTypeId::FromString("test.effect.fault.root");
+    EffectDefinitionId definition_id{};
+    GameplayDomainId domain = GameplayDomainId::FromString("test.effect.fault.domain");
+    GameplayObjectRef a{domain, GameplayObjectId::FromRaw(1, 2)};
+    GameplayObjectRef b{domain, GameplayObjectId::FromRaw(1, 4)};
+    ClockId clock = ClockId::FromString("test.effect.fault.clock");
+    ScheduleId schedule = ScheduleId::FromString("test.effect.fault.schedule");
+    DeferredEffectId deferred{};
+
+    EffectsFaultFixture()
+    {
+        values->emplace(a, 0);
+        values->emplace(b, 0);
+        service.SetTargetStateProvider(target_state.get());
+        [[maybe_unused]] const auto handler =
+            service.RegisterHandler("test.effect.fault.root", std::make_shared<CountingHandler>(root_type, *values));
+
+        EffectDefinition definition;
+        definition.canonical_name = "test.effect.fault.bundle";
+        definition.steps.push_back(EffectStepDefinition{root_type, EffectTargetSelector::AllTargets, 2, {}});
+        const auto registered = service.RegisterDefinition(std::move(definition));
+        if (registered)
+        {
+            definition_id = registered.Value();
+        }
+        service.Freeze();
+    }
+
+    [[nodiscard]] EffectRequest MakeRequest() const
+    {
+        EffectRequest request;
+        request.definition = definition_id;
+        request.targets = {b, a, b};
+        request.scale_micro = 1'000'000;
+        request.context.tick = GameplayTickId{5};
+        request.context.time = GameplayTimePoint{500};
+        request.context.actor = a;
+        request.context.instigator = b;
+        request.context.source = a;
+        request.context.operation = OperationId::FromString("test.effect.fault.operation");
+        request.context.correlation = CorrelationId::FromString("test.effect.fault.correlation");
+        request.context.parent_operation = OperationId::FromString("test.effect.fault.parent");
+        request.context.cause_event = EventId::FromString("test.effect.fault.event");
+        return request;
+    }
+
+    bool CreateDeferred(bool bind_schedule)
+    {
+        const auto created = service.Defer(MakeRequest(), clock, GameplayTimePoint{900}, DeferredEffectPersistence::Persistent);
+        if (!created)
+        {
+            return false;
+        }
+        deferred = created.Value();
+        if (bind_schedule)
+        {
+            return static_cast<bool>(service.BindDeferredSchedule(deferred, schedule));
+        }
+        return true;
+    }
+};
+
+[[nodiscard]] EffectsFaultState CaptureEffectsFaultState(const EffectsFaultFixture& fixture)
+{
+    EffectsFaultState state;
+    state.snapshot = fixture.service.CaptureSnapshot();
+    state.diagnostics = fixture.service.GetDiagnostics();
+    state.latest_cursor = fixture.service.LatestChangeCursor();
+    state.oldest_change_sequence = fixture.service.OldestChangeSequence();
+    state.all_deferred = fixture.service.AllDeferred();
+    state.unscheduled_deferred = fixture.service.UnscheduledDeferred();
+    state.callback_total = SumValues(*fixture.values);
+    for (const auto& record : state.all_deferred)
+    {
+        if (record.schedule.has_value())
+        {
+            ++state.scheduled_lookup_count;
+            if (fixture.service.PeekDeferredBySchedule(*record.schedule))
+            {
+                ++state.scheduled_lookup_successes;
+            }
+        }
+    }
+    return state;
+}
+
+[[nodiscard]] epidemic::tests::pre_state::ComparisonReport CompareEffectsFaultState(std::string scope,
+                                                                                    const EffectsFaultState& before,
+                                                                                    const EffectsFaultState& after)
+{
+    return epidemic::tests::pre_state::StateComparator(std::move(scope))
+        .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
+                      before.snapshot.deferred.size(),
+                      after.snapshot.deferred.size(),
+                      "deferred primary record count")
+        .Require(epidemic::tests::pre_state::StateFacet::RecordPayloads,
+                 SameDeferredRecords(before.snapshot.deferred, after.snapshot.deferred),
+                 "deferred record payloads")
+        .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
+                      before.scheduled_lookup_successes,
+                      after.scheduled_lookup_successes,
+                      "scheduled deferred lookup successes")
+        .Require(epidemic::tests::pre_state::StateFacet::IdGenerators,
+                 before.snapshot.execution_ids.scope == after.snapshot.execution_ids.scope &&
+                     before.snapshot.execution_ids.next == after.snapshot.execution_ids.next &&
+                     before.snapshot.deferred_ids.scope == after.snapshot.deferred_ids.scope &&
+                     before.snapshot.deferred_ids.next == after.snapshot.deferred_ids.next,
+                 "execution/deferred id generators")
+        .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
+                      before.snapshot.change_epoch,
+                      after.snapshot.change_epoch,
+                      "change epoch")
+        .Require(epidemic::tests::pre_state::StateFacet::Journal,
+                 before.latest_cursor == after.latest_cursor && before.oldest_change_sequence == after.oldest_change_sequence,
+                 "journal cursor and retention window")
+        .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
+                      before.snapshot.change_epoch,
+                      after.snapshot.change_epoch,
+                      "journal epoch")
+        .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
+                      before.latest_cursor,
+                      after.latest_cursor,
+                      "latest change cursor")
+        .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
+                      before.oldest_change_sequence,
+                      after.oldest_change_sequence,
+                      "oldest retained sequence")
+        .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
+                      before.latest_cursor,
+                      after.latest_cursor,
+                      "latest cursor")
+        .RequireEqual(epidemic::tests::pre_state::StateFacet::ExternalCallbacks,
+                      before.callback_total,
+                      after.callback_total,
+                      "handler callback state")
+        .Require(epidemic::tests::pre_state::StateFacet::PublicReadModels,
+                 SameDeferredRecords(before.all_deferred, after.all_deferred) &&
+                     SameDeferredRecords(before.unscheduled_deferred, after.unscheduled_deferred) &&
+                     before.scheduled_lookup_count == after.scheduled_lookup_count &&
+                     before.scheduled_lookup_successes == after.scheduled_lookup_successes &&
+                     SameDiagnostics(before.diagnostics, after.diagnostics),
+                 "public deferred/diagnostics read models")
+        .Finish();
+}
+
+template <typename TMakeFixture, typename TInvoke>
+[[nodiscard]] bool EffectsMutationSweepPassed(std::string api, TMakeFixture&& make_fixture, TInvoke&& invoke)
+{
+    const auto report = epidemic::tests::mutation_fault::RunObservedMutationSweep(
+        std::move(api),
+        2,
+        std::forward<TMakeFixture>(make_fixture),
+        std::forward<TInvoke>(invoke),
+        [](const EffectsFaultFixture& fixture) { return CaptureEffectsFaultState(fixture); },
+        [](const epidemic::tests::allocation_fault::SweepIteration& iteration,
+           const EffectsFaultState& baseline,
+           const EffectsFaultFixture& fixture) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+            {
+                return true;
+            }
+            const auto after = CaptureEffectsFaultState(fixture);
+            return CompareEffectsFaultState(iteration.api + ".pre_state", baseline, after)
+                .PassedAndCovers(epidemic::tests::pre_state::RequiredExternalMutationFacets);
+        });
+    return epidemic::tests::mutation_fault::PassedObservedMutationSweep(report);
+}
+
+struct EffectsRegistrationFixture
+{
+    EffectService service;
+    std::shared_ptr<std::unordered_map<GameplayObjectRef, int>> values =
+        std::make_shared<std::unordered_map<GameplayObjectRef, int>>();
+    EffectTypeId root_type = EffectTypeId::FromString("test.effect.registration.root");
+    EffectDefinitionId definition_id = EffectDefinitionId::FromString("test.effect.registration.bundle");
+    GameplayDomainId domain = GameplayDomainId::FromString("test.effect.registration.domain");
+    GameplayObjectRef a{domain, GameplayObjectId::FromRaw(1, 2)};
+
+    EffectsRegistrationFixture()
+    {
+        values->emplace(a, 0);
+    }
+
+    [[nodiscard]] EffectDefinition MakeDefinition() const
+    {
+        EffectDefinition definition;
+        definition.canonical_name = "test.effect.registration.bundle";
+        definition.steps.push_back(EffectStepDefinition{root_type, EffectTargetSelector::AllTargets, 2, {}});
+        return definition;
+    }
+};
+
+struct EffectsRegistrationState
+{
+    EffectsSnapshot snapshot;
+    EffectsDiagnostics diagnostics;
+    ChangeCursor latest_cursor;
+    bool frozen = false;
+    bool definition_visible = false;
+};
+
+[[nodiscard]] EffectsRegistrationState CaptureEffectsRegistrationState(const EffectsRegistrationFixture& fixture)
+{
+    return EffectsRegistrationState{fixture.service.CaptureSnapshot(),
+                                    fixture.service.GetDiagnostics(),
+                                    fixture.service.LatestChangeCursor(),
+                                    fixture.service.IsFrozen(),
+                                    fixture.service.FindDefinition(fixture.definition_id) != nullptr};
+}
+
+[[nodiscard]] bool SameRegistrationState(const EffectsRegistrationState& before, const EffectsRegistrationState& after)
+{
+    return before.snapshot.deferred.size() == after.snapshot.deferred.size() &&
+           before.snapshot.execution_ids.scope == after.snapshot.execution_ids.scope &&
+           before.snapshot.execution_ids.next == after.snapshot.execution_ids.next &&
+           before.snapshot.deferred_ids.scope == after.snapshot.deferred_ids.scope &&
+           before.snapshot.deferred_ids.next == after.snapshot.deferred_ids.next &&
+           before.snapshot.change_epoch == after.snapshot.change_epoch && SameDiagnostics(before.diagnostics, after.diagnostics) &&
+           before.latest_cursor == after.latest_cursor && before.frozen == after.frozen &&
+           before.definition_visible == after.definition_visible;
+}
+
+[[nodiscard]] bool EffectsRegisterDefinitionSweepPassed()
+{
+    const auto report = epidemic::tests::mutation_fault::RunObservedMutationSweep(
+        "Effects.RegisterDefinition",
+        2,
+        [] {
+            EffectsRegistrationFixture fixture;
+            [[maybe_unused]] const auto handler = fixture.service.RegisterHandler(
+                "test.effect.registration.root", std::make_shared<CountingHandler>(fixture.root_type, *fixture.values));
+            return fixture;
+        },
+        [](EffectsRegistrationFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+            return fixture.service.RegisterDefinition(fixture.MakeDefinition());
+        },
+        [](const EffectsRegistrationFixture& fixture) { return CaptureEffectsRegistrationState(fixture); },
+        [](const epidemic::tests::allocation_fault::SweepIteration& iteration,
+           const EffectsRegistrationState& baseline,
+           const EffectsRegistrationFixture& fixture) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+            {
+                return fixture.service.FindDefinition(fixture.definition_id) != nullptr;
+            }
+            return SameRegistrationState(baseline, CaptureEffectsRegistrationState(fixture));
+        });
+    return epidemic::tests::mutation_fault::PassedObservedMutationSweep(report);
+}
+
+[[nodiscard]] bool EffectsRegisterHandlerSweepPassed()
+{
+    const auto report = epidemic::tests::mutation_fault::RunObservedMutationSweep(
+        "Effects.RegisterHandler",
+        2,
+        [] { return EffectsRegistrationFixture{}; },
+        [](EffectsRegistrationFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+            return fixture.service.RegisterHandler(
+                "test.effect.registration.root", std::make_shared<CountingHandler>(fixture.root_type, *fixture.values));
+        },
+        [](const EffectsRegistrationFixture& fixture) { return CaptureEffectsRegistrationState(fixture); },
+        [](const epidemic::tests::allocation_fault::SweepIteration& iteration,
+           const EffectsRegistrationState& baseline,
+           EffectsRegistrationFixture& fixture) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+            {
+                return static_cast<bool>(fixture.service.RegisterDefinition(fixture.MakeDefinition()));
+            }
+            const auto handler_leaked = static_cast<bool>(fixture.service.RegisterDefinition(fixture.MakeDefinition()));
+            return !handler_leaked && SameRegistrationState(baseline, CaptureEffectsRegistrationState(fixture));
+        });
+    return epidemic::tests::mutation_fault::PassedObservedMutationSweep(report);
+}
+
+[[nodiscard]] bool EffectsInlineLifecycleChecksPassed()
+{
+    auto freeze_probe = epidemic::tests::allocation_fault::CountObservedAllocations([] {
+        EffectService service;
+        return [service = std::move(service)](epidemic::tests::allocation_fault::SweepRunContext& context) mutable {
+            context.MarkMethodInvoked();
+            service.Freeze();
+            return service.IsFrozen();
+        };
+    });
+
+    auto provider_probe = epidemic::tests::allocation_fault::CountObservedAllocations([] {
+        EffectService service;
+        auto target_state = std::make_shared<TargetState>();
+        return [service = std::move(service), target_state](epidemic::tests::allocation_fault::SweepRunContext& context) mutable {
+            context.MarkMethodInvoked();
+            service.SetTargetStateProvider(target_state.get());
+            return true;
+        };
+    });
+
+    return freeze_probe.invocation.failure == epidemic::tests::allocation_fault::FailureKind::None &&
+           freeze_probe.invocation.method_invoked && freeze_probe.observed_allocations == 0 &&
+           provider_probe.invocation.failure == epidemic::tests::allocation_fault::FailureKind::None &&
+           provider_probe.invocation.method_invoked && provider_probe.observed_allocations == 0;
+}
 }
 
 int main()
@@ -243,33 +614,153 @@ int main()
     behind.deferred_ids.next = behind.deferred.front().id.value.Low();
     if (service.RestoreSnapshot(std::move(behind))) return 18;
 
-    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
+    if (!EffectsRegisterHandlerSweepPassed()) return 911;
+    if (!EffectsRegisterDefinitionSweepPassed()) return 912;
+    if (!EffectsInlineLifecycleChecksPassed()) return 913;
+
+    if (!EffectsMutationSweepPassed(
+            "Effects.Execute",
+            [] { return EffectsFaultFixture{}; },
+            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+                return fixture.service.Execute(fixture.MakeRequest());
+            }))
+        return 903;
+
+    if (!EffectsMutationSweepPassed(
+            "Effects.Defer",
+            [] { return EffectsFaultFixture{}; },
+            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+                return fixture.service.Defer(
+                    fixture.MakeRequest(), fixture.clock, GameplayTimePoint{901}, DeferredEffectPersistence::Persistent);
+            }))
+        return 904;
+
+    if (!EffectsMutationSweepPassed(
+            "Effects.BindDeferredSchedule",
+            [] {
+                EffectsFaultFixture fixture;
+                [[maybe_unused]] const auto ready = fixture.CreateDeferred(false);
+                return fixture;
+            },
+            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+                return fixture.service.BindDeferredSchedule(fixture.deferred, fixture.schedule);
+            }))
+        return 905;
+
+    if (!EffectsMutationSweepPassed(
+            "Effects.ClearDeferredSchedule",
+            [] {
+                EffectsFaultFixture fixture;
+                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
+                return fixture;
+            },
+            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+                return fixture.service.ClearDeferredSchedule(fixture.deferred);
+            }))
+        return 906;
+
+    if (!EffectsMutationSweepPassed(
+            "Effects.AcknowledgeDeferredBySchedule",
+            [] {
+                EffectsFaultFixture fixture;
+                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
+                return fixture;
+            },
+            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+                return fixture.service.AcknowledgeDeferredBySchedule(fixture.schedule);
+            }))
+        return 907;
+
+    if (!EffectsMutationSweepPassed(
+            "Effects.TakeDeferredBySchedule",
+            [] {
+                EffectsFaultFixture fixture;
+                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
+                return fixture;
+            },
+            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+                return fixture.service.TakeDeferredBySchedule(fixture.schedule);
+            }))
+        return 908;
+
+    if (!EffectsMutationSweepPassed(
+            "Effects.CancelDeferred",
+            [] {
+                EffectsFaultFixture fixture;
+                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
+                return fixture;
+            },
+            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+                return fixture.service.CancelDeferred(fixture.deferred);
+            }))
+        return 909;
+
+    if (!EffectsMutationSweepPassed(
+            "Effects.CancelDeferredTargeting",
+            [] {
+                EffectsFaultFixture fixture;
+                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
+                return fixture;
+            },
+            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
+                return fixture.service.CancelDeferredTargeting(fixture.a) == 1;
+            }))
+        return 910;
+
+    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
     const auto allocation_before = service.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
-    {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = service.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        const auto allocation_after = service.CaptureSnapshot();
-        if (allocation_after.deferred.size() != allocation_before.deferred.size() ||
-            allocation_after.execution_ids.next != allocation_before.execution_ids.next ||
-            allocation_after.deferred_ids.next != allocation_before.deferred_ids.next)
-            return 901;
-    }
-    if (!saw_restore_allocation_failure)
+    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
+        "Effects.RestoreSnapshot",
+        2,
+        [&] { return allocation_before; },
+        [&](auto snapshot) { return service.RestoreSnapshot(std::move(snapshot)); },
+        [&] { return service.CaptureSnapshot(); },
+        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+                return true;
+            const auto allocation_after = service.CaptureSnapshot();
+            const auto diagnostics = service.GetDiagnostics();
+            const auto pre_state = epidemic::tests::pre_state::StateComparator("Effects.RestoreSnapshot.pre_state")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
+                                                     allocation_baseline.deferred.size(), allocation_after.deferred.size(),
+                                                     "deferred record count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
+                                                     allocation_baseline.deferred.size(), allocation_after.deferred.size(),
+                                                     "deferred payload count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
+                                                     diagnostics.deferred_effects,
+                                                     static_cast<std::uint64_t>(allocation_baseline.deferred.size()),
+                                                     "deferred index diagnostics")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
+                                                     allocation_baseline.execution_ids.next, allocation_after.execution_ids.next,
+                                                     "execution id generator next")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
+                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
+                                                     "change epoch")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
+                                                     service.ReadChangesSince(service.LatestChangeCursor()).changes.size(),
+                                                     std::size_t{0},
+                                                     "latest cursor has no unread changes")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
+                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
+                                                     "journal epoch")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
+                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
+                                                     "latest change cursor stable")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
+                                                     allocation_baseline.deferred.size(), allocation_after.deferred.size(),
+                                                     "retained restore records")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
+                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
+                                                     "latest cursor")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
+                                                     diagnostics.deferred_effects,
+                                                     static_cast<std::uint64_t>(allocation_baseline.deferred.size()),
+                                                     "public diagnostics read model")
+                                       .Finish();
+            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
+        });
+    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
         return 902;
     return 0;
 }

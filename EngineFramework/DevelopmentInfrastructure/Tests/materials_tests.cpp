@@ -1,4 +1,6 @@
 #include "allocation_fault_injection.h"
+#include "pre_state_verification.h"
+#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Materials/materials.h"
 
 #include <array>
@@ -94,6 +96,60 @@ int main()
     if (!service.RestoreSnapshot(partial_snapshot)) return 30;
     if (!service.FindState(subject, slot.Value()) || service.FindState(filtered_out_subject, slot.Value())) return 31;
 
+    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
+    const auto allocation_before = service.CaptureSnapshot();
+    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
+        "Materials.RestoreSnapshot",
+        2,
+        [&] { return allocation_before; },
+        [&](auto snapshot) { return service.RestoreSnapshot(std::move(snapshot)); },
+        [&] { return service.CaptureSnapshot(); },
+        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
+            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
+                return true;
+            const auto allocation_after = service.CaptureSnapshot();
+            const auto diagnostics = service.GetDiagnostics();
+            const auto pre_state = epidemic::tests::pre_state::StateComparator("Materials.RestoreSnapshot.pre_state")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
+                                                     allocation_baseline.states.size(), allocation_after.states.size(),
+                                                     "material state count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
+                                                     allocation_baseline.states.size(), allocation_after.states.size(),
+                                                     "material state payload count")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
+                                                     diagnostics.material_states,
+                                                     static_cast<std::uint64_t>(allocation_baseline.states.size()),
+                                                     "material index diagnostics")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
+                                                     allocation_baseline.revision, allocation_after.revision,
+                                                     "revision")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
+                                                     service.ReadChangesSince(service.LatestChangeCursor()).changes.size(),
+                                                     std::size_t{0},
+                                                     "latest cursor has no unread changes")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
+                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
+                                                     "journal epoch")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
+                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
+                                                     "latest change cursor stable")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
+                                                     diagnostics.stimuli, diagnostics.stimuli,
+                                                     "retained stimuli diagnostics stable")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
+                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
+                                                     "latest cursor")
+                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
+                                                     diagnostics.material_states,
+                                                     static_cast<std::uint64_t>(allocation_baseline.states.size()),
+                                                     "public diagnostics read model")
+                                       .Finish();
+            return pre_state.PassedAndCovers(
+                epidemic::tests::pre_state::RequiredJournaledMutationFacetsWithoutIdGenerator);
+        });
+    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
+        return 918;
+
     // Sparse-state stress.
     for (int i = 0; i < 10000; ++i)
     {
@@ -142,31 +198,6 @@ int main()
         !(material_exhausted_after->dynamic == material_exhausted_before.dynamic))
         return 36;
 
-    // Milestone 2: RestoreSnapshot preserves live state at every allocation failure.
-    const auto allocation_before = service.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
-    {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = service.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (service.CaptureSnapshot().revision != allocation_before.revision)
-            return 917;
-    }
-    if (!saw_restore_allocation_failure)
-        return 918;
     return 0;
 }
 
