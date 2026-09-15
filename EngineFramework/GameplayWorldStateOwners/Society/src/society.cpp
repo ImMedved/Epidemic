@@ -74,7 +74,7 @@ void AdvanceGeneratorPast(MonotonicIdGenerator<GameplayObjectId> &generator, Wra
     if (snapshot.next == 0 || id.value.Low() < snapshot.next)
         return;
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 [[nodiscard]] bool MembershipContributesToGroupAttitude(MembershipState state) noexcept
@@ -1013,8 +1013,8 @@ foundation::Result<void> SocietyService::RestoreSnapshot(SocietySnapshot snapsho
     relationships_by_subject_ = std::move(new_relationships_by_subject);
     reputations_ = std::move(new_reputations);
     reputations_by_subject_ = std::move(new_reputations_by_subject);
-    membership_ids_.Restore(snapshot.membership_ids);
-    relationship_ids_.Restore(snapshot.relationship_ids);
+    (void)membership_ids_.Restore(snapshot.membership_ids);
+    (void)relationship_ids_.Restore(snapshot.relationship_ids);
     revision_ = snapshot.revision;
     changes_ = std::move(new_journal);
     next_change_sequence_ = snapshot.next_change_sequence;

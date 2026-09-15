@@ -12,7 +12,7 @@ target_link_libraries(EpidemicGameFrameworkPopulationSimulationIntegration
         EpidemicGameFrameworkEncounters
         EpidemicGameFrameworkRolesJobs
         EpidemicGameFrameworkNeedsLife
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkPopulationSimulationIntegration)

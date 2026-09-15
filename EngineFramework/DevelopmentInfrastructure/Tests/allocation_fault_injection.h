@@ -36,6 +36,7 @@ inline void ResetInjectedFailureCount() noexcept
 
 [[nodiscard]] inline bool IsIgnoredBookkeepingAllocation(std::size_t size) noexcept
 {
+    (void)size;
 #if defined(_MSC_VER) && defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL > 0
     // MSVC checked iterators use a two-pointer node allocated inside noexcept STL
     // bookkeeping. Failing that implementation detail terminates before user code

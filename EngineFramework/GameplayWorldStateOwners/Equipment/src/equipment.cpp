@@ -44,7 +44,7 @@ void AdvanceGeneratorPast(MonotonicIdGenerator<GameplayObjectId>& generator, Wra
     auto snapshot = generator.GetSnapshot();
     if (snapshot.next == 0 || id.value.Low() < snapshot.next) return;
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 } // namespace
 EquipmentService::EquipmentService(std::size_t change_capacity) : change_capacity_(std::max<std::size_t>(1, change_capacity)) {}
@@ -884,11 +884,11 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
     profile_by_subject_ = std::move(by_subject);
     bindings_ = std::move(bindings);
     loadouts_ = std::move(loadouts);
-    profile_ids_.Restore(s.profile_ids);
-    slot_ids_.Restore(s.slot_ids);
-    binding_ids_.Restore(s.binding_ids);
-    operation_ids_.Restore(s.operation_ids);
-    loadout_ids_.Restore(s.loadout_ids);
+    (void)profile_ids_.Restore(s.profile_ids);
+    (void)slot_ids_.Restore(s.slot_ids);
+    (void)binding_ids_.Restore(s.binding_ids);
+    (void)operation_ids_.Restore(s.operation_ids);
+    (void)loadout_ids_.Restore(s.loadout_ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;

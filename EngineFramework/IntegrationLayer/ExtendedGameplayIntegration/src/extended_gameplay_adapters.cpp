@@ -821,7 +821,7 @@ foundation::Result<void> TradeCoordinator::RestoreSnapshot(TradeCoordinatorSnaps
         return foundation::Result<void>::Failure(
             Error("gameplay.trade.restore_invalid", "trade execution id generator snapshot is invalid"));
     executions_ = std::move(restored);
-    execution_ids_.Restore(snapshot.execution_ids);
+    (void)execution_ids_.Restore(snapshot.execution_ids);
     return foundation::Result<void>::Success();
 }
 

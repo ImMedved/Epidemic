@@ -8,7 +8,7 @@ target_include_directories(EpidemicGameFrameworkNavigationSemantics PUBLIC
 
 target_link_libraries(EpidemicGameFrameworkNavigationSemantics
     PUBLIC EpidemicGameFrameworkFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkNavigationSemantics)

@@ -27,7 +27,7 @@ template <class TId> void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<Ga
         return;
 
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 template <class TId> [[nodiscard]] std::uint64_t MaxLowPart(const std::vector<TId> &ids) noexcept
@@ -1307,11 +1307,11 @@ foundation::Result<void> RolesJobsService::RestoreSnapshot(RolesJobsSnapshot sna
     assignments_ = std::move(assignments);
     schedules_ = std::move(schedules);
     duties_ = std::move(duties);
-    assignment_ids_.Restore(snapshot.assignment_ids);
-    workplace_ids_.Restore(snapshot.workplace_ids);
-    schedule_ids_.Restore(snapshot.schedule_ids);
-    shift_ids_.Restore(snapshot.shift_ids);
-    duty_ids_.Restore(snapshot.duty_ids);
+    (void)assignment_ids_.Restore(snapshot.assignment_ids);
+    (void)workplace_ids_.Restore(snapshot.workplace_ids);
+    (void)schedule_ids_.Restore(snapshot.schedule_ids);
+    (void)shift_ids_.Restore(snapshot.shift_ids);
+    (void)duty_ids_.Restore(snapshot.duty_ids);
     revision_ = snapshot.revision;
     changes_.clear();
     next_change_sequence_ = 1;

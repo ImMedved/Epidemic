@@ -8,7 +8,7 @@ target_include_directories(EpidemicGameFrameworkCrime PUBLIC
 
 target_link_libraries(EpidemicGameFrameworkCrime
     PUBLIC EpidemicGameFrameworkFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkCrime)

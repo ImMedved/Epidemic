@@ -27,7 +27,7 @@ void AdvanceGeneratorPastExplicitId(MonotonicIdGenerator<GameplayObjectId> &gene
     if (id.value.High() != snapshot.scope || snapshot.next == 0 || id.value.Low() < snapshot.next)
         return;
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 template <class WrappedId>
@@ -312,7 +312,7 @@ foundation::Result<OwnershipRecordId> OwnershipService::AssignOwnership(Ownershi
         return foundation::Result<OwnershipRecordId>::Failure(
             Error("gameplay.ownership.publication_failed", "ownership publication failed"));
     }
-    ownership_ids_.Restore(staged_ids.GetSnapshot());
+    (void)ownership_ids_.Restore(staged_ids.GetSnapshot());
     revision_ = r.revision;
     return foundation::Result<OwnershipRecordId>::Success(id);
 }
@@ -446,7 +446,7 @@ foundation::Result<PermissionGrantId> OwnershipService::GrantPermission(Permissi
         if (inserted) { UnindexGrant(g); grants_.erase(id); }
         return foundation::Result<PermissionGrantId>::Failure(Error("gameplay.ownership.publication_failed", "permission grant publication failed"));
     }
-    grant_ids_.Restore(staged_ids.GetSnapshot()); revision_ = g.revision;
+    (void)grant_ids_.Restore(staged_ids.GetSnapshot()); revision_ = g.revision;
     return foundation::Result<PermissionGrantId>::Success(id);
 }
 
@@ -498,7 +498,7 @@ foundation::Result<AccessRuleId> OwnershipService::AddAccessRule(AccessRule r)
     r.revision=rev.Value(); const auto id=r.id; bool inserted=false;
     try { rules_.emplace(id,r); inserted=true; IndexRule(r); Record({0,OwnershipChangeKind::AccessRuleAdded,r.property,r.required_subject,{},r.right,{},r.revision,r.domain}); }
     catch(...) { if(inserted){UnindexRule(r);rules_.erase(id);} return foundation::Result<AccessRuleId>::Failure(Error("gameplay.ownership.publication_failed","access rule publication failed")); }
-    rule_ids_.Restore(staged_ids.GetSnapshot()); revision_=r.revision; return foundation::Result<AccessRuleId>::Success(id);
+    (void)rule_ids_.Restore(staged_ids.GetSnapshot()); revision_=r.revision; return foundation::Result<AccessRuleId>::Success(id);
 }
 
 foundation::Result<void> OwnershipService::UpdateAccessRule(AccessRule r, GameplayContext context)
@@ -539,7 +539,7 @@ foundation::Result<PropertyClaimId> OwnershipService::CreateClaim(PropertyClaim 
     auto rev=PrepareRevision();if(!rev)return foundation::Result<PropertyClaimId>::Failure(rev.GetError());c.revision=rev.Value();const auto id=c.id;bool inserted=false;
     try{claims_.emplace(id,c);inserted=true;IndexClaim(c);Record({0,OwnershipChangeKind::PropertyClaimCreated,c.property,c.claimant,{},{},{},c.revision});}
     catch(...){if(inserted){UnindexClaim(c);claims_.erase(id);}return foundation::Result<PropertyClaimId>::Failure(Error("gameplay.ownership.publication_failed","claim publication failed"));}
-    claim_ids_.Restore(staged_ids.GetSnapshot());revision_=c.revision;++diagnostics_.claim_conflicts;return foundation::Result<PropertyClaimId>::Success(id);
+    (void)claim_ids_.Restore(staged_ids.GetSnapshot());revision_=c.revision;++diagnostics_.claim_conflicts;return foundation::Result<PropertyClaimId>::Success(id);
 }
 
 foundation::Result<void> OwnershipService::ResolveClaim(PropertyClaimId id, GameplayContext c)
@@ -1006,10 +1006,10 @@ foundation::Result<void> OwnershipService::RestoreSnapshot(OwnershipSnapshot s)
     grants_by_subject_.swap(grants_by_subject);
     rules_by_property_.swap(rules_by_property);
     claims_by_property_.swap(claims_by_property);
-    ownership_ids_.Restore(s.ownership_ids);
-    grant_ids_.Restore(s.grant_ids);
-    rule_ids_.Restore(s.rule_ids);
-    claim_ids_.Restore(s.claim_ids);
+    (void)ownership_ids_.Restore(s.ownership_ids);
+    (void)grant_ids_.Restore(s.grant_ids);
+    (void)rule_ids_.Restore(s.rule_ids);
+    (void)claim_ids_.Restore(s.claim_ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;

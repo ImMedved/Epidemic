@@ -240,14 +240,14 @@ foundation::Result<PerceptionStimulusId> PerceptionService::CreateStimulus(Perce
     auto gs=staged_ids.GetSnapshot();
     if (s.id.value.High()==gs.scope && gs.next!=0 && s.id.value.Low()>=gs.next)
     {
-        gs.next=s.id.value.Low()==std::numeric_limits<std::uint64_t>::max()?0:s.id.value.Low()+1; staged_ids.Restore(gs);
+        gs.next=s.id.value.Low()==std::numeric_limits<std::uint64_t>::max()?0:s.id.value.Low()+1; (void)staged_ids.Restore(gs);
     }
     if(!CanAdvanceRevision()) return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.revision_exhausted","perception revision is exhausted"));
     if(!CanRecordChanges()) return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.change_sequence_exhausted","perception change sequence is exhausted"));
     const Revision next{revision_.value+1}; s.revision=next; const auto id=s.id; bool inserted=false;
     try { stimuli_.emplace(id,s); inserted=true; IndexStimulus(s); Record({0,PerceptionChangeKind::StimulusCreated,s.source,{},id,{},AwarenessLevel::Unaware,s.context,next}); }
     catch(...) { if(inserted){UnindexStimulus(s);stimuli_.erase(id);} return foundation::Result<PerceptionStimulusId>::Failure(Error("gameplay.perception.publication_failed","stimulus publication failed")); }
-    stimulus_ids_.Restore(staged_ids.GetSnapshot()); revision_=next; return foundation::Result<PerceptionStimulusId>::Success(id);
+    (void)stimulus_ids_.Restore(staged_ids.GetSnapshot()); revision_=next; return foundation::Result<PerceptionStimulusId>::Success(id);
 }
 
 foundation::Result<void> PerceptionService::ExpireStimuli(GameplayTimePoint now, GameplayContext context)
@@ -792,7 +792,7 @@ foundation::Result<std::vector<PerceptionObservation>> PerceptionService::Proces
     for(auto it=observation_nodes.begin();it!=observation_nodes.end();){auto node=observation_nodes.extract(it++);observations_.insert(std::move(node));}
     for(auto &[subject,ids]:replacement_indexes){auto live=observations_by_perceiver_.find(subject);if(live==observations_by_perceiver_.end())observations_by_perceiver_.emplace(subject,std::move(ids));else live->second.swap(ids);}
     for(auto &[key,value]:awareness_updates){auto live=awareness_.find(key);if(live==awareness_.end())awareness_.emplace(key,value);else live->second=value;}
-    changes_.swap(staged_changes); next_change_sequence_=staged_sequence; observation_ids_.Restore(staged_ids.GetSnapshot()); revision_=Revision{rev_cursor};
+    changes_.swap(staged_changes); next_change_sequence_=staged_sequence; (void)observation_ids_.Restore(staged_ids.GetSnapshot()); revision_=Revision{rev_cursor};
     ++staged_budget.processed_stimuli; tick_budget_=staged_budget;
     ++diagnostics_.processed_stimuli; diagnostics_.detection_tests+=local_detection; diagnostics_.visibility_tests+=local_visibility; diagnostics_.audibility_tests+=local_audibility; diagnostics_.custom_tests+=local_custom;
     if(truncated||detection_budget_hit)++diagnostics_.budget_exhaustions;
@@ -1379,8 +1379,8 @@ foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot s
     observations_.swap(new_observations);
     observations_by_perceiver_.swap(new_observation_index);
     awareness_.swap(new_awareness);
-    stimulus_ids_.Restore(snapshot.stimulus_ids);
-    observation_ids_.Restore(snapshot.observation_ids);
+    (void)stimulus_ids_.Restore(snapshot.stimulus_ids);
+    (void)observation_ids_.Restore(snapshot.observation_ids);
     revision_ = snapshot.revision;
     changes_.clear();
     next_change_sequence_ = snapshot.next_change_sequence;

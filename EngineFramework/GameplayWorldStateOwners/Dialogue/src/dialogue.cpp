@@ -1024,8 +1024,8 @@ foundation::Result<void> DialogueService::RestoreSnapshot(DialogueSnapshot s)
 
     sessions_ = std::move(sessions);
     consequences_ = std::move(consequences);
-    session_ids_.Restore(s.session_ids);
-    consequence_ids_.Restore(s.consequence_ids);
+    (void)session_ids_.Restore(s.session_ids);
+    (void)consequence_ids_.Restore(s.consequence_ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;

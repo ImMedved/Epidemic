@@ -386,7 +386,7 @@ foundation::Result<void> KnowledgeService::RestoreSnapshot(KnowledgeSnapshot s)
     for(const auto& [id,m]:new_memories)InsertSorted(new_memory_index[m.owner],id);
 
     profiles_.swap(new_profiles);knowledge_.swap(new_knowledge);memories_.swap(new_memories);knowledge_by_owner_.swap(new_owner_index);knowledge_by_topic_.swap(new_topic_index);knowledge_by_subject_.swap(new_subject_index);memories_by_owner_.swap(new_memory_index);
-    knowledge_ids_.Restore(s.knowledge_ids);memory_ids_.Restore(s.memory_ids);revision_=s.revision;changes_.clear();next_change_sequence_=s.next_change_sequence;definitions_frozen_=true;journal_epoch_ = *next_journal_epoch;
+    (void)knowledge_ids_.Restore(s.knowledge_ids);(void)memory_ids_.Restore(s.memory_ids);revision_=s.revision;changes_.clear();next_change_sequence_=s.next_change_sequence;definitions_frozen_=true;journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

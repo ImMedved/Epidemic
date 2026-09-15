@@ -22,7 +22,7 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId>& gene
     if (id.High() != snapshot.scope || snapshot.next == 0 || id.Low() < snapshot.next) return;
 
     snapshot.next = id.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 [[nodiscard]] foundation::Error Error(std::string code, std::string message)
@@ -722,7 +722,7 @@ foundation::Result<void> EntityService::RestoreSnapshot(EntitySnapshot snapshot)
 
     slots_ = std::move(rebuilt_slots); free_slots_.clear(); id_to_slot_ = std::move(rebuilt_index);
     pending_destroy_ = std::move(rebuilt_pending); pending_destroy_reasons_ = std::move(rebuilt_reasons); pending_destroy_contexts_ = std::move(rebuilt_contexts);
-    ids_.Restore(snapshot.id_generator); revision_ = snapshot.revision;
+    (void)ids_.Restore(snapshot.id_generator); revision_ = snapshot.revision;
     changes_.clear(); next_change_sequence_ = 1; last_change_sequence_ = 0; journal_epoch_ = *next_journal_epoch;
     creates_ = 0; destroys_ = 0; invalid_handle_lookups_ = 0;
     return foundation::Result<void>::Success();

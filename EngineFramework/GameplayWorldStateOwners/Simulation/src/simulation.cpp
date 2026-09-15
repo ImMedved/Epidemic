@@ -691,8 +691,8 @@ foundation::Result<void> SimulationService::RestoreSnapshot(SimulationSnapshot s
     regions_ = std::move(new_regions);
     active_intervals_ = std::move(new_intervals);
     summaries_ = std::move(new_summaries);
-    task_ids_.Restore(s.task_ids);
-    summary_ids_.Restore(s.summary_ids);
+    (void)task_ids_.Restore(s.task_ids);
+    (void)summary_ids_.Restore(s.summary_ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = s.next_change_sequence;

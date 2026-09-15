@@ -11,7 +11,7 @@ target_link_libraries(EpidemicGameFrameworkPerceptionKnowledgeAIIntegration
         EpidemicGameFrameworkPerception
         EpidemicGameFrameworkKnowledge
         EpidemicGameFrameworkAI
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkPerceptionKnowledgeAIIntegration)

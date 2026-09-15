@@ -1,6 +1,6 @@
 add_library(EpidemicGameFrameworkSaveGame STATIC src/save_game.cpp)
 target_include_directories(EpidemicGameFrameworkSaveGame PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(EpidemicGameFrameworkSaveGame PUBLIC EpidemicGameFrameworkFoundation PRIVATE EpidemicFoundation)
+target_link_libraries(EpidemicGameFrameworkSaveGame PUBLIC EpidemicGameFrameworkFoundation PUBLIC EpidemicFoundation)
 epidemic_configure_target(EpidemicGameFrameworkSaveGame)
 
 set(_epidemic_save_game_forbidden_targets

@@ -128,7 +128,7 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId> &gene
     if (id.value.High() != snapshot.scope || snapshot.next == 0 || id.value.Low() < snapshot.next)
         return;
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 template <class TWrappedId>
@@ -1458,12 +1458,12 @@ foundation::Result<void> CrimeService::RestoreSnapshot(CrimeSnapshot snapshot)
     bounties_ = std::move(bounties);
     responses_ = std::move(responses);
     active_bounty_index_ = std::move(active_bounty_index);
-    crime_ids_.Restore(snapshot.crime_ids);
-    witness_ids_.Restore(snapshot.witness_ids);
-    evidence_ids_.Restore(snapshot.evidence_ids);
-    bounty_ids_.Restore(snapshot.bounty_ids);
-    authority_ids_.Restore(snapshot.authority_ids);
-    response_ids_.Restore(snapshot.response_ids);
+    (void)crime_ids_.Restore(snapshot.crime_ids);
+    (void)witness_ids_.Restore(snapshot.witness_ids);
+    (void)evidence_ids_.Restore(snapshot.evidence_ids);
+    (void)bounty_ids_.Restore(snapshot.bounty_ids);
+    (void)authority_ids_.Restore(snapshot.authority_ids);
+    (void)response_ids_.Restore(snapshot.response_ids);
     revision_ = snapshot.revision;
     definitions_frozen_ = snapshot.definitions_frozen;
     changes_.clear();

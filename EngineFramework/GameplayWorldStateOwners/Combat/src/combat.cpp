@@ -880,8 +880,8 @@ foundation::Result<void> CombatService::RestoreSnapshot(CombatSnapshot snapshot)
     combatants_.swap(restored);
     resource_reservations_.swap(restored_reservations);
     changes_.swap(journal);
-    resolution_ids_.Restore(snapshot.resolution_ids);
-    resource_reservation_ids_.Restore(snapshot.resource_reservation_ids);
+    (void)resolution_ids_.Restore(snapshot.resolution_ids);
+    (void)resource_reservation_ids_.Restore(snapshot.resource_reservation_ids);
     next_change_sequence_ = snapshot.next_change_sequence;
     prepared_plans_.clear();
     diagnostics_.combatants = combatants_.size();

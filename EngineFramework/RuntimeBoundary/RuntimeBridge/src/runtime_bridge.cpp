@@ -771,7 +771,10 @@ foundation::Result<void> RuntimeBridgeService::Enqueue(RuntimeProjectionRequest 
                 {
                     return value.gameplay_revision;
                 }
-                return {};
+                else
+                {
+                    return {};
+                }
             }, queued.request);
             const auto incoming_revision = std::visit([](const auto& value) -> Revision {
                 using T = std::decay_t<decltype(value)>;
@@ -779,7 +782,10 @@ foundation::Result<void> RuntimeBridgeService::Enqueue(RuntimeProjectionRequest 
                 {
                     return value.gameplay_revision;
                 }
-                return {};
+                else
+                {
+                    return {};
+                }
             }, request);
             if (incoming_revision.value == 0 || queued_revision.value == 0 || incoming_revision >= queued_revision)
             {
@@ -1289,7 +1295,10 @@ foundation::Result<void> RuntimeBridgeService::ForgetObjectIdentity(GameplayObje
             {
                 return value.object == object;
             }
-            return false;
+            else
+            {
+                return false;
+            }
         }, queued.request);
         if (references)
         {
@@ -1305,7 +1314,10 @@ foundation::Result<void> RuntimeBridgeService::ForgetObjectIdentity(GameplayObje
             {
                 return value.object == object;
             }
-            return false;
+            else
+            {
+                return false;
+            }
         }, pending.request);
         if (references)
         {

@@ -8,7 +8,7 @@ target_include_directories(EpidemicGameFrameworkRolesJobs PUBLIC
 
 target_link_libraries(EpidemicGameFrameworkRolesJobs
     PUBLIC EpidemicGameFrameworkFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkRolesJobs)

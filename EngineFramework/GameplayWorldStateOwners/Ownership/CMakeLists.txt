@@ -8,7 +8,7 @@ target_include_directories(EpidemicGameFrameworkOwnership PUBLIC
 
 target_link_libraries(EpidemicGameFrameworkOwnership
     PUBLIC EpidemicGameFrameworkFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkOwnership)

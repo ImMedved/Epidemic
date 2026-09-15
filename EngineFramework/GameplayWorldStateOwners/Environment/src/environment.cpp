@@ -343,7 +343,7 @@ void EnvironmentService::AdvanceGeneratorPast(EnvironmentLayerId id) noexcept
 
     auto advanced = snapshot;
     advanced.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    ids_.Restore(advanced);
+    (void)ids_.Restore(advanced);
 }
 
 foundation::Result<EnvironmentLayerId> EnvironmentService::AddLayer(EnvironmentLayer layer)
@@ -380,7 +380,7 @@ foundation::Result<EnvironmentLayerId> EnvironmentService::AddLayer(EnvironmentL
             snapshot.next = layer.id.value.Low() == std::numeric_limits<std::uint64_t>::max()
                                 ? 0
                                 : layer.id.value.Low() + 1;
-            staged_ids.Restore(snapshot);
+            (void)staged_ids.Restore(snapshot);
         }
     }
 
@@ -773,7 +773,7 @@ foundation::Result<void> EnvironmentService::RestoreSnapshot(EnvironmentSnapshot
             Error("gameplay.environment.storage_failed", "failed to stage environment snapshot indexes"));
     }
 
-    ids_.Restore(snapshot.ids);
+    (void)ids_.Restore(snapshot.ids);
     revision_ = snapshot.revision;
     changes_.clear();
     next_change_sequence_ = 1;

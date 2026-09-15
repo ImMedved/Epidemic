@@ -598,7 +598,7 @@ foundation::Result<void> InteractionService::RestoreSnapshot(InteractionSnapshot
 
     sessions_ = std::move(rebuilt);
     session_by_schedule_.clear();
-    ids_.Restore(s.ids);
+    (void)ids_.Restore(s.ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;

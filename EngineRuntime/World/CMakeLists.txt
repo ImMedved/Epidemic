@@ -10,7 +10,7 @@ target_include_directories(EpidemicRuntimeWorld PUBLIC
 
 target_link_libraries(EpidemicRuntimeWorld
     PUBLIC EpidemicRuntimeFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 set(_epidemic_runtime_world_forbidden_targets

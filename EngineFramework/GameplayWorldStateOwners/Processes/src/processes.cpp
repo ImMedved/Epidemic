@@ -58,7 +58,7 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId> &gene
     if (low < snapshot.next)
         return;
     snapshot.next = low == std::numeric_limits<std::uint64_t>::max() ? 0 : low + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 [[nodiscard]] foundation::Error CallbackError(std::string_view stage)
@@ -197,7 +197,7 @@ foundation::Result<ProcessStationId> ProcessesService::RegisterStation(ProcessSt
     std::deque<ProcessChange> staged_changes; auto seq=next_change_sequence_; bool p=false,idx=false;
     try { staged_changes=changes_; { ProcessChange ch{}; ch.kind=ProcessChangeKind::StationRegistered; ch.actor=object; ch.station=id; ch.revision=next; AppendStagedChange(staged_changes,seq,std::move(ch),change_journal_capacity_); }; stations_.reserve(stations_.size()+1);station_by_object_.reserve(station_by_object_.size()+1); p=stations_.emplace(id,station).second; idx=station_by_object_.emplace(object,id).second; if(!p||!idx) throw std::runtime_error("station publication conflict"); }
     catch (...) { if(idx)station_by_object_.erase(object);if(p)stations_.erase(id);return foundation::Result<ProcessStationId>::Failure(Error("gameplay.processes.publication_failed","process station publication failed")); }
-    changes_.swap(staged_changes);next_change_sequence_=seq;station_ids_.Restore(staged_ids.GetSnapshot());revision_=next;diagnostics_.stations=stations_.size();return foundation::Result<ProcessStationId>::Success(id);
+    changes_.swap(staged_changes);next_change_sequence_=seq;(void)station_ids_.Restore(staged_ids.GetSnapshot());revision_=next;diagnostics_.stations=stations_.size();return foundation::Result<ProcessStationId>::Success(id);
 }
 
 const ProcessDefinition *ProcessesService::FindDefinition(ProcessDefinitionId id) const noexcept
@@ -412,7 +412,7 @@ foundation::Result<void> ProcessesService::ReserveInputs(ProcessInstance &instan
             return foundation::Result<void>::Failure(CallbackError("input reserve callback threw unknown exception"));
         }
     }
-    reservation_ids_.Restore(staged_reservation_ids.GetSnapshot());
+    (void)reservation_ids_.Restore(staged_reservation_ids.GetSnapshot());
     return foundation::Result<void>::Success();
 }
 
@@ -586,12 +586,12 @@ foundation::Result<ProcessInstanceId> ProcessesService::StartProcess(StartProces
     try{instance.quality=quality_provider_?quality_provider_->Resolve(*recipe,request):ProcessQualityResult{ProcessQualityId::FromString("framework.quality.normal"),1'000'000,{}};}catch(...){return foundation::Result<ProcessInstanceId>::Failure(CallbackError("quality provider threw"));}
     const auto duration=DurationFor(*recipe,*definition,station);instance.total_duration=duration;instance.paused_remaining=duration;instance.due_at=definition->timing==ProcessTimingPolicy::ExternalCompletion?GameplayTimePoint{}:SaturatingAdd(request.now,duration);
     MonotonicIdGenerator<GameplayObjectId>::Snapshot reservations_before=reservation_ids_.GetSnapshot();
-    auto reserve=ReserveInputs(instance,*recipe,request);if(!reserve){if(instance.state==ProcessInstanceState::ReconciliationRequired){ /* publish below */ }else{reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(reserve.GetError());}}
-    if(reserve){auto prep=PrepareOutputs(instance,*recipe,OutputDeliveryPolicy::Immediate,request.context);if(!prep){auto released=ReleaseInputs(instance,request.context);if(released&&instance.state!=ProcessInstanceState::ReconciliationRequired){reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(prep.GetError());}instance.state=ProcessInstanceState::ReconciliationRequired;}}
-    if(!CanAdvanceRevision()||!CanRecordChanges(instance.reserved_inputs.size()+1)){auto cancel=CancelPreparedOutputs(instance,request.context);auto release=ReleaseInputs(instance,request.context);if(cancel&&release){reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));}instance.state=ProcessInstanceState::ReconciliationRequired;}
+    auto reserve=ReserveInputs(instance,*recipe,request);if(!reserve){if(instance.state==ProcessInstanceState::ReconciliationRequired){ /* publish below */ }else{(void)reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(reserve.GetError());}}
+    if(reserve){auto prep=PrepareOutputs(instance,*recipe,OutputDeliveryPolicy::Immediate,request.context);if(!prep){auto released=ReleaseInputs(instance,request.context);if(released&&instance.state!=ProcessInstanceState::ReconciliationRequired){(void)reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(prep.GetError());}instance.state=ProcessInstanceState::ReconciliationRequired;}}
+    if(!CanAdvanceRevision()||!CanRecordChanges(instance.reserved_inputs.size()+1)){auto cancel=CancelPreparedOutputs(instance,request.context);auto release=ReleaseInputs(instance,request.context);if(cancel&&release){(void)reservation_ids_.Restore(reservations_before);return foundation::Result<ProcessInstanceId>::Failure(Error(!CanAdvanceRevision()?"gameplay.processes.revision_exhausted":"gameplay.processes.change_sequence_exhausted","process mutation metadata is exhausted"));}instance.state=ProcessInstanceState::ReconciliationRequired;}
     const Revision initial{revision_.value+1};instance.revision=initial;std::deque<ProcessChange> staged_changes;auto seq=next_change_sequence_;try{instances_.reserve(instances_.size()+1);staged_changes=changes_;for(const auto &r:instance.reserved_inputs)if(r.state==ProcessInputCommitState::Reserved)AppendStagedChange(staged_changes,seq,{0,ProcessChangeKind::InputReserved,instance.id,instance.recipe,instance.actor,request.now,request.context,initial},change_journal_capacity_);if(instance.state==ProcessInstanceState::ReconciliationRequired)AppendStagedChange(staged_changes,seq,{0,ProcessChangeKind::ReconciliationRequired,instance.id,instance.recipe,instance.actor,request.now,request.context,initial},change_journal_capacity_);}catch(...){return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.publication_failed","process instance staging failed"));}
     const auto id=instance.id;try{if(!instances_.emplace(id,std::move(instance)).second)return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.duplicate_instance","process instance id already exists"));}catch(...){return foundation::Result<ProcessInstanceId>::Failure(Error("gameplay.processes.publication_failed","process instance publication failed"));}
-    instance_ids_.Restore(staged_instance_ids.GetSnapshot());revision_=initial;changes_.swap(staged_changes);next_change_sequence_=seq;diagnostics_.reservations += instances_.at(id).reserved_inputs.size();
+    (void)instance_ids_.Restore(staged_instance_ids.GetSnapshot());revision_=initial;changes_.swap(staged_changes);next_change_sequence_=seq;diagnostics_.reservations += instances_.at(id).reserved_inputs.size();
     auto &live=instances_.at(id);if(live.state==ProcessInstanceState::ReconciliationRequired)return foundation::Result<ProcessInstanceId>::Success(id);
     auto consumed=ConsumeInputs(live,InputConsumptionPolicy::ConsumeOnStart,request.context);if(!consumed){live.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}auto immediate=CommitOutputs(live,OutputDeliveryPolicy::Immediate,request.context);if(!immediate){live.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}
     if(!CanAdvanceRevision()||!CanRecordChanges()){live.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}const Revision running{revision_.value+1};std::deque<ProcessChange> sj;auto sq=next_change_sequence_;try{sj=changes_;AppendStagedChange(sj,sq,{0,ProcessChangeKind::Started,id,recipe->id,request.actor,request.now,request.context,running},change_journal_capacity_);}catch(...){live.state=ProcessInstanceState::ReconciliationRequired;return foundation::Result<ProcessInstanceId>::Success(id);}live.state=ProcessInstanceState::Running;live.revision=running;revision_=running;changes_.swap(sj);next_change_sequence_=sq;
@@ -894,9 +894,9 @@ foundation::Result<void> ProcessesService::RestoreSnapshot(ProcessesSnapshot sna
     stations_.swap(new_stations);
     station_by_object_.swap(new_station_by_object);
     instances_.swap(new_instances);
-    station_ids_.Restore(snapshot.station_ids);
-    instance_ids_.Restore(snapshot.instance_ids);
-    reservation_ids_.Restore(snapshot.reservation_ids);
+    (void)station_ids_.Restore(snapshot.station_ids);
+    (void)instance_ids_.Restore(snapshot.instance_ids);
+    (void)reservation_ids_.Restore(snapshot.reservation_ids);
     revision_ = snapshot.revision;
     changes_.clear();
     next_change_sequence_ = snapshot.next_change_sequence;

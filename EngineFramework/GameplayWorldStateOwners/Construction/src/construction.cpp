@@ -1491,12 +1491,12 @@ foundation::Result<void> ConstructionService::RestoreSnapshot(ConstructionSnapsh
     placed_objects_.swap(new_placed_objects);
     outbox_.swap(new_outbox);
     dead_letters_.swap(new_dead_letters);
-    plan_ids_.Restore(snapshot.plan_ids);
-    site_ids_.Restore(snapshot.site_ids);
-    placed_ids_.Restore(snapshot.placed_ids);
-    execution_ids_.Restore(snapshot.execution_ids);
-    output_ids_.Restore(snapshot.output_ids);
-    socket_reservation_ids_.Restore(snapshot.socket_reservation_ids);
+    (void)plan_ids_.Restore(snapshot.plan_ids);
+    (void)site_ids_.Restore(snapshot.site_ids);
+    (void)placed_ids_.Restore(snapshot.placed_ids);
+    (void)execution_ids_.Restore(snapshot.execution_ids);
+    (void)output_ids_.Restore(snapshot.output_ids);
+    (void)socket_reservation_ids_.Restore(snapshot.socket_reservation_ids);
     revision_ = snapshot.revision;
     changes_.swap(new_changes);
     next_change_sequence_ = snapshot.next_change_sequence;

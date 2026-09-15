@@ -31,7 +31,7 @@ bool AdvanceGeneratorPastRequested(MonotonicIdGenerator<GameplayObjectId> &gener
     if (snapshot.next == 0 || id.Low() < snapshot.next)
         return true;
     snapshot.next = id.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
     return true;
 }
 } // namespace
@@ -904,9 +904,9 @@ foundation::Result<void> NeedsLifeService::RestoreSnapshot(NeedsLifeSnapshot s)
     pressures_by_subject_ = std::move(new_pressures_by_subject);
     routines_ = std::move(new_routines);
     routine_by_subject_ = std::move(new_routine_by_subject);
-    profile_ids_.Restore(s.profile_ids);
-    pressure_ids_.Restore(s.pressure_ids);
-    routine_ids_.Restore(s.routine_ids);
+    (void)profile_ids_.Restore(s.profile_ids);
+    (void)pressure_ids_.Restore(s.pressure_ids);
+    (void)routine_ids_.Restore(s.routine_ids);
     revision_ = s.revision;
     definitions_frozen_ = true;
     changes_.clear();

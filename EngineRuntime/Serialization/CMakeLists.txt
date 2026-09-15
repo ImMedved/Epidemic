@@ -12,7 +12,7 @@ target_include_directories(EpidemicRuntimeSerialization PUBLIC
 
 target_link_libraries(EpidemicRuntimeSerialization
     PUBLIC EpidemicRuntimeFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 set(_epidemic_runtime_serialization_forbidden_targets

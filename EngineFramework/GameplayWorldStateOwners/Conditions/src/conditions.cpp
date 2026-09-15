@@ -1196,7 +1196,7 @@ foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot sn
     id_to_index_.swap(restored_id_to_index);
     subject_index_.swap(restored_subject_index);
     changes_.swap(restored_changes);
-    ids_.Restore(snapshot.id_generator);
+    (void)ids_.Restore(snapshot.id_generator);
     revision_ = snapshot.revision;
     applied_ = expired_ = removed_ = periodic_triggers_ = stack_merges_ = 0;
     next_change_sequence_ = snapshot.next_change_sequence;

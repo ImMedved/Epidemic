@@ -15,7 +15,9 @@ target_link_libraries(EpidemicGameFrameworkGameplayIntegration
         EpidemicGameFrameworkEffects
         EpidemicGameFrameworkConditions
         EpidemicGameplayTime
-    PRIVATE EpidemicFoundation
+    PRIVATE
+        EpidemicFoundation
+        EpidemicGameFrameworkSupportRandom
 )
 
 epidemic_configure_target(EpidemicGameFrameworkGameplayIntegration)

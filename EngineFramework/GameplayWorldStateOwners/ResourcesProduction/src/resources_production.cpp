@@ -185,7 +185,7 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId> &gene
         return;
     }
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 [[nodiscard]] foundation::Result<void> ValidateGenerator(
@@ -1317,13 +1317,13 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
     capabilities_ = std::move(capabilities);
     plans_ = std::move(plans);
     transactions_ = std::move(transactions);
-    stockpile_ids_.Restore(s.stockpile_ids);
-    node_ids_.Restore(s.node_ids);
-    site_ids_.Restore(s.site_ids);
-    reservation_ids_.Restore(s.reservation_ids);
-    capability_ids_.Restore(s.capability_ids);
-    plan_ids_.Restore(s.plan_ids);
-    transaction_ids_.Restore(s.transaction_ids);
+    (void)stockpile_ids_.Restore(s.stockpile_ids);
+    (void)node_ids_.Restore(s.node_ids);
+    (void)site_ids_.Restore(s.site_ids);
+    (void)reservation_ids_.Restore(s.reservation_ids);
+    (void)capability_ids_.Restore(s.capability_ids);
+    (void)plan_ids_.Restore(s.plan_ids);
+    (void)transaction_ids_.Restore(s.transaction_ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;

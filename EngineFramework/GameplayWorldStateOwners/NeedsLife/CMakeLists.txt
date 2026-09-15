@@ -8,7 +8,7 @@ target_include_directories(EpidemicGameFrameworkNeedsLife PUBLIC
 
 target_link_libraries(EpidemicGameFrameworkNeedsLife
     PUBLIC EpidemicGameFrameworkFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkNeedsLife)

@@ -40,7 +40,7 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId>& gene
     if (id.value.High() != snapshot.scope || snapshot.next == 0 || id.value.Low() < snapshot.next)
         return;
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 template <class TId>
@@ -934,9 +934,9 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     capability_grants_.swap(restored_grants);
     carrier_by_passenger_.swap(restored_bindings);
     changes_.swap(restored_changes);
-    session_ids_.Restore(snapshot.session_ids);
-    route_ids_.Restore(snapshot.route_ids);
-    capability_grant_ids_.Restore(snapshot.capability_grant_ids);
+    (void)session_ids_.Restore(snapshot.session_ids);
+    (void)route_ids_.Restore(snapshot.route_ids);
+    (void)capability_grant_ids_.Restore(snapshot.capability_grant_ids);
     revision_ = snapshot.revision;
     next_change_sequence_ = snapshot.next_change_sequence;
     journal_epoch_ = *next_journal_epoch;

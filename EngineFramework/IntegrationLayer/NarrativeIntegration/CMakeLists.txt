@@ -11,7 +11,7 @@ target_link_libraries(EpidemicGameFrameworkNarrativeIntegration
         EpidemicGameFrameworkNarrative
         EpidemicGameFrameworkKnowledge
         EpidemicGameFrameworkSaveGame
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkNarrativeIntegration)

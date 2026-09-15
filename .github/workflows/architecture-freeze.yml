@@ -14,14 +14,53 @@ jobs:
           - name: base
             runtime: OFF
             framework: OFF
+            configuration: Debug
           - name: runtime
             runtime: ON
             framework: OFF
+            configuration: Debug
           - name: full
             runtime: ON
             framework: ON
+            configuration: Debug
+          - name: full-release
+            runtime: ON
+            framework: ON
+            configuration: Release
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: matrix.name == 'full'
+        with:
+          python-version: '3.x'
+      - name: CI freeze contract
+        if: matrix.name == 'full'
+        run: |
+          python docs/freeze/ci_gate_contract.py --check
+          python docs/freeze/ci_gate_contract.py --self-test
+      - name: Architecture negative fixtures
+        if: matrix.name == 'full'
+        run: cmake -P cmake/ArchitectureFreezeSelfTest.cmake
+      - name: Production module dossier
+        if: matrix.name == 'full'
+        run: |
+          python docs/freeze/module_dossiers.py --check
+          python docs/freeze/module_dossiers.py --self-test
+      - name: Architecture and ownership matrix
+        if: matrix.name == 'full'
+        run: |
+          python docs/freeze/architecture_ownership.py --check
+          python docs/freeze/architecture_ownership.py --self-test
+      - name: LOCAL_READY contract and ledger
+        if: matrix.name == 'full'
+        run: |
+          python docs/freeze/local_ready_contract.py --check
+          python docs/freeze/local_ready_contract.py --self-test
+      - name: Public API coverage inventory
+        if: matrix.name == 'full'
+        run: |
+          python docs/freeze/public_api_inventory.py --check
+          python docs/freeze/public_api_inventory.py --self-test
       - name: Configure
         shell: pwsh
         run: >
@@ -30,8 +69,11 @@ jobs:
           -DBUILD_TESTING=ON
           -DEPIDEMIC_BUILD_RUNTIME=${{ matrix.runtime }}
           -DEPIDEMIC_BUILD_FRAMEWORK=${{ matrix.framework }}
+          -DEPIDEMIC_WARNINGS_AS_ERRORS=ON
           -DEPIDEMIC_ARCHITECTURE_FREEZE_CHECKS=ON
       - name: Build
-        run: cmake --build build/${{ matrix.name }} --config Debug --parallel
+        run: cmake --build build/${{ matrix.name }} --config ${{ matrix.configuration }} --parallel
+      - name: Public header self-containment
+        run: cmake --build build/${{ matrix.name }} --config ${{ matrix.configuration }} --target EpidemicPublicHeaderSelfContainment --parallel
       - name: Test
-        run: ctest --test-dir build/${{ matrix.name }} -C Debug --output-on-failure
+        run: ctest --test-dir build/${{ matrix.name }} -C ${{ matrix.configuration }} --output-on-failure

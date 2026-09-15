@@ -701,7 +701,7 @@ foundation::Result<void> LootService::RestoreSnapshot(LootSnapshot snapshot)
     claimed_order_.swap(restored_claimed_order);
     claimed_history_floor_low_ = snapshot.claimed_history_floor_low;
     changes_.swap(restored_changes);
-    execution_ids_.Restore(snapshot.execution_ids);
+    (void)execution_ids_.Restore(snapshot.execution_ids);
     next_change_sequence_ = snapshot.next_change_sequence;
     diagnostics_.pending = pending_.size();
     journal_epoch_ = *next_journal_epoch;

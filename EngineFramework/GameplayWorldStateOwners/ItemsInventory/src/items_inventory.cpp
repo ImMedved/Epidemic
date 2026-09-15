@@ -50,7 +50,7 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId>& gene
     auto snapshot = generator.GetSnapshot();
     if (id.value.High() != snapshot.scope || snapshot.next == 0 || id.value.Low() < snapshot.next) return;
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 template <class TWrappedId>
@@ -1488,10 +1488,10 @@ foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
     containers_ = std::move(containers);
     items_ = std::move(items);
     reservations_ = std::move(reservations);
-    item_ids_.Restore(s.item_ids);
-    container_ids_.Restore(s.container_ids);
-    transfer_ids_.Restore(s.transfer_ids);
-    reservation_ids_.Restore(s.reservation_ids);
+    (void)item_ids_.Restore(s.item_ids);
+    (void)container_ids_.Restore(s.container_ids);
+    (void)transfer_ids_.Restore(s.transfer_ids);
+    (void)reservation_ids_.Restore(s.reservation_ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;

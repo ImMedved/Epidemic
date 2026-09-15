@@ -8,6 +8,7 @@ target_include_directories(EpidemicGameFrameworkStateIntegration PUBLIC
 
 target_link_libraries(EpidemicGameFrameworkStateIntegration
     PUBLIC
+        EpidemicFoundation
         EpidemicGameFrameworkEntities
         EpidemicGameFrameworkMaterials
         EpidemicGameFrameworkConditions
@@ -16,8 +17,6 @@ target_link_libraries(EpidemicGameFrameworkStateIntegration
         EpidemicGameplayFacts
         EpidemicGameplayTime
         EpidemicGameFrameworkCoreIntegration
-    PRIVATE
-        EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkStateIntegration)

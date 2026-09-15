@@ -37,7 +37,7 @@ void AdvanceForCallerId(MonotonicIdGenerator<GameplayObjectId>& generator, TId i
     auto snapshot = generator.GetSnapshot();
     if (id.value.High() != snapshot.scope || snapshot.next == 0 || id.value.Low() < snapshot.next) return;
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 template <class TId>
 void ObserveMaxLow(TId id, std::uint64_t scope, std::uint64_t& max_low) noexcept
@@ -644,7 +644,7 @@ foundation::Result<void> EncountersService::RestoreSnapshot(EncountersSnapshot s
     for(auto& r:s.requests){if(!r.request.id.IsValid()||!IsValid(r.request.persistence)||!IsValid(r.result.state)||requests.contains(r.request.id))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","invalid request record")); if(r.result.encounter_instance.IsValid()&&!instances.contains(r.result.encounter_instance))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid","request references missing encounter"));ObserveMaxLow(r.request.id,s.request_ids.scope,max_request);requests.emplace(r.request.id,r);}
     if(!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.instance_ids,instance_ids_.Scope(),max_instance)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.point_ids,point_ids_.Scope(),max_point)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.request_ids,request_ids_.Scope(),max_request)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.spawned_ids,spawned_ids_.Scope(),max_spawned)||!ValidateMonotonicIdGeneratorSnapshot<GameplayObjectId>(s.respawn_ids,respawn_ids_.Scope(),max_respawn))return foundation::Result<void>::Failure(Error("gameplay.encounters.restore_invalid_generator","invalid encounter id generator snapshot"));
     definitions_=std::move(definitions);tables_=std::move(tables);points_=std::move(points);instances_=std::move(instances);spawned_=std::move(spawned);respawns_=std::move(respawns);requests_=std::move(requests);
-    instance_ids_.Restore(s.instance_ids);point_ids_.Restore(s.point_ids);request_ids_.Restore(s.request_ids);spawned_ids_.Restore(s.spawned_ids);respawn_ids_.Restore(s.respawn_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;spawn_budget_tick_={};spawn_operations_used_=0;instances_by_area_.clear();instances_by_state_.clear();journal_epoch_ = *next_journal_epoch;
+    (void)instance_ids_.Restore(s.instance_ids);(void)point_ids_.Restore(s.point_ids);(void)request_ids_.Restore(s.request_ids);(void)spawned_ids_.Restore(s.spawned_ids);(void)respawn_ids_.Restore(s.respawn_ids);revision_=s.revision;changes_.clear();next_change_sequence_=1;spawn_budget_tick_={};spawn_operations_used_=0;instances_by_area_.clear();instances_by_state_.clear();journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

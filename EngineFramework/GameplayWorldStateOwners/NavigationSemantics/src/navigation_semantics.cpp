@@ -198,7 +198,7 @@ foundation::Result<void> NavigationSemanticsService::ValidateAndAdvanceLayerId(N
         return foundation::Result<void>::Success();
     auto advanced = snapshot;
     advanced.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    layer_ids_.Restore(advanced);
+    (void)layer_ids_.Restore(advanced);
     return foundation::Result<void>::Success();
 }
 
@@ -270,7 +270,7 @@ foundation::Result<NavigationLayerId> NavigationSemanticsService::AddLayer(Navig
     if(caller_supplied_id)
     {
         const auto snap=staged_generator.GetSnapshot();
-        if(layer.id.value.High()==snap.scope&&snap.next!=0&&layer.id.value.Low()>=snap.next){auto advanced=snap;advanced.next=layer.id.value.Low()==std::numeric_limits<std::uint64_t>::max()?0:layer.id.value.Low()+1;staged_generator.Restore(advanced);}
+        if(layer.id.value.High()==snap.scope&&snap.next!=0&&layer.id.value.Low()>=snap.next){auto advanced=snap;advanced.next=layer.id.value.Low()==std::numeric_limits<std::uint64_t>::max()?0:layer.id.value.Low()+1;(void)staged_generator.Restore(advanced);}
     }
     auto next=PrepareRevision();if(!next)return foundation::Result<NavigationLayerId>::Failure(next.GetError());
     layer.revision=next.Value();const auto id=layer.id;
@@ -731,7 +731,7 @@ foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationS
     for(const auto& [id,layer]:restored_layers){auto& ids=restored_layer_index[layer.area];auto pos=std::lower_bound(ids.begin(),ids.end(),id);ids.insert(pos,id);}
     for(const auto& [id,link]:restored_links){auto& ids=restored_link_index[LinkPairKey{link.from_area,link.to_area}];auto pos=std::lower_bound(ids.begin(),ids.end(),id);ids.insert(pos,id);}
     profiles_.swap(restored_profiles);layers_.swap(restored_layers);links_.swap(restored_links);changes_.swap(restored_changes);layer_ids_by_area_.swap(restored_layer_index);link_ids_by_pair_.swap(restored_link_index);
-    layer_ids_.Restore(snapshot.layer_ids);revision_=snapshot.revision;next_change_sequence_=snapshot.next_change_sequence;journal_epoch_=*next_journal_epoch;
+    (void)layer_ids_.Restore(snapshot.layer_ids);revision_=snapshot.revision;next_change_sequence_=snapshot.next_change_sequence;journal_epoch_=*next_journal_epoch;
     return foundation::Result<void>::Success();
 }
 

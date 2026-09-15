@@ -11,7 +11,7 @@ target_link_libraries(EpidemicGameFrameworkSocialLegalIntegration
         EpidemicGameFrameworkOwnership
         EpidemicGameFrameworkSociety
         EpidemicGameFrameworkCrime
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkSocialLegalIntegration)

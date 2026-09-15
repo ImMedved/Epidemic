@@ -29,7 +29,7 @@ void AdvanceGeneratorPast(MonotonicIdGenerator<GameplayObjectId> &generator, TWr
     if (id.value.High() != snapshot.scope || snapshot.next == 0 || id.value.Low() < snapshot.next)
         return;
     snapshot.next = id.value.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.value.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 
 
@@ -2629,11 +2629,11 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
     event_executions_.swap(event_executions);
     processed_event_keys_.swap(processed_keys);
     activated_beats_.swap(activated_beats);
-    journal_ids_.Restore(snapshot.journal_ids);
-    clue_ids_.Restore(snapshot.clue_ids);
-    rumor_ids_.Restore(snapshot.rumor_ids);
-    choice_ids_.Restore(snapshot.choice_ids);
-    consequence_ids_.Restore(snapshot.consequence_ids);
+    (void)journal_ids_.Restore(snapshot.journal_ids);
+    (void)clue_ids_.Restore(snapshot.clue_ids);
+    (void)rumor_ids_.Restore(snapshot.rumor_ids);
+    (void)choice_ids_.Restore(snapshot.choice_ids);
+    (void)consequence_ids_.Restore(snapshot.consequence_ids);
     revision_.value = std::max(current_definition_revision.value, snapshot.revision.value);
     changes_.clear();
     next_change_sequence_ = 1;

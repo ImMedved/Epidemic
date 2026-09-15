@@ -11,7 +11,7 @@ target_link_libraries(EpidemicGameFrameworkTraversalNavigationConstructionIntegr
         EpidemicGameFrameworkTraversal
         EpidemicGameFrameworkNavigationSemantics
         EpidemicGameFrameworkConstruction
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkTraversalNavigationConstructionIntegration)

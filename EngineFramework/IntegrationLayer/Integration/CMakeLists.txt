@@ -13,7 +13,7 @@ target_link_libraries(EpidemicGameFrameworkCoreIntegration
         EpidemicGameplayTime
         EpidemicGameFrameworkSaveGame
         EpidemicRuntimeTime
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkCoreIntegration)

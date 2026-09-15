@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "reviewed": true,
+  "source": "docs/freeze/fixtures/public_api_oracle.hpp",
+  "excluded_names": ["callback", "ProtectedMethod", "HiddenMethod", "EPIDEMIC_FREEZE_ORACLE_ID"],
+  "callables": [
+    [11, "epidemic::freeze_oracle", "RegisterFree", "Result RegisterFree(int value);", "MUTATOR"],
+    [12, "epidemic::freeze_oracle", "QueryFree", "[[nodiscard]] int QueryFree(const int&value)noexcept;", "QUERY"],
+    [17, "epidemic::freeze_oracle::Widget", "Widget", "Widget();", "CONSTRUCTOR"],
+    [18, "epidemic::freeze_oracle::Widget", "Widget", "explicit Widget(int value);", "CONSTRUCTOR"],
+    [19, "epidemic::freeze_oracle::Widget", "~Widget", "~Widget();", "DESTRUCTOR"],
+    [21, "epidemic::freeze_oracle::Widget", "Cancel", "Result Cancel(int id);", "MUTATOR"],
+    [22, "epidemic::freeze_oracle::Widget", "Cancel", "Result Cancel(std::string_view id);", "MUTATOR"],
+    [23, "epidemic::freeze_oracle::Widget", "Create", "static Widget Create();", "FACTORY"],
+    [24, "epidemic::freeze_oracle::Widget", "Size", "[[nodiscard]] std::size_t Size()const noexcept;", "QUERY"],
+    [25, "epidemic::freeze_oracle::Widget", "Mystery", "void Mystery()&;", "UNCLASSIFIED"],
+    [27, "epidemic::freeze_oracle::Widget", "Set", "template <typename TValue> Result Set(TValue&&value);", "MUTATOR"],
+    [29, "epidemic::freeze_oracle::Widget", "operator=", "Widget&operator=(const Widget&other);", "MUTATOR"],
+    [30, "epidemic::freeze_oracle::Widget", "operator==", "[[nodiscard]] bool operator==(const Widget&other)const=default;", "QUERY"],
+    [32, "epidemic::freeze_oracle::Widget", "InlineDefinition", "void InlineDefinition()", "UNCLASSIFIED"],
+    [47, "epidemic::freeze_oracle::AllmanStyle", "ReadValue", "[[nodiscard]] int ReadValue(int fallback=0)const noexcept;", "QUERY"],
+    [51, "epidemic::freeze_oracle::AllmanStyle", "Build", "static AllmanStyle Build();", "FACTORY"],
+    [60, "epidemic::freeze_oracle::OracleId", "IsValid", "[[nodiscard]] bool IsValid()const;", "QUERY"]
+  ]
+}

@@ -110,7 +110,7 @@ void AdvanceGeneratorPast(MonotonicIdGenerator<GameplayObjectId>& generator, Gam
     if (snapshot.next == 0 || id.Low() < snapshot.next)
         return;
     snapshot.next = id.Low() == std::numeric_limits<std::uint64_t>::max() ? 0 : id.Low() + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 } // namespace
 
@@ -584,7 +584,7 @@ foundation::Result<std::vector<ProgressionModifierId>> ProgressionService::Repla
         staged_modifiers.end());
     for (auto& modifier : modifiers)
         staged_modifiers.push_back(std::move(modifier));
-    modifier_ids_.Restore(staged_generator.GetSnapshot());
+    (void)modifier_ids_.Restore(staged_generator.GetSnapshot());
     profile->modifiers = std::move(staged_modifiers);
     Bump(*profile);
     for (const auto id : removed_ids)
@@ -740,7 +740,7 @@ foundation::Result<ProgressionGrantReservationId> ProgressionService::ReservePro
     pending.after.rank = RankFor(definition->second, pending.after.progress_micro);
     const auto id = pending.id;
     pending_progress_grants_.emplace(id, pending);
-    grant_reservation_ids_.Restore(staged_grant_ids.GetSnapshot());
+    (void)grant_reservation_ids_.Restore(staged_grant_ids.GetSnapshot());
     return foundation::Result<ProgressionGrantReservationId>::Success(id);
 }
 
@@ -1284,8 +1284,8 @@ foundation::Result<void> ProgressionService::RestoreSnapshot(ProgressionSnapshot
 
     profiles_.swap(restored_profiles);
     changes_.swap(restored_changes);
-    modifier_ids_.Restore(snapshot.modifier_ids);
-    grant_reservation_ids_.Restore(snapshot.grant_reservation_ids);
+    (void)modifier_ids_.Restore(snapshot.modifier_ids);
+    (void)grant_reservation_ids_.Restore(snapshot.grant_reservation_ids);
     pending_progress_grants_.clear();
     revision_ = snapshot.revision;
     next_change_sequence_ = snapshot.next_change_sequence;

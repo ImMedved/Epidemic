@@ -8,7 +8,7 @@ target_include_directories(EpidemicGameFrameworkTraversal PUBLIC
 
 target_link_libraries(EpidemicGameFrameworkTraversal
     PUBLIC EpidemicGameFrameworkFoundation
-    PRIVATE EpidemicFoundation
+    PUBLIC EpidemicFoundation
 )
 
 epidemic_configure_target(EpidemicGameFrameworkTraversal)

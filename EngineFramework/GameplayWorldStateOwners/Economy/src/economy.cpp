@@ -37,7 +37,7 @@ void AdvanceGeneratorForExplicitId(TGenerator &generator, TId id) noexcept
     const auto low = id.value.Low();
     if (low < snapshot.next) return;
     snapshot.next = low == std::numeric_limits<std::uint64_t>::max() ? 0 : low + 1;
-    generator.Restore(snapshot);
+    (void)generator.Restore(snapshot);
 }
 bool ValidGeneratorSnapshot(MonotonicIdGenerator<GameplayObjectId>::Snapshot snapshot,
                             std::uint64_t expected_scope, std::uint64_t max_low) noexcept
@@ -1475,13 +1475,13 @@ foundation::Result<void> EconomyService::RestoreSnapshot(EconomySnapshot s)
     transactions_.swap(transactions);
     debts_.swap(debts);
     contracts_.swap(contracts);
-    account_ids_.Restore(s.account_ids);
-    reservation_ids_.Restore(s.reservation_ids);
-    market_ids_.Restore(s.market_ids);
-    offer_ids_.Restore(s.offer_ids);
-    transaction_ids_.Restore(s.transaction_ids);
-    debt_ids_.Restore(s.debt_ids);
-    contract_ids_.Restore(s.contract_ids);
+    (void)account_ids_.Restore(s.account_ids);
+    (void)reservation_ids_.Restore(s.reservation_ids);
+    (void)market_ids_.Restore(s.market_ids);
+    (void)offer_ids_.Restore(s.offer_ids);
+    (void)transaction_ids_.Restore(s.transaction_ids);
+    (void)debt_ids_.Restore(s.debt_ids);
+    (void)contract_ids_.Restore(s.contract_ids);
     revision_ = s.revision;
     changes_.clear();
     next_change_sequence_ = 1;
