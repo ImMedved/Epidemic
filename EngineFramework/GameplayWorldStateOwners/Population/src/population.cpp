@@ -69,12 +69,6 @@ bool AppendStagedChange(std::deque<PopulationChange> &journal, std::uint64_t &ne
     return static_cast<std::size_t>(state);
 }
 
-[[nodiscard]] bool SameTemplateDefinition(const PopulationTemplate &a, const PopulationTemplate &b)
-{
-    return a.id == b.id && a.entity_archetype == b.entity_archetype && a.tags.Values() == b.tags.Values() &&
-           a.generation_payload == b.generation_payload && a.persistent == b.persistent;
-}
-
 template <class TWrappedId>
 void AdvanceGeneratorPast(MonotonicIdGenerator<GameplayObjectId> &generator, const TWrappedId &id)
 {

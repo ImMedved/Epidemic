@@ -88,30 +88,6 @@ template <class TId> [[nodiscard]] std::uint64_t MaxLowPart(const std::vector<TI
     return false;
 }
 
-[[nodiscard]] bool IsValidRolesJobsChangeKind(RolesJobsChangeKind kind) noexcept
-{
-    switch (kind)
-    {
-    case RolesJobsChangeKind::JobAssigned:
-    case RolesJobsChangeKind::JobRemoved:
-    case RolesJobsChangeKind::JobPaused:
-    case RolesJobsChangeKind::JobResumed:
-    case RolesJobsChangeKind::WorkplaceCreated:
-    case RolesJobsChangeKind::WorkplaceStateChanged:
-    case RolesJobsChangeKind::ShiftScheduled:
-    case RolesJobsChangeKind::ShiftStarted:
-    case RolesJobsChangeKind::ShiftEnded:
-    case RolesJobsChangeKind::DutyCreated:
-    case RolesJobsChangeKind::DutyActivated:
-    case RolesJobsChangeKind::DutyCompleted:
-    case RolesJobsChangeKind::DutyFailed:
-    case RolesJobsChangeKind::DutySkipped:
-    case RolesJobsChangeKind::DutyCancelled:
-        return true;
-    }
-    return false;
-}
-
 [[nodiscard]] bool IsAllowedAssignmentTransition(AssignmentState from, AssignmentState to) noexcept
 {
     if (!IsValidAssignmentState(from) || !IsValidAssignmentState(to))

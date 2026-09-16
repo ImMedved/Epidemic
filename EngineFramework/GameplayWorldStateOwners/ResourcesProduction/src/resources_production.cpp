@@ -146,27 +146,6 @@ namespace
 }
 
 
-[[nodiscard]] bool IsAllowedPlanTransition(ProductionPlanState from, ProductionPlanState to) noexcept
-{
-    if (!IsValidPlanState(from) || !IsValidPlanState(to))
-        return false;
-    if (from == to)
-        return true;
-    switch (from)
-    {
-    case ProductionPlanState::Planned:
-        return to == ProductionPlanState::Active || to == ProductionPlanState::Paused || to == ProductionPlanState::Cancelled;
-    case ProductionPlanState::Active:
-        return to == ProductionPlanState::Paused || to == ProductionPlanState::Satisfied || to == ProductionPlanState::Cancelled;
-    case ProductionPlanState::Paused:
-        return to == ProductionPlanState::Active || to == ProductionPlanState::Cancelled;
-    case ProductionPlanState::Satisfied:
-    case ProductionPlanState::Cancelled:
-        return false;
-    }
-    return false;
-}
-
 [[nodiscard]] std::uint64_t ScopeOf(GameplayObjectId id) noexcept
 {
     return id.High();
@@ -204,21 +183,6 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId> &gene
     return foundation::Result<void>::Success();
 }
 
-[[nodiscard]] bool SameQuantities(std::span<const ResourceQuantity> a, std::span<const ResourceQuantity> b) noexcept
-{
-    if (a.size() != b.size())
-    {
-        return false;
-    }
-    for (std::size_t i = 0; i < a.size(); ++i)
-    {
-        if (a[i].type != b[i].type || a[i].amount != b[i].amount)
-        {
-            return false;
-        }
-    }
-    return true;
-}
 } // namespace
 
 ResourcesProductionService::ResourcesProductionService()

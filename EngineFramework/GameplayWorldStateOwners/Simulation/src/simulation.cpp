@@ -320,7 +320,7 @@ foundation::Result<SimulationSummaryId> SimulationService::ContinueIntervalExecu
             task.state = SimulationTaskState::Skipped;
             task.revision = revision_;
             layer_execution.prepared = true;
-            layer_execution.prepared_summary = {task.layer, SimulationTaskState::Skipped, 0, revision_};
+            layer_execution.prepared_summary = {task.layer, SimulationTaskState::Skipped, 0, revision_, {}};
             continue;
         }
 

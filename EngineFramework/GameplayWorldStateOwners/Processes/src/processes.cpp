@@ -159,7 +159,6 @@ foundation::Result<ProcessRecipeId> ProcessesService::RegisterRecipe(ProcessReci
             Error("gameplay.processes.invalid_recipe", "invalid or duplicate process recipe"));
 
     std::unordered_set<ProcessInputId, IdHash> input_ids;
-    auto staged_reservation_ids = reservation_ids_;
     for (const auto &input : recipe.inputs)
     {
         if (!input.id.IsValid() || !input.type.IsValid() || input.amount < 0 || !IsValid(input.consumption) || !input_ids.insert(input.id).second)

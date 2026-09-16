@@ -277,7 +277,7 @@ class WindowsDynamicLibrary final : public IDynamicLibrary
         [[nodiscard]] epidemic::foundation::Result<void *> FindSymbol(std::string_view symbol_name) const override
     {
         SetLastError(ERROR_SUCCESS);
-        const auto *symbol = GetProcAddress(module_handle_, std::string(symbol_name).c_str());
+        const auto symbol = GetProcAddress(module_handle_, std::string(symbol_name).c_str());
         if (symbol == nullptr)
         {
             const auto error_code = GetLastError();
