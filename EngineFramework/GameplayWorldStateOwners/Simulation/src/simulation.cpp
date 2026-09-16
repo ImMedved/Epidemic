@@ -69,24 +69,6 @@ namespace
     return false;
 }
 
-[[nodiscard]] bool IsValidSimulationChangeKind(SimulationChangeKind kind) noexcept
-{
-    switch (kind)
-    {
-    case SimulationChangeKind::RegionRegistered:
-    case SimulationChangeKind::LayerRegistered:
-    case SimulationChangeKind::IntervalStarted:
-    case SimulationChangeKind::TaskPrepared:
-    case SimulationChangeKind::TaskCommitted:
-    case SimulationChangeKind::TaskDeferred:
-    case SimulationChangeKind::TaskFailed:
-    case SimulationChangeKind::BudgetExceeded:
-    case SimulationChangeKind::SummaryGenerated:
-        return true;
-    }
-    return false;
-}
-
 [[nodiscard]] bool SameInterval(const SimulationSummary &summary, SimulationRegionId region, GameplayTimePoint from,
                                 GameplayTimePoint to) noexcept
 {
