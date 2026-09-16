@@ -22,5 +22,7 @@ struct GameplayContext
     // Immediate predecessor, if this operation was caused by another operation or event.
     OperationId parent_operation{};
     EventId cause_event{};
+
+    [[nodiscard]] constexpr bool operator==(const GameplayContext&) const noexcept = default;
 };
 } // namespace epidemic::gameplay

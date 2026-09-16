@@ -11,4 +11,4 @@ target_include_directories(EpidemicRuntimeWorldTests PRIVATE
 )
 
 epidemic_configure_target(EpidemicRuntimeWorldTests)
-add_test(NAME EpidemicRuntimeWorldTests COMMAND EpidemicRuntimeWorldTests)
+epidemic_add_test(EpidemicRuntimeWorldTests)

@@ -4,76 +4,127 @@ on:
   push:
   pull_request:
 
+permissions:
+  contents: read
+
 jobs:
+  freeze-contract:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
+        with:
+          python-version: '3.13.7'
+          check-latest: false
+      - name: Toolchain identity
+        shell: pwsh
+        run: |
+          python --version
+          cmake --version
+      - name: Semantic CI contract
+        shell: pwsh
+        run: |
+          python docs/freeze/ci_gate_contract.py --check
+          python docs/freeze/ci_gate_contract.py --self-test
+      - name: Architecture adversarial fixtures
+        shell: pwsh
+        run: cmake -P cmake/ArchitectureFreezeSelfTest.cmake
+      - name: Freeze evidence contracts
+        shell: pwsh
+        run: |
+          python docs/freeze/module_dossiers.py --check
+          python docs/freeze/module_dossiers.py --self-test
+          python docs/freeze/architecture_ownership.py --check
+          python docs/freeze/architecture_ownership.py --self-test
+          python docs/freeze/coverage_manifests.py --check
+          python docs/freeze/coverage_manifests.py --self-test
+          python docs/freeze/ctest_manifest.py --check
+          python docs/freeze/ctest_manifest.py --self-test
+          python docs/freeze/local_ready_contract.py --check
+          python docs/freeze/local_ready_contract.py --self-test
+          python docs/freeze/public_api_inventory.py --check
+          python docs/freeze/public_api_inventory.py --self-test
+          python docs/freeze/public_surface_manifest.py --check
+          python docs/freeze/public_surface_manifest.py --self-test
+
   layer-matrix:
-    runs-on: windows-latest
+    needs: freeze-contract
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: base
+          - profile: base-debug
             runtime: OFF
             framework: OFF
             configuration: Debug
-          - name: runtime
+          - profile: base-release
+            runtime: OFF
+            framework: OFF
+            configuration: Release
+          - profile: runtime-debug
             runtime: ON
             framework: OFF
             configuration: Debug
-          - name: full
+          - profile: runtime-release
+            runtime: ON
+            framework: OFF
+            configuration: Release
+          - profile: full-debug
             runtime: ON
             framework: ON
             configuration: Debug
-          - name: full-release
+          - profile: full-release
             runtime: ON
             framework: ON
             configuration: Release
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        if: matrix.name == 'full'
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.0.0
         with:
-          python-version: '3.x'
-      - name: CI freeze contract
-        if: matrix.name == 'full'
-        run: |
-          python docs/freeze/ci_gate_contract.py --check
-          python docs/freeze/ci_gate_contract.py --self-test
-      - name: Architecture negative fixtures
-        if: matrix.name == 'full'
-        run: cmake -P cmake/ArchitectureFreezeSelfTest.cmake
-      - name: Production module dossier
-        if: matrix.name == 'full'
-        run: |
-          python docs/freeze/module_dossiers.py --check
-          python docs/freeze/module_dossiers.py --self-test
-      - name: Architecture and ownership matrix
-        if: matrix.name == 'full'
-        run: |
-          python docs/freeze/architecture_ownership.py --check
-          python docs/freeze/architecture_ownership.py --self-test
-      - name: LOCAL_READY contract and ledger
-        if: matrix.name == 'full'
-        run: |
-          python docs/freeze/local_ready_contract.py --check
-          python docs/freeze/local_ready_contract.py --self-test
-      - name: Public API coverage inventory
-        if: matrix.name == 'full'
-        run: |
-          python docs/freeze/public_api_inventory.py --check
-          python docs/freeze/public_api_inventory.py --self-test
+          python-version: '3.13.7'
+          check-latest: false
       - name: Configure
         shell: pwsh
         run: >
-          cmake -S . -B build/${{ matrix.name }}
-          -G "Visual Studio 17 2022" -A x64
+          cmake -S . -B build/${{ matrix.profile }}
+          -G "Visual Studio 18 2026" -A x64
           -DBUILD_TESTING=ON
           -DEPIDEMIC_BUILD_RUNTIME=${{ matrix.runtime }}
           -DEPIDEMIC_BUILD_FRAMEWORK=${{ matrix.framework }}
           -DEPIDEMIC_WARNINGS_AS_ERRORS=ON
           -DEPIDEMIC_ARCHITECTURE_FREEZE_CHECKS=ON
       - name: Build
-        run: cmake --build build/${{ matrix.name }} --config ${{ matrix.configuration }} --parallel
-      - name: Public header self-containment
-        run: cmake --build build/${{ matrix.name }} --config ${{ matrix.configuration }} --target EpidemicPublicHeaderSelfContainment --parallel
+        shell: pwsh
+        run: cmake --build build/${{ matrix.profile }} --config ${{ matrix.configuration }} --parallel
+      - name: Per-target public header consumers
+        shell: pwsh
+        run: cmake --build build/${{ matrix.profile }} --config ${{ matrix.configuration }} --target EpidemicPublicHeaderSelfContainment --parallel
+      - name: Configured CTest manifest
+        shell: pwsh
+        run: python docs/freeze/ctest_manifest.py --check-profile ${{ matrix.profile }} --build-dir build/${{ matrix.profile }} --configuration ${{ matrix.configuration }}
       - name: Test
-        run: ctest --test-dir build/${{ matrix.name }} -C ${{ matrix.configuration }} --output-on-failure
+        shell: pwsh
+        run: ctest --test-dir build/${{ matrix.profile }} -C ${{ matrix.configuration }} --output-on-failure --timeout 300
+
+  clang-public-surface:
+    needs: freeze-contract
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Configure ClangCL full profile
+        shell: pwsh
+        run: >
+          cmake -S . -B build/clang-full
+          -G "Visual Studio 18 2026" -A x64 -T ClangCL
+          -DBUILD_TESTING=OFF
+          -DEPIDEMIC_BUILD_RUNTIME=ON
+          -DEPIDEMIC_BUILD_FRAMEWORK=ON
+          -DEPIDEMIC_WARNINGS_AS_ERRORS=ON
+          -DEPIDEMIC_ARCHITECTURE_FREEZE_CHECKS=ON
+      - name: ClangCL public header consumers
+        shell: pwsh
+        run: cmake --build build/clang-full --config Debug --target EpidemicPublicHeaderSelfContainment --parallel

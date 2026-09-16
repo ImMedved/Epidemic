@@ -12,4 +12,4 @@ target_link_libraries(EpidemicRuntimeNavigationTests
 )
 
 epidemic_configure_target(EpidemicRuntimeNavigationTests)
-add_test(NAME EpidemicRuntimeNavigationTests COMMAND EpidemicRuntimeNavigationTests)
+epidemic_add_test(EpidemicRuntimeNavigationTests)

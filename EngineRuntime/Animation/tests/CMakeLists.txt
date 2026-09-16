@@ -12,4 +12,4 @@ target_link_libraries(EpidemicRuntimeAnimationTests
 )
 
 epidemic_configure_target(EpidemicRuntimeAnimationTests)
-add_test(NAME EpidemicRuntimeAnimationTests COMMAND EpidemicRuntimeAnimationTests)
+epidemic_add_test(EpidemicRuntimeAnimationTests)

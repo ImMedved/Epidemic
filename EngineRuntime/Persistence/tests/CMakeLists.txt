@@ -11,4 +11,4 @@ target_include_directories(EpidemicRuntimePersistenceTests PRIVATE
 )
 
 epidemic_configure_target(EpidemicRuntimePersistenceTests)
-add_test(NAME EpidemicRuntimePersistenceTests COMMAND EpidemicRuntimePersistenceTests)
+epidemic_add_test(EpidemicRuntimePersistenceTests)

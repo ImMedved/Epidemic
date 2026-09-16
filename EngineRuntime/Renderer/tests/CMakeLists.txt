@@ -12,4 +12,4 @@ target_link_libraries(EpidemicRuntimeRendererTests
 )
 
 epidemic_configure_target(EpidemicRuntimeRendererTests)
-add_test(NAME EpidemicRuntimeRendererTests COMMAND EpidemicRuntimeRendererTests)
+epidemic_add_test(EpidemicRuntimeRendererTests)

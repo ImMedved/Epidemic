@@ -11,4 +11,4 @@ target_include_directories(EpidemicRuntimeSerializationTests PRIVATE
 )
 
 epidemic_configure_target(EpidemicRuntimeSerializationTests)
-add_test(NAME EpidemicRuntimeSerializationTests COMMAND EpidemicRuntimeSerializationTests)
+epidemic_add_test(EpidemicRuntimeSerializationTests)

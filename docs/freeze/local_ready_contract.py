@@ -12,10 +12,12 @@ sys.dont_write_bytecode = True
 
 from module_dossiers import ROOT, discover_modules
 from evidence_anchors import registered_test_targets, validate_path_anchor, validate_test_evidence
+from coverage_manifests import generate as generate_coverage, module_coverage_errors, validate as validate_coverage
 
 
 OUTPUT = ROOT / "docs" / "freeze" / "local_ready_contract.md"
 LEDGER = ROOT / "docs" / "freeze" / "local_ready_ledger.json"
+COVERAGE = ROOT / "docs" / "freeze" / "coverage_manifests.json"
 SCHEMA_VERSION = 1
 ENTRY_STATUSES = {"NOT_AUDITED", "PASS", "N/A", "BLOCKED"}
 MODULE_STATUSES = {"NOT_AUDITED", "IN_AUDIT", "BLOCKED", "LOCAL_READY"}
@@ -73,12 +75,20 @@ CRITERIA = (
 )
 
 
+def strict_anchor(relative: str, symbol: str) -> str:
+    path = ROOT / relative
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if symbol in line:
+            return f"{relative}:{line_number}::{symbol}"
+    raise ValueError(f"anchor symbol is missing: {relative}::{symbol}")
+
+
 def new_ledger() -> dict[str, object]:
     architecture_ids = {criterion.id for criterion in CRITERIA if criterion.section == "Architecture and ownership"}
 
     def entry(module_name: str, criterion: Criterion) -> dict[str, object]:
         if criterion.id in architecture_ids:
-            anchor = f"docs/freeze/architecture_ownership_matrix.md::{module_name}"
+            anchor = strict_anchor("docs/freeze/architecture_ownership_matrix.md", f"## {module_name}")
             return {
                 "status": "PASS",
                 "evidence": [{"kind": kind, "anchor": anchor} for kind in criterion.evidence],
@@ -102,8 +112,13 @@ def new_ledger() -> dict[str, object]:
     }
 
 
-def validate_ledger(data: object) -> list[str]:
+def validate_ledger(data: object, coverage: dict[str, object] | None = None) -> list[str]:
     errors: list[str] = []
+    if coverage is None:
+        if not COVERAGE.is_file():
+            return ["per-item coverage manifest is missing"]
+        coverage = json.loads(COVERAGE.read_text(encoding="utf-8"))
+    errors.extend(validate_coverage(coverage))
     criterion_ids = [criterion.id for criterion in CRITERIA]
     if len(CRITERIA) != 37 or len(set(criterion_ids)) != len(criterion_ids):
         errors.append("criterion registry must contain 37 unique IDs")
@@ -168,6 +183,7 @@ def validate_ledger(data: object) -> list[str]:
                 missing = set(by_id[criterion_id].evidence) - found_kinds
                 if missing:
                     errors.append(f"{module_name}/{criterion_id}: missing evidence kinds {sorted(missing)}")
+                errors.extend(module_coverage_errors(coverage, module_name, criterion_id))
             elif status == "N/A":
                 if not by_id[criterion_id].allow_na or not rationale.strip():
                     errors.append(f"{module_name}/{criterion_id}: N/A is forbidden or lacks a rationale")
@@ -233,23 +249,27 @@ def self_test() -> tuple[list[str], int]:
     failures: list[str] = []
     with tempfile.TemporaryDirectory() as temporary:
         fixture_root = Path(temporary)
-        (fixture_root / "CMakeLists.txt").write_text(
-            "# add_test(NAME CommentedTest COMMAND ignored)\n"
-            "add_test(NAME ActiveTest COMMAND active)\n",
-            encoding="utf-8",
-        )
-        build_root = fixture_root / "build" / "fixture"
-        build_root.mkdir(parents=True)
-        (build_root / "CMakeLists.txt").write_text(
-            "add_test(NAME BuildOnlyTest COMMAND generated)\n",
-            encoding="utf-8",
-        )
+        manifest = fixture_root / "docs" / "freeze"
+        manifest.mkdir(parents=True)
+        (manifest / "ctest_manifest.json").write_text(json.dumps({
+            "schema_version": 1,
+            "profiles": {"fixture": {"tests": [{"name": "ActiveTest"}]}},
+        }), encoding="utf-8")
         if registered_test_targets(fixture_root) != {"ActiveTest"}:
-            failures.append("CTest target discovery accepted commented or build-only evidence")
+            failures.append("CTest target discovery did not use the configured manifest")
     baseline = new_ledger()
-    if validate_ledger(baseline):
+    coverage = generate_coverage()
+    if validate_ledger(baseline, coverage):
         failures.append("baseline ledger was rejected")
     module = next(iter(baseline["modules"]))
+    for item in coverage["api"].values():
+        if item["module"] == module:
+            for obligation in item["obligations"]:
+                item["obligations"][obligation] = "REVIEWED"
+    for section in ("lifecycle", "stale_identity", "external_boundary", "defects"):
+        for item in coverage[section].values():
+            if item.get("module") == module:
+                item["status"] = "REVIEWED"
 
     complete = copy.deepcopy(baseline)
     complete["modules"][module]["status"] = "LOCAL_READY"
@@ -259,23 +279,23 @@ def self_test() -> tuple[list[str], int]:
             if kind == "test":
                 evidence.append({
                     "kind": "test",
-                    "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/test_utilities_tests.cpp::main",
+                    "anchor": strict_anchor("EngineFramework/DevelopmentInfrastructure/Tests/test_utilities_tests.cpp", "int main("),
                     "target": "EpidemicGameFrameworkTestUtilitiesTests",
                     "assertions": [
-                        "EngineFramework/DevelopmentInfrastructure/Tests/test_utilities_tests.cpp::Check"
+                        strict_anchor("EngineFramework/DevelopmentInfrastructure/Tests/test_utilities_tests.cpp", "void Check(")
                     ],
                 })
             else:
                 evidence.append({
                     "kind": kind,
-                    "anchor": f"docs/freeze/local_ready_contract.md::{criterion.id}",
+                    "anchor": strict_anchor("docs/freeze/local_ready_contract.md", f"### {criterion.id}"),
                 })
         complete["modules"][module]["criteria"][criterion.id] = {
             "status": "PASS",
             "evidence": evidence,
             "rationale": "",
         }
-    if validate_ledger(complete):
+    if validate_ledger(complete, coverage):
         failures.append("complete LOCAL_READY record was rejected")
 
     cases: list[tuple[str, dict[str, object]]] = []
@@ -318,9 +338,17 @@ def self_test() -> tuple[list[str], int]:
     cases.append(("nonexistent evidence file", nonexistent_file))
     nonexistent_symbol = copy.deepcopy(baseline)
     nonexistent_symbol["modules"][module]["criteria"]["ARCH-RESPONSIBILITY"]["evidence"][0]["anchor"] = (
-        "docs/freeze/architecture_ownership_matrix.md::missing-symbol"
+        "docs/freeze/architecture_ownership_matrix.md:1::missing-symbol"
     )
     cases.append(("nonexistent evidence symbol", nonexistent_symbol))
+    wrong_line = copy.deepcopy(baseline)
+    valid_anchor = wrong_line["modules"][module]["criteria"]["ARCH-RESPONSIBILITY"]["evidence"][0]["anchor"]
+    anchor_path, anchor_symbol = valid_anchor.split("::", 1)
+    anchor_file = anchor_path.rsplit(":", 1)[0]
+    wrong_line["modules"][module]["criteria"]["ARCH-RESPONSIBILITY"]["evidence"][0]["anchor"] = (
+        f"{anchor_file}:1::{anchor_symbol}"
+    )
+    cases.append(("symbol exists only on a different line", wrong_line))
     unknown_test_target = copy.deepcopy(complete)
     unknown_test_target["modules"][module]["criteria"]["TEST-HAPPY"]["evidence"][0]["target"] = "MissingTests"
     cases.append(("unknown test target", unknown_test_target))
@@ -337,7 +365,7 @@ def self_test() -> tuple[list[str], int]:
     }
     cases.append(("blocked criterion with IN_AUDIT module", hidden_blocker))
     for name, candidate in cases:
-        if not validate_ledger(candidate):
+        if not validate_ledger(candidate, coverage):
             failures.append(f"negative case was accepted: {name}")
     return failures, len(cases)
 

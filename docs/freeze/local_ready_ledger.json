@@ -10,7 +10,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Core"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:11::## EngineBase/Core"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -20,11 +20,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Core"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:11::## EngineBase/Core"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Core"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:11::## EngineBase/Core"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -34,7 +34,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Core"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:11::## EngineBase/Core"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -44,11 +44,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Core"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:11::## EngineBase/Core"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Core"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:11::## EngineBase/Core"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -228,7 +228,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Diagnostics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -238,11 +238,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Diagnostics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Diagnostics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -252,7 +252,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Diagnostics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -262,11 +262,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Diagnostics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Diagnostics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -446,7 +446,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -456,11 +456,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -470,7 +470,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -480,11 +480,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -664,7 +664,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Input"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:32::## EngineBase/Input"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -674,11 +674,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Input"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:32::## EngineBase/Input"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Input"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:32::## EngineBase/Input"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -688,7 +688,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Input"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:32::## EngineBase/Input"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -698,11 +698,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Input"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:32::## EngineBase/Input"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Input"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:32::## EngineBase/Input"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -882,7 +882,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Memory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -892,11 +892,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Memory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Memory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -906,7 +906,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Memory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -916,11 +916,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Memory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Memory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1100,7 +1100,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Platform"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:46::## EngineBase/Platform"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1110,11 +1110,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Platform"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:46::## EngineBase/Platform"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Platform"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:46::## EngineBase/Platform"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1124,7 +1124,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Platform"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:46::## EngineBase/Platform"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1134,11 +1134,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Platform"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:46::## EngineBase/Platform"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Platform"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:46::## EngineBase/Platform"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1318,7 +1318,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:53::## EngineBase/RHI"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1328,11 +1328,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:53::## EngineBase/RHI"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:53::## EngineBase/RHI"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1342,7 +1342,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:53::## EngineBase/RHI"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1352,11 +1352,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:53::## EngineBase/RHI"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:53::## EngineBase/RHI"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1536,7 +1536,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI_D3D11"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:60::## EngineBase/RHI_D3D11"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1546,11 +1546,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI_D3D11"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:60::## EngineBase/RHI_D3D11"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI_D3D11"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:60::## EngineBase/RHI_D3D11"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1560,7 +1560,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI_D3D11"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:60::## EngineBase/RHI_D3D11"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1570,11 +1570,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI_D3D11"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:60::## EngineBase/RHI_D3D11"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/RHI_D3D11"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:60::## EngineBase/RHI_D3D11"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1754,7 +1754,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:67::## EngineBase/Support"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1764,11 +1764,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:67::## EngineBase/Support"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:67::## EngineBase/Support"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1778,7 +1778,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:67::## EngineBase/Support"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1788,11 +1788,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:67::## EngineBase/Support"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineBase/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:67::## EngineBase/Support"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1972,7 +1972,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Animation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:76::## EngineRuntime/Animation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1982,11 +1982,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Animation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:76::## EngineRuntime/Animation"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Animation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:76::## EngineRuntime/Animation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -1996,7 +1996,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Animation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:76::## EngineRuntime/Animation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2006,11 +2006,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Animation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:76::## EngineRuntime/Animation"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Animation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:76::## EngineRuntime/Animation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2190,7 +2190,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Assets"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:83::## EngineRuntime/Assets"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2200,11 +2200,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Assets"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:83::## EngineRuntime/Assets"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Assets"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:83::## EngineRuntime/Assets"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2214,7 +2214,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Assets"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:83::## EngineRuntime/Assets"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2224,11 +2224,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Assets"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:83::## EngineRuntime/Assets"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Assets"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:83::## EngineRuntime/Assets"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2408,7 +2408,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Audio"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2418,11 +2418,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Audio"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Audio"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2432,7 +2432,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Audio"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2442,11 +2442,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Audio"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Audio"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2626,7 +2626,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:97::## EngineRuntime/Environment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2636,11 +2636,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:97::## EngineRuntime/Environment"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:97::## EngineRuntime/Environment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2650,7 +2650,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:97::## EngineRuntime/Environment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2660,11 +2660,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:97::## EngineRuntime/Environment"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:97::## EngineRuntime/Environment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2844,7 +2844,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Navigation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2854,11 +2854,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Navigation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Navigation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2868,7 +2868,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Navigation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -2878,11 +2878,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Navigation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Navigation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3062,7 +3062,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Persistence"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:111::## EngineRuntime/Persistence"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3072,11 +3072,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Persistence"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:111::## EngineRuntime/Persistence"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Persistence"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:111::## EngineRuntime/Persistence"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3086,7 +3086,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Persistence"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:111::## EngineRuntime/Persistence"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3096,11 +3096,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Persistence"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:111::## EngineRuntime/Persistence"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Persistence"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:111::## EngineRuntime/Persistence"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3280,7 +3280,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Physics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3290,11 +3290,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Physics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Physics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3304,7 +3304,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Physics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3314,11 +3314,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Physics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Physics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3498,7 +3498,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Renderer"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3508,11 +3508,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Renderer"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Renderer"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3522,7 +3522,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Renderer"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3532,11 +3532,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Renderer"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Renderer"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3716,7 +3716,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Resources"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:132::## EngineRuntime/Resources"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3726,11 +3726,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Resources"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:132::## EngineRuntime/Resources"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Resources"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:132::## EngineRuntime/Resources"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3740,7 +3740,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Resources"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:132::## EngineRuntime/Resources"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3750,11 +3750,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Resources"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:132::## EngineRuntime/Resources"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Resources"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:132::## EngineRuntime/Resources"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3934,7 +3934,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/RuntimeFoundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:139::## EngineRuntime/RuntimeFoundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3944,11 +3944,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/RuntimeFoundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:139::## EngineRuntime/RuntimeFoundation"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/RuntimeFoundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:139::## EngineRuntime/RuntimeFoundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3958,7 +3958,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/RuntimeFoundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:139::## EngineRuntime/RuntimeFoundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -3968,11 +3968,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/RuntimeFoundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:139::## EngineRuntime/RuntimeFoundation"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/RuntimeFoundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:139::## EngineRuntime/RuntimeFoundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4152,7 +4152,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Scene"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4162,11 +4162,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Scene"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Scene"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4176,7 +4176,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Scene"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4186,11 +4186,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Scene"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Scene"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4370,7 +4370,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Serialization"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:153::## EngineRuntime/Serialization"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4380,11 +4380,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Serialization"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:153::## EngineRuntime/Serialization"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Serialization"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:153::## EngineRuntime/Serialization"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4394,7 +4394,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Serialization"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:153::## EngineRuntime/Serialization"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4404,11 +4404,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Serialization"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:153::## EngineRuntime/Serialization"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Serialization"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:153::## EngineRuntime/Serialization"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4588,7 +4588,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4598,11 +4598,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4612,7 +4612,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4622,11 +4622,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4806,7 +4806,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Streaming"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4816,11 +4816,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Streaming"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Streaming"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4830,7 +4830,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Streaming"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -4840,11 +4840,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Streaming"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Streaming"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5024,7 +5024,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5034,11 +5034,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5048,7 +5048,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5058,11 +5058,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Support"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5242,7 +5242,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:181::## EngineRuntime/Time"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5252,11 +5252,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:181::## EngineRuntime/Time"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:181::## EngineRuntime/Time"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5266,7 +5266,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:181::## EngineRuntime/Time"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5276,11 +5276,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:181::## EngineRuntime/Time"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:181::## EngineRuntime/Time"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5460,7 +5460,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:188::## EngineRuntime/World"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5470,11 +5470,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:188::## EngineRuntime/World"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:188::## EngineRuntime/World"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5484,7 +5484,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:188::## EngineRuntime/World"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5494,11 +5494,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:188::## EngineRuntime/World"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineRuntime/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:188::## EngineRuntime/World"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5678,7 +5678,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Facts"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5688,11 +5688,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Facts"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Facts"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5702,7 +5702,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Facts"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5712,11 +5712,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Facts"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Facts"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5896,7 +5896,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5906,11 +5906,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5920,7 +5920,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -5930,11 +5930,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Foundation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6114,7 +6114,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Queries"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6124,11 +6124,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Queries"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Queries"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6138,7 +6138,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Queries"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6148,11 +6148,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Queries"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Queries"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6332,7 +6332,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/SupportRandom"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6342,11 +6342,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/SupportRandom"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/SupportRandom"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6356,7 +6356,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/SupportRandom"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6366,11 +6366,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/SupportRandom"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/SupportRandom"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6550,7 +6550,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6560,11 +6560,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6574,7 +6574,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6584,11 +6584,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/BaseInfrastructure/Time"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6768,7 +6768,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/AI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:232::## EngineFramework/GameplayWorldStateOwners/AI"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6778,11 +6778,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/AI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:232::## EngineFramework/GameplayWorldStateOwners/AI"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/AI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:232::## EngineFramework/GameplayWorldStateOwners/AI"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6792,7 +6792,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/AI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:232::## EngineFramework/GameplayWorldStateOwners/AI"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6802,11 +6802,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/AI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:232::## EngineFramework/GameplayWorldStateOwners/AI"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/AI"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:232::## EngineFramework/GameplayWorldStateOwners/AI"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6986,7 +6986,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Abilities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:239::## EngineFramework/GameplayWorldStateOwners/Abilities"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -6996,11 +6996,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Abilities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:239::## EngineFramework/GameplayWorldStateOwners/Abilities"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Abilities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:239::## EngineFramework/GameplayWorldStateOwners/Abilities"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7010,7 +7010,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Abilities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:239::## EngineFramework/GameplayWorldStateOwners/Abilities"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7020,11 +7020,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Abilities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:239::## EngineFramework/GameplayWorldStateOwners/Abilities"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Abilities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:239::## EngineFramework/GameplayWorldStateOwners/Abilities"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7204,7 +7204,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Combat"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:246::## EngineFramework/GameplayWorldStateOwners/Combat"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7214,11 +7214,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Combat"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:246::## EngineFramework/GameplayWorldStateOwners/Combat"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Combat"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:246::## EngineFramework/GameplayWorldStateOwners/Combat"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7228,7 +7228,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Combat"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:246::## EngineFramework/GameplayWorldStateOwners/Combat"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7238,11 +7238,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Combat"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:246::## EngineFramework/GameplayWorldStateOwners/Combat"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Combat"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:246::## EngineFramework/GameplayWorldStateOwners/Combat"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7422,7 +7422,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Conditions"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:253::## EngineFramework/GameplayWorldStateOwners/Conditions"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7432,11 +7432,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Conditions"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:253::## EngineFramework/GameplayWorldStateOwners/Conditions"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Conditions"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:253::## EngineFramework/GameplayWorldStateOwners/Conditions"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7446,7 +7446,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Conditions"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:253::## EngineFramework/GameplayWorldStateOwners/Conditions"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7456,11 +7456,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Conditions"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:253::## EngineFramework/GameplayWorldStateOwners/Conditions"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Conditions"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:253::## EngineFramework/GameplayWorldStateOwners/Conditions"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7640,7 +7640,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Construction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:260::## EngineFramework/GameplayWorldStateOwners/Construction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7650,11 +7650,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Construction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:260::## EngineFramework/GameplayWorldStateOwners/Construction"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Construction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:260::## EngineFramework/GameplayWorldStateOwners/Construction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7664,7 +7664,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Construction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:260::## EngineFramework/GameplayWorldStateOwners/Construction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7674,11 +7674,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Construction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:260::## EngineFramework/GameplayWorldStateOwners/Construction"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Construction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:260::## EngineFramework/GameplayWorldStateOwners/Construction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7858,7 +7858,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Crime"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:267::## EngineFramework/GameplayWorldStateOwners/Crime"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7868,11 +7868,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Crime"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:267::## EngineFramework/GameplayWorldStateOwners/Crime"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Crime"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:267::## EngineFramework/GameplayWorldStateOwners/Crime"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7882,7 +7882,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Crime"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:267::## EngineFramework/GameplayWorldStateOwners/Crime"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -7892,11 +7892,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Crime"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:267::## EngineFramework/GameplayWorldStateOwners/Crime"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Crime"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:267::## EngineFramework/GameplayWorldStateOwners/Crime"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8076,7 +8076,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Dialogue"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::## EngineFramework/GameplayWorldStateOwners/Dialogue"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8086,11 +8086,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Dialogue"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::## EngineFramework/GameplayWorldStateOwners/Dialogue"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Dialogue"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::## EngineFramework/GameplayWorldStateOwners/Dialogue"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8100,7 +8100,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Dialogue"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::## EngineFramework/GameplayWorldStateOwners/Dialogue"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8110,11 +8110,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Dialogue"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::## EngineFramework/GameplayWorldStateOwners/Dialogue"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Dialogue"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::## EngineFramework/GameplayWorldStateOwners/Dialogue"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8294,7 +8294,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Economy"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:281::## EngineFramework/GameplayWorldStateOwners/Economy"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8304,11 +8304,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Economy"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:281::## EngineFramework/GameplayWorldStateOwners/Economy"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Economy"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:281::## EngineFramework/GameplayWorldStateOwners/Economy"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8318,7 +8318,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Economy"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:281::## EngineFramework/GameplayWorldStateOwners/Economy"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8328,11 +8328,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Economy"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:281::## EngineFramework/GameplayWorldStateOwners/Economy"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Economy"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:281::## EngineFramework/GameplayWorldStateOwners/Economy"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8512,7 +8512,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Effects"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:288::## EngineFramework/GameplayWorldStateOwners/Effects"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8522,11 +8522,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Effects"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:288::## EngineFramework/GameplayWorldStateOwners/Effects"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Effects"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:288::## EngineFramework/GameplayWorldStateOwners/Effects"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8536,7 +8536,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Effects"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:288::## EngineFramework/GameplayWorldStateOwners/Effects"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8546,11 +8546,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Effects"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:288::## EngineFramework/GameplayWorldStateOwners/Effects"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Effects"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:288::## EngineFramework/GameplayWorldStateOwners/Effects"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8730,7 +8730,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Encounters"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:295::## EngineFramework/GameplayWorldStateOwners/Encounters"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8740,11 +8740,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Encounters"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:295::## EngineFramework/GameplayWorldStateOwners/Encounters"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Encounters"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:295::## EngineFramework/GameplayWorldStateOwners/Encounters"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8754,7 +8754,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Encounters"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:295::## EngineFramework/GameplayWorldStateOwners/Encounters"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8764,11 +8764,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Encounters"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:295::## EngineFramework/GameplayWorldStateOwners/Encounters"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Encounters"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:295::## EngineFramework/GameplayWorldStateOwners/Encounters"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8948,7 +8948,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Entities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:302::## EngineFramework/GameplayWorldStateOwners/Entities"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8958,11 +8958,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Entities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:302::## EngineFramework/GameplayWorldStateOwners/Entities"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Entities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:302::## EngineFramework/GameplayWorldStateOwners/Entities"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8972,7 +8972,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Entities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:302::## EngineFramework/GameplayWorldStateOwners/Entities"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -8982,11 +8982,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Entities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:302::## EngineFramework/GameplayWorldStateOwners/Entities"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Entities"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:302::## EngineFramework/GameplayWorldStateOwners/Entities"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9166,7 +9166,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:309::## EngineFramework/GameplayWorldStateOwners/Environment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9176,11 +9176,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:309::## EngineFramework/GameplayWorldStateOwners/Environment"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:309::## EngineFramework/GameplayWorldStateOwners/Environment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9190,7 +9190,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:309::## EngineFramework/GameplayWorldStateOwners/Environment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9200,11 +9200,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:309::## EngineFramework/GameplayWorldStateOwners/Environment"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Environment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:309::## EngineFramework/GameplayWorldStateOwners/Environment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9384,7 +9384,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Equipment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:316::## EngineFramework/GameplayWorldStateOwners/Equipment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9394,11 +9394,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Equipment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:316::## EngineFramework/GameplayWorldStateOwners/Equipment"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Equipment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:316::## EngineFramework/GameplayWorldStateOwners/Equipment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9408,7 +9408,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Equipment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:316::## EngineFramework/GameplayWorldStateOwners/Equipment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9418,11 +9418,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Equipment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:316::## EngineFramework/GameplayWorldStateOwners/Equipment"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Equipment"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:316::## EngineFramework/GameplayWorldStateOwners/Equipment"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9602,7 +9602,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Interaction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:323::## EngineFramework/GameplayWorldStateOwners/Interaction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9612,11 +9612,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Interaction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:323::## EngineFramework/GameplayWorldStateOwners/Interaction"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Interaction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:323::## EngineFramework/GameplayWorldStateOwners/Interaction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9626,7 +9626,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Interaction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:323::## EngineFramework/GameplayWorldStateOwners/Interaction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9636,11 +9636,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Interaction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:323::## EngineFramework/GameplayWorldStateOwners/Interaction"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Interaction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:323::## EngineFramework/GameplayWorldStateOwners/Interaction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9820,7 +9820,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ItemsInventory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:330::## EngineFramework/GameplayWorldStateOwners/ItemsInventory"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9830,11 +9830,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ItemsInventory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:330::## EngineFramework/GameplayWorldStateOwners/ItemsInventory"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ItemsInventory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:330::## EngineFramework/GameplayWorldStateOwners/ItemsInventory"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9844,7 +9844,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ItemsInventory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:330::## EngineFramework/GameplayWorldStateOwners/ItemsInventory"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -9854,11 +9854,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ItemsInventory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:330::## EngineFramework/GameplayWorldStateOwners/ItemsInventory"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ItemsInventory"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:330::## EngineFramework/GameplayWorldStateOwners/ItemsInventory"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10038,7 +10038,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Knowledge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:337::## EngineFramework/GameplayWorldStateOwners/Knowledge"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10048,11 +10048,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Knowledge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:337::## EngineFramework/GameplayWorldStateOwners/Knowledge"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Knowledge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:337::## EngineFramework/GameplayWorldStateOwners/Knowledge"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10062,7 +10062,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Knowledge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:337::## EngineFramework/GameplayWorldStateOwners/Knowledge"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10072,11 +10072,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Knowledge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:337::## EngineFramework/GameplayWorldStateOwners/Knowledge"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Knowledge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:337::## EngineFramework/GameplayWorldStateOwners/Knowledge"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10256,7 +10256,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Loot"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:344::## EngineFramework/GameplayWorldStateOwners/Loot"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10266,11 +10266,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Loot"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:344::## EngineFramework/GameplayWorldStateOwners/Loot"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Loot"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:344::## EngineFramework/GameplayWorldStateOwners/Loot"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10280,7 +10280,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Loot"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:344::## EngineFramework/GameplayWorldStateOwners/Loot"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10290,11 +10290,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Loot"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:344::## EngineFramework/GameplayWorldStateOwners/Loot"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Loot"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:344::## EngineFramework/GameplayWorldStateOwners/Loot"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10474,7 +10474,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Materials"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:351::## EngineFramework/GameplayWorldStateOwners/Materials"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10484,11 +10484,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Materials"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:351::## EngineFramework/GameplayWorldStateOwners/Materials"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Materials"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:351::## EngineFramework/GameplayWorldStateOwners/Materials"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10498,7 +10498,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Materials"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:351::## EngineFramework/GameplayWorldStateOwners/Materials"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10508,11 +10508,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Materials"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:351::## EngineFramework/GameplayWorldStateOwners/Materials"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Materials"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:351::## EngineFramework/GameplayWorldStateOwners/Materials"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10692,7 +10692,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Narrative"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::## EngineFramework/GameplayWorldStateOwners/Narrative"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10702,11 +10702,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Narrative"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::## EngineFramework/GameplayWorldStateOwners/Narrative"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Narrative"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::## EngineFramework/GameplayWorldStateOwners/Narrative"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10716,7 +10716,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Narrative"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::## EngineFramework/GameplayWorldStateOwners/Narrative"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10726,11 +10726,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Narrative"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::## EngineFramework/GameplayWorldStateOwners/Narrative"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Narrative"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::## EngineFramework/GameplayWorldStateOwners/Narrative"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10910,7 +10910,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:365::## EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10920,11 +10920,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:365::## EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:365::## EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10934,7 +10934,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:365::## EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -10944,11 +10944,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:365::## EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:365::## EngineFramework/GameplayWorldStateOwners/NavigationSemantics"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11128,7 +11128,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NeedsLife"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:372::## EngineFramework/GameplayWorldStateOwners/NeedsLife"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11138,11 +11138,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NeedsLife"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:372::## EngineFramework/GameplayWorldStateOwners/NeedsLife"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NeedsLife"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:372::## EngineFramework/GameplayWorldStateOwners/NeedsLife"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11152,7 +11152,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NeedsLife"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:372::## EngineFramework/GameplayWorldStateOwners/NeedsLife"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11162,11 +11162,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NeedsLife"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:372::## EngineFramework/GameplayWorldStateOwners/NeedsLife"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/NeedsLife"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:372::## EngineFramework/GameplayWorldStateOwners/NeedsLife"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11346,7 +11346,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Ownership"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:379::## EngineFramework/GameplayWorldStateOwners/Ownership"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11356,11 +11356,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Ownership"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:379::## EngineFramework/GameplayWorldStateOwners/Ownership"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Ownership"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:379::## EngineFramework/GameplayWorldStateOwners/Ownership"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11370,7 +11370,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Ownership"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:379::## EngineFramework/GameplayWorldStateOwners/Ownership"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11380,11 +11380,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Ownership"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:379::## EngineFramework/GameplayWorldStateOwners/Ownership"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Ownership"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:379::## EngineFramework/GameplayWorldStateOwners/Ownership"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11564,7 +11564,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Perception"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:386::## EngineFramework/GameplayWorldStateOwners/Perception"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11574,11 +11574,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Perception"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:386::## EngineFramework/GameplayWorldStateOwners/Perception"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Perception"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:386::## EngineFramework/GameplayWorldStateOwners/Perception"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11588,7 +11588,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Perception"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:386::## EngineFramework/GameplayWorldStateOwners/Perception"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11598,11 +11598,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Perception"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:386::## EngineFramework/GameplayWorldStateOwners/Perception"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Perception"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:386::## EngineFramework/GameplayWorldStateOwners/Perception"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11782,7 +11782,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Population"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:393::## EngineFramework/GameplayWorldStateOwners/Population"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11792,11 +11792,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Population"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:393::## EngineFramework/GameplayWorldStateOwners/Population"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Population"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:393::## EngineFramework/GameplayWorldStateOwners/Population"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11806,7 +11806,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Population"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:393::## EngineFramework/GameplayWorldStateOwners/Population"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -11816,11 +11816,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Population"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:393::## EngineFramework/GameplayWorldStateOwners/Population"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Population"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:393::## EngineFramework/GameplayWorldStateOwners/Population"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12000,7 +12000,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Processes"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:400::## EngineFramework/GameplayWorldStateOwners/Processes"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12010,11 +12010,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Processes"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:400::## EngineFramework/GameplayWorldStateOwners/Processes"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Processes"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:400::## EngineFramework/GameplayWorldStateOwners/Processes"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12024,7 +12024,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Processes"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:400::## EngineFramework/GameplayWorldStateOwners/Processes"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12034,11 +12034,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Processes"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:400::## EngineFramework/GameplayWorldStateOwners/Processes"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Processes"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:400::## EngineFramework/GameplayWorldStateOwners/Processes"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12218,7 +12218,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Progression"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:407::## EngineFramework/GameplayWorldStateOwners/Progression"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12228,11 +12228,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Progression"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:407::## EngineFramework/GameplayWorldStateOwners/Progression"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Progression"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:407::## EngineFramework/GameplayWorldStateOwners/Progression"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12242,7 +12242,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Progression"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:407::## EngineFramework/GameplayWorldStateOwners/Progression"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12252,11 +12252,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Progression"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:407::## EngineFramework/GameplayWorldStateOwners/Progression"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Progression"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:407::## EngineFramework/GameplayWorldStateOwners/Progression"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12436,7 +12436,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:414::## EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12446,11 +12446,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:414::## EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:414::## EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12460,7 +12460,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:414::## EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12470,11 +12470,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:414::## EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:414::## EngineFramework/GameplayWorldStateOwners/ResourcesProduction"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12654,7 +12654,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/RolesJobs"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:421::## EngineFramework/GameplayWorldStateOwners/RolesJobs"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12664,11 +12664,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/RolesJobs"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:421::## EngineFramework/GameplayWorldStateOwners/RolesJobs"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/RolesJobs"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:421::## EngineFramework/GameplayWorldStateOwners/RolesJobs"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12678,7 +12678,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/RolesJobs"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:421::## EngineFramework/GameplayWorldStateOwners/RolesJobs"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12688,11 +12688,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/RolesJobs"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:421::## EngineFramework/GameplayWorldStateOwners/RolesJobs"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/RolesJobs"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:421::## EngineFramework/GameplayWorldStateOwners/RolesJobs"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12872,7 +12872,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/SaveGame"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::## EngineFramework/GameplayWorldStateOwners/SaveGame"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12882,11 +12882,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/SaveGame"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::## EngineFramework/GameplayWorldStateOwners/SaveGame"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/SaveGame"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::## EngineFramework/GameplayWorldStateOwners/SaveGame"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12896,7 +12896,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/SaveGame"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::## EngineFramework/GameplayWorldStateOwners/SaveGame"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -12906,11 +12906,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/SaveGame"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::## EngineFramework/GameplayWorldStateOwners/SaveGame"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/SaveGame"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::## EngineFramework/GameplayWorldStateOwners/SaveGame"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13090,7 +13090,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:435::## EngineFramework/GameplayWorldStateOwners/Simulation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13100,11 +13100,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:435::## EngineFramework/GameplayWorldStateOwners/Simulation"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:435::## EngineFramework/GameplayWorldStateOwners/Simulation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13114,7 +13114,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:435::## EngineFramework/GameplayWorldStateOwners/Simulation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13124,11 +13124,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:435::## EngineFramework/GameplayWorldStateOwners/Simulation"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Simulation"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:435::## EngineFramework/GameplayWorldStateOwners/Simulation"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13308,7 +13308,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Society"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:442::## EngineFramework/GameplayWorldStateOwners/Society"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13318,11 +13318,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Society"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:442::## EngineFramework/GameplayWorldStateOwners/Society"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Society"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:442::## EngineFramework/GameplayWorldStateOwners/Society"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13332,7 +13332,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Society"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:442::## EngineFramework/GameplayWorldStateOwners/Society"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13342,11 +13342,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Society"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:442::## EngineFramework/GameplayWorldStateOwners/Society"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Society"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:442::## EngineFramework/GameplayWorldStateOwners/Society"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13526,7 +13526,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Traversal"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:449::## EngineFramework/GameplayWorldStateOwners/Traversal"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13536,11 +13536,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Traversal"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:449::## EngineFramework/GameplayWorldStateOwners/Traversal"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Traversal"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:449::## EngineFramework/GameplayWorldStateOwners/Traversal"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13550,7 +13550,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Traversal"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:449::## EngineFramework/GameplayWorldStateOwners/Traversal"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13560,11 +13560,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Traversal"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:449::## EngineFramework/GameplayWorldStateOwners/Traversal"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/Traversal"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:449::## EngineFramework/GameplayWorldStateOwners/Traversal"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13744,7 +13744,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::## EngineFramework/GameplayWorldStateOwners/World"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13754,11 +13754,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::## EngineFramework/GameplayWorldStateOwners/World"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::## EngineFramework/GameplayWorldStateOwners/World"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13768,7 +13768,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::## EngineFramework/GameplayWorldStateOwners/World"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13778,11 +13778,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::## EngineFramework/GameplayWorldStateOwners/World"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/GameplayWorldStateOwners/World"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::## EngineFramework/GameplayWorldStateOwners/World"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13962,7 +13962,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:463::## EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13972,11 +13972,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:463::## EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:463::## EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13986,7 +13986,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:463::## EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -13996,11 +13996,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:463::## EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:463::## EngineFramework/IntegrationLayer/ExtendedGameplayIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14180,7 +14180,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/GameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:470::## EngineFramework/IntegrationLayer/GameplayIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14190,11 +14190,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/GameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:470::## EngineFramework/IntegrationLayer/GameplayIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/GameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:470::## EngineFramework/IntegrationLayer/GameplayIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14204,7 +14204,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/GameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:470::## EngineFramework/IntegrationLayer/GameplayIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14214,11 +14214,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/GameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:470::## EngineFramework/IntegrationLayer/GameplayIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/GameplayIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:470::## EngineFramework/IntegrationLayer/GameplayIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14398,7 +14398,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/Integration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:477::## EngineFramework/IntegrationLayer/Integration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14408,11 +14408,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/Integration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:477::## EngineFramework/IntegrationLayer/Integration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/Integration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:477::## EngineFramework/IntegrationLayer/Integration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14422,7 +14422,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/Integration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:477::## EngineFramework/IntegrationLayer/Integration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14432,11 +14432,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/Integration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:477::## EngineFramework/IntegrationLayer/Integration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/Integration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:477::## EngineFramework/IntegrationLayer/Integration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14616,7 +14616,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:484::## EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14626,11 +14626,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:484::## EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:484::## EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14640,7 +14640,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:484::## EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14650,11 +14650,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:484::## EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:484::## EngineFramework/IntegrationLayer/InteractionEffectsIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14834,7 +14834,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionTimeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:491::## EngineFramework/IntegrationLayer/InteractionTimeIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14844,11 +14844,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionTimeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:491::## EngineFramework/IntegrationLayer/InteractionTimeIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionTimeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:491::## EngineFramework/IntegrationLayer/InteractionTimeIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14858,7 +14858,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionTimeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:491::## EngineFramework/IntegrationLayer/InteractionTimeIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -14868,11 +14868,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionTimeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:491::## EngineFramework/IntegrationLayer/InteractionTimeIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/InteractionTimeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:491::## EngineFramework/IntegrationLayer/InteractionTimeIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15052,7 +15052,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/NarrativeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::## EngineFramework/IntegrationLayer/NarrativeIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15062,11 +15062,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/NarrativeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::## EngineFramework/IntegrationLayer/NarrativeIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/NarrativeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::## EngineFramework/IntegrationLayer/NarrativeIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15076,7 +15076,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/NarrativeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::## EngineFramework/IntegrationLayer/NarrativeIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15086,11 +15086,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/NarrativeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::## EngineFramework/IntegrationLayer/NarrativeIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/NarrativeIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::## EngineFramework/IntegrationLayer/NarrativeIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15270,7 +15270,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:505::## EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15280,11 +15280,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:505::## EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:505::## EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15294,7 +15294,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:505::## EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15304,11 +15304,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:505::## EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:505::## EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15488,7 +15488,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:512::## EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15498,11 +15498,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:512::## EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:512::## EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15512,7 +15512,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:512::## EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15522,11 +15522,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:512::## EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:512::## EngineFramework/IntegrationLayer/PopulationSimulationIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15706,7 +15706,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:519::## EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15716,11 +15716,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:519::## EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:519::## EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15730,7 +15730,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:519::## EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15740,11 +15740,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:519::## EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:519::## EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15924,7 +15924,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/SocialLegalIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:526::## EngineFramework/IntegrationLayer/SocialLegalIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15934,11 +15934,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/SocialLegalIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:526::## EngineFramework/IntegrationLayer/SocialLegalIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/SocialLegalIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:526::## EngineFramework/IntegrationLayer/SocialLegalIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15948,7 +15948,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/SocialLegalIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:526::## EngineFramework/IntegrationLayer/SocialLegalIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -15958,11 +15958,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/SocialLegalIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:526::## EngineFramework/IntegrationLayer/SocialLegalIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/SocialLegalIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:526::## EngineFramework/IntegrationLayer/SocialLegalIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16142,7 +16142,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/StateIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:533::## EngineFramework/IntegrationLayer/StateIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16152,11 +16152,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/StateIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:533::## EngineFramework/IntegrationLayer/StateIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/StateIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:533::## EngineFramework/IntegrationLayer/StateIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16166,7 +16166,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/StateIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:533::## EngineFramework/IntegrationLayer/StateIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16176,11 +16176,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/StateIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:533::## EngineFramework/IntegrationLayer/StateIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/StateIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:533::## EngineFramework/IntegrationLayer/StateIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16360,7 +16360,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:540::## EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16370,11 +16370,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:540::## EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:540::## EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16384,7 +16384,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:540::## EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16394,11 +16394,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:540::## EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:540::## EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16578,7 +16578,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/WorldIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::## EngineFramework/IntegrationLayer/WorldIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16588,11 +16588,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/WorldIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::## EngineFramework/IntegrationLayer/WorldIntegration"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/WorldIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::## EngineFramework/IntegrationLayer/WorldIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16602,7 +16602,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/WorldIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::## EngineFramework/IntegrationLayer/WorldIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16612,11 +16612,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/WorldIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::## EngineFramework/IntegrationLayer/WorldIntegration"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/IntegrationLayer/WorldIntegration"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::## EngineFramework/IntegrationLayer/WorldIntegration"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16796,7 +16796,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/RuntimeBoundary/RuntimeBridge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16806,11 +16806,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/RuntimeBoundary/RuntimeBridge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge"
             },
             {
               "kind": "state",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/RuntimeBoundary/RuntimeBridge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16820,7 +16820,7 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/RuntimeBoundary/RuntimeBridge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."
@@ -16830,11 +16830,11 @@
           "evidence": [
             {
               "kind": "architecture",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/RuntimeBoundary/RuntimeBridge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge"
             },
             {
               "kind": "contract",
-              "anchor": "docs/freeze/architecture_ownership_matrix.md::EngineFramework/RuntimeBoundary/RuntimeBridge"
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge"
             }
           ],
           "rationale": "Verified by the generated architecture/ownership gate."

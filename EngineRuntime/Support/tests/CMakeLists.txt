@@ -7,4 +7,4 @@ target_link_libraries(EpidemicRuntimeSupportTests
 )
 
 epidemic_configure_target(EpidemicRuntimeSupportTests)
-add_test(NAME EpidemicRuntimeSupportTests COMMAND EpidemicRuntimeSupportTests)
+epidemic_add_test(EpidemicRuntimeSupportTests)

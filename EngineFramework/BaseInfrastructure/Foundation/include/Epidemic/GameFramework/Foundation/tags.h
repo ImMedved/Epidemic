@@ -104,6 +104,8 @@ class GameplayTagSet
 
     [[nodiscard]] const std::vector<TagId>& Values() const noexcept { return tags_; }
 
+    [[nodiscard]] bool operator==(const GameplayTagSet&) const noexcept = default;
+
   private:
     std::vector<TagId> tags_;
 };

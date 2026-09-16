@@ -1,0 +1,3671 @@
+{
+  "modules": {
+    "EngineBase/Core": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineBase/Diagnostics": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineBase/Foundation": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineBase/Input": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineBase/Memory": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineBase/Platform": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineBase/RHI": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineBase/RHI_D3D11": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineBase/Support": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/BaseInfrastructure/Facts": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/BaseInfrastructure/Foundation": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/BaseInfrastructure/Queries": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/BaseInfrastructure/SupportRandom": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/BaseInfrastructure/Time": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/AI": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Abilities": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Combat": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Conditions": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Construction": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Crime": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Dialogue": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Economy": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Effects": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Encounters": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Entities": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Environment": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Equipment": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Interaction": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/ItemsInventory": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Knowledge": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Loot": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Materials": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Narrative": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/NavigationSemantics": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/NeedsLife": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Ownership": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Perception": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Population": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Processes": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Progression": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/ResourcesProduction": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/RolesJobs": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/SaveGame": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Simulation": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Society": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/Traversal": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/GameplayWorldStateOwners/World": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/ExtendedGameplayIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/GameplayIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/Integration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/InteractionEffectsIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/InteractionTimeIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/NarrativeIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/PopulationSimulationIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/SocialLegalIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/StateIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/IntegrationLayer/WorldIntegration": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineFramework/RuntimeBoundary/RuntimeBridge": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Animation": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Assets": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Audio": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Environment": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Navigation": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Persistence": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Physics": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Renderer": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Resources": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/RuntimeFoundation": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Scene": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Serialization": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Simulation": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Streaming": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Support": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/Time": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    },
+    "EngineRuntime/World": {
+      "Authoritative state": {
+        "status": "DISCOVERED"
+      },
+      "Dependency list": {
+        "status": "DISCOVERED"
+      },
+      "Derived/cache/index state": {
+        "status": "DISCOVERED"
+      },
+      "External ports/callbacks/providers/backends": {
+        "status": "DISCOVERED"
+      },
+      "Hard limits, budgets and complexity bounds": {
+        "status": "DISCOVERED"
+      },
+      "ID spaces, generations, revisions and cursors": {
+        "status": "DISCOVERED"
+      },
+      "Local invariants": {
+        "status": "DISCOVERED"
+      },
+      "Persistent and transient state": {
+        "status": "DISCOVERED"
+      },
+      "Public headers and types": {
+        "status": "DISCOVERED"
+      },
+      "Public mutation API": {
+        "status": "DISCOVERED"
+      },
+      "Read/query API for invariants": {
+        "status": "DISCOVERED"
+      },
+      "Responsibility": {
+        "status": "REVIEWED"
+      },
+      "Snapshot/restore contract": {
+        "status": "DISCOVERED"
+      },
+      "State machines": {
+        "status": "DISCOVERED"
+      },
+      "Threading contract": {
+        "status": "DISCOVERED"
+      }
+    }
+  },
+  "schema_version": 1
+}

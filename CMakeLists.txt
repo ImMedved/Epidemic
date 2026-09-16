@@ -14,6 +14,11 @@ option(EPIDEMIC_ARCHITECTURE_FREEZE_CHECKS "Validate frozen layer boundaries and
 
 if(BUILD_TESTING)
     enable_testing()
+
+    function(epidemic_add_test target)
+        add_test(NAME "${target}" COMMAND "${target}")
+        set_tests_properties("${target}" PROPERTIES TIMEOUT 300)
+    endfunction()
 endif()
 
 add_subdirectory(EngineBase)

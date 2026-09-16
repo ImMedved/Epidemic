@@ -23,4 +23,4 @@ target_link_libraries(EpidemicRuntimeArchitectureTests
 )
 
 epidemic_configure_target(EpidemicRuntimeArchitectureTests)
-add_test(NAME EpidemicRuntimeArchitectureTests COMMAND EpidemicRuntimeArchitectureTests)
+epidemic_add_test(EpidemicRuntimeArchitectureTests)

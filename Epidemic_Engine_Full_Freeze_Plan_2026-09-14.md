@@ -392,13 +392,13 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 Результат 2026-09-14:
 
 - Созданы `docs/freeze/public_api_inventory.py`, `docs/freeze/public_api_inventory.md` и explicit reviewed anchor registry `docs/freeze/public_api_anchors.json`.
-- Inventory содержит `3872` уникальные signature-level строки из `232` public headers всех `78` production-модулей. ID включает header, declaration line, fully-qualified scope и нормализованную declaration; `65` overload-групп представлены `203` отдельными строками.
+- Исторический inventory этого прогона содержал `3872` signature-level строки из `232` public headers всех `78` production-модулей; `65` overload-групп были представлены `203` отдельными строками. Adversarial review 2026-09-16 доказал, что число неполно из-за обрезания declaration по `{` внутри default arguments/noexcept expressions, поэтому `3872` больше не является authoritative baseline и подлежит полной регенерации в 1.7.
 - Сканер поддерживает Allman scopes, public/private visibility, inline и multiline declarations, template specialization и локальные struct/class macros. Первые версии теряли весь Allman-style API, схлопывали одинаковые specialization signatures, принимали macro body/invocation и constructor initializer list за callable; эти defects исправлены, поэтому подпункты отмечены `[~]`.
-- Все `18` найденных `Cancel*` имеют classification `MUTATOR`; расширен mutation-prefix registry. Static factories классифицируются раньше mutation verbs, logging commands учтены отдельно. Неизвестные non-const/static semantics не угадываются: `207` строк сохранены как `UNCLASSIFIED` для целей 2-4.
+- В неполном историческом inventory все `18` найденных `Cancel*` имели classification `MUTATOR`, а `207` строк были сохранены как `UNCLASSIFIED`. Эти counts не переносятся в новый baseline: structural/semantic classification имеет подтвержденные ошибки для const snapshots, pure operators, const value-returning methods и namespace factories.
 - Matrix явно показывает declaration, classification, contract anchor и test/audit anchor. Отсутствующий anchor отображается как `MISSING`, а не как покрытие.
 - Scanner вообще не ищет API names в test source. Anchor принимается только из registry при существующем `path:line::symbol`, явном `reviewed=true`, а для test также при заданных target и reviewed assertions.
 - Fixture self-test проверяет distinct overload IDs, `Cancel*`, const query, `UNCLASSIFIED`, private exclusion, callable-field exclusion, Allman scopes, macro expansion и отказ принять name-only test evidence.
-- Независимый вручную reviewed oracle (`fixtures/public_api_oracle.hpp` + `fixtures/public_api_oracle.json`) фиксирует точные `17` expected callables и exclusions для constructors/destructor, overloads, factories, templates, operators, inline/Allman/macro declarations и private/protected/callable-field exclusions. Oracle нашел реальный false negative для `operator=`/`operator==`; parser исправлен и oracle запускается при каждом check/self-test.
+- Вручную reviewed oracle (`fixtures/public_api_oracle.hpp` + `fixtures/public_api_oracle.json`) фиксирует `17` representative callables и ранее нашел false negative для `operator=`/`operator==`. Review 2026-09-16 доказал, что corpus недостаточен для completeness claim: в нем отсутствовали braced default arguments и nested braced expressions в `noexcept`.
 - Документ явно имеет статус coverage index и не повышает module status; проверка inventory и self-test добавлены в Full Debug CI job.
 
 ## 1.6. Exit criteria цели 1
@@ -411,7 +411,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 
 [x] 78 module dossiers имеют общий формат.
 
-[~] Scanner не имеет известных false negative/overload collapse defects.
+[x] Scanner completeness и semantic classification подтверждены независимым oracle/manifest после исправлений 1.7.
 
 [~] Общие fault, state-compare и test utilities сами покрыты tests.
 
@@ -420,7 +420,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - `cmake/ArchitectureFreeze.cmake` выполняется при configure с `EPIDEMIC_ARCHITECTURE_FREEZE_CHECKS=ON`; gate проверяет слои, ownership, допустимые зависимости, public-header visibility и self-containment. Workflow `.github/workflows/architecture-freeze.yml` запускает validator, generated-document checks, negative self-tests, четыре build-профиля и CTest на push/PR.
 - Актуальный строгий baseline с `EPIDEMIC_WARNINGS_AS_ERRORS=ON`: Base Debug `9/9` за `1.02 s`, Runtime Debug без Framework `29/29` за `14.72 s`, Full Debug `89/89` за `240.63 s`, Full Release `89/89` за `11.87 s`. Добавленный direct utility target увеличил Framework с `54` до `55` executables и Full с `88` до `89`; исторические прогоны `88/88` в разделе 1.2 оставлены как журнал предыдущего состояния.
 - `module_dossiers.py --check` подтвердил `78/78` модулей, `232/232` public headers и единые `15/15` полей. Architecture/ownership check подтвердил `78/78` responsibilities и ownership domains.
-- `public_api_inventory.py --check` подтвердил `3872` exact public callables без collapse overloads (`CONSTRUCTOR=118`, `DESTRUCTOR=179`, `FACTORY=313`, `LIFECYCLE=91`, `MUTATOR=884`, `QUERY=2080`, `UNCLASSIFIED=207`); вручную reviewed oracle закрыл независимую completeness-проверку и привел к исправлению пропущенных operators.
+- Исторический `public_api_inventory.py --check` подтвердил внутреннюю согласованность сгенерированных `3872` строк, но не полноту public surface. Review 2026-09-16 воспроизвел zero-row результат для valid declarations с `= {}`, обнаружил отсутствующие Base API, 48 ошибочных `CaptureSnapshot() const -> MUTATOR`, pure `operator| -> MUTATOR`, `Path::Join() const -> MUTATOR` и оборванную `ShuffleUnchecked` signature. Старые classification counts аннулированы до регенерации.
 - Добавлен отдельный CTest target `EpidemicGameFrameworkTestUtilitiesTests`. Он напрямую проверяет allocation observation/injection/classification и bounded fallback, empty/missing/mismatch/captured state comparisons, mutation sweep fresh-fixture и rollback semantics, оба restore sweep overloads и baseline propagation. До этого mutation/restore wrappers проверялись только косвенно доменными suites, поэтому пункт отмечен `[~]`.
 - В Release устранён `C4100` внутри allocation fault helper: размер bookkeeping allocation теперь явно считается намеренно неиспользуемым в конфигурациях без checked iterators.
 
@@ -428,12 +428,73 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 
 - [~] Исправлен разрыв между описанием `LOCAL_READY` и enforcement: общий `evidence_anchors.py` теперь проверяет repository-relative path, существование файла/строки/symbol, CTest-регистрацию target и отдельные assertion anchors. `BLOCKED` требует rationale и согласованного module status. LOCAL_READY self-test отклоняет `13` malformed ledgers; тот же anchor validator используется API inventory.
 - [~] Добавлены независимые negative fixtures: CMake принимает valid graph и отвергает `10/10` forbidden dependency/include graphs; Python architecture и dossier validators отвергают malformed discovery/ownership/visibility/SDK cases.
-- [~] Добавлен вручную reviewed scanner oracle, который не генерируется lexical parser. Найденный им operator false negative исправлен; exact inventory вырос с `3234` до `3872` callables.
+- [~] Добавлен вручную reviewed scanner oracle, который не генерируется lexical parser. Он исправил operator false negative и увеличил historical inventory с `3234` до `3872`, но второй review нашел не покрытые oracle braced-default/nested-brace defects; окончательная completeness остается открытой в 1.7.
 - [~] Автоматически производный authoritative domain заменен явными reviewed registries owners и non-owners; точное покрытие и уникальность являются обязательным gate.
-- [~] Source-level CI contract теперь проверяется отдельным validator: точные четыре профиля, push/PR triggers, отсутствие `continue-on-error`, warnings-as-errors и все checks/self-tests/build/self-containment/CTest commands. Self-test отвергает `19/19` malformed workflow fixtures. Реальный GitHub run является publication evidence после commit/push, а не скрытым source-tree условием; без публикации изменений его честно получить невозможно.
+- [~] Source-level CI contract теперь проверяется отдельным validator: точные четыре профиля, push/PR triggers, отсутствие `continue-on-error`, warnings-as-errors и все checks/self-tests/build/self-containment/CTest commands. Self-test отвергает `19/19` malformed workflow fixtures. Последующий adversarial review доказал, что это только lexical source check: semantic validation workflow и реальный GitHub run остаются обязательными в 1.7.
 - [~] Warning debt устранен без suppressions: четыре профиля конфигурируются и собираются с `/W4 /WX`, все public headers self-contained, CTest полностью зеленый.
 
-Статус цели 1: `HARD_FROZEN` для текущего source tree. Все критерии 1.1-1.6 имеют воспроизводимое положительное доказательство и отрицательную проверку критических validators. Следующие цели заполняют единый ledger и повышают отдельные модули из `IN_AUDIT` в `LOCAL_READY`; ожидаемые `0/78 LOCAL_READY` на этом этапе не являются долгом цели 1.
+Статус цели 1 после adversarial review: `LOCALLY_QUALIFIED`, но не `HARD_FROZEN`. Критерии 1.1-1.6 воспроизводятся на текущем дереве, однако найденные в 1.7 обходы позволяют принять неполное или неисполняемое evidence. Следующие цели нельзя массово закрывать через ledger до устранения обязательных блокеров 1.7.
+
+## 1.7. Закрыть доказательные обходы и опубликовать воспроизводимый baseline
+
+Независимые adversarial reviews 2026-09-15 и 2026-09-16 подтверждены против текущего дерева. В production graph сейчас не найдено фактической запрещенной транзитивной зависимости, но validators допускают ее появление; несколько evidence attacks воспроизведены буквально. Второй review дополнительно доказал, что текущий API inventory неполон и содержит semantic misclassification. Этот раздел является частью цели 1 и возвращает ей статус `HARD_FROZEN` только после выполнения обязательных подпунктов.
+
+### Обязательные блокеры до `HARD_FROZEN` и массового заполнения ledger
+
+[x] Исправить declaration parser: `{` завершает declaration только как начало function body после сбалансированного parameter/declarator suffix, но не внутри `= {}`, nested braced initializer, `noexcept(...)`, `requires` или template expression. Добавить positive fixtures для каждого случая и negative fixtures для поврежденной/незакрытой declaration.
+
+[x] Перегенерировать API inventory после parser fix и считать прежние `3872/884/207` неавторитетными. Gate обязан доказать отсутствие truncated signatures и включить ранее потерянные Base API (`Application(options = {})`, dispatcher/task scheduling, `Error::Create`, Null/D3D11 factories) и соответствующие Runtime/Framework declarations.
+
+[x] Расширить независимый completeness oracle либо добавить compiler/AST comparison всего public surface: ожидаемый manifest не должен генерироваться тем же lexical parser. Diff между scanner и oracle обязан быть пустым или состоять только из явно reviewed exclusions.
+
+[x] Переработать classification с учетом declaration form и semantics: constructor/destructor, assignment/pure operators, member/static/free function, const member, factory, lifecycle, mutation, query, unknown. `CaptureSnapshot() const`, pure `operator|` и `Path::Join() const` не могут быть mutators; namespace factories должны иметь factory classification. Неоднозначные строки получают explicit reviewed override, а не угадываются prefix-only правилом.
+
+[x] Проверять полное транзитивное замыкание project target dependencies для каждого layer rule, а не только непосредственные `LINK_LIBRARIES`/`INTERFACE_LINK_LIBRARIES`.
+
+[x] Разрешать CMake `ALIAS` до реального target и проверять путь через нейтральный wrapper; добавить negative fixtures как минимум для `Base -> NeutralBridge -> Runtime` и `Base -> NeutralAlias -> Runtime`.
+
+[x] Связать `path:line::symbol` строго: symbol обязан находиться на указанной строке либо в явно заданном проверяемом диапазоне. Self-test должен отвергать существующий symbol на неправильной строке.
+
+[x] Заменить regex-регистрацию CTest evidence на manifest реально настроенного профиля через `ctest --show-only=json-v1`; test внутри `if(FALSE)` или выключенной конфигурации не может считаться зарегистрированным.
+
+[x] Проверять workflow как YAML и валидировать исполнимость обязательных steps, их `if`, matrix scope, shell и failure policy. Fixture с `if: false` на freeze step обязан отклоняться.
+
+[x] Добавить per-item evidence manifests: exact public callable, lifecycle transition, stale-identity surface, external callback/backend boundary и defect regression. Module-level `PASS` для критериев со словом «каждый» должен вычисляться из полного дочернего inventory, а не приниматься по одному anchor.
+
+[x] Сделать `callable_id` независимым от номера строки: ID строится из module, header, fully-qualified scope и normalized signature; line остается навигационным metadata. Добавление комментария не должно инвалидировать API evidence.
+
+[x] Технически запретить `API-CLASSIFIED=PASS` и `LOCAL_READY`, пока в модуле есть `UNCLASSIFIED`. Historical count `207` недостоверен до parser/classifier regeneration; после нее все unknown rows разбираются владельцем соответствующего module audit. Подтвержденные stateful примеры: `TryRestoreSnapshot`, `NotifyScheduleDue`, `EvaluateCrimeCandidate`, `ExchangeEquipmentReservations`.
+
+[x] Зафиксировать profile-specific test manifest и ожидаемые counts/labels (`9/29/89/89` для текущей матрицы), чтобы удаление или отключение теста ломало gate, даже если оставшийся CTest набор зеленый.
+
+[ ] Создать отдельный freeze commit, отправить его в remote и получить реальный зеленый GitHub Actions push/PR run. Записать commit SHA, runner image, compiler/toolset, CMake и Python versions; локально проверенный незакоммиченный worktree не является опубликованным freeze.
+
+### Hardening, обязательный до финального whole-engine freeze
+
+[x] Разделить каждое эвристическое поле module dossier на `DISCOVERED` и `REVIEWED`; `LoadDynamicLibrary` не должен автоматически считаться snapshot/restore API только из-за токена `Load`. Module audit обязан исправить ложные находки до `LOCAL_READY`.
+
+[x] Добавить compiler/AST-based public surface manifest для non-callable C++ contracts: public structs/fields, enums и values, aliases, constants, inheritance, templates и constraints. Отдельно зафиксировать обещание source/API compatibility без необоснованного обещания стабильного C++ binary ABI.
+
+[x] Сделать production source discovery fail-closed для новых C++ расширений (`.inl`, `.ipp`, `.cc`, `.cxx`, `.ixx`, `.cppm` и следующих): неизвестное расширение ломает gate до добавления в единый registry. Generated production sources/headers проходят тот же post-generation scan.
+
+[x] Усилить self-containment per-target consumer fixtures: consumer включает public headers и линкует только соответствующий target, используя его реальные `PUBLIC/INTERFACE` include directories, compile definitions, features и transitive requirements.
+
+[x] Зафиксировать cross-engine error/exception policy для expected failures, programmer violations, allocation failure, throwing callbacks, destructors, fallible cleanup и no-op revision/journal semantics. Разрешенные module-specific отклонения должны быть явными.
+
+[x] Расширить configuration qualification либо доказать эквивалентность: Base Release и Runtime Release без Framework, CI/local toolchain parity, test timeouts и pinned versions там, где floating `windows-latest`, Python `3.x` или action major могут разрушить воспроизводимость.
+
+[x] Добавить compiler-diversity public-header profile, как минимум Clang-cl/Clang наряду с MSVC, и регистрировать найденные portability defects в module ledger. Подтвержденный долг Goal 4: defaulted equality для `EnvironmentHazard`, `EnvironmentLayer` и `EnvironmentSampleHazard` удален компилятором, потому что member `GameplayTagSet` не предоставляет equality; требуются regression и осознанное исправление в Framework Environment audit.
+
+Локальная квалификация 1.7, 2026-09-16:
+
+- Новый authoritative inventory содержит `4301` exact callable из `232` public headers и `78` production-модулей; signatures сбалансированы, stable IDs не зависят от строк, `UNCLASSIFIED=0`, а `291` неоднозначная строка закреплена reviewed overrides. Независимый oracle содержит `25` вручную заданных positive/negative случаев, включая braced defaults, nested braces, `noexcept`, `requires`, operators и malformed declaration.
+- Architecture self-test принимает valid graph и отвергает `14/14` forbidden transitive, alias, include и source-discovery fixtures. Evidence validators строго проверяют line/range anchors, configured CTest JSON, semantic YAML workflow и полные per-item child inventories.
+- Non-callable manifest закрепляет hashes и source/API contracts всех `232` public headers; per-target consumers компилируют каждый header с реальными target requirements. MSVC является локальным compiler gate, ClangCL является отдельным обязательным remote profile. Обещание стабильного C++ binary ABI явно не даётся.
+- Локальная strict-матрица `/W4 /WX` и exact CTest manifests зелёные: Base Debug `9/9`, Base Release `9/9`, Runtime Debug `29/29`, Runtime Release `29/29`, Full Debug `89/89`, Full Release `89/89`. Для тяжёлого Debug fault-sweep подтверждён runtime `133.71 s`, поэтому явный общий timeout исправлен с `120` на `300` секунд.
+- Portability regression исправлен осознанными equality для `GameplayTagSet` и `GameplayContext`; прямые tests подтверждают доступность defaulted equality для `EnvironmentHazard`, `EnvironmentLayer` и `EnvironmentSampleHazard`.
+- Локальный toolchain: Windows, Visual Studio 2026 Developer Command Prompt `18.5.1`, MSVC `19.50.35729.0`, CMake `4.2.3-msvc3`, Python `3.12.14`. Remote runner/tool versions и commit SHA будут добавлены только после фактического зелёного GitHub Actions run.
+
+Критерий выхода 1.7: все обязательные блокеры имеют positive и adversarial negative tests, полный strict build/test baseline проходит из чистого checkout, удаленный CI зеленый на записанном commit SHA, после чего статус цели 1 меняется с `LOCALLY_QUALIFIED` на `HARD_FROZEN`.
 
 # Цель 2. Полный локальный freeze-аудит EngineBase
 

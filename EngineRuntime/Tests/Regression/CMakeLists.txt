@@ -7,4 +7,4 @@ target_link_libraries(EpidemicRuntimeRegressionTests
 )
 
 epidemic_configure_target(EpidemicRuntimeRegressionTests)
-add_test(NAME EpidemicRuntimeRegressionTests COMMAND EpidemicRuntimeRegressionTests)
+epidemic_add_test(EpidemicRuntimeRegressionTests)

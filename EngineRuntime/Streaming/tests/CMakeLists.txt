@@ -12,4 +12,4 @@ target_link_libraries(EpidemicRuntimeStreamingTests
 )
 
 epidemic_configure_target(EpidemicRuntimeStreamingTests)
-add_test(NAME EpidemicRuntimeStreamingTests COMMAND EpidemicRuntimeStreamingTests)
+epidemic_add_test(EpidemicRuntimeStreamingTests)

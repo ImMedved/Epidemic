@@ -7,7 +7,7 @@ target_link_libraries(EpidemicApplicationCompositionTests
 )
 
 epidemic_configure_target(EpidemicApplicationCompositionTests)
-add_test(NAME EpidemicApplicationCompositionTests COMMAND EpidemicApplicationCompositionTests)
+epidemic_add_test(EpidemicApplicationCompositionTests)
 
 add_executable(EpidemicPlatformInputIntegrationTests
     platform_input_integration_tests.cpp
@@ -18,7 +18,7 @@ target_link_libraries(EpidemicPlatformInputIntegrationTests
 )
 
 epidemic_configure_target(EpidemicPlatformInputIntegrationTests)
-add_test(NAME EpidemicPlatformInputIntegrationTests COMMAND EpidemicPlatformInputIntegrationTests)
+epidemic_add_test(EpidemicPlatformInputIntegrationTests)
 
 add_executable(EpidemicRhiIntegrationTests
     rhi_integration_tests.cpp
@@ -29,4 +29,4 @@ target_link_libraries(EpidemicRhiIntegrationTests
 )
 
 epidemic_configure_target(EpidemicRhiIntegrationTests)
-add_test(NAME EpidemicRhiIntegrationTests COMMAND EpidemicRhiIntegrationTests)
+epidemic_add_test(EpidemicRhiIntegrationTests)

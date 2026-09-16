@@ -1,0 +1,1460 @@
+{
+  "overrides": {
+    "01bcdb9e8e863023": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "01d6e6ca9d5b09d2": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0252e8bd299658eb": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "02aa7ae9ee216fb3": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "02b4c82924d23ddb": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "02f1a3b4a333182b": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "036dedecc3a128d6": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "03c36824950e3580": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "0484c81aaae87261": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "056bb19c856b5393": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "07698bede104476e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0783ef2c08ef98fe": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0bf9b5c3f9ebe5de": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0c810f6837035df9": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "0c9242c6b19e82c4": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0cf80e8a814b5b2b": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0d05cfeb57d200c9": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0e072a9d72ca49a2": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0e7ee57f976996b5": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0ea009ee5e475e84": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0f27a54ce191d70c": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0fae0ce3c848aaff": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "0ff3a2b6042db618": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "101ddcb39ac6651e": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "10250c557b69c602": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "105bfb0c0477e633": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "116c5fc2752db1c1": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "134d5b82878230b9": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "156449081aa986f1": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "15de3466429b4e1d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "1758c995556b3d1f": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "1786dd7c2246ed81": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "1905ac6939029a19": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "1b87cce4b5c17648": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "1c3a2accd555843f": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "1c830522fd8e68c0": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "1dabd4bc551209b8": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "1dd826a872c6e7cb": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "1fd2a1d7d656c03d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "1fd44e19c487bf75": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "1ff97995e47862b2": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "206f283bdce696be": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "20f69459182c9068": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "2139a5c0aa62c98d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "215a133a889f422b": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "23bcb2d3edaa6531": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "23fa1848831901c6": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "240763bf26ba0896": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "24b3be2b269c50f4": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "265826bdd32aa35e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "28deb4818e8b3c2c": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "2a0ad6554b78219a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "2aa53a01972f59a3": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "2b12d18d7d28068a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "2c4696eb414095d3": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "2c98f30fc37aa4fc": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "2cbb75ea2f06ee8a": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "3360527488c5517d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "33798b3247d6ebf8": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "33e27f88774e03f7": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "34235076e8f46b6e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "345951b3507681c3": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "34ab10313882ad62": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "34b83d920d118d39": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "3575dfce83540b35": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "357f8b4de0ea63ae": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "366f9356b0ca3bc5": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "36a967707607db51": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "37157b0e86c99f87": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "376aa9c0c0ab6434": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "37b359a8777912da": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "37dc74db219d5d42": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "37fceac2a3ba4aba": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "383cddc5eef3746b": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "3854e497476d5422": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "387d7f3b0af554e0": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "395230ee60454ea2": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "3a2c66d82e7e5450": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "3bc3fde1a60349d5": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "3e87fe202fda6b05": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "40aa0192460753ff": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4148209c0532048f": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "416dde8e3852a351": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "41708044c7a95a67": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "418237a8ed6a9841": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "41d685bddb0cb107": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "43b0e1ebf4b6d97a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4442eada4561d961": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "455168d14e02b563": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "457ad94cda41a43c": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "47506d9e543da5ce": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4961b9a57c0dbe16": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4bc4e7a8a2a9d3d2": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "4c777398663c5f04": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4d43373cea68de74": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4d67429c8061456d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4dbd3f4a7fbbd43d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4e47a4973872ecad": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4e5e4fa2d6018ba3": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "4e671e7179356df3": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "4fe9e03002d35450": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "522465de45f093f2": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "527cfa1e27c9b3b6": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "52b5aa3a49e14e65": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "52bdf7880d103324": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "53d01a4189339e57": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "541faa5e4df950b7": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "546c74f5f535512a": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "5512caa3c7babdc3": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "55ab2cb5daebe46a": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "56610d19bcb5398a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "57b71699aa33c13e": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "58682d9c151c975a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "5875f4b3ba233a62": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "58f4f7bf4f7941ad": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "59fe61de5f14791d": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "5c7bfba9c6a14daa": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "5cf187a54088e1a8": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "5dbded4ef911144d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "5eb83ce47232cff3": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "5eca142c91712240": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "5fac3477a131b95b": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "639192b10b093c33": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "63b8bc1438ea6fff": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "63e923908066648a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "641ca737315dd478": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "644cc72bcf2eb377": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "64614c9f01161c72": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "64be35befacfe2a6": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "64e277fe88e24301": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "66321c3a598c402d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "669f19c3630099cc": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "67403978144f8b6f": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "67af7ce67eb24455": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "67d1b2cbe2a96f52": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "68069c4957dcb16e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "68b0e0da2be38b97": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "69b1e05587d91cf2": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "6b567e15eae8fb89": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "6bdcff5da9d60855": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "6cd17b4812a5b4ef": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "6d7dd9d16ed53f70": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "6f5febdbb70b3f1d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "6fad43fe89031df2": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "7032c1b1c0ffbf56": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "7162a0cdf334eea7": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "730fa661882071de": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "73f85ea963b81618": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "770123acb7b8ba50": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "77b05222ac6da3fa": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "77b874ab572514d1": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "782ffc63510efbd4": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "784b0e571b85b368": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "78ed549eb9497450": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "7a756e09c9e9e547": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "7b2397bb2ae5d2c3": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "7d3ba6f3e8caa544": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "7e42b661d0518609": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "7e443a802d1374dd": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "7f781d18a1bdbf41": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "80712746c39d2ed3": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "810ab3e12a85db5c": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "817c48a0155a6e26": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "84bf555ee4807930": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "84f78134c8f6dd17": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "8636a55291dd26f3": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "869a25f5bccba56e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "86a3a403ad66950f": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "86f728a3693a186f": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "880871f17b68e141": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "88b8c52ed6d6cb55": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "8937cc5d9e82e233": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "89e18bb9ac7de05a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "8bcb1061354b7927": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "8c4ad7c94f56635b": {
+      "classification": "FACTORY",
+      "rationale": "Reviewed object/value construction operation.",
+      "reviewed": true
+    },
+    "8c9767cd47637ba9": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "8cb35063ea546df6": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "8ccd3acc3adefde9": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "8e7c10ae349eae3b": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "916c72b0cad1eba6": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "91bcf6a014abde27": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "9214f55c568c3fb4": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "9352c73a0473d3c1": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "95e192b4e80b9cfe": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "97d6a30b1ff04d1d": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "9b3370ecb1d50644": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "9b7cc964b81940f7": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "9c6693430e224a37": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "9c8474904d68a7d0": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "9d0ef8f3b09a00c9": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "9f2b5269bafc1f13": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "9f4c2b14671080a2": {
+      "classification": "FACTORY",
+      "rationale": "Reviewed object/value construction operation.",
+      "reviewed": true
+    },
+    "a259c5af4e64e241": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "a36a9907b333b7a7": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "a3a68b803c58d7d5": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "a3af8e5fe4a2c1dd": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "a52b86acc248089c": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "a7fa1e2e012833c4": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "a8122aafc4c29336": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "a93e0e0c5ed49e50": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "aaaf96a6bf4903d9": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "aae918144caee66f": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "abcabd4399f8b01b": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "adef4c0a492af8fe": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "ae0281bc98d723de": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "ae4e8538a767d99e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "af3864b0306e40d4": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "b1447d617c18802a": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "b2223efecde8d621": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "b3913fdfb9783792": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "b391b424cfd7ee1f": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "b8b0248f578485ac": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "b940b436ee21c694": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "bc38e77cb8b0905f": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "bd47b01e3eaf9533": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "bd97dfaa8f521bfd": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "bdf18e9444ec84fc": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "bf0fcdad94584346": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "bfc2b8301804705c": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "c0966256e8a3e547": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "c0a897d4a7951a44": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "c1691baa2936a87b": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "c2452b5731701e5b": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "c2ec558c1eb5b658": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "c325d83c2fa6d7fd": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "c4d4e74dc3a444d6": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "c53eb3fe351c3dc5": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "c619aa9d5890b739": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "c6d54746e00efe40": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "c7f26abe422988d1": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "c82b76aa46cb415a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "c858b90a5d26a9a4": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "c918d8fd9b52b724": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "ca44937e21af8888": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "caf1a16e7fe84e60": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "cb6fc025cda2d1df": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "cb9f28a009d6bce2": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "cbabff0703878ee1": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "cc02e0d3359674f5": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "cd179bac92a71957": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "ce25f799ea7bec00": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "ce457dc4c03e87a5": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "d1f676c0bc39ca7b": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "d256c15d31eee5ce": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "d3595a343780eb58": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "d3a9898b2c42b1db": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "d5b8fc65b0ac15df": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "d79f0ddf5e6b698c": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "d7f493dd16490d18": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "d802f18187d4a0bf": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "da526dd22f40d6c8": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "dc0ea6881f7992b5": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "dc510441ba997bd5": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "ddb19560135da3cd": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "de956006d6276974": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "dfc32ff5dbb5b8c5": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "dfe178d67285f332": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "e03d62d3fdabcba3": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "e068dac6c888e414": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "e0a1cbe0ca09b25e": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "e10ef9078e53ca96": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "e373eb591d412966": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "e66e9f68d3f54e01": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "e6b49ad8f24b15b1": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "e73e2b7fe8f2f80a": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "e797e03e3ff48506": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "e98def38a2ad2e36": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "eaa925e92390282e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "eb03c94d8156dbdd": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "ec55dbf77e377682": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "ec659bc1ed298345": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "ed6ade41c581562b": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "ee7395bc2d6ce937": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "f0c8f7c7d0ba7ce4": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "f10f9c800110c478": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "f2af4acbd0a3bff9": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "f42dc1299d3df18f": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "f5554d404cad7d4f": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "f61cb3bf4d53684b": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "f744ba39cdeb8527": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "f7bbe55e625fbae4": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "f99ada7281296f0e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "fa1582af27fd63e5": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "faaa49396c788c28": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "fb7ffe75545b17bd": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "fb96a123a6aa3c13": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "fcf8de52d19e7f2e": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "fd27ffb1f62128a9": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "fe12cd56d3cd3ee2": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    },
+    "fe63a37811c23f93": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "feea23e12fc5d785": {
+      "classification": "MUTATOR",
+      "rationale": "Reviewed state-changing command or stateful sequence operation.",
+      "reviewed": true
+    }
+  },
+  "schema_version": 1
+}

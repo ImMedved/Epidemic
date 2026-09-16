@@ -1,0 +1,1341 @@
+{
+  "profiles": {
+    "base-debug": {
+      "configuration": "Debug",
+      "framework": false,
+      "runtime": false,
+      "tests": [
+        {
+          "labels": [],
+          "name": "EpidemicApplicationCompositionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicCoreUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicDiagnosticsUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicFoundationUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicMemoryUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicPlatformInputIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiUnitTests",
+          "timeout": 300.0
+        }
+      ]
+    },
+    "base-release": {
+      "configuration": "Release",
+      "framework": false,
+      "runtime": false,
+      "tests": [
+        {
+          "labels": [],
+          "name": "EpidemicApplicationCompositionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicCoreUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicDiagnosticsUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicFoundationUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicMemoryUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicPlatformInputIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiUnitTests",
+          "timeout": 300.0
+        }
+      ]
+    },
+    "full-debug": {
+      "configuration": "Debug",
+      "framework": true,
+      "runtime": true,
+      "tests": [
+        {
+          "labels": [],
+          "name": "EpidemicApplicationCompositionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicCoreUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicDiagnosticsUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [
+            "load",
+            "truth"
+          ],
+          "name": "EpidemicEngineLoadTruthTests",
+          "timeout": 240.0
+        },
+        {
+          "labels": [
+            "smoke",
+            "truth"
+          ],
+          "name": "EpidemicEngineSmokeTruthTests",
+          "timeout": 120.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicFoundationUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [
+            "truth"
+          ],
+          "name": "EpidemicFrameworkContractTruthTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [
+            "truth"
+          ],
+          "name": "EpidemicFrameworkIntegrationTruthTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [
+            "truth"
+          ],
+          "name": "EpidemicFrameworkPublicApiTruthTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkAITests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkAbilitiesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkCombatTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkConditionsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkConstructionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkCoreIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkCrimeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkDialogueTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEconomyTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEffectsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEncountersTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEntitiesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEnvironmentTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEquipmentTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkExtendedGameplayIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkFoundationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkGameplayIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkInteractionEffectsIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkInteractionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkInteractionTimeIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkItemsInventoryTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkKnowledgeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkLootTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkMaterialsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNarrativeChoicesStoryletsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNarrativeIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNarrativeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNavigationSemanticsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNeedsLifeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkOwnershipTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkPerceptionKnowledgeAIIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkPerceptionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkPopulationSimulationIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkPopulationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkProcessResourceSimulationIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkProcessesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkProgressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkRandomSupportTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkResourcesProductionSeparationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkResourcesProductionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkRolesJobsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkRuntimeBridgeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkSaveGameTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkSimulationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkSocialLegalIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkSocietyTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkStateIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkTestUtilitiesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkTraversalNavigationConstructionIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkTraversalTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkWorldIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkWorldTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameplayFactsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameplayQueriesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameplayTimeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicMemoryUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicPlatformInputIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAnimationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeArchitectureTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAssetsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAudioTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeEnvironmentTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeFoundationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeNavigationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimePersistenceTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimePhysicsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeRendererTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeResourcesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSceneTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSerializationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSimulationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeStreamingTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSupportTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeTimeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeWorldTests",
+          "timeout": 300.0
+        }
+      ]
+    },
+    "full-release": {
+      "configuration": "Release",
+      "framework": true,
+      "runtime": true,
+      "tests": [
+        {
+          "labels": [],
+          "name": "EpidemicApplicationCompositionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicCoreUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicDiagnosticsUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [
+            "load",
+            "truth"
+          ],
+          "name": "EpidemicEngineLoadTruthTests",
+          "timeout": 240.0
+        },
+        {
+          "labels": [
+            "smoke",
+            "truth"
+          ],
+          "name": "EpidemicEngineSmokeTruthTests",
+          "timeout": 120.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicFoundationUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [
+            "truth"
+          ],
+          "name": "EpidemicFrameworkContractTruthTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [
+            "truth"
+          ],
+          "name": "EpidemicFrameworkIntegrationTruthTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [
+            "truth"
+          ],
+          "name": "EpidemicFrameworkPublicApiTruthTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkAITests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkAbilitiesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkCombatTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkConditionsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkConstructionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkCoreIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkCrimeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkDialogueTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEconomyTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEffectsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEncountersTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEntitiesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEnvironmentTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkEquipmentTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkExtendedGameplayIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkFoundationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkGameplayIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkInteractionEffectsIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkInteractionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkInteractionTimeIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkItemsInventoryTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkKnowledgeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkLootTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkMaterialsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNarrativeChoicesStoryletsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNarrativeIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNarrativeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNavigationSemanticsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkNeedsLifeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkOwnershipTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkPerceptionKnowledgeAIIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkPerceptionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkPopulationSimulationIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkPopulationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkProcessResourceSimulationIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkProcessesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkProgressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkRandomSupportTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkResourcesProductionSeparationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkResourcesProductionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkRolesJobsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkRuntimeBridgeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkSaveGameTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkSimulationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkSocialLegalIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkSocietyTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkStateIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkTestUtilitiesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkTraversalNavigationConstructionIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkTraversalTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkWorldIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameFrameworkWorldTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameplayFactsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameplayQueriesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicGameplayTimeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicMemoryUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicPlatformInputIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAnimationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeArchitectureTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAssetsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAudioTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeEnvironmentTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeFoundationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeNavigationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimePersistenceTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimePhysicsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeRendererTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeResourcesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSceneTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSerializationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSimulationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeStreamingTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSupportTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeTimeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeWorldTests",
+          "timeout": 300.0
+        }
+      ]
+    },
+    "runtime-debug": {
+      "configuration": "Debug",
+      "framework": false,
+      "runtime": true,
+      "tests": [
+        {
+          "labels": [],
+          "name": "EpidemicApplicationCompositionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicCoreUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicDiagnosticsUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicFoundationUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicMemoryUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicPlatformInputIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAnimationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeArchitectureTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAssetsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAudioTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeEnvironmentTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeFoundationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeNavigationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimePersistenceTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimePhysicsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeRendererTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeResourcesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSceneTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSerializationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSimulationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeStreamingTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSupportTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeTimeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeWorldTests",
+          "timeout": 300.0
+        }
+      ]
+    },
+    "runtime-release": {
+      "configuration": "Release",
+      "framework": false,
+      "runtime": true,
+      "tests": [
+        {
+          "labels": [],
+          "name": "EpidemicApplicationCompositionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicCoreUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicDiagnosticsUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicFoundationUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicMemoryUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicPlatformInputIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRhiUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAnimationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeArchitectureTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAssetsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeAudioTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeEnvironmentTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeFoundationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeIntegrationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeNavigationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimePersistenceTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimePhysicsTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeRegressionTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeRendererTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeResourcesTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSceneTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSerializationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSimulationTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeStreamingTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeSupportTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeTimeTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicRuntimeWorldTests",
+          "timeout": 300.0
+        }
+      ]
+    }
+  },
+  "schema_version": 1
+}

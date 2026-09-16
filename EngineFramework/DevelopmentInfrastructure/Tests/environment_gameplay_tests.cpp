@@ -34,6 +34,19 @@ int main()
     const auto fog = EnvironmentLayerTypeId::FromString("game.fog");
     const auto toxic = EnvironmentHazardTypeId::FromString("game.hazard.toxic");
 
+    GameplayTagSet equality_tags;
+    equality_tags.Add(TagId::FromString("environment.equality"));
+    const EnvironmentHazard equality_hazard{toxic, 100, equality_tags};
+    const EnvironmentHazard expected_equality_hazard{toxic, 100, equality_tags};
+    CHECK(equality_hazard == expected_equality_hazard);
+    EnvironmentLayer equality_layer;
+    equality_layer.type = weather;
+    equality_layer.tags = equality_tags;
+    equality_layer.hazards.push_back(equality_hazard);
+    CHECK(equality_layer == equality_layer);
+    const EnvironmentSampleHazard equality_sample_hazard{{}, equality_hazard};
+    CHECK(equality_sample_hazard == equality_sample_hazard);
+
     EnvironmentService environment = MakeService(weather, fog, toxic);
     environment.Freeze();
     CHECK(!environment.RegisterLayerType(EnvironmentLayerTypeId::FromString("x"), "x"));

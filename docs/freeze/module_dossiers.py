@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from collections import Counter
@@ -10,6 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "docs" / "freeze" / "module_dossiers.md"
+REVIEWS = ROOT / "docs" / "freeze" / "module_dossier_reviews.json"
+DOSSIER_REVIEWS: dict[str, dict[str, dict[str, object]]] = {}
 LAYERS = ("EngineBase", "EngineRuntime", "EngineFramework")
 
 MUTATION_VERBS = {
@@ -461,7 +464,10 @@ def render_module(module: Module, exact_callables: list[object]) -> list[str]:
         if any(term in name.lower() for term in ("index", "cache", "journal", "cursor", "lookup", "diagnostic", "pending", "queue", "sorted", "revision", "next_"))
     ]
     limits = sorted(set(re.findall(r"\b(?:max_[a-zA-Z0-9_]+|[a-zA-Z0-9_]*budget[a-zA-Z0-9_]*|[a-zA-Z0-9_]*capacity[a-zA-Z0-9_]*)\b", complete, flags=re.I)))
-    snapshot_apis = [item for item in mutations + reads if any(token in item for token in ("Snapshot", "Restore", "Save", "Load", "Checkpoint"))]
+    snapshot_apis = [
+        item for item in mutations + reads
+        if any(token in item for token in ("Snapshot", "Restore", "Save", "LoadSnapshot", "Checkpoint"))
+    ]
     transient = matching_types(all_types, ("Request", "Pending", "Queue", "Callback", "Backend", "Transaction", "Session"))
 
     fields = {
@@ -486,15 +492,47 @@ def render_module(module: Module, exact_callables: list[object]) -> list[str]:
 
     lines = [f"### {module.key}", "", f"<!-- module: {module.key} -->", "", f"Target: `{module.target}`.", ""]
     for name in FIELD_NAMES:
-        lines.extend([f"- **{name}:** {fields[name]}", ""])
+        review = DOSSIER_REVIEWS[module.key][name]
+        value = review.get("correction") or fields[name]
+        lines.extend([f"- **{name}:** [{review['status']}] {value}", ""])
     return lines
 
 
+def normalized_reviews(modules: list[Module], previous: object = None) -> dict[str, object]:
+    old_modules = previous.get("modules", {}) if isinstance(previous, dict) else {}
+    records: dict[str, object] = {}
+    for module in modules:
+        old_fields = old_modules.get(module.key, {}) if isinstance(old_modules, dict) else {}
+        fields: dict[str, object] = {}
+        for name in FIELD_NAMES:
+            old = old_fields.get(name, {}) if isinstance(old_fields, dict) else {}
+            default = "REVIEWED" if name == "Responsibility" else "DISCOVERED"
+            status = old.get("status", default) if isinstance(old, dict) else default
+            record: dict[str, object] = {"status": status if status in {"DISCOVERED", "REVIEWED"} else default}
+            if isinstance(old, dict) and isinstance(old.get("correction"), str) and old["correction"].strip():
+                record["correction"] = old["correction"]
+            fields[name] = record
+        records[module.key] = fields
+    return {"schema_version": 1, "modules": records}
+
+
+def validate_reviews(modules: list[Module], data: object) -> list[str]:
+    expected = normalized_reviews(modules, data)
+    if not isinstance(data, dict) or data.get("schema_version") != 1:
+        return ["module dossier review registry schema mismatch"]
+    if data != expected:
+        return ["module dossier review registry is incomplete, stale or malformed"]
+    return []
+
+
 def render(modules: list[Module]) -> str:
-    from public_api_inventory import scan_modules
+    from public_api_inventory import apply_classification_overrides, load_classification_overrides, scan_modules
 
     exact_by_module: dict[str, list[object]] = {module.key: [] for module in modules}
-    for callable_entry in scan_modules(modules):
+    exact_callables, override_errors = apply_classification_overrides(scan_modules(modules), load_classification_overrides())
+    if override_errors:
+        raise ValueError("; ".join(override_errors))
+    for callable_entry in exact_callables:
         exact_by_module[callable_entry.module].append(callable_entry)
     header_count = sum(len(module.headers) for module in modules)
     lines = [
@@ -572,6 +610,18 @@ def main() -> int:
     parser.add_argument("--self-test", action="store_true", help="Run negative inventory and format fixtures.")
     args = parser.parse_args()
 
+    modules = discover_modules()
+    global DOSSIER_REVIEWS
+    existing_reviews = json.loads(REVIEWS.read_text(encoding="utf-8")) if REVIEWS.exists() else None
+    review_document = normalized_reviews(modules, existing_reviews)
+    if not args.check and not args.self_test:
+        REVIEWS.write_text(json.dumps(review_document, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n")
+    review_errors = validate_reviews(modules, existing_reviews if existing_reviews is not None else review_document)
+    if args.check and review_errors:
+        print("\n".join(f"ERROR: {error}" for error in review_errors), file=sys.stderr)
+        return 1
+    DOSSIER_REVIEWS = review_document["modules"]
+
     if args.self_test:
         errors = self_test()
         if errors:
@@ -580,7 +630,6 @@ def main() -> int:
         print("PASS: dossier validator accepted the production inventory and rejected all 4 malformed inventories.")
         return 0
 
-    modules = discover_modules()
     rendered = render(modules)
     errors = validate_inventory(modules, rendered)
     if errors:

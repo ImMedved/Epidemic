@@ -57,6 +57,20 @@ _run_case(base_runtime_link
     ""
     FAIL "EngineBase must not depend on Runtime or Framework")
 
+_run_case(base_runtime_transitive_wrapper
+    "add_library(EpidemicRuntimeForbidden INTERFACE)\nadd_library(NeutralBridge INTERFACE)\ntarget_link_libraries(NeutralBridge INTERFACE EpidemicRuntimeForbidden)\nadd_subdirectory(EngineBase/Bad)\n${_validate}"
+    "EngineBase/Bad"
+    "add_library(BadBase INTERFACE)\ntarget_link_libraries(BadBase INTERFACE NeutralBridge)"
+    ""
+    FAIL "BadBase -> NeutralBridge -> EpidemicRuntimeForbidden")
+
+_run_case(base_runtime_transitive_alias
+    "add_library(EpidemicRuntimeForbidden INTERFACE)\nadd_library(RuntimeImplementation ALIAS EpidemicRuntimeForbidden)\nadd_library(NeutralBridge INTERFACE)\ntarget_link_libraries(NeutralBridge INTERFACE RuntimeImplementation)\nadd_library(NeutralAlias ALIAS NeutralBridge)\nadd_subdirectory(EngineBase/Bad)\n${_validate}"
+    "EngineBase/Bad"
+    "add_library(BadBase INTERFACE)\ntarget_link_libraries(BadBase INTERFACE NeutralAlias)"
+    ""
+    FAIL "BadBase -> NeutralBridge -> EpidemicRuntimeForbidden")
+
 _run_case(runtime_framework_link
     "add_library(EpidemicGameFrameworkForbidden INTERFACE)\nadd_subdirectory(EngineRuntime/Bad)\n${_validate}"
     "EngineRuntime/Bad"
@@ -69,7 +83,7 @@ _run_case(runtime_cross_major_link
     "EngineRuntime/Scene"
     "add_library(EpidemicRuntimeScene INTERFACE)\ntarget_link_libraries(EpidemicRuntimeScene INTERFACE EpidemicRuntimeWorld)"
     ""
-    FAIL "directly links Runtime major")
+    FAIL "links an unapproved Runtime major")
 
 _run_case(framework_core_runtime_link
     "add_library(EpidemicRuntimeWorld INTERFACE)\nadd_subdirectory(EngineFramework/GameplayWorldStateOwners/Bad)\n${_validate}"
@@ -98,6 +112,20 @@ _run_case(base_runtime_include
     "add_library(BadBase INTERFACE)"
     "#include <Epidemic/Runtime/World/world.h>"
     FAIL "EngineBase source references an upper layer")
+
+_run_case(base_unknown_extension
+    "add_subdirectory(EngineBase/Bad)\n${_validate}"
+    "EngineBase/Bad"
+    "file(WRITE \"\${CMAKE_CURRENT_SOURCE_DIR}/mystery.hxx\" \"// C++-like file outside reviewed registry\\n\")\nadd_library(BadBase INTERFACE)"
+    ""
+    FAIL "Unknown production file extension '.hxx' requires registry review")
+
+_run_case(base_generated_runtime_include
+    "add_library(EpidemicRuntimeForbidden INTERFACE)\nadd_subdirectory(EngineBase/Bad)\n${_validate}"
+    "EngineBase/Bad"
+    "file(WRITE \"\${CMAKE_CURRENT_BINARY_DIR}/generated.cpp\" \"#include <Epidemic/Runtime/World/world.h>\\n\")\nadd_library(BadBase OBJECT \"\${CMAKE_CURRENT_BINARY_DIR}/generated.cpp\")"
+    ""
+    FAIL "Generated EngineBase source references an upper layer")
 
 _run_case(integration_runtime_include
     "set(EPIDEMIC_BUILD_FRAMEWORK ON)\nadd_subdirectory(EngineFramework/IntegrationLayer/Bad)\n${_validate}"
@@ -128,4 +156,4 @@ _run_case(framework_horizontal_link
     FAIL "without central allowlist permission")
 
 file(REMOVE_RECURSE "${_sandbox}")
-message(STATUS "Architecture freeze self-test accepted the valid fixture and rejected all 10 forbidden dependency/include fixtures")
+message(STATUS "Architecture freeze self-test accepted the valid fixture and rejected all 14 forbidden dependency/include/source fixtures")

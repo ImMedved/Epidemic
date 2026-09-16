@@ -19,6 +19,7 @@ from evidence_anchors import registered_test_targets, validate_path_anchor, vali
 OUTPUT = ROOT / "docs" / "freeze" / "public_api_inventory.md"
 ANCHORS = ROOT / "docs" / "freeze" / "public_api_anchors.json"
 ORACLE = ROOT / "docs" / "freeze" / "fixtures" / "public_api_oracle.json"
+CLASSIFICATION_OVERRIDES = ROOT / "docs" / "freeze" / "public_api_classification_overrides.json"
 
 MUTATION_PREFIXES = {
     "accept", "acknowledge", "acquire", "activate", "add", "advance", "allocate", "apply", "assign", "attach", "bind",
@@ -155,33 +156,125 @@ def callable_name(before: str) -> str:
     return match.group(1) if match else ""
 
 
-def classify(name: str, scope: str, signature: str) -> str:
+def classify(name: str, scope: str, signature: str, is_member: bool) -> str:
     class_name = scope.rsplit("::", 1)[-1] if scope else ""
-    if name == class_name:
+    if is_member and name == class_name:
         return "CONSTRUCTOR"
-    if name == f"~{class_name}":
+    if is_member and name == f"~{class_name}":
         return "DESTRUCTOR"
     suffix = signature[signature.find("(") :]
     is_const = bool(re.search(r"\)const\b", suffix))
     is_static = bool(re.search(r"(?:^|\s)static(?:\s|$)", signature))
     if name.startswith("operator"):
-        return "QUERY" if is_const else "MUTATOR"
+        assignment = {
+            "operator=", "operator+=", "operator-=", "operator*=", "operator/=", "operator%=",
+            "operator&=", "operator|=", "operator^=", "operator<<=", "operator>>=", "operator++", "operator--",
+        }
+        if name in assignment:
+            return "MUTATOR"
+        if not is_member or is_const:
+            return "QUERY"
+        return "UNCLASSIFIED"
     prefix = first_word(name)
-    if is_static and prefix in FACTORY_PREFIXES:
+    if prefix in FACTORY_PREFIXES and (is_static or not is_member):
         return "FACTORY"
     if prefix == "on":
         return "CALLBACK"
+    if is_member and is_const:
+        return "QUERY"
     if prefix in LIFECYCLE_PREFIXES:
         return "LIFECYCLE"
     if prefix in MUTATION_PREFIXES or prefix in COMMAND_PREFIXES:
         return "MUTATOR"
-    if is_const or prefix in QUERY_PREFIXES:
+    if prefix in QUERY_PREFIXES:
         return "QUERY"
     return "UNCLASSIFIED"
 
 
-def parse_declaration(value: str, module: Module, header: Path, line: int, scope: str) -> Callable | None:
-    signature = normalize_signature(value.split("{", 1)[0].strip())
+def declaration_body(value: str, closing: int) -> int:
+    paren = square = brace = 0
+    quote = ""
+    escaped = False
+    for index in range(closing + 1, len(value)):
+        char = value[index]
+        if quote:
+            if escaped:
+                escaped = False
+            elif char == "\\":
+                escaped = True
+            elif char == quote:
+                quote = ""
+            continue
+        if char in {'"', "'"}:
+            quote = char
+        elif char == "(":
+            paren += 1
+        elif char == ")" and paren:
+            paren -= 1
+        elif char == "[":
+            square += 1
+        elif char == "]" and square:
+            square -= 1
+        elif char == "{" and paren == 0 and square == 0 and brace == 0:
+            suffix = value[closing + 1 : index]
+            if re.search(r"\brequires\s*(?:\([^{}]*\))?\s*$", suffix):
+                brace = 1
+            else:
+                return index
+        elif char == "{":
+            brace += 1
+        elif char == "}" and brace:
+            brace -= 1
+    return -1
+
+
+def declaration_semicolon(value: str, closing: int) -> int:
+    paren = square = brace = 0
+    for index in range(closing + 1, len(value)):
+        char = value[index]
+        if char == "(":
+            paren += 1
+        elif char == ")" and paren:
+            paren -= 1
+        elif char == "[":
+            square += 1
+        elif char == "]" and square:
+            square -= 1
+        elif char == "{":
+            brace += 1
+        elif char == "}" and brace:
+            brace -= 1
+        elif char == ";" and paren == 0 and square == 0 and brace == 0:
+            return index
+    return -1
+
+
+def declaration_signature(value: str) -> str:
+    opening = parameter_opening(value)
+    if opening < 0:
+        return normalize_signature(value)
+    closing = matching_paren(value, opening)
+    if closing < 0:
+        return normalize_signature(value)
+    body = declaration_body(value, closing)
+    semicolon = declaration_semicolon(value, closing)
+    terminals = [position for position in (body, semicolon + 1 if semicolon >= 0 else -1) if position >= 0]
+    end = min(terminals) if terminals else len(value)
+    signature = value[:end].strip()
+    initializer = re.search(r"(?<!:):(?!:)", signature[closing + 1 :])
+    if initializer:
+        signature = signature[: closing + 1 + initializer.start()].strip()
+    return normalize_signature(signature)
+
+
+def callable_identity(module: Module, relative: str, qualified: str, signature: str) -> str:
+    return f"{module.key}:{relative}::{qualified}::{signature}"
+
+
+def parse_declaration(
+    value: str, module: Module, header: Path, line: int, scope: str, is_member: bool,
+) -> Callable | None:
+    signature = declaration_signature(value)
     if not signature or signature.startswith(("#", ":", "using ", "typedef ", "friend ", "enum ", "class ", "struct ")):
         return None
     opening = parameter_opening(signature)
@@ -198,9 +291,12 @@ def parse_declaration(value: str, module: Module, header: Path, line: int, scope
         return None
     relative = header.relative_to(ROOT).as_posix()
     qualified = f"{scope}::{name}" if scope else name
-    identity = f"{relative}:{line}::{qualified}::{signature}"
+    identity = callable_identity(module, relative, qualified, signature)
     callable_id = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16]
-    return Callable(callable_id, module.key, relative, line, scope, name, signature, classify(name, scope, signature))
+    return Callable(
+        callable_id, module.key, relative, line, scope, name, signature,
+        classify(name, scope, signature, is_member),
+    )
 
 
 def scan_text(module: Module, header: Path, text: str) -> list[Callable]:
@@ -218,6 +314,23 @@ def scan_text(module: Module, header: Path, text: str) -> list[Callable]:
             scopes.pop()
         classes = [scope for scope in scopes if scope.kind == "class"]
         current_class = classes[-1] if classes else None
+
+        inline_class = re.search(
+            r"\b(?:class|struct)\s+([A-Za-z_]\w*)(?:\s*<[^{}]+>)?\s*\{(.*)\}\s*;\s*$", stripped,
+        )
+        if inline_class and (current_class is None or (current_class.visible and current_class.public)):
+            wrapper = f"struct {inline_class.group(1)}\n{{\npublic:\n{inline_class.group(2)}\n}};"
+            outer = "::".join(scope.name for scope in scopes if scope.kind in {"namespace", "class"})
+            for item in scan_text(module, header, wrapper):
+                scope = f"{outer}::{item.scope}" if outer else item.scope
+                qualified = f"{scope}::{item.name}" if scope else item.name
+                identity = callable_identity(module, item.header, qualified, item.signature)
+                found.append(Callable(
+                    hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16], item.module, item.header,
+                    line_number, scope, item.name, item.signature, item.classification,
+                ))
+            brace_depth += raw.count("{") - raw.count("}")
+            continue
 
         if current_class and brace_depth == current_class.body_depth and stripped in {"public:", "protected:", "private:"}:
             current_class.public = stripped == "public:"
@@ -270,13 +383,26 @@ def scan_text(module: Module, header: Path, text: str) -> list[Callable]:
                 pending_line = line_number
                 pending_context = context
             pending = f"{pending} {stripped}".strip()
-            paren_balance = pending.count("(") - pending.count(")")
-            complete = paren_balance <= 0 and (";" in stripped or ("{" in stripped and ")" in pending))
-            if complete:
-                candidate = parse_declaration(pending, module, header, pending_line, context)
+            while pending:
+                opening = parameter_opening(pending)
+                closing = matching_paren(pending, opening) if opening >= 0 else -1
+                if opening < 0 and ";" in pending:
+                    pending = pending.split(";", 1)[1].strip()
+                    pending_line = line_number
+                    continue
+                semicolon = declaration_semicolon(pending, closing) if closing >= 0 else -1
+                body = declaration_body(pending, closing) if closing >= 0 else -1
+                if closing < 0 or (semicolon < 0 and body < 0):
+                    break
+                terminal = semicolon + 1 if semicolon >= 0 and (body < 0 or semicolon < body) else len(pending)
+                declaration = pending[:terminal]
+                candidate = parse_declaration(
+                    declaration, module, header, pending_line, context, is_member=current_class is not None,
+                )
                 if candidate:
                     found.append(candidate)
-                pending = ""
+                pending = pending[terminal:].strip() if terminal < len(pending) else ""
+                pending_line = line_number
 
         brace_depth += raw.count("{") - raw.count("}")
     return found
@@ -317,7 +443,8 @@ def scan_header(module: Module, header: Path) -> list[Callable]:
             expanded = re.sub(rf"\b{re.escape(param)}\b", arg, expanded)
         wrapped = f"namespace {namespace}\n{{\n{expanded};\n}}" if namespace else expanded + ";"
         for item in scan_text(module, header, mask_preprocessor(mask_comments(wrapped))):
-            identity = f"{item.header}:{line_number}::{item.scope}::{item.signature}"
+            qualified = f"{item.scope}::{item.name}" if item.scope else item.name
+            identity = callable_identity(module, item.header, qualified, item.signature)
             found.append(Callable(
                 hashlib.sha256(identity.encode("utf-8")).hexdigest()[:16], item.module, item.header,
                 line_number, item.scope, item.name, item.signature, item.classification,
@@ -327,7 +454,68 @@ def scan_header(module: Module, header: Path) -> list[Callable]:
 
 def scan_modules(modules: list[Module]) -> list[Callable]:
     callables = [item for module in modules for header in module.headers for item in scan_header(module, header)]
-    return sorted(callables, key=lambda item: (item.module, item.header, item.line, item.signature))
+    unique: dict[str, Callable] = {}
+    for item in callables:
+        previous = unique.get(item.id)
+        if previous is not None and (
+            previous.module, previous.header, previous.scope, previous.signature
+        ) != (item.module, item.header, item.scope, item.signature):
+            raise ValueError(f"callable ID collision: {previous} vs {item}")
+        if previous is None or item.line < previous.line:
+            unique[item.id] = item
+    return sorted(unique.values(), key=lambda item: (item.module, item.header, item.line, item.signature))
+
+
+def load_classification_overrides() -> dict[str, dict[str, object]]:
+    if not CLASSIFICATION_OVERRIDES.is_file():
+        return {}
+    data = json.loads(CLASSIFICATION_OVERRIDES.read_text(encoding="utf-8"))
+    if data.get("schema_version") != 1 or not isinstance(data.get("overrides"), dict):
+        raise ValueError("classification override registry schema mismatch")
+    return data["overrides"]
+
+
+def apply_classification_overrides(
+    callables: list[Callable], overrides: dict[str, dict[str, object]],
+) -> tuple[list[Callable], list[str]]:
+    errors: list[str] = []
+    known = {item.id for item in callables}
+    for callable_id in sorted(set(overrides) - known):
+        errors.append(f"stale classification override: {callable_id}")
+    allowed = {"CONSTRUCTOR", "DESTRUCTOR", "FACTORY", "LIFECYCLE", "MUTATOR", "QUERY", "CALLBACK"}
+    result: list[Callable] = []
+    for item in callables:
+        record = overrides.get(item.id)
+        if record is None:
+            result.append(item)
+            continue
+        classification = record.get("classification") if isinstance(record, dict) else None
+        rationale = record.get("rationale") if isinstance(record, dict) else None
+        if (
+            classification not in allowed
+            or record.get("reviewed") is not True
+            or not isinstance(rationale, str)
+            or not rationale.strip()
+        ):
+            errors.append(f"{item.id}: classification override must be reviewed with classification and rationale")
+            result.append(item)
+            continue
+        result.append(Callable(
+            item.id, item.module, item.header, item.line, item.scope, item.name, item.signature, str(classification),
+        ))
+    return result, errors
+
+
+def validate_signatures(callables: list[Callable]) -> list[str]:
+    errors: list[str] = []
+    for item in callables:
+        if (
+            item.signature.count("(") != item.signature.count(")")
+            or item.signature.count("{") != item.signature.count("}")
+            or item.signature.count("[") != item.signature.count("]")
+        ):
+            errors.append(f"{item.id}: truncated or unbalanced signature: {item.signature}")
+    return errors
 
 
 def validate_oracle() -> list[str]:
@@ -385,6 +573,14 @@ def validate_anchors(data: object, callables: list[Callable]) -> list[str]:
                 if "test" not in Path(anchor_path).as_posix().lower():
                     errors.append(f"{callable_id}/test: anchor is not in test infrastructure")
     return errors
+
+
+def fixture_anchor(relative: str, symbol: str) -> str:
+    path = ROOT / relative
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if symbol in line:
+            return f"{relative}:{line_number}::{symbol}"
+    raise ValueError(f"fixture anchor symbol is missing: {relative}::{symbol}")
 
 
 def render(modules: list[Module], callables: list[Callable], anchor_data: dict[str, object]) -> str:
@@ -453,11 +649,16 @@ MAKE_ID(WidgetId);
     try:
         header.write_text(fixture, encoding="utf-8", newline="\n")
         rows = scan_header(module, header)
+        header.write_text("// line shift must not change callable identities\n\n" + fixture, encoding="utf-8", newline="\n")
+        shifted_rows = scan_header(module, header)
     finally:
         if header.exists():
             header.unlink()
     errors: list[str] = []
     errors.extend(validate_oracle())
+    if [item.id for item in rows] != [item.id for item in shifted_rows]:
+        errors.append("callable IDs changed after a comment-only line shift")
+    errors.extend(validate_signatures(rows))
     cancel = [item for item in rows if item.name == "Cancel"]
     if len(cancel) != 2 or len({item.id for item in cancel}) != 2 or any(item.classification != "MUTATOR" for item in cancel):
         errors.append("overloaded Cancel methods were lost, collapsed or misclassified")
@@ -482,11 +683,11 @@ MAKE_ID(WidgetId);
         "anchors": {
             rows[0].id: {
                 "test": {
-                    "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/test_utilities_tests.cpp::main",
+                    "anchor": fixture_anchor("EngineFramework/DevelopmentInfrastructure/Tests/test_utilities_tests.cpp", "int main("),
                     "reviewed": True,
                     "target": "EpidemicGameFrameworkTestUtilitiesTests",
                     "assertions": [
-                        "EngineFramework/DevelopmentInfrastructure/Tests/test_utilities_tests.cpp::Check"
+                        fixture_anchor("EngineFramework/DevelopmentInfrastructure/Tests/test_utilities_tests.cpp", "void Check(")
                     ],
                 }
             }
@@ -526,16 +727,25 @@ def main() -> int:
 
     modules = discover_modules()
     callables = scan_modules(modules)
+    try:
+        overrides = load_classification_overrides()
+    except (OSError, ValueError, json.JSONDecodeError) as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 1
+    callables, override_errors = apply_classification_overrides(callables, overrides)
     if not ANCHORS.exists() and not args.check:
         ANCHORS.write_text(json.dumps({"schema_version": 1, "anchors": {}}, indent=2) + "\n", encoding="utf-8", newline="\n")
     anchors = load_anchors()
-    errors = validate_anchors(anchors, callables)
+    errors = override_errors + validate_signatures(callables) + validate_anchors(anchors, callables)
     errors.extend(validate_oracle())
     if len(modules) != 78 or sum(len(module.headers) for module in modules) != 232:
         errors.append("production module/header inventory mismatch")
     identities = [item.id for item in callables]
     if len(identities) != len(set(identities)):
         errors.append("callable IDs are not unique")
+    unclassified = [item for item in callables if item.classification == "UNCLASSIFIED"]
+    if unclassified:
+        errors.append(f"{len(unclassified)} public callables remain UNCLASSIFIED")
     if errors:
         print("\n".join(f"ERROR: {error}" for error in errors), file=sys.stderr)
         return 1
@@ -544,7 +754,7 @@ def main() -> int:
         if not OUTPUT.exists() or OUTPUT.read_text(encoding="utf-8") != rendered:
             print("ERROR: public API inventory is missing or stale; run docs/freeze/public_api_inventory.py", file=sys.stderr)
             return 1
-        print(f"PASS: {len(callables)} exact public callables; overloads preserved; explicit anchors only.")
+        print(f"PASS: {len(callables)} exact public callables; stable IDs; balanced signatures; zero UNCLASSIFIED rows.")
         return 0
     OUTPUT.write_text(rendered, encoding="utf-8", newline="\n")
     print(f"Wrote {OUTPUT.relative_to(ROOT)} with {len(callables)} exact public callable rows.")

@@ -2,7 +2,7 @@ function(epidemic_add_truth_test target source)
     add_executable(${target} ${source})
     target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
     epidemic_configure_target(${target})
-    add_test(NAME ${target} COMMAND ${target})
+    epidemic_add_test(${target})
     set_tests_properties(${target} PROPERTIES LABELS "truth")
 endfunction()
 
