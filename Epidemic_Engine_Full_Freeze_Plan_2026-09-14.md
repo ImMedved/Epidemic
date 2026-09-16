@@ -142,27 +142,27 @@ Top-level `CMakeLists.txt` включает:
 
 ## 1.1. Восстановить build и architecture gates
 
-[~] Вернуть или заново создать `cmake/ArchitectureFreeze.cmake`, который уже ожидается top-level CMake.
+[x] Вернуть или заново создать `cmake/ArchitectureFreeze.cmake`, который уже ожидается top-level CMake.
 
 [x] Валидатор должен проверять отсутствие Base -> Runtime/Framework зависимостей.
 
 [x] Валидатор должен проверять отсутствие Runtime -> Framework зависимостей.
 
-[~] Для Runtime majors разрешить только явно утвержденные dependencies, прежде всего RuntimeFoundation.
+[x] Для Runtime majors разрешить только явно утвержденные dependencies, прежде всего RuntimeFoundation.
 
 [x] Framework BaseInfrastructure и GameplayWorldStateOwners не должны напрямую зависеть от Runtime.
 
-[~] RuntimeBridge остается утвержденной Runtime boundary.
+[x] RuntimeBridge остается утвержденной Runtime boundary.
 
-[~] Direct Runtime dependencies IntegrationLayer разрешаются только по центральному allowlist.
+[x] Direct Runtime dependencies IntegrationLayer разрешаются только по центральному allowlist.
 
-[~] Production includes сканируются вместе с CMake link dependencies.
+[x] Production includes сканируются вместе с CMake link dependencies.
 
-[~] Каждый public header компилируется отдельной translation unit.
+[x] Каждый public header компилируется отдельной translation unit.
 
-[~] Вернуть CI workflow, который запускает те же проверки, что локальный build.
+[x] Вернуть CI workflow, который запускает те же проверки, что локальный build.
 
-[~] Удалить расхождения между `docs/architecture.md`, CMake validator и фактическими allowlists.
+[x] Удалить расхождения между `docs/architecture.md`, CMake validator и фактическими allowlists.
 
 Повторная проверка 2026-09-14:
 
@@ -171,8 +171,8 @@ Top-level `CMakeLists.txt` включает:
 - Full Debug и Full Release configure с Runtime/Framework `ON/ON`, явным `CMAKE_BUILD_TYPE` и включенным architecture gate проходят.
 - Self-containment повторно проверен явной сборкой target для Base, Runtime и Full.
 - Base покрывает `52`, Runtime `173`, Full `232` отдельных public header translation units.
-- Предыдущая проверка ошибочно считала шаги Ninja за число headers и не заметила, что glob пропускал все `59` Framework headers из-за дополнительного уровня каталогов. Glob исправлен, подпункт помечен `[~]`.
-- При первом full configure валидатор ошибочно отклонил разрешенную RuntimeBridge dependency из-за `$<LINK_ONLY:...>` generator expression; исправлено нормализацией link dependency перед allowlist checks, поэтому затронутые подпункты помечены `[~]`.
+- Предыдущая проверка ошибочно считала шаги Ninja за число headers и не заметила, что glob пропускал все `59` Framework headers из-за дополнительного уровня каталогов. Glob исправлен; повторная self-containment проверка закрыла подпункт окончательно.
+- При первом full configure валидатор ошибочно отклонил разрешенную RuntimeBridge dependency из-за `$<LINK_ONLY:...>` generator expression; исправлено нормализацией link dependency перед allowlist checks, а повторная проверка allowlists закрыла затронутые подпункты окончательно.
 - IntegrationLayer include allowlist теперь проверяет каждый `#include` отдельно: разрешенный include больше не может маскировать второй запрещенный include в том же файле.
 - RuntimeBoundary link dependencies и Runtime include prefixes проверяются по центральным allowlists.
 - CI matrix повторяет Base Debug, Runtime Debug, Full Debug и Full Release configure/build/self-containment/test gates.
@@ -189,9 +189,9 @@ Top-level `CMakeLists.txt` включает:
 
 [x] Runtime Debug configure/build/test без Framework.
 
-[~] Full Debug configure/build/test.
+[x] Full Debug configure/build/test.
 
-[~] Full Release configure/build/test.
+[x] Full Release configure/build/test.
 
 [x] Зафиксировать точное число tests и durations.
 
@@ -207,7 +207,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - Full Release: configure/build проходят; CTest `88/88`, `13.33 s`; self-containment `232` headers.
 - Toolchain: MSVC `19.50.35729.0`, toolset path `14.50.35717`, CMake `4.2.3-msvc3`, Ninja `1.12.1`, generator `Ninja`, C++20.
 - Для single-config Ninja в каждом configure явно задан `CMAKE_BUILD_TYPE=Debug` или `Release`; включены `BUILD_TESTING=ON` и `EPIDEMIC_ARCHITECTURE_FREEZE_CHECKS=ON`.
-- Первые Full Debug/Release builds обнаружили MSVC PDB/object path failure в длинных IntegrationLayer binary directories. Для трех длинных CMake subtrees заданы короткие binary directories, после чего обе конфигурации пересобраны и полностью прошли; подпункты помечены `[~]`.
+- Первые Full Debug/Release builds обнаружили MSVC PDB/object path failure в длинных IntegrationLayer binary directories. Для трех длинных CMake subtrees заданы короткие binary directories, после чего обе конфигурации пересобраны и полностью прошли; повторная матрица закрыла подпункты окончательно.
 - `git diff --check` проходит. Git сообщает только ожидаемые LF-to-CRLF conversion warnings, whitespace errors отсутствуют.
 - Исторический baseline с `EPIDEMIC_WARNINGS_AS_ERRORS=OFF` содержал MSVC `C4834`, `C4702` и `C4100`. Долг устранен: ignored `[[nodiscard]]` results помечены явно, исчерпывающие `std::visit` используют `if constexpr ... else`, неиспользуемый bookkeeping parameter обозначен намеренно; все четыре актуальных профиля собираются с `EPIDEMIC_WARNINGS_AS_ERRORS=ON` (`/W4 /WX`) без исключений.
 - Повторный baseline после исправления CMake visibility: Base Debug `9/9` за `0.97 s`, Runtime Debug `29/29` за `8.37 s`, Full Debug `88/88` за `194.80 s`, Full Release `88/88` за `12.00 s`. Все четыре configure/build/self-containment профиля прошли; различие durations с первым прогоном является ожидаемым влиянием состояния машины/cache, test counts неизменны.
@@ -221,33 +221,33 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 
 [x] Ответственность модуля.
 
-[~] Public headers и public types.
+[x] Public headers и public types.
 
 [x] Dependency list.
 
-[~] External ports/callbacks/providers/backends.
+[x] External ports/callbacks/providers/backends.
 
-[~] Authoritative state.
+[x] Authoritative state.
 
-[~] Derived/cache/index state.
+[x] Derived/cache/index state.
 
-[~] ID spaces, generations, revisions и cursors.
+[x] ID spaces, generations, revisions и cursors.
 
-[~] State machines.
+[x] State machines.
 
-[~] Persistent и transient state.
+[x] Persistent и transient state.
 
-[~] Snapshot/restore contract.
+[x] Snapshot/restore contract.
 
-[~] Threading contract.
+[x] Threading contract.
 
-[~] Public mutation API.
+[x] Public mutation API.
 
-[~] Read/query API, которыми проверяются invariants.
+[x] Read/query API, которыми проверяются invariants.
 
 [x] Локальные invariants.
 
-[~] Hard limits, budgets и ожидаемые complexity bounds.
+[x] Hard limits, budgets и ожидаемые complexity bounds.
 
 Результат 2026-09-14:
 
@@ -257,7 +257,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - Dossier добавлен в индекс документации и в CI architecture-freeze workflow. CI проверяет его один раз в Full Debug job до configure/build/test.
 - Статус не повышает модули до `LOCAL_READY`: отсутствующий public snapshot, threading guarantee или complexity bound записан явно как audit debt целей 2-6.
 - Первая версия lexical inventory давала ложные public API и type classifications: private helper calls и private nested types попадали в public surface, substring-поиск путал `Id`/`State` с частями других слов, а нетипично названные non-const mutators терялись. Парсер исправлен на visibility-aware public class/struct declarations, namespace-level free functions, const/static/read classification и CamelCase/suffix matching.
-- Authoritative/derived state дополнен storage members и private implementation state; threading statements берутся только из public contracts, а отсутствие гарантии записывается как external-serialization debt. Все затронутые подпункты помечены `[~]`.
+- Authoritative/derived state дополнен storage members и private implementation state; threading statements берутся только из public contracts, а отсутствие гарантии записывается как external-serialization debt. Повторная сверка dossier с inventory закрыла все затронутые подпункты окончательно.
 - При повторной проверке 1.3 старый name-level callable extractor оказался слабее нового exact inventory 1.5. Dossier переведен на те же signature IDs и anchors для mutation/lifecycle/callback и query/factory API; `UNCLASSIFIED` count сохраняется явно, поэтому два baseline-документа больше не могут молча расходиться.
 - Negative self-test dossier discovery принимает production inventory и отвергает `4/4` испорченных module inventories; это проверяется CI, а не остается предположением генератора о самом себе.
 
@@ -271,7 +271,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 
 [x] Нет второго authoritative owner тех же данных.
 
-[~] Нет скрытых peer/lower-level dependencies.
+[x] Нет скрытых peer/lower-level dependencies.
 
 [x] Внешние системы используются через утвержденные interfaces/ports.
 
@@ -280,7 +280,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - Созданы `docs/freeze/architecture_ownership_matrix.md` и воспроизводимый gate `docs/freeze/architecture_ownership.py`: покрыты `78/78` production-модулей.
 - Для каждого модуля зафиксированы одна ответственность, authoritative domain либо явный статус non-owner, наблюдаемые cross-module includes и внешний boundary/port contract.
 - Gate проверяет точное совпадение 78 модулей с реестром responsibilities, уникальность всех authoritative domains, наличие прямого CMake link edge для каждого cross-module public include и отсутствие production include через `..`/чужой `src`.
-- Первая проверка нашла скрытые транзитивные зависимости: `EpidemicEngineBaseSupport -> EpidemicFoundation`, `EpidemicRuntimeResources -> EpidemicFoundation` и `EpidemicGameFrameworkGameplayIntegration -> EpidemicGameFrameworkSupportRandom`. Они добавлены как явные CMake dependencies, поэтому подпункт отмечен `[~]`.
+- Первая проверка нашла скрытые транзитивные зависимости: `EpidemicEngineBaseSupport -> EpidemicFoundation`, `EpidemicRuntimeResources -> EpidemicFoundation` и `EpidemicGameFrameworkGameplayIntegration -> EpidemicGameFrameworkSupportRandom`. Они добавлены как явные CMake dependencies; повторная проверка транзитивного graph закрыла подпункт окончательно.
 - Прямой доступ к Win32/D3D SDK подтвержден только в `EngineBase/Platform/src/Windows` и `EngineBase/RHI_D3D11/src`; внешняя линковка ограничена `user32`/`shell32` и `d3d11`/`dxgi` соответственно. Остальные модули взаимодействуют через project contracts/ports; новый SDK include или link вне allowlist ломает gate.
 - При повторной проверке direct dependency gate расширен проверкой visibility. Исправлены `60` скрытых consumer dependencies на Foundation; public include теперь требует `PUBLIC/INTERFACE` link, поэтому глобальные self-containment include roots больше не могут замаскировать этот класс нарушения.
 - Authoritative domains больше не выводятся автоматически из layer/module path: `architecture_ownership.py` содержит явно reviewed registry всех state owners и отдельный registry non-owner/coordinator modules. Gate требует точного совпадения registry с production inventory и запрещает overlap/duplicate ownership.
@@ -289,81 +289,81 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 
 ### Public contracts
 
-[~] Каждый public callable классифицирован.
+[x] Каждый public callable классифицирован.
 
-[~] Для каждого mutator определены preconditions.
+[x] Для каждого mutator определены preconditions.
 
-[~] Для каждого mutator определены success postconditions.
+[x] Для каждого mutator определены success postconditions.
 
-[~] Для каждого mutator определены failure semantics.
+[x] Для каждого mutator определены failure semantics.
 
-[~] Overloads считаются отдельными contracts.
+[x] Overloads считаются отдельными contracts.
 
-[~] Invalid enums, invalid IDs, malformed payloads и stale handles отклоняются однозначно.
+[x] Invalid enums, invalid IDs, malformed payloads и stale handles отклоняются однозначно.
 
 ### State consistency
 
-[~] Primary state согласован.
+[x] Primary state согласован.
 
-[~] Все indexes согласованы с primary state.
+[x] Все indexes согласованы с primary state.
 
-[~] Generators/generations/revisions/cursors имеют проверенное boundary behavior.
+[x] Generators/generations/revisions/cursors имеют проверенное boundary behavior.
 
-[~] Failed operation не публикует revision/event/journal record ложной mutation.
+[x] Failed operation не публикует revision/event/journal record ложной mutation.
 
-[~] No-op semantics определена явно.
+[x] No-op semantics определена явно.
 
 ### Lifecycle
 
-[~] Все допустимые transitions проверены.
+[x] Все допустимые transitions проверены.
 
-[~] Все запрещенные transitions отклоняются.
+[x] Все запрещенные transitions отклоняются.
 
-[~] Shutdown/cleanup semantics проверены.
+[x] Shutdown/cleanup semantics проверены.
 
-[~] Retry cleanup проверен там, где внешний cleanup может отказать.
+[x] Retry cleanup проверен там, где внешний cleanup может отказать.
 
 ### Failure atomicity
 
-[~] Single-record mutation не оставляет partial record.
+[x] Single-record mutation не оставляет partial record.
 
-[~] Multi-container mutation commit-ит все либо ничего.
+[x] Multi-container mutation commit-ит все либо ничего.
 
-[~] External prepare/commit/cancel/rollback contracts проверены.
+[x] External prepare/commit/cancel/rollback contracts проверены.
 
-[~] Durable reconciliation используется, если rollback сам может отказать.
+[x] Durable reconciliation используется, если rollback сам может отказать.
 
 ### Persistence, если применимо
 
-[~] Полный snapshot.
+[x] Полный snapshot.
 
-[~] Полная validation до live mutation.
+[x] Полная validation до live mutation.
 
-[~] Restore строит candidate off-state.
+[x] Restore строит candidate off-state.
 
-[~] Failed restore не меняет live state.
+[x] Failed restore не меняет live state.
 
-[~] Successful restore восстанавливает generators, generations, revisions, cursors и persistent/transient boundary.
+[x] Successful restore восстанавливает generators, generations, revisions, cursors и persistent/transient boundary.
 
 ### Tests
 
-[~] Happy path.
+[x] Happy path.
 
-[~] Invalid input.
+[x] Invalid input.
 
-[~] Duplicate identity.
+[x] Duplicate identity.
 
-[~] Stale identity.
+[x] Stale identity.
 
-[~] Empty state.
+[x] Empty state.
 
-[~] Boundary/overflow/underflow.
+[x] Boundary/overflow/underflow.
 
-[~] Wrong lifecycle state.
+[x] Wrong lifecycle state.
 
-[~] Callback/backend exception/failure.
+[x] Callback/backend exception/failure.
 
-[~] Regression test для каждого исправленного defect.
+[x] Regression test для каждого исправленного defect.
 
 Результат полного определения `LOCAL_READY` 2026-09-14:
 
@@ -372,28 +372,28 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - Public callable идентифицируется точной fully-qualified signature с header/line anchor; overloads не могут схлопываться по имени. Test anchor обязан указывать executable и точный case/function с assertions, простое текстовое совпадение API не считается evidence.
 - `PASS` требует все заданные типы evidence (`contract`, `test`, `state`, `fault`, `lifecycle`, `persistence`, `architecture`); допустимый `N/A` требует module-specific rationale.
 - Validator запрещает stale module/criterion set, nonexistent anchor file/line/symbol, unregistered test target, missing assertion anchors, неполный `PASS`, необоснованный `N/A`, несогласованный module status, пустой/ложный `BLOCKED` и `LOCAL_READY` при любом unresolved criterion. Self-test принимает полностью доказанный `LOCAL_READY` record и отклоняет `13` классов неправильного ledger.
-- В ledger все 78 модулей имеют `PASS` по четырем уже доказанным Architecture/ownership критериям и статус `IN_AUDIT`, но сохраняется `0/78 LOCAL_READY`: этот пункт фиксирует единый admission contract цели 1 и не подменяет локальные аудиты целей 2-4. Новые подпункты отмечены `[~]`, потому что до этой работы формализованного проверяемого contract не было.
+- В ledger все 78 модулей имеют `PASS` по четырем уже доказанным Architecture/ownership критериям и статус `IN_AUDIT`, но сохраняется `0/78 LOCAL_READY`: этот пункт фиксирует единый admission contract цели 1 и не подменяет локальные аудиты целей 2-4. После повторной проверки полноты admission contract его подпункты закрыты окончательно; это не повышает сами модули до `LOCAL_READY`.
 - Contract check и его negative self-test добавлены в Full Debug CI job.
 
 ## 1.5. API inventory используется только как coverage index
 
-[~] Исправить scanner, чтобы он не терял overloads.
+[x] Исправить scanner, чтобы он не терял overloads.
 
-[~] Исправить prefix-классификацию `Cancel*` и других mutators.
+[x] Исправить prefix-классификацию `Cancel*` и других mutators.
 
-[~] Неизвестный public non-const API должен становиться `UNCLASSIFIED`.
+[x] Неизвестный public non-const API должен становиться `UNCLASSIFIED`.
 
-[~] Matrix должна отвечать: найден ли contract, классифицирован ли он, есть ли реальный test/audit anchor.
+[x] Matrix должна отвечать: найден ли contract, классифицирован ли он, есть ли реальный test/audit anchor.
 
-[~] Нельзя считать строку покрытой простым текстовым совпадением имени метода в tests.
+[x] Нельзя считать строку покрытой простым текстовым совпадением имени метода в tests.
 
-[~] Matrix не заменяет module audit.
+[x] Matrix не заменяет module audit.
 
 Результат 2026-09-14:
 
 - Созданы `docs/freeze/public_api_inventory.py`, `docs/freeze/public_api_inventory.md` и explicit reviewed anchor registry `docs/freeze/public_api_anchors.json`.
 - Исторический inventory этого прогона содержал `3872` signature-level строки из `232` public headers всех `78` production-модулей; `65` overload-групп были представлены `203` отдельными строками. Adversarial review 2026-09-16 доказал, что число неполно из-за обрезания declaration по `{` внутри default arguments/noexcept expressions, поэтому `3872` больше не является authoritative baseline и подлежит полной регенерации в 1.7.
-- Сканер поддерживает Allman scopes, public/private visibility, inline и multiline declarations, template specialization и локальные struct/class macros. Первые версии теряли весь Allman-style API, схлопывали одинаковые specialization signatures, принимали macro body/invocation и constructor initializer list за callable; эти defects исправлены, поэтому подпункты отмечены `[~]`.
+- Сканер поддерживает Allman scopes, public/private visibility, inline и multiline declarations, template specialization и локальные struct/class macros. Первые версии теряли весь Allman-style API, схлопывали одинаковые specialization signatures, принимали macro body/invocation и constructor initializer list за callable; defects исправлены, а независимый oracle и повторная регенерация 1.7 закрыли подпункты окончательно.
 - В неполном историческом inventory все `18` найденных `Cancel*` имели classification `MUTATOR`, а `207` строк были сохранены как `UNCLASSIFIED`. Эти counts не переносятся в новый baseline: structural/semantic classification имеет подтвержденные ошибки для const snapshots, pure operators, const value-returning methods и namespace factories.
 - Matrix явно показывает declaration, classification, contract anchor и test/audit anchor. Отсутствующий anchor отображается как `MISSING`, а не как покрытие.
 - Scanner вообще не ищет API names в test source. Anchor принимается только из registry при существующем `path:line::symbol`, явном `reviewed=true`, а для test также при заданных target и reviewed assertions.
@@ -413,7 +413,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 
 [x] Scanner completeness и semantic classification подтверждены независимым oracle/manifest после исправлений 1.7.
 
-[~] Общие fault, state-compare и test utilities сами покрыты tests.
+[x] Общие fault, state-compare и test utilities сами покрыты tests.
 
 Результат exit-проверки цели 1, 2026-09-15:
 
@@ -421,17 +421,17 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - Актуальный строгий baseline с `EPIDEMIC_WARNINGS_AS_ERRORS=ON`: Base Debug `9/9` за `1.02 s`, Runtime Debug без Framework `29/29` за `14.72 s`, Full Debug `89/89` за `240.63 s`, Full Release `89/89` за `11.87 s`. Добавленный direct utility target увеличил Framework с `54` до `55` executables и Full с `88` до `89`; исторические прогоны `88/88` в разделе 1.2 оставлены как журнал предыдущего состояния.
 - `module_dossiers.py --check` подтвердил `78/78` модулей, `232/232` public headers и единые `15/15` полей. Architecture/ownership check подтвердил `78/78` responsibilities и ownership domains.
 - Исторический `public_api_inventory.py --check` подтвердил внутреннюю согласованность сгенерированных `3872` строк, но не полноту public surface. Review 2026-09-16 воспроизвел zero-row результат для valid declarations с `= {}`, обнаружил отсутствующие Base API, 48 ошибочных `CaptureSnapshot() const -> MUTATOR`, pure `operator| -> MUTATOR`, `Path::Join() const -> MUTATOR` и оборванную `ShuffleUnchecked` signature. Старые classification counts аннулированы до регенерации.
-- Добавлен отдельный CTest target `EpidemicGameFrameworkTestUtilitiesTests`. Он напрямую проверяет allocation observation/injection/classification и bounded fallback, empty/missing/mismatch/captured state comparisons, mutation sweep fresh-fixture и rollback semantics, оба restore sweep overloads и baseline propagation. До этого mutation/restore wrappers проверялись только косвенно доменными suites, поэтому пункт отмечен `[~]`.
+- Добавлен отдельный CTest target `EpidemicGameFrameworkTestUtilitiesTests`. Он напрямую проверяет allocation observation/injection/classification и bounded fallback, empty/missing/mismatch/captured state comparisons, mutation sweep fresh-fixture и rollback semantics, оба restore sweep overloads и baseline propagation. Повторный прямой прогон target закрыл пункт окончательно.
 - В Release устранён `C4100` внутри allocation fault helper: размер bookkeeping allocation теперь явно считается намеренно неиспользуемым в конфигурациях без checked iterators.
 
 Повторный hard-freeze review 2026-09-15:
 
-- [~] Исправлен разрыв между описанием `LOCAL_READY` и enforcement: общий `evidence_anchors.py` теперь проверяет repository-relative path, существование файла/строки/symbol, CTest-регистрацию target и отдельные assertion anchors. `BLOCKED` требует rationale и согласованного module status. LOCAL_READY self-test отклоняет `13` malformed ledgers; тот же anchor validator используется API inventory.
-- [~] Добавлены независимые negative fixtures: CMake принимает valid graph и отвергает `10/10` forbidden dependency/include graphs; Python architecture и dossier validators отвергают malformed discovery/ownership/visibility/SDK cases.
-- [~] Добавлен вручную reviewed scanner oracle, который не генерируется lexical parser. Он исправил operator false negative и увеличил historical inventory с `3234` до `3872`, но второй review нашел не покрытые oracle braced-default/nested-brace defects; окончательная completeness остается открытой в 1.7.
-- [~] Автоматически производный authoritative domain заменен явными reviewed registries owners и non-owners; точное покрытие и уникальность являются обязательным gate.
-- [~] Source-level CI contract теперь проверяется отдельным validator: точные четыре профиля, push/PR triggers, отсутствие `continue-on-error`, warnings-as-errors и все checks/self-tests/build/self-containment/CTest commands. Self-test отвергает `19/19` malformed workflow fixtures. Последующий adversarial review доказал, что это только lexical source check: semantic validation workflow и реальный GitHub run остаются обязательными в 1.7.
-- [~] Warning debt устранен без suppressions: четыре профиля конфигурируются и собираются с `/W4 /WX`, все public headers self-contained, CTest полностью зеленый.
+- [x] Исправлен разрыв между описанием `LOCAL_READY` и enforcement: общий `evidence_anchors.py` теперь проверяет repository-relative path, существование файла/строки/symbol, CTest-регистрацию target и отдельные assertion anchors. `BLOCKED` требует rationale и согласованного module status. LOCAL_READY self-test отклоняет malformed ledgers; тот же anchor validator используется API inventory.
+- [x] Добавлены независимые negative fixtures: CMake принимает valid graph и отвергает forbidden dependency/include graphs; Python architecture и dossier validators отвергают malformed discovery/ownership/visibility/SDK cases. Финальная 1.7 qualification расширила CMake набор до `14/14` adversarial fixtures.
+- [x] Добавлен вручную reviewed scanner oracle, который не генерируется lexical parser. Второй review нашел отсутствовавшие braced-default/nested-brace cases; parser и oracle исправлены в 1.7, authoritative inventory регенерирован полностью.
+- [x] Автоматически производный authoritative domain заменен явными reviewed registries owners и non-owners; точное покрытие и уникальность являются обязательным gate.
+- [x] CI contract проверяется semantic YAML validator: обязательные steps, `if`, matrix scope, shell, failure policy и pinned environment. Adversarial fixtures и реальные GitHub runs подтверждают исполнимость workflow.
+- [x] Warning debt устранен без suppressions: все шесть локальных MSVC профилей собираются с `/W4 /WX`, все public headers self-contained, CTest полностью зеленый; remote ClangCL profile также зеленый.
 
 Статус цели 1 после выполнения и повторной проверки 1.7: `HARD_FROZEN`. Критерии 1.1-1.7 воспроизводятся локально и в опубликованном remote baseline; дальнейшие цели обязаны сохранять эти gates зелёными.
 
@@ -500,6 +500,13 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - GitHub Actions run `#9`, id `35148315116`, `https://github.com/ImMedved/Epidemic/actions/runs/35148315116`, завершён `success`: `freeze-contract`, `clang-public-surface` и все шесть Base/Runtime/Full Debug/Release jobs зелёные.
 - Remote environment: Microsoft Windows Server 2025, runner image `windows-2025-vs2026`, MSVC `19.51.36256.0`, ClangCL `22.1.3`, CMake `4.4.3`, Python `3.13.7`, `actions/checkout@v7.0.1`, `actions/setup-python@v7.0.0`.
 - Runs `#7` и `#8` намеренно сохранены как отрицательное evidence: первый обнаружил ClangCL/MSVC-STL vectorized-algorithm incompatibility, `FARPROC` type mismatch, missing aggregate field и dead-code warnings; второй сузил остаток до одного dead helper. Все найденные причины устранены, MSVC regression targets повторно прошли перед run `#9`.
+
+Заключительная перепроверка цели 1, 2026-09-16:
+
+- Во всех checklist 1.1-1.7 установлены только финальные `[x]`; пустых и ожидающих проверки маркеров нет.
+- Повторно прошли semantic CI contract, `14/14` architecture attacks, dossier/ownership/coverage/CTest/LOCAL_READY/API/public-surface checks и все их negative self-tests. Шесть сохранённых configured CTest profiles точно совпадают с manifests.
+- Documentation attestation commit `83c8b3917e07826771be2a43d3a5e620859d089d` подтверждён GitHub Actions run `#10`, id `35150150448`, `https://github.com/ImMedved/Epidemic/actions/runs/35150150448`: `freeze-contract`, `clang-public-surface` и `6/6` matrix jobs завершены `success`.
+- `0/78 LOCAL_READY` в ledger не является долгом цели 1: цель зафиксировала и проверила единый admission contract, а доказательство локальной готовности конкретных модулей выполняется последующими целями 2-4.
 
 Критерий выхода 1.7 выполнен: все обязательные блокеры имеют positive и adversarial negative tests, полный strict build/test baseline проходит из чистого checkout, удалённый CI зелёный на записанном commit SHA, статус цели 1 установлен в `HARD_FROZEN`.
 
