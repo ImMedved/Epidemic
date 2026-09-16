@@ -433,7 +433,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - [~] Source-level CI contract теперь проверяется отдельным validator: точные четыре профиля, push/PR triggers, отсутствие `continue-on-error`, warnings-as-errors и все checks/self-tests/build/self-containment/CTest commands. Self-test отвергает `19/19` malformed workflow fixtures. Последующий adversarial review доказал, что это только lexical source check: semantic validation workflow и реальный GitHub run остаются обязательными в 1.7.
 - [~] Warning debt устранен без suppressions: четыре профиля конфигурируются и собираются с `/W4 /WX`, все public headers self-contained, CTest полностью зеленый.
 
-Статус цели 1 после adversarial review: `LOCALLY_QUALIFIED`, но не `HARD_FROZEN`. Критерии 1.1-1.6 воспроизводятся на текущем дереве, однако найденные в 1.7 обходы позволяют принять неполное или неисполняемое evidence. Следующие цели нельзя массово закрывать через ledger до устранения обязательных блокеров 1.7.
+Статус цели 1 после выполнения и повторной проверки 1.7: `HARD_FROZEN`. Критерии 1.1-1.7 воспроизводятся локально и в опубликованном remote baseline; дальнейшие цели обязаны сохранять эти gates зелёными.
 
 ## 1.7. Закрыть доказательные обходы и опубликовать воспроизводимый baseline
 
@@ -467,7 +467,7 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 
 [x] Зафиксировать profile-specific test manifest и ожидаемые counts/labels (`9/29/89/89` для текущей матрицы), чтобы удаление или отключение теста ломало gate, даже если оставшийся CTest набор зеленый.
 
-[ ] Создать отдельный freeze commit, отправить его в remote и получить реальный зеленый GitHub Actions push/PR run. Записать commit SHA, runner image, compiler/toolset, CMake и Python versions; локально проверенный незакоммиченный worktree не является опубликованным freeze.
+[x] Создать отдельный freeze commit, отправить его в remote и получить реальный зеленый GitHub Actions push/PR run. Записать commit SHA, runner image, compiler/toolset, CMake и Python versions; локально проверенный незакоммиченный worktree не является опубликованным freeze.
 
 ### Hardening, обязательный до финального whole-engine freeze
 
@@ -492,9 +492,16 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 - Non-callable manifest закрепляет hashes и source/API contracts всех `232` public headers; per-target consumers компилируют каждый header с реальными target requirements. MSVC является локальным compiler gate, ClangCL является отдельным обязательным remote profile. Обещание стабильного C++ binary ABI явно не даётся.
 - Локальная strict-матрица `/W4 /WX` и exact CTest manifests зелёные: Base Debug `9/9`, Base Release `9/9`, Runtime Debug `29/29`, Runtime Release `29/29`, Full Debug `89/89`, Full Release `89/89`. Для тяжёлого Debug fault-sweep подтверждён runtime `133.71 s`, поэтому явный общий timeout исправлен с `120` на `300` секунд.
 - Portability regression исправлен осознанными equality для `GameplayTagSet` и `GameplayContext`; прямые tests подтверждают доступность defaulted equality для `EnvironmentHazard`, `EnvironmentLayer` и `EnvironmentSampleHazard`.
-- Локальный toolchain: Windows, Visual Studio 2026 Developer Command Prompt `18.5.1`, MSVC `19.50.35729.0`, CMake `4.2.3-msvc3`, Python `3.12.14`. Remote runner/tool versions и commit SHA будут добавлены только после фактического зелёного GitHub Actions run.
+- Локальный toolchain: Windows, Visual Studio 2026 Developer Command Prompt `18.5.1`, MSVC `19.50.35729.0`, CMake `4.2.3-msvc3`, Python `3.12.14`.
 
-Критерий выхода 1.7: все обязательные блокеры имеют positive и adversarial negative tests, полный strict build/test baseline проходит из чистого checkout, удаленный CI зеленый на записанном commit SHA, после чего статус цели 1 меняется с `LOCALLY_QUALIFIED` на `HARD_FROZEN`.
+Результат публикации 1.7, 2026-09-16:
+
+- Freeze baseline опубликован последовательностью обычных commit без переписывания истории: основной evidence commit `2e34d2f`, ClangCL portability follow-up `049f5a7`, финальный verified code SHA `2abe6d0d27dcf847dfa2fcb9d080fce743f4fa8a`.
+- GitHub Actions run `#9`, id `35148315116`, `https://github.com/ImMedved/Epidemic/actions/runs/35148315116`, завершён `success`: `freeze-contract`, `clang-public-surface` и все шесть Base/Runtime/Full Debug/Release jobs зелёные.
+- Remote environment: Microsoft Windows Server 2025, runner image `windows-2025-vs2026`, MSVC `19.51.36256.0`, ClangCL `22.1.3`, CMake `4.4.3`, Python `3.13.7`, `actions/checkout@v7.0.1`, `actions/setup-python@v7.0.0`.
+- Runs `#7` и `#8` намеренно сохранены как отрицательное evidence: первый обнаружил ClangCL/MSVC-STL vectorized-algorithm incompatibility, `FARPROC` type mismatch, missing aggregate field и dead-code warnings; второй сузил остаток до одного dead helper. Все найденные причины устранены, MSVC regression targets повторно прошли перед run `#9`.
+
+Критерий выхода 1.7 выполнен: все обязательные блокеры имеют positive и adversarial negative tests, полный strict build/test baseline проходит из чистого checkout, удалённый CI зелёный на записанном commit SHA, статус цели 1 установлен в `HARD_FROZEN`.
 
 # Цель 2. Полный локальный freeze-аудит EngineBase
 
