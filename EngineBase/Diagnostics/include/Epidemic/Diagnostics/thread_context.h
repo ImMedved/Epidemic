@@ -1,16 +1,13 @@
 #pragma once
 
 #include <string>
-#include <string_view>
 
 namespace epidemic::diagnostics
 {
-// This file exposes the minimal per-thread naming helpers used by logs and profiling.
-// The implementation is thread-local and intentionally independent from OS-level thread naming APIs.
-
-// Stores a human-readable name for the current thread.
+// Stores a human-readable name for the current thread. The name is thread-local and may be empty.
 void SetCurrentThreadName(std::string name);
 
-// Returns the current thread's stored name, or an empty view when none was assigned.
-[[nodiscard]] std::string_view GetCurrentThreadName() noexcept;
-} 
+// Returns an owning copy of the current thread name. The copy remains valid after a later rename
+// and after the originating thread-local string changes storage.
+[[nodiscard]] std::string GetCurrentThreadName();
+} // namespace epidemic::diagnostics

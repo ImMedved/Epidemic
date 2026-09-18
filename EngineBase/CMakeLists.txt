@@ -3,6 +3,13 @@ function(epidemic_configure_target target_name)
 
     if(MSVC)
         target_compile_options(${target_name} PRIVATE /W4 /permissive-)
+        # Keep per-target compiler PDBs below the Windows path-length limit.  Long
+        # Framework target names otherwise place the default PDB path beyond what
+        # cl.exe can reliably open during parallel Debug builds.
+        set_target_properties(${target_name} PROPERTIES
+            COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb"
+            COMPILE_PDB_NAME "${target_name}"
+        )
         if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
             target_compile_definitions(${target_name} PRIVATE _USE_STD_VECTOR_ALGORITHMS=0)
         endif()

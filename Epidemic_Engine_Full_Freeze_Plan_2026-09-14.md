@@ -516,209 +516,211 @@ Baseline 2026-09-14, Windows 11 (`10.0.26200.7462`):
 
 ## 2.1. Foundation
 
-[ ] `Error` сохраняет стабильный machine-readable code.
+[~] `Error` сохраняет стабильный machine-readable code.
 
-[ ] `Result<T>` корректен для value, error, move, empty/invalid misuse согласно контракту.
+[~] `Result<T>` корректен для value, error, move, empty/invalid misuse согласно контракту.
 
-[ ] Invalid ID имеет одно однозначное представление.
+[~] Invalid ID имеет одно однозначное представление.
 
-[ ] Разные typed ID нельзя случайно смешать.
+[~] Разные typed ID нельзя случайно смешать.
 
-[ ] Hash и equality согласованы.
+[~] Hash и equality согласованы.
 
-[ ] Handle equality учитывает generation.
+[~] Handle equality учитывает generation.
 
-[ ] Stale handle не становится валидным после remove/recreate.
+[~] Stale handle не становится валидным после remove/recreate.
 
-[ ] Checked и boundary arithmetic для frame/time value types покрыта.
+[~] Checked и boundary arithmetic для frame/time value types покрыта.
 
-[ ] `Path` normalization не меняет семантику пути неожиданно и проверена на empty, separators, roots и malformed input.
+[~] `Path` normalization не меняет семантику пути неожиданно и проверена на empty, separators, roots и malformed input.
 
-[ ] Foundation не выполняет I/O, не создаёт threads и не зависит от верхних модулей.
+[~] Foundation не выполняет I/O, не создаёт threads и не зависит от верхних модулей.
 
 ## 2.2. Memory
 
-[ ] Allocate/deallocate contract проверен для normal size и alignment.
+[~] Allocate/deallocate contract проверен для normal size и alignment.
 
-[ ] Invalid alignment и invalid size обрабатываются по контракту.
+[~] Invalid alignment и invalid size обрабатываются по контракту.
 
-[ ] TrackingAllocator учитывает успешные allocations ровно один раз.
+[~] TrackingAllocator учитывает успешные allocations ровно один раз.
 
-[ ] Failed allocation не увеличивает current usage.
+[~] Failed allocation не увеличивает current usage.
 
-[ ] Deallocation возвращает current usage к правильному значению.
+[~] Deallocation возвращает current usage к правильному значению.
 
-[ ] Peak usage не уменьшается ошибочно.
+[~] Peak usage не уменьшается ошибочно.
 
-[ ] Budgets работают на границе, до границы и после превышения.
+[~] Budgets работают на границе, до границы и после превышения.
 
-[ ] Allocation tags не смешивают статистику.
+[~] Allocation tags не смешивают статистику.
 
-[ ] Frame allocator reset инвалидирует предыдущий lifetime только в разрешённой точке.
+[~] Frame allocator reset инвалидирует предыдущий lifetime только в разрешённой точке.
 
-[ ] Overflow counters и byte arithmetic не wrap-around.
+[~] Overflow counters и byte arithmetic не wrap-around.
 
-[ ] OOM path не повреждает tracker state.
+[~] OOM path не повреждает tracker state.
 
 ## 2.3. Diagnostics
 
-[ ] Disabled logger/profiler не меняет engine behavior.
+[~] Disabled logger/profiler не меняет engine behavior.
 
-[ ] Counter increment/decrement и boundary behavior корректны.
+[~] Counter increment/decrement и boundary behavior корректны.
 
-[ ] ProfileScope закрывает событие через RAII на normal return и exception path.
+[~] ProfileScope закрывает событие через RAII на normal return и exception path.
 
-[ ] Thread diagnostic names не создают dangling references.
+[~] Thread diagnostic names не создают dangling references.
 
-[ ] Sink failure не становится скрытым каналом изменения authoritative engine state.
+[~] Sink failure не становится скрытым каналом изменения authoritative engine state.
 
-[ ] Logging из failure path не маскирует исходную ошибку.
+[~] Logging из failure path не маскирует исходную ошибку.
 
-[ ] Diagnostics не используется как event bus или authoritative storage.
+[~] Diagnostics не используется как event bus или authoritative storage.
 
 ## 2.4. Core
 
-[ ] Полная state machine `Constructed -> Bootstrapped -> Initialized -> Running -> ShutDown`.
+[~] Полная state machine `Constructed -> Bootstrapped -> Initialized -> Running -> ShutDown`.
 
-[ ] Нельзя вызвать lifecycle method из неправильного state.
+[~] Нельзя вызвать lifecycle method из неправильного state.
 
-[ ] Duplicate service registration отклоняется.
+[~] Duplicate service registration отклоняется.
 
-[ ] ServiceContainer закрывается после initialization и не открывается повторно.
+[~] ServiceContainer закрывается после initialization и не открывается повторно.
 
-[ ] ModuleRegistry обнаруживает missing dependency.
+[~] ModuleRegistry обнаруживает missing dependency.
 
-[ ] ModuleRegistry обнаруживает dependency cycle.
+[~] ModuleRegistry обнаруживает dependency cycle.
 
-[ ] Module initialization order детерминирован.
+[~] Module initialization order детерминирован.
 
-[ ] Partial initialization failure корректно освобождает уже созданное.
+[~] Partial initialization failure корректно освобождает уже созданное.
 
-[ ] Shutdown order обратим зависимостям.
+[~] Shutdown order обратим зависимостям.
 
-[ ] EventBus проверен для direct и queued dispatch.
+[~] EventBus проверен для direct и queued dispatch.
 
-[ ] Subscription removal во время dispatch имеет определённую семантику.
+[~] Subscription removal во время dispatch имеет определённую семантику.
 
-[ ] Reentrant event publication не ломает iteration.
+[~] Reentrant event publication не ломает iteration.
 
-[ ] TaskScheduler проверен для submit, complete, cancel/wait contracts и invalid handles.
+[~] TaskScheduler проверен для submit, complete, cancel/wait contracts и invalid handles.
 
-[ ] MainThreadDispatcher не теряет completion.
+[~] MainThreadDispatcher не теряет completion.
 
-[ ] Frame handlers вызываются в фиксированном phase order.
+[~] Frame handlers вызываются в фиксированном phase order.
 
-[ ] Stop request завершает Run без лишнего Tick.
+[~] Stop request завершает Run без лишнего Tick.
 
 ## 2.5. Platform
 
-[ ] Window create/destroy lifecycle.
+[~] Window create/destroy lifecycle.
 
-[ ] Native close корректно отражается в wrapper и event stream.
+[~] Native close корректно отражается в wrapper и event stream.
 
-[ ] Resize, minimize, restore и zero client area обрабатываются отдельно.
+[~] Resize, minimize, restore и zero client area обрабатываются отдельно.
 
-[ ] Focus gain/loss и input-related platform events не дублируются.
+[~] Focus gain/loss и input-related platform events не дублируются.
 
-[ ] Event pump не возвращает stale events повторно.
+[~] Event pump не возвращает stale events повторно.
 
-[ ] High-resolution clock монотонен.
+[~] High-resolution clock монотонен.
 
-[ ] Exit request имеет идемпотентную семантику.
+[~] Exit request имеет идемпотентную семантику.
 
-[ ] Dynamic library load failure не оставляет partial handle.
+[~] Dynamic library load failure не оставляет partial handle.
 
-[ ] Symbol lookup на отсутствующий symbol возвращает controlled failure.
+[~] Symbol lookup на отсутствующий symbol возвращает controlled failure.
 
-[ ] Library lifetime не переживает invalid native handle.
+[~] Library lifetime не переживает invalid native handle.
 
-[ ] Windows headers и Win32 types не протекают через public neutral contracts.
+[~] Windows headers и Win32 types не протекают через public neutral contracts.
 
 ## 2.6. Input
 
-[ ] Platform events принимаются до publication snapshot.
+[~] Platform events принимаются до publication snapshot.
 
-[ ] Snapshot одного frame immutable для consumers.
+[~] Snapshot одного frame immutable для consumers.
 
-[ ] Key press, hold и release различаются корректно.
+[~] Key press, hold и release различаются корректно.
 
-[ ] Mouse press, release, motion и wheel transitions не теряются.
+[~] Mouse press, release, motion и wheel transitions не теряются.
 
-[ ] Несколько transitions одного key/button внутри одного frame сохраняют правильную sequence.
+[~] Несколько transitions одного key/button внутри одного frame сохраняют правильную sequence.
 
-[ ] Focus loss/reset очищает held state по контракту.
+[~] Focus loss/reset очищает held state по контракту.
 
-[ ] `Reset()` не создаёт ложных gameplay events.
+[~] `Reset()` не создаёт ложных gameplay events.
 
-[ ] Publish без новых events сохраняет held state и очищает transient transitions по контракту.
+[~] Publish без новых events сохраняет held state и очищает transient transitions по контракту.
 
-[ ] Unknown/invalid key/button не повреждает state.
+[~] Unknown/invalid key/button не повреждает state.
 
 ## 2.7. RHI
 
-[ ] Device/context/swap chain creation failures атомарны.
+[~] Device/context/swap chain creation failures атомарны.
 
-[ ] `BeginFrame` нельзя вызвать дважды без `EndFrame`.
+[~] `BeginFrame` нельзя вызвать дважды без `EndFrame`.
 
-[ ] `EndFrame` нельзя вызвать без active frame.
+[~] `EndFrame` нельзя вызвать без active frame.
 
-[ ] `Clear` разрешён только внутри active frame.
+[~] `Clear` разрешён только внутри active frame.
 
-[ ] Present имеет определённое поведение до и после resize.
+[~] Present имеет определённое поведение до и после resize.
 
-[ ] Resize с zero dimensions отклоняется или deferred строго по контракту.
+[~] Resize с zero dimensions отклоняется или deferred строго по контракту.
 
-[ ] Minimized surface не вызывает invalid resize.
+[~] Minimized surface не вызывает invalid resize.
 
-[ ] Null RHI соблюдает те же observable lifecycle contracts.
+[~] Null RHI соблюдает те же observable lifecycle contracts.
 
-[ ] Device/swap chain destruction не оставляет active frame state.
+[~] Device/swap chain destruction не оставляет active frame state.
 
 ## 2.8. RHI_D3D11
 
-[ ] D3D11 factory failure корректно освобождает частично созданные COM objects.
+[~] D3D11 factory failure корректно освобождает частично созданные COM objects.
 
-[ ] Device/context lifetime корректен.
+[~] Device/context lifetime корректен.
 
-[ ] Swap chain creation и destruction корректны.
+[~] Swap chain creation и destruction корректны.
 
-[ ] Render target пересоздаётся после resize без stale RTV.
+[~] Render target пересоздаётся после resize без stale RTV.
 
-[ ] Minimize/restore flow не вызывает invalid DXGI operations.
+[~] Minimize/restore flow не вызывает invalid DXGI operations.
 
-[ ] Present/device lost/error paths возвращают контролируемый результат.
+[~] Present/device lost/error paths возвращают контролируемый результат.
 
-[ ] Debug layer path проверен отдельно.
+[~] Debug layer path проверен отдельно.
 
-[ ] Ни один upper module не требует downcast к D3D11 concrete implementation.
+[~] Ни один upper module не требует downcast к D3D11 concrete implementation.
 
 ## 2.9. Support
 
-[ ] Каждая registration helper либо полностью регистрирует свой bundle, либо не меняет composition root.
+[~] Каждая registration helper либо полностью регистрирует свой bundle, либо не меняет composition root.
 
-[ ] Duplicate registration имеет controlled failure.
+[~] Duplicate registration имеет controlled failure.
 
-[ ] `RegisterEngineBase`, Windows, Input и Graphics composition tested в допустимых комбинациях.
+[~] `RegisterEngineBase`, Windows, Input и Graphics composition tested в допустимых комбинациях.
 
-[ ] Null graphics и D3D11 graphics дают одинаковый service contract.
+[~] Null graphics и D3D11 graphics дают одинаковый service contract.
 
-[ ] Main window и swap chain wiring не создают duplicate owners.
+[~] Main window и swap chain wiring не создают duplicate owners.
 
-[ ] Frame handler order platform/input/presentation определён тестом.
+[~] Frame handler order platform/input/presentation определён тестом.
 
-[ ] Failed later registration не повреждает уже валидные ранее registered services.
+[~] Failed later registration не повреждает уже валидные ранее registered services.
 
-[ ] Support не превращается в global service locator.
+[~] Support не превращается в global service locator.
 
 ## 2.10. Exit criteria EngineBase
 
-[ ] 9 из 9 модулей имеют `LOCAL_READY`.
+[~] 9 из 9 модулей имеют `LOCAL_READY`.
 
-[ ] Все EngineBase unit, integration, regression и smoke applications проходят.
+[~] Все EngineBase unit, integration, regression и smoke applications проходят.
 
-[ ] D3D11 smoke отдельно проходит на Windows 11.
+[~] D3D11 smoke отдельно проходит на Windows 11.
 
-[ ] После этого EngineBase считается локально готовым. Системный freeze выполняется только после целей 5-9.
+[~] После этого EngineBase считается локально готовым. Системный freeze выполняется только после целей 5-9.
+
+Перепроверено локально 2026-09-18 на Windows 11 / MSVC 19.50 после применения corrective delta: EngineBase Debug и Release — 10/10; Runtime Debug и Release — 30/30; Full Debug и Release — 90/90. Freeze-checks `ON`, header-consumer builds, точные CTest manifests всех шести профилей, 4308/4308 public API records, 232/232 public headers и все негативные validator fixtures проходят. `local_ready_contract.py --check`: 37/37 критериев, 78/78 ledger records, 9/78 `LOCAL_READY` (все девять модулей EngineBase). Windows/MSVC-дефекты process-wide allocation fault injection и длинных parallel compile-PDB/object paths устранены детерминированными private test hooks и короткими per-target build paths.
 
 ---
 

@@ -1,9 +1,30 @@
 #include <Epidemic/Memory/memory_tracker.h>
 
 #include <algorithm>
+#include <limits>
 
 namespace epidemic::memory
 {
+namespace
+{
+[[nodiscard]] constexpr std::size_t SaturatingAdd(std::size_t value, std::size_t increment) noexcept
+{
+    constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+    return increment > maximum - value ? maximum : value + increment;
+}
+
+[[nodiscard]] constexpr std::size_t SaturatingIncrement(std::size_t value) noexcept
+{
+    constexpr auto maximum = std::numeric_limits<std::size_t>::max();
+    return value == maximum ? maximum : value + 1;
+}
+
+static_assert(SaturatingAdd(std::numeric_limits<std::size_t>::max() - 1, 2) ==
+              std::numeric_limits<std::size_t>::max());
+static_assert(SaturatingIncrement(std::numeric_limits<std::size_t>::max()) ==
+              std::numeric_limits<std::size_t>::max());
+} // namespace
+
 // This file implements the default thread-safe tag-based memory accounting service.
 // The implementation is intentionally conservative: all state transitions are serialized
 // by one mutex, which keeps the baseline simple and predictable.
@@ -29,7 +50,7 @@ bool MemoryTracker::IsTrackingEnabled() const noexcept
 
 // Records allocated bytes for the supplied tag.
 // Input: tag and normalized byte count.
-// Behavior: ignored when tracking is disabled or bytes is zero.
+// Behavior: ignored when tracking is disabled or bytes is zero; counters saturate instead of wrapping.
 void MemoryTracker::RecordAllocate(AllocationTag tag, std::size_t bytes) noexcept
 {
     std::scoped_lock lock(mutex_);
@@ -39,9 +60,9 @@ void MemoryTracker::RecordAllocate(AllocationTag tag, std::size_t bytes) noexcep
     }
 
     auto &statistics = statistics_[ToIndex(tag)];
-    statistics.allocated_bytes += bytes;
+    statistics.allocated_bytes = SaturatingAdd(statistics.allocated_bytes, bytes);
     statistics.peak_allocated_bytes = std::max(statistics.peak_allocated_bytes, statistics.allocated_bytes);
-    ++statistics.allocation_count;
+    statistics.allocation_count = SaturatingIncrement(statistics.allocation_count);
 }
 
 // Records freed bytes for the supplied tag.
@@ -99,11 +120,16 @@ MemoryTagStatistics MemoryTracker::GetStatistics(AllocationTag tag) const noexce
     return statistics_[ToIndex(tag)];
 }
 
-// Clears all accumulated per-tag statistics.
+// Clears historical statistics without forgetting currently live tracked bytes.
+// Existing budgets are intentionally preserved.
 void MemoryTracker::ResetStatistics() noexcept
 {
     std::scoped_lock lock(mutex_);
-    statistics_.fill(MemoryTagStatistics{});
+    for (auto &statistics : statistics_)
+    {
+        const auto live_bytes = statistics.allocated_bytes;
+        statistics = MemoryTagStatistics{live_bytes, live_bytes, 0};
+    }
 }
 
 // Converts external tag input into a normalized array index.

@@ -83,7 +83,11 @@ class ITaskScheduler
     // Queues a task into a group and returns a handle for optional direct waiting.
     [[nodiscard]] virtual TaskHandle Schedule(Task task, TaskGroup &group, std::string debug_name = {}) = 0;
 
-    // Blocks until the specified task finishes and rethrows its exception, if any.
+    // Attempts to cancel a task that is still queued. Returns false for invalid, foreign, running, or completed handles.
+    [[nodiscard]] virtual bool Cancel(const TaskHandle &handle) = 0;
+
+    // Blocks until the specified task finishes or is cancelled and rethrows its exception, if any.
+    // A handle created by a different scheduler is rejected.
     virtual void Wait(const TaskHandle &handle) = 0;
 
     // Blocks until every task in the group finishes and rethrows the first captured exception, if any.
@@ -125,6 +129,9 @@ class SimpleTaskScheduler final : public ITaskScheduler
 
     // Queues one task into a group.
     [[nodiscard]] TaskHandle Schedule(Task task, TaskGroup &group, std::string debug_name = {}) override;
+
+    // Cancels one queued task if it still belongs to this scheduler and has not started.
+    [[nodiscard]] bool Cancel(const TaskHandle &handle) override;
 
     // Waits for one task and propagates its failure.
     void Wait(const TaskHandle &handle) override;

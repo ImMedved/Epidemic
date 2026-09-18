@@ -11,6 +11,7 @@
         "class Application",
         "class ILogger",
         "struct ApplicationOptions",
+        "struct FramePhaseHandlerRegistration",
         "struct PhaseHandler"
       ],
       "constants": [],
@@ -27,7 +28,7 @@
         "State"
       ],
       "module": "EngineBase/Core",
-      "normalized_sha256": "7c33e58fcc1de12b9eef34befce5b101ba95a332e64421110d8b59728c406029",
+      "normalized_sha256": "2c909623330fdb5f5349a13f7ac2a0242221500297e4a44266d4cd50c0dcca35",
       "public_fields": [
         "ApplicationOptions::application_name",
         "ApplicationOptions::frame_limit",
@@ -201,7 +202,7 @@
         "LifecycleState"
       ],
       "module": "EngineBase/Core",
-      "normalized_sha256": "fe0c1625e662161db54726729034040caa985496ddc8b419a3d6400c6623325a",
+      "normalized_sha256": "e22d03ffe78f8c9e74692f64e4cf1cb9febf95115949896f1dea1cc52fe629d5",
       "public_fields": [],
       "templates": []
     },
@@ -211,17 +212,21 @@
         "class ServiceContainer"
       ],
       "constants": [],
-      "constraints": [],
+      "constraints": [
+        "requires at least one service\")"
+      ],
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Core",
-      "normalized_sha256": "45a3eafeba3e1c57f82bedb827057280042be5495b1572baedf1f6359dc4845f",
+      "normalized_sha256": "fb81deb93fafc5ced4744bfba6eff2866e490d424bd277cb9c90d1f99867c8de",
       "public_fields": [],
       "templates": [
+        "template <typename TPreCommit, typename... TServices> void RegisterInstancesAtomicWithPreCommit(TPreCommit &&pre_commit, std::shared_ptr<TServices>",
         "template <typename TService, typename TImplementation, typename... TArgs> std::shared_ptr<TService>",
         "template <typename TService>",
         "template <typename TService> [[nodiscard]] std::shared_ptr<TService>",
-        "template <typename TService> void RegisterInstance(std::shared_ptr<TService>"
+        "template <typename TService> void RegisterInstance(std::shared_ptr<TService>",
+        "template <typename... TServices> void RegisterInstancesAtomic(std::shared_ptr<TServices>"
       ]
     },
     "EngineBase/Core/include/Epidemic/Core/task_scheduler.h": {
@@ -244,7 +249,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Core",
-      "normalized_sha256": "f9bbdee5729bb58118d001daebe454df29f755b48e6c6255ef8b307e0d5c1f35",
+      "normalized_sha256": "0aea78969e86715ace04864f403b145edddd01d89798efb49f1fb00583b658e7",
       "public_fields": [
         "QueuedTask::group_state",
         "QueuedTask::handle_state",
@@ -262,7 +267,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Diagnostics",
-      "normalized_sha256": "b3a08e9066c20a4c200a2713260033b238eb41b60711745eff8dddb9db35208a",
+      "normalized_sha256": "571e45b54b5bd285aaefaf0e34ec25f0e1aebbcb134225c407a9f138c8d154bf",
       "public_fields": [],
       "templates": []
     },
@@ -300,7 +305,7 @@
         "CounterId"
       ],
       "module": "EngineBase/Diagnostics",
-      "normalized_sha256": "9a634f8a69fa08369476d7dda0b5b2abe298327c3a9a2bf72dd05eeb4bd82f2f",
+      "normalized_sha256": "7de1f808f01a2a9ca047ac0ab7af0987aae82a02df3ea01027938827b5a69f38",
       "public_fields": [],
       "templates": []
     },
@@ -324,7 +329,7 @@
         "LogLevel"
       ],
       "module": "EngineBase/Diagnostics",
-      "normalized_sha256": "9f378308f5994107da3b97aff60ccf67642e60bdc5a87bf88031b36aa5e9f98f",
+      "normalized_sha256": "7ab3c9954d07e0ed9e68706d08a4bd26a54ff0bd1e7d2e61391c0206f1ecf882",
       "public_fields": [],
       "templates": []
     },
@@ -341,7 +346,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Diagnostics",
-      "normalized_sha256": "069ce6cd16da8a1b702a254d79e0f117c79730a8be33d0675da37b5452a96e45",
+      "normalized_sha256": "f7e728df4c1f474fd571f2e1923f9471a2ea762eecc4b00103bf179dfc7805d2",
       "public_fields": [],
       "templates": []
     },
@@ -353,7 +358,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Diagnostics",
-      "normalized_sha256": "54830500d457baa95418ad3c277bb95d65fa19d2e66e31e24f723340185b2f2b",
+      "normalized_sha256": "4a9ce0d90d3c2e0168d60bd231b0ceb304a25f553199a9be57c48c29d7574361",
       "public_fields": [],
       "templates": []
     },
@@ -385,7 +390,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Foundation",
-      "normalized_sha256": "081df11bd45cf79738650b92d2b5c2706fda79679e9d767f47f9fc36895fe532",
+      "normalized_sha256": "b5668d364a75acc764634c7c8cfe7eec252f030189b0e688e97ec89ac47c5c0d",
       "public_fields": [],
       "templates": [
         "template <typename TTag>",
@@ -393,31 +398,38 @@
       ]
     },
     "EngineBase/Foundation/include/Epidemic/Foundation/path.h": {
-      "aliases": [],
+      "aliases": [
+        "using NativeChar"
+      ],
       "classes_and_inheritance": [
         "class Path"
       ],
       "constants": [],
-      "constraints": [],
+      "constraints": [
+        "requires a relative child path\")"
+      ],
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Foundation",
-      "normalized_sha256": "f2924a23459724b977be23a1dba72f87b6c0cab381011361665795516c42737b",
+      "normalized_sha256": "12fb5b6da2f9e4ef93d40c73e4aa98e5c8bd39d60f3f96b0d1fe0f6e8ec8035d",
       "public_fields": [],
       "templates": []
     },
     "EngineBase/Foundation/include/Epidemic/Foundation/result.h": {
-      "aliases": [],
+      "aliases": [
+        "using Variant"
+      ],
       "classes_and_inheritance": [
         "class Result",
-        "class Result<void>"
+        "class Result<void>",
+        "class Storage"
       ],
       "constants": [],
       "constraints": [],
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Foundation",
-      "normalized_sha256": "89b262de16129de3da89bc887f1c50908771fbc1c75685cb1bdb1a0575dacf8e",
+      "normalized_sha256": "83fab983c7c7775a98228cfb75cb3b53132754370af6a626d1a9752ef4d7dd46",
       "public_fields": [],
       "templates": [
         "template <> class Result<void>",
@@ -448,7 +460,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Foundation",
-      "normalized_sha256": "e132b74eb0903d5bfda6e4fa3721b4c42305ec7977450116a854398b793ebaf7",
+      "normalized_sha256": "c126357bf046d9728da6455ea305841d1878262c14b78b5622b72ea18ac866d3",
       "public_fields": [],
       "templates": [
         "template <typename Tag>",
@@ -459,7 +471,10 @@
       "aliases": [
         "using Clock",
         "using Duration",
-        "using TimePoint"
+        "using TimePoint",
+        "using checked_duration",
+        "using destination_rep",
+        "using source_duration"
       ],
       "classes_and_inheritance": [
         "class FrameIndex",
@@ -473,7 +488,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Foundation",
-      "normalized_sha256": "3e8b30ddd51f808a6d616893b3cca37e879c23ac3d3a805759e26fcd210e6659",
+      "normalized_sha256": "1fd56f9b94ddfbbf2e3b5fe6147a662044630ec766c4c6fef253f331899d9a7d",
       "public_fields": [],
       "templates": [
         "template <> struct hash<epidemic::foundation::FrameIndex>",
@@ -674,7 +689,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Input",
-      "normalized_sha256": "5c0d3f69855c5fbed8a14394de63634c745e971c38ef5ca49a52119d5bb7ef78",
+      "normalized_sha256": "8d330518a910cb0ae35567122e59ec50cf2d341ec2657648dc5c6612aec4ae0f",
       "public_fields": [],
       "templates": []
     },
@@ -712,7 +727,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Input",
-      "normalized_sha256": "7b54da4e01396059eea7b6076c41728829acdd3c8721022aae5914031d0af723",
+      "normalized_sha256": "480d4313079cd978669cc2c2630ea9a141e9c0bb819908b45334e1d288455728",
       "public_fields": [],
       "templates": []
     },
@@ -753,7 +768,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Memory",
-      "normalized_sha256": "a62f432ded4983051444757b8623ce09dd418c87ea9f6a0e9a34fd177e379450",
+      "normalized_sha256": "c5e79dd49d7426f468458d04f15ad7dfcca1b1b48da8154978cf400c024e6d7c",
       "public_fields": [
         "IAllocator::tag"
       ],

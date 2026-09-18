@@ -19,7 +19,7 @@ void SetCurrentThreadName(std::string name)
 }
 
 // Returns the current thread's stored display name.
-std::string_view GetCurrentThreadName() noexcept
+std::string GetCurrentThreadName()
 {
     return current_thread_name;
 }

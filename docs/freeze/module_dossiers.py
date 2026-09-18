@@ -221,7 +221,7 @@ def extract_types(text: str) -> list[str]:
         if enum_match and visible:
             found.append(enum_match.group(1))
 
-        class_match = re.match(r"\s*(class|struct)\s+(.+)", line)
+        class_match = re.match(r"\s*(?:template\s*<.*>\s*)?(class|struct)\s+(.+)", line)
         if class_match and not stripped.startswith(("class enum", "struct enum")):
             tokens = re.findall(r"\b[A-Za-z_]\w*\b", class_match.group(2))
             class_name = next(
@@ -601,6 +601,22 @@ def self_test() -> list[str]:
     for name, (candidate_modules, candidate_rendered) in cases.items():
         if not validate_inventory(candidate_modules, candidate_rendered):
             failures.append(f"negative case was accepted: {name}")
+
+    template_fixture = """template <typename T> class Result
+{
+  public:
+    using PublicAlias = T;
+  private:
+    class Storage {};
+    using Variant = T;
+};
+template <typename Tag> struct BasicId {};
+"""
+    template_types = extract_types(template_fixture)
+    if "Result" not in template_types or "BasicId" not in template_types:
+        failures.append("same-line template class/struct public types were not discovered")
+    if "Storage" in template_types or "Variant" in template_types:
+        failures.append("private nested template implementation types leaked into public type inventory")
     return failures
 
 

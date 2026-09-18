@@ -18,7 +18,11 @@ Gameplay layer преобразует snapshot в собственный command
 
 ## Инварианты и стабильность
 
-Input не опрашивает gameplay systems и не вызывает их callbacks. Snapshot остается валиден до следующей публикации. Public raw-input contract заморожен.
+Input не опрашивает gameplay systems и не вызывает их callbacks. Snapshot остается валиден до следующей публикации. События, поставленные в очередь после публикации, не меняют уже опубликованный snapshot и становятся видимыми только на следующем `PublishSnapshot()`.
+
+Held state переносится между кадрами, transient press/release, mouse motion и wheel state очищаются в начале следующей публикации. Несколько переходов одной клавиши или кнопки в одном кадре сохраняются в `CurrentEvents()` в исходном порядке, при этом snapshot хранит итоговый held state и факт реально произошедших press/release transitions. Release для уже отпущенной клавиши или кнопки не создаёт ложный transition flag. Focus loss очищает held keyboard/mouse state и capture. `Reset()` очищает published state, очередь и events без синтетических gameplay transitions. Unknown и invalid key/button values игнорируются и не alias-ят валидный storage slot.
+
+Public raw-input contract заморожен.
 
 ## Карта публичных заголовков
 

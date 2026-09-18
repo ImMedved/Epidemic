@@ -1,5 +1,7 @@
 #include <Epidemic/Input/input_system.h>
 
+#include "input_index_policy.h"
+
 #include <cstdint>
 
 namespace epidemic::input
@@ -48,30 +50,34 @@ void InputSystem::QueuePlatformEvents(std::span<const epidemic::platform::Platfo
 // Consumes all queued platform events, updates persistent state, and emits the transient event list.
 void InputSystem::PublishSnapshot()
 {
-    keyboard_state_.ClearTransient();
-    mouse_state_.ClearTransient();
-    current_events_.clear();
+    auto candidate_keyboard = keyboard_state_;
+    auto candidate_mouse = mouse_state_;
+    candidate_keyboard.ClearTransient();
+    candidate_mouse.ClearTransient();
+
+    std::vector<InputEvent> candidate_events;
+    candidate_events.reserve(pending_platform_events_.size());
 
     for (const auto &event : pending_platform_events_)
     {
         switch (event.type)
         {
         case epidemic::platform::PlatformEventType::WindowFocusChanged:
-            mouse_state_.SetFocus(event.focused);
-            current_events_.push_back(InputEvent{InputEventType::FocusChanged, KeyCode::Unknown, MouseButton::Unknown, false,
-                                                 event.focused, mouse_state_.HasCapture()});
+            candidate_mouse.SetFocus(event.focused);
+            candidate_events.push_back(InputEvent{InputEventType::FocusChanged, KeyCode::Unknown, MouseButton::Unknown, false,
+                                                  event.focused, candidate_mouse.HasCapture()});
             if (!event.focused)
             {
-                keyboard_state_.ClearAll();
-                mouse_state_.SetCapture(false);
-                mouse_state_.ClearButtons();
-                mouse_state_.ClearTransient();
+                candidate_keyboard.ClearAll();
+                candidate_mouse.SetCapture(false);
+                candidate_mouse.ClearButtons();
+                candidate_mouse.ClearTransient();
             }
             break;
         case epidemic::platform::PlatformEventType::MouseCaptureChanged:
-            mouse_state_.SetCapture(event.captured);
-            current_events_.push_back(InputEvent{InputEventType::CaptureChanged, KeyCode::Unknown, MouseButton::Unknown, false,
-                                                 mouse_state_.HasFocus(), event.captured});
+            candidate_mouse.SetCapture(event.captured);
+            candidate_events.push_back(InputEvent{InputEventType::CaptureChanged, KeyCode::Unknown, MouseButton::Unknown, false,
+                                                  candidate_mouse.HasFocus(), event.captured});
             break;
         case epidemic::platform::PlatformEventType::KeyPressed:
         {
@@ -81,14 +87,14 @@ void InputSystem::PublishSnapshot()
                 break;
             }
 
-            if (!keyboard_state_.IsKeyDown(key_code))
+            if (!candidate_keyboard.IsKeyDown(key_code))
             {
-                keyboard_state_.MarkPressed(key_code);
+                candidate_keyboard.MarkPressed(key_code);
             }
 
-            keyboard_state_.SetKeyDown(key_code, true);
-            current_events_.push_back(InputEvent{InputEventType::KeyPressed, key_code, MouseButton::Unknown, event.repeated,
-                                                 mouse_state_.HasFocus(), mouse_state_.HasCapture()});
+            candidate_keyboard.SetKeyDown(key_code, true);
+            candidate_events.push_back(InputEvent{InputEventType::KeyPressed, key_code, MouseButton::Unknown, event.repeated,
+                                                  candidate_mouse.HasFocus(), candidate_mouse.HasCapture()});
             break;
         }
         case epidemic::platform::PlatformEventType::KeyReleased:
@@ -99,18 +105,26 @@ void InputSystem::PublishSnapshot()
                 break;
             }
 
-            keyboard_state_.MarkReleased(key_code);
-            keyboard_state_.SetKeyDown(key_code, false);
-            current_events_.push_back(InputEvent{InputEventType::KeyReleased, key_code, MouseButton::Unknown, false,
-                                                 mouse_state_.HasFocus(), mouse_state_.HasCapture()});
+            if (candidate_keyboard.IsKeyDown(key_code))
+            {
+                candidate_keyboard.MarkReleased(key_code);
+                candidate_keyboard.SetKeyDown(key_code, false);
+            }
+            candidate_events.push_back(InputEvent{InputEventType::KeyReleased, key_code, MouseButton::Unknown, false,
+                                                  candidate_mouse.HasFocus(), candidate_mouse.HasCapture()});
             break;
         }
         case epidemic::platform::PlatformEventType::MouseMoved:
-            mouse_state_.SetPosition(event.mouse_x, event.mouse_y);
-            current_events_.push_back(InputEvent{InputEventType::MouseMoved, KeyCode::Unknown, MouseButton::Unknown, false,
-                                                 mouse_state_.HasFocus(), mouse_state_.HasCapture(), event.mouse_x,
-                                                 event.mouse_y, mouse_state_.DeltaX(), mouse_state_.DeltaY()});
+        {
+            const auto previous_x = candidate_mouse.PositionX();
+            const auto previous_y = candidate_mouse.PositionY();
+            candidate_mouse.SetPosition(event.mouse_x, event.mouse_y);
+            candidate_events.push_back(InputEvent{InputEventType::MouseMoved, KeyCode::Unknown, MouseButton::Unknown, false,
+                                                  candidate_mouse.HasFocus(), candidate_mouse.HasCapture(), event.mouse_x,
+                                                  event.mouse_y, detail::SaturatingDifference(event.mouse_x, previous_x),
+                                                  detail::SaturatingDifference(event.mouse_y, previous_y)});
             break;
+        }
         case epidemic::platform::PlatformEventType::MouseButtonPressed:
         {
             const auto mouse_button = ToMouseButton(event.mouse_button);
@@ -119,15 +133,15 @@ void InputSystem::PublishSnapshot()
                 break;
             }
 
-            if (!mouse_state_.IsButtonDown(mouse_button))
+            if (!candidate_mouse.IsButtonDown(mouse_button))
             {
-                mouse_state_.MarkPressed(mouse_button);
+                candidate_mouse.MarkPressed(mouse_button);
             }
 
-            mouse_state_.SetButtonDown(mouse_button, true);
-            current_events_.push_back(InputEvent{InputEventType::MouseButtonPressed, KeyCode::Unknown, mouse_button, false,
-                                                 mouse_state_.HasFocus(), mouse_state_.HasCapture(), event.mouse_x,
-                                                 event.mouse_y});
+            candidate_mouse.SetButtonDown(mouse_button, true);
+            candidate_events.push_back(InputEvent{InputEventType::MouseButtonPressed, KeyCode::Unknown, mouse_button, false,
+                                                  candidate_mouse.HasFocus(), candidate_mouse.HasCapture(), event.mouse_x,
+                                                  event.mouse_y});
             break;
         }
         case epidemic::platform::PlatformEventType::MouseButtonReleased:
@@ -138,18 +152,21 @@ void InputSystem::PublishSnapshot()
                 break;
             }
 
-            mouse_state_.MarkReleased(mouse_button);
-            mouse_state_.SetButtonDown(mouse_button, false);
-            current_events_.push_back(InputEvent{InputEventType::MouseButtonReleased, KeyCode::Unknown, mouse_button, false,
-                                                 mouse_state_.HasFocus(), mouse_state_.HasCapture(), event.mouse_x,
-                                                 event.mouse_y});
+            if (candidate_mouse.IsButtonDown(mouse_button))
+            {
+                candidate_mouse.MarkReleased(mouse_button);
+                candidate_mouse.SetButtonDown(mouse_button, false);
+            }
+            candidate_events.push_back(InputEvent{InputEventType::MouseButtonReleased, KeyCode::Unknown, mouse_button, false,
+                                                  candidate_mouse.HasFocus(), candidate_mouse.HasCapture(), event.mouse_x,
+                                                  event.mouse_y});
             break;
         }
         case epidemic::platform::PlatformEventType::MouseWheel:
-            mouse_state_.AddWheelDelta(event.wheel_delta);
-            current_events_.push_back(InputEvent{InputEventType::MouseWheel, KeyCode::Unknown, MouseButton::Unknown, false,
-                                                 mouse_state_.HasFocus(), mouse_state_.HasCapture(), event.mouse_x,
-                                                 event.mouse_y, 0, 0, event.wheel_delta});
+            candidate_mouse.AddWheelDelta(event.wheel_delta);
+            candidate_events.push_back(InputEvent{InputEventType::MouseWheel, KeyCode::Unknown, MouseButton::Unknown, false,
+                                                  candidate_mouse.HasFocus(), candidate_mouse.HasCapture(), event.mouse_x,
+                                                  event.mouse_y, 0, 0, event.wheel_delta});
             break;
         case epidemic::platform::PlatformEventType::None:
         case epidemic::platform::PlatformEventType::WindowCloseRequested:
@@ -160,10 +177,20 @@ void InputSystem::PublishSnapshot()
         }
     }
 
+    InputSnapshot candidate_snapshot;
+    candidate_snapshot.update_index = next_update_index_;
+    candidate_snapshot.keyboard = candidate_keyboard;
+    candidate_snapshot.mouse = candidate_mouse;
+    const auto candidate_next_update_index = detail::AdvanceUpdateIndex(next_update_index_);
+
+    // All fallible work is complete. Publish the frame as one no-fail state transition so a failed
+    // build leaves the previous snapshot/events and the pending raw event queue intact for retry.
+    keyboard_state_ = candidate_keyboard;
+    mouse_state_ = candidate_mouse;
+    current_events_.swap(candidate_events);
+    current_snapshot_ = candidate_snapshot;
+    next_update_index_ = candidate_next_update_index;
     pending_platform_events_.clear();
-    current_snapshot_.update_index = next_update_index_++;
-    current_snapshot_.keyboard = keyboard_state_;
-    current_snapshot_.mouse = mouse_state_;
 }
 
 // Clears all persistent and transient input state.
@@ -188,4 +215,4 @@ std::span<const InputEvent> InputSystem::CurrentEvents() const noexcept
 {
     return std::span<const InputEvent>(current_events_.data(), current_events_.size());
 }
-} 
+}

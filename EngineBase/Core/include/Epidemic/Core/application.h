@@ -41,6 +41,13 @@ class Application
     using MainThreadTask = std::function<void()>;
     using FramePhaseCallback = std::function<void(const FrameContext &)>;
 
+    struct FramePhaseHandlerRegistration
+    {
+        FramePhase phase{FramePhase::BeginFrame};
+        FramePhaseCallback callback;
+        std::string debug_name;
+    };
+
     // Creates an application shell with optional name and frame-limit defaults.
     // Создает оболочку приложения с необязательным именем и лимитом кадров по умолчанию.
     explicit Application(ApplicationOptions options = {});
@@ -102,6 +109,10 @@ class Application
     // Регистрирует колбэк для одной фазы кадра.
     // Связь: вспомогательная обвязка использует это для подключения хуков платформы, ввода и RHI к циклу кадра.
     void AddFramePhaseHandler(FramePhase phase, FramePhaseCallback callback, std::string debug_name = {});
+
+    // Registers a batch of frame handlers atomically. All allocation/copy work happens on a candidate
+    // handler table, and the live table is updated only after the complete batch is valid and built.
+    void AddFramePhaseHandlersAtomic(std::vector<FramePhaseHandlerRegistration> registrations);
 
     // Queues a task onto the main-thread dispatcher service.
     // Добавляет задачу в очередь диспетчера главного потока.

@@ -39,6 +39,12 @@ target_link_libraries(EpidemicCoreUnitTests
     PRIVATE EpidemicFoundation EpidemicDiagnostics EpidemicCore EpidemicMemory
 )
 
+target_include_directories(EpidemicCoreUnitTests PRIVATE
+    "${PROJECT_SOURCE_DIR}/EngineBase/Core/src"
+)
+
+target_compile_definitions(EpidemicCoreUnitTests PRIVATE EPIDEMIC_CORE_ENABLE_TEST_HOOKS=1)
+
 epidemic_configure_target(EpidemicCoreUnitTests)
 epidemic_add_test(EpidemicCoreUnitTests)
 

@@ -97,10 +97,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "virtual void SetInt(std::string key,std::int64_t value)=0;"
@@ -161,10 +161,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/iplatform_runtime.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::IPlatformRuntime",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<DynamicLibraryPtr> LoadDynamicLibrary(const epidemic::foundation::Path&path)=0;"
@@ -448,10 +448,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/event_bus.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::events::IEventBus",
       "signature": "template <typename EventT,typename HandlerT> HandlerToken SubscribeQueued(HandlerT&&handler)"
@@ -672,10 +672,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/profiling.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics",
       "signature": "void SetProfilingEnabled(bool enabled)noexcept;"
@@ -1187,10 +1187,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/input_system.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::InputSystem",
       "signature": "void QueuePlatformEvents(std::span<const epidemic::platform::PlatformEvent> events)override;"
@@ -1492,19 +1492,19 @@
       "scope": "epidemic::runtime::SerializedDocument",
       "signature": "[[nodiscard]] SchemaVersion GetSchemaVersion()const;"
     },
-    "086f74328213be73": {
+    "08769ed6974e7d01": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
+      "header": "EngineBase/Core/include/Epidemic/Core/service_container.h",
+      "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Log(LogLevel level,std::string_view module_name,std::string_view message)"
+      "scope": "epidemic::core::ServiceContainer",
+      "signature": "template <typename... TServices> void RegisterInstancesAtomic(std::shared_ptr<TServices>... instances)"
     },
     "087bbf32fc17be10": {
       "classification": "DESTRUCTOR",
@@ -1767,10 +1767,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/profiling.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics::ProfileScope",
       "signature": "ProfileScope&operator=(const ProfileScope&)=delete;"
@@ -1908,10 +1908,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/module_registry.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::ModuleRegistry",
       "signature": "void BootstrapAll(ServiceContainer&services,diagnostics::ILogger&logger);"
@@ -2045,10 +2045,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/main_thread_dispatcher.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::MainThreadDispatcher",
       "signature": "[[nodiscard]] std::size_t Drain()override;"
@@ -2149,10 +2149,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::TaskGroup",
       "signature": "TaskGroup&operator=(TaskGroup&&)noexcept=default;"
@@ -2241,10 +2241,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "void SetWorkerCount(std::size_t worker_count)"
@@ -2504,10 +2504,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "[[nodiscard]] foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>> RegisterMainSwapChain(core::Application&application,const std::shared_ptr<platform::IWindow>&window,const rhi::RhiSwapChainDesc&desc);"
@@ -2581,10 +2581,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "[[nodiscard]] std::shared_ptr<diagnostics::ILogger> RegisterEngineBase(core::Application&application,EngineBaseOptions options);"
@@ -2606,6 +2606,20 @@
       "obligations": {},
       "scope": "epidemic::gameplay::queries::IQuerySnapshotCoordinator",
       "signature": "virtual ~IQuerySnapshotCoordinator()=default;"
+    },
+    "0ec666875efe6fb3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Core/include/Epidemic/Core/application.h",
+      "module": "EngineBase/Core",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::core::Application",
+      "signature": "void AddFramePhaseHandlersAtomic(std::vector<FramePhaseHandlerRegistration> registrations);"
     },
     "0ecbf77e47ef71f8": {
       "classification": "MUTATOR",
@@ -3187,10 +3201,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::SimpleTaskScheduler",
       "signature": "void WaitIdle()override;"
@@ -3304,6 +3318,20 @@
       },
       "scope": "epidemic::gameplay::integration::ItemProcessInputProvider",
       "signature": "[[nodiscard]] foundation::Result<processes::ReservedProcessInput> Reserve(const processes::ProcessInputDefinition&,const processes::StartProcessRequest&,processes::ProcessInstanceId)override;"
+    },
+    "13ad5832d7dac90d": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Fatal(std::string_view module_name,std::string_view category,std::string_view message)noexcept"
     },
     "13b532bace3072e6": {
       "classification": "FACTORY",
@@ -3675,10 +3703,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::ITaskScheduler",
       "signature": "virtual void WaitIdle()=0;"
@@ -4312,20 +4340,6 @@
       "scope": "epidemic::runtime::physics::IPhysicsEventBuffer",
       "signature": "virtual void Clear()=0;"
     },
-    "198cbb6d9dbbfde9": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Warn(std::string_view module_name,std::string_view message)"
-    },
     "1995247a1118b8e2": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -4476,20 +4490,6 @@
       "scope": "epidemic::gameplay::entities::EntityId",
       "signature": "[[nodiscard]] constexpr auto operator<=>(const EntityId&)const noexcept=default;"
     },
-    "1a5b523389bb1323": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/console_logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ConsoleLogger",
-      "signature": "void Log(const LogMessage&message)override;"
-    },
     "1a5d676c13d7522b": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
@@ -4612,6 +4612,20 @@
       "obligations": {},
       "scope": "epidemic::gameplay::conditions::RegisteredConditionPayload",
       "signature": "template <typename T> [[nodiscard]] std::optional<T> AsTrivial(TypeId expected_type)const"
+    },
+    "1b11a07d96f2d305": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Core/include/Epidemic/Core/service_container.h",
+      "module": "EngineBase/Core",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::core::ServiceContainer",
+      "signature": "template <typename TPreCommit,typename... TServices> void RegisterInstancesAtomicWithPreCommit(TPreCommit&&pre_commit,std::shared_ptr<TServices>... instances)"
     },
     "1b29d910441f35a4": {
       "classification": "MUTATOR",
@@ -4851,10 +4865,10 @@
       "header": "EngineBase/RHI/include/Epidemic/RHI/irhi_swap_chain.h",
       "module": "EngineBase/RHI",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::rhi::IRhiSwapChain",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<void> Present()=0;"
@@ -4966,10 +4980,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/profiling.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics",
       "signature": "void SetProfileCollector(std::shared_ptr<IProfileCollector> collector);"
@@ -5176,10 +5190,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/module_registry.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::ModuleRegistry",
       "signature": "void TickAll(ServiceContainer&services,diagnostics::ILogger&logger,const FrameContext&frame_context);"
@@ -5425,6 +5439,20 @@
       "scope": "epidemic::foundation::Result",
       "signature": "[[nodiscard]] Error&GetError()&"
     },
+    "1f4142ed2a5a03b8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Debug(std::string_view module_name,std::string_view category,std::string_view message)noexcept"
+    },
     "1f43040f9a434f9b": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -5486,10 +5514,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void AddWheelDelta(std::int32_t wheel_delta)noexcept"
@@ -5607,6 +5635,15 @@
       "obligations": {},
       "scope": "epidemic::gameplay::ai::AIService",
       "signature": "[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept"
+    },
+    "1fda4eaeafb313be": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
+      "module": "EngineBase/Foundation",
+      "obligations": {},
+      "scope": "epidemic::foundation::FrameTime",
+      "signature": "[[nodiscard]] static FrameTime FromMilliseconds(double milliseconds)"
     },
     "1ff97995e47862b2": {
       "classification": "QUERY",
@@ -5921,10 +5958,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::SimpleTaskScheduler",
       "signature": "[[nodiscard]] TaskHandle Schedule(Task task,std::string debug_name={})override;"
@@ -6236,10 +6273,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/event_bus.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::events::EventBus",
       "signature": "[[nodiscard]] std::size_t DrainQueued()override;"
@@ -6346,10 +6383,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::TaskGroup",
       "signature": "TaskGroup&operator=(const TaskGroup&)=default;"
@@ -6378,10 +6415,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "virtual void SetString(std::string key,std::string value)=0;"
@@ -6492,10 +6529,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/allocator.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::TrackingAllocator",
       "signature": "void*Allocate(std::size_t bytes,std::size_t alignment=alignof(std::max_align_t),AllocationTag tag=AllocationTag::Unknown)override"
@@ -7347,15 +7384,6 @@
       "scope": "epidemic::gameplay::traversal::TraversalSessionId",
       "signature": "static constexpr TraversalSessionId FromString(std::string_view s)noexcept"
     },
-    "2b0cc4bc5d1131a3": {
-      "classification": "QUERY",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
-      "module": "EngineBase/Foundation",
-      "obligations": {},
-      "scope": "epidemic::foundation::FrameIndex",
-      "signature": "[[nodiscard]] constexpr FrameIndex Next()const noexcept"
-    },
     "2b12d18d7d28068a": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -7498,20 +7526,6 @@
       "scope": "epidemic::memory::TrackingAllocator",
       "signature": "TrackingAllocator(IMemoryTracker&tracker,IAllocator&upstream)noexcept"
     },
-    "2ba9959ca3954cc6": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Fatal(std::string_view module_name,std::string_view message)"
-    },
     "2bbb86c6edc8795d": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -7581,10 +7595,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "int Shutdown();"
@@ -7763,10 +7777,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/counters.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics::DiagnosticsCounters",
       "signature": "void Decrement(CounterId counter_id,std::int64_t delta=1)noexcept;"
@@ -7891,10 +7905,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/service_container.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::ServiceContainer",
       "signature": "template <typename TService> void RegisterInstance(std::shared_ptr<TService> instance)"
@@ -8093,10 +8107,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/input_system.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::InputSystem",
       "signature": "void PublishSnapshot()override;"
@@ -8116,10 +8130,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/service_container.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::ServiceContainer",
       "signature": "template <typename TService,typename TImplementation,typename... TArgs> std::shared_ptr<TService> Emplace(TArgs&&...args)"
@@ -8132,20 +8146,6 @@
       "obligations": {},
       "scope": "epidemic::gameplay::dialogue::DialogueConsequenceTypeId",
       "signature": "static constexpr DialogueConsequenceTypeId FromString(std::string_view s)noexcept"
-    },
-    "2f566955b2de3932": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Warn(std::string_view module_name,std::string_view category,std::string_view message)"
     },
     "2f6808ddf6dfe778": {
       "classification": "DESTRUCTOR",
@@ -8601,10 +8601,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "void ResetStopRequest()noexcept;"
@@ -9016,15 +9016,6 @@
       "scope": "epidemic::gameplay::narrative::NarrativeService",
       "signature": "[[nodiscard]] std::vector<RumorId> ExpireRumors(GameplayTimePoint now,GameplayContext context={});"
     },
-    "345951b3507681c3": {
-      "classification": "QUERY",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {},
-      "scope": "epidemic::diagnostics",
-      "signature": "[[nodiscard]] inline std::string_view ToString(LogLevel level)"
-    },
     "348e292b14a8396c": {
       "classification": "CONSTRUCTOR",
       "classification_status": "REVIEWED",
@@ -9109,10 +9100,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/keyboard_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::KeyboardState",
       "signature": "void SetKeyDown(KeyCode key_code,bool down)noexcept"
@@ -9283,10 +9274,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/imemory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::IMemoryTracker",
       "signature": "virtual void SetTrackingEnabled(bool tracking_enabled)noexcept=0;"
@@ -9324,10 +9315,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::SimpleTaskScheduler",
       "signature": "void RequestStop()noexcept override;"
@@ -9544,10 +9535,10 @@
       "header": "EngineBase/RHI/include/Epidemic/RHI/irhi_command_context.h",
       "module": "EngineBase/RHI",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::rhi::IRhiCommandContext",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<void> BeginFrame()=0;"
@@ -9773,10 +9764,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/imodule.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::IModule",
       "signature": "virtual void Bootstrap(ServiceContainer&services)=0;"
@@ -10429,10 +10420,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "[[nodiscard]] std::shared_ptr<FramePlatformEvents> EnsureFramePlatformEvents(core::Application&application);"
@@ -10692,20 +10683,6 @@
       "scope": "epidemic::gameplay::economy::EconomyService",
       "signature": "[[nodiscard]] std::vector<EconomicAccount> FindAccounts(GameplayObjectRef owner,std::optional<CurrencyId> currency=std::nullopt)const;"
     },
-    "3d65a2f281ece586": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Fatal(std::string_view module_name,std::string_view category,std::string_view message)"
-    },
     "3d7377f422f50efc": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
@@ -10913,10 +10890,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/memory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::MemoryTracker",
       "signature": "void ResetStatistics()noexcept override;"
@@ -10977,10 +10954,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::ITaskScheduler",
       "signature": "virtual void RequestStop()noexcept=0;"
@@ -11068,10 +11045,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/input_system.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::InputSystem",
       "signature": "void Reset()noexcept override;"
@@ -11292,10 +11269,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/allocator.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::TrackingAllocator",
       "signature": "void Deallocate(void*pointer,std::size_t bytes,std::size_t alignment=alignof(std::max_align_t),AllocationTag tag=AllocationTag::Unknown)noexcept override"
@@ -11416,10 +11393,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void SetFocus(bool focused)noexcept"
@@ -11502,10 +11479,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/keyboard_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::KeyboardState",
       "signature": "void ClearAll()noexcept"
@@ -11616,10 +11593,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "void RequestStop()noexcept;"
@@ -11825,10 +11802,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "void RegisterInputFrameLoop(core::Application&application);"
@@ -11875,10 +11852,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::ITaskScheduler",
       "signature": "virtual void Join()=0;"
@@ -12554,6 +12531,20 @@
       "scope": "std::hash",
       "signature": "[[nodiscard]] size_t operator()(epidemic::gameplay::entities::EntityPartId id)const noexcept"
     },
+    "477c7cc8d26b3d45": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Info(std::string_view module_name,std::string_view category,std::string_view message)noexcept"
+    },
     "47810d10d66f0d25": {
       "classification": "DESTRUCTOR",
       "classification_status": "REVIEWED",
@@ -13010,22 +13001,13 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void SetCapture(bool captured)noexcept"
-    },
-    "4a577ee9071e8bbf": {
-      "classification": "FACTORY",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
-      "module": "EngineBase/Foundation",
-      "obligations": {},
-      "scope": "epidemic::foundation::FrameTime",
-      "signature": "template <typename Rep,typename Period> [[nodiscard]] static constexpr FrameTime FromChrono(std::chrono::duration<Rep,Period> duration)noexcept"
     },
     "4a73b670eb33c7e9": {
       "classification": "QUERY",
@@ -13092,10 +13074,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void MarkReleased(MouseButton button)noexcept"
@@ -13533,10 +13515,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "void ScheduleMainThreadTask(MainThreadTask task,std::string debug_name={});"
@@ -13675,10 +13657,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::ITaskScheduler",
       "signature": "virtual void Wait(const TaskHandle&handle)=0;"
@@ -13901,6 +13883,15 @@
       },
       "scope": "epidemic::runtime::physics::IPhysicsStepper",
       "signature": "[[nodiscard]] virtual foundation::Result<PhysicsStepResult> StepFixed(RuntimeFrameDuration fixed_delta)=0;"
+    },
+    "4e6ad40f823f8ff3": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/counters.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {},
+      "scope": "epidemic::diagnostics",
+      "signature": "[[nodiscard]] constexpr bool IsValidCounterId(CounterId counter_id)noexcept"
     },
     "4e6f4101f695d5d1": {
       "classification": "FACTORY",
@@ -14332,10 +14323,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/iinput_system.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::IInputSystem",
       "signature": "virtual void QueuePlatformEvent(const epidemic::platform::PlatformEvent&event)=0;"
@@ -14489,10 +14480,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/imemory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::IMemoryTracker",
       "signature": "virtual void ResetStatistics()noexcept=0;"
@@ -14642,6 +14633,20 @@
       "scope": "epidemic::gameplay",
       "signature": "[[nodiscard]] constexpr GameplayTimePoint operator+(GameplayTimePoint point,GameplayDuration duration)noexcept"
     },
+    "5248a1a6a70a37ee": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
+      "module": "EngineBase/Core",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::core::tasks::ITaskScheduler",
+      "signature": "[[nodiscard]] virtual bool Cancel(const TaskHandle&handle)=0;"
+    },
     "524d9af447b3d0a4": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -14753,10 +14758,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "int Run();"
@@ -14794,10 +14799,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/event_bus.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::events::IEventBus",
       "signature": "template <typename EventT> void Enqueue(const EventT&event)"
@@ -14826,10 +14831,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/event_bus.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::events::IEventBus",
       "signature": "template <typename EventT,typename HandlerT> HandlerToken SubscribeSync(HandlerT&&handler)"
@@ -14874,20 +14879,6 @@
       "obligations": {},
       "scope": "epidemic::gameplay::ai::AIService",
       "signature": "[[nodiscard]] const AIGoalDefinition*FindGoal(AIGoalId id)const noexcept;"
-    },
-    "531d9bb0df7d8baa": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Info(std::string_view module_name,std::string_view category,std::string_view message)"
     },
     "531f8b4684886d15": {
       "classification": "QUERY",
@@ -15301,10 +15292,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/profiling.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics::IProfileCollector",
       "signature": "virtual void Record(ProfileEvent event)=0;"
@@ -15317,20 +15308,6 @@
       "obligations": {},
       "scope": "epidemic::gameplay::processes::ProcessInputId",
       "signature": "static constexpr ProcessInputId FromString(std::string_view s)noexcept"
-    },
-    "557ca16979354392": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Debug(std::string_view module_name,std::string_view category,std::string_view message)"
     },
     "558140a247284d1d": {
       "classification": "QUERY",
@@ -15488,10 +15465,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "[[nodiscard]] std::shared_ptr<input::IInputSystem> RegisterInputRuntime(core::Application&application);"
@@ -15502,10 +15479,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::ITaskScheduler",
       "signature": "[[nodiscard]] virtual TaskHandle Schedule(Task task,std::string debug_name={})=0;"
@@ -15543,10 +15520,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "virtual void SetBool(std::string key,bool value)=0;"
@@ -16381,6 +16358,15 @@
       "scope": "epidemic::gameplay::state_integration::StateTimeAdapter",
       "signature": "[[nodiscard]] foundation::Result<void> RestoreCheckpoint(StateTimeCheckpoint checkpoint);"
     },
+    "5c5319f7a44f55fc": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
+      "module": "EngineBase/Foundation",
+      "obligations": {},
+      "scope": "epidemic::foundation::FrameTime",
+      "signature": "[[nodiscard]] static FrameTime FromSeconds(double seconds)"
+    },
     "5c6bafdb09b70f4c": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -16556,10 +16542,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/imodule.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::IModule",
       "signature": "virtual void Initialize(ServiceContainer&services)=0;"
@@ -16743,10 +16729,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void SetButtonDown(MouseButton button,bool down)noexcept"
@@ -16766,10 +16752,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "void SetMemoryTrackingEnabled(bool enabled)"
@@ -16866,10 +16852,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "void SetRuntimeName(std::string runtime_name)"
@@ -17008,10 +16994,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/imemory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::IMemoryTracker",
       "signature": "virtual void RecordAllocate(AllocationTag tag,std::size_t bytes)noexcept=0;"
@@ -17235,10 +17221,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "void RegisterRhiFrameLoop(core::Application&application,const std::shared_ptr<rhi::IRhiCommandContext>&command_context,const std::shared_ptr<rhi::IRhiSwapChain>&swap_chain,const std::shared_ptr<bool>&render_paused,const std::shared_ptr<rhi::RhiClearDesc>&clear_desc);"
@@ -17578,10 +17564,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void ClearTransient()noexcept"
@@ -17670,10 +17656,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "void SetFrameLimit(std::optional<std::uint64_t> frame_limit)noexcept;"
@@ -18281,10 +18267,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/windows_platform_runtime.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::WindowsPlatformRuntime",
       "signature": "[[nodiscard]] epidemic::foundation::Result<DynamicLibraryPtr> LoadDynamicLibrary(const epidemic::foundation::Path&path)override;"
@@ -18322,10 +18308,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/keyboard_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::KeyboardState",
       "signature": "void MarkPressed(KeyCode key_code)noexcept"
@@ -18592,6 +18578,15 @@
       "obligations": {},
       "scope": "epidemic::gameplay::ownership::PropertyDomainId",
       "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "687541ba78c65e1a": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {},
+      "scope": "epidemic::diagnostics",
+      "signature": "[[nodiscard]] bool IsLoggingEnabled()noexcept;"
     },
     "68928ebc5656d295": {
       "classification": "MUTATOR",
@@ -18930,10 +18925,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/windows_platform_runtime.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::WindowsPlatformRuntime",
       "signature": "[[nodiscard]] std::vector<PlatformEvent> DrainEvents()override;"
@@ -19414,20 +19409,6 @@
       "scope": "epidemic::gameplay::economy::EconomyService",
       "signature": "[[nodiscard]] foundation::Result<void> CompactContract(EconomicContractId contract,GameplayContext context={});"
     },
-    "6d257cf8ed10537b": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "virtual void Log(const LogMessage&message)=0;"
-    },
     "6d2ba707579021b2": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -19761,20 +19742,6 @@
       "scope": "epidemic::gameplay::perception::SenseTypeId",
       "signature": "[[nodiscard]] constexpr bool operator==(const SenseTypeId&)const noexcept=default;"
     },
-    "6ee5a88615696b51": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
-      "module": "EngineBase/Foundation",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::foundation::FrameIndex",
-      "signature": "constexpr FrameIndex&operator++()noexcept"
-    },
     "6eff0b582abf10b5": {
       "classification": "CONSTRUCTOR",
       "classification_status": "REVIEWED",
@@ -20006,6 +19973,20 @@
       "obligations": {},
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "[[nodiscard]] static constexpr std::string_view MemoryTrackingEnabledKey()noexcept"
+    },
+    "7044aec139e6cc40": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Info(std::string_view module_name,std::string_view message)noexcept"
     },
     "7050ef704715d0ef": {
       "classification": "QUERY",
@@ -20830,10 +20811,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/allocator.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::DefaultAllocator",
       "signature": "void*Allocate(std::size_t bytes,std::size_t alignment=alignof(std::max_align_t),AllocationTag=AllocationTag::Unknown)override"
@@ -20898,10 +20879,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/iinput_system.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::IInputSystem",
       "signature": "virtual void QueuePlatformEvents(std::span<const epidemic::platform::PlatformEvent> events)=0;"
@@ -21111,6 +21092,15 @@
       "scope": "epidemic::gameplay::environment::EnvironmentService",
       "signature": "[[nodiscard]] foundation::Result<void> RegisterHazardType(EnvironmentHazardTypeId id,std::string canonical_name);"
     },
+    "76d6eb6ebe2ea1f7": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
+      "module": "EngineBase/Foundation",
+      "obligations": {},
+      "scope": "epidemic::foundation::FrameIndex",
+      "signature": "[[nodiscard]] constexpr FrameIndex Next()const"
+    },
     "76db2c4ca4a12dba": {
       "classification": "FACTORY",
       "classification_status": "REVIEWED",
@@ -21194,10 +21184,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/basic_configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::BasicConfiguration",
       "signature": "void SetInt(std::string key,std::int64_t value)override;"
@@ -22247,6 +22237,15 @@
       "scope": "epidemic::runtime",
       "signature": "[[nodiscard]] foundation::Result<SerializationServices> CreateSerializationServices(const SerializationOptions&options={});"
     },
+    "7d5f46a74bbf58da": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/thread_context.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {},
+      "scope": "epidemic::diagnostics",
+      "signature": "[[nodiscard]] std::string GetCurrentThreadName();"
+    },
     "7d6df1778c5b51f2": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
@@ -22505,10 +22504,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/keyboard_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::KeyboardState",
       "signature": "void MarkReleased(KeyCode key_code)noexcept"
@@ -22849,10 +22848,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/event_bus.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::events::IEventBus",
       "signature": "template <typename EventT> void PublishSync(const EventT&event)"
@@ -22955,27 +22954,13 @@
       "header": "EngineBase/RHI/include/Epidemic/RHI/irhi_device.h",
       "module": "EngineBase/RHI",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::rhi::IRhiDevice",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<std::shared_ptr<IRhiSwapChain>> CreateSwapChain(const RhiSwapChainDesc&swap_chain_desc)=0;"
-    },
-    "810454688a864581": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Error(std::string_view module_name,std::string_view message)"
     },
     "8109590fed9a2512": {
       "classification": "DESTRUCTOR",
@@ -23047,10 +23032,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/event_bus.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::events::IEventBus",
       "signature": "[[nodiscard]] virtual std::size_t DrainQueued()=0;"
@@ -23231,10 +23216,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::SimpleTaskScheduler",
       "signature": "void Shutdown()override;"
@@ -23440,10 +23425,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/iwindow.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::IWindow",
       "signature": "virtual void Show()=0;"
@@ -23454,10 +23439,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/iinput_system.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::IInputSystem",
       "signature": "virtual void Reset()noexcept=0;"
@@ -23628,10 +23613,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/counters.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics::DiagnosticsCounters",
       "signature": "void Increment(CounterId counter_id,std::int64_t delta=1)noexcept;"
@@ -23761,10 +23746,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/imodule.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::IModule",
       "signature": "virtual void Shutdown(ServiceContainer&services)=0;"
@@ -23949,10 +23934,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "[[nodiscard]] std::shared_ptr<platform::IPlatformRuntime> RegisterWindowsRuntime(core::Application&application);"
@@ -23972,10 +23957,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/profiling.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics::InMemoryProfileCollector",
       "signature": "void Reset();"
@@ -24394,15 +24379,6 @@
       "scope": "epidemic::gameplay::effects::EffectService",
       "signature": "void SetTargetStateProvider(const IEffectTargetStateProvider*provider)noexcept"
     },
-    "8a2f13a43f31e7f9": {
-      "classification": "FACTORY",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
-      "module": "EngineBase/Foundation",
-      "obligations": {},
-      "scope": "epidemic::foundation::FrameTime",
-      "signature": "[[nodiscard]] static FrameTime FromSeconds(double seconds)noexcept"
-    },
     "8a3dd7db69528aee": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
@@ -24425,6 +24401,20 @@
       "obligations": {},
       "scope": "epidemic::runtime::physics::IPhysicsBackend",
       "signature": "[[nodiscard]] virtual foundation::Result<BackendBodySnapshot> GetBodySnapshot(BackendBodyHandle handle)const=0;"
+    },
+    "8a4afd01a06d99cd": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Trace(std::string_view module_name,std::string_view message)noexcept"
     },
     "8a500e506a84b3a8": {
       "classification": "LIFECYCLE",
@@ -24847,10 +24837,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/main_thread_dispatcher.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::IMainThreadDispatcher",
       "signature": "virtual void Post(std::function<void()> task,std::string debug_name={})=0;"
@@ -25062,10 +25052,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/iwindow.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::IWindow",
       "signature": "virtual void Close()=0;"
@@ -25277,10 +25267,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/iwindow_system.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::IWindowSystem",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<WindowPtr> CreateWindow(const WindowCreateInfo&create_info)=0;"
@@ -25467,6 +25457,20 @@
       "scope": "epidemic::gameplay::processes::RegisteredPayload",
       "signature": "[[nodiscard]] bool IsPortable()const noexcept"
     },
+    "90d1310236b16084": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics",
+      "signature": "void SetLoggingEnabled(bool enabled)noexcept;"
+    },
     "90d529ec551884ac": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
@@ -25514,10 +25518,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/basic_configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::BasicConfiguration",
       "signature": "void SetString(std::string key,std::string value)override;"
@@ -25654,20 +25658,6 @@
       "obligations": {},
       "scope": "epidemic::gameplay::narrative::NarrativeService",
       "signature": "[[nodiscard]] const NarrativeThreadState*GetThreadState(NarrativeThreadId thread)const noexcept;"
-    },
-    "91dbd64bd71524fb": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Log(LogLevel level,std::string_view module_name,std::string_view category,std::string_view message)"
     },
     "91f3bddb00c95e95": {
       "classification": "MUTATOR",
@@ -25976,10 +25966,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/windows_platform_runtime.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::WindowsPlatformRuntime",
       "signature": "void Shutdown();"
@@ -26016,6 +26006,15 @@
       "scope": "epidemic::gameplay::world::WorldService",
       "signature": "void PruneChangesBefore(std::uint64_t sequence);"
     },
+    "93d64e82c7087d41": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
+      "module": "EngineBase/Foundation",
+      "obligations": {},
+      "scope": "epidemic::foundation::FrameTime",
+      "signature": "template <typename Rep,typename Period> [[nodiscard]] static constexpr FrameTime FromChrono(std::chrono::duration<Rep,Period> duration)"
+    },
     "93e7638ad88c7198": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -26031,10 +26030,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "void SetRhiDebugEnabled(bool enabled)"
@@ -26749,10 +26748,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "void AddFramePhaseHandler(FramePhase phase,FramePhaseCallback callback,std::string debug_name={});"
@@ -26763,10 +26762,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/windows_platform_runtime.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::WindowsPlatformRuntime",
       "signature": "void PumpEvents()override;"
@@ -26784,6 +26783,20 @@
       },
       "scope": "epidemic::runtime::simulation::ISimulationScheduler",
       "signature": "virtual void SetBudget(const SimulationBudget&budget)=0;"
+    },
+    "972fb0dbb7a56234": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Memory/include/Epidemic/Memory/allocator.h",
+      "module": "EngineBase/Memory",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::memory::DefaultAllocator",
+      "signature": "void Deallocate(void*pointer,std::size_t bytes,std::size_t alignment=alignof(std::max_align_t),AllocationTag=AllocationTag::Unknown)noexcept override"
     },
     "97557709dc1a11b7": {
       "classification": "MUTATOR",
@@ -27465,20 +27478,6 @@
       "scope": "epidemic::gameplay::social_legal_integration::RelationshipPenaltyDelivery",
       "signature": "[[nodiscard]] constexpr bool operator==(const RelationshipPenaltyDelivery&)const noexcept=default;"
     },
-    "9bfbd2a6db0fc124": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Error(std::string_view module_name,std::string_view category,std::string_view message)"
-    },
     "9c0093d870ec7096": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -27548,10 +27547,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/allocator.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::IAllocator",
       "signature": "virtual void Deallocate(void*pointer,std::size_t bytes,std::size_t alignment=alignof(std::max_align_t),AllocationTag tag=AllocationTag::Unknown)noexcept=0;"
@@ -27773,20 +27772,6 @@
       "obligations": {},
       "scope": "epidemic::gameplay::integration::CombatDamageEffectHandler",
       "signature": "explicit CombatDamageEffectHandler(combat::CombatService&combat)"
-    },
-    "9de5b6af0ff4662f": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Info(std::string_view module_name,std::string_view message)"
     },
     "9e0093a02f56a13c": {
       "classification": "QUERY",
@@ -28063,10 +28048,10 @@
       "header": "EngineBase/RHI/include/Epidemic/RHI/irhi_device.h",
       "module": "EngineBase/RHI",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::rhi::IRhiDevice",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<std::shared_ptr<IRhiCommandContext>> CreateCommandContext()=0;"
@@ -28148,20 +28133,6 @@
       "scope": "epidemic::runtime::IAssetCatalog",
       "signature": "[[nodiscard]] virtual std::vector<AssetMetadata> FindByTag(foundation::StringId tag)const=0;"
     },
-    "a01ebce014205926": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Trace(std::string_view module_name,std::string_view message)"
-    },
     "a0278957a3edd7fc": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -28227,10 +28198,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::ITaskScheduler",
       "signature": "virtual void Shutdown()=0;"
@@ -28620,10 +28591,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/counters.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics::DiagnosticsCounters",
       "signature": "void Reset()noexcept;"
@@ -28980,10 +28951,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::ITaskScheduler",
       "signature": "[[nodiscard]] virtual TaskHandle Schedule(Task task,TaskGroup&group,std::string debug_name={})=0;"
@@ -29049,10 +29020,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/iplatform_runtime.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::IPlatformRuntime",
       "signature": "virtual void PumpEvents()=0;"
@@ -29143,6 +29114,20 @@
       "obligations": {},
       "scope": "epidemic::gameplay::state_integration::StateFactsAdapter",
       "signature": "[[nodiscard]] EventTypeId EffectChangedEvent()const noexcept"
+    },
+    "a65e72f44a4654e3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Trace(std::string_view module_name,std::string_view category,std::string_view message)noexcept"
     },
     "a66e7b8166d962fc": {
       "classification": "QUERY",
@@ -29523,10 +29508,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/module_registry.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::ModuleRegistry",
       "signature": "void InitializeAll(ServiceContainer&services,diagnostics::ILogger&logger);"
@@ -29654,6 +29639,20 @@
       "scope": "epidemic::gameplay::integration::ProcessesSimulationLayer",
       "signature": "[[nodiscard]] simulation::SimulationLayerId Layer()const noexcept override"
     },
+    "a8e65a9ad9eed85c": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Error(std::string_view module_name,std::string_view message)noexcept"
+    },
     "a8f6f2272561bf01": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
@@ -29711,10 +29710,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "int Bootstrap();"
@@ -29871,10 +29870,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/main_thread_dispatcher.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::IMainThreadDispatcher",
       "signature": "[[nodiscard]] virtual std::size_t Drain()=0;"
@@ -30246,10 +30245,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::SimpleTaskScheduler",
       "signature": "void Wait(const TaskHandle&handle)override;"
@@ -30528,10 +30527,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/imemory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::IMemoryTracker",
       "signature": "virtual void RecordFree(AllocationTag tag,std::size_t bytes)noexcept=0;"
@@ -30600,6 +30599,20 @@
       "scope": "epidemic::gameplay::processes::ProcessDefinitionId",
       "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
     },
+    "aeec98a54689fc44": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Log(const LogMessage&message)noexcept"
+    },
     "aef35774c14bafdc": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -30608,6 +30621,15 @@
       "obligations": {},
       "scope": "epidemic::gameplay::encounters::EncountersService",
       "signature": "[[nodiscard]] foundation::Result<std::vector<TypeId>> PreviewSpawnArchetypes(SpawnRequest request)const;"
+    },
+    "af0870eccb678fc9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {},
+      "scope": "epidemic::diagnostics",
+      "signature": "[[nodiscard]] inline std::string_view ToString(LogLevel level)noexcept"
     },
     "af1c3df4a13b5b61": {
       "classification": "QUERY",
@@ -30670,10 +30692,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void MarkPressed(MouseButton button)noexcept"
@@ -30814,6 +30836,20 @@
       "obligations": {},
       "scope": "epidemic::runtime::streaming::StreamingPlanStepRecord",
       "signature": "constexpr StreamingPlanStepRecord(StreamingPlanStep value)noexcept"
+    },
+    "b0382ed7a3e616af": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Error(std::string_view module_name,std::string_view category,std::string_view message)noexcept"
     },
     "b04f9d28f3a9c682": {
       "classification": "MUTATOR",
@@ -31434,10 +31470,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/event_bus.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::events::EventBus",
       "signature": "[[nodiscard]] bool Unsubscribe(HandlerToken token)override;"
@@ -31489,10 +31525,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/basic_configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::BasicConfiguration",
       "signature": "void SetBool(std::string key,bool value)override;"
@@ -31557,10 +31593,10 @@
       "header": "EngineBase/RHI/include/Epidemic/RHI/irhi_command_context.h",
       "module": "EngineBase/RHI",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::rhi::IRhiCommandContext",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<void> EndFrame()=0;"
@@ -31646,6 +31682,20 @@
       },
       "scope": "epidemic::gameplay::social_legal_integration::SocialLegalMappings",
       "signature": "[[nodiscard]] foundation::Result<void> Freeze();"
+    },
+    "b568d277f35269ed": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Warn(std::string_view module_name,std::string_view category,std::string_view message)noexcept"
     },
     "b58786f6f1f56f1a": {
       "classification": "LIFECYCLE",
@@ -31877,10 +31927,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/imemory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::IMemoryTracker",
       "signature": "virtual void SetBudget(AllocationTag tag,std::size_t bytes)noexcept=0;"
@@ -31925,20 +31975,6 @@
       },
       "scope": "epidemic::gameplay::abilities::AbilityService",
       "signature": "[[nodiscard]] foundation::Result<std::vector<AbilityOutput>> CompleteExecution(AbilityExecutionId execution,GameplayTimePoint now);"
-    },
-    "b77e2446a0885568": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Debug(std::string_view module_name,std::string_view message)"
     },
     "b78db7edc6999664": {
       "classification": "QUERY",
@@ -32367,10 +32403,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::SimpleTaskScheduler",
       "signature": "void Wait(const TaskGroup&group)override;"
@@ -32580,6 +32616,20 @@
       "scope": "epidemic::platform::IPlatformRuntime",
       "signature": "[[nodiscard]] virtual epidemic::foundation::TimePoint Now()const=0;"
     },
+    "ba4d4ef42c98f281": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
+      "module": "EngineBase/Foundation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::foundation::FrameIndex",
+      "signature": "constexpr FrameIndex&operator++()"
+    },
     "ba56cb88f33fcd01": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -32659,10 +32709,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/windows_platform_runtime.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::WindowsPlatformRuntime",
       "signature": "[[nodiscard]] epidemic::foundation::Result<WindowPtr> CreateWindow(const WindowCreateInfo&create_info)override;"
@@ -32850,10 +32900,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::SimpleTaskScheduler",
       "signature": "void Join()override;"
@@ -32946,10 +32996,10 @@
       "header": "EngineBase/RHI/include/Epidemic/RHI/irhi_command_context.h",
       "module": "EngineBase/RHI",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::rhi::IRhiCommandContext",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<void> Clear(const RhiClearDesc&clear_desc)=0;"
@@ -33301,10 +33351,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/module_registry.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::ModuleRegistry",
       "signature": "void Register(std::unique_ptr<IModule> module);"
@@ -33446,10 +33496,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/module_registry.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::ModuleRegistry",
       "signature": "void ShutdownAll(ServiceContainer&services,diagnostics::ILogger&logger);"
@@ -33570,10 +33620,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::ITaskScheduler",
       "signature": "virtual void Wait(const TaskGroup&group)=0;"
@@ -34250,10 +34300,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/memory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::MemoryTracker",
       "signature": "void RecordAllocate(AllocationTag tag,std::size_t bytes)noexcept override;"
@@ -34411,10 +34461,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/service_container.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::ServiceContainer",
       "signature": "void Seal()noexcept"
@@ -34690,10 +34740,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/input_system.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::InputSystem",
       "signature": "void QueuePlatformEvent(const epidemic::platform::PlatformEvent&event)override;"
@@ -34786,10 +34836,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/counters.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics::DiagnosticsCounters",
       "signature": "void Set(CounterId counter_id,std::int64_t value)noexcept;"
@@ -34827,10 +34877,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "void RegisterFrameThrottle(core::Application&application,std::chrono::milliseconds duration);"
@@ -34892,10 +34942,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/iinput_system.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::IInputSystem",
       "signature": "virtual void PublishSnapshot()=0;"
@@ -35531,10 +35581,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/allocator.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::IAllocator",
       "signature": "virtual void*Allocate(std::size_t bytes,std::size_t alignment=alignof(std::max_align_t),AllocationTag tag=AllocationTag::Unknown)=0;"
@@ -35547,20 +35597,6 @@
       "obligations": {},
       "scope": "epidemic::runtime::ResourceHandle",
       "signature": "[[nodiscard]] constexpr bool operator==(const ResourceHandle&)const noexcept=default;"
-    },
-    "ca3ef96aafd11e10": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::diagnostics::ILogger",
-      "signature": "void Trace(std::string_view module_name,std::string_view category,std::string_view message)"
     },
     "ca44937e21af8888": {
       "classification": "MUTATOR",
@@ -35843,10 +35879,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "[[nodiscard]] foundation::Result<GraphicsRuntimeServices> RegisterGraphicsRuntime(core::Application&application,GraphicsRuntimeOptions options);"
@@ -36508,16 +36544,30 @@
       "scope": "epidemic::input::KeyboardState",
       "signature": "[[nodiscard]] bool IsKeyDown(KeyCode key_code)const noexcept"
     },
+    "cf21545f9e5bd2a5": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Warn(std::string_view module_name,std::string_view message)noexcept"
+    },
     "cf45b1b73fb08efd": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
       "header": "EngineBase/Core/include/Epidemic/Core/main_thread_dispatcher.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::MainThreadDispatcher",
       "signature": "void Post(std::function<void()> task,std::string debug_name={})override;"
@@ -36827,10 +36877,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "int Tick();"
@@ -36896,10 +36946,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/profiling.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics::InMemoryProfileCollector",
       "signature": "void Record(ProfileEvent event)override;"
@@ -36968,15 +37018,6 @@
       },
       "scope": "epidemic::gameplay::integration::EquipmentItemsAdapter",
       "signature": "[[nodiscard]] foundation::Result<void> ReconcileEquipmentReservation(equipment::EquipmentItemId item,GameplayObjectRef subject,equipment::EquipmentBindingId binding,GameplayContext context)override;"
-    },
-    "d1a92b4d88772306": {
-      "classification": "FACTORY",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
-      "module": "EngineBase/Foundation",
-      "obligations": {},
-      "scope": "epidemic::foundation::FrameTime",
-      "signature": "[[nodiscard]] static FrameTime FromMilliseconds(double milliseconds)noexcept"
     },
     "d1ab57089e1a2192": {
       "classification": "MUTATOR",
@@ -37446,15 +37487,6 @@
       "obligations": {},
       "scope": "epidemic::core::ServiceContainer",
       "signature": "[[nodiscard]] bool IsSealed()const noexcept"
-    },
-    "d36da4b8d83637d5": {
-      "classification": "QUERY",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/thread_context.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {},
-      "scope": "epidemic::diagnostics",
-      "signature": "[[nodiscard]] std::string_view GetCurrentThreadName()noexcept;"
     },
     "d38b3abaedee851a": {
       "classification": "QUERY",
@@ -38000,10 +38032,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/keyboard_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::KeyboardState",
       "signature": "void ClearTransient()noexcept"
@@ -38614,10 +38646,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/memory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::MemoryTracker",
       "signature": "void RecordFree(AllocationTag tag,std::size_t bytes)noexcept override;"
@@ -38692,10 +38724,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "void SetDefaultWindowWidth(std::int32_t width)"
@@ -38838,10 +38870,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/memory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::MemoryTracker",
       "signature": "void SetBudget(AllocationTag tag,std::size_t bytes)noexcept override;"
@@ -38852,10 +38884,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void ClearButtons()noexcept"
@@ -38939,10 +38971,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::tasks::SimpleTaskScheduler",
       "signature": "[[nodiscard]] TaskHandle Schedule(Task task,TaskGroup&group,std::string debug_name={})override;"
@@ -39233,10 +39265,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/memory_tracker.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::MemoryTracker",
       "signature": "void SetTrackingEnabled(bool tracking_enabled)noexcept override;"
@@ -39354,6 +39386,20 @@
       "obligations": {},
       "scope": "epidemic::gameplay::integration::RuntimeTimeAdapter",
       "signature": "RuntimeTimeAdapter(runtime::IGameClock&runtime_clock,time::GameplayTimeService&gameplay_time,ClockId clock)"
+    },
+    "df0077941dcd1c8b": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Fatal(std::string_view module_name,std::string_view message)noexcept"
     },
     "df213c91a2ed5db5": {
       "classification": "MUTATOR",
@@ -39531,20 +39577,6 @@
       "obligations": {},
       "scope": "epidemic::gameplay::integration::AIIntentExecutionRecorder",
       "signature": "[[nodiscard]] std::size_t RetentionCapacity()const noexcept"
-    },
-    "e04b33f261dd189c": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
-      "module": "EngineBase/Foundation",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::foundation::FrameIndex",
-      "signature": "constexpr FrameIndex operator++(int)noexcept"
     },
     "e04b451a20841050": {
       "classification": "FACTORY",
@@ -39743,10 +39775,10 @@
       "header": "EngineBase/Input/include/Epidemic/Input/mouse_state.h",
       "module": "EngineBase/Input",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::input::MouseState",
       "signature": "void SetPosition(std::int32_t x,std::int32_t y)noexcept"
@@ -40457,10 +40489,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/event_bus.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::events::IEventBus",
       "signature": "[[nodiscard]] virtual bool Unsubscribe(HandlerToken token)=0;"
@@ -40532,6 +40564,20 @@
       "obligations": {},
       "scope": "epidemic::runtime::audio::IAudioResourceSource",
       "signature": "[[nodiscard]] virtual foundation::Result<AudioClipPayload> LoadClip(SoundId id)const=0;"
+    },
+    "e4bd0446ce2a1b0f": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Foundation/include/Epidemic/Foundation/time.h",
+      "module": "EngineBase/Foundation",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::foundation::FrameIndex",
+      "signature": "constexpr FrameIndex operator++(int)"
     },
     "e4c7c358567d9d70": {
       "classification": "FACTORY",
@@ -41027,10 +41073,10 @@
       "header": "EngineBase/Platform/include/Epidemic/Platform/iwindow_system.h",
       "module": "EngineBase/Platform",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::platform::IWindowSystem",
       "signature": "[[nodiscard]] virtual std::vector<PlatformEvent> DrainEvents()=0;"
@@ -41449,6 +41495,20 @@
       "obligations": {},
       "scope": "epidemic::gameplay::navigation_semantics::INavigationCapabilityProvider",
       "signature": "[[nodiscard]] virtual bool HasCapability(GameplayObjectRef subject,TypeId capability,Fixed min_parameter_micro)const noexcept=0;"
+    },
+    "ea2efc541e712974": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Log(LogLevel level,std::string_view module_name,std::string_view category,std::string_view message)noexcept"
     },
     "ea461978845294ea": {
       "classification": "QUERY",
@@ -42161,6 +42221,20 @@
       "scope": "epidemic::gameplay::economy::ContractTypeId",
       "signature": "[[nodiscard]] constexpr bool operator==(const ContractTypeId&)const noexcept=default;"
     },
+    "eeb216b02b76163e": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Core/include/Epidemic/Core/task_scheduler.h",
+      "module": "EngineBase/Core",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::core::tasks::SimpleTaskScheduler",
+      "signature": "[[nodiscard]] bool Cancel(const TaskHandle&handle)override;"
+    },
     "eed51099af6c3829": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -42217,10 +42291,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/application.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::Application",
       "signature": "int Initialize();"
@@ -42629,10 +42703,10 @@
       "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/thread_context.h",
       "module": "EngineBase/Diagnostics",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::diagnostics",
       "signature": "void SetCurrentThreadName(std::string name);"
@@ -43068,13 +43142,27 @@
       "header": "EngineBase/Core/include/Epidemic/Core/imodule.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::IModule",
       "signature": "virtual void Tick(ServiceContainer&services,const FrameContext&frame_context)=0;"
+    },
+    "f47b0bef353ef1cc": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Log(LogLevel level,std::string_view module_name,std::string_view message)noexcept"
     },
     "f48a2d5510fd32a7": {
       "classification": "QUERY",
@@ -43159,10 +43247,10 @@
       "header": "EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h",
       "module": "EngineBase/Support",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::enginebase",
       "signature": "void RegisterPlatformFrameLoop(core::Application&application);"
@@ -43446,10 +43534,10 @@
       "header": "EngineBase/RHI/include/Epidemic/RHI/irhi_swap_chain.h",
       "module": "EngineBase/RHI",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::rhi::IRhiSwapChain",
       "signature": "[[nodiscard]] virtual epidemic::foundation::Result<void> Resize(std::uint32_t width,std::uint32_t height)=0;"
@@ -44019,10 +44107,10 @@
       "header": "EngineBase/Core/include/Epidemic/Core/configuration.h",
       "module": "EngineBase/Core",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::core::config::IConfiguration",
       "signature": "void SetDefaultWindowHeight(std::int32_t height)"
@@ -44284,10 +44372,10 @@
       "header": "EngineBase/Memory/include/Epidemic/Memory/allocator.h",
       "module": "EngineBase/Memory",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::memory::IFrameAllocator",
       "signature": "virtual void Reset()noexcept=0;"
@@ -44341,6 +44429,20 @@
       "obligations": {},
       "scope": "epidemic::gameplay::queries::GameplayQueryService",
       "signature": "GameplayQueryService(const GameplayQueryService&)=delete;"
+    },
+    "fc4d1a4f6cf46d00": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/logger.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics::ILogger",
+      "signature": "void Debug(std::string_view module_name,std::string_view message)noexcept"
     },
     "fc643aa171c0eae7": {
       "classification": "CONSTRUCTOR",
@@ -44514,20 +44616,6 @@
       "obligations": {},
       "scope": "epidemic::gameplay::narrative::NarrativeConsequenceKey",
       "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
-    },
-    "fd8772f1f8b38842": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Memory/include/Epidemic/Memory/allocator.h",
-      "module": "EngineBase/Memory",
-      "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
-      },
-      "scope": "epidemic::memory::DefaultAllocator",
-      "signature": "void Deallocate(void*pointer,std::size_t,std::size_t alignment=alignof(std::max_align_t),AllocationTag=AllocationTag::Unknown)noexcept override"
     },
     "fd8ab893daeed29c": {
       "classification": "QUERY",
@@ -44966,6 +45054,54 @@
     }
   },
   "defects": {
+    "diagnostics-counter-invalid-index": {
+      "defect": "DIAG-002 counter-invalid-index",
+      "fix": "DiagnosticsCounters validates CounterId before every array access.",
+      "module": "EngineBase/Diagnostics",
+      "regression": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp::TestCounterArithmeticAndInvalidIds",
+      "status": "REVIEWED",
+      "target": "EpidemicDiagnosticsUnitTests"
+    },
+    "diagnostics-counter-wraparound": {
+      "defect": "DIAG-003 counter-wraparound",
+      "fix": "DiagnosticsCounters uses saturating checked CAS arithmetic.",
+      "module": "EngineBase/Diagnostics",
+      "regression": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp::TestCounterArithmeticAndInvalidIds",
+      "status": "REVIEWED",
+      "target": "EpidemicDiagnosticsUnitTests"
+    },
+    "diagnostics-disabled-profile-allocation": {
+      "defect": "DIAG-006 disabled-profile-allocation",
+      "fix": "ProfileScope checks the profiling gate before copying its scope name and contains setup failures.",
+      "module": "EngineBase/Diagnostics",
+      "regression": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp::TestProfileScopeRaiiAndFailureContainment",
+      "status": "REVIEWED",
+      "target": "EpidemicDiagnosticsUnitTests"
+    },
+    "diagnostics-scope-collector-redirection": {
+      "defect": "DIAG-005 scope-collector-redirection",
+      "fix": "ProfileScope captures the collector at construction and keeps it alive until destruction.",
+      "module": "EngineBase/Diagnostics",
+      "regression": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp::TestProfileScopeCapturesOriginalCollector",
+      "status": "REVIEWED",
+      "target": "EpidemicDiagnosticsUnitTests"
+    },
+    "diagnostics-sink-exception-control-flow": {
+      "defect": "DIAG-001 sink-exception-control-flow",
+      "fix": "ILogger public entry points contain exceptions thrown by concrete Write sinks.",
+      "module": "EngineBase/Diagnostics",
+      "regression": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp::TestLoggerSinkFailureIsContained",
+      "status": "REVIEWED",
+      "target": "EpidemicDiagnosticsUnitTests"
+    },
+    "diagnostics-thread-name-borrow": {
+      "defect": "DIAG-004 thread-name-borrow",
+      "fix": "GetCurrentThreadName returns an owning string and LogMessage owns thread_name.",
+      "module": "EngineBase/Diagnostics",
+      "regression": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp::TestThreadDiagnosticNamesOwnTheirLifetime",
+      "status": "REVIEWED",
+      "target": "EpidemicDiagnosticsUnitTests"
+    },
     "environment-defaulted-equality": {
       "defect": "Defaulted environment equality was deleted because GameplayTagSet and GameplayContext had no equality operators.",
       "fix": "EngineFramework/BaseInfrastructure/Foundation/include/Epidemic/GameFramework/Foundation/tags.h:107::operator==(const GameplayTagSet&)",
@@ -44977,6 +45113,190 @@
       "regression": "EngineFramework/DevelopmentInfrastructure/Tests/environment_gameplay_tests.cpp:39-48::equality_hazard ==",
       "status": "REVIEWED",
       "target": "EpidemicGameFrameworkEnvironmentTests"
+    },
+    "foundation-frameindex-overflow": {
+      "defect": "FrameIndex wrapped UINT64_MAX to zero.",
+      "fix": "EngineBase/Foundation/include/Epidemic/Foundation/time.h:152::FrameIndex Next() const",
+      "module": "EngineBase/Foundation",
+      "regression": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:348::FrameIndex::Next must reject uint64 overflow",
+      "status": "REVIEWED",
+      "target": "EpidemicFoundationUnitTests"
+    },
+    "foundation-frametime-invalid-conversion": {
+      "defect": "FrameTime accepted non-finite/out-of-range floating conversion into integral native duration.",
+      "fix": "EngineBase/Foundation/include/Epidemic/Foundation/time.h:35::FromChrono",
+      "module": "EngineBase/Foundation",
+      "regression": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:320::NaN FrameTime input must be rejected",
+      "status": "REVIEWED",
+      "target": "EpidemicFoundationUnitTests"
+    },
+    "foundation-handle-invalid-canonical": {
+      "defect": "Invalid-index Handle retained arbitrary generation.",
+      "fix": "EngineBase/Foundation/include/Epidemic/Foundation/handle.h:25::Handle(std::uint32_t index",
+      "module": "EngineBase/Foundation",
+      "regression": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:260::All invalid handles must canonicalize",
+      "status": "REVIEWED",
+      "target": "EpidemicFoundationUnitTests"
+    },
+    "foundation-path-rooted-nul": {
+      "defect": "Path::Join allowed rooted replacement and path construction accepted embedded NUL.",
+      "fix": "EngineBase/Foundation/include/Epidemic/Foundation/path.h:64::Path Join(std::string_view child) const",
+      "module": "EngineBase/Foundation",
+      "regression": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:391::Rooted child path must not replace the Join base path",
+      "status": "REVIEWED",
+      "target": "EpidemicFoundationUnitTests"
+    },
+    "foundation-result-valueless-assignment": {
+      "defect": "Result<T> could become variant::valueless_by_exception after throwing branch-changing assignment.",
+      "fix": "EngineBase/Foundation/include/Epidemic/Foundation/result.h:116::class Storage",
+      "module": "EngineBase/Foundation",
+      "regression": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:184::Unsafe payload assignment must be rejected",
+      "status": "REVIEWED",
+      "target": "EpidemicFoundationUnitTests"
+    },
+    "memory-counter-saturation": {
+      "defect": "MemoryTracker byte/count arithmetic could wrap at SIZE_MAX.",
+      "fix": "EngineBase/Memory/src/memory_tracker.cpp:10::SaturatingAdd",
+      "module": "EngineBase/Memory",
+      "regression": "EngineBase/Tests/Unit/memory_unit_tests.cpp:254::void TestCounterOverflowDoesNotWrap()",
+      "status": "REVIEWED",
+      "target": "EpidemicMemoryUnitTests"
+    },
+    "memory-invalid-allocation-contract": {
+      "defect": "Invalid size/alignment reached aligned allocation without deterministic validation.",
+      "fix": "EngineBase/Memory/include/Epidemic/Memory/allocator.h:58::throw std::invalid_argument",
+      "module": "EngineBase/Memory",
+      "regression": "EngineBase/Tests/Unit/memory_unit_tests.cpp:122::void TestInvalidAllocationArguments()",
+      "status": "REVIEWED",
+      "target": "EpidemicMemoryUnitTests"
+    },
+    "memory-null-allocation-accounting": {
+      "defect": "TrackingAllocator published accounting when upstream returned nullptr.",
+      "fix": "EngineBase/Memory/include/Epidemic/Memory/allocator.h:110::if (pointer == nullptr)",
+      "module": "EngineBase/Memory",
+      "regression": "EngineBase/Tests/Unit/memory_unit_tests.cpp:167::void TestAllocationFailureAtomicity()",
+      "status": "REVIEWED",
+      "target": "EpidemicMemoryUnitTests"
+    },
+    "memory-reset-live-usage": {
+      "defect": "ResetStatistics cleared live usage while allocations could remain outstanding.",
+      "fix": "EngineBase/Memory/src/memory_tracker.cpp:130::const auto live_bytes = statistics.allocated_bytes;",
+      "module": "EngineBase/Memory",
+      "regression": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+      "status": "REVIEWED",
+      "target": "EpidemicMemoryUnitTests"
+    },
+    "rhi-d3d11-clear-missing-rtv": {
+      "defect": "D3D11 Clear silently succeeded when resize had no valid recreated RTV.",
+      "fix": "EngineBase/RHI_D3D11/src/d3d11_rhi_device.cpp:343::ValidateRenderTarget",
+      "module": "EngineBase/RHI_D3D11",
+      "regression": "EngineBase/Tests/Integration/rhi_integration_tests.cpp:278::D3D11 Clear must not silently succeed with a missing/stale render target",
+      "status": "REVIEWED",
+      "target": "EpidemicRhiIntegrationTests"
+    },
+    "rhi-d3d11-debug-layer-error": {
+      "defect": "Missing D3D11 debug layer returned only generic create_device_failed.",
+      "fix": "EngineBase/RHI_D3D11/src/d3d11_rhi_device.cpp:768::rhi.d3d11.debug_layer_unavailable",
+      "module": "EngineBase/RHI_D3D11",
+      "regression": "EngineBase/Tests/Integration/rhi_integration_tests.cpp:163::Unavailable D3D11 debug layer must return its dedicated controlled error",
+      "status": "REVIEWED",
+      "target": "EpidemicRhiIntegrationTests"
+    },
+    "rhi-d3d11-device-lost-classification": {
+      "defect": "D3D11 device-loss HRESULTs were flattened into generic operation errors.",
+      "fix": "EngineBase/RHI_D3D11/src/d3d11_rhi_device.cpp:147::MakeD3D11OperationError",
+      "module": "EngineBase/RHI_D3D11",
+      "regression": "EngineBase/Tests/Integration/rhi_integration_tests.cpp:316::D3D11 device-loss HRESULT must become stable rhi.d3d11.device_lost",
+      "status": "REVIEWED",
+      "target": "EpidemicRhiIntegrationTests"
+    },
+    "rhi-d3d11-invalid-hwnd": {
+      "defect": "Non-null invalid HWND values reached DXGI CreateSwapChain.",
+      "fix": "EngineBase/RHI_D3D11/src/d3d11_rhi_device.cpp:406::IsWindow",
+      "module": "EngineBase/RHI_D3D11",
+      "regression": "EngineBase/Tests/Integration/rhi_integration_tests.cpp:243::Non-window native handle must be rejected before a DXGI swap-chain call",
+      "status": "REVIEWED",
+      "target": "EpidemicRhiIntegrationTests"
+    },
+    "rhi-null-clear-without-presentation-target": {
+      "defect": "Null RHI accepted Clear inside a frame without any live active swap chain.",
+      "fix": "EngineBase/RHI/src/null_rhi_device.cpp:129::rhi.no_swap_chain",
+      "module": "EngineBase/RHI",
+      "regression": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:372::Null RHI must reject Clear when no active swap chain exists",
+      "status": "REVIEWED",
+      "target": "EpidemicRhiUnitTests"
+    },
+    "rhi-out-of-range-pixel-format": {
+      "defect": "Swap-chain descriptor validation accepted out-of-range RhiPixelFormat values.",
+      "fix": "EngineBase/RHI/src/null_rhi_device.cpp:249-257::rhi.invalid_color_format",
+      "module": "EngineBase/RHI",
+      "regression": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:171::RHI swap chain creation must reject out-of-range pixel formats",
+      "status": "REVIEWED",
+      "target": "EpidemicRhiUnitTests"
+    },
+    "support-enginebase-partial-bundle": {
+      "defect": "Late EngineBase baseline conflict could leave partial service publication.",
+      "fix": "EngineBase/Support/src/engine_base_support.cpp",
+      "module": "EngineBase/Support",
+      "regression": "EngineBase/Tests/Integration/support_integration_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicSupportIntegrationTests"
+    },
+    "support-frame-event-partial-publication": {
+      "defect": "Missing frame-loop dependencies could leave FramePlatformEvents published.",
+      "fix": "EngineBase/Support/src/engine_base_support.cpp",
+      "module": "EngineBase/Support",
+      "regression": "EngineBase/Tests/Integration/support_integration_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicSupportIntegrationTests"
+    },
+    "support-graphics-partial-bundle": {
+      "defect": "Late graphics conflict could publish a device without its command context.",
+      "fix": "EngineBase/Support/src/engine_base_support.cpp",
+      "module": "EngineBase/Support",
+      "regression": "EngineBase/Tests/Integration/support_integration_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicSupportIntegrationTests"
+    },
+    "support-invalid-graphics-backend": {
+      "defect": "Unknown GraphicsBackend values silently selected Null.",
+      "fix": "EngineBase/Support/src/engine_base_support.cpp",
+      "module": "EngineBase/Support",
+      "regression": "EngineBase/Tests/Integration/support_integration_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicSupportIntegrationTests"
+    },
+    "support-main-swapchain-preconditions": {
+      "defect": "Swap-chain duplicate/null/missing-service failures were discovered too late or escaped as exceptions.",
+      "fix": "EngineBase/Support/src/engine_base_support.cpp",
+      "module": "EngineBase/Support",
+      "regression": "EngineBase/Tests/Integration/support_integration_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicSupportIntegrationTests"
+    },
+    "support-rhi-loop-partial-handler": {
+      "defect": "Null RHI frame-loop dependencies could be discovered after an earlier handler was installed.",
+      "fix": "EngineBase/Support/src/engine_base_support.cpp",
+      "module": "EngineBase/Support",
+      "regression": "EngineBase/Tests/Integration/support_integration_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicSupportIntegrationTests"
+    },
+    "support-windows-partial-bundle": {
+      "defect": "Late Windows bundle conflict could publish only one interface role.",
+      "fix": "EngineBase/Support/src/engine_base_support.cpp",
+      "module": "EngineBase/Support",
+      "regression": "EngineBase/Tests/Integration/support_integration_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicSupportIntegrationTests"
+    },
+    "support-worker-count-mismatch": {
+      "defect": "worker_count zero was normalized by scheduler but not configuration.",
+      "fix": "EngineBase/Support/src/engine_base_support.cpp",
+      "module": "EngineBase/Support",
+      "regression": "EngineBase/Tests/Integration/support_integration_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicSupportIntegrationTests"
     }
   },
   "external_boundary": {
@@ -45248,7 +45568,7 @@
     "eba4156c9757c742": {
       "callable_id": "9705e3761ef38302",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "efb993c5915af653": {
       "callable_id": "b6a2f3ccee7515b0",
@@ -45295,7 +45615,7 @@
     "04e0409b262a0601": {
       "callable_id": "939f8518b446ffc0",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "055a9c87ebb77612": {
       "callable_id": "4cf8c4aeaf7671f6",
@@ -45330,7 +45650,7 @@
     "193bbdd5338b27eb": {
       "callable_id": "8265d615c1e9ca1a",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "1964920db033c568": {
       "callable_id": "e13e11adc1e314be",
@@ -45340,7 +45660,7 @@
     "1c57d271bda345d3": {
       "callable_id": "5d46e100e07db361",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "1d51ec01119367e8": {
       "callable_id": "5b26a31b28e8b091",
@@ -45400,7 +45720,7 @@
     "36955ff14afce063": {
       "callable_id": "3830bfbaebfb99a7",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "377b3ad701d95a8e": {
       "callable_id": "649e7cc6afd92242",
@@ -45415,7 +45735,7 @@
     "392e38ff6e105f1a": {
       "callable_id": "ef56c3eb68072c03",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "3b260ebebf75e92d": {
       "callable_id": "95fbb62575787dff",
@@ -45465,7 +45785,7 @@
     "4d796bfadf05c41a": {
       "callable_id": "2c408c679015d480",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "4e44b223e7643cdf": {
       "callable_id": "476fd4ff18047425",
@@ -45570,7 +45890,7 @@
     "7ad5c2942a4bbdb6": {
       "callable_id": "a9340c0cdaff0b58",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "7af0408da1cc85ea": {
       "callable_id": "3128dcd87d842706",
@@ -45580,7 +45900,7 @@
     "8efc3715acdecd3b": {
       "callable_id": "a0581b8fe17eb543",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "93da71f70e0c35a3": {
       "callable_id": "ceb00e3feb60851e",
@@ -45620,7 +45940,7 @@
     "9a0fd1150bc73e5a": {
       "callable_id": "bf118b72a05edeb3",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "9b433879ab33dce0": {
       "callable_id": "6c28c638e78c78e6",
@@ -45735,7 +46055,7 @@
     "c7557db703b5d732": {
       "callable_id": "a869aa1bbf06eb3a",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "d0877115deb0a477": {
       "callable_id": "9973dd7c528d87dc",
@@ -45760,12 +46080,12 @@
     "d96c16b187c6f92a": {
       "callable_id": "8e0914b7b6421a7f",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "d9fd99b68340a801": {
       "callable_id": "85e26a7153115200",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "dd0b58f85c21afc6": {
       "callable_id": "7683b984b34bb2a1",
@@ -45820,7 +46140,7 @@
     "fbbcee5be34e3bab": {
       "callable_id": "0ae64a656088986d",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "fbbf56822b27a346": {
       "callable_id": "5355b61ee242f9f5",
@@ -45855,14 +46175,29 @@
       "module": "EngineFramework/IntegrationLayer/ExtendedGameplayIntegration",
       "status": "DISCOVERED"
     },
+    "0128b507018bddb5": {
+      "callable_id": "0ec666875efe6fb3",
+      "module": "EngineBase/Core",
+      "status": "DISCOVERED"
+    },
     "016d6834531aa782": {
       "callable_id": "52e5d5b8c24267fa",
       "module": "EngineBase/Core",
+      "status": "REVIEWED"
+    },
+    "0171c6c43f4d0a13": {
+      "callable_id": "8a4afd01a06d99cd",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "01ea1eba7d4598a2": {
       "callable_id": "506c9893da8c08f5",
       "module": "EngineFramework/GameplayWorldStateOwners/Traversal",
+      "status": "DISCOVERED"
+    },
+    "01eb9f1bb9a8279d": {
+      "callable_id": "1b11a07d96f2d305",
+      "module": "EngineBase/Core",
       "status": "DISCOVERED"
     },
     "01f813e60c4ae354": {
@@ -45888,7 +46223,7 @@
     "031d02c47eaafa86": {
       "callable_id": "4ccb839664dff6a1",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "036d867c819b5f91": {
       "callable_id": "7f1caeaae9076d79",
@@ -45945,6 +46280,11 @@
       "module": "EngineFramework/GameplayWorldStateOwners/Progression",
       "status": "DISCOVERED"
     },
+    "05438ba09f54efa7": {
+      "callable_id": "13ad5832d7dac90d",
+      "module": "EngineBase/Diagnostics",
+      "status": "DISCOVERED"
+    },
     "056e3c1529288fb2": {
       "callable_id": "8d16fe30d12e75ec",
       "module": "EngineRuntime/Persistence",
@@ -45953,11 +46293,6 @@
     "0599ce14a66b3fb5": {
       "callable_id": "8498274380d8de1c",
       "module": "EngineFramework/GameplayWorldStateOwners/NeedsLife",
-      "status": "DISCOVERED"
-    },
-    "05aabcd70f73a818": {
-      "callable_id": "2ba9959ca3954cc6",
-      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "05b9807a473314b5": {
@@ -46143,7 +46478,7 @@
     "0e67bc09c50e3cfb": {
       "callable_id": "7e5c12b80df8441b",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "0e755843a0425067": {
       "callable_id": "afdbd58280a50ebf",
@@ -46183,6 +46518,11 @@
     "118cc6190ae52052": {
       "callable_id": "cd8ba0f8c2c58701",
       "module": "EngineFramework/GameplayWorldStateOwners/Progression",
+      "status": "DISCOVERED"
+    },
+    "11d728a07c86fc4b": {
+      "callable_id": "ea2efc541e712974",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "1217941b3f179f7b": {
@@ -46238,11 +46578,6 @@
     "16650e22983da792": {
       "callable_id": "25f1a1b839699cae",
       "module": "EngineRuntime/Serialization",
-      "status": "DISCOVERED"
-    },
-    "171309e3fbeacdd6": {
-      "callable_id": "ca3ef96aafd11e10",
-      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "176efbdfb1845803": {
@@ -46478,7 +46813,7 @@
     "21d150a1b07c8b33": {
       "callable_id": "5e609c9d91c1af08",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "21df44005e80588c": {
       "callable_id": "d4b9e6577aa22890",
@@ -46528,7 +46863,7 @@
     "2396fd578a92977b": {
       "callable_id": "dc5df2bfbd9f0afb",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "23b624d379658cf1": {
       "callable_id": "73202027e43ec08d",
@@ -46538,7 +46873,7 @@
     "23be194906a23665": {
       "callable_id": "fa57abcaaf9ec44c",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "24012edad9421bb1": {
       "callable_id": "9608172e0047ead8",
@@ -46648,7 +46983,7 @@
     "285697f97e35f870": {
       "callable_id": "83fc5db37ee27330",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "2857393a0c947d98": {
       "callable_id": "67d1b2cbe2a96f52",
@@ -46683,12 +47018,7 @@
     "29e3d2271ab7816e": {
       "callable_id": "a50df106f8d19771",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
-    },
-    "2a01812d751aaa95": {
-      "callable_id": "91dbd64bd71524fb",
-      "module": "EngineBase/Diagnostics",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "2a2a0d87a38bdd2e": {
       "callable_id": "f86bea83d7f5693e",
@@ -46755,6 +47085,11 @@
       "module": "EngineFramework/GameplayWorldStateOwners/Progression",
       "status": "DISCOVERED"
     },
+    "2d4c2ee614c0f853": {
+      "callable_id": "5248a1a6a70a37ee",
+      "module": "EngineBase/Core",
+      "status": "REVIEWED"
+    },
     "2dc590ffb628017c": {
       "callable_id": "4d1b2ae7ef024b76",
       "module": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction",
@@ -46783,7 +47118,7 @@
     "2f225b66d1339eaf": {
       "callable_id": "0ae64a656088986d",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "2f3a03e0d16f843c": {
       "callable_id": "cef15a4d40a7f650",
@@ -46798,7 +47133,7 @@
     "2f6795efb10503b8": {
       "callable_id": "b44b20c59224c304",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "2f9a4227ebc9ad40": {
       "callable_id": "ca05182d1d794850",
@@ -46818,7 +47153,7 @@
     "3072e00a831c3d06": {
       "callable_id": "3252122f033e7366",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "30a98ad8eec2ef47": {
       "callable_id": "2efa3095b5da1a11",
@@ -46853,7 +47188,7 @@
     "31a965704a6b9b97": {
       "callable_id": "a869aa1bbf06eb3a",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "320e8a4d19666d68": {
       "callable_id": "728c316907c40b3d",
@@ -46958,16 +47293,11 @@
     "377adbcbd48983f6": {
       "callable_id": "8265d615c1e9ca1a",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "378b6cd2187f4e00": {
       "callable_id": "d42a80f4f533e38c",
       "module": "EngineFramework/IntegrationLayer/GameplayIntegration",
-      "status": "DISCOVERED"
-    },
-    "37c93b740fad4325": {
-      "callable_id": "810454688a864581",
-      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "38da1aea4486efd4": {
@@ -46988,7 +47318,7 @@
     "39db92236d258af0": {
       "callable_id": "dafbc3da8ead1e20",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "3a3ba89a324145c7": {
       "callable_id": "0c35fb40775699f5",
@@ -47018,7 +47348,7 @@
     "3b080992af1ece4a": {
       "callable_id": "dbd775e996d35b5e",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "3b273fc1b8dcaa92": {
       "callable_id": "d26bb84e0e78e882",
@@ -47045,15 +47375,15 @@
       "module": "EngineFramework/GameplayWorldStateOwners/Crime",
       "status": "DISCOVERED"
     },
-    "3beb3e7e0e7f85fa": {
-      "callable_id": "3d65a2f281ece586",
-      "module": "EngineBase/Diagnostics",
-      "status": "DISCOVERED"
-    },
     "3bed0cd2aafc741c": {
       "callable_id": "16252bb51df7f79c",
       "module": "EngineFramework/GameplayWorldStateOwners/Crime",
       "status": "DISCOVERED"
+    },
+    "3bf134ae8947e985": {
+      "callable_id": "08769ed6974e7d01",
+      "module": "EngineBase/Core",
+      "status": "REVIEWED"
     },
     "3c1d2f7b7351c272": {
       "callable_id": "0482e2f1948220f0",
@@ -47080,8 +47410,8 @@
       "module": "EngineFramework/IntegrationLayer/PopulationSimulationIntegration",
       "status": "DISCOVERED"
     },
-    "3c538610ce338d9a": {
-      "callable_id": "198cbb6d9dbbfde9",
+    "3c6673a7a16c9ef6": {
+      "callable_id": "aeec98a54689fc44",
       "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
@@ -47123,7 +47453,7 @@
     "3e04b52620e5fdf0": {
       "callable_id": "bf118b72a05edeb3",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "3ead5dffff471d8d": {
       "callable_id": "88b8c52ed6d6cb55",
@@ -47138,7 +47468,7 @@
     "3f01f066428102ae": {
       "callable_id": "a5661ddf1f7e84e5",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "3f2d3e88588d6d3c": {
       "callable_id": "a5cf82054c4a1d48",
@@ -47153,11 +47483,6 @@
     "403fb3614bac4070": {
       "callable_id": "c6d54746e00efe40",
       "module": "EngineFramework/GameplayWorldStateOwners/Conditions",
-      "status": "DISCOVERED"
-    },
-    "404d934d84784330": {
-      "callable_id": "1a5b523389bb1323",
-      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "4061f38e2eaa3561": {
@@ -47178,7 +47503,7 @@
     "40affca3e8e439ca": {
       "callable_id": "bbfcb9ed429501ff",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "40ce922b94806af6": {
       "callable_id": "252fd5d81b29653c",
@@ -47228,7 +47553,7 @@
     "436c75c9c283871a": {
       "callable_id": "52d02d2d051f9c94",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "43ab93f65354edc6": {
       "callable_id": "5ce874d4aec9dadb",
@@ -47258,7 +47583,7 @@
     "44e7b2082a0114f0": {
       "callable_id": "9707fd1dbc893d40",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "4502b8147c29e1b8": {
       "callable_id": "06ed642941e59f2f",
@@ -47268,7 +47593,7 @@
     "451c731ffe8f99c9": {
       "callable_id": "f45a509b9a1098c2",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "45400abf5d63fca4": {
       "callable_id": "c14f5baf87430bf1",
@@ -47313,7 +47638,7 @@
     "46d00a36a0925f3a": {
       "callable_id": "cf45b1b73fb08efd",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "470c1a40e445c14f": {
       "callable_id": "52692e1a7f79e3e6",
@@ -47338,12 +47663,12 @@
     "4777162811984129": {
       "callable_id": "6131e74000260a22",
       "module": "EngineBase/Support",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "47a5f4ec18ea20b0": {
       "callable_id": "4ad3fad33df2e7d1",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "47cf74ae834cecbb": {
       "callable_id": "5b47a8e4c371b344",
@@ -47390,6 +47715,11 @@
       "module": "EngineRuntime/Serialization",
       "status": "DISCOVERED"
     },
+    "4979b8ead0088904": {
+      "callable_id": "90d1310236b16084",
+      "module": "EngineBase/Diagnostics",
+      "status": "DISCOVERED"
+    },
     "4981e7f789932e9e": {
       "callable_id": "2b4dc140ff769870",
       "module": "EngineFramework/RuntimeBoundary/RuntimeBridge",
@@ -47398,6 +47728,11 @@
     "4981ea6e964f1e81": {
       "callable_id": "5bf7ce276dc615f9",
       "module": "EngineRuntime/Audio",
+      "status": "DISCOVERED"
+    },
+    "498e401293b21946": {
+      "callable_id": "a8e65a9ad9eed85c",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "49bae16b08b9a028": {
@@ -47613,7 +47948,7 @@
     "50c63c97aaeaa9cb": {
       "callable_id": "1f6e46e6e120bf67",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "50ecf80a756cdc46": {
       "callable_id": "26c0e0bc799183c0",
@@ -47648,7 +47983,7 @@
     "52621b35e12ee5d2": {
       "callable_id": "83fb22ac82372d6d",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "5271fcaaf1b5876e": {
       "callable_id": "a1b4b4813a2bdb85",
@@ -47715,6 +48050,11 @@
       "module": "EngineFramework/GameplayWorldStateOwners/Dialogue",
       "status": "DISCOVERED"
     },
+    "5500bab454a52711": {
+      "callable_id": "a65e72f44a4654e3",
+      "module": "EngineBase/Diagnostics",
+      "status": "DISCOVERED"
+    },
     "550913c86983cdcf": {
       "callable_id": "cd96f007e26d1674",
       "module": "EngineRuntime/Physics",
@@ -47723,6 +48063,11 @@
     "550b06af78e1470b": {
       "callable_id": "685ac5d5132c8aac",
       "module": "EngineFramework/GameplayWorldStateOwners/Population",
+      "status": "DISCOVERED"
+    },
+    "550ded08bedf3dd9": {
+      "callable_id": "7044aec139e6cc40",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "5512f317072f603c": {
@@ -47743,16 +48088,11 @@
     "556e2a8141df1469": {
       "callable_id": "939f8518b446ffc0",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "55aa480149923f36": {
       "callable_id": "c5241104dd258e23",
       "module": "EngineFramework/GameplayWorldStateOwners/Knowledge",
-      "status": "DISCOVERED"
-    },
-    "56136ca885739712": {
-      "callable_id": "b77e2446a0885568",
-      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "562c5638eef548d6": {
@@ -47803,7 +48143,7 @@
     "57eed51e896d5942": {
       "callable_id": "8f73d17e5f201bf4",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "58317137ec418469": {
       "callable_id": "3cf35db3759adc4f",
@@ -47828,7 +48168,7 @@
     "59b55d4101cedd8d": {
       "callable_id": "21cf68f8259504fd",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "5a2ba5494fdb1383": {
       "callable_id": "23a718e3196963b4",
@@ -47883,6 +48223,11 @@
     "5c8ad79760bb3ca0": {
       "callable_id": "af520b22477b3ad3",
       "module": "EngineBase/Input",
+      "status": "REVIEWED"
+    },
+    "5c9ec0329329045c": {
+      "callable_id": "477c7cc8d26b3d45",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "5ca04433b5f7f838": {
@@ -47893,12 +48238,12 @@
     "5cc583572bf81a21": {
       "callable_id": "5e6e0383156564b5",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "5cd3fb25393b272d": {
       "callable_id": "6a680f4e26d6d47d",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "5d2fd8a7a1ad3be7": {
       "callable_id": "4c64dbbc13602395",
@@ -47908,12 +48253,12 @@
     "5da822a5cc0107d6": {
       "callable_id": "575d79410cb68f8a",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "5dbf6c595dcb7299": {
       "callable_id": "36276781b53dfcf9",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "5e2491b252988cfd": {
       "callable_id": "a05be62f5dc08537",
@@ -47933,7 +48278,7 @@
     "5ec8245c1ef9e9ce": {
       "callable_id": "93fca483bbe69abf",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "5f164ab8dd4de88d": {
       "callable_id": "e076998e711ea041",
@@ -48013,7 +48358,7 @@
     "6256ba3c4d345abd": {
       "callable_id": "42c6760871cb80cc",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "627111ad1c08beaa": {
       "callable_id": "456b863758383b50",
@@ -48053,7 +48398,7 @@
     "6437091d82c522d9": {
       "callable_id": "15dcac9f7c6c11f3",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "643822fa71ceb73f": {
       "callable_id": "2a8ca833d6940ab1",
@@ -48113,6 +48458,11 @@
     "6727a538a09ba40b": {
       "callable_id": "e2304ef51bea9952",
       "module": "EngineFramework/GameplayWorldStateOwners/AI",
+      "status": "DISCOVERED"
+    },
+    "67678964a5f2aa57": {
+      "callable_id": "f47b0bef353ef1cc",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "682b9bf57b314f99": {
@@ -48343,7 +48693,7 @@
     "749bd70b81c2d1af": {
       "callable_id": "508dbc5e220738e0",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "74b390f53e233099": {
       "callable_id": "3128dcd87d842706",
@@ -48378,7 +48728,7 @@
     "752ed5fde33c4d39": {
       "callable_id": "06cd7f2a2cc1138f",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "75404c67b14cd654": {
       "callable_id": "101ddcb39ac6651e",
@@ -48393,12 +48743,12 @@
     "75a69492cd7ce2b4": {
       "callable_id": "56ee920f5d3525b5",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "75a8274935bf6237": {
       "callable_id": "8040d65751f2b97b",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "75c798d0c06f8c32": {
       "callable_id": "e2862f25f8ca4d35",
@@ -48413,7 +48763,7 @@
     "7672e6b86b477472": {
       "callable_id": "9705e3761ef38302",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "76854408f5e8f424": {
       "callable_id": "432555c623998c7a",
@@ -48503,7 +48853,7 @@
     "7a2a1b930d8fe4e1": {
       "callable_id": "5f277dd506d28b29",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "7a2b5cb427d35279": {
       "callable_id": "f80415915ef5b9cc",
@@ -48513,6 +48863,11 @@
     "7a51c63462a67fe9": {
       "callable_id": "00e94dc0b5c989d0",
       "module": "EngineBase/Platform",
+      "status": "REVIEWED"
+    },
+    "7a61fd13e1b3bb8a": {
+      "callable_id": "972fb0dbb7a56234",
+      "module": "EngineBase/Memory",
       "status": "DISCOVERED"
     },
     "7aaacda2418f014d": {
@@ -48543,7 +48898,7 @@
     "7b488664aecc0605": {
       "callable_id": "00ac4e8f636d1d41",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "7baf766d2ad1b617": {
       "callable_id": "d847991c6bdfd0aa",
@@ -48790,11 +49145,6 @@
       "module": "EngineFramework/GameplayWorldStateOwners/Progression",
       "status": "DISCOVERED"
     },
-    "86c063a33421f2d2": {
-      "callable_id": "086f74328213be73",
-      "module": "EngineBase/Diagnostics",
-      "status": "DISCOVERED"
-    },
     "87334e9fce8a88f1": {
       "callable_id": "5c2811bc7cd4a4ff",
       "module": "EngineFramework/GameplayWorldStateOwners/Environment",
@@ -48835,14 +49185,14 @@
       "module": "EngineFramework/GameplayWorldStateOwners/ItemsInventory",
       "status": "DISCOVERED"
     },
-    "89a46de0d15754a5": {
-      "callable_id": "9bfbd2a6db0fc124",
-      "module": "EngineBase/Diagnostics",
-      "status": "DISCOVERED"
-    },
     "89bbaf5bf8f7ea49": {
       "callable_id": "ca44937e21af8888",
       "module": "EngineFramework/RuntimeBoundary/RuntimeBridge",
+      "status": "DISCOVERED"
+    },
+    "89feaa001220dc58": {
+      "callable_id": "1f4142ed2a5a03b8",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "8a13f1e4240f3077": {
@@ -48853,7 +49203,7 @@
     "8ab6a0dcdf7d38c1": {
       "callable_id": "41a521994539e528",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "8ae8eb85c1364f27": {
       "callable_id": "ee346fa834f4efa7",
@@ -48863,7 +49213,7 @@
     "8af93192a134ad9b": {
       "callable_id": "2391ffeb5da67340",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "8b1e5b84c203c4b3": {
       "callable_id": "b3dffafd0319edc9",
@@ -48873,7 +49223,7 @@
     "8b7f5f9170a1e3b2": {
       "callable_id": "be5715cfe7352d63",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "8b8f32ea98f37aa5": {
       "callable_id": "181e943a57aa713d",
@@ -48910,6 +49260,11 @@
       "module": "EngineFramework/IntegrationLayer/GameplayIntegration",
       "status": "DISCOVERED"
     },
+    "8d27cbf08cf1b003": {
+      "callable_id": "cf21545f9e5bd2a5",
+      "module": "EngineBase/Diagnostics",
+      "status": "DISCOVERED"
+    },
     "8d2d0924aba47cef": {
       "callable_id": "17b415c25e6e605a",
       "module": "EngineFramework/GameplayWorldStateOwners/Construction",
@@ -48943,7 +49298,7 @@
     "8d76efbf8ddde31f": {
       "callable_id": "3fd30767b0b672b4",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "8d8b81ef9a331429": {
       "callable_id": "a91d19e0adc00dbb",
@@ -49028,7 +49383,7 @@
     "90d5c023a3372766": {
       "callable_id": "3830bfbaebfb99a7",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "90e2cae2a7722ef6": {
       "callable_id": "ca5d6344a338c68a",
@@ -49053,6 +49408,11 @@
     "9143a6f70e5b3f6b": {
       "callable_id": "b0502bf076eaa398",
       "module": "EngineRuntime/Simulation",
+      "status": "DISCOVERED"
+    },
+    "917930f81d71c417": {
+      "callable_id": "b0382ed7a3e616af",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "921d6e3b1003e058": {
@@ -49128,7 +49488,7 @@
     "95a012191ae3c35d": {
       "callable_id": "1df970bf9a434b21",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "95c3f7eeaa5dc726": {
       "callable_id": "c8395220afbb4984",
@@ -49183,7 +49543,7 @@
     "9816292dd72e0ca7": {
       "callable_id": "8d0467c6717ec57a",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "98192fb1ca9663ac": {
       "callable_id": "909ff6606d21a1ea",
@@ -49193,7 +49553,7 @@
     "986432c886cd6b98": {
       "callable_id": "ac8d0d8f90febe1d",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "9894e6f3869e27db": {
       "callable_id": "f42dc1299d3df18f",
@@ -49248,7 +49608,7 @@
     "9a3babc49dace73e": {
       "callable_id": "66808b3eab79192c",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "9ab3265917c21c6d": {
       "callable_id": "b0d815d95e56e86a",
@@ -49268,7 +49628,7 @@
     "9ae969aeb5ededaa": {
       "callable_id": "75cd89cdd37a84b8",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "9b667f4c692f5ff7": {
       "callable_id": "6e196c61a99d4391",
@@ -49353,7 +49713,7 @@
     "9f747749b4d86473": {
       "callable_id": "774b2eed5850dab5",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "9fc311022f8b38b3": {
       "callable_id": "5a728b53e93e1e33",
@@ -49363,7 +49723,7 @@
     "a0293a242602309f": {
       "callable_id": "e4156fb72626912b",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "a045af7cf8e6c451": {
       "callable_id": "7beca23d9c89ae8d",
@@ -49383,7 +49743,7 @@
     "a0c57e2c58036ebd": {
       "callable_id": "e0da72bc47093466",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "a1218c7d32c73658": {
       "callable_id": "75eeadfff82079e9",
@@ -49413,7 +49773,7 @@
     "a1f159fd0f8d9544": {
       "callable_id": "24e94b796c61eaef",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "a23b91353326cd22": {
       "callable_id": "399638f212ab760b",
@@ -49648,7 +50008,7 @@
     "ab270c1961993055": {
       "callable_id": "43bc6cd1e5f96f35",
       "module": "EngineBase/Support",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "ac198f25dd6af6d8": {
       "callable_id": "74be19ed43b82a9d",
@@ -49673,7 +50033,7 @@
     "adc830a6714b7c3c": {
       "callable_id": "424fb936dcff0016",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "add66f6d9f121d61": {
       "callable_id": "50b1d1b8185990a4",
@@ -49703,7 +50063,7 @@
     "aead0708fc5a83bb": {
       "callable_id": "632065e46554ae26",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "aec0881c86b30953": {
       "callable_id": "77a25adb6ea72e91",
@@ -49718,7 +50078,7 @@
     "af05d0b65c768fcf": {
       "callable_id": "b415967a841af995",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "af3af271f1173340": {
       "callable_id": "93013b82eee99572",
@@ -49738,7 +50098,7 @@
     "b009e931048cc8af": {
       "callable_id": "02087eab2fd419b8",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "b055e9161384f4f7": {
       "callable_id": "219fdb3b946e3941",
@@ -49763,7 +50123,7 @@
     "b1ee011c53a665f9": {
       "callable_id": "f51d126607ca027b",
       "module": "EngineBase/Support",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "b2267818482d5d8d": {
       "callable_id": "b79641575d23ce40",
@@ -49833,7 +50193,7 @@
     "b3b8f7b0446e17e9": {
       "callable_id": "b94a253a46c4a189",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "b3f4ef28b9ed825a": {
       "callable_id": "d1a3e739a8a9cfe7",
@@ -49843,7 +50203,7 @@
     "b48f85fc6dccfdb7": {
       "callable_id": "8e0914b7b6421a7f",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "b490e2e7fcf5e19f": {
       "callable_id": "c6aa8c0d59d8ffbf",
@@ -49873,7 +50233,7 @@
     "b4f5d39d7d58ad1d": {
       "callable_id": "63a8cff27264401d",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "b5545da7f5713ba9": {
       "callable_id": "d60e7f3fc19fa690",
@@ -49933,7 +50293,7 @@
     "b69d460076f53f33": {
       "callable_id": "4d55554d5069adc8",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "b6b6ee962e5f529a": {
       "callable_id": "e87123efd8e91f35",
@@ -49953,7 +50313,7 @@
     "b8033f5a8df9943d": {
       "callable_id": "baa7c692bc559694",
       "module": "EngineBase/Platform",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "b897470021023771": {
       "callable_id": "08a3f262a956d512",
@@ -50083,12 +50443,12 @@
     "c086a764f5feb5ed": {
       "callable_id": "43f73a87aee36289",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "c0d9726d4f2994f4": {
       "callable_id": "c423afe30671a660",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "c0f17b50fb37a3b3": {
       "callable_id": "f0ed1a68dd31ffe9",
@@ -50113,7 +50473,7 @@
     "c203ede29f256efe": {
       "callable_id": "90fec5d5410a1380",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "c28b149fe5348ccd": {
       "callable_id": "9973dd7c528d87dc",
@@ -50208,12 +50568,12 @@
     "c68e38a7393253d6": {
       "callable_id": "673cf0185c3cb72f",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "c68e99e1e9cba690": {
       "callable_id": "bf7957227db204ab",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "c69f6e26d1f00fef": {
       "callable_id": "02ba1d189b5f35b0",
@@ -50303,7 +50663,7 @@
     "c9c4098aceefb911": {
       "callable_id": "d68de1d43cd448c7",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "c9d05f69a1fa86e0": {
       "callable_id": "4d7d62d04fb95dcc",
@@ -50318,6 +50678,11 @@
     "ca46d0582862f2b7": {
       "callable_id": "5dc7dbd4945a2cdc",
       "module": "EngineFramework/IntegrationLayer/WorldIntegration",
+      "status": "DISCOVERED"
+    },
+    "cad2f78518eb2562": {
+      "callable_id": "b568d277f35269ed",
+      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "caf8872172adfb72": {
@@ -50343,7 +50708,7 @@
     "cbc0266fc61eeda4": {
       "callable_id": "c6c486fb154a8947",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "cc2f79d0d7138c8d": {
       "callable_id": "caf1a16e7fe84e60",
@@ -50363,7 +50728,7 @@
     "ccfb522c9309412e": {
       "callable_id": "5d46e100e07db361",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "cd2bc707b3e1003e": {
       "callable_id": "7142f14af7c1b278",
@@ -50378,7 +50743,7 @@
     "cd9fb9a702562fe9": {
       "callable_id": "c68161d1be5e5008",
       "module": "EngineBase/Support",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "cda46795161845e0": {
       "callable_id": "9559e83efd1a5c76",
@@ -50588,12 +50953,7 @@
     "d7193fc5fa0518a9": {
       "callable_id": "1288673d55007b1b",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
-    },
-    "d78e35800d305939": {
-      "callable_id": "557ca16979354392",
-      "module": "EngineBase/Diagnostics",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "d795b39bb72d9ba0": {
       "callable_id": "68928ebc5656d295",
@@ -50630,6 +50990,11 @@
       "module": "EngineFramework/GameplayWorldStateOwners/Perception",
       "status": "DISCOVERED"
     },
+    "d8426651e6c9c63e": {
+      "callable_id": "df0077941dcd1c8b",
+      "module": "EngineBase/Diagnostics",
+      "status": "DISCOVERED"
+    },
     "d86b27128d0757a8": {
       "callable_id": "fae9c76002dd2497",
       "module": "EngineFramework/GameplayWorldStateOwners/Progression",
@@ -50653,12 +51018,12 @@
     "d99ef1277aeafb95": {
       "callable_id": "2e010bc110c3ea7b",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "d9c92238da05f2da": {
       "callable_id": "34d3c6d455a8acde",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "da4d749dae2cf16b": {
       "callable_id": "9ca82c934c669cab",
@@ -50688,11 +51053,6 @@
     "db0961732541eade": {
       "callable_id": "9067cd4a3a3cf59e",
       "module": "EngineFramework/GameplayWorldStateOwners/Processes",
-      "status": "DISCOVERED"
-    },
-    "db0b63f36facf120": {
-      "callable_id": "fd8772f1f8b38842",
-      "module": "EngineBase/Memory",
       "status": "DISCOVERED"
     },
     "db115dc2f39009ff": {
@@ -50753,7 +51113,7 @@
     "decae88e3deac257": {
       "callable_id": "0b99ec4a94435f6a",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "deec27f3712bd9dd": {
       "callable_id": "15b8a0f4f0097662",
@@ -50773,7 +51133,7 @@
     "e00b009a53a5347d": {
       "callable_id": "c5aefa0383751dda",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "e020fe98a6b91db0": {
       "callable_id": "1cdb6ad26dd8b367",
@@ -50860,11 +51220,6 @@
       "module": "EngineRuntime/World",
       "status": "DISCOVERED"
     },
-    "e2c5bd47f70edbef": {
-      "callable_id": "531d9bb0df7d8baa",
-      "module": "EngineBase/Diagnostics",
-      "status": "DISCOVERED"
-    },
     "e32dbb963d3149e0": {
       "callable_id": "36f01cba7c3052bc",
       "module": "EngineRuntime/Support",
@@ -50890,11 +51245,6 @@
       "module": "EngineFramework/GameplayWorldStateOwners/Effects",
       "status": "DISCOVERED"
     },
-    "e4b8cb7efcee43b0": {
-      "callable_id": "9de5b6af0ff4662f",
-      "module": "EngineBase/Diagnostics",
-      "status": "DISCOVERED"
-    },
     "e4ed4edd86b61eef": {
       "callable_id": "7eddf8229f9429ca",
       "module": "EngineRuntime/Support",
@@ -50903,7 +51253,7 @@
     "e518fc79b14e1d5f": {
       "callable_id": "85e26a7153115200",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "e542bf6e18b75ba8": {
       "callable_id": "05d39a567f3106dd",
@@ -50913,7 +51263,7 @@
     "e56956dd29c0bb03": {
       "callable_id": "a0581b8fe17eb543",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "e56fc1f15f409b5c": {
       "callable_id": "276f9509461e7f43",
@@ -50943,7 +51293,7 @@
     "e5d4482c8356437c": {
       "callable_id": "0c74ef663e965dbc",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "e5d9544ff4da0a92": {
       "callable_id": "4111a0fbef8d4176",
@@ -51108,7 +51458,7 @@
     "ed307bb2d3a7f0ed": {
       "callable_id": "3bc3fde1a60349d5",
       "module": "EngineBase/Support",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "ed523c5fc3529b69": {
       "callable_id": "2ed552da83bcfc9e",
@@ -51210,14 +51560,14 @@
       "module": "EngineFramework/GameplayWorldStateOwners/ItemsInventory",
       "status": "DISCOVERED"
     },
+    "f296206aa36bbb9b": {
+      "callable_id": "eeb216b02b76163e",
+      "module": "EngineBase/Core",
+      "status": "REVIEWED"
+    },
     "f2a04a2d3561bd83": {
       "callable_id": "b8e33480e99de1d4",
       "module": "EngineRuntime/Support",
-      "status": "DISCOVERED"
-    },
-    "f2bf6a1d0f323c68": {
-      "callable_id": "2f566955b2de3932",
-      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "f385a0e295e5e284": {
@@ -51233,7 +51583,7 @@
     "f4035bbdbfa3730d": {
       "callable_id": "4a3280ba180a4634",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "f4417ad85f1181cb": {
       "callable_id": "3c444f6fd311429d",
@@ -51245,8 +51595,8 @@
       "module": "EngineFramework/GameplayWorldStateOwners/Society",
       "status": "DISCOVERED"
     },
-    "f524380e6c00c01b": {
-      "callable_id": "6d257cf8ed10537b",
+    "f4cca018ed1d1cc5": {
+      "callable_id": "fc4d1a4f6cf46d00",
       "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
@@ -51263,7 +51613,7 @@
     "f5825a9b615ff102": {
       "callable_id": "3f61282a9b81c93a",
       "module": "EngineBase/Core",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "f5a740533614e165": {
       "callable_id": "d79f0ddf5e6b698c",
@@ -51288,11 +51638,6 @@
     "f685242854dc9a46": {
       "callable_id": "00ae3b8468c6f297",
       "module": "EngineFramework/GameplayWorldStateOwners/Society",
-      "status": "DISCOVERED"
-    },
-    "f690df7dafafb421": {
-      "callable_id": "a01ebce014205926",
-      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "f6aa9540b0eb9979": {
@@ -51348,7 +51693,7 @@
     "fac87a095ef43512": {
       "callable_id": "2f25241acf75c1a7",
       "module": "EngineBase/Input",
-      "status": "DISCOVERED"
+      "status": "REVIEWED"
     },
     "faf94ee0782400c6": {
       "callable_id": "a047797b2dce3cf2",

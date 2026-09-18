@@ -5,6 +5,7 @@
 #include <Epidemic/Diagnostics/logger.h>
 #include <Epidemic/Foundation/string_id.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -55,6 +56,7 @@ class ModuleRegistry
     std::unordered_map<foundation::ModuleId, std::size_t> module_index_by_id_;
     std::unordered_map<foundation::ModuleId, std::string> canonical_module_name_by_id_;
     std::vector<std::size_t> execution_plan_;
+    std::vector<std::uint8_t> shutdown_completed_;
     std::size_t bootstrapped_count_{0};
     LifecycleState state_{LifecycleState::Empty};
 };

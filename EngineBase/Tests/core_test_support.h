@@ -39,7 +39,7 @@ class RecordingLogger final : public epidemic::diagnostics::ILogger
     };
 
     // Records the structured log entry in memory for later test assertions.
-    void Log(const epidemic::diagnostics::LogMessage &message) override
+    void Write(const epidemic::diagnostics::LogMessage &message) override
     {
         records.push_back(
             Entry{message.level, std::string(message.module_name), std::string(message.category), std::string(message.message)});

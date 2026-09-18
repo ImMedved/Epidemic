@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <memory>
 #include <mutex>
 #include <shared_mutex>
@@ -53,6 +54,58 @@ class ServiceContainer
         }
 
         services_.emplace(key, std::move(instance));
+    }
+
+    // Atomically registers a bundle of externally created service instances.
+    // Relationship: a candidate map is built under the container lock and swapped into place only after
+    // every insertion succeeds, so duplicate/sealed/allocation failures leave the live graph unchanged.
+    template <typename... TServices> void RegisterInstancesAtomic(std::shared_ptr<TServices>... instances)
+    {
+        RegisterInstancesAtomicWithPreCommit([] {}, std::move(instances)...);
+    }
+
+    // Stages a service bundle, runs one external strong-guarantee pre-commit action, then publishes the
+    // service map with a no-allocation swap. The callback must not re-enter this ServiceContainer.
+    template <typename TPreCommit, typename... TServices>
+    void RegisterInstancesAtomicWithPreCommit(TPreCommit &&pre_commit, std::shared_ptr<TServices>... instances)
+    {
+        static_assert(sizeof...(TServices) > 0, "Atomic service registration requires at least one service");
+
+        if ((!instances || ...))
+        {
+            throw std::invalid_argument("Service bundle instances must not be null");
+        }
+
+        const std::array<std::type_index, sizeof...(TServices)> keys{std::type_index(typeid(TServices))...};
+        for (std::size_t left = 0; left < keys.size(); ++left)
+        {
+            for (std::size_t right = left + 1; right < keys.size(); ++right)
+            {
+                if (keys[left] == keys[right])
+                {
+                    throw std::invalid_argument("Service bundle contains duplicate service types");
+                }
+            }
+        }
+
+        std::unique_lock lock(mutex_);
+        if (sealed_)
+        {
+            throw std::runtime_error("Service container is sealed");
+        }
+
+        if ((services_.contains(std::type_index(typeid(TServices))) || ...))
+        {
+            throw std::runtime_error("Service already registered");
+        }
+
+        auto candidate = services_;
+        (candidate.emplace(std::type_index(typeid(TServices)), std::shared_ptr<void>(instances)), ...);
+
+        // The service candidate is complete before external composition is touched. Support uses this
+        // hook only with operations that themselves provide a strong exception guarantee.
+        std::forward<TPreCommit>(pre_commit)();
+        services_.swap(candidate);
     }
 
     // Returns the registered service instance for TService.

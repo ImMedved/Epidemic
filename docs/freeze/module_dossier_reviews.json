@@ -2,425 +2,482 @@
   "modules": {
     "EngineBase/Core": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineBase/Diagnostics": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "No authoritative engine/game state. Module-owned diagnostic-only state consists of atomic counters, logging/profiling enable flags, the current profile collector reference, `InMemoryProfileCollector` samples, `ConsoleLogger` file state, and per-thread diagnostic names.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Only `EpidemicFoundation` is linked. Diagnostics has no dependency on Core, Platform, Runtime, or Framework.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "No indexes or caches participate in engine correctness. `InMemoryProfileCollector` event storage and `ConsoleLogger` file initialization state are diagnostic-only observations.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "`ILogger` contains concrete logging sink failures behind the private virtual `Write` boundary; `IProfileCollector` is the profiling sink boundary and `ProfileScope` contains collector exceptions.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "`CounterId::Count` fixes the counter array size. Counter operations are O(1) lock-free/atomic operations subject to platform atomic implementation; collector and logger operations are O(1) amortized append/write plus sink cost. Counter arithmetic saturates at `INT64_MIN/MAX` instead of wrapping.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "`CounterId` is a closed diagnostic slot enum with `Count` as an invalid sentinel. No generations, revisions, or cursors are owned by the module.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Diagnostics never owns authoritative engine state; disabled observation is a semantic no-op; logger/collector failures cannot escape the safe RAII/logging boundaries; invalid counter IDs never index storage; counter arithmetic saturates; thread diagnostic names do not escape as borrowed references.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "All Diagnostics state is transient and process-local. Counters, collector samples, enable flags and thread names are not save-game or engine-persistence state. `ConsoleLogger` may append text to a log file, which is diagnostic output, not restorable authoritative state.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "`console_logger.h` (`ConsoleLogger`); `counters.h` (`CounterId`, `DiagnosticsCounters`); `logger.h` (`LogLevel`, `LogMessage`, `ILogger` plus logging enable state); `profiling.h` (`ProfileEvent`, `IProfileCollector`, `InMemoryProfileCollector`, `ProfileScope`); `thread_context.h` (thread-name functions).",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exact callable inventory is the EngineBase/Diagnostics section of `docs/freeze/public_api_inventory.md`. Mutations are observational only: counter arithmetic/settings, logging/profiling gates and sinks, collector sample storage/reset, and the current thread diagnostic name.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "`CounterCount`, `IsValidCounterId`, counter `Get`, `GlobalCounters`, enum `ToString`, `IsLoggingEnabled`, collector `Snapshot`/`GetProfileCollector`/`IsProfilingEnabled`, and owning `GetCurrentThreadName` expose diagnostic invariants without borrowing mutable module storage.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Provides best-effort observational logging, saturating diagnostic counters, scope profiling, and thread-local diagnostic names. It is not a gameplay/event transport and owns no authoritative engine/game state.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "No persistence snapshot/restore contract. `InMemoryProfileCollector::Snapshot()` is a detached read copy of diagnostic samples and is not a restore-capable persistence snapshot.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "No engine lifecycle state machine. Logging/profiling enable flags are independent boolean observation gates; a `ProfileScope` captures its collector once at construction and emits at most once on destruction.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Counters and enable flags are atomic; collector registration is mutex-protected; `InMemoryProfileCollector` and `ConsoleLogger` serialize their internal containers/output; thread names are `thread_local` and returned by owning copy. `ILogger::Log` and `ProfileScope` are exception-containment boundaries for sink failures.",
+        "status": "REVIEWED"
       }
     },
     "EngineBase/Foundation": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineBase/Input": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineBase/Memory": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineBase/Platform": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineBase/RHI": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed authoritative transient state is limited to NullRhiDeviceState weak active-presentation binding, each NullRhiSwapChain descriptor, each NullRhiCommandContext frame-active flag, and PresentationSurfaceHandle pointer value. There is no upper-layer/gameplay state.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct production dependency: EpidemicFoundation only.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: no derived cache or secondary index state.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed public abstraction ports are IRhiDevice, IRhiCommandContext and IRhiSwapChain. The Null implementation invokes no external callback/provider/backend; D3D11 is a separate module.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: no module-specific budgets/capacities. Baseline operations are constant-state operations; backend work is outside the Null implementation.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: no ID/generation/revision/cursor space. PresentationSurfaceHandle is an opaque borrowed native pointer wrapper, not an engine identity.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: command frame is inactive or active; Clear requires active frame plus live presentation target; swap-chain dimensions are non-zero and update atomically; failed replacement/resize preserves prior usable state.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: all RHI state is transient. No save-game/persistent state exists in EngineBase/RHI.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed public surface comprises descriptors/validation, IRhiDevice, IRhiCommandContext, IRhiSwapChain, Null factory, RhiPixelFormat and PresentationSurfaceHandle.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exact mutators: BeginFrame, Clear, EndFrame, CreateCommandContext, CreateSwapChain, Present and Resize.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed queries/factories cover descriptor validation, frame state, device descriptor/backend name, swap-chain dimensions/format/buffer count, null-device factory, pixel-format names and presentation-handle value/validity/equality.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Defines backend-neutral rendering device, context, swap-chain and frame lifecycle contracts, including a lifecycle-strict null backend.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: no public snapshot/restore contract; RHI state is transient and reconstructed by composition.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed logical state machine is IRhiCommandContext inactive -> active -> inactive. NullRhiDeviceState is a presentation-binding record, not an independent lifecycle state machine.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed for Goal 2: no internal/public concurrency guarantee; mutable operations require external serialization until Goal 6.",
+        "status": "REVIEWED"
       }
     },
     "EngineBase/RHI_D3D11": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed transient authoritative state: shared D3D11DeviceState owns device/context COM references, feature level, weak active swap-chain binding and device-loss state; each swap chain owns DXGI swap chain/back buffer/RTV/descriptor/recreate flag; each context owns frame-active state.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct production dependencies: EpidemicFoundation, EpidemicRHI, EpidemicPlatform, d3d11 and dxgi.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: active_swap_chain is a weak presentation binding; no secondary cache/index duplicates authoritative gameplay state.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external boundary is Win32/D3D11/DXGI. Native failures are translated to Result errors; no upper-layer callback/provider is invoked.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: no module-specific budget. Swap-chain buffer_count/dimensions are descriptor bounded; each operation performs bounded D3D11/DXGI calls.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: no module-specific IDs, generations, revisions or cursors.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: native COM ownership is RAII; active target is published only after successful creation; zero-area resize never reaches DXGI; missing RTV is recreate-required; device-loss is terminal for new native work.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: all D3D11 backend state is transient and reconstructed by composition. No save-game persistence exists.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed public surface is one factory header exporting CreateD3D11RhiDevice and no concrete D3D11 class.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: no module-specific public mutator class; the single factory creates an IRhiDevice. Returned objects implement the already-frozen EngineBase/RHI contracts.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exact public callable: 37b182fdc4b11948 CreateD3D11RhiDevice. BackendName/Descriptor and swap-chain/context queries are inherited RHI interface contracts.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Implements backend-neutral RHI contracts with D3D11/DXGI while owning all native COM resources and translating native failures into controlled engine errors.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: no snapshot/restore contract; D3D11 state is transient and must be recreated after process/session restore.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed: command frame inactive/active lifecycle comes from RHI; backend adds swap-chain ready/recreate-required and device available/device-lost states.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed for Goal 2: mutable D3D11 operations require external serialization until Goal 6 qualifies concurrency.",
+        "status": "REVIEWED"
       }
     },
     "EngineBase/Support": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "No independent authoritative store. Support mutates the caller-owned Application composition graph and registers frame callbacks; authoritative service/runtime state remains owned by the registered Core, Platform, Input and RHI service objects.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Direct target dependencies: `EpidemicFoundation`, `EpidemicCore`, `EpidemicMemory`, `EpidemicDiagnostics`, `EpidemicPlatform`, `EpidemicInput`, `EpidemicRHI`, and private backend dependency `EpidemicRHI_D3D11`.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "No module-owned cache or index. `FramePlatformEvents` is application-scoped transient handoff storage between platform and input phases.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Composition targets Core `Application`/`ServiceContainer`, Platform interfaces, Input interface, RHI interfaces and the D3D11/Null factories. `GraphicsBackend` selects only Null or D3D11. Frame callbacks are registered into the caller-owned Application.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Registration work is bounded by the small service bundle size except `RegisterInstancesAtomic`, whose candidate-map copy is O(number of registered service types). `worker_count` must fit signed 64-bit configuration storage; default window dimensions must be positive signed-32-bit values.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "None.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "A helper never replaces an existing service owner. Multi-service bundles publish all roles together or leave the service map unchanged. Null and D3D11 graphics publish the same IRhiDevice/IRhiCommandContext interface roles. Frame wiring order is Platform, Input, Begin/Clear, End, Present.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "No persistent state. `FramePlatformEvents` and registered frame callbacks are transient Application composition state; backend device/context/window/swap-chain state is owned by the corresponding service implementations.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "`EngineBase/Support/include/Epidemic/EngineBase/engine_base_support.h` (`EngineBaseOptions`, `GraphicsRuntimeOptions`, `GraphicsRuntimeServices`, `FramePlatformEvents`) and `graphics_backend.h` (`GraphicsBackend`). Forward-declared `ILogger` is an external Diagnostics interface, not a Support-owned type.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "N/A. Support owns no persistent state and exposes no snapshot/restore API.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "No Support-owned state machine. Registration is permitted only while the caller-owned ServiceContainer is unsealed; application/service lifecycles are owned by Core and the concrete services.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Composition mutation is owner-thread/external-serialization only. Support does not promise concurrent helper invocation. Registered services retain their own threading contracts.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/BaseInfrastructure/Facts": {

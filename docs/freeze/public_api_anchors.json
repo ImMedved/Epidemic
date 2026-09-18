@@ -1,4 +1,2568 @@
 {
-  "schema_version": 1,
-  "anchors": {}
+  "anchors": {
+    "0314a427ba65c26f": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:344::void TestProfileScopeRaiiAndFailureContainment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:356::Assert(events.size() == 1 && events[0].name == \"NormalScope\", \"ProfileScope must close and publish on normal return\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "039421ba01dfca37": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:29::### Handles and stale identity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:246::void TestHandleGenerationAndCanonicalInvalidState()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:260::All invalid handles must canonicalize to one structural representation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "04d7f9c9ed217eba": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "087bbf32fc17be10": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:106::void TestAllocationContractAndAlignment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:112::DefaultAllocator must honor requested alignment"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "0a30a441a0e6dec3": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:463::static_assert(!std::is_copy_constructible_v<diagnostics::ProfileScope>);",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:464::static_assert(!std::is_copy_assignable_v<diagnostics::ProfileScope>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "0bee2e97d466652f": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "0e5c5a97788916d8": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:25::`RegisterMainSwapChain`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:397::void TestMainSwapChainDuplicateOwnerIsRejectedBeforeBackendWork()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:416::Duplicate main swap-chain ownership must be rejected before backend creation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "0e97ab368afa26c4": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:15::`RegisterEngineBase`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:246::void TestEngineBaseBundleRejectsLateConflictWithoutPartialRegistration()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:264::Failed EngineBase bundle registration must not publish ILogger"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "114eda2e828f38e6": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:344::void TestProfileScopeRaiiAndFailureContainment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:356::Assert(events.size() == 1 && events[0].name == \"NormalScope\", \"ProfileScope must close and publish on normal return\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "13ad5832d7dac90d": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "1468ab6b5803dbc9": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "156449081aa986f1": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "15de3466429b4e1d": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:232::void TestAllocationTagIsolationAndInvalidTag()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:239::Core accounting must remain isolated by tag"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "15f35fc3d33ead40": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "1c5749a2cf752b32": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:232::void TestAllocationTagIsolationAndInvalidTag()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:239::Core accounting must remain isolated by tag"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "1c6ceb666ddb04cc": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:26::1c6ceb666ddb04cc",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:346::void TestSwapChainPresentResizeLifecycle()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:357::Present must succeed after a successful resize"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "1cf4c721c552f726": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:344::void TestProfileScopeRaiiAndFailureContainment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:356::Assert(events.size() == 1 && events[0].name == \"NormalScope\", \"ProfileScope must close and publish on normal return\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "1e74d83337c23f5f": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "1f34a2f32e068824": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "1f4142ed2a5a03b8": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "1fda4eaeafb313be": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "1ff97995e47862b2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "2131c23b8a210178": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:335::void TestFrameIndexCheckedArithmetic()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:342::Next must return a non-mutating successor"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "227b5f5ce051530b": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "242a01650126a5d2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "253b30bd6ed1e09f": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:145::void TestTrackingAllocatorExactlyOnce()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:155::Successful allocation must be recorded exactly once"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "28405285751220f6": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:344::void TestProfileScopeRaiiAndFailureContainment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:356::Assert(events.size() == 1 && events[0].name == \"NormalScope\", \"ProfileScope must close and publish on normal return\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "2930c54a37cae55d": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:35::2930c54a37cae55d",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:346::void TestSwapChainPresentResizeLifecycle()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:356::Successful resize must atomically publish both dimensions"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "2b5e5aecc8ed8fc2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:38::2b5e5aecc8ed8fc2",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:375::void TestNullPresentationTargetLifetime()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:418::Device wrapper destruction must not leave child objects with dangling presentation state"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "2ba9527806fc0f7e": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:145::void TestTrackingAllocatorExactlyOnce()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:155::Successful allocation must be recorded exactly once"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "2d13bd1304a38ed2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:264::void TestCounterArithmeticAndInvalidIds()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:273::Assert(counters.Get(diagnostics::CounterId::Frames) == 3, \"Counter increment/decrement must preserve exact normal arithmetic\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "2f3ed19047ac72ad": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "311370fe6e9ff256": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:264::void TestCounterArithmeticAndInvalidIds()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:273::Assert(counters.Get(diagnostics::CounterId::Frames) == 3, \"Counter increment/decrement must preserve exact normal arithmetic\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "32a8cd02db481544": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:335::void TestFrameIndexCheckedArithmetic()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:342::Next must return a non-mutating successor"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "357f8b4de0ea63ae": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:232::void TestAllocationTagIsolationAndInvalidTag()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:239::Core accounting must remain isolated by tag"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "36023fcf1795b76c": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:275::void TestTrackingEnableDisableAndFrameResetContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:282::Tracker must become enabled explicitly"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "37443767888118f6": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:21::37443767888118f6",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:306::void TestCommandContextLifecycle()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:323::Nested BeginFrame must fail"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "37b182fdc4b11948": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_d3d11_audit.md:21::37b182fdc4b11948",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/rhi_integration_tests.cpp:125::void TestD3D11FactoryCleanupAndDebugLayer()",
+        "assertions": [
+          "EngineBase/Tests/Integration/rhi_integration_tests.cpp:140::D3D11 factory must remain usable after a post-acquisition failure"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiIntegrationTests"
+      }
+    },
+    "3a903ffce5e3b62c": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:29::### Handles and stale identity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:246::void TestHandleGenerationAndCanonicalInvalidState()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:260::All invalid handles must canonicalize to one structural representation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "3ae1f64d0caa3a54": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:25::### Typed IDs",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:187::void TestTypedIdsInvalidStateAndTypeSafety()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:210::Non-empty ModuleId source must never map to the reserved invalid value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "3bc3fde1a60349d5": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:13::`EnsureFramePlatformEvents`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:580::void TestFramePlatformEventsAndThrottleContracts()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:588::EnsureFramePlatformEvents must be idempotent"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "3f2a40c0fa2bbffd": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "4111a0fbef8d4176": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:145::void TestTrackingAllocatorExactlyOnce()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:155::Successful allocation must be recorded exactly once"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "42ef689aa19e6fa8": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "43bc6cd1e5f96f35": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:27::`RegisterInputFrameLoop`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:451::void TestFrameLoopDependencyFailureDoesNotPublishEventBuffer()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:481::Missing input dependency must not leave a partial FramePlatformEvents service"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "469f40e17dafae5f": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "477c7cc8d26b3d45": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "49a8698767a41b10": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:37::49a8698767a41b10",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:99::void TestValueAndQueryContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:109::Typed presentation surface conversion must preserve the wrapped pointer"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "4d67429c8061456d": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:36::4d67429c8061456d",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:99::void TestValueAndQueryContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:120::Out-of-range pixel format must stringify as Unknown without indexing invalid storage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "4e6ad40f823f8ff3": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:264::void TestCounterArithmeticAndInvalidIds()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:273::Assert(counters.Get(diagnostics::CounterId::Frames) == 3, \"Counter increment/decrement must preserve exact normal arithmetic\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "4f46b19da9efb22b": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:29::### Handles and stale identity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:246::void TestHandleGenerationAndCanonicalInvalidState()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:260::All invalid handles must canonicalize to one structural representation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "5071afb4f3b0efbe": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:34::5071afb4f3b0efbe",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:196::void TestCreationAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:229::Device factory allocation failure must not poison subsequent creation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "514c90d19098afc3": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "52fb57b79fe75b84": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:37::52fb57b79fe75b84",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:99::void TestValueAndQueryContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:111::Presentation surface equality must compare wrapped pointer identity"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "53511bcf8fccd35a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:17::### Error",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:51::void TestErrorStableCode()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:54::Error must preserve its exact machine-readable code"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "5575acab7eeba619": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:344::void TestProfileScopeRaiiAndFailureContainment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:356::Assert(events.size() == 1 && events[0].name == \"NormalScope\", \"ProfileScope must close and publish on normal return\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "56d2ac763a938e7a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:19::`RegisterInputRuntime`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:304::void TestWindowsAndInputDuplicateRegistrationAreControlled()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:339::Input duplicate rejection must preserve the existing service"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "5c5319f7a44f55fc": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "5e3afaa20434e750": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:35::5e3afaa20434e750",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:131::void TestDescriptorValidationAndCreationAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:141::Device creation must preserve its descriptor"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "5fef52c01590b43a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "6131e74000260a22": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:27::`RegisterRhiFrameLoop`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:518::void TestRhiFrameLoopRejectsInvalidWiringBeforeRegistration()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:546::Rejected RHI frame-loop wiring must not leave duplicate partial handlers"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "64be35befacfe2a6": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:25::### Typed IDs",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:187::void TestTypedIdsInvalidStateAndTypeSafety()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:210::Non-empty ModuleId source must never map to the reserved invalid value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "65191863c8b9d834": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "651f582e787669b1": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:25::### Typed IDs",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:187::void TestTypedIdsInvalidStateAndTypeSafety()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:210::Non-empty ModuleId source must never map to the reserved invalid value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "655291877c0cd1d9": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:335::void TestFrameIndexCheckedArithmetic()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:342::Next must return a non-mutating successor"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "66321c3a598c402d": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "687541ba78c65e1a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "6eda7d5c497c3f06": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:29::### Handles and stale identity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:246::void TestHandleGenerationAndCanonicalInvalidState()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:260::All invalid handles must canonicalize to one structural representation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "6fad43fe89031df2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:106::void TestAllocationContractAndAlignment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:117::Zero-byte allocation must normalize to one byte"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "7044aec139e6cc40": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "723ddba422a1ff41": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:335::void TestFrameIndexCheckedArithmetic()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:342::Next must return a non-mutating successor"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "728123ee372c2d58": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "754e6b9407d3bf77": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:106::void TestAllocationContractAndAlignment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:112::DefaultAllocator must honor requested alignment"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "76d6eb6ebe2ea1f7": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:335::void TestFrameIndexCheckedArithmetic()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:342::Next must return a non-mutating successor"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "7a17f443da8b364c": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:29::### Handles and stale identity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:214::void TestHashEqualityConsistency()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:230::Equal handles must have equal hashes"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "7aec2792654e71d4": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "7b5596491888e107": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "7d5f46a74bbf58da": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:37::## Public contract: thread context",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:439::void TestThreadDiagnosticNamesOwnTheirLifetime()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:445::Assert(retained_name == \"short-name\", \"A previously returned thread name must remain valid after thread-local storage changes\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "7f1f8ce7c5fbe42a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:35::7f1f8ce7c5fbe42a",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:306::void TestCommandContextLifecycle()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:341::Successful EndFrame must clear active state"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "80cd4a4a3be482d8": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:25::80cd4a4a3be482d8",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:196::void TestCreationAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:298::Failed replacement allocation must preserve the original active presentation target"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "84ec87c765c5d4ef": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "852f2116025c8610": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:264::void TestCounterArithmeticAndInvalidIds()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:273::Assert(counters.Get(diagnostics::CounterId::Frames) == 3, \"Counter increment/decrement must preserve exact normal arithmetic\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "8549690d986dc54e": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "856a30a1df4d02cd": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "86f78be54e70c325": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:17::`RegisterWindowsRuntime`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:304::void TestWindowsAndInputDuplicateRegistrationAreControlled()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:321::Rejected Windows bundle must not publish its other service role"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "8718448c46099a12": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:344::void TestProfileScopeRaiiAndFailureContainment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:356::Assert(events.size() == 1 && events[0].name == \"NormalScope\", \"ProfileScope must close and publish on normal return\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "87e426baf4dab14a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "882076cf3231ba5c": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:35::882076cf3231ba5c",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:346::void TestSwapChainPresentResizeLifecycle()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:356::Successful resize must atomically publish both dimensions"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "8886c063dac9752d": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:29::### Handles and stale identity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:246::void TestHandleGenerationAndCanonicalInvalidState()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:260::All invalid handles must canonicalize to one structural representation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "891c98d43b08dff5": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:25::### Typed IDs",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:187::void TestTypedIdsInvalidStateAndTypeSafety()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:210::Non-empty ModuleId source must never map to the reserved invalid value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "8a4afd01a06d99cd": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "8b0923bd9dbf6111": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "8b5b4b468d672068": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:35::8b5b4b468d672068",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:131::void TestDescriptorValidationAndCreationAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:181::Swap chain must preserve the validated color format"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "8e349cae7b1a1738": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "8f96c3f5a195ecd3": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:275::void TestTrackingEnableDisableAndFrameResetContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:295::IFrameAllocator lifetime boundary must occur only on explicit Reset"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "90d1310236b16084": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "9175d1165a88bcb8": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:37::9175d1165a88bcb8",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:99::void TestValueAndQueryContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:107::Non-null presentation surface handle must be valid"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "93d64e82c7087d41": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "94c829710b063e7d": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:281::void TestFrameTimeConversionsAndBoundaries()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:286::FrameTime seconds conversion must work"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "967d55e46232affe": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:33::967d55e46232affe",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:131::void TestDescriptorValidationAndCreationAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:171::RHI swap chain creation must reject out-of-range pixel formats"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "96b4276d83e48ff7": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:38::96b4276d83e48ff7",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:375::void TestNullPresentationTargetLifetime()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:397::Destroying the active swap chain must invalidate presentation instead of retaining a stale target"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "96c7c95b31cffe41": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "972fb0dbb7a56234": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:106::void TestAllocationContractAndAlignment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:112::DefaultAllocator must honor requested alignment"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "9b1bd7e2d54da334": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:35::9b1bd7e2d54da334",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:131::void TestDescriptorValidationAndCreationAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:140::Null RHI must expose its stable backend name"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "9c6bfd03ec85c1d2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:106::void TestAllocationContractAndAlignment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:112::DefaultAllocator must honor requested alignment"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "9d96ddcd7a6c8c5c": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:463::static_assert(!std::is_copy_constructible_v<diagnostics::ProfileScope>);",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:464::static_assert(!std::is_copy_assignable_v<diagnostics::ProfileScope>);"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "9f63de09feb8be08": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:24::9f63de09feb8be08",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:196::void TestCreationAllocationFailureAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:254::Command-context allocation failure must not poison device state"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "a07149598bae1f98": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "a3102a5eeda77ce5": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:264::void TestCounterArithmeticAndInvalidIds()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:273::Assert(counters.Get(diagnostics::CounterId::Frames) == 3, \"Counter increment/decrement must preserve exact normal arithmetic\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "a4009d39c27185ea": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "a52d749551961c32": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:25::### Typed IDs",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:214::void TestHashEqualityConsistency()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:220::Equal typed IDs must have equal hashes"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "a65e72f44a4654e3": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "a780d1224b05f3f2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:29::### Handles and stale identity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:246::void TestHandleGenerationAndCanonicalInvalidState()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:260::All invalid handles must canonicalize to one structural representation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "a89c9edba3de6326": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:37::a89c9edba3de6326",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:99::void TestValueAndQueryContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:108::Presentation surface handle must preserve the wrapped pointer"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "a8d86573111431b2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:23::`CreateMainWindow`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:397::void TestMainSwapChainDuplicateOwnerIsRejectedBeforeBackendWork()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:437::Missing window system must return a controlled Result failure"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "a8e65a9ad9eed85c": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "ae68b32e5929f68b": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "aeec98a54689fc44": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "af0870eccb678fc9": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "b0382ed7a3e616af": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "b33d3011c7eff81c": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:25::### Typed IDs",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:187::void TestTypedIdsInvalidStateAndTypeSafety()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:210::Non-empty ModuleId source must never map to the reserved invalid value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "b34aeff0241c48bb": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:33::b34aeff0241c48bb",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:131::void TestDescriptorValidationAndCreationAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:135::RHI device creation must reject empty device names"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "b4c27dbf36ef073a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:344::void TestProfileScopeRaiiAndFailureContainment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:356::Assert(events.size() == 1 && events[0].name == \"NormalScope\", \"ProfileScope must close and publish on normal return\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "b4cc3e4171314c3a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:23::b4cc3e4171314c3a",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:306::void TestCommandContextLifecycle()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:316::EndFrame without BeginFrame must fail"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "b4f77ee4d98ca9d3": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "b568d277f35269ed": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "b66f398703526102": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:214::void TestHashEqualityConsistency()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:238::Equal FrameIndex values must have equal hashes"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "b6f7b28d68314a6f": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "b7e413228320da7b": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "b809eb09893b3870": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:37::b809eb09893b3870",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:99::void TestValueAndQueryContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:102::Default presentation surface handle must be invalid"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "ba4d4ef42c98f281": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:335::void TestFrameIndexCheckedArithmetic()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:342::Next must return a non-mutating successor"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "bb1d6a88fa04c731": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "bc8946f98056de10": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:22::bc8946f98056de10",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:375::void TestNullPresentationTargetLifetime()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:384::Null RHI must reject Clear when no active swap chain exists"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "bdac720c14c15493": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "befe8fc73bdc96a4": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:17::### Error",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:51::void TestErrorStableCode()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:54::Error must preserve its exact machine-readable code"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "c2029e7a1e39c485": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "c24adc95fe0770aa": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "c3116f4062aef3df": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "c39ed1be31b56f58": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:37::c39ed1be31b56f58",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:99::void TestValueAndQueryContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:107::Non-null presentation surface handle must be valid"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "c6546d1b0ec19322": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:264::void TestCounterArithmeticAndInvalidIds()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:273::Assert(counters.Get(diagnostics::CounterId::Frames) == 3, \"Counter increment/decrement must preserve exact normal arithmetic\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "c68161d1be5e5008": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:29::`RegisterFrameThrottle`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:580::void TestFramePlatformEventsAndThrottleContracts()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:596::Zero-duration frame throttle must integrate into the EndFrame phase"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "c6ab955074611085": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "c96c46497446b51a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:344::void TestProfileScopeRaiiAndFailureContainment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:356::Assert(events.size() == 1 && events[0].name == \"NormalScope\", \"ProfileScope must close and publish on normal return\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "ca2661ba30be7a8b": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:106::void TestAllocationContractAndAlignment()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:112::DefaultAllocator must honor requested alignment"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "caf39af769cfcc97": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:275::void TestTrackingEnableDisableAndFrameResetContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:282::Tracker must become enabled explicitly"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "cb6fc025cda2d1df": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "cbad07a60724f108": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:21::`RegisterGraphicsRuntime`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:342::void TestGraphicsRegistrationConflictsAndInvalidBackendAreResultFailures()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:358::Graphics bundle conflict must not publish IRhiDevice partially"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "cf21545f9e5bd2a5": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "cff0cb27dce1af64": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "d0b0e24e08190415": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:25::### Typed IDs",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:187::void TestTypedIdsInvalidStateAndTypeSafety()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:210::Non-empty ModuleId source must never map to the reserved invalid value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "d10ec20d7d3ae553": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:17::### Error",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:51::void TestErrorStableCode()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:54::Error must preserve its exact machine-readable code"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "d16f2c55a5e33327": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:27::## Public contract: profiling",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:313::void TestInMemoryCollectorAllocationFailureIsAtomic()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:333::Assert(bad_alloc_observed, \"The targeted collector allocation fault must be observed by a direct caller\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "d3ad470e0a6e6ed2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "d56da82180d81c72": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "d66ac30cb1719653": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:29::### Handles and stale identity",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:246::void TestHandleGenerationAndCanonicalInvalidState()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:260::All invalid handles must canonicalize to one structural representation"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "d7c3fe32704032a4": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:35::d7c3fe32704032a4",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:131::void TestDescriptorValidationAndCreationAtomicity()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:179::Swap chain must preserve the validated buffer count"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "d7f493dd16490d18": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:232::void TestAllocationTagIsolationAndInvalidTag()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:239::Core accounting must remain isolated by tag"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "d83ffe9c464c3bde": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "d9f7adb3cdb1fe76": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:17::### Error",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:51::void TestErrorStableCode()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:54::Error must preserve its exact machine-readable code"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "da9fe3d568c3cf87": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:216::Free must subtract from current usage"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "dbcfc6ad73f0a71e": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:199::void TestBudgetsPeakAndReset()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:210::Usage exactly at budget must not be over budget"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "dbe6d0aa82ca5171": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "dbe6d9bcaee914eb": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:38::dbe6d9bcaee914eb",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:375::void TestNullPresentationTargetLifetime()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:411::Destroying an active context must not leak frame-active state"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "dc0ea6881f7992b5": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:19::## Public contract: counters",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:134::void TestDiagnosticValueHelpers()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:137::Assert(diagnostics::CounterCount() == static_cast<std::size_t>(diagnostics::CounterId::Count),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "dcc090f3c8e8cce2": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "de7030761c598078": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:275::void TestTrackingEnableDisableAndFrameResetContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:282::Tracker must become enabled explicitly"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "df0077941dcd1c8b": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "e130d1a73c732e08": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "e4bd0446ce2a1b0f": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:35::### Frame and time values",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:335::void TestFrameIndexCheckedArithmetic()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:342::Next must return a non-mutating successor"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "e8312ce1c05d32ba": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:32::## Query and value contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:275::void TestTrackingEnableDisableAndFrameResetContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:282::Tracker must become enabled explicitly"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "e8919f0d2365010c": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:41::### Paths",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:362::void TestPathNormalizationAndMalformedInput()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:382::Join must append and lexically normalize a relative child path"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "ea2efc541e712974": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "eaa925e92390282e": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "eba1d7fb521428c7": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_foundation_audit.md:21::### Result",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:73::void TestResultValueErrorMoveAndMisuse()",
+        "assertions": [
+          "EngineBase/Tests/Unit/foundation_unit_tests.cpp:78::Result<int>::Success must hold a value"
+        ],
+        "reviewed": true,
+        "target": "EpidemicFoundationUnitTests"
+      }
+    },
+    "f20840933104a704": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:37::## Public contract: thread context",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:439::void TestThreadDiagnosticNamesOwnTheirLifetime()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:445::Assert(retained_name == \"short-name\", \"A previously returned thread name must remain valid after thread-local storage changes\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "f47b0bef353ef1cc": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "f51d126607ca027b": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_support_audit.md:27::`RegisterPlatformFrameLoop`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:451::void TestFrameLoopDependencyFailureDoesNotPublishEventBuffer()",
+        "assertions": [
+          "EngineBase/Tests/Integration/support_integration_tests.cpp:466::Missing platform dependencies must not leave a partial FramePlatformEvents service"
+        ],
+        "reviewed": true,
+        "target": "EpidemicSupportIntegrationTests"
+      }
+    },
+    "f6b2d326ab93f8d8": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:27::f6b2d326ab93f8d8",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:346::void TestSwapChainPresentResizeLifecycle()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:370::Rejected zero-area resize must preserve the last usable dimensions"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "f72c54b2b14d6c5a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_rhi_audit.md:33::f72c54b2b14d6c5a",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/rhi_unit_tests.cpp:306::void TestCommandContextLifecycle()",
+        "assertions": [
+          "EngineBase/Tests/Unit/rhi_unit_tests.cpp:334::Non-finite clear color must fail"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRhiUnitTests"
+      }
+    },
+    "fbec9ab4fb40f82a": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_memory_audit.md:19::## Mutation contract inventory",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/memory_unit_tests.cpp:275::void TestTrackingEnableDisableAndFrameResetContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/memory_unit_tests.cpp:295::IFrameAllocator lifetime boundary must occur only on explicit Reset"
+        ],
+        "reviewed": true,
+        "target": "EpidemicMemoryUnitTests"
+      }
+    },
+    "fc4d1a4f6cf46d00": {
+      "contract": {
+        "anchor": "docs/freeze/enginebase_diagnostics_audit.md:11::## Public contract: logging",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:165::void TestLoggerOverloadsAndDisableContract()",
+        "assertions": [
+          "EngineBase/Tests/Unit/diagnostics_unit_tests.cpp:187::Assert(logger.records.size() == 15, \"Every public logger overload must dispatch exactly one record when enabled\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicDiagnosticsUnitTests"
+      }
+    },
+    "0ec666875efe6fb3": {
+      "contract": {
+        "anchor": "EngineBase/Core/include/Epidemic/Core/application.h:115::void AddFramePhaseHandlersAtomic(std::vector<FramePhaseHandlerRegistration> registrations);",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:636::void TestAtomicFrameHandlerRegistration()",
+        "assertions": [
+          "EngineBase/Tests/Unit/core_unit_tests.cpp:656::Atomic handler batch must reject an invalid member",
+          "EngineBase/Tests/Unit/core_unit_tests.cpp:659::Rejected handler batch must not publish earlier valid handlers"
+        ],
+        "reviewed": true,
+        "target": "EpidemicCoreUnitTests"
+      }
+    },
+    "1b11a07d96f2d305": {
+      "contract": {
+        "anchor": "EngineBase/Core/include/Epidemic/Core/service_container.h:70::void RegisterInstancesAtomicWithPreCommit(TPreCommit &&pre_commit, std::shared_ptr<TServices>... instances)",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:238::void TestServiceContainerContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/core_unit_tests.cpp:312::Failed composition pre-commit must not publish the staged service bundle"
+        ],
+        "reviewed": true,
+        "target": "EpidemicCoreUnitTests"
+      }
+    }
+  },
+  "schema_version": 1
 }

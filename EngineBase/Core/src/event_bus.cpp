@@ -3,6 +3,8 @@
 #include <Epidemic/Diagnostics/counters.h>
 #include <Epidemic/Diagnostics/profiling.h>
 
+#include "event_bus_token_policy.h"
+
 #include <stdexcept>
 #include <utility>
 
@@ -21,10 +23,25 @@ IEventBus::HandlerToken EventBus::SubscribeImpl(std::type_index event_type, Even
 
     std::scoped_lock lock(mutex_);
 
+    if (!detail::CanAllocateHandlerToken(next_token_))
+    {
+        throw std::overflow_error("EventBus handler token space is exhausted");
+    }
+
     auto &subscriptions = mode == EventDispatchMode::Sync ? sync_subscriptions_ : queued_subscriptions_;
-    auto &bucket = subscriptions[event_type];
-    bucket.push_back(Subscription{next_token_, std::move(handler)});
-    return next_token_++;
+    const auto token = next_token_;
+    if (const auto existing = subscriptions.find(event_type); existing != subscriptions.end())
+    {
+        existing->second.push_back(Subscription{token, std::move(handler)});
+    }
+    else
+    {
+        std::vector<Subscription> candidate_bucket;
+        candidate_bucket.push_back(Subscription{token, std::move(handler)});
+        subscriptions.emplace(event_type, std::move(candidate_bucket));
+    }
+    next_token_ = detail::AdvanceHandlerToken(token);
+    return token;
 }
 
 // Immediately dispatches a type-erased event to synchronous subscribers.
@@ -56,11 +73,24 @@ std::size_t EventBus::DrainQueued()
     while (drained < drain_budget)
     {
         QueuedEvent next_event;
+        std::vector<AnyEventHandler> handlers;
         {
             std::scoped_lock lock(mutex_);
             if (queued_events_.empty())
             {
                 break;
+            }
+
+            // Copy every potentially throwing subscriber before removing the event. If copying fails,
+            // the queued event remains authoritative and a later DrainQueued() can retry it.
+            const auto &front = queued_events_.front();
+            if (const auto subscriptions = queued_subscriptions_.find(front.type); subscriptions != queued_subscriptions_.end())
+            {
+                handlers.reserve(subscriptions->second.size());
+                for (const auto &subscription : subscriptions->second)
+                {
+                    handlers.push_back(subscription.handler);
+                }
             }
 
             next_event = std::move(queued_events_.front());
@@ -69,7 +99,10 @@ std::size_t EventBus::DrainQueued()
 
         diagnostics::GlobalCounters().Decrement(diagnostics::CounterId::EventBusQueuedEvents);
         diagnostics::GlobalCounters().Increment(diagnostics::CounterId::EventBusDispatchedEvents);
-        DispatchQueued(next_event.type, next_event.payload);
+        for (const auto &handler : handlers)
+        {
+            handler(next_event.payload);
+        }
         ++drained;
     }
 

@@ -2,9 +2,14 @@
 
 #include <Epidemic/Diagnostics/profiling.h>
 
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+#include "module_registry_test_hooks.h"
+#endif
+
 #include <algorithm>
 #include <exception>
 #include <functional>
+#include <new>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -16,6 +21,22 @@ namespace epidemic::core
 
 namespace
 {
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+thread_local testing::ModuleRegistryFaultPoint g_module_registry_fault_point =
+    testing::ModuleRegistryFaultPoint::None;
+
+[[nodiscard]] bool ConsumeModuleRegistryFault(testing::ModuleRegistryFaultPoint fault_point) noexcept
+{
+    if (g_module_registry_fault_point != fault_point)
+    {
+        return false;
+    }
+
+    g_module_registry_fault_point = testing::ModuleRegistryFaultPoint::None;
+    return true;
+}
+#endif
+
 // Converts manifest id text into the strongly typed module identifier used by the registry.
 [[nodiscard]] foundation::ModuleId ToModuleId(std::string_view id_text)
 {
@@ -66,9 +87,24 @@ void ModuleRegistry::Register(std::unique_ptr<IModule> module)
                                  manifest.id + "'");
     }
 
-    module_index_by_id_.emplace(module_id, modules_.size());
-    canonical_module_name_by_id_.emplace(module_id, manifest.id);
+    auto candidate_indices = module_index_by_id_;
+    auto candidate_names = canonical_module_name_by_id_;
+    candidate_indices.emplace(module_id, modules_.size());
+    candidate_names.emplace(module_id, manifest.id);
+
+    // Complete every fallible allocation before publishing any part of the registration.
+    modules_.reserve(modules_.size() + 1);
+    shutdown_completed_.reserve(shutdown_completed_.size() + 1);
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+    if (ConsumeModuleRegistryFault(testing::ModuleRegistryFaultPoint::BeforeRegistrationCommit))
+    {
+        throw std::bad_alloc{};
+    }
+#endif
     modules_.push_back(std::move(module));
+    shutdown_completed_.push_back(0);
+    module_index_by_id_.swap(candidate_indices);
+    canonical_module_name_by_id_.swap(candidate_names);
     execution_plan_.clear();
     state_ = LifecycleState::Registered;
 }
@@ -85,6 +121,7 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
     logger.Info("Core", "Modules", "Registered modules: " + std::to_string(modules_.size()));
     EnsureExecutionPlan(logger);
     bootstrapped_count_ = 0;
+    std::fill(shutdown_completed_.begin(), shutdown_completed_.end(), std::uint8_t{0});
 
     try
     {
@@ -178,11 +215,17 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
     for (std::size_t reverse_index = shutdown_count; reverse_index > 0; --reverse_index)
     {
         const auto execution_index = execution_plan_[reverse_index - 1];
+        if (shutdown_completed_[execution_index] != 0)
+        {
+            continue;
+        }
+
         const auto &module = modules_[execution_index];
         logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Shutting down", module->Manifest()));
         try
         {
             module->Shutdown(services);
+            shutdown_completed_[execution_index] = 1;
         }
         catch (const std::exception &exception)
         {
@@ -204,12 +247,14 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
         }
     }
 
-    bootstrapped_count_ = 0;
-    state_ = LifecycleState::ShutDown;
     if (first_error)
     {
+        state_ = LifecycleState::Failed;
         std::rethrow_exception(first_error);
     }
+
+    bootstrapped_count_ = 0;
+    state_ = LifecycleState::ShutDown;
 }
 
 // Returns the number of registered module instances.
@@ -250,7 +295,9 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
 
         visit_states[module_index] = VisitState::Visiting;
         const auto &manifest = modules_[module_index]->Manifest();
-        for (const auto &dependency_id_text : manifest.dependencies)
+        auto dependencies = manifest.dependencies;
+        std::sort(dependencies.begin(), dependencies.end());
+        for (const auto &dependency_id_text : dependencies)
         {
             const auto dependency_id = ToModuleId(dependency_id_text);
             if (!dependency_id.IsValid())
@@ -278,7 +325,15 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
         resolved.push_back(module_index);
     };
 
+    std::vector<std::size_t> module_indices(modules_.size());
     for (std::size_t module_index = 0; module_index < modules_.size(); ++module_index)
+    {
+        module_indices[module_index] = module_index;
+    }
+    std::sort(module_indices.begin(), module_indices.end(), [this](std::size_t left, std::size_t right) {
+        return modules_[left]->Manifest().id < modules_[right]->Manifest().id;
+    });
+    for (const auto module_index : module_indices)
     {
         visit(module_index);
     }
@@ -297,4 +352,16 @@ void ModuleRegistry::EnsureExecutionPlan(diagnostics::ILogger &logger)
     }
     logger.Info("Core", "Modules", stream.str());
 }
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+void testing::SetModuleRegistryFaultPoint(ModuleRegistryFaultPoint fault_point) noexcept
+{
+    g_module_registry_fault_point = fault_point;
+}
+
+void testing::ClearModuleRegistryFaultPoint() noexcept
+{
+    g_module_registry_fault_point = ModuleRegistryFaultPoint::None;
+}
+#endif
+
 } // namespace epidemic::core

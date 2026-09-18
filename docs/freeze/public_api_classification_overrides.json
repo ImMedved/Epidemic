@@ -305,11 +305,6 @@
       "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
       "reviewed": true
     },
-    "345951b3507681c3": {
-      "classification": "QUERY",
-      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
-      "reviewed": true
-    },
     "34ab10313882ad62": {
       "classification": "MUTATOR",
       "rationale": "Reviewed state-changing command or stateful sequence operation.",
@@ -1026,6 +1021,11 @@
       "reviewed": true
     },
     "ae4e8538a767d99e": {
+      "classification": "QUERY",
+      "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
+      "reviewed": true
+    },
+    "af0870eccb678fc9": {
       "classification": "QUERY",
       "rationale": "Reviewed observer, identifier accessor, conversion, arithmetic, encoding, or pure value transformation.",
       "reviewed": true

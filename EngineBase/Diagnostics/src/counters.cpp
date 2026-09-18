@@ -1,41 +1,94 @@
 #include <Epidemic/Diagnostics/counters.h>
 
+#include <limits>
+
 namespace epidemic::diagnostics
 {
-// This file implements the process-wide diagnostics counter registry.
-// The implementation stays deliberately small: relaxed atomics are enough because these counters
-// are used for observability rather than for synchronization.
-
 namespace
 {
 DiagnosticsCounters global_counters;
+
+[[nodiscard]] constexpr std::int64_t SaturatingAdd(std::int64_t value, std::int64_t delta) noexcept
+{
+    constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    if (delta > 0 && value > maximum - delta)
+    {
+        return maximum;
+    }
+    if (delta < 0 && value < minimum - delta)
+    {
+        return minimum;
+    }
+    return value + delta;
+}
+
+[[nodiscard]] constexpr std::int64_t SaturatingSubtract(std::int64_t value, std::int64_t delta) noexcept
+{
+    constexpr auto minimum = std::numeric_limits<std::int64_t>::min();
+    constexpr auto maximum = std::numeric_limits<std::int64_t>::max();
+    if (delta > 0 && value < minimum + delta)
+    {
+        return minimum;
+    }
+    if (delta < 0 && value > maximum + delta)
+    {
+        return maximum;
+    }
+    return value - delta;
+}
+
+template <typename Operation>
+void UpdateCounter(std::atomic<std::int64_t> &counter, Operation operation) noexcept
+{
+    auto current = counter.load(std::memory_order_relaxed);
+    for (;;)
+    {
+        const auto next = operation(current);
+        if (next == current || counter.compare_exchange_weak(current, next, std::memory_order_relaxed))
+        {
+            return;
+        }
+    }
+}
 } // namespace
 
-// Adds delta to the requested counter using relaxed atomic ordering.
 void DiagnosticsCounters::Increment(CounterId counter_id, std::int64_t delta) noexcept
 {
-    values_[ToIndex(counter_id)].fetch_add(delta, std::memory_order_relaxed);
+    if (!IsValidCounterId(counter_id))
+    {
+        return;
+    }
+    UpdateCounter(values_[ToIndex(counter_id)], [delta](std::int64_t current) { return SaturatingAdd(current, delta); });
 }
 
-// Subtracts delta from the requested counter using relaxed atomic ordering.
 void DiagnosticsCounters::Decrement(CounterId counter_id, std::int64_t delta) noexcept
 {
-    values_[ToIndex(counter_id)].fetch_sub(delta, std::memory_order_relaxed);
+    if (!IsValidCounterId(counter_id))
+    {
+        return;
+    }
+    UpdateCounter(values_[ToIndex(counter_id)], [delta](std::int64_t current) { return SaturatingSubtract(current, delta); });
 }
 
-// Replaces the counter value using relaxed atomic ordering.
 void DiagnosticsCounters::Set(CounterId counter_id, std::int64_t value) noexcept
 {
+    if (!IsValidCounterId(counter_id))
+    {
+        return;
+    }
     values_[ToIndex(counter_id)].store(value, std::memory_order_relaxed);
 }
 
-// Reads the current counter value using relaxed atomic ordering.
 std::int64_t DiagnosticsCounters::Get(CounterId counter_id) const noexcept
 {
+    if (!IsValidCounterId(counter_id))
+    {
+        return 0;
+    }
     return values_[ToIndex(counter_id)].load(std::memory_order_relaxed);
 }
 
-// Clears every counter back to zero.
 void DiagnosticsCounters::Reset() noexcept
 {
     for (auto &value : values_)
@@ -44,9 +97,8 @@ void DiagnosticsCounters::Reset() noexcept
     }
 }
 
-// Returns the global counter storage used across the current process.
 DiagnosticsCounters &GlobalCounters() noexcept
 {
     return global_counters;
 }
-} 
+} // namespace epidemic::diagnostics

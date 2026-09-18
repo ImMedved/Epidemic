@@ -1,5 +1,9 @@
 #include <Epidemic/Core/task_scheduler.h>
 
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+#include "task_scheduler_test_hooks.h"
+#endif
+
 #include <Epidemic/Diagnostics/counters.h>
 #include <Epidemic/Diagnostics/profiling.h>
 #include <Epidemic/Diagnostics/thread_context.h>
@@ -10,6 +14,24 @@
 
 namespace epidemic::core::tasks
 {
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+namespace
+{
+thread_local testing::FaultPoint g_fault_point = testing::FaultPoint::None;
+
+[[nodiscard]] bool ConsumeFault(testing::FaultPoint fault_point) noexcept
+{
+    if (g_fault_point != fault_point)
+    {
+        return false;
+    }
+
+    g_fault_point = testing::FaultPoint::None;
+    return true;
+}
+} // namespace
+#endif
+
 // This file implements the baseline worker-thread scheduler.
 // It captures completion and failure state for individual handles, task groups, and scheduler-wide idle waits.
 
@@ -18,7 +40,10 @@ struct TaskHandle::State
 {
     std::mutex mutex;
     std::condition_variable cv;
+    bool started{false};
     bool completed{false};
+    bool cancelled{false};
+    std::weak_ptr<void> owner;
     std::exception_ptr exception;
     std::string debug_name;
 };
@@ -29,6 +54,8 @@ struct TaskGroup::State
     std::mutex mutex;
     std::condition_variable cv;
     std::size_t remaining_tasks{0};
+    std::weak_ptr<void> owner;
+    bool owner_bound{false};
     std::exception_ptr first_exception;
 };
 
@@ -78,16 +105,49 @@ SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count) : state_(std:
     }
 
     workers_.reserve(worker_count);
+    worker_thread_ids_.reserve(worker_count);
     worker_names_.reserve(worker_count);
-    for (std::size_t index = 0; index < worker_count; ++index)
+
+    try
     {
-        const auto worker_name = "EpidemicWorker-" + std::to_string(index);
-        worker_names_.push_back(worker_name);
-        workers_.emplace_back([state = state_, worker_name](std::stop_token stop_token) {
-            diagnostics::SetCurrentThreadName(worker_name);
-            WorkerLoop(std::move(state), stop_token);
-        });
-        worker_thread_ids_.push_back(workers_.back().get_id());
+        // Finish all name allocations before starting a worker. After the first worker exists, any
+        // construction failure must explicitly wake and join every already-created jthread.
+        for (std::size_t index = 0; index < worker_count; ++index)
+        {
+            worker_names_.push_back("EpidemicWorker-" + std::to_string(index));
+        }
+
+        for (const auto &worker_name : worker_names_)
+        {
+            workers_.emplace_back([state = state_, worker_name](std::stop_token stop_token) {
+                diagnostics::SetCurrentThreadName(worker_name);
+                WorkerLoop(std::move(state), stop_token);
+            });
+            worker_thread_ids_.push_back(workers_.back().get_id());
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+            if (ConsumeFault(testing::FaultPoint::AfterWorkerStart))
+            {
+                throw std::bad_alloc{};
+            }
+#endif
+        }
+    }
+    catch (...)
+    {
+        {
+            std::scoped_lock lock(state_->mutex);
+            state_->stopping = true;
+            for (auto &worker : workers_)
+            {
+                worker.request_stop();
+            }
+        }
+        state_->cv.notify_all();
+        state_->idle_cv.notify_all();
+        workers_.clear();
+        worker_thread_ids_.clear();
+        worker_names_.clear();
+        throw;
     }
 
     diagnostics::GlobalCounters().Set(diagnostics::CounterId::WorkerCount, static_cast<std::int64_t>(worker_names_.size()));
@@ -125,6 +185,37 @@ TaskHandle SimpleTaskScheduler::Schedule(Task task, TaskGroup &group, std::strin
     return ScheduleImpl(std::move(task), group.state_, std::move(debug_name));
 }
 
+
+// Cancels a task only while it is still queued in this scheduler.
+bool SimpleTaskScheduler::Cancel(const TaskHandle &handle)
+{
+    if (!handle.IsValid())
+    {
+        return false;
+    }
+
+    {
+        std::scoped_lock state_lock(state_->mutex);
+        const auto owner = handle.state_->owner.lock();
+        if (!owner || owner.get() != state_.get())
+        {
+            return false;
+        }
+
+        std::scoped_lock handle_lock(handle.state_->mutex);
+        if (handle.state_->started || handle.state_->completed || handle.state_->cancelled)
+        {
+            return false;
+        }
+
+        handle.state_->cancelled = true;
+        handle.state_->completed = true;
+    }
+
+    handle.state_->cv.notify_all();
+    return true;
+}
+
 // Blocks until the task completes and then rethrows its failure, if any.
 void SimpleTaskScheduler::Wait(const TaskHandle &handle)
 {
@@ -135,6 +226,11 @@ void SimpleTaskScheduler::Wait(const TaskHandle &handle)
 
     {
         std::scoped_lock lock(state_->mutex);
+        const auto owner = handle.state_->owner.lock();
+        if (!owner || owner.get() != state_.get())
+        {
+            throw std::invalid_argument("Task handle belongs to a different scheduler");
+        }
         if (IsWorkerThread(std::this_thread::get_id()))
         {
             throw std::runtime_error("Task scheduler Wait cannot block one of its own worker threads");
@@ -162,6 +258,17 @@ void SimpleTaskScheduler::Wait(const TaskGroup &group)
 
     {
         std::scoped_lock lock(state_->mutex);
+        {
+            std::scoped_lock group_lock(group.state_->mutex);
+            if (group.state_->owner_bound)
+            {
+                const auto owner = group.state_->owner.lock();
+                if (!owner || owner.get() != state_.get())
+                {
+                    throw std::invalid_argument("Task group belongs to a different scheduler");
+                }
+            }
+        }
         if (IsWorkerThread(std::this_thread::get_id()))
         {
             throw std::runtime_error("Task scheduler Wait cannot block one of its own worker threads");
@@ -290,6 +397,7 @@ TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGrou
 
     auto handle_state = std::make_shared<TaskHandle::State>();
     handle_state->debug_name = std::move(debug_name);
+    handle_state->owner = state_;
 
     {
         std::scoped_lock lock(state_->mutex);
@@ -298,29 +406,44 @@ TaskHandle SimpleTaskScheduler::ScheduleImpl(Task task, std::shared_ptr<TaskGrou
             throw std::runtime_error("Task scheduler is shutting down");
         }
 
-        bool group_task_reserved = false;
+        std::unique_lock<std::mutex> group_lock;
+        bool bind_group_owner = false;
         if (group_state)
         {
-            std::scoped_lock group_lock(group_state->mutex);
-            ++group_state->remaining_tasks;
-            group_task_reserved = true;
+            group_lock = std::unique_lock<std::mutex>(group_state->mutex);
+            if (group_state->owner_bound)
+            {
+                const auto owner = group_state->owner.lock();
+                if (!owner || owner.get() != state_.get())
+                {
+                    throw std::invalid_argument("Task group belongs to a different scheduler");
+                }
+            }
+            else
+            {
+                bind_group_owner = true;
+            }
         }
 
-        try
+        // Queue insertion is the only fallible publication step. Bind/increment the group only after
+        // it succeeds so a failed Schedule() leaves an empty group reusable.
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+        if (ConsumeFault(testing::FaultPoint::BeforeQueuePush))
         {
-            state_->tasks.push(QueuedTask{std::move(task), handle_state, group_state});
-            diagnostics::GlobalCounters().Increment(diagnostics::CounterId::TasksScheduled);
+            throw std::bad_alloc{};
         }
-        catch (...)
+#endif
+        state_->tasks.push(QueuedTask{std::move(task), handle_state, group_state});
+        if (group_state)
         {
-            if (group_state && group_task_reserved)
+            if (bind_group_owner)
             {
-                std::scoped_lock group_lock(group_state->mutex);
-                --group_state->remaining_tasks;
-                group_state->cv.notify_all();
+                group_state->owner = state_;
+                group_state->owner_bound = true;
             }
-            throw;
+            ++group_state->remaining_tasks;
         }
+        diagnostics::GlobalCounters().Increment(diagnostics::CounterId::TasksScheduled);
     }
 
     state_->cv.notify_one();
@@ -346,17 +469,35 @@ void SimpleTaskScheduler::WorkerLoop(std::shared_ptr<SharedState> state, std::st
 
             queued_task = std::move(state->tasks.front());
             state->tasks.pop();
+            bool cancelled = false;
+            if (queued_task.handle_state)
+            {
+                std::scoped_lock handle_lock(queued_task.handle_state->mutex);
+                cancelled = queued_task.handle_state->cancelled;
+                if (!cancelled)
+                {
+                    queued_task.handle_state->started = true;
+                }
+            }
             ++state->active_tasks;
+
+            if (cancelled)
+            {
+                queued_task.task = {};
+            }
         }
 
         std::exception_ptr task_exception;
-        try
+        if (queued_task.task)
         {
-            queued_task.task();
-        }
-        catch (...)
-        {
-            task_exception = std::current_exception();
+            try
+            {
+                queued_task.task();
+            }
+            catch (...)
+            {
+                task_exception = std::current_exception();
+            }
         }
 
         if (queued_task.handle_state)
@@ -426,4 +567,16 @@ bool SimpleTaskScheduler::IsWorkerThread(std::thread::id thread_id) const noexce
 {
     return std::find(worker_thread_ids_.begin(), worker_thread_ids_.end(), thread_id) != worker_thread_ids_.end();
 }
+
+#if defined(EPIDEMIC_CORE_ENABLE_TEST_HOOKS)
+void testing::SetFaultPoint(testing::FaultPoint fault_point) noexcept
+{
+    g_fault_point = fault_point;
+}
+
+void testing::ClearFaultPoint() noexcept
+{
+    g_fault_point = testing::FaultPoint::None;
+}
+#endif
 } // namespace epidemic::core::tasks

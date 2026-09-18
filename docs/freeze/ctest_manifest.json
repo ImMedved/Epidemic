@@ -49,6 +49,11 @@
           "labels": [],
           "name": "EpidemicRhiUnitTests",
           "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicSupportIntegrationTests",
+          "timeout": 300.0
         }
       ]
     },
@@ -100,6 +105,11 @@
         {
           "labels": [],
           "name": "EpidemicRhiUnitTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicSupportIntegrationTests",
           "timeout": 300.0
         }
       ]
@@ -565,6 +575,11 @@
           "labels": [],
           "name": "EpidemicRuntimeWorldTests",
           "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicSupportIntegrationTests",
+          "timeout": 300.0
         }
       ]
     },
@@ -1029,6 +1044,11 @@
           "labels": [],
           "name": "EpidemicRuntimeWorldTests",
           "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicSupportIntegrationTests",
+          "timeout": 300.0
         }
       ]
     },
@@ -1181,6 +1201,11 @@
           "labels": [],
           "name": "EpidemicRuntimeWorldTests",
           "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicSupportIntegrationTests",
+          "timeout": 300.0
         }
       ]
     },
@@ -1332,6 +1357,11 @@
         {
           "labels": [],
           "name": "EpidemicRuntimeWorldTests",
+          "timeout": 300.0
+        },
+        {
+          "labels": [],
+          "name": "EpidemicSupportIntegrationTests",
           "timeout": 300.0
         }
       ]

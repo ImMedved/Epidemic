@@ -213,7 +213,7 @@ The generator enforces exactly 78 responsibility declarations, unique non-empty 
 - **Responsibility:** Defines and dispatches gameplay query contracts without owning queried domain state.
 - **Authoritative owner:** `none`. Query dispatch only; queried owners retain authority.
 - **Observed cross-module includes:** `EngineBase/Foundation`, `EngineFramework/BaseInfrastructure/Foundation`. Every observed edge is a direct CMake dependency.
-- **External boundary:** No direct Win32/D3D SDK access. External collaboration is limited to public contracts: `AnyProviderSnapshot`, `IQueryProvider`, `IQuerySnapshotCoordinator`, `QueryProviderCapabilities`.
+- **External boundary:** No direct Win32/D3D SDK access. External collaboration is limited to public contracts: `AnyProviderSnapshot`, `FunctionQueryProvider`, `IQueryProvider`, `IQuerySnapshotCoordinator`, `QueryProviderCapabilities`, `QueryProviderSnapshot`.
 
 ### EngineFramework/BaseInfrastructure/SupportRandom
 

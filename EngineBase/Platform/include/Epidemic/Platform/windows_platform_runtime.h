@@ -29,7 +29,7 @@ class WindowsPlatformRuntime final : public IPlatformRuntime, public IWindowSyst
     // Returns captured process metadata.
     [[nodiscard]] const ProcessInfo &GetProcessInfo() const override;
 
-    // Returns the current system time.
+    // Returns the current monotonic steady-clock time.
     [[nodiscard]] epidemic::foundation::TimePoint Now() const override;
 
     // Loads a dynamic library through Win32 LoadLibraryExW using absolute-path search restrictions.

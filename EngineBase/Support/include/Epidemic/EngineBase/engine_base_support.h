@@ -64,16 +64,20 @@ struct FramePlatformEvents
 [[nodiscard]] std::shared_ptr<FramePlatformEvents> EnsureFramePlatformEvents(core::Application &application);
 
 // Registers the baseline diagnostics, configuration, scheduler, dispatcher, event bus, and memory services.
+// Contract: composition is externally serialized; duplicate/sealed registration is rejected before bundle publication.
 [[nodiscard]] std::shared_ptr<diagnostics::ILogger> RegisterEngineBase(core::Application &application,
                                                                        EngineBaseOptions options);
 
 // Registers the Windows platform runtime as both IPlatformRuntime and IWindowSystem.
+// Contract: the two service roles are preflighted as one composition bundle.
 [[nodiscard]] std::shared_ptr<platform::IPlatformRuntime> RegisterWindowsRuntime(core::Application &application);
 
 // Registers the baseline normalized input system.
+// Contract: duplicate/sealed registration is rejected without replacing the existing service.
 [[nodiscard]] std::shared_ptr<input::IInputSystem> RegisterInputRuntime(core::Application &application);
 
 // Creates and registers the requested graphics runtime services.
+// Contract: unknown backends and service conflicts return a controlled Result failure before publication.
 [[nodiscard]] foundation::Result<GraphicsRuntimeServices> RegisterGraphicsRuntime(core::Application &application,
                                                                                   GraphicsRuntimeOptions options);
 
@@ -82,6 +86,7 @@ struct FramePlatformEvents
 CreateMainWindow(core::Application &application, const platform::WindowCreateInfo &create_info);
 
 // Creates and registers the main swap chain for a window using the registered RHI device.
+// Contract: null/invalid windows and duplicate/sealed swap-chain ownership return controlled Result failures.
 [[nodiscard]] foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>
 RegisterMainSwapChain(core::Application &application,
                       const std::shared_ptr<platform::IWindow> &window,
