@@ -54,6 +54,7 @@ class IEnvironmentUpdatePolicy
   public:
     virtual ~IEnvironmentUpdatePolicy() = default;
 
+    // Result failure and exceptions are contained by Update(). Returned state is fully validated before commit.
     [[nodiscard]] virtual foundation::Result<EnvironmentStateUpdate> BuildUpdate(
         const EnvironmentUpdateInput& input,
         const IEnvironmentQuery& query) const = 0;
@@ -66,7 +67,7 @@ class IEnvironmentRuntime : public IEnvironmentQuery, public IEnvironmentWriter
 
     virtual void SetUpdatePolicy(std::shared_ptr<const IEnvironmentUpdatePolicy> policy) = 0;
 
-    // Region definitions are boot-static once frozen. Runtime state updates remain available after freeze.
+    // Region and surface identities are boot-static once frozen. Runtime state updates for existing identities remain available.
     virtual void FreezeRegistration() noexcept = 0;
     [[nodiscard]] virtual bool IsRegistrationFrozen() const noexcept = 0;
 };

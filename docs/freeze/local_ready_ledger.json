@@ -605,52 +605,52 @@
           "status": "PASS"
         },
         "ARCH-DIRECT-DEPS": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-PORTS": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             },
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics",
-              "kind": "contract"
+              "kind": "contract",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-RESPONSIBILITY": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-SINGLE-OWNER": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             },
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics",
-              "kind": "state"
+              "kind": "state",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:18::## EngineBase/Diagnostics"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ATOMIC-EXTERNAL": {
           "evidence": [],
@@ -1029,52 +1029,52 @@
           "status": "PASS"
         },
         "ARCH-DIRECT-DEPS": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-PORTS": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             },
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation",
-              "kind": "contract"
+              "kind": "contract",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-RESPONSIBILITY": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-SINGLE-OWNER": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             },
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation",
-              "kind": "state"
+              "kind": "state",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:25::## EngineBase/Foundation"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ATOMIC-EXTERNAL": {
           "evidence": [],
@@ -2016,52 +2016,52 @@
           "status": "PASS"
         },
         "ARCH-DIRECT-DEPS": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-PORTS": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             },
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory",
-              "kind": "contract"
+              "kind": "contract",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-RESPONSIBILITY": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ARCH-SINGLE-OWNER": {
+          "status": "PASS",
           "evidence": [
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory",
-              "kind": "architecture"
+              "kind": "architecture",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             },
             {
-              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory",
-              "kind": "state"
+              "kind": "state",
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:39::## EngineBase/Memory"
             }
           ],
-          "rationale": "Verified by the generated architecture/ownership gate.",
-          "status": "PASS"
+          "rationale": "Verified by the generated architecture/ownership gate."
         },
         "ATOMIC-EXTERNAL": {
           "evidence": [],
@@ -4570,7 +4570,7 @@
       }
     },
     "EngineRuntime/Assets": {
-      "status": "IN_AUDIT",
+      "status": "LOCAL_READY",
       "criteria": {
         "ARCH-RESPONSIBILITY": {
           "status": "PASS",
@@ -4621,168 +4621,390 @@
           "rationale": "Verified by the generated architecture/ownership gate."
         },
         "API-CLASSIFIED": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:7::## Scope and ownership"
+            }
+          ],
           "rationale": ""
         },
         "API-PRECONDITIONS": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:162::bool TestValidationFailures()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:176::return !id_result && id_result.GetError().HasCode(\"asset.invalid_id\") && !type_result &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "API-SUCCESS": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:150::bool TestRegisterAssetStoresMetadata()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:159::return result && stored.has_value() && stored->id == metadata.id && stored->location == metadata.location;"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:576::bool TestSealIdempotenceAndEmptyCatalogContracts()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:587::return first && second && catalog.IsSealed();"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "API-FAILURE": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:71::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "fault",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:71::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:645::bool TestRegistrationAllocationFailurePreservesCatalog()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:704::return registered && observed_allocation_failure && baseline_after &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "API-OVERLOADS": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
-          "rationale": ""
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:7::## Scope and ownership"
+            }
+          ],
+          "rationale": "Assets has no ambiguous public overload family; each callable is represented by its exact public signature."
         },
         "API-INVALID": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:51::## Registration and validation audit"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:364::bool TestInvalidQueryInputsAreControlled()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:379::return !catalog.FindById(invalid_id).has_value() && catalog.FindByType(invalid_type).empty() &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "STATE-PRIMARY": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "state",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:7::## Scope and ownership"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:645::bool TestRegistrationAllocationFailurePreservesCatalog()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:704::return registered && observed_allocation_failure && baseline_after &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "STATE-INDEXES": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets owns no secondary derived index or cache; queries scan the authoritative metadata map."
         },
         "STATE-COUNTERS": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets generates no IDs, generations, revisions, or cursors; AssetMetadata::version is caller-supplied per-asset metadata."
         },
         "STATE-NO-FALSE-PUBLISH": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets publishes no revision, event, or journal stream."
         },
         "STATE-NOOP": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:576::bool TestSealIdempotenceAndEmptyCatalogContracts()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:587::return first && second && catalog.IsSealed();"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "LIFE-ALLOWED": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "lifecycle",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:283::bool TestCatalogSeal()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:294::return catalog.IsSealed() && after_seal.has_value() && !rejected && rejected.GetError().HasCode(\"asset.catalog_sealed\");"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "LIFE-FORBIDDEN": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "lifecycle",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:65::## Query and lifecycle audit"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:283::bool TestCatalogSeal()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:294::return catalog.IsSealed() && after_seal.has_value() && !rejected && rejected.GetError().HasCode(\"asset.catalog_sealed\");"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "LIFE-SHUTDOWN": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets owns no external resource, thread, registration, or backend handle requiring shutdown."
         },
         "LIFE-RETRY-CLEANUP": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets has no fallible external cleanup protocol."
         },
         "ATOMIC-SINGLE": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "fault",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:71::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "state",
+              "anchor": "docs/freeze/engineruntime_assets_audit.md:71::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:645::bool TestRegistrationAllocationFailurePreservesCatalog()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:704::return registered && observed_allocation_failure && baseline_after &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "ATOMIC-MULTI": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RegisterAsset publishes to one authoritative map and Seal mutates one boolean; no mutator spans multiple authoritative containers."
         },
         "ATOMIC-EXTERNAL": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets invokes no external transactional prepare/commit/cancel/rollback boundary."
         },
         "ATOMIC-RECONCILE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets has no fallible external rollback and therefore no reconciliation ownership."
         },
         "PERSIST-SNAPSHOT": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets exposes no local snapshot/restore contract; persistent catalog production is outside Goal 3.5."
         },
         "PERSIST-VALIDATE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets exposes no restore operation."
         },
         "PERSIST-CANDIDATE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets exposes no restore candidate or live restore mutation."
         },
         "PERSIST-FAILURE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets exposes no restore operation whose failure could mutate live catalog state."
         },
         "PERSIST-CONTINUITY": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets owns no generated identity/revision/cursor continuity and exposes no restore contract."
         },
         "TEST-HAPPY": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:150::bool TestRegisterAssetStoresMetadata()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:159::return result && stored.has_value() && stored->id == metadata.id && stored->location == metadata.location;"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-INVALID": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:162::bool TestValidationFailures()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:176::return !id_result && id_result.GetError().HasCode(\"asset.invalid_id\") && !type_result &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-DUPLICATE": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:255::bool TestDuplicateAssetIdReturnsError()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:263::return first && !duplicate && duplicate.GetError().HasCode(\"asset.duplicate\");"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-STALE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Asset IDs are never removed or reused by this module, so stale-generation identity cannot be presented."
         },
         "TEST-EMPTY": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:576::bool TestSealIdempotenceAndEmptyCatalogContracts()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:587::return first && second && catalog.IsSealed();"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-BOUNDARY": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:609::bool TestMetadataBoundsRejectBeforeMutation()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:637::return !path_result && path_result.GetError().HasCode(\"asset.metadata_too_large\") &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-WRONG-LIFECYCLE": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:283::bool TestCatalogSeal()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:294::return catalog.IsSealed() && after_seal.has_value() && !rejected && rejected.GetError().HasCode(\"asset.catalog_sealed\");"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-CALLBACK-FAILURE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "Assets invokes no callback, provider, sink, or backend."
         },
         "TEST-REGRESSION": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:213::bool TestPathValidationRejectsTraversalAndRequiresMounts()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:251::!embedded_nul_result && embedded_nul_result.GetError().HasCode(\"asset.invalid_location\") &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:364::bool TestInvalidQueryInputsAreControlled()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:381::invalid_resolve.GetError().HasCode(\"asset.invalid_id\") && !invalid_manifest &&"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/Assets/tests/assets_tests.cpp:491::bool TestDependencyManifestMergesRequirednessIndependentlyOfTraversalOrder()",
+              "assertions": [
+                "EngineRuntime/Assets/tests/assets_tests.cpp:528::return shared_dependency != first_manifest.Value().dependencies.end() && shared_dependency->required;"
+              ],
+              "target": "EpidemicRuntimeAssetsTests"
+            }
+          ],
           "rationale": ""
         }
       }
@@ -6314,7 +6536,7 @@
       }
     },
     "EngineRuntime/RuntimeFoundation": {
-      "status": "IN_AUDIT",
+      "status": "LOCAL_READY",
       "criteria": {
         "ARCH-RESPONSIBILITY": {
           "status": "PASS",
@@ -6365,168 +6587,356 @@
           "rationale": "Verified by the generated architecture/ownership gate."
         },
         "API-CLASSIFIED": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:51::## Audit decisions"
+            }
+          ],
           "rationale": ""
         },
         "API-PRECONDITIONS": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:51::## Audit decisions"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:304::bool TestMonotonicIdHelperBoundariesAndNoOpCommit()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:372::return !epidemic::runtime::CanAllocateMonotonicId(next)"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "API-SUCCESS": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:51::## Audit decisions"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:304::bool TestMonotonicIdHelperBoundariesAndNoOpCommit()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:372::return !epidemic::runtime::CanAllocateMonotonicId(next)"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "API-FAILURE": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:51::## Audit decisions"
+            },
+            {
+              "kind": "fault",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:63::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:304::bool TestMonotonicIdHelperBoundariesAndNoOpCommit()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:372::return !epidemic::runtime::CanAllocateMonotonicId(next)"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "API-OVERLOADS": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:51::## Audit decisions"
+            }
+          ],
           "rationale": ""
         },
         "API-INVALID": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:51::## Audit decisions"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:270::bool TestAllRuntimeIdFamiliesAndHashConsistency()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:288::return !empty_asset.IsValid()"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "STATE-PRIMARY": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation owns no long-lived primary state; its mutation helpers operate only on caller-owned scalar counters."
         },
         "STATE-INDEXES": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation owns no index, cache, or secondary container."
         },
         "STATE-COUNTERS": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "state",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:63::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:304::bool TestMonotonicIdHelperBoundariesAndNoOpCommit()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:372::return !epidemic::runtime::CanAllocateMonotonicId(next)"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "STATE-NO-FALSE-PUBLISH": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "fault",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:63::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "state",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:63::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:304::bool TestMonotonicIdHelperBoundariesAndNoOpCommit()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:372::return !epidemic::runtime::CanAllocateMonotonicId(next)"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "STATE-NOOP": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:51::## Audit decisions"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:304::bool TestMonotonicIdHelperBoundariesAndNoOpCommit()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:372::return !epidemic::runtime::CanAllocateMonotonicId(next)"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "LIFE-ALLOWED": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation exposes value helpers and no lifecycle state machine."
         },
         "LIFE-FORBIDDEN": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation exposes value helpers and no lifecycle state machine."
         },
         "LIFE-SHUTDOWN": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation owns no resource, registration, thread, or service requiring shutdown."
         },
         "LIFE-RETRY-CLEANUP": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation has no external cleanup protocol."
         },
         "ATOMIC-SINGLE": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "fault",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:63::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "state",
+              "anchor": "docs/freeze/engineruntime_runtimefoundation_audit.md:63::## Failure atomicity and observable state"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:304::bool TestMonotonicIdHelperBoundariesAndNoOpCommit()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:372::return !epidemic::runtime::CanAllocateMonotonicId(next)"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "ATOMIC-MULTI": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation has no mutator spanning multiple authoritative containers."
         },
         "ATOMIC-EXTERNAL": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation invokes no external prepare/commit/cancel/rollback boundary."
         },
         "ATOMIC-RECONCILE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation has no fallible external rollback or reconciliation state."
         },
         "PERSIST-SNAPSHOT": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation owns no persistent module state or snapshot format."
         },
         "PERSIST-VALIDATE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation exposes no restore operation."
         },
         "PERSIST-CANDIDATE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation exposes no restore operation or off-state restore candidate."
         },
         "PERSIST-FAILURE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation exposes no restore operation or live persistent state to preserve."
         },
         "PERSIST-CONTINUITY": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation is a value-contract module and owns no persistent/transient state boundary."
         },
         "TEST-HAPPY": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:513::bool TestApproximateTrsCompositionContract()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:528::return first == second"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-INVALID": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:270::bool TestAllRuntimeIdFamiliesAndHashConsistency()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:288::return !empty_asset.IsValid()"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-DUPLICATE": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:304::bool TestMonotonicIdHelperBoundariesAndNoOpCommit()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:372::return !epidemic::runtime::CanAllocateMonotonicId(next)"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-STALE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation monotonic identities are never removed or reused, so no stale-generation identity can be presented back to this module."
         },
         "TEST-EMPTY": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:92::bool TestRuntimeBudgetDefaultsToUnlimited()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:95::return budget.IsUnlimited()"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-BOUNDARY": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:404::bool TestCheckedSecondsToMicrosecondsBoundaries()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:419::rounded_boundary && rounded_boundary->value.count() >= 0"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         },
         "TEST-WRONG-LIFECYCLE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation exposes no lifecycle state."
         },
         "TEST-CALLBACK-FAILURE": {
-          "status": "NOT_AUDITED",
+          "status": "N/A",
           "evidence": [],
-          "rationale": ""
+          "rationale": "RuntimeFoundation invokes no callback, provider, sink, or backend."
         },
         "TEST-REGRESSION": {
-          "status": "NOT_AUDITED",
-          "evidence": [],
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:404::bool TestCheckedSecondsToMicrosecondsBoundaries()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:419::rounded_boundary && rounded_boundary->value.count() >= 0"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:513::bool TestApproximateTrsCompositionContract()",
+              "assertions": [
+                "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp:528::return first == second"
+              ],
+              "target": "EpidemicRuntimeFoundationTests"
+            }
+          ],
           "rationale": ""
         }
       }

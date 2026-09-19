@@ -34,8 +34,8 @@ struct RuntimeFrameDuration
     {
         return std::nullopt;
     }
-    constexpr double maximum = static_cast<double>(std::numeric_limits<std::int64_t>::max());
-    const double microseconds = seconds * 1000000.0;
+    constexpr long double maximum = static_cast<long double>(std::numeric_limits<std::int64_t>::max());
+    const long double microseconds = static_cast<long double>(seconds) * 1000000.0L;
     if (!std::isfinite(microseconds) || microseconds > maximum)
     {
         return std::nullopt;

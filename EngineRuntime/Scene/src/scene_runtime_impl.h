@@ -76,6 +76,8 @@ class SceneRuntime final : public ISceneNodeRegistry,
     [[nodiscard]] foundation::Result<Transform> ComputeLocalTransform(SceneNodeId parent, const Transform& world_transform) const;
     [[nodiscard]] std::optional<Aabb> ComputeWorldBounds(SceneNodeId node) const;
     [[nodiscard]] std::vector<SceneNodeId> CollectSubtree(SceneNodeId node) const;
+    [[nodiscard]] foundation::Result<void> ValidateCandidateSubtreeWorldState(
+        SceneNodeId root, const Transform& root_world, std::size_t expected_nodes) const;
     [[nodiscard]] foundation::Result<std::uint64_t> ReserveRevisionRange(std::size_t count) const;
     void MarkNodesDirty(std::span<const SceneNodeId> nodes, SceneDirtyMask flags, std::uint64_t& next_revision) noexcept;
     void BumpRevisionCommitted(SceneNodeRecord& record, SceneDirtyMask flags, std::uint64_t revision) noexcept;

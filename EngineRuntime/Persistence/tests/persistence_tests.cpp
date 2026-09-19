@@ -2,13 +2,99 @@
 #include "Epidemic/Runtime/Persistence/persistence_store.h"
 #include "in_memory_persistence_support.h"
 
+#include <atomic>
 #include <cstddef>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
+
+namespace persistence_test_allocation_fault
+{
+std::atomic<long long> allocations_before_failure{-1};
+
+[[nodiscard]] bool ShouldFail() noexcept
+{
+    auto remaining = allocations_before_failure.load(std::memory_order_relaxed);
+    while (remaining >= 0)
+    {
+        if (remaining == 0)
+        {
+            allocations_before_failure.store(-1, std::memory_order_relaxed);
+            return true;
+        }
+        if (allocations_before_failure.compare_exchange_weak(remaining, remaining - 1, std::memory_order_relaxed))
+        {
+            return false;
+        }
+    }
+    return false;
+}
+
+class FailAfter
+{
+  public:
+    explicit FailAfter(long long successful_allocations_before_failure) noexcept
+    {
+        allocations_before_failure.store(successful_allocations_before_failure, std::memory_order_relaxed);
+    }
+    ~FailAfter()
+    {
+        allocations_before_failure.store(-1, std::memory_order_relaxed);
+    }
+    FailAfter(const FailAfter&) = delete;
+    FailAfter& operator=(const FailAfter&) = delete;
+};
+} // namespace persistence_test_allocation_fault
+
+#if defined(__GNUC__) || defined(__clang__)
+#define EPIDEMIC_PERSISTENCE_TEST_NOINLINE __attribute__((noinline))
+#else
+#define EPIDEMIC_PERSISTENCE_TEST_NOINLINE
+#endif
+
+EPIDEMIC_PERSISTENCE_TEST_NOINLINE void* operator new(std::size_t size)
+{
+    if (persistence_test_allocation_fault::ShouldFail())
+    {
+        throw std::bad_alloc{};
+    }
+    if (void* memory = std::malloc(size == 0 ? 1 : size))
+    {
+        return memory;
+    }
+    throw std::bad_alloc{};
+}
+
+EPIDEMIC_PERSISTENCE_TEST_NOINLINE void* operator new[](std::size_t size)
+{
+    return ::operator new(size);
+}
+
+EPIDEMIC_PERSISTENCE_TEST_NOINLINE void operator delete(void* memory) noexcept
+{
+    std::free(memory);
+}
+
+EPIDEMIC_PERSISTENCE_TEST_NOINLINE void operator delete[](void* memory) noexcept
+{
+    std::free(memory);
+}
+
+EPIDEMIC_PERSISTENCE_TEST_NOINLINE void operator delete(void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
+
+EPIDEMIC_PERSISTENCE_TEST_NOINLINE void operator delete[](void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
+
+#undef EPIDEMIC_PERSISTENCE_TEST_NOINLINE
 
 namespace epidemic::runtime
 {
@@ -76,6 +162,7 @@ class ControlledBackend final : public IPersistenceBackend
     [[nodiscard]] epidemic::foundation::Result<void> CommitSnapshot(const PersistenceSnapshot& next_snapshot, PersistenceDurability durability) override
     {
         ++save_count;
+        last_durability = durability;
         if (throw_commit) throw std::runtime_error("commit");
         if (fail_save)
         {
@@ -103,6 +190,7 @@ class ControlledBackend final : public IPersistenceBackend
     int load_count = 0;
     int save_count = 0;
     int flush_count = 0;
+    PersistenceDurability last_durability = PersistenceDurability::MemoryOnly;
 };
 
 template <typename T>
@@ -152,6 +240,111 @@ concept HasOpenTransaction = requires(T& value) { value.OpenTransaction(); };
     record.evaluate_after_game_time = GameTimePoint{120};
     record.rule_seed = 42;
     return record;
+}
+
+[[nodiscard]] bool SameRecord(const PersistentObjectRecord& left, const PersistentObjectRecord& right)
+{
+    return left.persistent_id == right.persistent_id && left.asset_id == right.asset_id && left.kind == right.kind && left.tier == right.tier &&
+           left.state == right.state && left.location == right.location && left.payload.schema_id == right.payload.schema_id &&
+           left.payload.schema_version == right.payload.schema_version && left.payload.bytes == right.payload.bytes &&
+           left.created_game_time == right.created_game_time && left.last_observed_game_time == right.last_observed_game_time &&
+           left.protection_flags.value == right.protection_flags.value && left.condition_hash == right.condition_hash && left.revision == right.revision;
+}
+
+[[nodiscard]] bool SameTombstone(const TombstoneRecord& left, const TombstoneRecord& right)
+{
+    return left.persistent_id == right.persistent_id && left.deleted_game_time == right.deleted_game_time && left.reason == right.reason &&
+           left.revision == right.revision;
+}
+
+[[nodiscard]] bool SameLazyRule(const LazyRuleRecord& left, const LazyRuleRecord& right)
+{
+    return left.rule_id == right.rule_id && left.target_id == right.target_id && left.kind == right.kind && left.state == right.state &&
+           left.created_game_time == right.created_game_time && left.evaluate_after_game_time == right.evaluate_after_game_time &&
+           left.rule_seed == right.rule_seed && left.revision == right.revision;
+}
+
+[[nodiscard]] bool SameZoneOverride(const ZoneOverrideSnapshot& left, const ZoneOverrideSnapshot& right)
+{
+    if (!(left.location == right.location) || left.record_ids != right.record_ids || left.revision != right.revision ||
+        left.tombstones.size() != right.tombstones.size() || left.lazy_rules.size() != right.lazy_rules.size())
+    {
+        return false;
+    }
+    for (std::size_t index = 0; index < left.tombstones.size(); ++index)
+    {
+        if (!SameTombstone(left.tombstones[index], right.tombstones[index])) return false;
+    }
+    for (std::size_t index = 0; index < left.lazy_rules.size(); ++index)
+    {
+        if (!SameLazyRule(left.lazy_rules[index], right.lazy_rules[index])) return false;
+    }
+    return true;
+}
+
+[[nodiscard]] bool SameSnapshot(const PersistenceSnapshot& left, const PersistenceSnapshot& right)
+{
+    if (left.current_revision != right.current_revision || left.objects.size() != right.objects.size() ||
+        left.tombstones.size() != right.tombstones.size() || left.lazy_rules.size() != right.lazy_rules.size() ||
+        left.zone_overrides.size() != right.zone_overrides.size())
+    {
+        return false;
+    }
+    for (std::size_t index = 0; index < left.objects.size(); ++index)
+    {
+        if (!SameRecord(left.objects[index], right.objects[index])) return false;
+    }
+    for (std::size_t index = 0; index < left.tombstones.size(); ++index)
+    {
+        if (!SameTombstone(left.tombstones[index], right.tombstones[index])) return false;
+    }
+    for (std::size_t index = 0; index < left.lazy_rules.size(); ++index)
+    {
+        if (!SameLazyRule(left.lazy_rules[index], right.lazy_rules[index])) return false;
+    }
+    for (std::size_t index = 0; index < left.zone_overrides.size(); ++index)
+    {
+        if (!SameZoneOverride(left.zone_overrides[index], right.zone_overrides[index])) return false;
+    }
+    return true;
+}
+
+[[nodiscard]] PersistenceSnapshot MakeBackendSnapshot(std::uint64_t base, epidemic::runtime::PersistenceRevision revision)
+{
+    PersistenceSnapshot snapshot{};
+    snapshot.current_revision = revision;
+    auto object = MakeRecord(base + 1u, base % 2u == 0u ? "state.even" : "state.odd");
+    object.revision = revision;
+    object.condition_hash = base * 11u;
+    snapshot.objects.push_back(object);
+
+    TombstoneRecord tombstone{};
+    tombstone.persistent_id = PersistentObjectId{base + 2u};
+    tombstone.deleted_game_time = GameTimePoint{static_cast<std::int64_t>(base + 20u)};
+    tombstone.reason = Id(base % 2u == 0u ? "cleanup.old" : "cleanup.new");
+    tombstone.revision = revision;
+    snapshot.tombstones.push_back(tombstone);
+
+    auto rule = MakeLazyRule(base + 3u, base + 1u);
+    rule.revision = revision;
+    rule.rule_seed = base * 17u;
+    snapshot.lazy_rules.push_back(rule);
+
+    ZoneOverrideSnapshot zone{};
+    zone.location = MakeLocation(base + 4u, base % 2u == 0u ? "zone/old" : "zone/new");
+    zone.record_ids.push_back(PersistentObjectId{base + 5u});
+    TombstoneRecord zone_tombstone{};
+    zone_tombstone.persistent_id = PersistentObjectId{base + 6u};
+    zone_tombstone.deleted_game_time = GameTimePoint{static_cast<std::int64_t>(base + 30u)};
+    zone_tombstone.reason = Id("zone.cleanup");
+    zone_tombstone.revision = revision;
+    zone.tombstones.push_back(zone_tombstone);
+    auto zone_rule = MakeLazyRule(base + 7u, base + 5u);
+    zone_rule.revision = revision;
+    zone.lazy_rules.push_back(zone_rule);
+    zone.revision = revision;
+    snapshot.zone_overrides.push_back(zone);
+    return snapshot;
 }
 
 [[nodiscard]] bool TestPayloadAndTypedProtectionContracts()
@@ -768,6 +961,154 @@ concept HasOpenTransaction = requires(T& value) { value.OpenTransaction(); };
            snapshot.zone_overrides[1].tombstones[0].persistent_id == PersistentObjectId{20} &&
            snapshot.zone_overrides[1].lazy_rules[0].rule_id == LazyRuleId{9001};
 }
+[[nodiscard]] bool TestQueryAndSnapshotResultsAreDetached()
+{
+    InMemoryPersistenceStore store;
+    auto transaction = store.OpenTransaction();
+    ZoneOverrideSnapshot zone{};
+    zone.location = MakeLocation(11, "zone/detached");
+    zone.record_ids.push_back(PersistentObjectId{7101});
+    zone.lazy_rules.push_back(MakeLazyRule(7102, 7101));
+    if (!transaction || !transaction->UpsertObject(MakeRecord(7101)) || !transaction->UpsertLazyRule(MakeLazyRule(7103, 7101)) ||
+        !transaction->UpsertZoneOverride(zone) || !transaction->Commit())
+    {
+        return false;
+    }
+
+    auto object = store.FindObject(PersistentObjectId{7101});
+    auto rule = store.FindLazyRule(LazyRuleId{7103});
+    auto found_zone = store.FindZoneOverride(zone.location);
+    PersistenceSnapshot snapshot = store.CreateSnapshot();
+    if (!object || !rule || !found_zone || snapshot.objects.empty() || snapshot.lazy_rules.empty() || snapshot.zone_overrides.empty()) return false;
+
+    object->payload.bytes[0] = std::byte{0x7F};
+    rule->rule_seed = 9999u;
+    found_zone->record_ids.clear();
+    snapshot.objects[0].payload.bytes.clear();
+    snapshot.lazy_rules[0].state = LazyRuleState::Expired;
+    snapshot.zone_overrides[0].lazy_rules.clear();
+
+    const auto live_object = store.FindObject(PersistentObjectId{7101});
+    const auto live_rule = store.FindLazyRule(LazyRuleId{7103});
+    const auto live_zone = store.FindZoneOverride(zone.location);
+    return live_object && live_object->payload.bytes.size() == 2u && live_object->payload.bytes[0] == std::byte{0x10} &&
+           live_rule && live_rule->rule_seed == 42u && live_zone && live_zone->record_ids.size() == 1u && live_zone->lazy_rules.size() == 1u;
+}
+
+[[nodiscard]] bool TestZoneOverrideCandidateValidationIsAtomic()
+{
+    InMemoryPersistenceStore store;
+    auto transaction = store.OpenTransaction();
+    ZoneOverrideSnapshot zone{};
+    zone.location = MakeLocation(12, "zone/invalid");
+    zone.record_ids = {PersistentObjectId{7201}, PersistentObjectId{7201}};
+    zone.lazy_rules.push_back(MakeLazyRule(7202, 7201));
+    if (!transaction || !transaction->UpsertZoneOverride(zone)) return false;
+    const auto commit = transaction->Commit();
+    return !commit && commit.GetError().HasCode("persistence.invalid_snapshot") && transaction->GetState() == SaveTransactionState::Failed &&
+           store.GetRevision() == 0u && store.ListZoneOverrides().empty();
+}
+
+[[nodiscard]] bool TestRichSnapshotRoundTripsThroughInMemoryBackend()
+{
+    InMemoryPersistenceBackend backend;
+    const PersistenceSnapshot expected = MakeBackendSnapshot(7300u, 9u);
+    if (!backend.CommitSnapshot(expected, PersistenceDurability::SaveRequired)) return false;
+    const auto loaded = backend.Load();
+    return loaded && SameSnapshot(loaded.Value(), expected);
+}
+
+[[nodiscard]] bool TestDurabilityPoliciesUseSingleAtomicCommitContract()
+{
+    auto memory_backend = std::make_shared<ControlledBackend>();
+    PersistenceOptions memory_options{};
+    memory_options.backend = memory_backend;
+    memory_options.durability = PersistenceDurability::MemoryOnly;
+    const auto memory_services = CreatePersistenceServices(memory_options);
+    if (!memory_services) return false;
+    auto memory_tx = memory_services.Value().store->OpenTransaction();
+    if (!memory_tx || !memory_tx->UpsertObject(MakeRecord(7401)) || !memory_tx->Commit()) return false;
+    if (memory_backend->save_count != 0 || memory_services.Value().store->CollectDirty().size() != 1u) return false;
+
+    auto save_backend = std::make_shared<ControlledBackend>();
+    PersistenceOptions save_options{};
+    save_options.backend = save_backend;
+    save_options.durability = PersistenceDurability::SaveRequired;
+    const auto save_services = CreatePersistenceServices(save_options);
+    if (!save_services) return false;
+    auto save_tx = save_services.Value().store->OpenTransaction();
+    if (!save_tx || !save_tx->UpsertObject(MakeRecord(7402)) || !save_tx->Commit()) return false;
+    if (save_backend->save_count != 1 || save_backend->last_durability != PersistenceDurability::SaveRequired ||
+        !save_services.Value().store->CollectDirty().empty())
+    {
+        return false;
+    }
+
+    auto flush_backend = std::make_shared<ControlledBackend>();
+    PersistenceOptions flush_options{};
+    flush_options.backend = flush_backend;
+    flush_options.durability = PersistenceDurability::SaveAndFlushRequired;
+    const auto flush_services = CreatePersistenceServices(flush_options);
+    if (!flush_services) return false;
+    auto flush_tx = flush_services.Value().store->OpenTransaction();
+    return flush_tx && flush_tx->UpsertObject(MakeRecord(7403)) && flush_tx->Commit() && flush_backend->save_count == 1 &&
+           flush_backend->flush_count == 1 && flush_backend->last_durability == PersistenceDurability::SaveAndFlushRequired &&
+           flush_services.Value().store->CollectDirty().empty();
+}
+
+[[nodiscard]] bool TestInvalidDurabilityRejectedBeforeBackendUse()
+{
+    auto backend = std::make_shared<ControlledBackend>();
+    PersistenceOptions options{};
+    options.backend = backend;
+    options.durability = static_cast<PersistenceDurability>(999);
+    const auto services = CreatePersistenceServices(options);
+    return !services && services.GetError().HasCode("persistence.invalid_durability") && backend->load_count == 0 && backend->save_count == 0;
+}
+
+[[nodiscard]] bool TestInMemoryBackendStrongCommitUnderAllocationFaults()
+{
+    const PersistenceSnapshot previous = MakeBackendSnapshot(7000u, 7u);
+    const PersistenceSnapshot next = MakeBackendSnapshot(8000u, 8u);
+    bool saw_failure = false;
+    bool saw_success = false;
+
+    for (long long fail_after = 0; fail_after < 128; ++fail_after)
+    {
+        InMemoryPersistenceBackend backend;
+        if (!backend.CommitSnapshot(previous, PersistenceDurability::MemoryOnly)) return false;
+
+        bool commit_failed = false;
+        {
+            persistence_test_allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                const auto committed = backend.CommitSnapshot(next, PersistenceDurability::SaveAndFlushRequired);
+                commit_failed = !committed;
+                saw_success = static_cast<bool>(committed);
+            }
+            catch (const std::bad_alloc&)
+            {
+                commit_failed = true;
+            }
+        }
+
+        const auto loaded = backend.Load();
+        if (!loaded) return false;
+        if (commit_failed)
+        {
+            saw_failure = true;
+            if (!SameSnapshot(loaded.Value(), previous)) return false;
+        }
+        else
+        {
+            if (!SameSnapshot(loaded.Value(), next)) return false;
+            break;
+        }
+    }
+    return saw_failure && saw_success;
+}
+
 } // namespace
 
 int main()
@@ -808,6 +1149,12 @@ int main()
         {"CandidateAllocationFailure", TestCandidateAllocationFailureLeavesBackendAndLiveStateOld},
         {"EmptyCommitAndDuplicateSnapshotIds", TestEmptyTransactionCommitAndDuplicateSnapshotIds},
         {"SnapshotOrderIsDeterministic", TestSnapshotOrderIsDeterministic},
+        {"QueryAndSnapshotResultsAreDetached", TestQueryAndSnapshotResultsAreDetached},
+        {"ZoneOverrideCandidateValidationIsAtomic", TestZoneOverrideCandidateValidationIsAtomic},
+        {"RichSnapshotRoundTripsThroughInMemoryBackend", TestRichSnapshotRoundTripsThroughInMemoryBackend},
+        {"DurabilityPoliciesUseSingleAtomicCommitContract", TestDurabilityPoliciesUseSingleAtomicCommitContract},
+        {"InvalidDurabilityRejectedBeforeBackendUse", TestInvalidDurabilityRejectedBeforeBackendUse},
+        {"InMemoryBackendStrongCommitUnderAllocationFaults", TestInMemoryBackendStrongCommitUnderAllocationFaults},
     };
 
     for (const NamedTest& test : tests)

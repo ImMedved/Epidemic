@@ -70,12 +70,12 @@ namespace
 
 [[nodiscard]] bool IsSafeRelativePath(std::string_view path) noexcept
 {
-    if (path.empty() || IsAbsolutePath(path))
+    if (path.empty() || path.find('\0') != std::string_view::npos || IsAbsolutePath(path))
     {
         return false;
     }
 
-    int depth = 0;
+    std::size_t depth = 0;
     std::size_t segment_begin = 0;
     for (std::size_t index = 0; index <= path.size(); ++index)
     {
@@ -94,16 +94,16 @@ namespace
         }
         if (part == "..")
         {
-            --depth;
-            if (depth < 0)
+            if (depth == 0)
             {
                 return false;
             }
+            --depth;
             continue;
         }
         ++depth;
     }
-    return depth >= 0;
+    return true;
 }
 
 [[nodiscard]] bool HasDuplicateDependency(const std::vector<AssetDependency>& dependencies)
@@ -196,6 +196,11 @@ foundation::Result<void> InMemoryAssetCatalog::Seal()
 
 std::optional<AssetMetadata> InMemoryAssetCatalog::FindById(AssetId id) const
 {
+    if (!id.IsValid())
+    {
+        return std::nullopt;
+    }
+
     const auto iterator = assets_.find(id);
     if (iterator == assets_.end())
     {
@@ -208,6 +213,11 @@ std::optional<AssetMetadata> InMemoryAssetCatalog::FindById(AssetId id) const
 std::vector<AssetMetadata> InMemoryAssetCatalog::FindByType(AssetType type) const
 {
     std::vector<AssetMetadata> matches;
+    if (!type.IsValid())
+    {
+        return matches;
+    }
+
     for (const auto& [asset_id, metadata] : assets_)
     {
         (void)asset_id;
@@ -226,6 +236,11 @@ std::vector<AssetMetadata> InMemoryAssetCatalog::FindByType(AssetType type) cons
 std::vector<AssetMetadata> InMemoryAssetCatalog::FindByTag(foundation::StringId tag) const
 {
     std::vector<AssetMetadata> matches;
+    if (!tag.IsValid())
+    {
+        return matches;
+    }
+
     for (const auto& [asset_id, metadata] : assets_)
     {
         (void)asset_id;
@@ -247,7 +262,7 @@ std::vector<AssetMetadata> InMemoryAssetCatalog::FindByTag(foundation::StringId 
 
 bool InMemoryAssetCatalog::Contains(AssetId id) const
 {
-    return assets_.contains(id);
+    return id.IsValid() && assets_.contains(id);
 }
 
 bool InMemoryAssetCatalog::IsSealed() const
@@ -284,7 +299,10 @@ foundation::Result<AssetDependencyManifest> InMemoryAssetCatalog::BuildDependenc
     };
 
     std::unordered_map<AssetId, VisitState> states;
-    std::unordered_set<AssetId> manifest_ids;
+    // A dependency can be reached through multiple parents. Treat dependency
+    // ordering as non-semantic and merge requiredness with logical OR so a
+    // required path can never be weakened by an earlier optional path.
+    std::unordered_map<AssetId, bool> manifest_requirements;
     std::vector<Frame> stack;
     states.emplace(root, VisitState::Visiting);
     stack.push_back(Frame{root, 0});
@@ -315,16 +333,18 @@ foundation::Result<AssetDependencyManifest> InMemoryAssetCatalog::BuildDependenc
                 return foundation::Result<AssetDependencyManifest>::Failure(
                     foundation::Error::Create("asset.missing_dependency", "required asset dependency is not registered"));
             }
-            if (manifest_ids.insert(dependency.asset_id).second)
+            const auto [requirement, inserted] = manifest_requirements.emplace(dependency.asset_id, dependency.required);
+            if (!inserted && dependency.required)
             {
-                manifest.dependencies.push_back(dependency);
+                requirement->second = true;
             }
             continue;
         }
 
-        if (manifest_ids.insert(dependency.asset_id).second)
+        const auto [requirement, inserted] = manifest_requirements.emplace(dependency.asset_id, dependency.required);
+        if (!inserted && dependency.required)
         {
-            manifest.dependencies.push_back(dependency);
+            requirement->second = true;
         }
 
         const auto state = states.find(dependency.asset_id);
@@ -342,6 +362,12 @@ foundation::Result<AssetDependencyManifest> InMemoryAssetCatalog::BuildDependenc
         stack.push_back(Frame{dependency.asset_id, 0});
     }
 
+    manifest.dependencies.reserve(manifest_requirements.size());
+    for (const auto& [asset_id, required] : manifest_requirements)
+    {
+        manifest.dependencies.push_back(AssetDependency{asset_id, required});
+    }
+
     std::sort(manifest.dependencies.begin(), manifest.dependencies.end(), [](const AssetDependency& left, const AssetDependency& right) {
         return left.asset_id.Raw() < right.asset_id.Raw();
     });
@@ -350,14 +376,20 @@ foundation::Result<AssetDependencyManifest> InMemoryAssetCatalog::BuildDependenc
 
 foundation::Result<AssetLocation> InMemoryAssetCatalog::Resolve(AssetId id) const
 {
-    const auto metadata = FindById(id);
-    if (!metadata)
+    if (!id.IsValid())
+    {
+        return foundation::Result<AssetLocation>::Failure(
+            foundation::Error::Create("asset.invalid_id", "asset location resolve id must be valid"));
+    }
+
+    const auto iterator = assets_.find(id);
+    if (iterator == assets_.end())
     {
         return foundation::Result<AssetLocation>::Failure(
             foundation::Error::Create("asset.not_found", "asset location not registered"));
     }
 
-    return foundation::Result<AssetLocation>::Success(metadata->location);
+    return foundation::Result<AssetLocation>::Success(iterator->second.location);
 }
 
 foundation::Result<AssetMetadata> InMemoryAssetCatalog::ValidateAndNormalize(const AssetMetadata& metadata) const

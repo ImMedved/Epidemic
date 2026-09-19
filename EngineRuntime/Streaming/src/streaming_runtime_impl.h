@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -67,6 +68,16 @@ class StreamingRuntime final : public IStreamingRuntime, public IStreamingQuery,
         bool active = true;
     };
 
+    struct PendingStepResult
+    {
+        std::size_t cursor = 0;
+        RuntimeBudget accepted_budget{};
+        StreamingStepResult result{};
+    };
+
+    static_assert(std::is_nothrow_move_constructible_v<PendingStepResult>);
+    static_assert(std::is_nothrow_move_assignable_v<PendingStepResult>);
+
     struct RequestRecord
     {
         StreamingRequest request{};
@@ -84,6 +95,7 @@ class StreamingRuntime final : public IStreamingRuntime, public IStreamingQuery,
         bool cancellation_counted = false;
         std::uint64_t completion_sequence = 0;
         std::size_t processed_bytes = 0;
+        std::optional<PendingStepResult> pending_step_result;
         std::optional<StreamingRequestId> predecessor;
         std::optional<StreamingRequestId> successor;
         std::unordered_map<StreamingDemandId, DemandRecord> demands;

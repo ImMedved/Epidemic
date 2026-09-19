@@ -5,14 +5,122 @@
 
 #include "Epidemic/Foundation/error.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+
+namespace streaming_allocation_fault
+{
+std::atomic<long long> allocations_before_failure{-1};
+
+[[nodiscard]] bool IsIgnoredBookkeepingAllocation(std::size_t size) noexcept
+{
+#if defined(_MSC_VER) && defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL > 0
+    if (size == sizeof(void*) * 2u)
+    {
+        return true;
+    }
+#endif
+    (void)size;
+    return false;
+}
+
+[[nodiscard]] bool ShouldFail(std::size_t size) noexcept
+{
+    if (IsIgnoredBookkeepingAllocation(size))
+    {
+        return false;
+    }
+    auto remaining = allocations_before_failure.load(std::memory_order_relaxed);
+    while (remaining >= 0)
+    {
+        if (remaining == 0)
+        {
+            allocations_before_failure.store(-1, std::memory_order_relaxed);
+            return true;
+        }
+        if (allocations_before_failure.compare_exchange_weak(remaining, remaining - 1, std::memory_order_relaxed))
+        {
+            return false;
+        }
+    }
+    return false;
+}
+
+class FailAfter final
+{
+  public:
+    explicit FailAfter(long long successful_allocations_before_failure) noexcept
+    {
+        allocations_before_failure.store(successful_allocations_before_failure, std::memory_order_relaxed);
+    }
+
+    ~FailAfter()
+    {
+        allocations_before_failure.store(-1, std::memory_order_relaxed);
+    }
+
+    FailAfter(const FailAfter&) = delete;
+    FailAfter& operator=(const FailAfter&) = delete;
+};
+} // namespace streaming_allocation_fault
+
+#if defined(_MSC_VER)
+#define EPIDEMIC_STREAMING_TEST_NOINLINE __declspec(noinline)
+#elif defined(__GNUC__) || defined(__clang__)
+#define EPIDEMIC_STREAMING_TEST_NOINLINE __attribute__((noinline))
+#else
+#define EPIDEMIC_STREAMING_TEST_NOINLINE
+#endif
+
+void* operator new(std::size_t size)
+{
+    if (streaming_allocation_fault::ShouldFail(size))
+    {
+        throw std::bad_alloc{};
+    }
+    if (void* memory = std::malloc(size == 0 ? 1 : size))
+    {
+        return memory;
+    }
+    throw std::bad_alloc{};
+}
+
+void* operator new[](std::size_t size)
+{
+    return ::operator new(size);
+}
+
+EPIDEMIC_STREAMING_TEST_NOINLINE void operator delete(void* memory) noexcept
+{
+    std::free(memory);
+}
+
+EPIDEMIC_STREAMING_TEST_NOINLINE void operator delete[](void* memory) noexcept
+{
+    std::free(memory);
+}
+
+EPIDEMIC_STREAMING_TEST_NOINLINE void operator delete(void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
+
+EPIDEMIC_STREAMING_TEST_NOINLINE void operator delete[](void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
+
+#undef EPIDEMIC_STREAMING_TEST_NOINLINE
 
 namespace
 {
@@ -82,9 +190,12 @@ class FixedPriorityResolver final : public IStreamingPriorityResolver
 
     [[nodiscard]] StreamingPriorityClass ResolvePriority(ChunkId chunk) const override
     {
+        if (throw_on_resolve) throw std::runtime_error("priority resolver threw");
         const auto iterator = priorities_.find(chunk);
         return iterator == priorities_.end() ? StreamingPriorityClass::Normal : iterator->second;
     }
+
+    bool throw_on_resolve = false;
 
   private:
     std::unordered_map<ChunkId, StreamingPriorityClass> priorities_;
@@ -1336,7 +1447,273 @@ bool TestStreamingIdentityAllocatorExhaustionBoundaries()
         const auto p2 = runtime.GetProgress(d.Value().request);
         if (second_tick.failures.empty() || !p2 || p2->revision != std::numeric_limits<std::uint64_t>::max()) return false;
     }
+    {
+        StreamingRuntime runtime;
+        runtime.SetNextRequestGenerationForTesting(0);
+        const auto r = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{834}}}, StreamingPriorityClass::Normal);
+        if (r || !r.GetError().HasCode("streaming.id_overflow") || runtime.RecordCount() != 0u) return false;
+    }
+    {
+        StreamingRuntime runtime;
+        runtime.SetNextDemandGenerationForTesting(0);
+        const auto r = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{835}}}, StreamingPriorityClass::Normal);
+        if (r || !r.GetError().HasCode("streaming.id_overflow") || runtime.RecordCount() != 0u) return false;
+    }
+    {
+        StreamingRuntime runtime;
+        runtime.SetNextRequestGenerationForTesting(std::numeric_limits<std::uint32_t>::max());
+        const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{836}}}, StreamingPriorityClass::Normal);
+        if (!first || first.Value().request.generation != std::numeric_limits<std::uint32_t>::max()) return false;
+        const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{837}}}, StreamingPriorityClass::Normal);
+        if (second || !second.GetError().HasCode("streaming.id_overflow") || runtime.RecordCount() != 1u) return false;
+    }
+    {
+        StreamingRuntime runtime;
+        runtime.SetNextDemandGenerationForTesting(std::numeric_limits<std::uint32_t>::max());
+        const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{838}}}, StreamingPriorityClass::Normal);
+        if (!first || first.Value().generation != std::numeric_limits<std::uint32_t>::max()) return false;
+        const auto before = runtime.GetProgress(first.Value().request);
+        const auto second = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{838}}}, StreamingPriorityClass::High);
+        const auto after = runtime.GetProgress(first.Value().request);
+        if (second || !second.GetError().HasCode("streaming.id_overflow") || !before || !after ||
+            before->demand_count != after->demand_count) return false;
+    }
     return true;
+}
+
+bool TestRemainingDependencyPortExceptionsAreContained()
+{
+    {
+        FixedPriorityResolver resolver;
+        resolver.throw_on_resolve = true;
+        StreamingRuntime runtime({}, &resolver);
+        const auto request = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{839}}}, StreamingPriorityClass::Normal);
+        if (request || !request.GetError().HasCode("streaming.priority_exception")) return false;
+    }
+    {
+        auto resources = std::make_shared<ResourceTracker>();
+        auto residency = std::make_shared<ResidencyTracker>();
+        resources->throw_release = true;
+        StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency, {}, {}, resources));
+        const ChunkId chunk{840};
+        const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+        if (!demand || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(demand.Value())) return false;
+        (void)runtime.Tick();
+        const auto failed = runtime.Tick();
+        if (failed.failures.size() != 1u || !failed.failures.front().error.HasCode("streaming.resource_exception") ||
+            runtime.GetChunkState(chunk) != StreamingState::Unloading) return false;
+        resources->throw_release = false;
+        const auto retried = runtime.Tick();
+        if (!retried.failures.empty() || resources->releases != 2 || residency->unloads != 1 ||
+            runtime.GetChunkState(chunk) != StreamingState::Unloaded) return false;
+    }
+    {
+        auto resources = std::make_shared<ResourceTracker>();
+        auto residency = std::make_shared<ResidencyTracker>();
+        residency->throw_unload = true;
+        StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency, {}, {}, resources));
+        const ChunkId chunk{841};
+        const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+        if (!demand || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(demand.Value())) return false;
+        (void)runtime.Tick();
+        const auto failed = runtime.Tick();
+        if (failed.failures.size() != 1u || !failed.failures.front().error.HasCode("streaming.residency_exception") ||
+            resources->releases != 1 || residency->unloads != 1 || runtime.GetChunkState(chunk) != StreamingState::Unloading) return false;
+        residency->throw_unload = false;
+        const auto retried = runtime.Tick();
+        return retried.failures.empty() && resources->releases == 1 && residency->unloads == 2 &&
+               runtime.GetChunkState(chunk) == StreamingState::Unloaded;
+    }
+}
+
+bool TestRequestAllocationFaultSweepPreservesPublishedState()
+{
+    bool saw_failure = false;
+    bool saw_success = false;
+    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    {
+        StreamingRuntime runtime;
+        runtime.CleanupCompletedRecords(1);
+        const ChunkId recycled_chunk{842};
+        const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{recycled_chunk}}, StreamingPriorityClass::Normal);
+        const auto other = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{843}}}, StreamingPriorityClass::Normal);
+        if (!first || !other || !runtime.ReleaseDemand(first.Value()) || !runtime.ReleaseDemand(other.Value())) return false;
+        (void)runtime.Tick();
+        if (runtime.RecordCount() != 1u || runtime.GetChunkState(recycled_chunk) != StreamingState::Cancelled) return false;
+
+        const std::size_t before_records = runtime.RecordCount();
+        const std::uint64_t before_request = runtime.NextRequestValueForTesting();
+        const std::uint64_t before_demand = runtime.NextDemandValueForTesting();
+        bool bad_alloc_seen = false;
+        Result<StreamingDemandHandle> requested = Result<StreamingDemandHandle>::Failure(
+            epidemic::foundation::Error::Create("test.unset", "request was not attempted"));
+        {
+            streaming_allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                requested = runtime.Request(StreamingTarget{ChunkStreamingTarget{recycled_chunk}}, StreamingPriorityClass::Normal);
+            }
+            catch (const std::bad_alloc&)
+            {
+                bad_alloc_seen = true;
+            }
+        }
+
+        if (!bad_alloc_seen && requested)
+        {
+            saw_success = true;
+            break;
+        }
+        saw_failure = true;
+        if (runtime.RecordCount() != before_records || runtime.GetChunkState(recycled_chunk) != StreamingState::Cancelled ||
+            runtime.NextRequestValueForTesting() != before_request || runtime.NextDemandValueForTesting() != before_demand)
+        {
+            return false;
+        }
+    }
+    return saw_failure && saw_success;
+}
+
+bool TestReactivationAllocationFaultSweepPreservesDemandOwnership()
+{
+    bool saw_failure = false;
+    bool saw_success = false;
+    for (long long fail_after = 0; fail_after < 24; ++fail_after)
+    {
+        auto residency = std::make_shared<InMemoryResidencyController>();
+        StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency));
+        const ChunkId chunk{844};
+        const auto original = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+        if (!original || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(original.Value())) return false;
+        const auto before = runtime.GetProgress(original.Value().request);
+        if (!before || before->state != StreamingState::Deactivating || before->demand_count != 0u) return false;
+
+        bool bad_alloc_seen = false;
+        Result<StreamingDemandHandle> requested = Result<StreamingDemandHandle>::Failure(
+            epidemic::foundation::Error::Create("test.unset", "request was not attempted"));
+        {
+            streaming_allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                requested = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+            }
+            catch (const std::bad_alloc&)
+            {
+                bad_alloc_seen = true;
+            }
+        }
+
+        if (!bad_alloc_seen && requested)
+        {
+            saw_success = true;
+            break;
+        }
+        saw_failure = true;
+        const auto after = runtime.GetProgress(original.Value().request);
+        if (!after || after->state != StreamingState::Deactivating || after->demand_count != 0u ||
+            runtime.GetChunkState(chunk) != StreamingState::Deactivating)
+        {
+            return false;
+        }
+    }
+    return saw_failure && saw_success;
+}
+
+bool SameStatistics(const StreamingStatistics& left, const StreamingStatistics& right) noexcept
+{
+    return left.requested == right.requested && left.cancelled == right.cancelled &&
+           left.committed == right.committed && left.rolled_back == right.rolled_back &&
+           left.unloaded == right.unloaded && left.rollback_failed == right.rollback_failed &&
+           left.budget_violations == right.budget_violations && left.failed == right.failed;
+}
+
+bool SameProgress(const epidemic::runtime::streaming::StreamingProgress& left,
+                  const epidemic::runtime::streaming::StreamingProgress& right) noexcept
+{
+    return left.id == right.id && left.handle == right.handle && left.state == right.state &&
+           left.progress == right.progress && left.demand_count == right.demand_count &&
+           left.revision == right.revision && left.processed_bytes == right.processed_bytes;
+}
+
+bool TestTickAllocationPreflightFailuresPropagateWithoutMutation()
+{
+    for (const long long fail_after : {0LL, 1LL})
+    {
+        StreamingRuntime runtime;
+        const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{829 + static_cast<std::uint64_t>(fail_after)}}},
+                                            StreamingPriorityClass::Normal);
+        if (!demand) return false;
+        const auto before_progress = runtime.GetProgress(demand.Value().request);
+        const auto before_statistics = runtime.GetStatistics();
+        if (!before_progress) return false;
+
+        bool bad_alloc_seen = false;
+        {
+            streaming_allocation_fault::FailAfter fault(fail_after);
+            try
+            {
+                (void)runtime.Tick();
+            }
+            catch (const std::bad_alloc&)
+            {
+                bad_alloc_seen = true;
+            }
+        }
+
+        const auto after_progress = runtime.GetProgress(demand.Value().request);
+        const auto after_statistics = runtime.GetStatistics();
+        if (!bad_alloc_seen || !after_progress || !SameProgress(*before_progress, *after_progress) ||
+            !SameStatistics(before_statistics, after_statistics))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool TestAcceptedStepResultIsNotExecutedAgainAfterLocalCommitFailure()
+{
+    auto source = std::make_shared<PlanSource>();
+    source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::PrepareData, 5}};
+    StreamingRuntime runtime(MakeDependencies(source));
+    const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{831}}}, StreamingPriorityClass::Normal);
+    if (!demand) return false;
+
+    (void)runtime.Tick(); // Requested -> Queued.
+    (void)runtime.Tick(); // Queued -> Loading.
+    if (!runtime.SetRevisionForTesting(demand.Value().request, std::numeric_limits<std::uint64_t>::max())) return false;
+
+    const auto failed = runtime.Tick();
+    const auto after_failure = runtime.GetProgress(demand.Value().request);
+    if (failed.failures.size() != 1u || source->executed.size() != 1u || !after_failure ||
+        after_failure->state != StreamingState::Loading || after_failure->processed_bytes != 0u)
+    {
+        return false;
+    }
+
+    if (!runtime.SetRevisionForTesting(demand.Value().request, 2u)) return false;
+    const auto retried = runtime.Tick();
+    const auto after_retry = runtime.GetProgress(demand.Value().request);
+    return retried.failures.empty() && retried.processed_bytes == 5u && source->executed.size() == 1u &&
+           after_retry && after_retry->state == StreamingState::Loaded && after_retry->processed_bytes == 5u;
+}
+
+bool TestCommitStepMustBeTerminalAndUniqueWhenPresent()
+{
+    auto source = std::make_shared<PlanSource>();
+    source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::Commit, 1},
+                          StreamingPlanStepRecord{StreamingPlanStep::PrepareData, 1}};
+    StreamingRuntime runtime(MakeDependencies(source, std::make_shared<CommitTarget>()));
+    const auto early_commit = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{832}}}, StreamingPriorityClass::Normal);
+    if (early_commit || !early_commit.GetError().HasCode("streaming.invalid_plan") || runtime.RecordCount() != 0u)
+    {
+        return false;
+    }
+
+    source->plan.steps = {StreamingPlanStepRecord{StreamingPlanStep::Commit, 1},
+                          StreamingPlanStepRecord{StreamingPlanStep::Commit, 1}};
+    const auto duplicate_commit = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{833}}}, StreamingPriorityClass::Normal);
+    return !duplicate_commit && duplicate_commit.GetError().HasCode("streaming.invalid_plan") && runtime.RecordCount() == 0u;
 }
 
 bool TestLargeStepReceivesAvailableBudget()
@@ -1415,6 +1792,12 @@ int main()
     if (!TestWaitingSuccessorCancellationOverflowPreservesGraph()) return 41;
     if (!TestAllStreamingExtensionExceptionsStayInsideResultBoundary()) return 42;
     if (!TestStreamingIdentityAllocatorExhaustionBoundaries()) return 43;
+    if (!TestRemainingDependencyPortExceptionsAreContained()) return 47;
+    if (!TestRequestAllocationFaultSweepPreservesPublishedState()) return 48;
+    if (!TestReactivationAllocationFaultSweepPreservesDemandOwnership()) return 49;
+    if (!TestTickAllocationPreflightFailuresPropagateWithoutMutation()) return 44;
+    if (!TestAcceptedStepResultIsNotExecutedAgainAfterLocalCommitFailure()) return 45;
+    if (!TestCommitStepMustBeTerminalAndUniqueWhenPresent()) return 46;
     if (!TestLargeStepReceivesAvailableBudget()) return 22;
     return 0;
 }

@@ -9,10 +9,17 @@
 #include <exception>
 #include <limits>
 #include <numeric>
+#include <new>
+#include <type_traits>
 #include <utility>
 
 namespace epidemic::runtime::navigation
 {
+static_assert(std::is_nothrow_move_constructible_v<PathResult>);
+static_assert(std::is_nothrow_move_assignable_v<PathResult>);
+static_assert(std::is_nothrow_move_constructible_v<foundation::Result<PathResult>>);
+static_assert(std::is_nothrow_move_assignable_v<foundation::Result<PathResult>>);
+
 namespace
 {
 [[nodiscard]] foundation::Error NavError(std::string_view code, std::string_view message)
@@ -246,18 +253,23 @@ foundation::Result<void> NavigationRuntime::CancelPath(PathQueryHandle handle)
 
     query->result.state = PathQueryState::Cancelled;
     query->result.points.clear();
+    query->pending_backend_result.reset();
+    query->pending_reference_plan.reset();
     query->result.revision = NextRevisionValue(query->result.revision);
     return foundation::Result<void>::Success();
 }
 
 std::size_t NavigationRuntime::Tick(RuntimeBudget budget)
 {
-    PurgeReleasedAndExpired();
+    const auto purge_work_list = BuildPurgeWorkList();
+    const auto query_work_list = BuildQueryWorkList();
+    PurgeReleasedAndExpired(purge_work_list);
+
     const auto started_at = std::chrono::steady_clock::now();
     const std::size_t limit = BudgetLimit(budget, queries_.size());
     std::size_t transitioned = 0;
 
-    for (const PathQueryId id : BuildQueryWorkList())
+    for (const PathQueryId id : query_work_list)
     {
         if (transitioned >= limit)
         {
@@ -331,6 +343,11 @@ foundation::Result<PathQueryState> NavigationRuntime::GetPathState(PathQueryHand
     {
         return foundation::Result<PathQueryState>::Success(PathQueryState::Stale);
     }
+    if (query->result.state == PathQueryState::Failed || query->result.state == PathQueryState::Cancelled ||
+        query->result.state == PathQueryState::Stale)
+    {
+        return foundation::Result<PathQueryState>::Success(query->result.state);
+    }
 
     const auto changed = HasSourceRevisionChanged(*query);
     if (!changed)
@@ -354,21 +371,26 @@ foundation::Result<PathResult> NavigationRuntime::GetPathResult(PathQueryHandle 
             foundation::Error::Create("navigation.stale_result", "path result is stale or released"));
     }
 
+    if (query->released || HasExpired(*query) || query->result.state == PathQueryState::Stale)
+    {
+        return foundation::Result<PathResult>::Failure(
+            foundation::Error::Create("navigation.stale_result", "path result is stale or released"));
+    }
+    if (query->result.state != PathQueryState::Completed)
+    {
+        return foundation::Result<PathResult>::Failure(
+            foundation::Error::Create("navigation.query_not_completed", "path query has not completed"));
+    }
+
     const auto changed = HasSourceRevisionChanged(*query);
     if (!changed)
     {
         return foundation::Result<PathResult>::Failure(changed.GetError());
     }
-    if (query->released || HasExpired(*query) || changed.Value() || query->result.state == PathQueryState::Stale)
+    if (changed.Value())
     {
         return foundation::Result<PathResult>::Failure(
             foundation::Error::Create("navigation.stale_result", "path result is stale or released"));
-    }
-
-    if (query->result.state != PathQueryState::Completed)
-    {
-        return foundation::Result<PathResult>::Failure(
-            foundation::Error::Create("navigation.query_not_completed", "path query has not completed"));
     }
 
     return foundation::Result<PathResult>::Success(query->result);
@@ -475,6 +497,12 @@ std::vector<NavTileId> NavigationRuntime::BuildTileWorkList() const
 
 std::vector<PathQueryId> NavigationRuntime::BuildQueryWorkList() const
 {
+    if (fail_next_query_work_list_allocation_for_testing_)
+    {
+        fail_next_query_work_list_allocation_for_testing_ = false;
+        throw std::bad_alloc{};
+    }
+
     std::vector<PathQueryId> work_list;
     work_list.reserve(queries_.size());
     for (const auto& [id, query] : queries_)
@@ -490,6 +518,23 @@ std::vector<PathQueryId> NavigationRuntime::BuildQueryWorkList() const
         return left.value < right.value;
     });
     return work_list;
+}
+
+std::vector<PathQueryId> NavigationRuntime::BuildPurgeWorkList() const
+{
+    std::vector<PathQueryId> removed;
+    removed.reserve(queries_.size());
+    for (const auto& [id, query] : queries_)
+    {
+        if (query.released || HasExpired(query))
+        {
+            removed.push_back(id);
+        }
+    }
+    std::sort(removed.begin(), removed.end(), [](PathQueryId left, PathQueryId right) {
+        return left.value < right.value;
+    });
+    return removed;
 }
 
 bool NavigationRuntime::HasExpired(const QueryRecord& query) const
@@ -593,40 +638,18 @@ std::uint64_t NavigationRuntime::NextRevisionValue(std::uint64_t revision) noexc
     return revision + 1;
 }
 
-std::size_t NavigationRuntime::EstimatedPathBytes(const QueryRecord& query) const
+std::size_t NavigationRuntime::PathByteSize(std::size_t point_count) noexcept
 {
-    std::size_t points = 2;
-    const INavigationObstacleSource* obstacle_source = ObstacleSource();
-    try
+    if (point_count > std::numeric_limits<std::size_t>::max() / sizeof(Vec3))
     {
-        if (obstacle_source != nullptr)
-        {
-            for (const DynamicObstacle& obstacle : obstacle_source->ObstaclesForRegion(query.request.region))
-            {
-                if (obstacle.blocks_traversal)
-                {
-                    points = 3;
-                    break;
-                }
-            }
-        }
-        else if (const INavCostProvider* costs = CostProvider();
-                 costs != nullptr && costs->GetTraversalCost(NavCostQuery{query.request.region, {}, query.request.start}) > 1.0f)
-        {
-            points = 3;
-        }
+        return std::numeric_limits<std::size_t>::max();
     }
-    catch (...)
-    {
-        points = 3;
-    }
-
-    return points * sizeof(Vec3);
+    return point_count * sizeof(Vec3);
 }
 
-bool NavigationRuntime::HasPathByteBudget(RuntimeBudget budget, const QueryRecord& query) const
+bool NavigationRuntime::HasPathByteBudget(RuntimeBudget budget, std::size_t point_count) noexcept
 {
-    return !budget.HasByteBudget() || EstimatedPathBytes(query) <= budget.max_bytes;
+    return !budget.HasByteBudget() || PathByteSize(point_count) <= budget.max_bytes;
 }
 
 bool NavigationRuntime::IsTerminal(PathQueryState state) noexcept
@@ -697,24 +720,14 @@ void NavigationRuntime::MarkStale(QueryRecord& query)
     {
         query.result.state = PathQueryState::Stale;
         query.result.points.clear();
+        query.pending_backend_result.reset();
+        query.pending_reference_plan.reset();
         query.result.revision = NextRevisionValue(query.result.revision);
     }
 }
 
-void NavigationRuntime::PurgeReleasedAndExpired()
+void NavigationRuntime::PurgeReleasedAndExpired(const std::vector<PathQueryId>& removed) noexcept
 {
-    std::vector<PathQueryId> removed;
-    removed.reserve(queries_.size());
-    for (const auto& [id, query] : queries_)
-    {
-        if (query.released || HasExpired(query))
-        {
-            removed.push_back(id);
-        }
-    }
-    std::sort(removed.begin(), removed.end(), [](PathQueryId left, PathQueryId right) {
-        return left.value < right.value;
-    });
     for (PathQueryId id : removed)
     {
         queries_.erase(id);
@@ -723,99 +736,193 @@ void NavigationRuntime::PurgeReleasedAndExpired()
 
 bool NavigationRuntime::CompleteQuery(QueryRecord& query, RuntimeBudget budget)
 {
-    if (!HasPathByteBudget(budget, query))
+    if (auto revision = PreflightResultRevision(query); !revision)
     {
         return false;
     }
 
     if (const INavigationBackend* backend = Backend(); backend != nullptr)
     {
-        try
+        if (!query.pending_backend_result.has_value())
         {
-            const auto result = backend->BuildPath(query.request, NavigationRevision{query.result.nav_revision});
-            if (result)
+            foundation::Result<PathResult> backend_result = NavFailure<PathResult>(
+                "navigation.backend_failed", "navigation backend did not produce a result");
+            try
             {
-                if (!IsValidPathResult(query.request, result.Value(), NavigationRevision{query.result.nav_revision}))
-                {
-                    return static_cast<bool>(CompleteWithFailure(query));
-                }
-                return static_cast<bool>(CompleteWithResult(query, result.Value()));
+                backend_result = backend->BuildPath(query.request, NavigationRevision{query.result.nav_revision});
             }
-            return static_cast<bool>(CompleteWithFailure(query));
+            catch (const std::exception&)
+            {
+                return static_cast<bool>(CompleteWithFailure(query));
+            }
+            catch (...)
+            {
+                return static_cast<bool>(CompleteWithFailure(query));
+            }
+
+            if (!backend_result)
+            {
+                return static_cast<bool>(CompleteWithFailure(query));
+            }
+            if (!IsValidPathResult(query.request, backend_result.Value(), NavigationRevision{query.result.nav_revision}))
+            {
+                return static_cast<bool>(CompleteWithFailure(query));
+            }
+
+            query.pending_backend_result.emplace(std::move(backend_result.Value()));
+            if (fail_after_backend_success_for_testing_)
+            {
+                fail_after_backend_success_for_testing_ = false;
+                throw std::bad_alloc{};
+            }
         }
-        catch (...)
+
+        if (!HasPathByteBudget(budget, query.pending_backend_result->points.size()))
         {
-            return static_cast<bool>(CompleteWithFailure(query));
+            return false;
         }
+
+        const auto completed = CompleteWithResult(query, std::move(query.pending_backend_result.value()));
+        if (completed)
+        {
+            query.pending_backend_result.reset();
+        }
+        return static_cast<bool>(completed);
     }
 
-    const auto result = BuildReferenceResult(query);
+    if (!query.pending_reference_plan.has_value())
+    {
+        const auto plan = PrepareReferencePathPlan(query);
+        if (!plan)
+        {
+            return static_cast<bool>(CompleteWithFailure(query));
+        }
+        query.pending_reference_plan.emplace(plan.Value());
+    }
+
+    if (!HasPathByteBudget(budget, query.pending_reference_plan->point_count))
+    {
+        return false;
+    }
+
+    auto result = BuildReferenceResult(query, query.pending_reference_plan.value());
     if (!result)
     {
         return static_cast<bool>(CompleteWithFailure(query));
     }
-    return static_cast<bool>(CompleteWithResult(query, result.Value()));
+
+    PathResult staged = std::move(result.Value());
+    const auto completed = CompleteWithResult(query, std::move(staged));
+    if (completed)
+    {
+        query.pending_reference_plan.reset();
+    }
+    return static_cast<bool>(completed);
 }
 
-foundation::Result<PathResult> NavigationRuntime::BuildReferenceResult(const QueryRecord& query) const
+foundation::Result<NavigationRuntime::ReferencePathPlan> NavigationRuntime::PrepareReferencePathPlan(const QueryRecord& query) const
 {
-    try
-    {
-        PathResult result{};
-        result.handle = query.handle;
-        result.state = PathQueryState::Completed;
-        result.nav_revision = query.result.nav_revision;
-        result.revision = NextRevisionValue(query.result.revision);
-        result.points.reserve(3);
+    ReferencePathPlan plan{};
 
-        const INavigationObstacleSource* obstacle_source = ObstacleSource();
-        if (obstacle_source != nullptr)
+    if (const INavigationObstacleSource* obstacle_source = ObstacleSource(); obstacle_source != nullptr)
+    {
+        std::span<const DynamicObstacle> obstacles;
+        try
         {
-            for (const DynamicObstacle& obstacle : obstacle_source->ObstaclesForRegion(query.request.region))
+            obstacles = obstacle_source->ObstaclesForRegion(query.request.region);
+        }
+        catch (const std::exception& error)
+        {
+            return foundation::Result<ReferencePathPlan>::Failure(
+                foundation::Error::Create("navigation.provider_exception", "navigation obstacle source threw", error.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<ReferencePathPlan>::Failure(
+                foundation::Error::Create("navigation.provider_exception", "navigation obstacle source threw an unknown exception"));
+        }
+
+        for (const DynamicObstacle& obstacle : obstacles)
+        {
+            if (obstacle.blocks_traversal)
             {
-                if (obstacle.blocks_traversal)
+                const Vec3 midpoint{obstacle.bounds.max.x, query.request.start.y, obstacle.bounds.max.z};
+                if (!IsFinitePoint(midpoint))
                 {
-                    Vec3 midpoint{obstacle.bounds.max.x, query.request.start.y, obstacle.bounds.max.z};
-                    if (!IsFinitePoint(midpoint))
-                    {
-                        return NavFailure<PathResult>("navigation.invalid_coordinate", "reference path generated a non-finite point");
-                    }
-                    result.points.push_back(query.request.start);
-                    result.points.push_back(midpoint);
-                    result.points.push_back(query.request.target);
-                    return foundation::Result<PathResult>::Success(std::move(result));
+                    return NavFailure<ReferencePathPlan>(
+                        "navigation.invalid_coordinate", "reference path generated a non-finite obstacle detour point");
                 }
+                plan.point_count = 3;
+                plan.midpoint = midpoint;
+                return foundation::Result<ReferencePathPlan>::Success(plan);
             }
         }
+    }
 
-        const INavCostProvider* costs = CostProvider();
-        const float cost = costs != nullptr ? costs->GetTraversalCost(NavCostQuery{query.request.region, {}, query.request.start}) : 1.0f;
-        result.points.push_back(query.request.start);
-        if (cost > 1.0f)
+    float cost = 1.0f;
+    if (const INavCostProvider* costs = CostProvider(); costs != nullptr)
+    {
+        try
         {
-            const Vec3 midpoint = SafeMidpoint(query.request.start, query.request.target);
-            if (!IsFinitePoint(midpoint))
-            {
-                return NavFailure<PathResult>("navigation.invalid_coordinate", "reference path generated a non-finite point");
-            }
-            result.points.push_back(midpoint);
+            cost = costs->GetTraversalCost(NavCostQuery{query.request.region, {}, query.request.start});
         }
-        result.points.push_back(query.request.target);
-        return foundation::Result<PathResult>::Success(std::move(result));
+        catch (const std::exception& error)
+        {
+            return foundation::Result<ReferencePathPlan>::Failure(
+                foundation::Error::Create("navigation.provider_exception", "navigation cost provider threw", error.what()));
+        }
+        catch (...)
+        {
+            return foundation::Result<ReferencePathPlan>::Failure(
+                foundation::Error::Create("navigation.provider_exception", "navigation cost provider threw an unknown exception"));
+        }
     }
-    catch (const std::exception& error)
+
+    if (!std::isfinite(cost) || cost < 0.0f)
     {
-        return foundation::Result<PathResult>::Failure(
-            foundation::Error::Create("navigation.provider_exception", "navigation provider threw during reference path build", error.what()));
+        return NavFailure<ReferencePathPlan>(
+            "navigation.invalid_provider_data", "navigation traversal cost must be finite and non-negative");
     }
-    catch (...)
+    if (cost > 1.0f)
     {
-        return foundation::Result<PathResult>::Failure(
-            foundation::Error::Create("navigation.provider_exception", "navigation provider threw an unknown exception during reference path build"));
+        const Vec3 midpoint = SafeMidpoint(query.request.start, query.request.target);
+        if (!IsFinitePoint(midpoint))
+        {
+            return NavFailure<ReferencePathPlan>(
+                "navigation.invalid_coordinate", "reference path generated a non-finite cost midpoint");
+        }
+        plan.point_count = 3;
+        plan.midpoint = midpoint;
     }
+
+    return foundation::Result<ReferencePathPlan>::Success(plan);
 }
 
-foundation::Result<void> NavigationRuntime::CompleteWithResult(QueryRecord& query, PathResult result)
+foundation::Result<PathResult> NavigationRuntime::BuildReferenceResult(
+    const QueryRecord& query, const ReferencePathPlan& plan) const
+{
+    if (fail_next_reference_result_allocation_for_testing_)
+    {
+        fail_next_reference_result_allocation_for_testing_ = false;
+        throw std::bad_alloc{};
+    }
+
+    PathResult result{};
+    result.handle = query.handle;
+    result.state = PathQueryState::Completed;
+    result.nav_revision = query.result.nav_revision;
+    result.revision = NextRevisionValue(query.result.revision);
+    result.points.reserve(plan.point_count);
+    result.points.push_back(query.request.start);
+    if (plan.midpoint.has_value())
+    {
+        result.points.push_back(plan.midpoint.value());
+    }
+    result.points.push_back(query.request.target);
+    return foundation::Result<PathResult>::Success(std::move(result));
+}
+
+foundation::Result<void> NavigationRuntime::CompleteWithResult(QueryRecord& query, PathResult&& result)
 {
     if (auto revision = PreflightResultRevision(query); !revision)
     {
@@ -838,6 +945,8 @@ foundation::Result<void> NavigationRuntime::CompleteWithFailure(QueryRecord& que
     }
     query.result.state = PathQueryState::Failed;
     query.result.points.clear();
+    query.pending_backend_result.reset();
+    query.pending_reference_plan.reset();
     query.result.revision = NextRevisionValue(query.result.revision);
     return foundation::Result<void>::Success();
 }

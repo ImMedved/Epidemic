@@ -8,6 +8,7 @@
 #include "Epidemic/Runtime/Time/time_snapshot.h"
 
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -34,6 +35,25 @@ struct TimeOptions
     std::vector<PhaseBoundary> phase_boundaries{};
 };
 
+// Persistence-complete checkpoint for the authoritative Runtime clock.
+//
+// TimeSnapshot is intentionally frame-facing/observational and does not contain
+// the fractional accumulator remainder. Persist this checkpoint instead. The
+// configuration fields identify the immutable clock configuration that must
+// match the destination runtime before RestoreCheckpoint() may commit.
+struct TimeCheckpoint
+{
+    GameTimePoint now{};
+    TimeScale time_scale{};
+    bool paused = false;
+    std::int64_t tick_remainder_numerator = 0;
+    std::uint64_t revision = 0;
+
+    std::int64_t game_ticks_per_real_second = 1;
+    CalendarDefinition calendar{};
+    std::vector<PhaseBoundary> phase_boundaries{};
+};
+
 class IGameClock
 {
   public:
@@ -49,6 +69,11 @@ class ITimeRuntime
   public:
     virtual ~ITimeRuntime() = default;
 
+    // CaptureCheckpoint may allocate while copying immutable configuration identity.
+    [[nodiscard]] virtual TimeCheckpoint CaptureCheckpoint() const = 0;
+    // Restore validates the complete candidate before a single no-fail commit.
+    // Validation failure or std::bad_alloc leaves the live clock unchanged.
+    [[nodiscard]] virtual foundation::Result<void> RestoreCheckpoint(const TimeCheckpoint& checkpoint) = 0;
     [[nodiscard]] virtual foundation::Result<TimeAdvanceResult> Advance(std::chrono::microseconds real_delta) = 0;
     [[nodiscard]] virtual foundation::Result<void> Pause() = 0;
     [[nodiscard]] virtual foundation::Result<void> Resume() = 0;

@@ -3,6 +3,7 @@
 #include "Epidemic/Runtime/Serialization/serialization_error.h"
 
 #include <exception>
+#include <new>
 
 namespace epidemic::runtime
 {
@@ -32,6 +33,11 @@ foundation::Result<void> SerializerRegistry::RegisterSerializer(std::shared_ptr<
         {
             return SerializerFailure("serialization.serializer.invalid_type", "serializer must declare a valid type id");
         }
+        if (serializer->GetSchemaVersion() == SchemaVersion{})
+        {
+            return SerializerFailure("serialization.serializer.invalid_schema_version",
+                                     "serializer must declare a non-zero schema version");
+        }
 
         if (serializers_.contains(type_id))
         {
@@ -40,6 +46,10 @@ foundation::Result<void> SerializerRegistry::RegisterSerializer(std::shared_ptr<
 
         serializers_.emplace(type_id, std::move(serializer));
         return foundation::Result<void>::Success();
+    }
+    catch (const std::bad_alloc&)
+    {
+        return SerializerFailure("serialization.out_of_memory", "serializer registration could not allocate state");
     }
     catch (const std::exception& error)
     {

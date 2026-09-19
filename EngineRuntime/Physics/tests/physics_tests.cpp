@@ -94,6 +94,10 @@ class TransformAdapter final : public IPhysicsTransformSource, public IPhysicsTr
     Result<Transform> ReadTransform(PhysicsTransformId) const override
     {
         ++reads;
+        if (fail_read)
+        {
+            return Result<Transform>::Failure(Error::Create("physics.transform_read_failed", "transform read failed for test"));
+        }
         Transform transform{};
         transform.position = Vec3{3.0f, 4.0f, 5.0f};
         return Result<Transform>::Success(transform);
@@ -111,6 +115,7 @@ class TransformAdapter final : public IPhysicsTransformSource, public IPhysicsTr
 
     mutable int reads = 0;
     int writes = 0;
+    bool fail_read = false;
     bool fail_write = false;
 };
 
@@ -181,7 +186,10 @@ class JournalBackend final : public IPhysicsBackend
     {
         ++simulates;
         if (throw_simulate) throw std::runtime_error("simulate exception");
-        if (fail_simulate) return Result<void>::Failure(Error::Create("physics.simulate_failed", "simulate failed for test"));
+        if (fail_simulate || (fail_simulate_at != 0 && simulates == fail_simulate_at))
+        {
+            return Result<void>::Failure(Error::Create("physics.simulate_failed", "simulate failed for test"));
+        }
         snapshot.world_transform.position.x += 2.0f;
         return Result<void>::Success();
     }
@@ -230,6 +238,7 @@ class JournalBackend final : public IPhysicsBackend
     bool duplicate_shape_handles = false;
     bool duplicate_body_handles = false;
     int fail_snapshot_at = 0;
+    int fail_simulate_at = 0;
     BackendShapeHandle shape{101};
     BackendBodyHandle body{202};
     BackendShapeHandle last_shape_for_body{};
@@ -644,12 +653,20 @@ bool TestBatchInvalidBackendSnapshotHasNoPartialWrites()
         return false;
     }
 
+    const auto first_local_before = runtime.GetLocalBodySnapshotForTesting(first.Value());
+    const auto second_local_before = runtime.GetLocalBodySnapshotForTesting(second.Value());
     backend->snapshot.world_transform.position.x = 99.0f;
     backend->snapshots = 0;
     backend->fail_snapshot_at = 2;
     const auto failed = runtime.StepFixed(RuntimeFrameDuration{std::chrono::microseconds{10}});
-    return !failed && failed.GetError().HasCode("physics.snapshot_failed") &&
-           adapter->writes == 0;
+    const auto first_local_after = runtime.GetLocalBodySnapshotForTesting(first.Value());
+    const auto second_local_after = runtime.GetLocalBodySnapshotForTesting(second.Value());
+    return !failed && failed.GetError().HasCode("physics.snapshot_failed") && adapter->writes == 0 &&
+           first_local_before && second_local_before && first_local_after && second_local_after &&
+           first_local_before.Value().world_transform.position == first_local_after.Value().world_transform.position &&
+           second_local_before.Value().world_transform.position == second_local_after.Value().world_transform.position &&
+           first_local_before.Value().revision == first_local_after.Value().revision &&
+           second_local_before.Value().revision == second_local_after.Value().revision;
 }
 
 bool TestInvalidBackendContactPayloadIsFiltered()
@@ -724,8 +741,23 @@ bool TestInvalidBodyInputsAreRejectedBeforeBackend()
     auto invalid_transform = MakeBodyDesc(shape, PhysicsBodyType::Dynamic);
     invalid_transform.initial_transform.position.x = std::numeric_limits<float>::quiet_NaN();
     const auto transform_result = runtime.CreateBody(invalid_transform);
+    auto invalid_owner = MakeBodyDesc(shape, PhysicsBodyType::Dynamic);
+    invalid_owner.owner = {};
+    const auto owner_result = runtime.CreateBody(invalid_owner);
+    auto invalid_node = MakeBodyDesc(shape, PhysicsBodyType::Dynamic);
+    invalid_node.transform_node = {};
+    const auto node_result = runtime.CreateBody(invalid_node);
+    auto invalid_mass = MakeBodyDesc(shape, PhysicsBodyType::Dynamic);
+    invalid_mass.mass = 0.0f;
+    const auto mass_result = runtime.CreateBody(invalid_mass);
+    auto unknown_shape = MakeBodyDesc(CollisionShapeId{99999}, PhysicsBodyType::Dynamic);
+    const auto shape_result = runtime.CreateBody(unknown_shape);
     return !type_result && type_result.GetError().HasCode("physics.invalid_body_type") &&
            !transform_result && transform_result.GetError().HasCode("physics.invalid_transform") &&
+           !owner_result && owner_result.GetError().HasCode("physics.invalid_owner") &&
+           !node_result && node_result.GetError().HasCode("physics.invalid_transform") &&
+           !mass_result && mass_result.GetError().HasCode("physics.invalid_mass") &&
+           !shape_result && shape_result.GetError().HasCode("physics.shape_not_found") &&
            backend->create_bodies == creates_before && runtime.RevisionForTesting() == rev_before;
 }
 
@@ -750,9 +782,10 @@ bool TestBackendPublicationRollbackAndDuplicateHandles()
     backend->duplicate_body_handles = true;
     const auto first = runtime.CreateBody(MakeBodyDesc(CollisionShapeId{42}, PhysicsBodyType::Dynamic));
     const auto after_first = runtime.RevisionForTesting();
+    const int destroys_before_duplicate = backend->destroy_bodies;
     const auto second = runtime.CreateBody(MakeBodyDesc(CollisionShapeId{42}, PhysicsBodyType::Dynamic));
     return first && !second && second.GetError().HasCode("physics.duplicate_backend_body_handle") &&
-           runtime.RevisionForTesting() == after_first;
+           runtime.RevisionForTesting() == after_first && backend->destroy_bodies == destroys_before_duplicate;
 }
 
 bool TestRevisionAndAllocatorExhaustionAreAtomic()
@@ -815,10 +848,27 @@ bool TestTimeAndStepCounterOverflowAreRejectedBeforeMutation()
     const auto overflow = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{1}});
     if (overflow || !overflow.GetError().HasCode("physics.time_overflow") || runtime.AccumulatorForTesting().value != accumulator_before.value)
         return false;
+    runtime.SetTimingStateForTesting({}, RuntimeFrameDuration{std::chrono::microseconds{std::numeric_limits<std::int64_t>::max()}});
+    runtime.SetFixedStep(RuntimeFrameDuration{std::chrono::microseconds{10}});
+    runtime.SetMaxSubsteps(1);
+    const auto dropped_before = runtime.DroppedTimeForTesting();
+    const auto dropped_overflow = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{20}});
+    if (dropped_overflow || !dropped_overflow.GetError().HasCode("physics.time_overflow") ||
+        runtime.AccumulatorForTesting().value.count() != 0 || runtime.DroppedTimeForTesting().value != dropped_before.value)
+    {
+        return false;
+    }
     runtime.SetTimingStateForTesting({}, {});
     runtime.SetFixedStepCountForTesting(std::numeric_limits<std::uint64_t>::max());
     const auto step = runtime.StepFixed(RuntimeFrameDuration{std::chrono::microseconds{1}});
-    return !step && step.GetError().HasCode("physics.step_overflow");
+    if (step || !step.GetError().HasCode("physics.step_overflow"))
+    {
+        return false;
+    }
+    PhysicsRuntime shape_exhausted;
+    shape_exhausted.SetBackendShapeAllocatorForTesting(0);
+    const auto shape = shape_exhausted.RegisterShape({CollisionShapeId{999}, Aabb{{0,0,0},{1,1,1}}});
+    return !shape && shape.GetError().HasCode("physics.backend_shape_id_overflow") && !shape_exhausted.HasShape(CollisionShapeId{999});
 }
 
 bool TestBackendExceptionsStayInsideResultBoundary()
@@ -852,6 +902,274 @@ bool TestDefaultStaleAndRepeatedMutatorHandles()
     const auto second_destroy = runtime.DestroyBody(body.Value());
     return !default_impulse && !stale_destroy && stale_destroy.GetError().HasCode("physics.stale_handle") &&
            first_destroy && !second_destroy && second_destroy.GetError().HasCode("physics.unknown_handle");
+}
+
+bool TestTickFirstStepFailureKeepsAcceptedDeltaForZeroDeltaRetry()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    runtime.SetFixedStep(RuntimeFrameDuration{std::chrono::microseconds{10}});
+    runtime.SetMaxSubsteps(2);
+    backend->fail_simulate = true;
+    const auto failed = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{25}});
+    if (failed || !failed.GetError().HasCode("physics.simulate_failed") ||
+        runtime.AccumulatorForTesting().value.count() != 25 || runtime.FixedStepCountForTesting() != 0 || backend->simulates != 1)
+    {
+        return false;
+    }
+    backend->fail_simulate = false;
+    const auto retried = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{0}});
+    return retried && retried.Value().substeps == 2 && retried.Value().accumulated_time.value.count() == 5 &&
+           runtime.FixedStepCountForTesting() == 2 && backend->simulates == 3;
+}
+
+bool TestTickSecondStepFailurePreservesSuccessfulPrefix()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    runtime.SetFixedStep(RuntimeFrameDuration{std::chrono::microseconds{10}});
+    runtime.SetMaxSubsteps(2);
+    backend->fail_simulate_at = 2;
+    const auto failed = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{25}});
+    if (failed || !failed.GetError().HasCode("physics.simulate_failed") ||
+        runtime.AccumulatorForTesting().value.count() != 15 || runtime.FixedStepCountForTesting() != 1 || backend->simulates != 2)
+    {
+        return false;
+    }
+    backend->fail_simulate_at = 0;
+    const auto retried = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{0}});
+    return retried && retried.Value().substeps == 1 && retried.Value().accumulated_time.value.count() == 5 &&
+           runtime.FixedStepCountForTesting() == 2 && backend->simulates == 3;
+}
+
+bool TestTickSyncFailureRetriesAcceptedBackendStepWithoutResimulation()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    const CollisionShapeId shape{48};
+    if (!RegisterDefaultShape(runtime, shape) || !runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic)))
+    {
+        return false;
+    }
+    runtime.SetFixedStep(RuntimeFrameDuration{std::chrono::microseconds{10}});
+    backend->fail_snapshot = true;
+    const auto failed = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{10}});
+    if (failed || !failed.GetError().HasCode("physics.snapshot_failed") || backend->simulates != 1 ||
+        runtime.AccumulatorForTesting().value.count() != 10 || runtime.FixedStepCountForTesting() != 0)
+    {
+        return false;
+    }
+    backend->fail_snapshot = false;
+    const auto retried = runtime.Tick(RuntimeFrameDuration{std::chrono::microseconds{0}});
+    return retried && backend->simulates == 1 && runtime.AccumulatorForTesting().value.count() == 0 &&
+           runtime.FixedStepCountForTesting() == 1;
+}
+
+bool TestTransformSourceFailureStopsBeforeBackendBodyCreation()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    auto adapter = std::make_shared<TransformAdapter>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, adapter, adapter}};
+    const CollisionShapeId shape{49};
+    if (!RegisterDefaultShape(runtime, shape))
+    {
+        return false;
+    }
+    adapter->fail_read = true;
+    const int creates_before = backend->create_bodies;
+    const auto revision_before = runtime.RevisionForTesting();
+    const auto created = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    return !created && created.GetError().HasCode("physics.transform_read_failed") &&
+           backend->create_bodies == creates_before && runtime.RevisionForTesting() == revision_before;
+}
+
+bool TestShutdownCleansIndependentShapesAfterBodyFailure()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    const CollisionShapeId used_shape{50};
+    const CollisionShapeId free_shape{51};
+    if (!RegisterDefaultShape(runtime, used_shape) || !RegisterDefaultShape(runtime, free_shape) ||
+        !runtime.CreateBody(MakeBodyDesc(used_shape, PhysicsBodyType::Dynamic)))
+    {
+        return false;
+    }
+    backend->fail_destroy_body = true;
+    const auto failed = runtime.Shutdown();
+    const int shape_destroys_after_failure = backend->destroy_shapes;
+    backend->fail_destroy_body = false;
+    const auto retried = runtime.Shutdown();
+    return !failed && failed.GetError().HasCode("physics.destroy_body_failed") &&
+           shape_destroys_after_failure == 1 && retried && backend->destroy_shapes == 2;
+}
+
+bool TestShapeRegistrationValidationAndBackendFailureAtomicity()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    const int creates_before = backend->create_shapes;
+    const auto invalid_id = runtime.RegisterShape({CollisionShapeId{}, Aabb{{0,0,0},{1,1,1}}});
+    const auto invalid_bounds = runtime.RegisterShape({CollisionShapeId{52}, Aabb{{2,0,0},{1,1,1}}});
+    if (invalid_id || invalid_bounds || backend->create_shapes != creates_before)
+    {
+        return false;
+    }
+    backend->fail_create_shape = true;
+    const auto failed = runtime.RegisterShape({CollisionShapeId{52}, Aabb{{0,0,0},{1,1,1}}});
+    backend->fail_create_shape = false;
+    if (failed || !failed.GetError().HasCode("physics.create_shape_failed") || runtime.HasShape(CollisionShapeId{52}))
+    {
+        return false;
+    }
+    const auto created = runtime.RegisterShape({CollisionShapeId{52}, Aabb{{0,0,0},{1,1,1}}});
+    const auto duplicate = runtime.RegisterShape({CollisionShapeId{52}, Aabb{{0,0,0},{1,1,1}}});
+    return created && !duplicate && duplicate.GetError().HasCode("physics.duplicate_shape");
+}
+
+bool TestDuplicateBackendContactsPreserveBackendOrder()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    const CollisionShapeId shape{53};
+    if (!RegisterDefaultShape(runtime, shape))
+    {
+        return false;
+    }
+    const auto first = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    const auto second = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    if (!first || !second)
+    {
+        return false;
+    }
+    BackendContactEvent duplicate{};
+    duplicate.a = BackendBodyHandle{backend->body.value + 1u};
+    duplicate.b = BackendBodyHandle{backend->body.value + 2u};
+    duplicate.point = Vec3{1,2,3};
+    duplicate.normal = Vec3{0,1,0};
+    duplicate.impulse = 4.0f;
+    duplicate.state = epidemic::runtime::physics::PhysicsEventState::Persist;
+    backend->contact_events = {duplicate, duplicate};
+    const auto step = runtime.StepFixed(RuntimeFrameDuration{std::chrono::microseconds{1}});
+    return step && runtime.Contacts().size() == 2 &&
+           runtime.Contacts()[0].state == epidemic::runtime::physics::PhysicsEventState::Persist &&
+           runtime.Contacts()[1].state == epidemic::runtime::physics::PhysicsEventState::Persist;
+}
+
+bool TestRaycastRejectsInvalidInputAndInvalidBackendPayload()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    const int raycasts_before = backend->raycasts;
+    const auto zero_direction = runtime.Raycast(RaycastQuery{Vec3{}, Vec3{}, 10.0f});
+    const auto non_finite = runtime.Raycast(RaycastQuery{Vec3{std::numeric_limits<float>::quiet_NaN(),0,0}, Vec3{1,0,0}, 10.0f});
+    if (zero_direction || non_finite || backend->raycasts != raycasts_before)
+    {
+        return false;
+    }
+    backend->raycast_hit.hit = true;
+    backend->raycast_hit.body = BackendBodyHandle{999};
+    backend->raycast_hit.point = Vec3{std::numeric_limits<float>::quiet_NaN(), 0, 0};
+    backend->raycast_hit.normal = Vec3{0,1,0};
+    backend->raycast_hit.distance = 1.0f;
+    const auto invalid_hit = runtime.Raycast(RaycastQuery{Vec3{}, Vec3{1,0,0}, 10.0f});
+    return !invalid_hit && invalid_hit.GetError().HasCode("physics.invalid_backend_hit");
+}
+
+bool TestBackendBodyCreationFailureAndExceptionDoNotConsumeRuntimeIdentity()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    const CollisionShapeId shape{54};
+    if (!RegisterDefaultShape(runtime, shape))
+    {
+        return false;
+    }
+    backend->fail_create_body = true;
+    const auto failed = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    backend->fail_create_body = false;
+    backend->throw_create_body = true;
+    const auto thrown = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    backend->throw_create_body = false;
+    const auto created = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Dynamic));
+    return !failed && failed.GetError().HasCode("physics.create_body_failed") &&
+           !thrown && thrown.GetError().HasCode("physics.backend_exception") && created &&
+           created.Value().id.value == 1 && created.Value().generation == 1;
+}
+
+bool TestPublicationRollbackFailureRetainsCleanupOwnership()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    backend->fail_destroy_shape = true;
+    runtime.FailNextShapePublicationForTesting();
+    const auto failed_shape = runtime.RegisterShape({CollisionShapeId{55}, Aabb{{0,0,0},{1,1,1}}});
+    if (failed_shape || !failed_shape.GetError().HasCode("physics.cleanup_pending") || runtime.HasShape(CollisionShapeId{55}))
+    {
+        return false;
+    }
+    backend->fail_destroy_shape = false;
+    const int destroys_before_retry = backend->destroy_shapes;
+    const auto retried_shape = runtime.RegisterShape({CollisionShapeId{55}, Aabb{{0,0,0},{1,1,1}}});
+    if (!retried_shape || backend->destroy_shapes != destroys_before_retry + 1)
+    {
+        return false;
+    }
+
+    backend->fail_destroy_body = true;
+    runtime.FailNextBodyPublicationForTesting();
+    const auto failed_body = runtime.CreateBody(MakeBodyDesc(CollisionShapeId{55}, PhysicsBodyType::Dynamic));
+    if (failed_body || !failed_body.GetError().HasCode("physics.cleanup_pending"))
+    {
+        return false;
+    }
+    backend->fail_destroy_body = false;
+    const int body_destroys_before_retry = backend->destroy_bodies;
+    const auto retried_body = runtime.CreateBody(MakeBodyDesc(CollisionShapeId{55}, PhysicsBodyType::Dynamic));
+    return retried_body && backend->destroy_bodies == body_destroys_before_retry + 1;
+}
+
+bool TestOverlapResultsAreDeterministicAndDetached()
+{
+    PhysicsRuntime runtime;
+    const CollisionShapeId shape{56};
+    if (!RegisterDefaultShape(runtime, shape))
+    {
+        return false;
+    }
+    const auto first = runtime.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Static));
+    auto second_desc = MakeBodyDesc(shape, PhysicsBodyType::Static);
+    second_desc.owner = RuntimeObjectId{43};
+    second_desc.transform_node = PhysicsTransformId{8};
+    const auto second = runtime.CreateBody(second_desc);
+    if (!first || !second)
+    {
+        return false;
+    }
+    const auto result = runtime.Overlap(OverlapQuery{Aabb{{-1,-1,-1},{2,2,2}}});
+    if (!result || result.Value().bodies.size() != 2 ||
+        result.Value().bodies[0].id.value >= result.Value().bodies[1].id.value)
+    {
+        return false;
+    }
+    const auto detached = result.Value();
+    if (!runtime.DestroyBody(first.Value()))
+    {
+        return false;
+    }
+    const auto after = runtime.Overlap(OverlapQuery{Aabb{{-1,-1,-1},{2,2,2}}});
+    return detached.bodies.size() == 2 && after && after.Value().bodies.size() == 1;
+}
+
+bool TestDuplicateBackendShapeHandleDoesNotDestroyExistingOwnership()
+{
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime runtime{PhysicsDependencies{backend, nullptr, nullptr}};
+    backend->duplicate_shape_handles = true;
+    const auto first = runtime.RegisterShape({CollisionShapeId{57}, Aabb{{0,0,0},{1,1,1}}});
+    const int destroys_before = backend->destroy_shapes;
+    const auto second = runtime.RegisterShape({CollisionShapeId{58}, Aabb{{0,0,0},{1,1,1}}});
+    return first && !second && second.GetError().HasCode("physics.duplicate_backend_shape_handle") &&
+           backend->destroy_shapes == destroys_before && runtime.HasShape(CollisionShapeId{57}) && !runtime.HasShape(CollisionShapeId{58});
 }
 
 bool TestFactoryReportsBackendInitializationFailure()
@@ -926,5 +1244,17 @@ int main()
     if (!TestTimeAndStepCounterOverflowAreRejectedBeforeMutation()) return 27;
     if (!TestBackendExceptionsStayInsideResultBoundary()) return 28;
     if (!TestDefaultStaleAndRepeatedMutatorHandles()) return 29;
+    if (!TestTickFirstStepFailureKeepsAcceptedDeltaForZeroDeltaRetry()) return 30;
+    if (!TestTickSecondStepFailurePreservesSuccessfulPrefix()) return 31;
+    if (!TestTickSyncFailureRetriesAcceptedBackendStepWithoutResimulation()) return 32;
+    if (!TestTransformSourceFailureStopsBeforeBackendBodyCreation()) return 33;
+    if (!TestShutdownCleansIndependentShapesAfterBodyFailure()) return 34;
+    if (!TestShapeRegistrationValidationAndBackendFailureAtomicity()) return 35;
+    if (!TestDuplicateBackendContactsPreserveBackendOrder()) return 36;
+    if (!TestRaycastRejectsInvalidInputAndInvalidBackendPayload()) return 37;
+    if (!TestBackendBodyCreationFailureAndExceptionDoNotConsumeRuntimeIdentity()) return 38;
+    if (!TestPublicationRollbackFailureRetainsCleanupOwnership()) return 39;
+    if (!TestOverlapResultsAreDeterministicAndDetached()) return 40;
+    if (!TestDuplicateBackendShapeHandleDoesNotDestroyExistingOwnership()) return 41;
     return 0;
 }

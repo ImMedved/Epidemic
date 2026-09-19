@@ -62,7 +62,7 @@ AUTHORITY_DOMAINS = {
     "EngineBase/RHI": "engine:rendering-interface-object-state",
     "EngineBase/RHI_D3D11": "engine:d3d11-backend-object-state",
     "EngineRuntime/Animation": "runtime:animation-resources-and-playback",
-    "EngineRuntime/Assets": "runtime:asset-identities-and-load-state",
+    "EngineRuntime/Assets": "runtime:asset-metadata-catalog-and-logical-locations",
     "EngineRuntime/Audio": "runtime:audio-resources-and-playback",
     "EngineRuntime/Environment": "runtime:environment-samples-and-volumes",
     "EngineRuntime/Navigation": "runtime:navigation-mesh-path-and-agent-state",

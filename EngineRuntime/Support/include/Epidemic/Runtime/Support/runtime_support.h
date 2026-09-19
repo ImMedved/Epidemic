@@ -207,6 +207,11 @@ class IRuntimeEventSink
 {
   public:
     virtual ~IRuntimeEventSink() = default;
+
+    // Publication is atomic from the coordinator's perspective. A failure Result or an
+    // exception means that the batch was not externally committed and the same source
+    // events remain eligible for retry. Sinks that can commit before reporting failure
+    // must provide their own idempotent/deduplicated boundary instead of violating this contract.
     [[nodiscard]] virtual foundation::Result<void> Publish(const RuntimeFrameEvents& events) = 0;
 };
 

@@ -35,24 +35,23 @@ struct ChunkSnapshot
 
 [[nodiscard]] constexpr bool CanTransition(ChunkState from, ChunkState to) noexcept
 {
-    if (from == to)
-    {
-        return true;
-    }
     switch (from)
     {
     case ChunkState::Unloaded:
-        return to == ChunkState::Loading;
+        return to == ChunkState::Unloaded || to == ChunkState::Loading;
     case ChunkState::Loading:
-        return to == ChunkState::Resident || to == ChunkState::Unloaded;
+        return to == ChunkState::Loading || to == ChunkState::Resident || to == ChunkState::Unloaded;
     case ChunkState::Resident:
-        return to == ChunkState::Active || to == ChunkState::Sleeping || to == ChunkState::Unloading;
+        return to == ChunkState::Resident || to == ChunkState::Active || to == ChunkState::Sleeping ||
+               to == ChunkState::Unloading;
     case ChunkState::Active:
-        return to == ChunkState::Resident || to == ChunkState::Sleeping || to == ChunkState::Unloading;
+        return to == ChunkState::Active || to == ChunkState::Resident || to == ChunkState::Sleeping ||
+               to == ChunkState::Unloading;
     case ChunkState::Sleeping:
-        return to == ChunkState::Active || to == ChunkState::Resident || to == ChunkState::Unloading;
+        return to == ChunkState::Sleeping || to == ChunkState::Active || to == ChunkState::Resident ||
+               to == ChunkState::Unloading;
     case ChunkState::Unloading:
-        return to == ChunkState::Unloaded;
+        return to == ChunkState::Unloading || to == ChunkState::Unloaded;
     }
     return false;
 }

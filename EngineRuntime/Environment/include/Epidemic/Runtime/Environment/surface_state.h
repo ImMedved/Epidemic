@@ -18,6 +18,7 @@ enum class SurfaceConditionKind
     Drying,
 };
 
+// condition is derived from wetness/snow/mud/ice by Environment mutations; caller-provided condition is not authoritative.
 struct SurfaceState
 {
     SurfaceId surface_id{};

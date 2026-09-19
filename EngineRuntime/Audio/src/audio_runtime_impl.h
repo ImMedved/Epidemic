@@ -70,6 +70,11 @@ public:
                                      std::uint64_t voice_value);
     [[nodiscard]] foundation::Result<void> SetEmitterRevisionForTesting(AudioEmitterHandle handle, std::uint64_t revision);
     void FailNextListenerPublicationForTesting() noexcept { fail_next_listener_publication_for_testing_ = true; }
+    void FailNextVoiceCleanupPreflightForTesting() noexcept { fail_next_voice_cleanup_preflight_for_testing_ = true; }
+    [[nodiscard]] std::size_t PendingVoiceCleanupCountForTesting() const noexcept
+    {
+        return pending_voice_cleanups_.size();
+    }
     [[nodiscard]] std::size_t PendingListenerCleanupCountForTesting() const noexcept
     {
         return pending_listener_cleanups_.size();
@@ -129,6 +134,7 @@ private:
     [[nodiscard]] foundation::Result<void> ApplyEmitterSpatialState(EmitterRecord& emitter);
     [[nodiscard]] foundation::Result<VoiceOwnership> CreateOneShotVoice(const AudioEvent& event);
     [[nodiscard]] foundation::Result<void> CleanupFinishedOneShots();
+    [[nodiscard]] foundation::Result<void> EnsurePendingVoiceCleanupCapacity(std::size_t additional);
     [[nodiscard]] foundation::Result<void> CleanupPendingVoices();
     [[nodiscard]] foundation::Result<void> CleanupPendingListeners();
     [[nodiscard]] foundation::Result<void> EnsureCanStartWork() const;
@@ -177,5 +183,6 @@ private:
     bool shutdown_started_ = false;
     bool shutdown_complete_ = false;
     bool fail_next_listener_publication_for_testing_ = false;
+    bool fail_next_voice_cleanup_preflight_for_testing_ = false;
 };
 } // namespace epidemic::runtime::audio

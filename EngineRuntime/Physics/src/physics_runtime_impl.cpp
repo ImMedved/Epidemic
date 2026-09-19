@@ -144,13 +144,14 @@ foundation::Result<void> PhysicsRuntime::DrainPendingBackendCleanup()
 
 foundation::Result<void> PhysicsRuntime::Shutdown()
 {
+    std::optional<foundation::Error> first_error;
     if (const auto pending = DrainPendingBackendCleanup(); !pending)
     {
-        return pending;
+        first_error = pending.GetError();
     }
+
     if (backend_ && backend_.get() != this)
     {
-        std::optional<foundation::Error> first_error;
         for (auto iterator = bodies_.begin(); iterator != bodies_.end();)
         {
             const auto destroyed = InvokeExternal<foundation::Result<void>>(
@@ -168,27 +169,42 @@ foundation::Result<void> PhysicsRuntime::Shutdown()
             backend_to_body_.erase(iterator->second.backend_handle);
             iterator = bodies_.erase(iterator);
         }
-        if (!bodies_.empty())
+
+        // A failed rollback body has no published BodyRecord, so its shape relation is
+        // intentionally unknown. In that case retain all shapes until the pending body
+        // cleanup succeeds. Otherwise, continue best-effort with shapes that are not
+        // referenced by bodies whose destruction failed in this shutdown pass.
+        if (pending_backend_body_cleanup_.empty())
         {
-            return foundation::Result<void>::Failure(*first_error);
-        }
-        for (auto iterator = shapes_.begin(); iterator != shapes_.end();)
-        {
-            const auto destroyed = InvokeExternal<foundation::Result<void>>(
-                [&] { return backend_->DestroyShape(iterator->second.backend_handle); },
-                "DestroyShape during shutdown");
-            if (!destroyed && !first_error)
+            for (auto iterator = shapes_.begin(); iterator != shapes_.end();)
             {
-                first_error = destroyed.GetError();
+                const CollisionShapeId shape_id = iterator->first;
+                const bool still_referenced = std::any_of(bodies_.begin(), bodies_.end(), [&](const auto& entry) {
+                    return entry.second.desc.shape == shape_id;
+                });
+                if (still_referenced)
+                {
+                    ++iterator;
+                    continue;
+                }
+
+                const auto destroyed = InvokeExternal<foundation::Result<void>>(
+                    [&] { return backend_->DestroyShape(iterator->second.backend_handle); },
+                    "DestroyShape during shutdown");
+                if (!destroyed && !first_error)
+                {
+                    first_error = destroyed.GetError();
+                }
+                if (!destroyed)
+                {
+                    ++iterator;
+                    continue;
+                }
+                backend_to_shape_.erase(iterator->second.backend_handle.value);
+                iterator = shapes_.erase(iterator);
             }
-            if (!destroyed)
-            {
-                ++iterator;
-                continue;
-            }
-            backend_to_shape_.erase(iterator->second.backend_handle.value);
-            iterator = shapes_.erase(iterator);
         }
+
         if (first_error)
         {
             return foundation::Result<void>::Failure(*first_error);
@@ -288,9 +304,10 @@ foundation::Result<void> PhysicsRuntime::RegisterShape(const CollisionShapeDesc&
 
     if (backend_to_shape_.contains(backend_shape.value))
     {
-        const auto cleanup = rollback_backend();
-        return cleanup ? PhysicsFailure("physics.duplicate_backend_shape_handle", "physics backend returned a duplicate shape handle")
-                       : cleanup;
+        // A duplicate handle aliases already-published backend ownership. Destroying
+        // it here could invalidate the existing shape, so reject the backend contract
+        // violation without claiming or releasing that ambiguous handle.
+        return PhysicsFailure("physics.duplicate_backend_shape_handle", "physics backend returned a duplicate shape handle");
     }
 
     try
@@ -500,9 +517,9 @@ foundation::Result<PhysicsBodyHandle> PhysicsRuntime::CreateBody(const PhysicsBo
 
     if (backend_to_body_.contains(backend_handle))
     {
-        const auto cleanup = rollback_backend();
-        return cleanup ? PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_backend_body_handle", "physics backend returned a duplicate body handle")
-                       : foundation::Result<PhysicsBodyHandle>::Failure(cleanup.GetError());
+        // As with shapes, an aliased success handle is not safe rollback ownership:
+        // destroying it could destroy the backend body already owned by another record.
+        return PhysicsFailureValue<PhysicsBodyHandle>("physics.duplicate_backend_body_handle", "physics backend returned a duplicate body handle");
     }
 
     BodyRecord record{};

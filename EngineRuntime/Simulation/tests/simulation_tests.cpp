@@ -5,12 +5,89 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <iostream>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
 #include <vector>
+
+namespace allocation_fault
+{
+thread_local std::int64_t successful_allocations_before_failure = -1;
+
+void ArmAfter(std::size_t successful_allocations) noexcept
+{
+    successful_allocations_before_failure = static_cast<std::int64_t>(successful_allocations);
+}
+
+void ArmNext() noexcept
+{
+    ArmAfter(0);
+}
+
+void Disable() noexcept
+{
+    successful_allocations_before_failure = -1;
+}
+} // namespace allocation_fault
+
+void* operator new(std::size_t size)
+{
+    if (allocation_fault::successful_allocations_before_failure == 0)
+    {
+        allocation_fault::Disable();
+        throw std::bad_alloc();
+    }
+    if (allocation_fault::successful_allocations_before_failure > 0)
+    {
+        --allocation_fault::successful_allocations_before_failure;
+    }
+    if (void* memory = std::malloc(size == 0 ? 1 : size))
+    {
+        return memory;
+    }
+    throw std::bad_alloc();
+}
+
+void* operator new[](std::size_t size)
+{
+    return ::operator new(size);
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+void operator delete(void* memory) noexcept
+{
+    std::free(memory);
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+void operator delete[](void* memory) noexcept
+{
+    std::free(memory);
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+void operator delete(void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
+
+#if defined(__GNUC__) || defined(__clang__)
+__attribute__((noinline))
+#endif
+void operator delete[](void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
 
 using epidemic::runtime::GameDuration;
 using epidemic::runtime::RegionId;
@@ -193,6 +270,70 @@ struct TestSimulationJob final : ISimulationJob
     }
 };
 
+struct FaultArmedSuccessJob final : ISimulationJob
+{
+    SimulationStepResult first{};
+    SimulationStepResult second{};
+    int execute_count = 0;
+    bool arm_first_return = false;
+
+    FaultArmedSuccessJob(const SimulationJobDesc& desc, bool with_proposal)
+    {
+        auto initialize = [&](SimulationStepResult& result) {
+            result.state = SimulationJobState::Completed;
+            result.consumed_work_units = 1;
+            result.proposals.zone = desc.zone;
+            result.proposals.source_revision = desc.source_revision;
+            if (with_proposal)
+            {
+                result.proposals.proposals.push_back(SimulationProposal{
+                    epidemic::foundation::StringId::FromString("simulation"),
+                    epidemic::foundation::StringId::FromString("fault_test"),
+                    desc.subject,
+                    epidemic::foundation::StringId::FromString("simulation.fault_test.v1"),
+                    1,
+                    {}});
+            }
+        };
+        initialize(first);
+        initialize(second);
+    }
+
+    epidemic::foundation::Result<SimulationStepResult> ExecuteStep(const epidemic::runtime::RuntimeBudget&) override
+    {
+        ++execute_count;
+        SimulationStepResult result = execute_count == 1 ? std::move(first) : std::move(second);
+        if (arm_first_return && execute_count == 1)
+        {
+            allocation_fault::ArmNext();
+        }
+        return epidemic::foundation::Result<SimulationStepResult>::Success(std::move(result));
+    }
+
+    epidemic::foundation::Result<void> Cancel() override
+    {
+        return epidemic::foundation::Result<void>::Success();
+    }
+};
+
+struct FaultArmedFailureJob final : ISimulationJob
+{
+    int execute_count = 0;
+
+    epidemic::foundation::Result<SimulationStepResult> ExecuteStep(const epidemic::runtime::RuntimeBudget&) override
+    {
+        ++execute_count;
+        auto error = epidemic::foundation::Error::Create("simulation.test_failed", "fault-armed semantic failure");
+        allocation_fault::ArmNext();
+        return epidemic::foundation::Result<SimulationStepResult>::Failure(std::move(error));
+    }
+
+    epidemic::foundation::Result<void> Cancel() override
+    {
+        return epidemic::foundation::Result<void>::Success();
+    }
+};
+
 bool Expect(bool condition, std::string_view message)
 {
     if (!condition)
@@ -294,6 +435,11 @@ bool TestWorldMemoryExpirationBudget()
     const auto second = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{11}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Unobserved});
     bool ok = Expect(first.HasValue() && second.HasValue(), "memory events should record");
     ok &= Expect(runtime.ExpireOldEvents(SimulationTime{20}, 1) == 1, "expiration budget should expire one event");
+    const auto after_first_expiration = runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, true});
+    ok &= Expect(after_first_expiration.size() == 2 && after_first_expiration[0].id == first.Value() &&
+                     after_first_expiration[0].expired && after_first_expiration[1].id == second.Value() &&
+                     !after_first_expiration[1].expired,
+                 "budgeted expiration should process memory identities in deterministic ascending order");
     ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).size() == 1, "one event should remain active");
     ok &= Expect(runtime.ExpireOldEvents(SimulationTime{20}, 1) == 1, "second budgeted pass should expire next event");
     ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).empty(), "no active events should remain");
@@ -524,7 +670,10 @@ bool TestScheduledTaskBudget()
     ok &= Expect(!runtime.Schedule(ScheduledSimulationTask{{}, first_job.Value(), SimulationTime{11}, SimulationLane::Background}).HasValue(),
                  "duplicate scheduled task for same job should fail");
     ok &= Expect(runtime.QueryDue(SimulationTime{9}).empty(), "tasks should not be due early");
-    ok &= Expect(runtime.QueryDue(SimulationTime{10}).size() == 2, "both tasks should be due");
+    const auto due = runtime.QueryDue(SimulationTime{10});
+    ok &= Expect(due.size() == 2, "both tasks should be due");
+    ok &= Expect(due.size() == 2 && due[0].id == first.Value() && due[1].id == second.Value(),
+                 "equal-due scheduled tasks should retain deterministic id order");
     const auto executed = runtime.ExecuteDueWithinBudget(SimulationTime{10}, SimulationBudget{1, 0});
     ok &= Expect(executed.activated == 1 && executed.failures.empty(),
                  "scheduled task budget should execute one");
@@ -806,6 +955,233 @@ bool TestMemoryFactShutdownAndProposalCleanupEdges()
     }
     return ok;
 }
+bool TestGoal3SimulationBoundaryAudit()
+{
+    bool ok = true;
+    {
+        SimulationRuntime runtime{{}};
+        runtime.SetNextMemoryIdForTesting(std::numeric_limits<std::uint64_t>::max());
+        const auto last = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{1}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Observed});
+        const auto exhausted = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{2}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Observed});
+        ok &= Expect(last && last.Value().value == std::numeric_limits<std::uint64_t>::max(),
+                     "final world-memory identity should be issued exactly once");
+        ok &= Expect(!exhausted && exhausted.GetError().HasCode("simulation.memory_event_id_overflow") &&
+                         runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, true}).size() == 1,
+                     "world-memory identity exhaustion must be atomic and non-wrapping");
+    }
+    {
+        SimulationRuntime runtime{{}};
+        const auto first_desc = MakeJob(1);
+        const auto second_desc = SimulationJobDesc{SimulationZoneId{5}, RuntimeObjectId{88}, 1};
+        const auto first_job = runtime.SubmitJob(MakeExecutableJob(first_desc), first_desc);
+        const auto second_job = runtime.SubmitJob(MakeExecutableJob(second_desc), second_desc);
+        runtime.SetNextTaskIdForTesting(std::numeric_limits<std::uint64_t>::max());
+        const auto last = runtime.Schedule(ScheduledSimulationTask{{}, first_job.Value(), SimulationTime{10}, SimulationLane::Background});
+        const auto exhausted = runtime.Schedule(ScheduledSimulationTask{{}, second_job.Value(), SimulationTime{10}, SimulationLane::Background});
+        ok &= Expect(last && last.Value().value == std::numeric_limits<std::uint64_t>::max(),
+                     "final scheduled-task identity should be issued exactly once");
+        ok &= Expect(!exhausted && exhausted.GetError().HasCode("simulation.task_id_overflow") &&
+                         runtime.GetJobState(second_job.Value()).Value() == SimulationJobState::Pending &&
+                         !runtime.ActiveScheduleForTesting(second_job.Value()).has_value(),
+                     "scheduled-task identity exhaustion must not publish phantom schedule state");
+    }
+    {
+        SimulationRuntime runtime{{}};
+        const auto zero_ttl = runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{4}, SimulationTime{1}, GameDuration{0}, MemoryLifetime::Temporary, ObservationState::Observed});
+        ok &= Expect(zero_ttl.HasValue(), "zero-TTL temporary memory event should record");
+        runtime.ExpireOldEvents(SimulationTime{std::numeric_limits<std::int64_t>::max()});
+        ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{4}, false}).size() == 1,
+                     "zero TTL is the explicit non-expiring boundary for non-persistent memory events");
+    }
+    {
+        SimulationRuntime runtime{{}};
+        ok &= Expect(runtime.SetAttention(RuntimeObjectId{1}, AttentionScore{0.0f}).HasValue() &&
+                         runtime.SetAttention(RuntimeObjectId{2}, AttentionScore{1.0f}).HasValue(),
+                     "attention boundary values 0 and 1 should be accepted");
+        ok &= Expect(runtime.GetAttention(RuntimeObjectId{1}).value == 0.0f &&
+                         runtime.GetAttention(RuntimeObjectId{2}).value == 1.0f,
+                     "attention boundary values should round-trip exactly");
+    }
+    {
+        SimulationRuntime runtime{{}};
+        runtime.SetBudget(SimulationBudget{1, 1});
+        const auto desc = MakeJob(1);
+        const auto handle = runtime.SubmitJob(MakeExecutableJob(desc), desc);
+        ok &= Expect(handle && runtime.Tick(), "shutdown proposal-owner job should complete");
+        const std::size_t pending_before = runtime.PendingBatches().size();
+        ok &= Expect(pending_before == 1, "completed job should own one pending proposal before shutdown");
+        ok &= Expect(runtime.Shutdown().HasValue(), "local simulation shutdown should complete for terminal jobs");
+        ok &= Expect(runtime.PendingBatches().size() == pending_before,
+                     "local shutdown must not silently discard proposals owned by composition shutdown policy");
+        ok &= Expect(runtime.Shutdown().HasValue(), "completed simulation shutdown should be idempotent");
+        ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),
+                     "explicit shutdown proposal discard should remain available after runtime shutdown");
+    }
+    return ok;
+}
+
+bool TestGoal3SimulationFaultAtomicity()
+{
+    bool ok = true;
+    {
+        SimulationRuntime runtime{{}};
+        runtime.SetBudget(SimulationBudget{1, 1});
+        const auto desc = MakeJob(1);
+        auto executable = std::make_shared<FaultArmedSuccessJob>(desc, true);
+        executable->arm_first_return = true;
+        const auto handle = runtime.SubmitJob(executable, desc);
+        ok &= Expect(handle.HasValue(), "fault-retry job should submit");
+
+        const auto first = runtime.Tick();
+        allocation_fault::Disable();
+        ok &= Expect(!first && first.GetError().HasCode("simulation.allocation_failed"),
+                     "local staging allocation failure should surface without consuming the accepted result");
+        ok &= Expect(executable->execute_count == 1,
+                     "successful ExecuteStep must be called exactly once before retry");
+
+        const auto retry = runtime.Tick();
+        ok &= Expect(retry && retry.Value().processed_jobs == 1,
+                     "retry should publish the retained successful step result");
+        ok &= Expect(executable->execute_count == 1,
+                     "retry must not re-run an already successful ExecuteStep");
+        ok &= Expect(runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Completed &&
+                         runtime.PendingBatches().size() == 1,
+                     "retained step result should commit to the same completed state and proposal queue");
+    }
+    {
+        SimulationRuntime runtime{{}};
+        runtime.SetBudget(SimulationBudget{1, 1});
+        const auto desc = MakeJob(1);
+        auto executable = std::make_shared<FaultArmedFailureJob>();
+        const auto handle = runtime.SubmitJob(executable, desc);
+        bool threw = false;
+        bool normalized = false;
+        try
+        {
+            const auto tick = runtime.Tick();
+            allocation_fault::Disable();
+            normalized = tick && tick.Value().failures.size() == 1 &&
+                         runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Failed;
+        }
+        catch (const std::bad_alloc&)
+        {
+            allocation_fault::Disable();
+            threw = true;
+        }
+        ok &= Expect(!threw && normalized,
+                     "reserved failure bookkeeping must not allocate after a callback failure is returned");
+    }
+    {
+        SimulationRuntime runtime{SimulationOptions{.max_terminal_jobs = 1}};
+        runtime.SetBudget(SimulationBudget{1, 1});
+        const auto desc = MakeJob(1);
+        auto executable = std::make_shared<FaultArmedSuccessJob>(desc, false);
+        executable->arm_first_return = true;
+        const auto handle = runtime.SubmitJob(executable, desc);
+        bool threw = false;
+        bool completed = false;
+        try
+        {
+            const auto tick = runtime.Tick();
+            allocation_fault::Disable();
+            completed = tick && tick.Value().processed_jobs == 1 &&
+                        runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Completed;
+        }
+        catch (const std::bad_alloc&)
+        {
+            allocation_fault::Disable();
+            threw = true;
+        }
+        ok &= Expect(!threw && completed,
+                     "terminal pruning must not allocate after the authoritative job commit");
+    }
+    {
+        SimulationRuntime runtime{{}};
+        const auto desc = MakeJob(1);
+        const auto handle = runtime.SubmitJob(MakeExecutableJob(desc), desc);
+        runtime.SetJobStateForTesting(handle.Value(), SimulationJobState::Completed);
+        SimulationProposal proposal{
+            epidemic::foundation::StringId::FromString("simulation"),
+            epidemic::foundation::StringId::FromString("publish_fault"),
+            desc.subject,
+            epidemic::foundation::StringId::FromString("simulation.publish_fault.v1"),
+            1,
+            {}};
+        SimulationProposalBatch batch{handle.Value(), desc.zone, desc.source_revision, {proposal}};
+        allocation_fault::ArmNext();
+        const auto published = runtime.Publish(batch);
+        allocation_fault::Disable();
+        ok &= Expect(!published && published.GetError().HasCode("simulation.allocation_failed") && runtime.PendingBatches().empty(),
+                     "proposal publication allocation failure must be contained and leave the queue unchanged");
+    }
+    {
+        SimulationRuntime runtime{{}};
+        allocation_fault::ArmNext();
+        const auto attention = runtime.SetAttention(RuntimeObjectId{9001}, AttentionScore{0.5f});
+        allocation_fault::Disable();
+        ok &= Expect(!attention && attention.GetError().HasCode("simulation.allocation_failed") &&
+                         runtime.GetAttention(RuntimeObjectId{9001}).value == 0.0f,
+                     "attention publication allocation failure must preserve pre-state");
+    }
+    {
+        // Sweep the allocation boundaries around expiration. Any allocation failure must happen before
+        // an event is marked expired; once mutation begins, pruning itself is allocation-free.
+        for (std::size_t fail_after = 0; fail_after < 5; ++fail_after)
+        {
+            SimulationRuntime runtime{SimulationOptions{.max_memory_events = 2}};
+            ok &= Expect(runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{1}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Observed}).HasValue(),
+                         "expiration fault-sweep event one should record");
+            ok &= Expect(runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{2}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Observed}).HasValue(),
+                         "expiration fault-sweep event two should record");
+            const auto before = runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false});
+            bool threw = false;
+            allocation_fault::ArmAfter(fail_after);
+            try
+            {
+                (void)runtime.ExpireOldEvents(SimulationTime{10}, 2);
+            }
+            catch (const std::bad_alloc&)
+            {
+                threw = true;
+            }
+            allocation_fault::Disable();
+            if (threw)
+            {
+                const auto after = runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false});
+                ok &= Expect(after.size() == before.size(),
+                             "expiration allocation failure must preserve exact active-event pre-state");
+            }
+        }
+    }
+    {
+        SimulationRuntime runtime{{}};
+        const auto desc = MakeJob(1);
+        auto executable = MakeExecutableJob(desc);
+        const auto handle = runtime.SubmitJob(executable, desc);
+        const auto scheduled = runtime.Schedule(ScheduledSimulationTask{{}, handle.Value(), SimulationTime{0}, SimulationLane::Background});
+        ok &= Expect(scheduled.HasValue(), "shutdown gate job should be scheduled before shutdown");
+        executable->throw_cancel = true;
+        const auto first_shutdown = runtime.Shutdown();
+        ok &= Expect(!first_shutdown, "first shutdown should expose cancellation failure");
+        const auto blocked_tick = runtime.Tick();
+        ok &= Expect(!blocked_tick && blocked_tick.GetError().HasCode("simulation.shutdown"),
+                     "Tick must reject work after shutdown has started");
+        const auto due = runtime.ExecuteDueWithinBudget(SimulationTime{10}, SimulationBudget{1, 1});
+        ok &= Expect(due.activated == 0 && runtime.ActiveScheduleForTesting(handle.Value()) == scheduled.Value(),
+                     "scheduled work must not activate after shutdown has started");
+        ok &= Expect(runtime.Cancel(scheduled.Value()).HasValue(), "scheduled cleanup should remain available during shutdown");
+        const auto reschedule = runtime.Schedule(ScheduledSimulationTask{{}, handle.Value(), SimulationTime{0}, SimulationLane::Background});
+        ok &= Expect(!reschedule && reschedule.GetError().HasCode("simulation.shutdown"),
+                     "new schedules must be rejected after shutdown has started");
+        const auto blocked_main_thread = runtime.ProcessMainThreadCommits();
+        ok &= Expect(!blocked_main_thread && blocked_main_thread.GetError().HasCode("simulation.shutdown"),
+                     "main-thread work must be rejected after shutdown has started");
+        executable->throw_cancel = false;
+        ok &= Expect(runtime.Shutdown().HasValue(), "shutdown retry should finish cleanup after cancellation recovers");
+    }
+    return ok;
+}
+
 bool TestDeepFreezeFailureContracts()
 {
     bool ok = true;
@@ -938,6 +1314,8 @@ int main()
     ok &= TestTickFailuresCancellationAndMainThreadCommits();
     ok &= TestProposalValidationClockRelevanceAndCleanup();
     ok &= TestMemoryFactShutdownAndProposalCleanupEdges();
+    ok &= TestGoal3SimulationBoundaryAudit();
+    ok &= TestGoal3SimulationFaultAtomicity();
     ok &= TestDeepFreezeFailureContracts();
     return ok ? 0 : 1;
 }

@@ -5688,7 +5688,7 @@
         "AssetLocationKind"
       ],
       "module": "EngineRuntime/Assets",
-      "normalized_sha256": "209000133818ab80b6fd05a389fd2dafe8a94dc71728ef0c95666687996414a6",
+      "normalized_sha256": "394503cd7a65c24936e7e00e68997a9e8368fef150bcdd4aed5226d3ac6b6838",
       "public_fields": [],
       "templates": []
     },
@@ -7212,7 +7212,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineRuntime/RuntimeFoundation",
-      "normalized_sha256": "dac3052b2f2c5f9bb89bd5d9fc04b015649dc6c9949c3a95c20e9cf3a9211fda",
+      "normalized_sha256": "e0bcc5f59f96deb2d4df0f73d8335661f3b0438acd2bb20304aff0c06245dfad",
       "public_fields": [
         "GameTimePoint::ticks"
       ],
@@ -7237,7 +7237,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineRuntime/RuntimeFoundation",
-      "normalized_sha256": "5fd543b8987e86def6d9ee1f7fb622910545bc543e3aad1ce8cee6c8aebe83fa",
+      "normalized_sha256": "3cb0b5f91f1a1d35f8b8d2a263d67904b046996e0e4c060eaa4c6fc547a77365",
       "public_fields": [
         "Quat::w",
         "Quat::x",

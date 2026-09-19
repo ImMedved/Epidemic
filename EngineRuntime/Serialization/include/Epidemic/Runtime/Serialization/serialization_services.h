@@ -8,6 +8,7 @@
 
 #include <exception>
 #include <memory>
+#include <new>
 #include <typeindex>
 #include <typeinfo>
 
@@ -61,6 +62,11 @@ template <typename TObject>
             return foundation::Result<SerializedDocument>::Failure(serialized.GetError());
         }
         return writer->Finalize(serializer.GetTypeId(), serializer.GetSchemaVersion());
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<SerializedDocument>::Failure(
+            CreateSerializationError("serialization.out_of_memory", "document serialization could not allocate required state"));
     }
     catch (const std::exception& error)
     {

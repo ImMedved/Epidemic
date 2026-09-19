@@ -13,6 +13,7 @@ namespace epidemic::runtime
 struct PersistenceOptions
 {
     std::shared_ptr<IPersistenceBackend> backend;
+    // CreatePersistenceServices rejects values outside the PersistenceDurability enum domain.
     PersistenceDurability durability = PersistenceDurability::MemoryOnly;
 };
 

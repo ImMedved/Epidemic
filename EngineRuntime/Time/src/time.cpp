@@ -1,6 +1,7 @@
 #include "Epidemic/Runtime/Time/time_runtime.h"
 
 #include "time_runtime_impl.h"
+#include "time_defaults.h"
 
 #include "Epidemic/Foundation/error.h"
 
@@ -75,7 +76,8 @@ foundation::Result<void> ValidateTimeOptions(const TimeOptions& options)
     }
 
     const std::uint32_t minutes_per_day = options.calendar.hours_per_day * 60;
-    std::vector<PhaseBoundary> boundaries = options.phase_boundaries;
+    std::vector<PhaseBoundary> boundaries =
+        options.phase_boundaries.empty() ? detail::DefaultPhaseBoundaries() : options.phase_boundaries;
     std::sort(boundaries.begin(), boundaries.end(), [](const PhaseBoundary& left, const PhaseBoundary& right) {
         return left.start_minute < right.start_minute;
     });

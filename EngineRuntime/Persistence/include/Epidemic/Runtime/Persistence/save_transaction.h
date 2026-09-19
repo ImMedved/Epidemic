@@ -36,7 +36,12 @@ class ISaveTransaction
     [[nodiscard]] virtual foundation::Result<void> RemoveLazyRule(LazyRuleId id) = 0;
     [[nodiscard]] virtual foundation::Result<void> UpsertZoneOverride(ZoneOverrideSnapshot snapshot) = 0;
     [[nodiscard]] virtual foundation::Result<void> RemoveZoneOverride(const PersistenceLocation& location) = 0;
+    // Commit is terminal on success. A failed commit enters Failed; it cannot be retried on the
+    // same transaction and may only be closed by Rollback. Repeating Commit after Committed is an
+    // idempotent success. An empty transaction is still a commit and advances the store revision.
     [[nodiscard]] virtual foundation::Result<void> Commit() = 0;
+    // Rollback discards staged operations while Open or Failed. It is a no-op after a terminal
+    // Committed or RolledBack state.
     virtual void Rollback() = 0;
 };
 

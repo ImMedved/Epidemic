@@ -8,21 +8,23 @@ Physics управляет collision shapes, bodies, fixed-step simulation, spat
 
 `ICollisionShapeRegistry` регистрирует shapes. `IPhysicsScene` создает и уничтожает bodies. `IPhysicsStepper` выполняет fixed steps. `IPhysicsQuery` предоставляет snapshots, raycast и overlap. `IPhysicsEventBuffer` хранит текущий contact batch. `IPhysicsRuntimeLifecycle` выполняет retryable shutdown.
 
-`IPhysicsBackend` работает только с `BackendBodyHandle` и `BackendShapeHandle`, возвращает `BackendBodySnapshot`, `BackendRaycastHit` и `BackendContactEvent`. Runtime преобразует их в public handles.
+`IPhysicsBackend` работает только с `BackendBodyHandle` и `BackendShapeHandle`, возвращает `BackendBodySnapshot`, `BackendRaycastHit` и `BackendContactEvent`. Runtime преобразует их в public handles. Successful `CreateShape`/`CreateBody` передает ownership нового backend object с valid handle, уникальным среди live objects этого типа; alias существующего handle является backend contract violation и не уничтожается Runtime как rollback ownership.
 
 ## Step
 
-После успешного backend simulation интервал считается потребленным, даже если synchronization или Scene sink завершились ошибкой. Backend snapshots сначала собираются и валидируются batch-first, затем authoritative body records меняются и только после этого публикуются sink writes. Invalid transform/velocity не повреждает state.
+`Tick(delta)` использует prefix-progress semantics. Ошибки validation и time-arithmetic preflight происходят до acceptance и сохраняют timing state. После успешного preflight `delta` принимается в accumulator ровно один раз. Если поздний fixed step завершается ошибкой, уже завершенный prefix остается committed, а оставшееся принятое время остается в accumulator. Для продолжения принятой работы используется `Tick(0)` либо следующий вызов только с новым frame delta; delta не передается повторно как retry. Если `SimulateFixed` уже завершился успешно, а snapshot/contact synchronization завершилась ошибкой, retry завершает тот же backend step без повторного `SimulateFixed`.
 
-Contact payload проходит validation finite values и handles; invalid events фильтруются, valid batch публикуется согласованно.
+Backend snapshots сначала собираются и валидируются batch-first, затем authoritative body records меняются и только после этого публикуются sink writes. Invalid transform/velocity не повреждает state.
+
+Contact payload проходит validation finite values и handles; invalid events фильтруются. Valid events сохраняют backend order, включая duplicate events: Physics не выполняет implicit deduplication.
 
 ## Shutdown
 
-Bodies уничтожаются раньше shapes. Failed body сохраняет backend handle и не позволяет уничтожить используемую shape. Повторный shutdown завершает оставшийся cleanup.
+Bodies уничтожаются раньше связанных с ними shapes. Failure одного body сохраняет его backend handle, запрещает уничтожение используемой им shape и не блокирует best-effort cleanup независимых bodies и свободных shapes. Pending rollback body с неизвестной опубликованной shape relation временно удерживает все shapes до успешного cleanup. Повторный shutdown продолжает оставшийся cleanup и после полного завершения является idempotent.
 
 ## Стабильность
 
-После финальной validation модуль frozen. Production SDK подключается через существующий backend port.
+Документ описывает target contract кандидата на локальный freeze. Статус `LOCAL_READY` присваивается только после прохождения Goal 3 audit и ledger gates. Production SDK подключается через существующий backend port.
 
 ## Карта публичных заголовков
 

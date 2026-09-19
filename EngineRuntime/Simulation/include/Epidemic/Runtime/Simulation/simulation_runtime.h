@@ -32,6 +32,9 @@ public:
 
     [[nodiscard]] virtual foundation::Result<SimulationTickResult> Tick() = 0;
     [[nodiscard]] virtual foundation::Result<SimulationTickResult> ProcessMainThreadCommits(std::uint32_t max_jobs = 0) = 0;
+
+    // Once shutdown has entered its retryable cleanup state, new scheduler/proposal work is rejected.
+    // A failed Shutdown may be called again to continue cleanup; completed shutdown is idempotent.
     [[nodiscard]] virtual foundation::Result<void> Shutdown() = 0;
 };
 
@@ -84,8 +87,10 @@ class ISimulationJob
 public:
     virtual ~ISimulationJob() = default;
 
-    // Result failure or exception means Runtime may retry only according to the job's own documented semantics;
-    // Runtime itself never leaves a synthetic Running state published across the callback boundary.
+    // Result failure or exception is not accepted as a completed logical step. Result success is accepted
+    // by Runtime exactly once: if later Runtime-local publication must be retried, the successful result is
+    // retained internally and ExecuteStep is not called again for that logical step.
+    // Runtime never leaves a synthetic Running state published across the callback boundary.
     [[nodiscard]] virtual foundation::Result<SimulationStepResult> ExecuteStep(const RuntimeBudget& budget) = 0;
     [[nodiscard]] virtual foundation::Result<void> Cancel() = 0;
 };

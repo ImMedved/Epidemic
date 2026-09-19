@@ -9,6 +9,7 @@
 #include <limits>
 #include <new>
 #include <tuple>
+#include <type_traits>
 #include <utility>
 
 namespace epidemic::runtime::streaming
@@ -24,6 +25,9 @@ constexpr float kResidentProgress = 0.95f;
 constexpr float kActiveProgress = 1.0f;
 constexpr float kUnloadingProgress = 0.90f;
 constexpr float kTerminalProgress = 1.0f;
+
+static_assert(std::is_nothrow_move_constructible_v<foundation::Result<StreamingStepResult>>);
+static_assert(std::is_nothrow_move_assignable_v<ProgressiveLoadPlan>);
 
 [[nodiscard]] foundation::Result<void> StreamingFailure(std::string_view code, std::string_view message)
 {
@@ -251,19 +255,20 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
 
         if (dependencies_.data_source)
         {
+            std::optional<foundation::Result<ProgressiveLoadPlan>> built_plan;
             try
             {
-                const auto plan = dependencies_.data_source->BuildLoadPlan(request);
-                if (!plan)
-                {
-                    return foundation::Result<StreamingDemandHandle>::Failure(plan.GetError());
-                }
-                request.load_plan = plan.Value();
+                built_plan.emplace(dependencies_.data_source->BuildLoadPlan(request));
             }
             catch (...)
             {
                 return StreamingFailureValue<StreamingDemandHandle>("streaming.data_source_exception", "streaming data source threw while building load plan");
             }
+            if (!*built_plan)
+            {
+                return foundation::Result<StreamingDemandHandle>::Failure(built_plan->GetError());
+            }
+            request.load_plan = std::move(*built_plan).Value();
         }
         const auto valid_plan = ValidatePlan(request.load_plan);
         if (!valid_plan)
@@ -291,6 +296,8 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
         bool inserted_request = false;
         bool inserted_chunk_mapping = false;
         bool inserted_chunk_state = false;
+        std::optional<StreamingRequestId> previous_chunk_mapping;
+        std::optional<StreamingState> previous_chunk_state;
         try
         {
             if (fail_next_request_publication_for_testing_)
@@ -318,6 +325,7 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
                 }
                 else
                 {
+                    previous_chunk_state = state_it->second;
                     state_it->second = StreamingState::Requested;
                 }
                 const auto mapping_it = chunk_to_request_.find(chunk);
@@ -328,6 +336,7 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
                 }
                 else
                 {
+                    previous_chunk_mapping = mapping_it->second;
                     mapping_it->second = request_id;
                 }
             }
@@ -338,9 +347,19 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
             {
                 chunk_states_.erase(chunk);
             }
+            else if (previous_chunk_state.has_value())
+            {
+                const auto state_it = chunk_states_.find(chunk);
+                if (state_it != chunk_states_.end()) state_it->second = *previous_chunk_state;
+            }
             if (inserted_chunk_mapping)
             {
                 chunk_to_request_.erase(chunk);
+            }
+            else if (previous_chunk_mapping.has_value())
+            {
+                const auto mapping_it = chunk_to_request_.find(chunk);
+                if (mapping_it != chunk_to_request_.end()) mapping_it->second = *previous_chunk_mapping;
             }
             if (inserted_request)
             {
@@ -800,17 +819,10 @@ void StreamingRuntime::SetBudget(const StreamingBudget& budget)
 StreamingTickResult StreamingRuntime::Tick()
 {
     StreamingTickResult result{};
-    std::vector<StreamingRequestId> work_list;
-    try
-    {
-        work_list = BuildWorkList();
-        result.failures.reserve(work_list.size());
-    }
-    catch (...)
-    {
-        SaturatingIncrement(statistics_.failed);
-        return result;
-    }
+    // Runtime-owned preparation is not a semantic request failure. Allocation failure
+    // surfaces to the caller before any request mutation or statistics update.
+    std::vector<StreamingRequestId> work_list = BuildWorkList();
+    result.failures.reserve(work_list.size());
 
     const std::size_t max_requests = budget_.max_requests == 0 ? work_list.size() : budget_.max_requests;
     const std::size_t max_bytes = budget_.max_bytes == 0 ? std::numeric_limits<std::size_t>::max() : budget_.max_bytes;
@@ -840,6 +852,12 @@ StreamingTickResult StreamingRuntime::Tick()
         try
         {
             advanced = AdvanceRequest(*record, available_budget);
+        }
+        catch (const std::bad_alloc&)
+        {
+            // Local allocation failure is not a provider/request semantic failure.
+            // Any externally accepted step has already been stored in pending_step_result.
+            throw;
         }
         catch (...)
         {
@@ -1005,8 +1023,10 @@ foundation::Result<void> StreamingRuntime::ValidatePlan(const ProgressiveLoadPla
     {
         return StreamingFailure("streaming.invalid_plan", "streaming load plan must contain at least one step");
     }
-    for (const StreamingPlanStepRecord& step : plan.steps)
+    bool commit_seen = false;
+    for (std::size_t index = 0; index < plan.steps.size(); ++index)
     {
+        const StreamingPlanStepRecord& step = plan.steps[index];
         if (!IsValidPlanStep(step.step))
         {
             return StreamingFailure("streaming.invalid_plan_step", "streaming load plan contains an invalid step enum value");
@@ -1014,6 +1034,14 @@ foundation::Result<void> StreamingRuntime::ValidatePlan(const ProgressiveLoadPla
         if (step.processed_bytes != 0)
         {
             return StreamingFailure("streaming.invalid_plan", "streaming load plan cannot contain pre-processed bytes");
+        }
+        if (step.step == StreamingPlanStep::Commit)
+        {
+            if (commit_seen || index + 1u != plan.steps.size())
+            {
+                return StreamingFailure("streaming.invalid_plan", "streaming commit step must be unique and final when present");
+            }
+            commit_seen = true;
         }
     }
     return foundation::Result<void>::Success();
@@ -1307,58 +1335,79 @@ foundation::Result<void> StreamingRuntime::ExecutePlanStep(RequestRecord& record
     }
 
     const std::size_t cursor = record.request.load_plan.cursor;
-    StreamingPlanStepRecord step = record.request.load_plan.steps[cursor];
-    if (!IsValidPlanStep(step.step))
+    const StreamingPlanStepRecord current_step = record.request.load_plan.steps[cursor];
+    if (!IsValidPlanStep(current_step.step))
     {
         return StreamingFailure("streaming.invalid_plan_step", "streaming plan contains an invalid step enum value");
     }
-    bool step_completed = true;
-    if (dependencies_.data_source)
+
+    if (!record.pending_step_result.has_value())
     {
-        try
+        StreamingStepResult accepted{};
+        if (dependencies_.data_source)
         {
-            const auto executed = dependencies_.data_source->ExecuteStep(record.request, step, available_budget);
-            if (!executed) return foundation::Result<void>::Failure(executed.GetError());
-            step.processed_bytes = executed.Value().processed_bytes;
-            step_completed = executed.Value().completed;
-        }
-        catch (...)
-        {
-            return StreamingFailure("streaming.data_source_exception", "streaming data source threw while executing load step");
-        }
-    }
-    else
-    {
-        try
-        {
-            if (step.step == StreamingPlanStep::PrepareData && PersistenceSource())
+            std::optional<foundation::Result<StreamingStepResult>> executed;
+            try
             {
-                const auto prepared = PersistenceSource()->PrepareChunkData(record.request);
-                if (!prepared) return prepared;
+                executed.emplace(dependencies_.data_source->ExecuteStep(record.request, current_step, available_budget));
             }
-            if (step.step == StreamingPlanStep::ResolveTarget && WorldSource())
+            catch (...)
             {
-                const auto chunk = GetChunkTarget(record.request.target);
-                if (!chunk) return StreamingFailure("streaming.unsupported_target", "reference streaming runtime only resolves chunk targets");
-                (void)WorldSource()->ResolveRegion(*chunk);
+                return StreamingFailure("streaming.data_source_exception", "streaming data source threw while executing load step");
             }
-            if (step.step == StreamingPlanStep::PrepareResources && ResourceSource())
+            if (!*executed)
             {
-                const auto prepared = ResourceSource()->PrepareChunkResources(record.request);
-                if (!prepared) return prepared;
+                return foundation::Result<void>::Failure(executed->GetError());
             }
+            accepted = executed->Value();
         }
-        catch (...)
+        else
         {
-            return StreamingFailure("streaming.extension_exception", "streaming extension threw while executing load step");
+            try
+            {
+                if (current_step.step == StreamingPlanStep::PrepareData && PersistenceSource())
+                {
+                    const auto prepared = PersistenceSource()->PrepareChunkData(record.request);
+                    if (!prepared) return prepared;
+                }
+                if (current_step.step == StreamingPlanStep::ResolveTarget && WorldSource())
+                {
+                    const auto chunk = GetChunkTarget(record.request.target);
+                    if (!chunk) return StreamingFailure("streaming.unsupported_target", "reference streaming runtime only resolves chunk targets");
+                    (void)WorldSource()->ResolveRegion(*chunk);
+                }
+                if (current_step.step == StreamingPlanStep::PrepareResources && ResourceSource())
+                {
+                    const auto prepared = ResourceSource()->PrepareChunkResources(record.request);
+                    if (!prepared) return prepared;
+                }
+            }
+            catch (...)
+            {
+                return StreamingFailure("streaming.extension_exception", "streaming extension threw while executing load step");
+            }
+            accepted.processed_bytes = current_step.estimated_bytes;
+            accepted.completed = true;
         }
-    }
-    if (!dependencies_.data_source && step.processed_bytes == 0)
-    {
-        step.processed_bytes = step.estimated_bytes;
+
+        // Success from an external step is accepted exactly once. Publication into this
+        // fixed-size optional is no-throw, so a later Runtime-local failure can retry the
+        // suffix without calling the external source again.
+        record.pending_step_result.emplace(PendingStepResult{cursor, available_budget, accepted});
     }
 
-    if (available_budget.HasByteLimit() && step.processed_bytes > available_budget.max_bytes)
+    const PendingStepResult& pending = *record.pending_step_result;
+    if (pending.cursor != cursor)
+    {
+        return StreamingFailure("streaming.pending_step_mismatch", "accepted streaming step does not match the current plan cursor");
+    }
+
+    StreamingPlanStepRecord step = current_step;
+    step.processed_bytes = pending.result.processed_bytes;
+    const bool step_completed = pending.result.completed;
+    const RuntimeBudget accepted_budget = pending.accepted_budget;
+
+    if (accepted_budget.HasByteLimit() && step.processed_bytes > accepted_budget.max_bytes)
     {
         SaturatingIncrement(statistics_.budget_violations);
         return StreamingFailure("streaming.step_budget_violation", "streaming plan step exceeded the available byte budget");
@@ -1398,6 +1447,7 @@ foundation::Result<void> StreamingRuntime::ExecutePlanStep(RequestRecord& record
     {
         CommitState(record, StreamingState::Loaded, kLoadedProgress);
     }
+    record.pending_step_result.reset();
     if (const auto chunk = GetChunkTarget(record.request.target); chunk && chunk_states_.contains(*chunk))
     {
         chunk_states_.find(*chunk)->second = record.state;
@@ -1489,6 +1539,7 @@ foundation::Result<StreamingRuntime::PreparedTerminalTransition> StreamingRuntim
 void StreamingRuntime::CommitTerminal(RequestRecord& record, StreamingState state, PreparedTerminalTransition prepared) noexcept
 {
     CommitState(record, state, kTerminalProgress);
+    record.pending_step_result.reset();
     record.completion_sequence = prepared.completion_sequence;
     CommitMonotonicCounter(next_completion_sequence_);
 }

@@ -2,10 +2,102 @@
 #include "in_memory_asset_catalog.h"
 
 #include <algorithm>
+#include <cstddef>
 #include <cstdint>
-#include <type_traits>
+#include <cstdlib>
+#include <new>
 #include <string>
+#include <type_traits>
 #include <vector>
+
+namespace allocation_fault
+{
+thread_local std::ptrdiff_t fail_after = -1;
+thread_local std::size_t allocation_index = 0;
+
+void Enable(std::size_t fail_index) noexcept
+{
+    allocation_index = 0;
+    fail_after = static_cast<std::ptrdiff_t>(fail_index);
+}
+
+void Disable() noexcept
+{
+    fail_after = -1;
+}
+
+[[nodiscard]] bool ShouldFail() noexcept
+{
+    if (fail_after < 0)
+    {
+        return false;
+    }
+    return allocation_index++ == static_cast<std::size_t>(fail_after);
+}
+
+class ScopedFailure final
+{
+  public:
+    explicit ScopedFailure(std::size_t fail_index) noexcept
+    {
+        Enable(fail_index);
+    }
+
+    ~ScopedFailure()
+    {
+        Disable();
+    }
+
+    ScopedFailure(const ScopedFailure&) = delete;
+    ScopedFailure& operator=(const ScopedFailure&) = delete;
+};
+} // namespace allocation_fault
+
+void* operator new(std::size_t size)
+{
+    if (allocation_fault::ShouldFail())
+    {
+        throw std::bad_alloc{};
+    }
+    if (void* memory = std::malloc(size == 0 ? 1 : size))
+    {
+        return memory;
+    }
+    throw std::bad_alloc{};
+}
+
+void* operator new[](std::size_t size)
+{
+    if (allocation_fault::ShouldFail())
+    {
+        throw std::bad_alloc{};
+    }
+    if (void* memory = std::malloc(size == 0 ? 1 : size))
+    {
+        return memory;
+    }
+    throw std::bad_alloc{};
+}
+
+void operator delete(void* memory) noexcept
+{
+    std::free(memory);
+}
+
+void operator delete[](void* memory) noexcept
+{
+    std::free(memory);
+}
+
+void operator delete(void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
+
+void operator delete[](void* memory, std::size_t) noexcept
+{
+    std::free(memory);
+}
 
 namespace
 {
@@ -38,6 +130,13 @@ AssetMetadata MakeMetadata(const char* asset_path, const char* asset_type, const
     metadata.content_hash = 1234;
     metadata.version = 1;
     return metadata;
+}
+
+bool MetadataEquals(const AssetMetadata& left, const AssetMetadata& right)
+{
+    return left.id == right.id && left.type == right.type && left.location == right.location && left.state == right.state &&
+           left.dependencies == right.dependencies && left.tags == right.tags && left.content_hash == right.content_hash &&
+           left.version == right.version;
 }
 
 bool TestDefaultMetadataState()
@@ -79,6 +178,38 @@ bool TestValidationFailures()
            location_result.GetError().HasCode("asset.invalid_location");
 }
 
+bool TestVersionGeneratedDependencyAndTagValidation()
+{
+    InMemoryAssetCatalog catalog;
+
+    AssetMetadata zero_version = MakeMetadata("version-zero.asset", "itemdef", "version", AssetLocationKind::VirtualPath);
+    zero_version.version = 0;
+
+    AssetMetadata missing_generator = MakeMetadata("generated/missing.asset", "itemdef", "generated", AssetLocationKind::Generated);
+
+    AssetMetadata generated = MakeMetadata("generated/valid.asset", "itemdef", "generated", AssetLocationKind::Generated);
+    generated.location.generator_id = StringId::FromString("procedural-test-generator");
+
+    AssetMetadata invalid_dependency = MakeMetadata("invalid-dependency.asset", "itemdef", "dependency", AssetLocationKind::VirtualPath);
+    invalid_dependency.dependencies.push_back(AssetDependency{});
+
+    AssetMetadata duplicate_tags = MakeMetadata("duplicate-tags.asset", "itemdef", "duplicate", AssetLocationKind::VirtualPath);
+    duplicate_tags.tags.push_back(duplicate_tags.tags.front());
+
+    const auto version_result = catalog.RegisterAsset(zero_version);
+    const auto missing_generator_result = catalog.RegisterAsset(missing_generator);
+    const auto invalid_dependency_result = catalog.RegisterAsset(invalid_dependency);
+    const auto duplicate_tags_result = catalog.RegisterAsset(duplicate_tags);
+    const auto generated_result = catalog.RegisterAsset(generated);
+
+    return !version_result && version_result.GetError().HasCode("asset.invalid_version") &&
+           !missing_generator_result && missing_generator_result.GetError().HasCode("asset.invalid_location") &&
+           !invalid_dependency_result && invalid_dependency_result.GetError().HasCode("asset.invalid_dependency") &&
+           !duplicate_tags_result && duplicate_tags_result.GetError().HasCode("asset.invalid_tag") && generated_result &&
+           !catalog.Contains(zero_version.id) && !catalog.Contains(missing_generator.id) &&
+           !catalog.Contains(invalid_dependency.id) && !catalog.Contains(duplicate_tags.id) && catalog.Contains(generated.id);
+}
+
 bool TestPathValidationRejectsTraversalAndRequiresMounts()
 {
     InMemoryAssetCatalog catalog;
@@ -88,6 +219,12 @@ bool TestPathValidationRejectsTraversalAndRequiresMounts()
     AssetMetadata escaped_mount = MakeMetadata("mount/../../outside.asset", "itemdef", "path", AssetLocationKind::PackageEntry);
     AssetMetadata missing_virtual_mount = MakeMetadata("items/potato.itemdef", "itemdef", "path", AssetLocationKind::VirtualPath);
     AssetMetadata missing_package_mount = MakeMetadata("packages/potato.mesh", "mesh", "path", AssetLocationKind::PackageEntry);
+    AssetMetadata windows_device = MakeMetadata(R"(\\?\C:\absolute\path.asset)", "itemdef", "path", AssetLocationKind::FilePath);
+    AssetMetadata windows_device_alias = MakeMetadata(R"(\\.\NUL)", "itemdef", "path", AssetLocationKind::FilePath);
+    AssetMetadata windows_rooted = MakeMetadata(R"(\rooted\path.asset)", "itemdef", "path", AssetLocationKind::FilePath);
+    AssetMetadata embedded_nul = MakeMetadata("embedded-nul-id.asset", "itemdef", "path", AssetLocationKind::VirtualPath);
+    constexpr char kEmbeddedNulPath[] = "safe.asset\0../../escape.asset";
+    embedded_nul.location.path.assign(kEmbeddedNulPath, sizeof(kEmbeddedNulPath) - 1);
     missing_virtual_mount.location.mount_id = {};
     missing_package_mount.location.mount_id = {};
 
@@ -97,13 +234,22 @@ bool TestPathValidationRejectsTraversalAndRequiresMounts()
     const auto escaped_result = catalog.RegisterAsset(escaped_mount);
     const auto missing_virtual_result = catalog.RegisterAsset(missing_virtual_mount);
     const auto missing_package_result = catalog.RegisterAsset(missing_package_mount);
+    const auto windows_device_result = catalog.RegisterAsset(windows_device);
+    const auto windows_device_alias_result = catalog.RegisterAsset(windows_device_alias);
+    const auto windows_rooted_result = catalog.RegisterAsset(windows_rooted);
+    const auto embedded_nul_result = catalog.RegisterAsset(embedded_nul);
 
     return !windows_result && windows_result.GetError().HasCode("asset.invalid_location") &&
            !posix_result && posix_result.GetError().HasCode("asset.invalid_location") &&
            !outside_result && outside_result.GetError().HasCode("asset.invalid_location") &&
            !escaped_result && escaped_result.GetError().HasCode("asset.invalid_location") &&
            !missing_virtual_result && missing_virtual_result.GetError().HasCode("asset.invalid_location") &&
-           !missing_package_result && missing_package_result.GetError().HasCode("asset.invalid_location");
+           !missing_package_result && missing_package_result.GetError().HasCode("asset.invalid_location") &&
+           !windows_device_result && windows_device_result.GetError().HasCode("asset.invalid_location") &&
+           !windows_device_alias_result && windows_device_alias_result.GetError().HasCode("asset.invalid_location") &&
+           !windows_rooted_result && windows_rooted_result.GetError().HasCode("asset.invalid_location") &&
+           !embedded_nul_result && embedded_nul_result.GetError().HasCode("asset.invalid_location") &&
+           !catalog.Contains(embedded_nul.id);
 }
 
 bool TestDuplicateAssetIdReturnsError()
@@ -215,6 +361,27 @@ bool TestMissingAssetReturnsNulloptAndResolveError()
     return !missing_snapshot.has_value() && !missing_location && missing_location.GetError().HasCode("asset.not_found");
 }
 
+bool TestInvalidQueryInputsAreControlled()
+{
+    InMemoryAssetCatalog catalog;
+    const AssetMetadata metadata = MakeMetadata("items/query.itemdef", "itemdef", "query", AssetLocationKind::VirtualPath);
+    if (!catalog.RegisterAsset(metadata))
+    {
+        return false;
+    }
+
+    const AssetId invalid_id{};
+    const AssetType invalid_type{};
+    const StringId invalid_tag{};
+    const auto invalid_resolve = catalog.Resolve(invalid_id);
+    const auto invalid_manifest = catalog.BuildDependencyManifest(invalid_id);
+
+    return !catalog.FindById(invalid_id).has_value() && catalog.FindByType(invalid_type).empty() &&
+           catalog.FindByTag(invalid_tag).empty() && !catalog.Contains(invalid_id) && !invalid_resolve &&
+           invalid_resolve.GetError().HasCode("asset.invalid_id") && !invalid_manifest &&
+           invalid_manifest.GetError().HasCode("asset.invalid_id") && catalog.Contains(metadata.id);
+}
+
 bool TestAssetLocationResolverReturnsRegisteredLocation()
 {
     InMemoryAssetCatalog catalog;
@@ -224,8 +391,15 @@ bool TestAssetLocationResolverReturnsRegisteredLocation()
         return false;
     }
 
-    const auto resolved = catalog.Resolve(metadata.id);
-    return resolved && resolved.Value() == metadata.location;
+    auto resolved = catalog.Resolve(metadata.id);
+    if (!resolved || resolved.Value() != metadata.location)
+    {
+        return false;
+    }
+
+    resolved.Value().path = "mutated/by/caller.asset";
+    const auto refetched = catalog.Resolve(metadata.id);
+    return refetched && refetched.Value() == metadata.location;
 }
 
 bool TestCanonicalPaths()
@@ -310,7 +484,48 @@ bool TestDependencyManifestDeduplicatesDiamondAndMissingPolicy()
            manifest.Value().dependencies[2].asset_id == expected[2] &&
            required_seeded && !required_manifest && required_manifest.GetError().HasCode("asset.missing_dependency") &&
            optional_seeded && optional_manifest && optional_manifest.Value().dependencies.size() == 1 &&
-           optional_manifest.Value().dependencies.front().asset_id == optional_id;
+           optional_manifest.Value().dependencies.front().asset_id == optional_id &&
+           !optional_manifest.Value().dependencies.front().required;
+}
+
+bool TestDependencyManifestMergesRequirednessIndependentlyOfTraversalOrder()
+{
+    AssetMetadata root_left_first = MakeMetadata("order/root.asset", "itemdef", "manifest", AssetLocationKind::VirtualPath);
+    AssetMetadata root_right_first = root_left_first;
+    AssetMetadata left = MakeMetadata("order/left.asset", "itemdef", "manifest", AssetLocationKind::VirtualPath);
+    AssetMetadata right = MakeMetadata("order/right.asset", "itemdef", "manifest", AssetLocationKind::VirtualPath);
+    AssetMetadata shared = MakeMetadata("order/shared.asset", "mesh", "manifest", AssetLocationKind::VirtualPath);
+
+    left.dependencies.push_back(AssetDependency{shared.id, false});
+    right.dependencies.push_back(AssetDependency{shared.id, true});
+    root_left_first.dependencies = {AssetDependency{left.id, true}, AssetDependency{right.id, true}};
+    root_right_first.dependencies = {AssetDependency{right.id, true}, AssetDependency{left.id, true}};
+
+    InMemoryAssetCatalog first;
+    if (!first.RegisterAsset(root_left_first) || !first.RegisterAsset(left) || !first.RegisterAsset(right) ||
+        !first.RegisterAsset(shared))
+    {
+        return false;
+    }
+
+    InMemoryAssetCatalog second;
+    if (!second.RegisterAsset(shared) || !second.RegisterAsset(right) || !second.RegisterAsset(left) ||
+        !second.RegisterAsset(root_right_first))
+    {
+        return false;
+    }
+
+    const auto first_manifest = first.BuildDependencyManifest(root_left_first.id);
+    const auto second_manifest = second.BuildDependencyManifest(root_right_first.id);
+    if (!first_manifest || !second_manifest || first_manifest.Value().dependencies != second_manifest.Value().dependencies)
+    {
+        return false;
+    }
+
+    const auto shared_dependency = std::find_if(
+        first_manifest.Value().dependencies.begin(), first_manifest.Value().dependencies.end(),
+        [shared](const AssetDependency& dependency) { return dependency.asset_id == shared.id; });
+    return shared_dependency != first_manifest.Value().dependencies.end() && shared_dependency->required;
 }
 
 
@@ -405,9 +620,93 @@ bool TestMetadataBoundsRejectBeforeMutation()
         too_many_tags.tags.push_back(StringId::FromString(("tag-" + std::to_string(i)).c_str()));
     const auto tags_result = catalog.RegisterAsset(too_many_tags);
 
+    auto too_many_dependencies = MakeMetadata("many-dependencies.asset", "itemdef", "tag", AssetLocationKind::VirtualPath);
+    too_many_dependencies.dependencies.reserve(epidemic::runtime::kMaxAssetDependencies + 1);
+    for (std::size_t i = 0; i <= epidemic::runtime::kMaxAssetDependencies; ++i)
+    {
+        const std::string dependency_name = "dependency-" + std::to_string(i) + ".asset";
+        too_many_dependencies.dependencies.push_back(AssetDependency{AssetId::FromString(dependency_name), (i % 2) == 0});
+    }
+    const auto dependencies_result = catalog.RegisterAsset(too_many_dependencies);
+
+    auto exact_path = MakeMetadata("exact-path-boundary.asset", "itemdef", "tag", AssetLocationKind::VirtualPath);
+    exact_path.location.path.assign(epidemic::runtime::kMaxAssetPathBytes, 'a');
+    const auto exact_path_result = catalog.RegisterAsset(exact_path);
+    const auto exact_path_stored = catalog.FindById(exact_path.id);
+
     return !path_result && path_result.GetError().HasCode("asset.metadata_too_large") &&
            !tags_result && tags_result.GetError().HasCode("asset.metadata_too_large") &&
-           !catalog.FindById(too_long.id).has_value() && !catalog.FindById(too_many_tags.id).has_value();
+           !dependencies_result && dependencies_result.GetError().HasCode("asset.metadata_too_large") &&
+           !catalog.FindById(too_long.id).has_value() && !catalog.FindById(too_many_tags.id).has_value() &&
+           !catalog.FindById(too_many_dependencies.id).has_value() && exact_path_result && exact_path_stored &&
+           exact_path_stored->location.path.size() == epidemic::runtime::kMaxAssetPathBytes;
+}
+
+bool TestRegistrationAllocationFailurePreservesCatalog()
+{
+    constexpr std::size_t kMaxFaultPoints = 512;
+    bool observed_allocation_failure = false;
+
+    for (std::size_t fail_index = 0; fail_index < kMaxFaultPoints; ++fail_index)
+    {
+        InMemoryAssetCatalog catalog;
+        const AssetMetadata baseline =
+            MakeMetadata("allocation/base.asset", "itemdef", "baseline", AssetLocationKind::VirtualPath);
+        if (!catalog.RegisterAsset(baseline))
+        {
+            return false;
+        }
+
+        const auto baseline_before = catalog.FindById(baseline.id);
+        if (!baseline_before)
+        {
+            return false;
+        }
+
+        AssetMetadata candidate =
+            MakeMetadata("allocation/./nested/../candidate.asset", "itemdef", "candidate", AssetLocationKind::VirtualPath);
+        candidate.id = AssetId::FromString("allocation/candidate.asset");
+        for (std::size_t i = 0; i < 16; ++i)
+        {
+            const std::string dependency_name = "allocation/dependency-" + std::to_string(i) + ".asset";
+            const std::string tag_name = "allocation-tag-" + std::to_string(i);
+            candidate.dependencies.push_back(AssetDependency{AssetId::FromString(dependency_name), (i % 2) == 0});
+            candidate.tags.push_back(StringId::FromString(tag_name));
+        }
+
+        bool threw_bad_alloc = false;
+        bool registered = false;
+        try
+        {
+            allocation_fault::ScopedFailure fault(fail_index);
+            registered = catalog.RegisterAsset(candidate).HasValue();
+        }
+        catch (const std::bad_alloc&)
+        {
+            threw_bad_alloc = true;
+        }
+
+        const auto baseline_after = catalog.FindById(baseline.id);
+        const auto candidate_after = catalog.FindById(candidate.id);
+        const auto type_matches = catalog.FindByType(baseline.type);
+
+        if (threw_bad_alloc)
+        {
+            observed_allocation_failure = true;
+            if (!baseline_after || !MetadataEquals(*baseline_before, *baseline_after) || candidate_after ||
+                type_matches.size() != 1 || !MetadataEquals(type_matches.front(), *baseline_before))
+            {
+                return false;
+            }
+            continue;
+        }
+
+        return registered && observed_allocation_failure && baseline_after &&
+               MetadataEquals(*baseline_before, *baseline_after) && candidate_after &&
+               candidate_after->location.path == "allocation/candidate.asset";
+    }
+
+    return false;
 }
 
 bool TestAssetServicesFactory()
@@ -435,23 +734,27 @@ int main()
     if (!TestDefaultMetadataState()) return 1;
     if (!TestRegisterAssetStoresMetadata()) return 2;
     if (!TestValidationFailures()) return 3;
-    if (!TestPathValidationRejectsTraversalAndRequiresMounts()) return 4;
-    if (!TestDuplicateAssetIdReturnsError()) return 5;
-    if (!TestSelfAndDuplicateDependenciesFail()) return 6;
-    if (!TestCatalogSeal()) return 7;
-    if (!TestFindByIdReturnsSnapshot()) return 8;
-    if (!TestFindByTypeAndTagWork()) return 9;
-    if (!TestMissingAssetReturnsNulloptAndResolveError()) return 10;
-    if (!TestAssetLocationResolverReturnsRegisteredLocation()) return 11;
-    if (!TestCanonicalPaths()) return 12;
-    if (!TestDependencyManifestAndCycle()) return 13;
-    if (!TestDependencyManifestDeduplicatesDiamondAndMissingPolicy()) return 14;
-    if (!TestAssetServicesFactory()) return 15;
-    if (!TestEnumTagAndFailureAtomicity()) return 16;
-    if (!TestWindowsDriveRelativeAndHostRootPaths()) return 17;
-    if (!TestSealIdempotenceAndEmptyCatalogContracts()) return 18;
-    if (!TestDeepDependencyManifestIsIterative()) return 19;
-    if (!TestMetadataBoundsRejectBeforeMutation()) return 20;
+    if (!TestVersionGeneratedDependencyAndTagValidation()) return 4;
+    if (!TestPathValidationRejectsTraversalAndRequiresMounts()) return 5;
+    if (!TestDuplicateAssetIdReturnsError()) return 6;
+    if (!TestSelfAndDuplicateDependenciesFail()) return 7;
+    if (!TestCatalogSeal()) return 8;
+    if (!TestFindByIdReturnsSnapshot()) return 9;
+    if (!TestFindByTypeAndTagWork()) return 10;
+    if (!TestMissingAssetReturnsNulloptAndResolveError()) return 11;
+    if (!TestInvalidQueryInputsAreControlled()) return 12;
+    if (!TestAssetLocationResolverReturnsRegisteredLocation()) return 13;
+    if (!TestCanonicalPaths()) return 14;
+    if (!TestDependencyManifestAndCycle()) return 15;
+    if (!TestDependencyManifestDeduplicatesDiamondAndMissingPolicy()) return 16;
+    if (!TestDependencyManifestMergesRequirednessIndependentlyOfTraversalOrder()) return 17;
+    if (!TestAssetServicesFactory()) return 18;
+    if (!TestEnumTagAndFailureAtomicity()) return 19;
+    if (!TestWindowsDriveRelativeAndHostRootPaths()) return 20;
+    if (!TestSealIdempotenceAndEmptyCatalogContracts()) return 21;
+    if (!TestDeepDependencyManifestIsIterative()) return 22;
+    if (!TestMetadataBoundsRejectBeforeMutation()) return 23;
+    if (!TestRegistrationAllocationFailurePreservesCatalog()) return 24;
 
     return 0;
 }

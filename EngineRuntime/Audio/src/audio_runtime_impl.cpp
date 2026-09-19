@@ -501,7 +501,11 @@ foundation::Result<void> AudioRuntime::Play(AudioEmitterHandle handle)
     }
 
     const auto payload = ResolvePayload(emitter->desc.sound);
-    if (!payload || payload.Value().state != SoundState::Ready || payload.Value().resource == nullptr)
+    if (!payload)
+    {
+        return foundation::Result<void>::Failure(payload.GetError());
+    }
+    if (payload.Value().state != SoundState::Ready || payload.Value().resource == nullptr)
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("audio.sound_not_ready", "audio emitter sound is not ready"));
@@ -524,6 +528,11 @@ foundation::Result<void> AudioRuntime::Play(AudioEmitterHandle handle)
     bool created_voice = false;
     if (!candidate.voice.IsValid())
     {
+        const auto cleanup_capacity = EnsurePendingVoiceCleanupCapacity(1);
+        if (!cleanup_capacity)
+        {
+            return cleanup_capacity;
+        }
         const AudioVoiceDesc voice_desc{payload.Value(), candidate.desc.loop, candidate.desc.mixer_group, EffectiveGain(candidate), spatial_state.Value()};
         const auto voice = CallAudioBoundary(
             [&] { return backend->CreateVoice(voice_desc); },
@@ -765,7 +774,11 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
             return revision;
         }
         const auto payload = ResolvePayload(candidate.desc.sound);
-        if (!payload || payload.Value().state != SoundState::Ready || payload.Value().resource == nullptr)
+        if (!payload)
+        {
+            return foundation::Result<void>::Failure(payload.GetError());
+        }
+        if (payload.Value().state != SoundState::Ready || payload.Value().resource == nullptr)
         {
             return foundation::Result<void>::Failure(
                 foundation::Error::Create("audio.sound_not_ready", "audio emitter sound is not ready"));
@@ -782,6 +795,11 @@ foundation::Result<void> AudioRuntime::FadeIn(AudioEmitterHandle handle, Runtime
         }
         if (!candidate.voice.IsValid())
         {
+            const auto cleanup_capacity = EnsurePendingVoiceCleanupCapacity(1);
+            if (!cleanup_capacity)
+            {
+                return cleanup_capacity;
+            }
             const AudioVoiceDesc voice_desc{payload.Value(), candidate.desc.loop, candidate.desc.mixer_group, 0.0f, spatial_state.Value()};
             const auto voice = CallAudioBoundary(
                 [&] { return backend->CreateVoice(voice_desc); },
@@ -970,6 +988,11 @@ foundation::Result<void> AudioRuntime::Tick(RuntimeFrameDuration delta)
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("audio.allocation_failed", "audio tick staging allocation failed"));
+    }
+    const auto cleanup_capacity = EnsurePendingVoiceCleanupCapacity(events_.size());
+    if (!cleanup_capacity)
+    {
+        return cleanup_capacity;
     }
 
     // Stage mixer fade progress using saturating-to-duration arithmetic.
@@ -1691,6 +1714,11 @@ foundation::Result<AudioClipPayload> AudioRuntime::ResolvePayload(SoundId id)
             return foundation::Result<AudioClipPayload>::Failure(
                 foundation::Error::Create("audio.invalid_sound_state", "audio resource source returned an invalid sound state"));
         }
+        if (loaded.Value().sound != id)
+        {
+            return foundation::Result<AudioClipPayload>::Failure(
+                foundation::Error::Create("audio.clip_sound_mismatch", "audio resource source returned a clip for another sound id"));
+        }
         if (loaded.Value().state == SoundState::Ready && loaded.Value().resource == nullptr)
         {
             return foundation::Result<AudioClipPayload>::Failure(
@@ -1760,7 +1788,11 @@ foundation::Result<void> AudioRuntime::ApplyEmitterSpatialState(EmitterRecord& e
 foundation::Result<AudioRuntime::VoiceOwnership> AudioRuntime::CreateOneShotVoice(const AudioEvent& event)
 {
     const auto payload = ResolvePayload(event.sound);
-    if (!payload || payload.Value().state != SoundState::Ready || payload.Value().resource == nullptr)
+    if (!payload)
+    {
+        return foundation::Result<VoiceOwnership>::Failure(payload.GetError());
+    }
+    if (payload.Value().state != SoundState::Ready || payload.Value().resource == nullptr)
     {
         return foundation::Result<VoiceOwnership>::Failure(
             foundation::Error::Create("audio.sound_not_ready", "one-shot sound is not ready"));
@@ -1858,6 +1890,34 @@ foundation::Result<void> AudioRuntime::CleanupFinishedOneShots()
     if (first_error.has_value())
     {
         return foundation::Result<void>::Failure(*first_error);
+    }
+    return foundation::Result<void>::Success();
+}
+
+foundation::Result<void> AudioRuntime::EnsurePendingVoiceCleanupCapacity(std::size_t additional)
+{
+    if (additional == 0)
+    {
+        return foundation::Result<void>::Success();
+    }
+    if (additional > pending_voice_cleanups_.max_size() - pending_voice_cleanups_.size())
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("audio.allocation_failed", "pending voice cleanup capacity is exhausted"));
+    }
+    try
+    {
+        if (fail_next_voice_cleanup_preflight_for_testing_)
+        {
+            fail_next_voice_cleanup_preflight_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
+        pending_voice_cleanups_.reserve(pending_voice_cleanups_.size() + additional);
+    }
+    catch (const std::exception&)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("audio.allocation_failed", "pending voice cleanup preflight allocation failed"));
     }
     return foundation::Result<void>::Success();
 }
@@ -1964,16 +2024,6 @@ void AudioRuntime::RollbackCreatedVoice(IAudioBackend& backend,
         return;
     }
 
-    bool can_record_retry = true;
-    try
-    {
-        pending_voice_cleanups_.reserve(pending_voice_cleanups_.size() + 1);
-    }
-    catch (...)
-    {
-        can_record_retry = false;
-    }
-
     const auto destroyed = CallAudioBoundary(
         [&] { return backend.DestroyVoice(voice); },
         "audio.backend_exception",
@@ -1981,10 +2031,10 @@ void AudioRuntime::RollbackCreatedVoice(IAudioBackend& backend,
     if (!destroyed)
     {
         RecordCleanupFailure(destroyed.GetError());
-        if (can_record_retry)
-        {
-            pending_voice_cleanups_.push_back(VoiceOwnership{voice, std::move(clip_resource)});
-        }
+        // Every CreateVoice path preflights this capacity before external ownership acquisition.
+        // VoiceOwnership is nothrow-movable, so publication into reserved vector storage cannot allocate.
+        static_assert(std::is_nothrow_move_constructible_v<VoiceOwnership>);
+        pending_voice_cleanups_.push_back(VoiceOwnership{voice, std::move(clip_resource)});
     }
 }
 

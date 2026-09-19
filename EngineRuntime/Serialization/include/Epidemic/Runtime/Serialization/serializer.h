@@ -8,6 +8,7 @@
 #include "Epidemic/Runtime/Serialization/serialization_error.h"
 
 #include <exception>
+#include <new>
 #include <type_traits>
 #include <typeindex>
 #include <typeinfo>
@@ -71,6 +72,11 @@ template <typename TObject>
         }
         return serializer.Serialize(&object, writer);
     }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<void>::Failure(
+            CreateSerializationError("serialization.out_of_memory", "serialization could not allocate required staging state"));
+    }
     catch (const std::exception& error)
     {
         return foundation::Result<void>::Failure(
@@ -94,6 +100,30 @@ template <typename TObject>
                 CreateSerializationError("serialization.cpp_type_mismatch", "serializer C++ type does not match target object"));
         }
 
+        const foundation::StringId serializer_type = serializer.GetTypeId();
+        if (!serializer_type.IsValid())
+        {
+            return foundation::Result<void>::Failure(
+                CreateSerializationError("serialization.serializer.invalid_type", "serializer must declare a valid type id"));
+        }
+        if (reader.GetTypeId() != serializer_type)
+        {
+            return foundation::Result<void>::Failure(
+                CreateSerializationError("serialization.type_mismatch", "document type does not match serializer"));
+        }
+
+        const SchemaVersion serializer_schema = serializer.GetSchemaVersion();
+        if (serializer_schema == SchemaVersion{})
+        {
+            return foundation::Result<void>::Failure(CreateSerializationError(
+                "serialization.serializer.invalid_schema_version", "serializer must declare a non-zero schema version"));
+        }
+        if (reader.GetSchemaVersion() != serializer_schema)
+        {
+            return foundation::Result<void>::Failure(
+                CreateSerializationError("serialization.schema_mismatch", "document schema version does not match serializer"));
+        }
+
         if constexpr (std::is_copy_constructible_v<TObject> && std::is_nothrow_swappable_v<TObject>)
         {
             TObject candidate(object);
@@ -112,6 +142,11 @@ template <typename TObject>
                 "serialization.staging_unsupported",
                 "destination type must be copy constructible and nothrow swappable for failure-atomic deserialization"));
         }
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<void>::Failure(
+            CreateSerializationError("serialization.out_of_memory", "deserialization could not allocate candidate state"));
     }
     catch (const std::exception& error)
     {

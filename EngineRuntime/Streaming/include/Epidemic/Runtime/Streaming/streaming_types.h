@@ -159,6 +159,8 @@ struct StreamingStepResult
     bool completed = true;
 };
 
+// Plans start at cursor zero with unprocessed steps. A Commit step is optional; when
+// present it must be unique and final so external commit cannot precede plan completion.
 struct ProgressiveLoadPlan
 {
     std::vector<StreamingPlanStepRecord> steps{};

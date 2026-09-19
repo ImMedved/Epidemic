@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <list>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -50,6 +51,8 @@ class ResourceLoadQueue
   public:
     void Enqueue(ResourceLoadJob job);
     void PopBack() noexcept;
+    [[nodiscard]] const ResourceLoadJob* Front() const noexcept;
+    void PopFrontNoThrow() noexcept;
     void FailNextEnqueueForTesting() noexcept;
     [[nodiscard]] bool IsEmpty() const noexcept;
     [[nodiscard]] std::optional<ResourceLoadJob> Dequeue();
@@ -58,6 +61,23 @@ class ResourceLoadQueue
   private:
     std::deque<ResourceLoadJob> jobs_;
     bool fail_next_enqueue_for_testing_ = false;
+};
+
+class ResourceWaitingQueue
+{
+  public:
+    void Publish(ResourceLoadJob job);
+    [[nodiscard]] const ResourceLoadJob* Front() const noexcept;
+    void PopFrontNoThrow() noexcept;
+    void RotateFrontToBackNoThrow() noexcept;
+    [[nodiscard]] bool IsEmpty() const noexcept;
+    [[nodiscard]] std::size_t Size() const noexcept;
+    [[nodiscard]] bool Contains(ResourceId id, ResourceGeneration generation) const noexcept;
+    void FailNextPublishForTesting() noexcept { fail_next_publish_for_testing_ = true; }
+
+  private:
+    std::list<ResourceLoadJob> jobs_;
+    bool fail_next_publish_for_testing_ = false;
 };
 
 class ResourceCache
@@ -105,8 +125,17 @@ class ResourceManager final : public IResourceManager
     void SetResidentBytesForTesting(std::size_t value) noexcept { resident_bytes_ = value; }
     void FailNextDependencyPublishForTesting() noexcept { fail_next_dependency_publish_for_testing_ = true; }
     void FailNextAcquisitionPublishForTesting() noexcept { fail_next_acquisition_publish_for_testing_ = true; }
+    void FailNextDependencyGraphReplaceForTesting() noexcept { dependency_graph_.FailNextReplaceForTesting(); }
+    void FailNextWaitingOwnerPublishForTesting() noexcept { waiting_queue_.FailNextPublishForTesting(); }
+    void FailNextLoadingOwnerPublishForTesting() noexcept { fail_next_loading_owner_publish_for_testing_ = true; }
     void SetDependenciesForTesting(ResourceId id, std::vector<ResourceDependency> dependencies) { dependency_graph_.SetDependencies(id, std::move(dependencies)); }
     [[nodiscard]] bool HasDependencyPathForTesting(ResourceId from, ResourceId to) const { return HasDependencyPath(from, to); }
+    [[nodiscard]] std::size_t LoadQueueSizeForTesting() const noexcept { return load_queue_.Size(); }
+    [[nodiscard]] std::size_t WaitingQueueSizeForTesting() const noexcept { return waiting_queue_.Size(); }
+    [[nodiscard]] bool HasWaitingOwnerForTesting(ResourceId id, ResourceGeneration generation) const noexcept
+    {
+        return waiting_queue_.Contains(id, generation);
+    }
 
   private:
     [[nodiscard]] foundation::Result<ResourceHandle> Acquire(ResourceRequest request, ResourceAcquisitionId acquisition);
@@ -121,16 +150,17 @@ class ResourceManager final : public IResourceManager
     void RecordInvariantFailure() noexcept;
     [[nodiscard]] foundation::Result<void> RollbackLoadAttempt(ResourceSlot& slot);
     [[nodiscard]] foundation::Result<void> LoadSlot(ResourceSlot& slot, const ResourceRequest& request, ResourceProcessingStats& stats);
-    [[nodiscard]] foundation::Result<void> FinishLoadedArtifact(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
+    [[nodiscard]] foundation::Result<void> FinishLoadedArtifact(ResourceSlot& slot, ResourceProcessingStats& stats);
     [[nodiscard]] foundation::Result<bool> ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact);
     [[nodiscard]] bool HasDependencyPath(ResourceId from, ResourceId to) const;
-    [[nodiscard]] foundation::Result<void> CommitReadyPayload(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats);
+    [[nodiscard]] foundation::Result<void> CommitReadyPayload(ResourceSlot& slot, ResourceProcessingStats& stats);
     [[nodiscard]] bool CanFit(std::size_t bytes) const noexcept;
     void RemovePayload(ResourceSlot& slot);
 
     IResourceLoaderRegistry* loader_registry_ = nullptr;
     ResourceCache cache_;
     ResourceLoadQueue load_queue_;
+    ResourceWaitingQueue waiting_queue_;
     ResourceDependencyGraph dependency_graph_;
     std::unordered_set<ResourceId> loading_resources_;
     std::size_t resident_bytes_ = 0;
@@ -139,5 +169,6 @@ class ResourceManager final : public IResourceManager
     ResourceAcquisitionId next_acquisition_id_ = 1;
     bool fail_next_dependency_publish_for_testing_ = false;
     bool fail_next_acquisition_publish_for_testing_ = false;
+    bool fail_next_loading_owner_publish_for_testing_ = false;
 };
 } // namespace epidemic::runtime

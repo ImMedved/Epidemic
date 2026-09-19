@@ -20,8 +20,34 @@ using epidemic::runtime::IsZero;
 using epidemic::runtime::PhaseBoundary;
 using epidemic::runtime::TimeScale;
 using epidemic::runtime::TimeEventKind;
+using epidemic::runtime::TimeCheckpoint;
 using epidemic::runtime::TimeOptions;
 using epidemic::runtime::TimeRuntime;
+using epidemic::runtime::ValidateTimeOptions;
+
+bool SameCheckpoint(const TimeCheckpoint& left, const TimeCheckpoint& right)
+{
+    if (left.now != right.now || left.time_scale != right.time_scale || left.paused != right.paused ||
+        left.tick_remainder_numerator != right.tick_remainder_numerator || left.revision != right.revision ||
+        left.game_ticks_per_real_second != right.game_ticks_per_real_second ||
+        left.calendar.hours_per_day != right.calendar.hours_per_day ||
+        left.calendar.days_per_month != right.calendar.days_per_month ||
+        left.calendar.months_per_year != right.calendar.months_per_year ||
+        left.phase_boundaries.size() != right.phase_boundaries.size())
+    {
+        return false;
+    }
+
+    for (std::size_t index = 0; index < left.phase_boundaries.size(); ++index)
+    {
+        if (left.phase_boundaries[index].start_minute != right.phase_boundaries[index].start_minute ||
+            left.phase_boundaries[index].phase != right.phase_boundaries[index].phase)
+        {
+            return false;
+        }
+    }
+    return true;
+}
 
 bool TestGameTimeArithmeticWorks()
 {
@@ -71,6 +97,24 @@ bool TestDifferentFrameSplitsProduceSameGameTime()
     }
 
     return ok && single_step.Now().ticks == 20 && split_step.Now().ticks == single_step.Now().ticks;
+}
+
+bool TestNegativeAdvancePreservesObservableState()
+{
+    TimeRuntime runtime;
+    const auto seeded = runtime.Skip(GameDuration{90});
+    if (!seeded)
+    {
+        return false;
+    }
+
+    const auto before_snapshot = runtime.GetSnapshot();
+    const auto before_checkpoint = runtime.CaptureCheckpoint();
+    const auto before_events = runtime.GetEvents();
+    const auto result = runtime.Advance(std::chrono::microseconds{-1});
+
+    return !result && result.GetError().HasCode("time.invalid_delta") && runtime.GetSnapshot() == before_snapshot &&
+           SameCheckpoint(runtime.CaptureCheckpoint(), before_checkpoint) && runtime.GetEvents() == before_events;
 }
 
 bool TestRationalAccumulatorAvoidsFloatingDrift()
@@ -145,6 +189,25 @@ bool TestTimeScaleChangeDropsFractionalRemainder()
     return fractional && fractional.Value().current.now.ticks == 0 &&
            scale && advanced && advanced.Value().current.now.ticks == 0 &&
            runtime.Now().ticks == 0;
+}
+
+bool TestSkipDropsFractionalRemainder()
+{
+    TimeOptions options{};
+    options.initial_time_scale = TimeScale{1, 3};
+    TimeRuntime runtime(options);
+
+    const auto fractional = runtime.Advance(std::chrono::seconds(1));
+    if (!fractional || runtime.CaptureCheckpoint().tick_remainder_numerator == 0)
+    {
+        return false;
+    }
+
+    const auto skipped = runtime.Skip(GameDuration{1});
+    const auto after_skip = runtime.CaptureCheckpoint();
+    const auto advanced = runtime.Advance(std::chrono::seconds(2));
+
+    return skipped && after_skip.tick_remainder_numerator == 0 && advanced && runtime.Now().ticks == 1;
 }
 
 bool TestTimeSkipProducesJumpEvent()
@@ -239,6 +302,18 @@ bool TestAdvanceOverflowIsRejected()
     return !result && result.GetError().HasCode("time.overflow") && runtime.Now().ticks == 0;
 }
 
+bool TestScaleDenominatorOverflowIsRejected()
+{
+    TimeOptions options{};
+    options.initial_time_scale = TimeScale{1, std::numeric_limits<std::int64_t>::max()};
+    TimeRuntime runtime(options);
+    const auto before = runtime.CaptureCheckpoint();
+
+    const auto result = runtime.Advance(std::chrono::microseconds{1});
+
+    return !result && result.GetError().HasCode("time.overflow") && SameCheckpoint(runtime.CaptureCheckpoint(), before);
+}
+
 bool TestLongRunStaysDeterministic()
 {
     TimeOptions options{};
@@ -286,6 +361,20 @@ bool TestDayAndPhaseTransitions()
     return saw_day && saw_phase;
 }
 
+bool TestLargeSkipReportsCrossedPhaseBoundaryWhenFinalPhaseMatches()
+{
+    TimeRuntime runtime;
+    const auto result = runtime.Skip(GameDuration{24 * 60 * 60});
+    if (!result || runtime.GetSnapshot().day_phase != DayPhase::Night)
+    {
+        return false;
+    }
+
+    const auto& events = runtime.GetEvents();
+    return events.size() == 3 && events[0].kind == TimeEventKind::TimeJumped &&
+           events[1].kind == TimeEventKind::DayChanged && events[2].kind == TimeEventKind::DayPhaseChanged;
+}
+
 bool TestRevisionIncrementsOnlyOnChanges()
 {
     TimeRuntime runtime;
@@ -298,7 +387,7 @@ bool TestRevisionIncrementsOnlyOnChanges()
            runtime.GetSnapshot().revision == initial + 1;
 }
 
-bool TestLastDeltaOnlyRefreshDoesNotIncrementRevision()
+bool TestFractionalRemainderMutationIncrementsRevision()
 {
     TimeRuntime runtime;
     const auto advanced = runtime.Advance(std::chrono::seconds(1));
@@ -307,8 +396,26 @@ bool TestLastDeltaOnlyRefreshDoesNotIncrementRevision()
 
     return advanced && fractional && advanced.Value().current.last_delta.ticks == 1 &&
            fractional.Value().current.last_delta.ticks == 0 &&
-           fractional.Value().current.revision == revision_after_advance &&
-           runtime.GetSnapshot().revision == revision_after_advance;
+           fractional.Value().current.revision == revision_after_advance + 1 &&
+           runtime.CaptureCheckpoint().tick_remainder_numerator != 0;
+}
+
+bool TestLastDeltaOnlyRefreshDoesNotIncrementRevision()
+{
+    TimeRuntime runtime;
+    const auto advanced = runtime.Advance(std::chrono::seconds(1));
+    if (!advanced)
+    {
+        return false;
+    }
+
+    const auto revision_after_advance = runtime.GetSnapshot().revision;
+    const auto checkpoint_after_advance = runtime.CaptureCheckpoint();
+    const auto idle = runtime.Advance(std::chrono::microseconds(0));
+
+    return idle && idle.Value().current.last_delta.ticks == 0 &&
+           idle.Value().current.revision == revision_after_advance &&
+           runtime.CaptureCheckpoint().tick_remainder_numerator == checkpoint_after_advance.tick_remainder_numerator;
 }
 
 bool TestFactoryCreatesSplitServices()
@@ -332,10 +439,271 @@ bool TestFactoryRejectsInvalidOptions()
         PhaseBoundary{24 * 60, DayPhase::Day},
     };
 
+    TimeOptions duplicate_boundary{};
+    duplicate_boundary.phase_boundaries = {
+        PhaseBoundary{60, DayPhase::Dawn},
+        PhaseBoundary{60, DayPhase::Day},
+    };
+
+    TimeOptions overflowing_calendar{};
+    overflowing_calendar.calendar.days_per_month = std::numeric_limits<std::uint32_t>::max();
+    overflowing_calendar.calendar.months_per_year = std::numeric_limits<std::uint32_t>::max();
+
+    TimeOptions short_day_with_defaults{};
+    short_day_with_defaults.calendar.hours_per_day = 12;
+
     const auto rate_result = CreateTimeServices(invalid_rate);
     const auto boundary_result = CreateTimeServices(invalid_boundary);
+    const auto duplicate_result = ValidateTimeOptions(duplicate_boundary);
+    const auto calendar_result = ValidateTimeOptions(overflowing_calendar);
+    const auto default_boundary_result = CreateTimeServices(short_day_with_defaults);
     return !rate_result && rate_result.GetError().HasCode("time.invalid_options") && !boundary_result &&
-           boundary_result.GetError().HasCode("time.invalid_phase_boundary");
+           boundary_result.GetError().HasCode("time.invalid_phase_boundary") && !duplicate_result &&
+           duplicate_result.GetError().HasCode("time.duplicate_phase_boundary") && !calendar_result &&
+           calendar_result.GetError().HasCode("time.overflow") && !default_boundary_result &&
+           default_boundary_result.GetError().HasCode("time.invalid_phase_boundary");
+}
+
+bool TestCheckpointCapturesCanonicalPersistentState()
+{
+    TimeOptions options{};
+    options.game_ticks_per_real_second = 7;
+    options.initial_time_scale = TimeScale{10, 4};
+    options.phase_boundaries = {
+        PhaseBoundary{120, DayPhase::Day},
+        PhaseBoundary{0, DayPhase::Night},
+    };
+    TimeRuntime runtime(options);
+    const auto advanced = runtime.Advance(std::chrono::milliseconds{100});
+    if (!advanced)
+    {
+        return false;
+    }
+
+    const auto checkpoint = runtime.CaptureCheckpoint();
+    return checkpoint.time_scale == TimeScale{5, 2} && checkpoint.tick_remainder_numerator != 0 &&
+           checkpoint.game_ticks_per_real_second == 7 && checkpoint.calendar.hours_per_day == 24 &&
+           checkpoint.phase_boundaries.size() == 2 && checkpoint.phase_boundaries[0].start_minute == 0 &&
+           checkpoint.phase_boundaries[1].start_minute == 120;
+}
+
+bool TestCheckpointContinuationPreservesFractionalRemainder()
+{
+    TimeOptions options{};
+    options.initial_time_scale = TimeScale{1, 3};
+
+    TimeRuntime control(options);
+    const auto seeded = control.Advance(std::chrono::seconds{1});
+    if (!seeded)
+    {
+        return false;
+    }
+    const auto checkpoint = control.CaptureCheckpoint();
+    if (checkpoint.tick_remainder_numerator == 0)
+    {
+        return false;
+    }
+
+    TimeRuntime restored(options);
+    const auto restore = restored.RestoreCheckpoint(checkpoint);
+    const auto control_next = control.Advance(std::chrono::seconds{2});
+    const auto restored_next = restored.Advance(std::chrono::seconds{2});
+
+    return restore && control_next && restored_next && control.GetSnapshot() == restored.GetSnapshot() &&
+           SameCheckpoint(control.CaptureCheckpoint(), restored.CaptureCheckpoint()) &&
+           control.GetEvents() == restored.GetEvents();
+}
+
+bool TestInvalidCheckpointPreservesLiveClock()
+{
+    TimeRuntime runtime;
+    const auto seeded = runtime.Skip(GameDuration{90});
+    if (!seeded)
+    {
+        return false;
+    }
+
+    const auto before_snapshot = runtime.GetSnapshot();
+    const auto before_checkpoint = runtime.CaptureCheckpoint();
+    const auto before_events = runtime.GetEvents();
+
+    const auto rejects_without_mutation = [&](TimeCheckpoint invalid) {
+        const auto restore = runtime.RestoreCheckpoint(invalid);
+        return !restore && restore.GetError().HasCode("time.invalid_checkpoint") &&
+               runtime.GetSnapshot() == before_snapshot &&
+               SameCheckpoint(runtime.CaptureCheckpoint(), before_checkpoint) && runtime.GetEvents() == before_events;
+    };
+
+    auto invalid_scale = before_checkpoint;
+    invalid_scale.time_scale = TimeScale{2, 2};
+    auto invalid_time = before_checkpoint;
+    invalid_time.now = GameTimePoint{-1};
+    auto invalid_negative_remainder = before_checkpoint;
+    invalid_negative_remainder.tick_remainder_numerator = -1;
+    auto invalid_large_remainder = before_checkpoint;
+    invalid_large_remainder.tick_remainder_numerator = invalid_large_remainder.time_scale.denominator * 1000000;
+
+    return rejects_without_mutation(invalid_scale) && rejects_without_mutation(invalid_time) &&
+           rejects_without_mutation(invalid_negative_remainder) && rejects_without_mutation(invalid_large_remainder);
+}
+
+bool TestIncompatibleCheckpointPreservesLiveClock()
+{
+    TimeRuntime source;
+    const auto source_advance = source.Skip(GameDuration{20});
+    if (!source_advance)
+    {
+        return false;
+    }
+    const auto checkpoint = source.CaptureCheckpoint();
+
+    TimeOptions destination_options{};
+    destination_options.game_ticks_per_real_second = 2;
+    TimeRuntime destination(destination_options);
+    const auto destination_seed = destination.Skip(GameDuration{7});
+    if (!destination_seed)
+    {
+        return false;
+    }
+    const auto before_snapshot = destination.GetSnapshot();
+    const auto before_checkpoint = destination.CaptureCheckpoint();
+    const auto before_events = destination.GetEvents();
+
+    const auto rejects_without_mutation = [&](TimeCheckpoint incompatible) {
+        const auto restore = destination.RestoreCheckpoint(incompatible);
+        return !restore && restore.GetError().HasCode("time.incompatible_checkpoint") &&
+               destination.GetSnapshot() == before_snapshot &&
+               SameCheckpoint(destination.CaptureCheckpoint(), before_checkpoint) &&
+               destination.GetEvents() == before_events;
+    };
+
+    auto incompatible_rate = checkpoint;
+    auto incompatible_calendar = destination.CaptureCheckpoint();
+    incompatible_calendar.calendar.days_per_month += 1;
+    auto incompatible_phases = destination.CaptureCheckpoint();
+    incompatible_phases.phase_boundaries[0].phase = DayPhase::Day;
+
+    return rejects_without_mutation(incompatible_rate) && rejects_without_mutation(incompatible_calendar) &&
+           rejects_without_mutation(incompatible_phases);
+}
+
+bool TestRestoreAllocationFailurePreservesLiveClock()
+{
+    TimeOptions options{};
+    options.initial_time_scale = TimeScale{1, 3};
+
+    TimeRuntime source(options);
+    const auto source_advance = source.Advance(std::chrono::seconds{1});
+    if (!source_advance)
+    {
+        return false;
+    }
+    const auto target = source.CaptureCheckpoint();
+
+    TimeRuntime destination(options);
+    const auto destination_seed = destination.Skip(GameDuration{11});
+    if (!destination_seed)
+    {
+        return false;
+    }
+    const auto before_snapshot = destination.GetSnapshot();
+    const auto before_checkpoint = destination.CaptureCheckpoint();
+    const auto before_events = destination.GetEvents();
+
+    destination.FailNextAllocationForTesting();
+    bool saw_bad_alloc = false;
+    try
+    {
+        (void)destination.RestoreCheckpoint(target);
+    }
+    catch (const std::bad_alloc&)
+    {
+        saw_bad_alloc = true;
+    }
+
+    if (!saw_bad_alloc || destination.GetSnapshot() != before_snapshot ||
+        !SameCheckpoint(destination.CaptureCheckpoint(), before_checkpoint) || destination.GetEvents() != before_events)
+    {
+        return false;
+    }
+
+    const auto retry = destination.RestoreCheckpoint(target);
+    return retry && SameCheckpoint(destination.CaptureCheckpoint(), target);
+}
+
+bool TestRestoreClearsTransientStateAndRestoresPause()
+{
+    TimeRuntime source;
+    const auto source_advance = source.Skip(GameDuration{10});
+    const auto pause = source.Pause();
+    if (!source_advance || !pause)
+    {
+        return false;
+    }
+    const auto checkpoint = source.CaptureCheckpoint();
+
+    TimeRuntime destination;
+    const auto destination_advance = destination.Skip(GameDuration{99});
+    const auto restore = destination.RestoreCheckpoint(checkpoint);
+    const auto blocked = destination.Advance(std::chrono::seconds{1});
+
+    return destination_advance && restore && blocked && destination.GetSnapshot().paused &&
+           destination.Now() == checkpoint.now && destination.LastDelta() == GameDuration{} &&
+           destination.GetEvents().empty();
+}
+
+bool TestRevisionExhaustionPreservesState()
+{
+    TimeRuntime runtime;
+    auto checkpoint = runtime.CaptureCheckpoint();
+    checkpoint.revision = std::numeric_limits<std::uint64_t>::max();
+    const auto restore = runtime.RestoreCheckpoint(checkpoint);
+    if (!restore)
+    {
+        return false;
+    }
+
+    const auto before_snapshot = runtime.GetSnapshot();
+    const auto before_checkpoint = runtime.CaptureCheckpoint();
+    const auto fractional = runtime.Advance(std::chrono::microseconds{1});
+    if (fractional || !fractional.GetError().HasCode("time.revision_exhausted") ||
+        runtime.GetSnapshot() != before_snapshot || !SameCheckpoint(runtime.CaptureCheckpoint(), before_checkpoint) ||
+        !runtime.GetEvents().empty())
+    {
+        return false;
+    }
+
+    const auto failed = runtime.Skip(GameDuration{1});
+    return !failed && failed.GetError().HasCode("time.revision_exhausted") &&
+           runtime.GetSnapshot() == before_snapshot && SameCheckpoint(runtime.CaptureCheckpoint(), before_checkpoint) &&
+           runtime.GetEvents().empty();
+}
+
+bool TestMutationAllocationFailurePreservesObservableState()
+{
+    TimeRuntime runtime;
+    const auto seeded = runtime.Skip(GameDuration{4});
+    if (!seeded)
+    {
+        return false;
+    }
+    const auto before_snapshot = runtime.GetSnapshot();
+    const auto before_checkpoint = runtime.CaptureCheckpoint();
+    const auto before_events = runtime.GetEvents();
+
+    runtime.FailNextAllocationForTesting();
+    bool saw_bad_alloc = false;
+    try
+    {
+        (void)runtime.Advance(std::chrono::seconds{1});
+    }
+    catch (const std::bad_alloc&)
+    {
+        saw_bad_alloc = true;
+    }
+
+    return saw_bad_alloc && runtime.GetSnapshot() == before_snapshot &&
+           SameCheckpoint(runtime.CaptureCheckpoint(), before_checkpoint) && runtime.GetEvents() == before_events;
 }
 
 
@@ -443,6 +811,10 @@ int main()
     {
         return 4;
     }
+    if (!TestNegativeAdvancePreservesObservableState())
+    {
+        return 35;
+    }
     if (!TestRationalAccumulatorAvoidsFloatingDrift())
     {
         return 29;
@@ -466,6 +838,10 @@ int main()
     if (!TestTimeScaleChangeDropsFractionalRemainder())
     {
         return 31;
+    }
+    if (!TestSkipDropsFractionalRemainder())
+    {
+        return 36;
     }
     if (!TestTimeSkipProducesJumpEvent())
     {
@@ -499,6 +875,10 @@ int main()
     {
         return 21;
     }
+    if (!TestScaleDenominatorOverflowIsRejected())
+    {
+        return 37;
+    }
     if (!TestLongRunStaysDeterministic())
     {
         return 22;
@@ -507,9 +887,17 @@ int main()
     {
         return 11;
     }
+    if (!TestLargeSkipReportsCrossedPhaseBoundaryWhenFinalPhaseMatches())
+    {
+        return 38;
+    }
     if (!TestRevisionIncrementsOnlyOnChanges())
     {
         return 12;
+    }
+    if (!TestFractionalRemainderMutationIncrementsRevision())
+    {
+        return 47;
     }
     if (!TestLastDeltaOnlyRefreshDoesNotIncrementRevision())
     {
@@ -522,6 +910,38 @@ int main()
     if (!TestFactoryRejectsInvalidOptions())
     {
         return 14;
+    }
+    if (!TestCheckpointCapturesCanonicalPersistentState())
+    {
+        return 39;
+    }
+    if (!TestCheckpointContinuationPreservesFractionalRemainder())
+    {
+        return 40;
+    }
+    if (!TestInvalidCheckpointPreservesLiveClock())
+    {
+        return 41;
+    }
+    if (!TestIncompatibleCheckpointPreservesLiveClock())
+    {
+        return 42;
+    }
+    if (!TestRestoreAllocationFailurePreservesLiveClock())
+    {
+        return 43;
+    }
+    if (!TestRestoreClearsTransientStateAndRestoresPause())
+    {
+        return 44;
+    }
+    if (!TestRevisionExhaustionPreservesState())
+    {
+        return 45;
+    }
+    if (!TestMutationAllocationFailurePreservesObservableState())
+    {
+        return 46;
     }
     if (!TestOverflowFailuresPreserveObservableState())
     {

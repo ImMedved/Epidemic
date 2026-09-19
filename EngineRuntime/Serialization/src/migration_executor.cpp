@@ -9,7 +9,9 @@
 
 #include <exception>
 #include <memory>
+#include <new>
 #include <string_view>
+#include <vector>
 
 namespace epidemic::runtime
 {
@@ -58,12 +60,38 @@ foundation::Result<SerializedDocument> ApplyMigrations(
         return MigrationExecutorFailure<SerializedDocument>("serialization.invalid_document",
                                                             "migration input document must be valid and typed");
     }
+    if (target == SchemaVersion{})
+    {
+        return MigrationExecutorFailure<SerializedDocument>("serialization.migration.invalid_version",
+                                                            "migration target schema version must be non-zero");
+    }
     if (document.GetSchemaVersion() == target)
     {
         return foundation::Result<SerializedDocument>::Success(document);
     }
 
-    const auto path = migrations.FindMigrationPath(document.GetTypeId(), document.GetSchemaVersion(), target);
+    const auto path = [&]() -> foundation::Result<std::vector<std::shared_ptr<const IMigration>>>
+    {
+        try
+        {
+            return migrations.FindMigrationPath(document.GetTypeId(), document.GetSchemaVersion(), target);
+        }
+        catch (const std::bad_alloc&)
+        {
+            return MigrationExecutorFailure<std::vector<std::shared_ptr<const IMigration>>>(
+                "serialization.out_of_memory", "migration path lookup could not allocate state");
+        }
+        catch (const std::exception& error)
+        {
+            return MigrationExecutorFailure<std::vector<std::shared_ptr<const IMigration>>>(
+                "serialization.migration_registry_exception", error.what());
+        }
+        catch (...)
+        {
+            return MigrationExecutorFailure<std::vector<std::shared_ptr<const IMigration>>>(
+                "serialization.migration_registry_exception", "migration registry threw an unknown exception");
+        }
+    }();
     if (!path)
     {
         return foundation::Result<SerializedDocument>::Failure(path.GetError());
@@ -159,7 +187,27 @@ foundation::Result<SerializedDocument> ApplyMigrations(
             return foundation::Result<SerializedDocument>::Failure(applied.GetError());
         }
 
-        const auto finalized = writer->Finalize(key.type_id, key.to);
+        const auto finalized = [&]() -> foundation::Result<SerializedDocument>
+        {
+            try
+            {
+                return writer->Finalize(key.type_id, key.to);
+            }
+            catch (const std::bad_alloc&)
+            {
+                return MigrationExecutorFailure<SerializedDocument>("serialization.out_of_memory",
+                                                                    "migration output finalization could not allocate state");
+            }
+            catch (const std::exception& error)
+            {
+                return MigrationExecutorFailure<SerializedDocument>("serialization.archive_writer_exception", error.what());
+            }
+            catch (...)
+            {
+                return MigrationExecutorFailure<SerializedDocument>(
+                    "serialization.archive_writer_exception", "archive writer threw an unknown exception during finalization");
+            }
+        }();
         if (!finalized)
         {
             return foundation::Result<SerializedDocument>::Failure(finalized.GetError());

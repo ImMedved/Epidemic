@@ -1,14 +1,17 @@
 #include "time_runtime_impl.h"
+#include "time_defaults.h"
 
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <limits>
+#include <new>
 #include <numeric>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 namespace epidemic::runtime
@@ -93,15 +96,101 @@ template <typename TValue>
     return real_ticks ? CheckedMultiplyNonNegative(*real_ticks, scale.numerator) : std::nullopt;
 }
 
-[[nodiscard]] std::vector<PhaseBoundary> DefaultPhaseBoundaries()
+[[nodiscard]] bool SameCalendarDefinition(const CalendarDefinition& left, const CalendarDefinition& right) noexcept
 {
-    return {
-        PhaseBoundary{0, DayPhase::Night},
-        PhaseBoundary{5 * 60, DayPhase::Dawn},
-        PhaseBoundary{8 * 60, DayPhase::Day},
-        PhaseBoundary{18 * 60, DayPhase::Dusk},
-        PhaseBoundary{21 * 60, DayPhase::Night},
-    };
+    return left.hours_per_day == right.hours_per_day && left.days_per_month == right.days_per_month &&
+           left.months_per_year == right.months_per_year;
+}
+
+[[nodiscard]] bool SamePhaseBoundaries(const std::vector<PhaseBoundary>& left,
+                                       const std::vector<PhaseBoundary>& right) noexcept
+{
+    if (left.size() != right.size())
+    {
+        return false;
+    }
+
+    for (std::size_t index = 0; index < left.size(); ++index)
+    {
+        if (left[index].start_minute != right[index].start_minute || left[index].phase != right[index].phase)
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool CrossesRecurringSecond(GameTimePoint start, GameTimePoint end, std::int64_t period,
+                                          std::int64_t transition_second) noexcept
+{
+    if (start.ticks < 0 || end.ticks <= start.ticks || period <= 0 || transition_second < 0 ||
+        transition_second >= period)
+    {
+        return false;
+    }
+
+    const auto start_period = start.ticks / period;
+    const auto end_period = end.ticks / period;
+    const auto start_offset = start.ticks % period;
+    const auto end_offset = end.ticks % period;
+
+    if (start_period == end_period)
+    {
+        return start_offset < transition_second && transition_second <= end_offset;
+    }
+
+    if (transition_second > start_offset)
+    {
+        return true;
+    }
+    if ((end_period - start_period) > 1)
+    {
+        return true;
+    }
+    return transition_second <= end_offset;
+}
+
+[[nodiscard]] bool CrossedDayPhaseTransition(const TimeOptions& options, GameTimePoint start, GameTimePoint end) noexcept
+{
+    if (end.ticks <= start.ticks)
+    {
+        return false;
+    }
+
+    const auto seconds_per_day = SecondsPerDay(options.calendar);
+    DayPhase phase_at_midnight = DayPhase::Night;
+    for (const auto& boundary : options.phase_boundaries)
+    {
+        if (boundary.start_minute != 0)
+        {
+            break;
+        }
+        phase_at_midnight = boundary.phase;
+    }
+
+    DayPhase previous_phase = phase_at_midnight;
+    for (const auto& boundary : options.phase_boundaries)
+    {
+        if (boundary.start_minute == 0)
+        {
+            continue;
+        }
+
+        if (boundary.phase != previous_phase &&
+            CrossesRecurringSecond(start, end, seconds_per_day,
+                                   static_cast<std::int64_t>(boundary.start_minute) * kSecondsPerMinute))
+        {
+            return true;
+        }
+        previous_phase = boundary.phase;
+    }
+
+    if (previous_phase != phase_at_midnight && CrossesRecurringSecond(start, end, seconds_per_day, 0))
+    {
+        return true;
+    }
+
+    return false;
 }
 
 [[nodiscard]] CalendarDate ToCalendarDateForOptions(const TimeOptions& options, GameTimePoint time)
@@ -152,7 +241,7 @@ TimeRuntime::TimeRuntime(TimeOptions options) : options_(std::move(options))
 
     if (options_.phase_boundaries.empty())
     {
-        options_.phase_boundaries = DefaultPhaseBoundaries();
+        options_.phase_boundaries = detail::DefaultPhaseBoundaries();
     }
 
     std::sort(options_.phase_boundaries.begin(),
@@ -182,6 +271,55 @@ GameDuration TimeRuntime::LastDelta() const
 TimeSnapshot TimeRuntime::GetSnapshot() const
 {
     return snapshot_;
+}
+
+TimeCheckpoint TimeRuntime::CaptureCheckpoint() const
+{
+    TimeCheckpoint checkpoint{};
+    checkpoint.now = now_;
+    checkpoint.time_scale = time_scale_;
+    checkpoint.paused = paused_;
+    checkpoint.tick_remainder_numerator = tick_remainder_numerator_;
+    checkpoint.revision = revision_;
+    checkpoint.game_ticks_per_real_second = options_.game_ticks_per_real_second;
+    checkpoint.calendar = options_.calendar;
+    checkpoint.phase_boundaries = options_.phase_boundaries;
+    return checkpoint;
+}
+
+foundation::Result<void> TimeRuntime::RestoreCheckpoint(const TimeCheckpoint& checkpoint)
+{
+    const auto options_result = ValidateOptions();
+    if (!options_result)
+    {
+        return options_result;
+    }
+
+    const auto checkpoint_result = ValidateCheckpoint(checkpoint);
+    if (!checkpoint_result)
+    {
+        return checkpoint_result;
+    }
+
+    FailAllocationIfRequestedForTesting();
+    TimeMutableState candidate{options_,
+                               checkpoint.now,
+                               GameDuration{},
+                               checkpoint.time_scale,
+                               checkpoint.paused,
+                               checkpoint.paused ? TimeRuntimeState::Paused : TimeRuntimeState::Running,
+                               snapshot_,
+                               {},
+                               checkpoint.tick_remainder_numerator,
+                               checkpoint.revision};
+    const auto snapshot = BuildSnapshot(candidate, false);
+    if (!snapshot)
+    {
+        return foundation::Result<void>::Failure(snapshot.GetError());
+    }
+    candidate.snapshot = snapshot.Value();
+    Commit(std::move(candidate));
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<TimeAdvanceResult> TimeRuntime::Advance(std::chrono::microseconds real_delta)
@@ -243,6 +381,7 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Advance(std::chrono::microsec
         }
         candidate.now = *next;
         candidate.state = TimeRuntimeState::Running;
+        FailAllocationIfRequestedForTesting();
         candidate.events.reserve(3);
         const auto snapshot = BuildSnapshot(candidate, true);
         if (!snapshot)
@@ -261,7 +400,12 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Advance(std::chrono::microsec
     }
     else
     {
-        const auto snapshot = BuildSnapshot(candidate, false);
+        const bool remainder_changed = candidate.tick_remainder_numerator != tick_remainder_numerator_;
+        if (auto revision = PreflightRevision(remainder_changed); !revision)
+        {
+            return foundation::Result<TimeAdvanceResult>::Failure(revision.GetError());
+        }
+        const auto snapshot = BuildSnapshot(candidate, remainder_changed);
         if (!snapshot)
         {
             return foundation::Result<TimeAdvanceResult>::Failure(snapshot.GetError());
@@ -290,6 +434,7 @@ foundation::Result<void> TimeRuntime::Pause()
     }
 
     TimeMutableState candidate{options_, now_, GameDuration{}, time_scale_, true, TimeRuntimeState::Paused, snapshot_, {}, tick_remainder_numerator_, revision_};
+    FailAllocationIfRequestedForTesting();
     candidate.events.reserve(1);
     const auto snapshot = BuildSnapshot(candidate, true);
     if (!snapshot)
@@ -322,6 +467,7 @@ foundation::Result<void> TimeRuntime::Resume()
     }
 
     TimeMutableState candidate{options_, now_, last_delta_, time_scale_, false, TimeRuntimeState::Running, snapshot_, {}, tick_remainder_numerator_, revision_};
+    FailAllocationIfRequestedForTesting();
     candidate.events.reserve(1);
     const auto snapshot = BuildSnapshot(candidate, true);
     if (!snapshot)
@@ -356,6 +502,7 @@ foundation::Result<void> TimeRuntime::SetTimeScale(TimeScale scale)
     }
 
     TimeMutableState candidate{options_, now_, last_delta_, scale, paused_, TimeRuntimeState::TimeScaleChanged, snapshot_, {}, 0, revision_};
+    FailAllocationIfRequestedForTesting();
     candidate.events.reserve(1);
     const auto snapshot = BuildSnapshot(candidate, true);
     if (!snapshot)
@@ -412,6 +559,7 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Skip(GameDuration duration)
     candidate.last_delta = duration;
     candidate.tick_remainder_numerator = 0;
     candidate.state = TimeRuntimeState::TimeJumped;
+    FailAllocationIfRequestedForTesting();
     candidate.events.reserve(3);
     const auto snapshot = BuildSnapshot(candidate, true);
     if (!snapshot)
@@ -434,6 +582,11 @@ foundation::Result<TimeAdvanceResult> TimeRuntime::Skip(GameDuration duration)
 const std::vector<TimeEvent>& TimeRuntime::GetEvents() const
 {
     return events_;
+}
+
+void TimeRuntime::FailNextAllocationForTesting() noexcept
+{
+    fail_next_allocation_for_testing_ = true;
 }
 
 foundation::Result<GameTimePoint> TimeRuntime::ToGameTimePoint(CalendarDate date) const
@@ -543,6 +696,57 @@ foundation::Result<void> TimeRuntime::ValidateOptions() const
     return foundation::Result<void>::Success();
 }
 
+foundation::Result<void> TimeRuntime::ValidateCheckpoint(const TimeCheckpoint& checkpoint) const
+{
+    if (!HasCompatibleConfiguration(checkpoint))
+    {
+        return foundation::Result<void>::Failure(MakeTimeError(
+            "time.incompatible_checkpoint", "time checkpoint configuration does not match the destination clock"));
+    }
+
+    if (checkpoint.now.ticks < 0)
+    {
+        return foundation::Result<void>::Failure(
+            MakeTimeError("time.invalid_checkpoint", "time checkpoint contains a negative game time"));
+    }
+
+    if (!IsValidTimeScale(checkpoint.time_scale) || NormalizeTimeScale(checkpoint.time_scale) != checkpoint.time_scale)
+    {
+        return foundation::Result<void>::Failure(MakeTimeError(
+            "time.invalid_checkpoint", "time checkpoint scale must be positive and normalized"));
+    }
+
+    if (checkpoint.tick_remainder_numerator < 0)
+    {
+        return foundation::Result<void>::Failure(
+            MakeTimeError("time.invalid_checkpoint", "time checkpoint contains a negative fractional remainder"));
+    }
+
+    const auto denominator = ScaledTickDenominator(checkpoint.time_scale);
+    if (denominator)
+    {
+        if (checkpoint.tick_remainder_numerator >= *denominator)
+        {
+            return foundation::Result<void>::Failure(MakeTimeError(
+                "time.invalid_checkpoint", "time checkpoint fractional remainder is outside the scale denominator"));
+        }
+    }
+    else if (checkpoint.tick_remainder_numerator != 0)
+    {
+        return foundation::Result<void>::Failure(MakeTimeError(
+            "time.invalid_checkpoint", "time checkpoint remainder cannot be represented for the stored scale"));
+    }
+
+    return foundation::Result<void>::Success();
+}
+
+bool TimeRuntime::HasCompatibleConfiguration(const TimeCheckpoint& checkpoint) const noexcept
+{
+    return checkpoint.game_ticks_per_real_second == options_.game_ticks_per_real_second &&
+           SameCalendarDefinition(checkpoint.calendar, options_.calendar) &&
+           SamePhaseBoundaries(checkpoint.phase_boundaries, options_.phase_boundaries);
+}
+
 foundation::Result<void> TimeRuntime::ValidateDate(CalendarDate date) const
 {
     const auto options_result = ValidateOptions();
@@ -641,7 +845,7 @@ foundation::Result<void> TimeRuntime::AppendBoundaryEvents(TimeMutableState& can
         }
     }
 
-    if (candidate.snapshot.day_phase != previous.day_phase)
+    if (CrossedDayPhaseTransition(candidate.options, previous.now, candidate.snapshot.now))
     {
         candidate.state = TimeRuntimeState::PhaseChanged;
         if (auto event = PushEvent(candidate, TimeEventKind::DayPhaseChanged); !event)
@@ -652,8 +856,22 @@ foundation::Result<void> TimeRuntime::AppendBoundaryEvents(TimeMutableState& can
     return foundation::Result<void>::Success();
 }
 
+void TimeRuntime::FailAllocationIfRequestedForTesting()
+{
+    if (!fail_next_allocation_for_testing_)
+    {
+        return;
+    }
+
+    fail_next_allocation_for_testing_ = false;
+    throw std::bad_alloc{};
+}
+
 void TimeRuntime::Commit(TimeMutableState candidate) noexcept
 {
+    static_assert(std::is_nothrow_move_assignable_v<TimeOptions>);
+    static_assert(std::is_nothrow_move_assignable_v<std::vector<TimeEvent>>);
+
     options_ = std::move(candidate.options);
     now_ = candidate.now;
     last_delta_ = candidate.last_delta;

@@ -83,6 +83,10 @@ private:
         SimulationJobHandle handle{};
         SimulationJobState state = SimulationJobState::Pending;
         std::shared_ptr<ISimulationJob> executable{};
+        // A successful external ExecuteStep result is accepted exactly once. Runtime-local
+        // publication may be retried from this durable owner without calling the job again.
+        std::optional<SimulationStepResult> pending_step_result{};
+        std::uint32_t pending_step_granted_work_units = 0;
         std::optional<SimulationStepResult> pending_main_thread_result{};
         std::optional<ScheduledSimulationTaskId> active_schedule{};
     };

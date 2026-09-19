@@ -47,6 +47,22 @@ template <typename TValue>
            error.HasCode("resource.loading") || error.HasCode("resource.queued");
 }
 
+[[nodiscard]] RenderProxyReadiness ReadinessForResourceFailure(const foundation::Error& error) noexcept
+{
+    return IsTemporaryResourceFailure(error) ? RenderProxyReadiness::Loading : RenderProxyReadiness::Failed;
+}
+
+[[nodiscard]] bool IsValidPose(const RenderPoseBuffer& pose, RuntimeObjectId expected_owner) noexcept
+{
+    if (!expected_owner.IsValid() || pose.owner != expected_owner)
+    {
+        return false;
+    }
+    return std::all_of(pose.bone_transforms.begin(), pose.bone_transforms.end(), [](const Transform& transform) {
+        return IsValidTransform(transform);
+    });
+}
+
 [[nodiscard]] constexpr bool IsValidRenderLayer(RenderLayer layer) noexcept
 {
     switch (layer)
@@ -191,7 +207,7 @@ foundation::Result<RenderProxyId> RendererRuntime::RegisterProxy(const RenderPro
     }
     else
     {
-        published->readiness = RenderProxyReadiness::Loading;
+        published->readiness = ReadinessForResourceFailure(acquired.GetError());
     }
     return foundation::Result<RenderProxyId>::Success(proxy_id);
 }
@@ -241,6 +257,12 @@ foundation::Result<void> RendererRuntime::FlushDeferredDestroys()
                 views_to_remove.push_back(id);
             }
         }
+        std::sort(proxies_to_remove.begin(), proxies_to_remove.end(), [](RenderProxyId left, RenderProxyId right) {
+            return left.value < right.value;
+        });
+        std::sort(views_to_remove.begin(), views_to_remove.end(), [](ViewId left, ViewId right) {
+            return left.value < right.value;
+        });
     }
     catch (...)
     {
@@ -445,11 +467,35 @@ foundation::Result<void> RendererRuntime::PrepareFrame()
         return running;
     }
 
+    if (frame_recovery_pending_)
+    {
+        const auto recovered = RecoverPendingFrame();
+        if (!recovered)
+        {
+            frame_state_ = RenderFrameState::Failed;
+            return recovered;
+        }
+    }
+
     std::optional<RenderFrameContext> next_context;
-    std::vector<std::pair<RenderProxyId, RenderTransformSnapshot>> transform_updates;
+    std::vector<RenderProxyId> ordered_proxies;
+    std::vector<PreparedProxyUpdate> next_updates;
+    std::vector<RenderProxySubmission> next_submissions;
     try
     {
-        transform_updates.reserve(proxies_.size());
+        ordered_proxies.reserve(proxies_.size());
+        next_updates.reserve(proxies_.size());
+        next_submissions.reserve(proxies_.size());
+        for (const auto& [id, proxy] : proxies_)
+        {
+            if (proxy.lifecycle == RenderProxyLifecycle::Registered)
+            {
+                ordered_proxies.push_back(id);
+            }
+        }
+        std::sort(ordered_proxies.begin(), ordered_proxies.end(), [](RenderProxyId left, RenderProxyId right) {
+            return left.value < right.value;
+        });
     }
     catch (...)
     {
@@ -474,56 +520,47 @@ foundation::Result<void> RendererRuntime::PrepareFrame()
         next_context = RenderFrameContext{main_view_, main_view->desc, transform.Value()};
     }
 
-    for (const auto& [id, proxy] : proxies_)
+    // Stage every fallible scene observation before publishing any prepared-frame state.
+    for (RenderProxyId id : ordered_proxies)
     {
-        if (proxy.lifecycle != RenderProxyLifecycle::Registered ||
-            !HasRenderDirtyFlag(proxy.dirty_flags, RenderProxyDirtyFlags::Transform))
+        const ProxyRecord& proxy = proxies_.at(id);
+        PreparedProxyUpdate update{};
+        update.id = id;
+        update.transform = proxy.cached_transform;
+        if (HasRenderDirtyFlag(proxy.dirty_flags, RenderProxyDirtyFlags::Transform))
         {
-            continue;
+            const auto transform = GetTransform(proxy.desc.transform_node);
+            if (!transform)
+            {
+                frame_state_ = RenderFrameState::Failed;
+                return foundation::Result<void>::Failure(transform.GetError());
+            }
+            if (transform.Value().revision < proxy.cached_transform.revision)
+            {
+                frame_state_ = RenderFrameState::Failed;
+                return RendererFailure("renderer.stale_transform", "scene source returned an older transform revision");
+            }
+            update.transform = transform.Value();
+            update.clear_dirty_flags = AddRenderDirtyFlag(update.clear_dirty_flags, RenderProxyDirtyFlags::Transform);
         }
-        const auto transform = GetTransform(proxy.desc.transform_node);
-        if (!transform)
+        if (HasRenderDirtyFlag(proxy.dirty_flags, RenderProxyDirtyFlags::Visibility))
         {
-            frame_state_ = RenderFrameState::Failed;
-            return foundation::Result<void>::Failure(transform.GetError());
+            update.clear_dirty_flags = AddRenderDirtyFlag(update.clear_dirty_flags, RenderProxyDirtyFlags::Visibility);
         }
-        if (transform.Value().revision < proxy.cached_transform.revision)
-        {
-            frame_state_ = RenderFrameState::Failed;
-            return RendererFailure("renderer.stale_transform", "scene source returned an older transform revision");
-        }
-        try
-        {
-            transform_updates.emplace_back(id, transform.Value());
-        }
-        catch (...)
-        {
-            frame_state_ = RenderFrameState::Failed;
-            return RendererFailure("renderer.allocation_failed", "failed to stage proxy transform update");
-        }
+        next_updates.push_back(std::move(update));
     }
 
-    // No fatal source validation remains after this point. Publish the staged transform observations.
-    for (const auto& [id, transform] : transform_updates)
+    // Resource ownership is durable proxy state. A failed acquire/readiness refresh may update
+    // readiness, but it never publishes a Ready proxy unless the bridge confirmed usable payloads.
+    for (RenderProxyId id : ordered_proxies)
     {
         ProxyRecord& proxy = proxies_.at(id);
-        proxy.cached_transform = transform;
-        proxy.dirty_flags = ClearRenderDirtyFlag(proxy.dirty_flags, RenderProxyDirtyFlags::Transform);
-    }
-
-    for (auto& [id, proxy] : proxies_)
-    {
-        (void)id;
-        if (proxy.lifecycle != RenderProxyLifecycle::Registered)
-        {
-            continue;
-        }
         if (!proxy.resources_acquired)
         {
             const auto acquired = AcquireProxyResources(proxy);
             if (!acquired)
             {
-                proxy.readiness = RenderProxyReadiness::Loading;
+                proxy.readiness = ReadinessForResourceFailure(acquired.GetError());
                 continue;
             }
         }
@@ -532,11 +569,64 @@ foundation::Result<void> RendererRuntime::PrepareFrame()
         {
             continue;
         }
-        proxy.dirty_flags = ClearRenderDirtyFlag(proxy.dirty_flags, RenderProxyDirtyFlags::Material);
-        proxy.dirty_flags = ClearRenderDirtyFlag(proxy.dirty_flags, RenderProxyDirtyFlags::Visibility);
+        if (HasRenderDirtyFlag(proxy.dirty_flags, RenderProxyDirtyFlags::Material))
+        {
+            const auto update = std::lower_bound(next_updates.begin(), next_updates.end(), id, [](const PreparedProxyUpdate& value, RenderProxyId key) {
+                return value.id.value < key.value;
+            });
+            if (update != next_updates.end() && update->id == id)
+            {
+                update->clear_dirty_flags = AddRenderDirtyFlag(update->clear_dirty_flags, RenderProxyDirtyFlags::Material);
+            }
+        }
     }
 
+    // Build the exact backend submission set and resolve all fallible pose reads before BeginFrame.
+    for (const PreparedProxyUpdate& update : next_updates)
+    {
+        const ProxyRecord& proxy = proxies_.at(update.id);
+        if (proxy.readiness != RenderProxyReadiness::Ready || proxy.visibility != RenderProxyVisibility::Visible)
+        {
+            continue;
+        }
+
+        std::shared_ptr<const RenderPoseBuffer> pose;
+        if (pose_source_ != nullptr)
+        {
+            try
+            {
+                const auto resolved_pose = pose_source_->GetPose(proxy.desc.owner);
+                if (!resolved_pose)
+                {
+                    frame_state_ = RenderFrameState::Failed;
+                    return foundation::Result<void>::Failure(resolved_pose.GetError());
+                }
+                pose = resolved_pose.Value();
+            }
+            catch (...)
+            {
+                frame_state_ = RenderFrameState::Failed;
+                return RendererFailure("renderer.backend_exception", "render pose source threw during frame preparation");
+            }
+            if (pose && !IsValidPose(*pose, proxy.desc.owner))
+            {
+                frame_state_ = RenderFrameState::Failed;
+                return RendererFailure("renderer.invalid_pose", "render pose source returned an invalid pose buffer");
+            }
+        }
+
+        next_submissions.push_back(
+            RenderProxySubmission{update.id, update.transform, proxy.payloads, std::move(pose), proxy.desc.layer, proxy.visibility});
+    }
+
+    std::sort(next_submissions.begin(), next_submissions.end(), [](const RenderProxySubmission& left, const RenderProxySubmission& right) {
+        return std::tuple{LayerRank(left.layer), left.proxy.value} < std::tuple{LayerRank(right.layer), right.proxy.value};
+    });
+
+    // Publication is no-fail: all allocations and external reads are complete before these swaps.
     prepared_context_ = std::move(next_context);
+    prepared_updates_.swap(next_updates);
+    prepared_submissions_.swap(next_submissions);
     frame_state_ = RenderFrameState::ReadyToRender;
     return foundation::Result<void>::Success();
 }
@@ -547,6 +637,16 @@ foundation::Result<void> RendererRuntime::RenderFrame()
     if (!running)
     {
         return running;
+    }
+
+    if (frame_recovery_pending_)
+    {
+        const auto recovered = RecoverPendingFrame();
+        if (!recovered)
+        {
+            frame_state_ = RenderFrameState::Failed;
+            return recovered;
+        }
     }
     if (frame_state_ != RenderFrameState::ReadyToRender)
     {
@@ -561,31 +661,7 @@ foundation::Result<void> RendererRuntime::RenderFrame()
         return RendererFailure("renderer.main_view_missing", "render frame requires a prepared main view");
     }
 
-    std::vector<RenderProxyId> submissions;
-    try
-    {
-        submissions.reserve(proxies_.size());
-        for (const auto& [id, proxy] : proxies_)
-        {
-            if (proxy.lifecycle == RenderProxyLifecycle::Registered && proxy.readiness == RenderProxyReadiness::Ready &&
-                proxy.visibility == RenderProxyVisibility::Visible)
-            {
-                submissions.push_back(id);
-            }
-        }
-        std::sort(submissions.begin(), submissions.end(), [this](RenderProxyId left, RenderProxyId right) {
-            const ProxyRecord* left_proxy = FindProxy(left);
-            const ProxyRecord* right_proxy = FindProxy(right);
-            const int left_layer = left_proxy == nullptr ? 5 : LayerRank(left_proxy->desc.layer);
-            const int right_layer = right_proxy == nullptr ? 5 : LayerRank(right_proxy->desc.layer);
-            return std::tie(left_layer, left.value) < std::tie(right_layer, right.value);
-        });
-    }
-    catch (...)
-    {
-        return RendererFailure("renderer.allocation_failed", "failed to build render submission list");
-    }
-
+    // Contract: failed/throwing BeginFrame does not open a backend frame, so no Abort is required.
     try
     {
         const auto begun = command_sink_->BeginFrame(*prepared_context_);
@@ -602,45 +678,21 @@ foundation::Result<void> RendererRuntime::RenderFrame()
     }
 
     frame_state_ = RenderFrameState::Rendering;
-    for (RenderProxyId id : submissions)
+    for (const RenderProxySubmission& submission : prepared_submissions_)
     {
-        const ProxyRecord& proxy = proxies_.at(id);
-        std::shared_ptr<const RenderPoseBuffer> pose;
-        if (pose_source_ != nullptr)
-        {
-            try
-            {
-                const auto resolved_pose = pose_source_->GetPose(proxy.desc.owner);
-                if (!resolved_pose)
-                {
-                    AbortFrameNoThrow();
-                    frame_state_ = RenderFrameState::Failed;
-                    return foundation::Result<void>::Failure(resolved_pose.GetError());
-                }
-                pose = resolved_pose.Value();
-            }
-            catch (...)
-            {
-                AbortFrameNoThrow();
-                frame_state_ = RenderFrameState::Failed;
-                return RendererFailure("renderer.backend_exception", "render pose source threw during frame submission");
-            }
-        }
-
         try
         {
-            const auto submitted = command_sink_->SubmitProxy(
-                RenderProxySubmission{id, proxy.cached_transform, proxy.payloads, std::move(pose), proxy.desc.layer, proxy.visibility});
+            const auto submitted = command_sink_->SubmitProxy(submission);
             if (!submitted)
             {
-                AbortFrameNoThrow();
+                AbortFrameAfterFailureNoThrow();
                 frame_state_ = RenderFrameState::Failed;
                 return submitted;
             }
         }
         catch (...)
         {
-            AbortFrameNoThrow();
+            AbortFrameAfterFailureNoThrow();
             frame_state_ = RenderFrameState::Failed;
             return RendererFailure("renderer.backend_exception", "render command sink threw while submitting proxy");
         }
@@ -651,19 +703,21 @@ foundation::Result<void> RendererRuntime::RenderFrame()
         const auto ended = command_sink_->EndFrame();
         if (!ended)
         {
-            AbortFrameNoThrow();
+            AbortFrameAfterFailureNoThrow();
             frame_state_ = RenderFrameState::Failed;
             return ended;
         }
     }
     catch (...)
     {
-        AbortFrameNoThrow();
+        AbortFrameAfterFailureNoThrow();
         frame_state_ = RenderFrameState::Failed;
         return RendererFailure("renderer.backend_exception", "render command sink threw while ending frame");
     }
 
+    CommitPreparedFrameNoThrow();
     frame_state_ = RenderFrameState::Submitted;
+    ClearPreparedFrameNoThrow();
     return foundation::Result<void>::Success();
 }
 
@@ -675,11 +729,41 @@ foundation::Result<void> RendererRuntime::Shutdown()
     }
     shutdown_started_ = true;
 
-    std::optional<foundation::Error> first_error;
-    for (auto& [id, record] : proxies_)
+    // An uncertain backend frame owns its submitted resources until AbortFrame confirms closure.
+    // Do not release proxy resources underneath that frame.
+    if (frame_recovery_pending_)
     {
-        (void)id;
-        const auto released = ReleaseProxyResources(record);
+        const auto recovered = RecoverPendingFrame();
+        if (!recovered)
+        {
+            return recovered;
+        }
+    }
+
+    std::vector<RenderProxyId> release_order;
+    try
+    {
+        release_order.reserve(proxies_.size());
+        for (const auto& [id, record] : proxies_)
+        {
+            if (record.resources_acquired)
+            {
+                release_order.push_back(id);
+            }
+        }
+        std::sort(release_order.begin(), release_order.end(), [](RenderProxyId left, RenderProxyId right) {
+            return left.value < right.value;
+        });
+    }
+    catch (...)
+    {
+        return RendererFailure("renderer.allocation_failed", "failed to stage deterministic renderer shutdown cleanup");
+    }
+
+    std::optional<foundation::Error> first_error;
+    for (RenderProxyId id : release_order)
+    {
+        const auto released = ReleaseProxyResources(proxies_.at(id));
         if (!released && !first_error)
         {
             first_error = released.GetError();
@@ -691,7 +775,7 @@ foundation::Result<void> RendererRuntime::Shutdown()
     }
 
     shutdown_ = true;
-    prepared_context_.reset();
+    ClearPreparedFrameNoThrow();
     frame_state_ = RenderFrameState::NotPrepared;
     return foundation::Result<void>::Success();
 }
@@ -831,19 +915,79 @@ foundation::Result<void> RendererRuntime::RefreshProxyReadiness(ProxyRecord& rec
     }
 }
 
-void RendererRuntime::AbortFrameNoThrow() noexcept
+foundation::Result<void> RendererRuntime::RecoverPendingFrame()
 {
+    if (!frame_recovery_pending_)
+    {
+        return foundation::Result<void>::Success();
+    }
+    if (command_sink_ == nullptr)
+    {
+        return RendererFailure("renderer.command_sink_missing", "frame recovery requires a command sink");
+    }
+
+    try
+    {
+        const auto aborted = command_sink_->AbortFrame();
+        if (!aborted)
+        {
+            return aborted;
+        }
+    }
+    catch (...)
+    {
+        return RendererFailure("renderer.backend_exception", "render command sink threw while recovering an open frame");
+    }
+
+    frame_recovery_pending_ = false;
+    frame_state_ = prepared_context_ ? RenderFrameState::ReadyToRender : RenderFrameState::NotPrepared;
+    return foundation::Result<void>::Success();
+}
+
+void RendererRuntime::AbortFrameAfterFailureNoThrow() noexcept
+{
+    // Publish recovery ownership before the external call. A failed/throwing Abort leaves
+    // the marker set so no future BeginFrame can run until reconciliation succeeds.
+    frame_recovery_pending_ = true;
     if (command_sink_ == nullptr)
     {
         return;
     }
     try
     {
-        (void)command_sink_->AbortFrame();
+        const auto aborted = command_sink_->AbortFrame();
+        if (aborted)
+        {
+            frame_recovery_pending_ = false;
+        }
     }
     catch (...)
     {
     }
+}
+
+void RendererRuntime::CommitPreparedFrameNoThrow() noexcept
+{
+    for (const PreparedProxyUpdate& update : prepared_updates_)
+    {
+        ProxyRecord* proxy = FindProxy(update.id);
+        if (proxy == nullptr)
+        {
+            continue;
+        }
+        if (HasRenderDirtyFlag(update.clear_dirty_flags, RenderProxyDirtyFlags::Transform))
+        {
+            proxy->cached_transform = update.transform;
+        }
+        proxy->dirty_flags &= ~update.clear_dirty_flags;
+    }
+}
+
+void RendererRuntime::ClearPreparedFrameNoThrow() noexcept
+{
+    prepared_context_.reset();
+    prepared_updates_.clear();
+    prepared_submissions_.clear();
 }
 
 RendererRuntime::ProxyRecord* RendererRuntime::FindProxy(RenderProxyId id)

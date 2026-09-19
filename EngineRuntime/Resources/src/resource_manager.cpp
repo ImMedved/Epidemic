@@ -8,7 +8,9 @@
 #include <chrono>
 #include <exception>
 #include <limits>
+#include <new>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 #include <utility>
 
@@ -69,6 +71,19 @@ void ResourceLoadQueue::PopBack() noexcept
     }
 }
 
+const ResourceLoadJob* ResourceLoadQueue::Front() const noexcept
+{
+    return jobs_.empty() ? nullptr : &jobs_.front();
+}
+
+void ResourceLoadQueue::PopFrontNoThrow() noexcept
+{
+    if (!jobs_.empty())
+    {
+        jobs_.pop_front();
+    }
+}
+
 void ResourceLoadQueue::FailNextEnqueueForTesting() noexcept
 {
     fail_next_enqueue_for_testing_ = true;
@@ -94,6 +109,58 @@ std::optional<ResourceLoadJob> ResourceLoadQueue::Dequeue()
 std::size_t ResourceLoadQueue::Size() const noexcept
 {
     return jobs_.size();
+}
+
+void ResourceWaitingQueue::Publish(ResourceLoadJob job)
+{
+    if (Contains(job.request.resource_id, job.generation))
+    {
+        return;
+    }
+    if (fail_next_publish_for_testing_)
+    {
+        fail_next_publish_for_testing_ = false;
+        throw std::bad_alloc{};
+    }
+    jobs_.push_back(std::move(job));
+}
+
+const ResourceLoadJob* ResourceWaitingQueue::Front() const noexcept
+{
+    return jobs_.empty() ? nullptr : &jobs_.front();
+}
+
+void ResourceWaitingQueue::PopFrontNoThrow() noexcept
+{
+    if (!jobs_.empty())
+    {
+        jobs_.pop_front();
+    }
+}
+
+void ResourceWaitingQueue::RotateFrontToBackNoThrow() noexcept
+{
+    if (jobs_.size() > 1u)
+    {
+        jobs_.splice(jobs_.end(), jobs_, jobs_.begin());
+    }
+}
+
+bool ResourceWaitingQueue::IsEmpty() const noexcept
+{
+    return jobs_.empty();
+}
+
+std::size_t ResourceWaitingQueue::Size() const noexcept
+{
+    return jobs_.size();
+}
+
+bool ResourceWaitingQueue::Contains(ResourceId id, ResourceGeneration generation) const noexcept
+{
+    return std::any_of(jobs_.begin(), jobs_.end(), [id, generation](const ResourceLoadJob& job) {
+        return job.request.resource_id == id && job.generation == generation;
+    });
 }
 
 ResourceSlot* ResourceCache::Find(ResourceId id)
@@ -288,8 +355,9 @@ foundation::Result<ResourceProcessingStats> ResourceManager::ProcessPendingLoads
     ResourceProcessingStats stats{};
     const std::size_t max_jobs = budget.HasItemLimit() ? budget.max_items : std::numeric_limits<std::size_t>::max();
     const auto started_at = std::chrono::steady_clock::now();
+    std::size_t waiting_without_progress = 0;
 
-    while (!load_queue_.IsEmpty() && stats.attempted_jobs < max_jobs)
+    while ((!load_queue_.IsEmpty() || !waiting_queue_.IsEmpty()) && stats.attempted_jobs < max_jobs)
     {
         if (budget.HasTimeLimit() && std::chrono::steady_clock::now() - started_at >= budget.max_time)
         {
@@ -300,17 +368,36 @@ foundation::Result<ResourceProcessingStats> ResourceManager::ProcessPendingLoads
             break;
         }
 
-        std::optional<ResourceLoadJob> job = load_queue_.Dequeue();
-        if (!job)
+        const bool from_waiting = load_queue_.IsEmpty();
+        const ResourceLoadJob* owned_job = from_waiting ? waiting_queue_.Front() : load_queue_.Front();
+        if (owned_job == nullptr)
         {
             break;
         }
+
+        // ResourceLoadJob is a small value type. The authoritative owner stays in
+        // its queue until this attempt either reaches a terminal state or publishes
+        // the next durable owner.
+        const ResourceLoadJob job = *owned_job;
         ++stats.attempted_jobs;
 
-        ResourceSlot* slot = cache_.Find(job->request.resource_id);
-        if (slot == nullptr || slot->generation != job->generation)
+        const auto pop_owner = [this, from_waiting]() noexcept {
+            if (from_waiting)
+            {
+                waiting_queue_.PopFrontNoThrow();
+            }
+            else
+            {
+                load_queue_.PopFrontNoThrow();
+            }
+        };
+
+        ResourceSlot* slot = cache_.Find(job.request.resource_id);
+        if (slot == nullptr || slot->generation != job.generation)
         {
+            pop_owner();
             ++stats.skipped_jobs;
+            waiting_without_progress = 0;
             continue;
         }
         if (slot->reference_count == 0)
@@ -320,19 +407,66 @@ foundation::Result<ResourceProcessingStats> ResourceManager::ProcessPendingLoads
             if (!rolled_back)
             {
                 ++stats.failed_resources;
+                // The current queue entry remains the durable cleanup owner.
+                break;
             }
+            pop_owner();
             ++stats.skipped_jobs;
+            waiting_without_progress = 0;
             continue;
         }
 
         ++stats.processed_jobs;
-        foundation::Result<void> result = slot->pending_artifact ? FinishLoadedArtifact(*slot, std::move(*slot->pending_artifact), stats)
-                                                                 : LoadSlot(*slot, job->request, stats);
+        foundation::Result<void> result = slot->pending_artifact ? FinishLoadedArtifact(*slot, stats)
+                                                                 : LoadSlot(*slot, job.request, stats);
         if (!result)
         {
             ++stats.failed_resources;
+            if (slot->state == ResourceState::Failed)
+            {
+                pop_owner();
+                waiting_without_progress = 0;
+                continue;
+            }
+
+            // A Runtime-local retryable failure keeps the current durable owner.
+            // Stop this processing pass to avoid spinning on the same fault.
+            break;
+        }
+
+        if (slot->state == ResourceState::WaitingForDependencies)
+        {
+            if (!from_waiting)
+            {
+                try
+                {
+                    waiting_queue_.Publish(job);
+                }
+                catch (const std::bad_alloc&)
+                {
+                    ++stats.failed_resources;
+                    // The load queue entry is deliberately retained until the
+                    // waiting owner has been published successfully.
+                    break;
+                }
+                load_queue_.PopFrontNoThrow();
+                waiting_without_progress = 0;
+                continue;
+            }
+
+            waiting_queue_.RotateFrontToBackNoThrow();
+            ++waiting_without_progress;
+            if (waiting_without_progress >= waiting_queue_.Size())
+            {
+                // A full deterministic pass made no progress. Dependencies may
+                // become ready on a later processing boundary.
+                break;
+            }
             continue;
         }
+
+        pop_owner();
+        waiting_without_progress = 0;
     }
 
     return foundation::Result<ResourceProcessingStats>::Success(stats);
@@ -626,7 +760,6 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, const Res
         const auto released = ReleaseDependencyHandles(slot);
         if (!released)
         {
-            slot.state = ResourceState::Failed;
             return ResourceFailure("resource.dependency_release_pending", "resource dependency lease cleanup must succeed before retrying load");
         }
     }
@@ -652,37 +785,63 @@ foundation::Result<void> ResourceManager::LoadSlot(ResourceSlot& slot, const Res
         return ResourceFailure("resource.loader_not_found", "resource loader is not registered for the requested type");
     }
 
-    loading_resources_.insert(slot.id);
-    LoadingResourceGuard loading_guard{loading_resources_, slot.id};
-    slot.state = ResourceState::Loading;
-
     try
     {
-        const auto load_result = loader->Load(request);
-        if (!load_result)
+        if (fail_next_loading_owner_publish_for_testing_)
+        {
+            fail_next_loading_owner_publish_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
+        const auto [_, inserted] = loading_resources_.insert(slot.id);
+        if (!inserted)
         {
             slot.state = ResourceState::Failed;
             (void)RollbackLoadAttempt(slot);
-            return foundation::Result<void>::Failure(load_result.GetError());
+            return ResourceFailure("resource.dependency_cycle", "resource dependency cycle detected during load");
         }
-        return FinishLoadedArtifact(slot, load_result.Value(), stats);
     }
-    catch (const std::exception&)
+    catch (const std::bad_alloc&)
+    {
+        return ResourceFailure("resource.allocation_failed", "resource loading ownership could not be published");
+    }
+
+    LoadingResourceGuard loading_guard{loading_resources_, slot.id};
+    slot.state = ResourceState::Loading;
+
+    // Only the external callback is inside this exception boundary. Runtime-local
+    // artifact staging and finalization happen after the callback has returned.
+    auto load_result = [&]() -> foundation::Result<ResourceLoadArtifact> {
+        try
+        {
+            return loader->Load(request);
+        }
+        catch (const std::exception&)
+        {
+            return ResourceFailureValue<ResourceLoadArtifact>("resource.loader_exception", "resource loader threw an exception");
+        }
+        catch (...)
+        {
+            return ResourceFailureValue<ResourceLoadArtifact>("resource.loader_exception", "resource loader threw an unknown exception");
+        }
+    }();
+
+    if (!load_result)
     {
         slot.state = ResourceState::Failed;
         (void)RollbackLoadAttempt(slot);
-        return ResourceFailure("resource.loader_exception", "resource loader threw an exception");
+        return foundation::Result<void>::Failure(load_result.GetError());
     }
-    catch (...)
-    {
-        slot.state = ResourceState::Failed;
-        (void)RollbackLoadAttempt(slot);
-        return ResourceFailure("resource.loader_exception", "resource loader threw an unknown exception");
-    }
+
+    static_assert(std::is_nothrow_move_constructible_v<ResourceLoadArtifact>);
+    slot.pending_artifact.emplace(std::move(load_result).Value());
+    return FinishLoadedArtifact(slot, stats);
 }
 
-foundation::Result<void> ResourceManager::FinishLoadedArtifact(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats)
+foundation::Result<void> ResourceManager::FinishLoadedArtifact(ResourceSlot& slot, ResourceProcessingStats& stats)
 {
+    assert(slot.pending_artifact.has_value());
+    ResourceLoadArtifact& artifact = *slot.pending_artifact;
+
     if (artifact.resource_id != slot.id)
     {
         slot.state = ResourceState::Failed;
@@ -703,42 +862,57 @@ foundation::Result<void> ResourceManager::FinishLoadedArtifact(ResourceSlot& slo
     }
 
     std::vector<ResourceDependency> blocking_dependencies;
-    for (const ResourceDependency& dependency : artifact.dependencies)
+    try
     {
-        if (!dependency.required)
+        blocking_dependencies.reserve(artifact.dependencies.size());
+        for (const ResourceDependency& dependency : artifact.dependencies)
         {
-            continue;
+            if (!dependency.required)
+            {
+                continue;
+            }
+            if (dependency.resource_id == slot.id || HasDependencyPath(dependency.resource_id, slot.id))
+            {
+                slot.state = ResourceState::Failed;
+                (void)RollbackLoadAttempt(slot);
+                return ResourceFailure("resource.dependency_cycle", "resource dependency cycle detected during load");
+            }
+            blocking_dependencies.push_back(dependency);
         }
-        if (dependency.resource_id == slot.id || HasDependencyPath(dependency.resource_id, slot.id))
-        {
-            slot.state = ResourceState::Failed;
-            (void)RollbackLoadAttempt(slot);
-            return ResourceFailure("resource.dependency_cycle", "resource dependency cycle detected during load");
-        }
-        blocking_dependencies.push_back(dependency);
+    }
+    catch (const std::bad_alloc&)
+    {
+        return ResourceFailure("resource.allocation_failed", "resource dependency staging could not be prepared");
     }
 
-    dependency_graph_.RemoveDependencies(slot.id);
-    if (!blocking_dependencies.empty())
-    {
-        dependency_graph_.SetDependencies(slot.id, std::move(blocking_dependencies));
-    }
     const auto dependencies_ready = ResolveDependencies(slot, artifact);
     if (!dependencies_ready)
     {
+        if (dependencies_ready.GetError().HasCode("resource.allocation_failed"))
+        {
+            return foundation::Result<void>::Failure(dependencies_ready.GetError());
+        }
         slot.state = ResourceState::Failed;
         (void)RollbackLoadAttempt(slot);
         return foundation::Result<void>::Failure(dependencies_ready.GetError());
     }
+
+    try
+    {
+        dependency_graph_.ReplaceDependencies(slot.id, std::move(blocking_dependencies));
+    }
+    catch (const std::bad_alloc&)
+    {
+        return ResourceFailure("resource.allocation_failed", "resource dependency graph replacement could not be published");
+    }
+
     if (!dependencies_ready.Value())
     {
         slot.state = ResourceState::WaitingForDependencies;
-        slot.pending_artifact = std::move(artifact);
-        load_queue_.Enqueue(ResourceLoadJob{ResourceRequest{slot.id, slot.type}, slot.generation});
         return foundation::Result<void>::Success();
     }
 
-    return CommitReadyPayload(slot, std::move(artifact), stats);
+    return CommitReadyPayload(slot, stats);
 }
 
 foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot, const ResourceLoadArtifact& artifact)
@@ -750,17 +924,22 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
 
     if (slot.dependency_handles.empty())
     {
+        std::vector<OwnedResourceDependency> candidate_handles;
+        try
+        {
+            candidate_handles.reserve(artifact.dependencies.size());
+        }
+        catch (const std::bad_alloc&)
+        {
+            return ResourceFailureValue<bool>("resource.allocation_failed", "resource dependency ownership staging could not be prepared");
+        }
+
         for (const ResourceDependency& dependency : artifact.dependencies)
         {
             if (!dependency.resource_id.IsValid())
             {
                 if (dependency.required)
                 {
-                    const auto released = ReleaseDependencyHandles(slot);
-                    if (!released)
-                    {
-                        return foundation::Result<bool>::Failure(released.GetError());
-                    }
                     return ResourceFailureValue<bool>("resource.dependency_invalid_id", "required resource dependency must have a valid resource id");
                 }
                 continue;
@@ -769,37 +948,29 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
             {
                 if (dependency.required)
                 {
-                    const auto released = ReleaseDependencyHandles(slot);
-                    if (!released)
-                    {
-                        return foundation::Result<bool>::Failure(released.GetError());
-                    }
                     return ResourceFailureValue<bool>("resource.dependency_invalid_type", "required resource dependency must have a valid resource type");
                 }
                 continue;
             }
             if (dependency.resource_id == slot.id)
             {
-                const auto released = ReleaseDependencyHandles(slot);
-                if (!released)
-                {
-                    return foundation::Result<bool>::Failure(released.GetError());
-                }
                 return ResourceFailureValue<bool>("resource.dependency_cycle", "resource dependency cycle detected during load");
-            }
-
-            if (!dependency.required && (loader_registry_ == nullptr || loader_registry_->FindLoader(dependency.type) == nullptr))
-            {
-                continue;
             }
             if (dependency.required && loader_registry_ != nullptr && loader_registry_->FindLoader(dependency.type) == nullptr)
             {
-                const auto released = ReleaseDependencyHandles(slot);
-                if (!released)
-                {
-                    return foundation::Result<bool>::Failure(released.GetError());
-                }
                 return ResourceFailureValue<bool>("resource.loader_not_found", "resource loader is not registered for a required dependency");
+            }
+        }
+
+        for (const ResourceDependency& dependency : artifact.dependencies)
+        {
+            if (!dependency.resource_id.IsValid() || !dependency.type.IsValid() || dependency.resource_id == slot.id)
+            {
+                continue;
+            }
+            if (!dependency.required && (loader_registry_ == nullptr || loader_registry_->FindLoader(dependency.type) == nullptr))
+            {
+                continue;
             }
 
             const auto dependency_result = RequestLease(ResourceRequest{dependency.resource_id, dependency.type});
@@ -809,26 +980,28 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
                 {
                     continue;
                 }
-                const auto released = ReleaseDependencyHandles(slot);
+
+                const auto released = ReleaseDependencyHandles(candidate_handles);
+                if (!candidate_handles.empty())
+                {
+                    slot.dependency_handles.swap(candidate_handles);
+                }
                 if (!released)
                 {
                     return foundation::Result<bool>::Failure(released.GetError());
                 }
                 return foundation::Result<bool>::Failure(dependency_result.GetError());
             }
-            const ResourceLease dependency_lease = dependency_result.Value();
-            try
+
+            candidate_handles.push_back(OwnedResourceDependency{dependency_result.Value(), dependency.resource_id, dependency.required});
+            if (fail_next_dependency_publish_for_testing_)
             {
-                if (fail_next_dependency_publish_for_testing_)
+                fail_next_dependency_publish_for_testing_ = false;
+                const auto released = ReleaseDependencyHandles(candidate_handles);
+                if (!candidate_handles.empty())
                 {
-                    fail_next_dependency_publish_for_testing_ = false;
-                    throw std::bad_alloc{};
+                    slot.dependency_handles.swap(candidate_handles);
                 }
-                slot.dependency_handles.push_back(OwnedResourceDependency{dependency_lease, dependency.resource_id, dependency.required});
-            }
-            catch (...)
-            {
-                const auto released = Release(dependency_lease);
                 if (!released)
                 {
                     return foundation::Result<bool>::Failure(released.GetError());
@@ -836,6 +1009,8 @@ foundation::Result<bool> ResourceManager::ResolveDependencies(ResourceSlot& slot
                 return ResourceFailureValue<bool>("resource.allocation_failed", "resource dependency ownership could not be published");
             }
         }
+
+        slot.dependency_handles.swap(candidate_handles);
     }
 
     for (auto iterator = slot.dependency_handles.begin(); iterator != slot.dependency_handles.end();)
@@ -912,8 +1087,10 @@ bool ResourceManager::HasDependencyPath(ResourceId from, ResourceId to) const
     return false;
 }
 
-foundation::Result<void> ResourceManager::CommitReadyPayload(ResourceSlot& slot, ResourceLoadArtifact artifact, ResourceProcessingStats& stats)
+foundation::Result<void> ResourceManager::CommitReadyPayload(ResourceSlot& slot, ResourceProcessingStats& stats)
 {
+    assert(slot.pending_artifact.has_value());
+    ResourceLoadArtifact& artifact = *slot.pending_artifact;
     const std::size_t bytes = artifact.payload->GetSizeBytes();
     if (bytes > std::numeric_limits<std::size_t>::max() - resident_bytes_ ||
         bytes > std::numeric_limits<std::size_t>::max() - stats.bytes_loaded ||

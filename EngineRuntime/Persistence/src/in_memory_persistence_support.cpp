@@ -1085,7 +1085,20 @@ foundation::Result<PersistenceSnapshot> InMemoryPersistenceBackend::Load()
 foundation::Result<void> InMemoryPersistenceBackend::CommitSnapshot(const PersistenceSnapshot& snapshot, PersistenceDurability durability)
 {
     (void)durability;
-    snapshot_ = snapshot;
+    static_assert(std::is_nothrow_move_assignable_v<PersistenceSnapshot>,
+                  "PersistenceSnapshot publication must remain a no-throw move commit");
+
+    PersistenceSnapshot candidate{};
+    try
+    {
+        candidate = snapshot;
+    }
+    catch (const std::bad_alloc&)
+    {
+        return PersistenceFailure("persistence.allocation_failed", "failed to stage durable persistence snapshot");
+    }
+
+    snapshot_ = std::move(candidate);
     return foundation::Result<void>::Success();
 }
 } // namespace epidemic::runtime

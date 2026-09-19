@@ -81,6 +81,8 @@ class IAnimationPoseSink
 public:
     virtual ~IAnimationPoseSink() = default;
 
+    // Failure or exception means the pose was not externally committed. A sink that can commit
+    // before reporting failure must provide its own idempotent/deduplicated publication boundary.
     [[nodiscard]] virtual foundation::Result<void> Publish(std::shared_ptr<const PoseBuffer> pose) = 0;
 };
 

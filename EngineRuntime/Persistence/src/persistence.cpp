@@ -6,8 +6,29 @@
 
 namespace epidemic::runtime
 {
+namespace
+{
+[[nodiscard]] constexpr bool IsValidPersistenceDurability(PersistenceDurability durability) noexcept
+{
+    switch (durability)
+    {
+    case PersistenceDurability::MemoryOnly:
+    case PersistenceDurability::SaveRequired:
+    case PersistenceDurability::SaveAndFlushRequired:
+        return true;
+    }
+    return false;
+}
+} // namespace
+
 foundation::Result<PersistenceServices> CreatePersistenceServices(const PersistenceOptions& options)
 {
+    if (!IsValidPersistenceDurability(options.durability))
+    {
+        return foundation::Result<PersistenceServices>::Failure(
+            foundation::Error::Create("persistence.invalid_durability", "persistence durability is outside the supported enum domain"));
+    }
+
     PersistenceSnapshot snapshot{};
     if (options.backend)
     {

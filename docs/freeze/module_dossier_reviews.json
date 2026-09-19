@@ -2973,49 +2973,49 @@
     },
     "EngineRuntime/Assets": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineRuntime/Audio": {
@@ -3349,49 +3349,49 @@
     },
     "EngineRuntime/RuntimeFoundation": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineRuntime/Scene": {

@@ -6,6 +6,7 @@
 #include <limits>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -20,6 +21,12 @@ std::shared_ptr<streaming::IStreamingDataSource> CreateStreamingAdapter(std::sha
                                                                        std::shared_ptr<ResourceServices> resources,
                                                                        std::shared_ptr<PersistenceServices> persistence,
                                                                        std::shared_ptr<IChunkStreamingManifestSource> manifests);
+std::shared_ptr<animation::IAnimationResourceSource> CreateAnimationResourceSource(std::shared_ptr<IResourceManager> manager);
+std::shared_ptr<audio::IAudioResourceSource> CreateAudioResourceSource(std::shared_ptr<IResourceManager> manager);
+std::shared_ptr<audio::IAudioBackend> CreateReferenceAudioBackend();
+std::shared_ptr<animation::IAnimationPoseSink> CreateAnimationPoseBridge();
+std::shared_ptr<IRuntimeEventSink> CreateReferenceEventSink();
+std::optional<RuntimeFrameEvents> GetReferenceEventBatch(const std::shared_ptr<IRuntimeEventSink>& sink);
 void FailNextRenderLeasePublication() noexcept;
 void FailNextStreamingLeasePublication() noexcept;
 void FailStreamingLeasePublicationAfter(std::size_t successful_publications) noexcept;
@@ -28,6 +35,15 @@ void FailNextPersistenceException() noexcept;
 void FailNextStreamingCleanupWorldTransition() noexcept;
 void FailNextMainViewCreation() noexcept;
 void FailNextMainViewPublication() noexcept;
+void ThrowSceneProjectionAfter(std::size_t successful_publications) noexcept;
+void FailNextAnimationLeaseSlotPublication() noexcept;
+void FailNextAudioLeaseSlotPublication() noexcept;
+void FailNextAudioWrapperPublication() noexcept;
+void ThrowNextAudioRelease() noexcept;
+void FailNextAudioVoicePublication() noexcept;
+void FailPosePublicationAfter(std::size_t successful_index_publications) noexcept;
+void FailNextReferenceEventPublication() noexcept;
+void FailCoordinatorAfterStep(RuntimeUpdateStep step) noexcept;
 foundation::Result<void> EnsureMainView(renderer::RendererServices& renderer_services,
                                         const std::shared_ptr<SceneServices>& scene);
 foundation::Result<void> SetPreparedRevision(streaming::IStreamingDataSource& source,
@@ -75,6 +91,11 @@ class TestResourceManager final : public IResourceManager
     [[nodiscard]] foundation::Result<ResourceLease> RequestLease(ResourceRequest request) override
     {
         ++request_attempts[request.resource_id.Raw()];
+        if (throw_request_once)
+        {
+            throw_request_once = false;
+            throw std::runtime_error("injected resource request exception");
+        }
         if (fail_request_resource && *fail_request_resource == request.resource_id.Raw())
         {
             return foundation::Result<ResourceLease>::Failure(
@@ -94,6 +115,11 @@ class TestResourceManager final : public IResourceManager
     [[nodiscard]] foundation::Result<void> Release(ResourceLease lease) override
     {
         ++release_attempts[lease.resource.id.Raw()];
+        if (throw_release_once)
+        {
+            throw_release_once = false;
+            throw std::runtime_error("injected resource release exception");
+        }
         if (fail_release_resource_once && *fail_release_resource_once == lease.resource.id.Raw())
         {
             fail_release_resource_once.reset();
@@ -131,7 +157,7 @@ class TestResourceManager final : public IResourceManager
     {
         return handle.IsValid() ? std::optional<ResourceId>{handle.id} : std::nullopt;
     }
-    [[nodiscard]] ResourcePayloadPtr GetPayload(ResourceHandle) const override { return {}; }
+    [[nodiscard]] ResourcePayloadPtr GetPayload(ResourceHandle) const override { return payload; }
     void SetMemoryBudgetBytes(std::size_t) override {}
     [[nodiscard]] ResourceMemoryStats GetMemoryStatistics() const override { return {}; }
 
@@ -154,6 +180,9 @@ class TestResourceManager final : public IResourceManager
 
     std::optional<std::uint64_t> fail_request_resource{};
     std::optional<std::uint64_t> fail_release_resource_once{};
+    bool throw_request_once = false;
+    bool throw_release_once = false;
+    ResourcePayloadPtr payload{};
 
   private:
     ResourceAcquisitionId next_acquisition = 1;
@@ -162,6 +191,66 @@ class TestResourceManager final : public IResourceManager
     std::unordered_map<std::uint64_t, int> successful_requests;
     std::unordered_map<std::uint64_t, int> release_attempts;
     std::unordered_map<std::uint64_t, int> successful_releases;
+};
+
+class TestAnimationSkeletonPayload final : public IResourcePayload,
+                                           public IAnimationSkeletonResourcePayload
+{
+  public:
+    explicit TestAnimationSkeletonPayload(animation::SkeletonId id) : desc_{id, 4} {}
+    [[nodiscard]] std::size_t GetSizeBytes() const noexcept override { return sizeof(desc_); }
+    [[nodiscard]] const animation::SkeletonDesc& GetSkeleton() const noexcept override { return desc_; }
+
+  private:
+    animation::SkeletonDesc desc_{};
+};
+
+class TestAudioClipPayload final : public IResourcePayload,
+                                   public audio::IAudioClipResource
+{
+  public:
+    TestAudioClipPayload() : bytes_(16) {}
+    [[nodiscard]] std::size_t GetSizeBytes() const noexcept override { return bytes_.size(); }
+    [[nodiscard]] audio::AudioClipFormat GetFormat() const override { return {2, 48000, 16, false}; }
+    [[nodiscard]] audio::AudioClipStorage GetStorage() const override { return audio::AudioClipStorage::InMemoryEncoded; }
+    [[nodiscard]] std::span<const std::byte> GetEncodedData() const override { return bytes_; }
+    [[nodiscard]] std::shared_ptr<audio::IAudioStreamSource> GetStreamSource() const override { return {}; }
+
+  private:
+    std::vector<std::byte> bytes_;
+};
+
+class TestPhysicsTransformSource final : public physics::IPhysicsTransformSource
+{
+  public:
+    [[nodiscard]] foundation::Result<Transform> ReadTransform(physics::PhysicsTransformId) const override
+    {
+        return foundation::Result<Transform>::Success(Transform{});
+    }
+};
+
+class TestNavCostProvider final : public navigation::INavCostProvider
+{
+  public:
+    [[nodiscard]] float GetTraversalCost(const navigation::NavCostQuery&) const override { return 1.0f; }
+};
+
+class ThrowOnceEventSink final : public IRuntimeEventSink
+{
+  public:
+    [[nodiscard]] foundation::Result<void> Publish(const RuntimeFrameEvents&) override
+    {
+        ++calls;
+        if (throw_once)
+        {
+            throw_once = false;
+            throw std::runtime_error("injected event sink exception");
+        }
+        return foundation::Result<void>::Success();
+    }
+
+    bool throw_once = true;
+    int calls = 0;
 };
 
 class TestViewSystem final : public renderer::IViewSystem
@@ -544,6 +633,20 @@ bool TestAtomicDefaultCompositionAndTypedOwnership()
     ok &= Expect(SameOwner(integrations.animation_pose_sink, integrations.render_pose_source),
                  "animation pose sink/render pose source ownership differs");
 
+    ok &= Expect(SameOwner(integrations.navigation_data_source, integrations.navigation_costs),
+                 "navigation data/cost roles do not share one adapter instance");
+    ok &= Expect(SameOwner(integrations.navigation_data_source, integrations.navigation_obstacles),
+                 "navigation data/obstacle roles do not share one adapter instance");
+    ok &= Expect(SameOwner(integrations.physics_transform_source, integrations.audio_transforms),
+                 "Scene transform projection roles do not share one adapter instance");
+    ok &= Expect(SameOwner(integrations.simulation_commit_target, integrations.simulation_commit_log),
+                 "simulation commit/log roles do not share one adapter instance");
+    ok &= Expect(integrations.owned_adapters.size() == GetAllowedRuntimeAdapters().size(),
+                 "default composition did not publish the complete standard adapter set");
+    ok &= Expect(integrations.simulation_clock && services.time &&
+                     integrations.simulation_clock->Now() == services.time->clock->Now(),
+                 "simulation clock is not derived from authoritative Runtime Time");
+
     // Replacing an animator for the same runtime object must replace the owner's pose even
     // when the new animator starts its own revision sequence from a lower value.
     auto first_pose = std::make_shared<animation::PoseBuffer>();
@@ -722,6 +825,302 @@ bool TestStreamingWorldLifecycle()
     return ok;
 }
 
+bool TestSceneProjectionPrefixRetry()
+{
+    Application app{};
+    const auto runtime = RegisterDefaultEngineRuntime(app);
+    if (!runtime) return false;
+
+    const auto first = runtime.Value().scene->nodes->CreateNode();
+    const auto second = runtime.Value().scene->nodes->CreateNode();
+    if (!first || !second) return false;
+
+    Transform first_transform{};
+    first_transform.position = Vec3{1.0f, 2.0f, 3.0f};
+    Transform second_transform{};
+    second_transform.position = Vec3{4.0f, 5.0f, 6.0f};
+    if (!runtime.Value().integrations->physics_transform_sink->WriteTransform(
+            physics::PhysicsTransformId{first.Value().Raw()}, first_transform) ||
+        !runtime.Value().integrations->physics_transform_sink->WriteTransform(
+            physics::PhysicsTransformId{second.Value().Raw()}, second_transform))
+        return false;
+
+    support_testing::ThrowSceneProjectionAfter(1);
+    const auto first_flush = runtime.Value().integrations->scene_projections->Flush();
+    if (first_flush || !first_flush.GetError().HasCode("runtime_support.scene_projection_exception") ||
+        runtime.Value().integrations->scene_projections->PendingCount() != 1)
+        return false;
+
+    const auto first_after = runtime.Value().scene->transforms->GetWorldTransform(first.Value());
+    const auto first_record = runtime.Value().scene->nodes->GetNode(first.Value());
+    if (!first_after || !first_record || first_after->position != first_transform.position) return false;
+    const auto first_revision = first_record->revision;
+
+    const auto retry = runtime.Value().integrations->scene_projections->Flush();
+    const auto first_final = runtime.Value().scene->nodes->GetNode(first.Value());
+    const auto second_after = runtime.Value().scene->transforms->GetWorldTransform(second.Value());
+    return retry && retry.Value() == 1 && runtime.Value().integrations->scene_projections->PendingCount() == 0 &&
+           first_final && first_final->revision == first_revision && second_after &&
+           second_after->position == second_transform.position;
+}
+
+bool TestCoordinatorRejectsInvalidInputBeforeMutation()
+{
+    Application app{};
+    const auto runtime = RegisterDefaultEngineRuntime(app);
+    if (!runtime) return false;
+    const GameTimePoint before = runtime.Value().time->clock->Now();
+
+    RuntimeFrameInput input{};
+    input.real_delta = RuntimeFrameDuration{std::chrono::microseconds{-1}};
+    const auto bad_delta = runtime.Value().coordinator->Tick(input);
+    if (bad_delta || !bad_delta.GetError().HasCode("runtime_support.invalid_frame_delta") ||
+        runtime.Value().time->clock->Now() != before)
+        return false;
+
+    input = RuntimeFrameInput{};
+    input.resource_budget.max_time = std::chrono::microseconds{-1};
+    const auto bad_resource_budget = runtime.Value().coordinator->Tick(input);
+    if (bad_resource_budget || !bad_resource_budget.GetError().HasCode("runtime.invalid_budget") ||
+        runtime.Value().time->clock->Now() != before)
+        return false;
+
+    input = RuntimeFrameInput{};
+    input.streaming_budget.cpu_budget = std::chrono::microseconds{-1};
+    const auto bad_streaming_budget = runtime.Value().coordinator->Tick(input);
+    return !bad_streaming_budget &&
+           bad_streaming_budget.GetError().HasCode("runtime_support.invalid_streaming_budget") &&
+           runtime.Value().time->clock->Now() == before;
+}
+
+bool TestCoordinatorAcceptedPrefixRetry()
+{
+    Application app{};
+    const auto runtime = RegisterDefaultEngineRuntime(app);
+    if (!runtime) return false;
+
+    RuntimeFrameInput input{};
+    input.real_delta = RuntimeFrameDuration{std::chrono::microseconds{1000000}};
+    const GameTimePoint before = runtime.Value().time->clock->Now();
+    support_testing::FailCoordinatorAfterStep(RuntimeUpdateStep::Time);
+    bool threw = false;
+    try
+    {
+        (void)runtime.Value().coordinator->Tick(input);
+    }
+    catch (const std::bad_alloc&)
+    {
+        threw = true;
+    }
+    if (!threw) return false;
+    const GameTimePoint accepted = runtime.Value().time->clock->Now();
+    if (accepted == before) return false;
+
+    RuntimeFrameInput different = input;
+    different.real_delta = RuntimeFrameDuration{std::chrono::microseconds{2000000}};
+    const auto rejected = runtime.Value().coordinator->Tick(different);
+    if (rejected || !rejected.GetError().HasCode("runtime_support.frame_retry_required") ||
+        runtime.Value().time->clock->Now() != accepted)
+        return false;
+
+    const auto retry = runtime.Value().coordinator->Tick(input);
+    return retry && retry.Value().executed_steps == GetRuntimeUpdateOrder() &&
+           runtime.Value().time->clock->Now() == accepted;
+}
+
+bool TestReferenceEventSinkAtomicityAndCoordinatorContainment()
+{
+    auto sink = support_testing::CreateReferenceEventSink();
+    RuntimeFrameEvents first{};
+    first.audio_events.push_back(audio::AudioEvent{audio::SoundId{11}, {}, 1.0f, audio::AudioEventSpace::NonSpatial});
+    if (!sink->Publish(first)) return false;
+
+    RuntimeFrameEvents second{};
+    second.audio_events.push_back(audio::AudioEvent{audio::SoundId{22}, {}, 0.5f, audio::AudioEventSpace::NonSpatial});
+    support_testing::FailNextReferenceEventPublication();
+    const auto failed = sink->Publish(second);
+    const auto after_failed = support_testing::GetReferenceEventBatch(sink);
+    if (failed || !failed.GetError().HasCode("runtime_support.allocation_failure") || !after_failed ||
+        after_failed->audio_events.size() != 1 || after_failed->audio_events.front().sound != audio::SoundId{11})
+        return false;
+    if (!sink->Publish(second)) return false;
+    const auto after_success = support_testing::GetReferenceEventBatch(sink);
+    if (!after_success || after_success->audio_events.size() != 1 ||
+        after_success->audio_events.front().sound != audio::SoundId{22})
+        return false;
+
+    Application app{};
+    auto throwing_sink = std::make_shared<ThrowOnceEventSink>();
+    EngineRuntimeDependencies dependencies{};
+    dependencies.event_sink = throwing_sink;
+    const auto runtime = RegisterDefaultEngineRuntime(app, {}, dependencies);
+    if (!runtime) return false;
+    RuntimeFrameInput input{};
+    input.real_delta = RuntimeFrameDuration{std::chrono::microseconds{16667}};
+    const auto tick = runtime.Value().coordinator->Tick(input);
+    if (!tick || throwing_sink->calls != 1) return false;
+    const auto failure = std::find_if(tick.Value().failures.begin(), tick.Value().failures.end(), [](const auto& value) {
+        return value.phase == RuntimeUpdateStep::DiagnosticsEvents &&
+               value.error.HasCode("runtime_support.event_sink_exception");
+    });
+    if (failure == tick.Value().failures.end()) return false;
+    const auto retry = runtime.Value().coordinator->Tick(input);
+    return retry && throwing_sink->calls == 2;
+}
+
+bool TestAnimationResourceLeasePublication()
+{
+    auto manager = std::make_shared<TestResourceManager>();
+    const animation::SkeletonId skeleton{7};
+    manager->payload = std::make_shared<TestAnimationSkeletonPayload>(skeleton);
+    auto source = support_testing::CreateAnimationResourceSource(manager);
+    auto lifecycle = std::dynamic_pointer_cast<IRuntimeAdapterLifecycle>(source);
+    const ResourceId resource = ResourceId::FromString("animation.skeleton.7");
+    if (!source || !lifecycle) return false;
+
+    support_testing::FailNextAnimationLeaseSlotPublication();
+    const auto local_failure = source->LoadSkeleton(skeleton);
+    if (local_failure || !local_failure.GetError().HasCode("runtime_support.allocation_failure") ||
+        manager->RequestAttemptCount(resource) != 0 || manager->ActiveCount() != 0)
+        return false;
+
+    manager->throw_request_once = true;
+    const auto callback_failure = source->LoadSkeleton(skeleton);
+    if (callback_failure || !callback_failure.GetError().HasCode("runtime_support.resource_request_exception") ||
+        manager->ActiveCount() != 0)
+        return false;
+
+    const auto loaded = source->LoadSkeleton(skeleton);
+    return loaded && loaded.Value().id == skeleton && manager->ActiveCount() == 0 && lifecycle->Shutdown();
+}
+
+bool TestAudioResourceLeaseTransferAndDestructorRetry()
+{
+    auto manager = std::make_shared<TestResourceManager>();
+    manager->payload = std::make_shared<TestAudioClipPayload>();
+    auto source = support_testing::CreateAudioResourceSource(manager);
+    auto lifecycle = std::dynamic_pointer_cast<IRuntimeAdapterLifecycle>(source);
+    const audio::SoundId sound{9};
+    const ResourceId resource = ResourceId::FromString("audio.clip.9");
+    if (!source || !lifecycle) return false;
+
+    support_testing::FailNextAudioLeaseSlotPublication();
+    const auto slot_failure = source->LoadClip(sound);
+    if (slot_failure || !slot_failure.GetError().HasCode("runtime_support.allocation_failure") ||
+        manager->RequestAttemptCount(resource) != 0 || manager->ActiveCount() != 0)
+        return false;
+
+    support_testing::FailNextAudioWrapperPublication();
+    const auto wrapper_failure = source->LoadClip(sound);
+    if (wrapper_failure || !wrapper_failure.GetError().HasCode("runtime_support.allocation_failure") ||
+        manager->RequestAttemptCount(resource) != 1 || manager->ActiveCount() != 1)
+        return false;
+
+    auto loaded = source->LoadClip(sound);
+    if (!loaded || !loaded.Value().resource || manager->RequestAttemptCount(resource) != 1 ||
+        manager->ActiveCount() != 1)
+        return false;
+
+    support_testing::ThrowNextAudioRelease();
+    loaded.Value().resource.reset();
+    if (manager->ActiveCount() != 1) return false;
+    const auto shutdown = lifecycle->Shutdown();
+    return shutdown && manager->ActiveCount() == 0 && manager->SuccessfulReleaseCount(resource) == 1;
+}
+
+bool TestReferenceAudioVoiceIdCommit()
+{
+    auto backend = support_testing::CreateReferenceAudioBackend();
+    if (!backend || !backend->Initialize(audio::AudioBackendOptions{true})) return false;
+    audio::AudioVoiceDesc desc{};
+    support_testing::FailNextAudioVoicePublication();
+    const auto failed = backend->CreateVoice(desc);
+    if (failed || !failed.GetError().HasCode("runtime_support.allocation_failure")) return false;
+    const auto created = backend->CreateVoice(desc);
+    return created && created.Value() == audio::BackendVoiceHandle{1};
+}
+
+bool TestAnimationPoseAtomicPublication()
+{
+    auto sink = support_testing::CreateAnimationPoseBridge();
+    auto cache = std::dynamic_pointer_cast<IRuntimePoseCache>(sink);
+    auto render = std::dynamic_pointer_cast<renderer::IRenderPoseSource>(sink);
+    if (!sink || !cache || !render) return false;
+
+    auto old_pose = std::make_shared<animation::PoseBuffer>();
+    old_pose->animator = animation::AnimatorHandle{animation::AnimatorInstanceId{41}, 1};
+    old_pose->owner = RuntimeObjectId{77};
+    old_pose->revision = 9;
+    if (!sink->Publish(old_pose)) return false;
+
+    auto replacement = std::make_shared<animation::PoseBuffer>();
+    replacement->animator = animation::AnimatorHandle{animation::AnimatorInstanceId{42}, 1};
+    replacement->owner = RuntimeObjectId{77};
+    replacement->revision = 1;
+
+    for (std::size_t fault_index : {0u, 1u})
+    {
+        support_testing::FailPosePublicationAfter(fault_index);
+        const auto failed = sink->Publish(replacement);
+        const auto old_cached = cache->GetPose(old_pose->animator);
+        const auto new_cached = cache->GetPose(replacement->animator);
+        const auto owner_pose = render->GetPose(RuntimeObjectId{77});
+        if (failed || !failed.GetError().HasCode("runtime_support.allocation_failure") || !old_cached ||
+            new_cached || !owner_pose || !owner_pose.Value() || owner_pose.Value()->revision != 9)
+            return false;
+    }
+
+    if (!sink->Publish(replacement)) return false;
+    const auto owner_pose = render->GetPose(RuntimeObjectId{77});
+    return !cache->GetPose(old_pose->animator) && cache->GetPose(replacement->animator) &&
+           owner_pose && owner_pose.Value() && owner_pose.Value()->revision == 1 && cache->PoseCount() == 1;
+}
+
+bool TestPartialCompositeOverridesRejected()
+{
+    EngineRuntimeDependencies physics_dependencies{};
+    physics_dependencies.physics.transform_source = std::make_shared<TestPhysicsTransformSource>();
+    const auto physics_partial = PrepareEngineRuntime({}, std::move(physics_dependencies));
+    if (physics_partial || !physics_partial.GetError().HasCode("runtime_support.incomplete_physics_transform_dependencies"))
+        return false;
+
+    EngineRuntimeDependencies navigation_dependencies{};
+    navigation_dependencies.navigation.cost_provider = std::make_shared<TestNavCostProvider>();
+    const auto navigation_partial = PrepareEngineRuntime({}, std::move(navigation_dependencies));
+    return !navigation_partial &&
+           navigation_partial.GetError().HasCode("runtime_support.incomplete_navigation_dependencies");
+}
+
+bool TestShutdownRetrySkipsCompletedPrefix()
+{
+    Application app{};
+    const auto runtime = RegisterDefaultEngineRuntime(app);
+    if (!runtime) return false;
+    const auto node = runtime.Value().scene->nodes->CreateNode();
+    if (!node) return false;
+    Transform projected{};
+    projected.position = Vec3{3.0f, 0.0f, 0.0f};
+    if (!runtime.Value().integrations->physics_transform_sink->WriteTransform(
+            physics::PhysicsTransformId{node.Value().Raw()}, projected))
+        return false;
+
+    support_testing::ThrowSceneProjectionAfter(0);
+    const auto first = runtime.Value().coordinator->Shutdown();
+    if (first || runtime.Value().coordinator->IsShutdownComplete()) return false;
+    const auto first_order = runtime.Value().integrations->last_shutdown_order;
+    if (std::find(first_order.begin(), first_order.end(), RuntimeShutdownStep::ShutdownAudio) == first_order.end() ||
+        std::find(first_order.begin(), first_order.end(), RuntimeShutdownStep::FlushSceneProjections) == first_order.end())
+        return false;
+
+    const auto second = runtime.Value().coordinator->Shutdown();
+    const auto& retry_order = runtime.Value().integrations->last_shutdown_order;
+    return second && runtime.Value().coordinator->IsShutdownComplete() &&
+           std::find(retry_order.begin(), retry_order.end(), RuntimeShutdownStep::ShutdownAudio) == retry_order.end() &&
+           std::find(retry_order.begin(), retry_order.end(), RuntimeShutdownStep::ShutdownPhysics) == retry_order.end() &&
+           std::find(retry_order.begin(), retry_order.end(), RuntimeShutdownStep::FlushSceneProjections) != retry_order.end() &&
+           std::find(retry_order.begin(), retry_order.end(), RuntimeShutdownStep::Complete) != retry_order.end();
+}
+
 bool TestFullTickAndTerminalShutdown()
 {
     Application app{};
@@ -744,6 +1143,8 @@ bool TestFullTickAndTerminalShutdown()
     }
 
     ok &= Expect(runtime.Value().coordinator->Shutdown().HasValue(), "runtime shutdown failed");
+    ok &= Expect(runtime.Value().integrations->last_shutdown_order == GetRuntimeShutdownOrder(),
+                 "runtime shutdown order does not match the frozen contract");
     ok &= Expect(runtime.Value().coordinator->IsShutdownStarted(), "shutdown-started flag was not set");
     ok &= Expect(runtime.Value().coordinator->IsShutdownComplete(), "shutdown-complete flag was not set");
     ok &= Expect(runtime.Value().coordinator->Shutdown().HasValue(), "second shutdown was not idempotent");
@@ -768,6 +1169,16 @@ int main()
     ok &= TestAtomicDefaultCompositionAndTypedOwnership();
     ok &= TestProductionPreflightIsAtomic();
     ok &= TestSceneProjectionQueue();
+    ok &= Expect(TestSceneProjectionPrefixRetry(), "scene projection prefix retry regression failed");
+    ok &= Expect(TestCoordinatorRejectsInvalidInputBeforeMutation(), "coordinator input preflight regression failed");
+    ok &= Expect(TestCoordinatorAcceptedPrefixRetry(), "coordinator accepted-prefix retry regression failed");
+    ok &= Expect(TestReferenceEventSinkAtomicityAndCoordinatorContainment(), "event sink atomicity regression failed");
+    ok &= Expect(TestAnimationResourceLeasePublication(), "animation resource lease regression failed");
+    ok &= Expect(TestAudioResourceLeaseTransferAndDestructorRetry(), "audio resource lease regression failed");
+    ok &= Expect(TestReferenceAudioVoiceIdCommit(), "reference audio voice id regression failed");
+    ok &= Expect(TestAnimationPoseAtomicPublication(), "animation pose atomicity regression failed");
+    ok &= Expect(TestPartialCompositeOverridesRejected(), "partial composite dependency regression failed");
+    ok &= Expect(TestShutdownRetrySkipsCompletedPrefix(), "shutdown retry ownership regression failed");
     ok &= TestStreamingWorldLifecycle();
     ok &= TestFullTickAndTerminalShutdown();
     return ok ? 0 : 1;

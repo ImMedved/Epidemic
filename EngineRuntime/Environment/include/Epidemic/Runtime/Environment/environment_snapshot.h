@@ -11,6 +11,7 @@
 
 namespace epidemic::runtime
 {
+// Detached runtime observation for one region. This type is not a persistence/restore format.
 struct EnvironmentSnapshot
 {
     RegionId region_id{};

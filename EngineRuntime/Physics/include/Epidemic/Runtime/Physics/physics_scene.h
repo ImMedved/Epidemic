@@ -40,6 +40,15 @@ class IPhysicsStepper
     virtual ~IPhysicsStepper() = default;
 
     [[nodiscard]] virtual foundation::Result<PhysicsStepResult> StepFixed(RuntimeFrameDuration fixed_delta) = 0;
+
+    // Tick uses prefix-progress acceptance semantics. Invalid input and arithmetic
+    // preflight failures happen before acceptance and leave timing state unchanged.
+    // After preflight succeeds, delta is accepted exactly once into the accumulator.
+    // A later failure keeps every completed fixed-step prefix committed and leaves the
+    // remaining accepted time in the accumulator. Retry that accepted work with
+    // Tick(0), or submit only a genuinely new frame delta; do not resubmit the failed
+    // call's delta. If backend simulation succeeded but synchronization failed, retry
+    // completes that same backend step without calling SimulateFixed again.
     [[nodiscard]] virtual foundation::Result<PhysicsStepResult> Tick(RuntimeFrameDuration delta) = 0;
 };
 
@@ -57,6 +66,9 @@ class IPhysicsBackend
     virtual ~IPhysicsBackend() = default;
 
     [[nodiscard]] virtual foundation::Result<void> Initialize(const PhysicsBackendOptions& options) = 0;
+    // A successful create transfers ownership of one newly-created backend object
+    // represented by a valid handle that is unique among currently live objects of
+    // that kind. Returning an alias to an existing live handle is a contract violation.
     [[nodiscard]] virtual foundation::Result<BackendShapeHandle> CreateShape(const CollisionShapeDesc& desc) = 0;
     [[nodiscard]] virtual foundation::Result<void> DestroyShape(BackendShapeHandle handle) = 0;
     [[nodiscard]] virtual foundation::Result<BackendBodyHandle> CreateBody(const PhysicsBodyDesc& desc, BackendShapeHandle shape) = 0;

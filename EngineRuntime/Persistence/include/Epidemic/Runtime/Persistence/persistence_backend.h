@@ -21,6 +21,7 @@ struct PersistenceSnapshot
     std::vector<ZoneOverrideSnapshot> zone_overrides;
 };
 
+// Closed enum domain. Callers must use one of these three durability levels.
 enum class PersistenceDurability
 {
     MemoryOnly,
@@ -34,7 +35,10 @@ class IPersistenceBackend
     virtual ~IPersistenceBackend() = default;
 
     [[nodiscard]] virtual foundation::Result<PersistenceSnapshot> Load() = 0;
-    // Contract: a failed commit must leave the previously committed durable snapshot authoritative.
+    // Atomic backend contract: Result failure or exception must leave the previously committed
+    // durable snapshot authoritative. A successful return accepts the complete snapshot exactly
+    // once at the requested durability level. Separate Save()/Flush() transaction APIs are not part
+    // of the Runtime Persistence contract.
     [[nodiscard]] virtual foundation::Result<void> CommitSnapshot(const PersistenceSnapshot& snapshot, PersistenceDurability durability) = 0;
 };
 } // namespace epidemic::runtime

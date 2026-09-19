@@ -15,6 +15,8 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     [[nodiscard]] GameDuration LastDelta() const override;
     [[nodiscard]] TimeSnapshot GetSnapshot() const override;
 
+    [[nodiscard]] TimeCheckpoint CaptureCheckpoint() const override;
+    [[nodiscard]] foundation::Result<void> RestoreCheckpoint(const TimeCheckpoint& checkpoint) override;
     [[nodiscard]] foundation::Result<TimeAdvanceResult> Advance(std::chrono::microseconds real_delta) override;
     [[nodiscard]] foundation::Result<void> Pause() override;
     [[nodiscard]] foundation::Result<void> Resume() override;
@@ -24,9 +26,12 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     [[nodiscard]] const std::vector<TimeEvent>& GetEvents() const;
     [[nodiscard]] foundation::Result<GameTimePoint> ToGameTimePoint(CalendarDate date) const;
     [[nodiscard]] CalendarDate ToCalendarDate(GameTimePoint time) const;
+    void FailNextAllocationForTesting() noexcept;
 
   private:
     [[nodiscard]] foundation::Result<void> ValidateOptions() const;
+    [[nodiscard]] foundation::Result<void> ValidateCheckpoint(const TimeCheckpoint& checkpoint) const;
+    [[nodiscard]] bool HasCompatibleConfiguration(const TimeCheckpoint& checkpoint) const noexcept;
     [[nodiscard]] foundation::Result<void> ValidateDate(CalendarDate date) const;
     [[nodiscard]] DayPhase DetermineDayPhase(const CalendarDate& date) const;
     struct TimeMutableState
@@ -50,6 +55,7 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     [[nodiscard]] static std::uint64_t NextRevision(std::uint64_t current) noexcept;
     [[nodiscard]] static foundation::Result<void> AppendBoundaryEvents(TimeMutableState& candidate, const TimeSnapshot& previous);
     [[nodiscard]] static foundation::Result<void> PushEvent(TimeMutableState& candidate, TimeEventKind kind);
+    void FailAllocationIfRequestedForTesting();
     void Commit(TimeMutableState candidate) noexcept;
 
     void RefreshSnapshot(bool changed);
@@ -67,5 +73,6 @@ class TimeRuntime final : public IGameClock, public ITimeRuntime
     std::vector<TimeEvent> events_;
     std::int64_t tick_remainder_numerator_ = 0;
     std::uint64_t revision_ = 0;
+    bool fail_next_allocation_for_testing_ = false;
 };
 } // namespace epidemic::runtime

@@ -38,6 +38,9 @@ struct AssetMetadata
     std::vector<AssetDependency> dependencies;
     std::vector<foundation::StringId> tags;
     std::uint64_t content_hash = 0;
+    // Per-asset metadata/content schema version. This is not a catalog-global
+    // revision counter and does not change when unrelated assets are registered.
+    // Version zero is reserved as invalid for registered metadata.
     std::uint32_t version = 0;
 };
-} 
+}

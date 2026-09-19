@@ -851,6 +851,11 @@ foundation::Result<DemotionCommitToken> WorldRuntime::IssueDemotionCommitToken(D
     {
         return foundation::Result<DemotionCommitToken>::Failure(MakeWorldError("world.object_not_found", "world object was not found for demotion token"));
     }
+    if (IsDestroyed(*object))
+    {
+        return foundation::Result<DemotionCommitToken>::Failure(
+            MakeWorldError("world.destroyed_terminal", "destroyed objects cannot issue demotion commit tokens"));
+    }
     if (!IsValidObjectRealityLevel(snapshot.target_reality))
     {
         return foundation::Result<DemotionCommitToken>::Failure(MakeWorldError("world.invalid_state_enum", "demotion target reality enum is outside the supported domain"));

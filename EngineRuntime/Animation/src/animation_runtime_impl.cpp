@@ -12,6 +12,7 @@
 #include <new>
 #include <string_view>
 #include <utility>
+#include <type_traits>
 
 namespace epidemic::runtime::animation
 {
@@ -19,7 +20,17 @@ AnimationRuntime::AnimationRuntime(AnimationOptions options, AnimationDependenci
     : options_(options), dependencies_(std::move(dependencies))
 {
     const std::size_t capacity = options_.event_capacity == 0 ? AnimationOptions{}.event_capacity : options_.event_capacity;
-    try { events_.reserve(capacity); } catch (...) {}
+    try
+    {
+        events_.resize(capacity);
+        for (auto& event : events_) event.name.reserve(kEventNameCapacity);
+        event_storage_ready_ = true;
+    }
+    catch (...)
+    {
+        events_.clear();
+        event_storage_ready_ = false;
+    }
 }
 
 foundation::Result<void> AnimationRuntime::RegisterSkeleton(SkeletonDesc desc)
@@ -135,6 +146,7 @@ foundation::Result<void> AnimationRuntime::Play(const AnimationPlaybackCommand& 
     const auto revision=NextRevision(*animator); if (!revision) return foundation::Result<void>::Failure(revision.GetError());
     const auto clip_result=ResolveClip(command.clip); if (!clip_result) return foundation::Result<void>::Failure(clip_result.GetError());
     if (clip_result.Value().skeleton != animator->desc.skeleton) return foundation::Result<void>::Failure(foundation::Error::Create("animation.skeleton_mismatch", "clip skeleton does not match animator skeleton"));
+    if (!event_storage_ready_) return foundation::Result<void>::Failure(foundation::Error::Create("animation.allocation_failed", "animation event storage is unavailable"));
     animator->readiness=AnimatorReadiness::Ready; animator->playback=AnimatorPlayback{command.clip,command.loop,command.playback_rate,FrameDuration{},0.0}; animator->crossfade.reset();
     animator->playback_state=AnimatorPlaybackState::Playing; animator->pose_state=dependencies_.evaluator?PoseState::Evaluating:PoseState::Dirty; animator->revision=revision.Value();
     QueueEvent(command.animator.id,"animation.started",0.0f); return foundation::Result<void>::Success();
@@ -155,6 +167,7 @@ foundation::Result<void> AnimationRuntime::Stop(AnimatorHandle handle)
     AnimatorRecord* animator=FindAnimator(handle); if (!animator) return foundation::Result<void>::Failure(foundation::Error::Create("animation.animator_not_found", "animator handle was not found for stop"));
     if (animator->playback_state==AnimatorPlaybackState::Stopped) return foundation::Result<void>::Success();
     const auto revision=NextRevision(*animator); if (!revision) return foundation::Result<void>::Failure(revision.GetError());
+    if (!event_storage_ready_) return foundation::Result<void>::Failure(foundation::Error::Create("animation.allocation_failed", "animation event storage is unavailable"));
     animator->playback_state=AnimatorPlaybackState::Stopped; animator->playback.local_time=FrameDuration{}; animator->playback.fractional_microseconds=0.0; animator->crossfade.reset(); animator->pose_state=PoseState::Clean; animator->revision=revision.Value();
     QueueEvent(handle.id,"animation.stopped",0.0f); return foundation::Result<void>::Success();
 }
@@ -168,6 +181,7 @@ foundation::Result<void> AnimationRuntime::Crossfade(AnimatorHandle handle, Anim
     const auto clip_result=ResolveClip(clip); if (!clip_result) return foundation::Result<void>::Failure(clip_result.GetError());
     if (clip_result.Value().skeleton!=animator->desc.skeleton) return foundation::Result<void>::Failure(foundation::Error::Create("animation.skeleton_mismatch", "clip skeleton does not match animator skeleton"));
     if (!animator->playback.clip.IsValid()) return Play(AnimationPlaybackCommand{handle,clip,false,1.0});
+    if (!duration.IsZero() && !event_storage_ready_) return foundation::Result<void>::Failure(foundation::Error::Create("animation.allocation_failed", "animation event storage is unavailable"));
     if (duration.IsZero()) { animator->playback=AnimatorPlayback{clip,false,1.0,FrameDuration{},0.0}; animator->playback_state=AnimatorPlaybackState::Playing; animator->crossfade.reset(); animator->pose_state=dependencies_.evaluator?PoseState::Evaluating:PoseState::Dirty; animator->revision=revision.Value(); return foundation::Result<void>::Success(); }
     animator->crossfade=CrossfadeState{animator->playback.clip,clip,animator->playback.local_time,FrameDuration{},FrameDuration{},duration,1.0f,0.0f}; animator->playback_state=AnimatorPlaybackState::Blending; animator->pose_state=dependencies_.evaluator?PoseState::Evaluating:PoseState::Dirty; animator->revision=revision.Value();
     QueueEvent(handle.id,"animation.crossfade",static_cast<float>(duration.value.count())/1000000.0f); return foundation::Result<void>::Success();
@@ -179,12 +193,10 @@ foundation::Result<std::size_t> AnimationRuntime::Tick(FrameDuration delta, std:
     if (delta.IsNegative()) return foundation::Result<std::size_t>::Failure(foundation::Error::Create("animation.invalid_delta", "animation frame duration must not be negative"));
     std::vector<AnimatorInstanceId> work_list; try { work_list=BuildAnimatorWorkList(); } catch (...) { return foundation::Result<std::size_t>::Failure(foundation::Error::Create("animation.allocation_failed", "failed to build animator tick work list")); }
     const std::size_t limit=max_animators==0?animators_.size():max_animators; std::size_t transitioned=0;
+    static_assert(std::is_nothrow_move_assignable_v<AnimatorRecord>, "animator commit must not throw after external pose publication");
     for (auto id:work_list)
     {
-        if (transitioned >= limit)
-        {
-            break;
-        }
+        if (transitioned >= limit) break;
         AnimatorRecord& live = animators_.at(id);
         AnimatorRecord staged; try { staged=live; } catch (...) { return foundation::Result<std::size_t>::Failure(foundation::Error::Create("animation.allocation_failed", "failed to stage animator state")); }
         const auto revision=NextRevision(staged); if (!revision) return foundation::Result<std::size_t>::Failure(revision.GetError());
@@ -197,20 +209,26 @@ foundation::Result<std::size_t> AnimationRuntime::Tick(FrameDuration delta, std:
         bool looped=false, finished=false; const auto clip=ResolveClip(staged.playback.clip); if (!clip) return foundation::Result<std::size_t>::Failure(clip.GetError());
         const auto duration=CheckedSecondsToMicroseconds(static_cast<double>(clip.Value().duration_seconds)); if (!duration) return foundation::Result<std::size_t>::Failure(foundation::Error::Create("animation.clip_duration_overflow", "animation clip duration exceeds runtime time range"));
         if (staged.playback_state!=AnimatorPlaybackState::Blending && !duration->IsZero() && staged.playback.local_time.value>=duration->value) { if (staged.playback.loop) { staged.playback.local_time.value%=duration->value; looped=true; } else { staged.playback.local_time=*duration; staged.playback_state=AnimatorPlaybackState::Finished; finished=true; } }
-        staged.revision=revision.Value(); staged.cached_pose.revision=staged.revision; live=std::move(staged);
-        if (looped)
+        if ((looped || finished) && !event_storage_ready_) return foundation::Result<std::size_t>::Failure(foundation::Error::Create("animation.allocation_failed", "animation event storage is unavailable"));
+        staged.revision=revision.Value(); staged.cached_pose.revision=staged.revision;
+
+        std::shared_ptr<const PoseBuffer> candidate_pose;
+        if (dependencies_.pose_sink && staged.desc.lod!=AnimationLodLevel::Frozen)
         {
-            QueueEvent(id, "animation.looped", static_cast<float>(live.playback.local_time.value.count()) / 1000000.0f);
+            try { candidate_pose=std::make_shared<const PoseBuffer>(staged.cached_pose); }
+            catch (const std::bad_alloc&) { return foundation::Result<std::size_t>::Failure(foundation::Error::Create("animation.allocation_failed", "failed to stage pose publication")); }
+            catch (...) { return foundation::Result<std::size_t>::Failure(foundation::Error::Create("animation.allocation_failed", "failed to stage pose publication")); }
+            const auto published=PublishPose(candidate_pose);
+            if(!published) return foundation::Result<std::size_t>::Failure(published.GetError());
         }
-        if (finished)
-        {
-            QueueEvent(id, "animation.finished", static_cast<float>(live.playback.local_time.value.count()) / 1000000.0f);
-        }
-        const auto published=PublishPose(live); if(!published) return foundation::Result<std::size_t>::Failure(foundation::Error::Create("animation.pose_publication_failed_after_commit", "pose publication failed after animator frame committed")); ++transitioned;
+
+        live=std::move(staged);
+        if (looped) QueueEvent(id, "animation.looped", static_cast<float>(live.playback.local_time.value.count()) / 1000000.0f);
+        if (finished) QueueEvent(id, "animation.finished", static_cast<float>(live.playback.local_time.value.count()) / 1000000.0f);
+        ++transitioned;
     }
     return foundation::Result<std::size_t>::Success(transitioned);
 }
-
 
 foundation::Result<AnimatorSnapshot> AnimationRuntime::GetAnimatorSnapshot(AnimatorHandle handle) const
 {
@@ -270,12 +288,12 @@ foundation::Result<PoseBuffer> AnimationRuntime::GetPoseBuffer(AnimatorHandle ha
 
 std::span<const AnimationEvent> AnimationRuntime::Events() const
 {
-    return events_;
+    return std::span<const AnimationEvent>{events_.data(), event_count_};
 }
 
 void AnimationRuntime::Clear()
 {
-    events_.clear();
+    event_count_ = 0;
 }
 
 foundation::Result<SkeletonDesc> AnimationRuntime::ResolveSkeleton(SkeletonId id)
@@ -435,16 +453,25 @@ foundation::Result<PoseBuffer> AnimationRuntime::EvaluatePose(const AnimatorReco
 
     if (dependencies_.evaluator != nullptr)
     {
-        return dependencies_.evaluator->EvaluatePose(request);
+        auto evaluated = dependencies_.evaluator->EvaluatePose(request);
+        if (!evaluated) return evaluated;
+        if (evaluated.Value().animator != animator.handle || evaluated.Value().owner != animator.desc.owner ||
+            evaluated.Value().bone_transforms.size() != request.skeleton.joint_count)
+        {
+            return foundation::Result<PoseBuffer>::Failure(
+                foundation::Error::Create("animation.invalid_pose", "animation evaluator returned a pose for the wrong animator, owner, or skeleton"));
+        }
+        return evaluated;
     }
 
     return foundation::Result<PoseBuffer>::Success(BuildPoseBuffer(animator));
 }
 
-foundation::Result<void> AnimationRuntime::PublishPose(const AnimatorRecord& animator)
+foundation::Result<void> AnimationRuntime::PublishPose(std::shared_ptr<const PoseBuffer> pose)
 {
-    if(!dependencies_.pose_sink || animator.desc.lod==AnimationLodLevel::Frozen) return foundation::Result<void>::Success();
-    try{return dependencies_.pose_sink->Publish(std::make_shared<const PoseBuffer>(animator.cached_pose));}catch(...){return foundation::Result<void>::Failure(foundation::Error::Create("animation.publish_exception","animation pose sink callback threw"));}
+    if(!dependencies_.pose_sink) return foundation::Result<void>::Success();
+    try { return dependencies_.pose_sink->Publish(std::move(pose)); }
+    catch (...) { return foundation::Result<void>::Failure(foundation::Error::Create("animation.publish_exception","animation pose sink callback threw before confirmed commit")); }
 }
 
 
@@ -476,7 +503,17 @@ foundation::Result<void> AnimationRuntime::AdvanceCrossfade(AnimatorRecord& anim
 
 void AnimationRuntime::QueueEvent(AnimatorInstanceId animator, std::string_view name, float time) noexcept
 {
-    try { const std::size_t cap=options_.event_capacity==0?AnimationOptions{}.event_capacity:options_.event_capacity; if(cap!=0&&events_.size()>=cap) events_.erase(events_.begin()); events_.push_back(AnimationEvent{animator,std::string{name},time}); } catch (...) {}
+    if (!event_storage_ready_ || events_.empty()) return;
+    if (event_count_ == events_.size())
+    {
+        static_assert(std::is_nothrow_swappable_v<AnimationEvent>, "bounded event overflow rotation must not throw");
+        std::rotate(events_.begin(), events_.begin() + 1, events_.end());
+        --event_count_;
+    }
+    AnimationEvent& slot = events_[event_count_++];
+    slot.animator = animator;
+    slot.name.assign(name.data(), name.size());
+    slot.time = time;
 }
 
 foundation::Result<std::uint64_t> AnimationRuntime::NextRevision(const AnimatorRecord& animator) const

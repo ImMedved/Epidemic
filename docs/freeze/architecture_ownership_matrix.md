@@ -82,8 +82,8 @@ The generator enforces exactly 78 responsibility declarations, unique non-empty 
 
 ### EngineRuntime/Assets
 
-- **Responsibility:** Owns asset catalog records, revisions, metadata lookup and asset-to-resource resolution.
-- **Authoritative owner:** `runtime:asset-identities-and-load-state`. Reviewed semantic ownership domain; module-private state stays within its declared responsibility.
+- **Responsibility:** Owns immutable asset metadata records, logical locations, tags, dependency manifests and the catalog seal lifecycle.
+- **Authoritative owner:** `runtime:asset-metadata-catalog-and-logical-locations`. Reviewed semantic ownership domain; module-private state stays within its declared responsibility.
 - **Observed cross-module includes:** `EngineBase/Foundation`, `EngineRuntime/RuntimeFoundation`. Every observed edge is a direct CMake dependency.
 - **External boundary:** No direct Win32/D3D SDK access. External collaboration is limited to public contracts: `IAssetCatalog`, `IAssetCatalogWriter`, `IAssetLocationResolver`.
 

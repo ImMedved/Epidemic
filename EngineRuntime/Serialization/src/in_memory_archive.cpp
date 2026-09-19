@@ -155,7 +155,14 @@ foundation::Result<void> InMemoryArchiveWriter::EndArray()
 
 foundation::Result<void> InMemoryArchiveWriter::WriteString(std::string_view name, std::string_view value)
 {
-    return WriteValue(name, ArchiveValue{std::string(value)});
+    try
+    {
+        return WriteValue(name, ArchiveValue{std::string(value)});
+    }
+    catch (const std::bad_alloc&)
+    {
+        return Invalid("serialization.out_of_memory", "archive writer could not allocate string field", name);
+    }
 }
 
 foundation::Result<void> InMemoryArchiveWriter::WriteUInt64(std::string_view name, std::uint64_t value)
@@ -180,7 +187,14 @@ foundation::Result<void> InMemoryArchiveWriter::WriteBool(std::string_view name,
 
 foundation::Result<void> InMemoryArchiveWriter::WriteBytes(std::string_view name, std::span<const std::byte> value)
 {
-    return WriteValue(name, ArchiveValue{std::vector<std::byte>(value.begin(), value.end())});
+    try
+    {
+        return WriteValue(name, ArchiveValue{std::vector<std::byte>(value.begin(), value.end())});
+    }
+    catch (const std::bad_alloc&)
+    {
+        return Invalid("serialization.out_of_memory", "archive writer could not allocate bytes field", name);
+    }
 }
 
 foundation::Result<void> InMemoryArchiveWriter::WriteNull(std::string_view name)
@@ -197,6 +211,11 @@ foundation::Result<SerializedDocument> InMemoryArchiveWriter::Finalize(foundatio
     if (!type_id.IsValid())
     {
         return InvalidValue<SerializedDocument>("serialization.invalid_type", "serialized document type id must be valid");
+    }
+    if (schema_version == SchemaVersion{})
+    {
+        return InvalidValue<SerializedDocument>("serialization.invalid_schema_version",
+                                                "serialized document schema version must be non-zero");
     }
     if (stack_.size() != 1)
     {

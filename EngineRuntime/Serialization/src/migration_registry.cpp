@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <exception>
+#include <new>
+#include <utility>
 #include <vector>
 
 namespace epidemic::runtime
@@ -45,9 +47,10 @@ foundation::Result<void> MigrationRegistry::RegisterMigration(std::shared_ptr<co
         {
             return MigrationFailure("serialization.migration.invalid_type", "migration must declare a valid type id");
         }
-        if (key.from == key.to)
+        if (key.from == SchemaVersion{} || key.to == SchemaVersion{} || key.from == key.to)
         {
-            return MigrationFailure("serialization.migration.invalid_version", "migration must change schema version");
+            return MigrationFailure("serialization.migration.invalid_version",
+                                    "migration must use non-zero, distinct schema versions");
         }
         if (migrations_.contains(key))
         {
@@ -56,6 +59,10 @@ foundation::Result<void> MigrationRegistry::RegisterMigration(std::shared_ptr<co
 
         migrations_.emplace(key, std::move(migration));
         return foundation::Result<void>::Success();
+    }
+    catch (const std::bad_alloc&)
+    {
+        return MigrationFailure("serialization.out_of_memory", "migration registration could not allocate state");
     }
     catch (const std::exception& error)
     {
@@ -103,6 +110,11 @@ foundation::Result<std::vector<std::shared_ptr<const IMigration>>> MigrationRegi
     if (!type_id.IsValid())
     {
         return MigrationFailureValue<MigrationPath>("serialization.migration.invalid_type", "migration path type id must be valid");
+    }
+    if (from == SchemaVersion{} || to == SchemaVersion{})
+    {
+        return MigrationFailureValue<MigrationPath>("serialization.migration.invalid_version",
+                                                    "migration path schema versions must be non-zero");
     }
     if (from == to)
     {
@@ -181,6 +193,6 @@ foundation::Result<std::vector<std::shared_ptr<const IMigration>>> MigrationRegi
         return MigrationFailureValue<MigrationPath>("serialization.migration.ambiguous_path", "migration path is ambiguous");
     }
 
-    return foundation::Result<MigrationPath>::Success(paths.front());
+    return foundation::Result<MigrationPath>::Success(std::move(paths.front()));
 }
 } // namespace epidemic::runtime

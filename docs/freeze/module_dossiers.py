@@ -67,7 +67,7 @@ RESPONSIBILITIES = {
     "EngineRuntime/Time": "Owns runtime clock advancement, pause/scale/skip behavior, calendar conversion and scheduled time events.",
     "EngineRuntime/Serialization": "Owns archive values, serializer registration, schema migrations and serialization execution contracts.",
     "EngineRuntime/Resources": "Owns resource identities, dependency graph, loader registry, load state and resource lifetime bookkeeping.",
-    "EngineRuntime/Assets": "Owns asset catalog records, revisions, metadata lookup and asset-to-resource resolution.",
+    "EngineRuntime/Assets": "Owns immutable asset metadata records, logical locations, tags, dependency manifests and the catalog seal lifecycle.",
     "EngineRuntime/Streaming": "Owns streaming requests, priorities, residency transitions, cancellation and bounded processing.",
     "EngineRuntime/Scene": "Owns scene nodes, hierarchy, transforms, visibility and scene queries independent of rendering.",
     "EngineRuntime/World": "Owns neutral world objects, regions, chunks, placement, residency, persistence tier and materialization state.",

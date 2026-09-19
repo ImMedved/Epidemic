@@ -68,7 +68,7 @@ private:
     [[nodiscard]] std::vector<AnimatorInstanceId> BuildAnimatorWorkList() const;
     [[nodiscard]] PoseBuffer BuildPoseBuffer(const AnimatorRecord& animator) const;
     [[nodiscard]] foundation::Result<PoseBuffer> EvaluatePose(const AnimatorRecord& animator);
-    [[nodiscard]] foundation::Result<void> PublishPose(const AnimatorRecord& animator);
+    [[nodiscard]] foundation::Result<void> PublishPose(std::shared_ptr<const PoseBuffer> pose);
     [[nodiscard]] foundation::Result<void> AdvancePlayback(AnimatorRecord& animator, FrameDuration delta);
     [[nodiscard]] foundation::Result<void> AdvanceCrossfade(AnimatorRecord& animator, FrameDuration delta);
     void QueueEvent(AnimatorInstanceId animator, std::string_view name, float time) noexcept;
@@ -83,7 +83,10 @@ private:
     std::unordered_map<SkeletonId, SkeletonDesc> skeletons_;
     std::unordered_map<AnimationClipId, AnimationClipDesc> clips_;
     std::unordered_map<AnimatorInstanceId, AnimatorRecord> animators_;
+    static constexpr std::size_t kEventNameCapacity = 32;
     std::vector<AnimationEvent> events_;
+    std::size_t event_count_ = 0;
+    bool event_storage_ready_ = false;
     bool registries_frozen_ = false;
 };
 } // namespace epidemic::runtime::animation

@@ -39,6 +39,13 @@ class IStreamingResourceSource
 class IStreamingDataSource
 {
   public:
+    // BuildLoadPlan is a planning operation. A returned plan is detached Runtime input.
+    // ExecuteStep has an acceptance boundary: Result failure or exception means that the
+    // logical step unit was not accepted. Result success is accepted by Runtime exactly
+    // once. If Runtime-local publication must be retried afterwards, the accepted result
+    // is retained and ExecuteStep is not called again for that unit. completed=false may
+    // still produce a later ExecuteStep call for the same plan cursor after the previous
+    // partial result has been durably accounted.
     virtual ~IStreamingDataSource() = default;
 
     [[nodiscard]] virtual foundation::Result<ProgressiveLoadPlan> BuildLoadPlan(const StreamingRequest& request) = 0;

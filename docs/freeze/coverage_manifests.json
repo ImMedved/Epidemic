@@ -3429,10 +3429,10 @@
       "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog_writer.h",
       "module": "EngineRuntime/Assets",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::runtime::IAssetCatalogWriter",
       "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterAsset(const AssetMetadata&metadata)=0;"
@@ -5884,10 +5884,10 @@
       "header": "EngineRuntime/RuntimeFoundation/include/Epidemic/Runtime/Foundation/checked_id_allocator.h",
       "module": "EngineRuntime/RuntimeFoundation",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::runtime",
       "signature": "template <typename TInteger> [[nodiscard]] foundation::Result<MonotonicIdReservation<TInteger>> ReserveMonotonicId(TInteger&next_value,std::string_view error_code=\"runtime.id_exhausted\",std::string_view error_message=\"runtime monotonic id allocator is exhausted\")"
@@ -21257,10 +21257,10 @@
       "header": "EngineRuntime/RuntimeFoundation/include/Epidemic/Runtime/Foundation/checked_id_allocator.h",
       "module": "EngineRuntime/RuntimeFoundation",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::runtime",
       "signature": "template <typename TInteger> constexpr void CommitMonotonicId(TInteger&next_value,TInteger reserved_value)noexcept"
@@ -36467,10 +36467,10 @@
       "header": "EngineRuntime/RuntimeFoundation/include/Epidemic/Runtime/Foundation/checked_id_allocator.h",
       "module": "EngineRuntime/RuntimeFoundation",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::runtime::MonotonicIdReservation",
       "signature": "void Commit()noexcept"
@@ -36481,10 +36481,10 @@
       "header": "EngineRuntime/RuntimeFoundation/include/Epidemic/Runtime/Foundation/checked_id_allocator.h",
       "module": "EngineRuntime/RuntimeFoundation",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::runtime::MonotonicIdReservation",
       "signature": "void Rollback()noexcept"
@@ -37239,10 +37239,10 @@
       "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog_writer.h",
       "module": "EngineRuntime/Assets",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::runtime::IAssetCatalogWriter",
       "signature": "[[nodiscard]] virtual foundation::Result<void> Seal()=0;"
@@ -37262,10 +37262,10 @@
       "header": "EngineRuntime/RuntimeFoundation/include/Epidemic/Runtime/Foundation/checked_id_allocator.h",
       "module": "EngineRuntime/RuntimeFoundation",
       "obligations": {
-        "failure": "DISCOVERED",
-        "noop": "DISCOVERED",
-        "preconditions": "DISCOVERED",
-        "success": "DISCOVERED"
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
       },
       "scope": "epidemic::runtime",
       "signature": "template <typename TInteger> [[nodiscard]] foundation::Result<TInteger> AllocateMonotonicId(TInteger&next_value,std::string_view error_code=\"runtime.id_exhausted\",std::string_view error_message=\"runtime monotonic id allocator is exhausted\")"
@@ -45167,6 +45167,54 @@
       "regression": "EngineBase/Tests/Unit/foundation_unit_tests.cpp:184::Unsafe payload assignment must be rejected",
       "status": "REVIEWED",
       "target": "EpidemicFoundationUnitTests"
+    },
+    "g3-asset-001-manifest-requiredness-order": {
+      "defect": "Dependency manifest requiredness depended on traversal order for a shared dependency reachable through optional and required edges.",
+      "fix": "EngineRuntime/Assets/src/in_memory_asset_catalog.cpp",
+      "module": "EngineRuntime/Assets",
+      "regression": "EngineRuntime/Assets/tests/assets_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeAssetsTests"
+    },
+    "g3-asset-002-embedded-nul-path": {
+      "defect": "Logical asset path validation accepted embedded NUL bytes.",
+      "fix": "EngineRuntime/Assets/src/in_memory_asset_catalog.cpp",
+      "module": "EngineRuntime/Assets",
+      "regression": "EngineRuntime/Assets/tests/assets_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeAssetsTests"
+    },
+    "g3-asset-003-invalid-resolve-id": {
+      "defect": "Resolve treated an invalid AssetId as an ordinary missing asset.",
+      "fix": "EngineRuntime/Assets/src/in_memory_asset_catalog.cpp",
+      "module": "EngineRuntime/Assets",
+      "regression": "EngineRuntime/Assets/tests/assets_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeAssetsTests"
+    },
+    "g3-rf-001-trs-contract": {
+      "defect": "RuntimeFoundation documentation overstated simplified TRS composition semantics.",
+      "fix": "docs/EngineRuntime/modules/runtime_foundation.md",
+      "module": "EngineRuntime/RuntimeFoundation",
+      "regression": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeFoundationTests"
+    },
+    "g3-rf-002-seconds-upper-bound": {
+      "defect": "CheckedSecondsToMicroseconds could reach an out-of-range floating-to-int64 conversion near INT64_MAX.",
+      "fix": "EngineRuntime/RuntimeFoundation/include/Epidemic/Runtime/Foundation/runtime_time.h",
+      "module": "EngineRuntime/RuntimeFoundation",
+      "regression": "EngineRuntime/RuntimeFoundation/tests/runtime_foundation_tests.cpp",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeFoundationTests"
+    },
+    "g3-rf-003-spatial-self-containment": {
+      "defect": "spatial.h used std::size without directly including the declaring standard header.",
+      "fix": "EngineRuntime/RuntimeFoundation/include/Epidemic/Runtime/Foundation/spatial.h",
+      "module": "EngineRuntime/RuntimeFoundation",
+      "regression": "cmake/ArchitectureFreeze.cmake",
+      "status": "REVIEWED",
+      "target": "EpidemicPublicHeaderSelfContainment"
     },
     "memory-counter-saturation": {
       "defect": "MemoryTracker byte/count arithmetic could wrap at SIZE_MAX.",

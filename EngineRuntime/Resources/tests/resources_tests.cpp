@@ -1064,6 +1064,143 @@ class ArtifactOverrideLoader final : public IResourceLoader
            manager.InspectSlot(ResourceId::FromString("resources/evict-prefix.mesh"))->state == ResourceState::Evicting;
 }
 
+[[nodiscard]] bool TestDependencyReplacementStrongCommit()
+{
+    ResourceDependencyGraph graph;
+    const ResourceId root = ResourceId::FromString("resources/replace-root.mesh");
+    const ResourceDependency old_dependency = MakeDependency("resources/old.tex", "texture");
+    const ResourceDependency new_dependency = MakeDependency("resources/new.tex", "texture");
+    graph.SetDependencies(root, {old_dependency});
+
+    graph.FailNextReplaceForTesting();
+    bool allocation_failed = false;
+    try
+    {
+        graph.ReplaceDependencies(root, {new_dependency});
+    }
+    catch (const std::bad_alloc&)
+    {
+        allocation_failed = true;
+    }
+
+    const auto after_failure = graph.FindDependencies(root);
+    if (!allocation_failed || !after_failure || after_failure->dependencies.size() != 1u ||
+        after_failure->dependencies.front() != old_dependency)
+    {
+        return false;
+    }
+
+    graph.ReplaceDependencies(root, {new_dependency});
+    const auto after_retry = graph.FindDependencies(root);
+    return after_retry && after_retry->dependencies.size() == 1u && after_retry->dependencies.front() == new_dependency;
+}
+
+[[nodiscard]] bool TestWaitingOwnerPublicationFailureKeepsLoadOwner()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(Type("mesh"), 8, false, {MakeDependency("resources/wait-owner.tex", "texture")});
+    CountingLoader texture_loader(Type("texture"), 4);
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader)) return false;
+
+    ResourceManager manager(&registry);
+    const auto root = manager.RequestLease(MakeRequest("resources/wait-owner.mesh", "mesh"));
+    if (!root) return false;
+
+    manager.FailNextWaitingOwnerPublishForTesting();
+    RuntimeBudget one{};
+    one.max_items = 1;
+    const auto first = manager.ProcessPendingLoads(one);
+    const auto* after_fault = manager.InspectSlot(ResourceId::FromString("resources/wait-owner.mesh"));
+    if (!first || first.Value().failed_resources != 1u || mesh_loader.load_count() != 1 || !after_fault ||
+        after_fault->state != ResourceState::WaitingForDependencies || !after_fault->pending_artifact.has_value() ||
+        manager.LoadQueueSizeForTesting() != 2u || manager.WaitingQueueSizeForTesting() != 0u)
+    {
+        return false;
+    }
+
+    const auto retried = manager.ProcessPendingLoads();
+    return retried && manager.IsReady(root.Value().resource) && mesh_loader.load_count() == 1 && texture_loader.load_count() == 1 &&
+           manager.LoadQueueSizeForTesting() == 0u && manager.WaitingQueueSizeForTesting() == 0u;
+}
+
+[[nodiscard]] bool TestLocalFinalizationFailureDoesNotReloadArtifact()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader mesh_loader(Type("mesh"), 8, false, {MakeDependency("resources/finalize.tex", "texture")});
+    CountingLoader texture_loader(Type("texture"), 4);
+    if (!registry.RegisterLoader(mesh_loader) || !registry.RegisterLoader(texture_loader)) return false;
+
+    ResourceManager manager(&registry);
+    const auto root = manager.RequestLease(MakeRequest("resources/finalize.mesh", "mesh"));
+    if (!root) return false;
+
+    manager.FailNextDependencyGraphReplaceForTesting();
+    RuntimeBudget one{};
+    one.max_items = 1;
+    const auto first = manager.ProcessPendingLoads(one);
+    const auto* after_fault = manager.InspectSlot(ResourceId::FromString("resources/finalize.mesh"));
+    if (!first || first.Value().failed_resources != 1u || mesh_loader.load_count() != 1 || !after_fault ||
+        after_fault->state != ResourceState::Loading || !after_fault->pending_artifact.has_value() ||
+        manager.LoadQueueSizeForTesting() != 2u)
+    {
+        return false;
+    }
+
+    const auto retried = manager.ProcessPendingLoads();
+    return retried && manager.IsReady(root.Value().resource) && mesh_loader.load_count() == 1 && texture_loader.load_count() == 1 &&
+           manager.LoadQueueSizeForTesting() == 0u && manager.WaitingQueueSizeForTesting() == 0u;
+}
+
+[[nodiscard]] bool TestSelectedJobOwnershipSurvivesLoadingPublicationFailure()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"), 8);
+    if (!registry.RegisterLoader(loader)) return false;
+
+    ResourceManager manager(&registry);
+    const auto lease = manager.RequestLease(MakeRequest("resources/loading-owner.mesh", "mesh"));
+    if (!lease || manager.LoadQueueSizeForTesting() != 1u) return false;
+
+    manager.FailNextLoadingOwnerPublishForTesting();
+    RuntimeBudget one{};
+    one.max_items = 1;
+    const auto first = manager.ProcessPendingLoads(one);
+    const auto* after_fault = manager.InspectSlot(ResourceId::FromString("resources/loading-owner.mesh"));
+    if (!first || first.Value().failed_resources != 1u || loader.load_count() != 0 || !after_fault ||
+        after_fault->state != ResourceState::Queued || manager.LoadQueueSizeForTesting() != 1u)
+    {
+        return false;
+    }
+
+    const auto retried = manager.ProcessPendingLoads();
+    return retried && manager.IsReady(lease.Value().resource) && loader.load_count() == 1 && manager.LoadQueueSizeForTesting() == 0u;
+}
+
+[[nodiscard]] bool TestInvalidRequestsAndSelfDependencyAreRejected()
+{
+    ResourceLoaderRegistry registry;
+    CountingLoader self_loader(Type("mesh"), 8, false, {MakeDependency("resources/self.mesh", "mesh")});
+    if (!registry.RegisterLoader(self_loader)) return false;
+
+    ResourceManager manager(&registry);
+    const auto invalid_id = manager.RequestLease(ResourceRequest{});
+    ResourceRequest invalid_type{};
+    invalid_type.resource_id = ResourceId::FromString("resources/invalid-type.mesh");
+    const auto invalid_type_result = manager.RequestLease(invalid_type);
+    if (invalid_id || !invalid_id.GetError().HasCode("resource.invalid_id") || invalid_type_result ||
+        !invalid_type_result.GetError().HasCode("resource.invalid_type") ||
+        manager.InspectSlot(ResourceId::FromString("resources/invalid-type.mesh")) != nullptr)
+    {
+        return false;
+    }
+
+    const auto self = manager.RequestLease(MakeRequest("resources/self.mesh", "mesh"));
+    const auto processed = manager.ProcessPendingLoads();
+    const auto* slot = manager.InspectSlot(ResourceId::FromString("resources/self.mesh"));
+    return self && processed && processed.Value().failed_resources == 1u && self_loader.load_count() == 1 && slot &&
+           slot->state == ResourceState::Failed && slot->dependency_handles.empty() && !slot->pending_artifact.has_value();
+}
+
 
 [[nodiscard]] bool TestAcquisitionIdExhaustionBoundary()
 {
@@ -1155,6 +1292,11 @@ int main()
         {"IterativeDependencySearchHandlesDeepGraph", TestIterativeDependencySearchHandlesDeepGraph},
         {"LoaderRegistryFreezeAndEmptyQueueBoundaries", TestLoaderRegistryFreezeAndEmptyQueueBoundaries},
         {"EvictingRetryKeepsCompletedPrefix", TestEvictingRetryKeepsCompletedPrefix},
+        {"DependencyReplacementStrongCommit", TestDependencyReplacementStrongCommit},
+        {"WaitingOwnerPublicationFailureKeepsLoadOwner", TestWaitingOwnerPublicationFailureKeepsLoadOwner},
+        {"LocalFinalizationFailureDoesNotReloadArtifact", TestLocalFinalizationFailureDoesNotReloadArtifact},
+        {"SelectedJobOwnershipSurvivesLoadingPublicationFailure", TestSelectedJobOwnershipSurvivesLoadingPublicationFailure},
+        {"InvalidRequestsAndSelfDependencyAreRejected", TestInvalidRequestsAndSelfDependencyAreRejected},
         {"AcquisitionIdExhaustionBoundary", TestAcquisitionIdExhaustionBoundary},
         {"FactoryCreatesUsableServices", TestFactoryCreatesUsableServices},
     };

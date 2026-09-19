@@ -683,6 +683,10 @@ foundation::Result<std::uint64_t> EnvironmentRuntime::PeekNextRevision() const
 
 foundation::Result<void> EnvironmentRuntime::ValidateSurfaceMutation(const SurfaceState* existing, const SurfaceState& candidate) const
 {
+    if (existing == nullptr && registration_frozen_)
+    {
+        return EnvironmentFailure("environment.registration_frozen", "surface registration is frozen");
+    }
     if (existing != nullptr && existing->region_id != candidate.region_id)
     {
         return EnvironmentFailure("environment.surface_region_mismatch", "surface ownership cannot change regions");

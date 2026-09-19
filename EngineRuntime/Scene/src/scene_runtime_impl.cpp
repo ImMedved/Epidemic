@@ -65,6 +65,67 @@ template <typename TValue>
     return std::abs(scale.x) > kSpatialEpsilon && std::abs(scale.y) > kSpatialEpsilon && std::abs(scale.z) > kSpatialEpsilon;
 }
 
+constexpr float kWorldTransformRoundTripAbsoluteTolerance = 0.001f;
+constexpr float kWorldTransformRoundTripEpsilonMultiplier = 32.0f;
+
+[[nodiscard]] bool IsWorldComponentRepresentable(float expected, float actual) noexcept
+{
+    const float magnitude = std::max({1.0f, std::abs(expected), std::abs(actual)});
+    const float tolerance = std::max(
+        kWorldTransformRoundTripAbsoluteTolerance,
+        kWorldTransformRoundTripEpsilonMultiplier * std::numeric_limits<float>::epsilon() * magnitude);
+    return std::abs(expected - actual) <= tolerance;
+}
+
+[[nodiscard]] bool IsWorldVectorRepresentable(Vec3 expected, Vec3 actual) noexcept
+{
+    return IsWorldComponentRepresentable(expected.x, actual.x) &&
+           IsWorldComponentRepresentable(expected.y, actual.y) &&
+           IsWorldComponentRepresentable(expected.z, actual.z);
+}
+
+[[nodiscard]] bool IsWorldRotationRepresentable(Quat expected, Quat actual) noexcept
+{
+    const bool direct = IsWorldComponentRepresentable(expected.x, actual.x) &&
+                        IsWorldComponentRepresentable(expected.y, actual.y) &&
+                        IsWorldComponentRepresentable(expected.z, actual.z) &&
+                        IsWorldComponentRepresentable(expected.w, actual.w);
+    const bool negated = IsWorldComponentRepresentable(expected.x, -actual.x) &&
+                         IsWorldComponentRepresentable(expected.y, -actual.y) &&
+                         IsWorldComponentRepresentable(expected.z, -actual.z) &&
+                         IsWorldComponentRepresentable(expected.w, -actual.w);
+    return direct || negated;
+}
+
+[[nodiscard]] bool IsWorldTransformRepresentable(const Transform& expected, const Transform& actual) noexcept
+{
+    return IsWorldVectorRepresentable(expected.position, actual.position) &&
+           IsWorldRotationRepresentable(expected.rotation, actual.rotation) &&
+           IsWorldVectorRepresentable(expected.scale, actual.scale);
+}
+
+[[nodiscard]] bool IsWorldBoundsRepresentable(const Transform& world, const Aabb& bounds) noexcept
+{
+    const Vec3 corners[] = {
+        Vec3{bounds.min.x, bounds.min.y, bounds.min.z},
+        Vec3{bounds.min.x, bounds.min.y, bounds.max.z},
+        Vec3{bounds.min.x, bounds.max.y, bounds.min.z},
+        Vec3{bounds.min.x, bounds.max.y, bounds.max.z},
+        Vec3{bounds.max.x, bounds.min.y, bounds.min.z},
+        Vec3{bounds.max.x, bounds.min.y, bounds.max.z},
+        Vec3{bounds.max.x, bounds.max.y, bounds.min.z},
+        Vec3{bounds.max.x, bounds.max.y, bounds.max.z},
+    };
+    for (const Vec3 corner : corners)
+    {
+        if (!IsFinite(TransformPoint(world, corner)))
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
 [[nodiscard]] std::uint64_t NextMonotonicValue(std::uint64_t current) noexcept
 {
     return current == std::numeric_limits<std::uint64_t>::max() ? 0u : current + 1u;
@@ -284,6 +345,13 @@ foundation::Result<void> SceneRuntime::AttachNode(SceneNodeId child, SceneNodeId
         return SceneFailure("scene.allocation_failed", "scene hierarchy staging allocation failed");
     }
 
+    const Transform candidate_world = ComposeTransform(ComputeWorldTransform(parent), staged_local);
+    const auto candidate_state = ValidateCandidateSubtreeWorldState(child, candidate_world, subtree.size());
+    if (!candidate_state)
+    {
+        return candidate_state;
+    }
+
     const std::size_t required_revisions = subtree.size() + (child_record->node.parent_id.IsValid() ? 1u : 0u) + 1u;
     const auto revisions = ReserveRevisionRange(required_revisions);
     if (!revisions)
@@ -350,6 +418,12 @@ foundation::Result<void> SceneRuntime::DetachNode(SceneNodeId child, ReparentMod
     catch (const std::exception&)
     {
         return SceneFailure("scene.allocation_failed", "scene hierarchy staging allocation failed");
+    }
+
+    const auto candidate_state = ValidateCandidateSubtreeWorldState(child, staged_local, subtree.size());
+    if (!candidate_state)
+    {
+        return candidate_state;
     }
 
     const auto revisions = ReserveRevisionRange(subtree.size() + 1u);
@@ -470,6 +544,14 @@ foundation::Result<void> SceneRuntime::SetLocalTransform(SceneNodeId node, const
     {
         return SceneFailure("scene.allocation_failed", "scene subtree staging allocation failed");
     }
+    const Transform candidate_world = record->node.parent_id.IsValid()
+                                          ? ComposeTransform(ComputeWorldTransform(record->node.parent_id), transform)
+                                          : transform;
+    const auto candidate_state = ValidateCandidateSubtreeWorldState(node, candidate_world, subtree.size());
+    if (!candidate_state)
+    {
+        return candidate_state;
+    }
     const auto revisions = ReserveRevisionRange(subtree.size());
     if (!revisions)
     {
@@ -522,6 +604,14 @@ foundation::Result<void> SceneRuntime::SetWorldTransform(SceneNodeId node, const
     {
         return SceneFailure("scene.allocation_failed", "scene subtree staging allocation failed");
     }
+    const Transform candidate_world = record->node.parent_id.IsValid()
+                                          ? ComposeTransform(ComputeWorldTransform(record->node.parent_id), local_transform)
+                                          : local_transform;
+    const auto candidate_state = ValidateCandidateSubtreeWorldState(node, candidate_world, subtree.size());
+    if (!candidate_state)
+    {
+        return candidate_state;
+    }
     const auto revisions = ReserveRevisionRange(subtree.size());
     if (!revisions)
     {
@@ -572,6 +662,10 @@ foundation::Result<void> SceneRuntime::SetLocalBounds(SceneNodeId node, const Aa
     if (record == nullptr)
     {
         return SceneFailure("scene.node_not_found", "scene node was not found for bounds update");
+    }
+    if (!IsWorldBoundsRepresentable(ComputeWorldTransform(node), bounds))
+    {
+        return SceneFailure("scene.world_bounds_out_of_range", "scene world bounds would become non-finite or invalid");
     }
     std::vector<SceneNodeId> subtree;
     try
@@ -815,6 +909,13 @@ foundation::Result<Transform> SceneRuntime::ComputeLocalTransform(SceneNodeId pa
     {
         return SceneFailureValue<Transform>("scene.invalid_transform", "scene computed local transform is not finite or invertible");
     }
+    const Transform reconstructed_world = ComposeTransform(parent_world, local);
+    if (!IsWorldTransformRepresentable(world_transform, reconstructed_world))
+    {
+        return SceneFailureValue<Transform>(
+            "scene.unrepresentable_world_transform",
+            "scene world transform cannot be represented relative to the parent without observable precision loss");
+    }
     return foundation::Result<Transform>::Success(local);
 }
 
@@ -849,6 +950,54 @@ std::vector<SceneNodeId> SceneRuntime::CollectSubtree(SceneNodeId node) const
         }
     }
     return result;
+}
+
+foundation::Result<void> SceneRuntime::ValidateCandidateSubtreeWorldState(
+    SceneNodeId root, const Transform& root_world, std::size_t expected_nodes) const
+{
+    if (!IsValidTransform(root_world))
+    {
+        return SceneFailure("scene.world_transform_out_of_range", "scene mutation would produce a non-finite or degenerate world transform");
+    }
+
+    std::vector<std::pair<SceneNodeId, Transform>> stack;
+    try
+    {
+        stack.reserve(expected_nodes);
+        stack.emplace_back(root, root_world);
+        while (!stack.empty())
+        {
+            const auto [current, world] = stack.back();
+            stack.pop_back();
+            const SceneNodeRecord* record = FindRecord(current);
+            if (record == nullptr)
+            {
+                return SceneFailure("scene.invalid_hierarchy", "scene subtree references a missing node");
+            }
+            if (!IsValidTransform(world))
+            {
+                return SceneFailure("scene.world_transform_out_of_range", "scene mutation would produce a non-finite or degenerate world transform");
+            }
+            if (record->has_bounds && !IsWorldBoundsRepresentable(world, record->local_bounds))
+            {
+                return SceneFailure("scene.world_bounds_out_of_range", "scene mutation would produce non-finite or invalid world bounds");
+            }
+            for (auto iterator = record->children.rbegin(); iterator != record->children.rend(); ++iterator)
+            {
+                const SceneNodeRecord* child = FindRecord(*iterator);
+                if (child == nullptr)
+                {
+                    return SceneFailure("scene.invalid_hierarchy", "scene subtree references a missing child");
+                }
+                stack.emplace_back(*iterator, ComposeTransform(world, child->local_transform));
+            }
+        }
+    }
+    catch (const std::exception&)
+    {
+        return SceneFailure("scene.allocation_failed", "scene world-state validation allocation failed");
+    }
+    return foundation::Result<void>::Success();
 }
 
 foundation::Result<std::uint64_t> SceneRuntime::ReserveRevisionRange(std::size_t count) const

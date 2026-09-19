@@ -6,7 +6,9 @@ Persistence хранит долговечное состояние объект�
 
 ## Модель
 
-`IPersistenceStore` открывает `ISaveTransaction`. Transaction накапливает ordered operations и строит candidate snapshot. Backend получает `CommitSnapshot(snapshot, durability)`; при failure прежний durable snapshot остается authoritative, а in-memory store не публикует candidate.
+`IPersistenceStore` открывает `ISaveTransaction`. Transaction накапливает ordered operations и строит candidate snapshot. Backend получает только существующий `CommitSnapshot(snapshot, durability)`; отдельные `Save()`/`Flush()` API не являются частью Runtime contract. При Result failure, exception или allocation failure прежний durable snapshot остается authoritative, а in-memory store не публикует candidate.
+
+Успешный commit terminal. Failed commit переводит transaction в `Failed`; повторный commit той же transaction запрещен до terminal `Rollback`. Повторный `Commit()` уже committed transaction является idempotent success. Empty transaction является валидным commit и повышает revision. `PersistenceDurability` имеет закрытый domain из `MemoryOnly`, `SaveRequired`, `SaveAndFlushRequired`; другие значения отклоняются при создании services до обращения к backend.
 
 `IPersistenceQuery` читает records без возможности открыть transaction. `IPersistenceAdministrativeTransaction` предназначен только restore, import и migration code. `IDirtyTracker` отражает unsaved changes.
 
@@ -16,11 +18,11 @@ Persistence хранит долговечное состояние объект�
 
 ## Инварианты
 
-Active record не может одновременно быть tombstoned. Lazy rule не ссылается на отсутствующий target. Delete удаляет связанные lazy rules. `UpdateLazyRule` не выполняет upsert. Snapshots сортируются детерминированно и проходят полную validation.
+Active record не может одновременно быть tombstoned. Lazy rule не ссылается на отсутствующий target. Delete удаляет связанные lazy rules. `UpdateLazyRule` не выполняет upsert. Snapshots сортируются детерминированно и проходят полную validation. Query results и snapshots возвращаются detached copies и не дают mutable aliases во внутреннее состояние.
 
 ## Стабильность
 
-Модуль frozen. Backend может быть memory, file или database implementation при сохранении atomic commit contract.
+Модуль является freeze candidate до завершения Goal 3 и общего Runtime LOCAL_READY gate. Backend может быть memory, file или database implementation при сохранении atomic commit contract.
 
 ## Карта публичных заголовков
 
