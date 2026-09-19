@@ -33,7 +33,7 @@ Input has no separate boot/shutdown state machine and owns no external resource 
 
 ## Windows verification
 
-MSVC `19.50.35729`, C++20, `/W4 /WX`: Debug and Release build passed. The merged Platform/Input executable passes raw Win32-to-Input integration plus keyboard, mouse, invalid-input, reset, empty-publish, multi-transition and numeric-boundary cases in the complete Base `10/10` CTest profiles.
+MSVC `19.50.35729`, C++20, `/W4 /WX`: Debug and Release build passed. The merged Platform/Input executable passes raw Win32-to-Input integration plus keyboard, mouse, invalid-input, reset, empty-publish, multi-transition and numeric-boundary cases in the complete Base `14/14` CTest profiles.
 
 ## Corrective patch 2026-09-18
 

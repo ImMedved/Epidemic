@@ -35,7 +35,7 @@ Core owns no durable snapshot/restore format. All application, task, event and m
 
 ## Windows verification
 
-MSVC `19.50.35729`, C++20, `/W4 /WX`: Debug and Release build passed. `EpidemicCoreUnitTests` passed in the complete Base `10/10` CTest profiles. The architecture, dossier, callable coverage, public surface and LOCAL_READY validators are part of the same qualification run.
+MSVC `19.50.35729`, C++20, `/W4 /WX`: Debug and Release build passed. `EpidemicCoreUnitTests` passed in the complete Base `14/14` CTest profiles. The architecture, dossier, callable coverage, public surface and LOCAL_READY validators are part of the same qualification run.
 
 ## Corrective patch 2026-09-18
 
@@ -58,3 +58,5 @@ A second defect review found additional failure-boundary gaps after the original
 `CORE-016`: Support required one atomic commit boundary for a service bundle plus its frame-handler batch. Core now provides strong-guarantee batch handler registration and an atomic service pre-commit hook. Duplicate types in one service bundle are rejected before candidate publication. These contracts are covered by `TestAtomicFrameHandlerRegistration` and `TestServiceContainerContracts`.
 
 The exact public callable inventory increased from 4306 to 4308 because the two composition primitives are public Core contracts. Both rows have reviewed precondition, success, failure and no-op coverage entries plus explicit contract/test anchors.
+
+`CORE-017`: lifecycle diagnostics constructed allocating messages before entering the logger's containment boundary. Bootstrap, initialize, tick, shutdown and module-count diagnostics now use no-throw formatting/logging helpers, so diagnostic allocation or sink failure cannot replace lifecycle control flow.

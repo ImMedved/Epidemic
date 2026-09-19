@@ -1,8 +1,10 @@
 #include <Epidemic/Input/input_system.h>
 
 #include "input_index_policy.h"
+#include "input_test_hooks.h"
 
 #include <cstdint>
+#include <new>
 
 namespace epidemic::input
 {
@@ -11,6 +13,8 @@ namespace epidemic::input
 
 namespace
 {
+thread_local bool g_fail_candidate_event_allocation = false;
+
 // Converts a raw platform key code into the normalized EngineBase key enum.
 [[nodiscard]] KeyCode ToKeyCode(std::uint32_t key_code) noexcept
 {
@@ -34,6 +38,23 @@ namespace
 }
 } // namespace
 
+void testing::FailNextCandidateEventAllocation() noexcept
+{
+    g_fail_candidate_event_allocation = true;
+}
+
+void testing::ClearInputFaults() noexcept
+{
+    g_fail_candidate_event_allocation = false;
+}
+
+bool testing::ConsumeCandidateEventAllocationFailure() noexcept
+{
+    const bool fail = g_fail_candidate_event_allocation;
+    g_fail_candidate_event_allocation = false;
+    return fail;
+}
+
 // Buffers one raw platform event for the next PublishSnapshot() pass.
 void InputSystem::QueuePlatformEvent(const epidemic::platform::PlatformEvent &event)
 {
@@ -56,6 +77,10 @@ void InputSystem::PublishSnapshot()
     candidate_mouse.ClearTransient();
 
     std::vector<InputEvent> candidate_events;
+    if (testing::ConsumeCandidateEventAllocationFailure())
+    {
+        throw std::bad_alloc{};
+    }
     candidate_events.reserve(pending_platform_events_.size());
 
     for (const auto &event : pending_platform_events_)

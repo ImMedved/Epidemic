@@ -18,6 +18,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace
@@ -45,10 +46,11 @@ void ThrowIfFailed(const epidemic::foundation::Result<void> &result)
 } // namespace
 
 // Composes the D3D11 graphics runtime, creates the main swap chain, and runs the clear-screen demo until exit.
-int main()
+int main(int argc, char **argv)
 {
     try
     {
+        const bool smoke_mode = argc == 2 && std::string_view(argv[1]) == "--smoke";
         epidemic::core::Application application;
         static_cast<void>(epidemic::enginebase::RegisterEngineBase(
             application, {.runtime_name = "EpidemicRhiClearScreenApp", .log_module = "RhiClearScreenApp"}));
@@ -70,7 +72,12 @@ int main()
             epidemic::platform::WindowCreateInfo{"Epidemic RHI Clear Screen",
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowWidth().value_or(1280)),
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowHeight().value_or(720)),
-                                                 true}));
+                                                 !smoke_mode}));
+
+        if (smoke_mode)
+        {
+            application.SetFrameLimit(1);
+        }
 
         logger->Info("RhiClearScreenApp", "Window",
                      "Window created: " + std::to_string(window->ClientWidth()) + "x" +

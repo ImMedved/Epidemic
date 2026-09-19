@@ -2436,7 +2436,7 @@
         "target": "EpidemicFoundationUnitTests"
       }
     },
-    "f20840933104a704": {
+    "e05bf7e2368951b3": {
       "contract": {
         "anchor": "docs/freeze/enginebase_diagnostics_audit.md:37::## Public contract: thread context",
         "reviewed": true
@@ -2540,10 +2540,10 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:636::void TestAtomicFrameHandlerRegistration()",
+        "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:660::void TestAtomicFrameHandlerRegistration()",
         "assertions": [
-          "EngineBase/Tests/Unit/core_unit_tests.cpp:656::Atomic handler batch must reject an invalid member",
-          "EngineBase/Tests/Unit/core_unit_tests.cpp:659::Rejected handler batch must not publish earlier valid handlers"
+          "EngineBase/Tests/Unit/core_unit_tests.cpp:680::Atomic handler batch must reject an invalid member",
+          "EngineBase/Tests/Unit/core_unit_tests.cpp:683::Rejected handler batch must not publish earlier valid handlers"
         ],
         "reviewed": true,
         "target": "EpidemicCoreUnitTests"
@@ -2551,13 +2551,28 @@
     },
     "1b11a07d96f2d305": {
       "contract": {
-        "anchor": "EngineBase/Core/include/Epidemic/Core/service_container.h:70::void RegisterInstancesAtomicWithPreCommit(TPreCommit &&pre_commit, std::shared_ptr<TServices>... instances)",
+        "anchor": "EngineBase/Core/include/Epidemic/Core/service_container.h:109::void RegisterInstancesAtomicWithPreCommit(TPreCommit &&pre_commit, std::shared_ptr<TServices>... instances)",
         "reviewed": true
       },
       "test": {
         "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:238::void TestServiceContainerContracts()",
         "assertions": [
           "EngineBase/Tests/Unit/core_unit_tests.cpp:312::Failed composition pre-commit must not publish the staged service bundle"
+        ],
+        "reviewed": true,
+        "target": "EpidemicCoreUnitTests"
+      }
+    },
+    "a50a677dfa97109a": {
+      "contract": {
+        "anchor": "EngineBase/Core/include/Epidemic/Core/service_container.h:70::The factory executes while the container is exclusively locked and must not re-enter this container.",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:238::void TestServiceContainerContracts()",
+        "assertions": [
+          "EngineBase/Tests/Unit/core_unit_tests.cpp:321::Atomic service factory must publish exactly the instance returned by its non-reentrant callback",
+          "EngineBase/Tests/Unit/core_unit_tests.cpp:336::Atomic service factory must reject duplicate ownership before invoking its callback"
         ],
         "reviewed": true,
         "target": "EpidemicCoreUnitTests"

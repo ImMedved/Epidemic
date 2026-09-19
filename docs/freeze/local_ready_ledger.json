@@ -140,9 +140,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:438::void TestFramePhaseValidation()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:462::void TestFramePhaseValidation()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:461::Assert(count_rejected && unknown_rejected"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:485::Assert(count_rejected && unknown_rejected"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -158,9 +158,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:1014::void TestModuleRegistryContracts()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:1038::void TestModuleRegistryContracts()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:1028::Assert(!trace.empty()"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:1052::Assert(!trace.empty()"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -176,9 +176,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:1014::void TestModuleRegistryContracts()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:1038::void TestModuleRegistryContracts()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:1165::Assert(deterministic_trace_a == deterministic_trace_b"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:1189::Assert(deterministic_trace_a == deterministic_trace_b"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -194,9 +194,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:464::void TestCoreCounterBoundaries()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:488::void TestCoreCounterBoundaries()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:472::Assert(!epidemic::core::events::detail::CanAllocateHandlerToken(0)"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:496::Assert(!epidemic::core::events::detail::CanAllocateHandlerToken(0)"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -216,9 +216,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:1014::void TestModuleRegistryContracts()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:1038::void TestModuleRegistryContracts()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:1188::Assert(partial_initialize_failed"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:1212::Assert(partial_initialize_failed"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -234,9 +234,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:664::void TestTaskSchedulerAndDispatcherContracts()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:688::void TestTaskSchedulerAndDispatcherContracts()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:851::Assert(!cancel_scheduler.Cancel(cancelled)"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:875::Assert(!cancel_scheduler.Cancel(cancelled)"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -252,9 +252,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:484::void TestApplicationLifecycleAndFrameOrder()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:508::void TestApplicationLifecycleAndFrameOrder()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:569::Assert(application.Run() == 0"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:593::Assert(application.Run() == 0"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -270,9 +270,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:484::void TestApplicationLifecycleAndFrameOrder()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:508::void TestApplicationLifecycleAndFrameOrder()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:613::Assert(bootstrap_after_shutdown_rejected"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:637::Assert(bootstrap_after_shutdown_rejected"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -288,9 +288,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:484::void TestApplicationLifecycleAndFrameOrder()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:508::void TestApplicationLifecycleAndFrameOrder()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:602::Assert(application.Shutdown() == 0"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:626::Assert(application.Shutdown() == 0"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -315,9 +315,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:1014::void TestModuleRegistryContracts()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:1038::void TestModuleRegistryContracts()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:1190::Assert(partial_trace == std::vector<std::string>"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:1214::Assert(partial_trace == std::vector<std::string>"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -400,9 +400,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:438::void TestFramePhaseValidation()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:462::void TestFramePhaseValidation()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:461::Assert(count_rejected && unknown_rejected"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:485::Assert(count_rejected && unknown_rejected"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -433,9 +433,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:334::void TestEventBusContracts()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:358::void TestEventBusContracts()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:348::Assert(!event_bus.Unsubscribe(9999)"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:372::Assert(!event_bus.Unsubscribe(9999)"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -447,9 +447,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:464::void TestCoreCounterBoundaries()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:488::void TestCoreCounterBoundaries()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:478::Assert(epidemic::core::detail::AdvanceExecutedFrameCount(maximum_frame) == maximum_frame"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:502::Assert(epidemic::core::detail::AdvanceExecutedFrameCount(maximum_frame) == maximum_frame"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -461,9 +461,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:484::void TestApplicationLifecycleAndFrameOrder()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:508::void TestApplicationLifecycleAndFrameOrder()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:515::Assert(initialize_before_bootstrap_rejected"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:539::Assert(initialize_before_bootstrap_rejected"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -479,9 +479,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:664::void TestTaskSchedulerAndDispatcherContracts()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:688::void TestTaskSchedulerAndDispatcherContracts()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:825::Assert(dispatcher_batch_failed"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:849::Assert(dispatcher_batch_failed"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -493,9 +493,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:619::void TestStopRequestPreventsExtraTick()",
+              "anchor": "EngineBase/Tests/Unit/core_unit_tests.cpp:643::void TestStopRequestPreventsExtraTick()",
               "assertions": [
-                "EngineBase/Tests/Unit/core_unit_tests.cpp:631::Assert(std::find(trace.begin(), trace.end(), \"core:tick\") == trace.end()"
+                "EngineBase/Tests/Unit/core_unit_tests.cpp:655::Assert(std::find(trace.begin(), trace.end(), \"core:tick\") == trace.end()"
               ],
               "target": "EpidemicCoreUnitTests"
             }
@@ -509,7 +509,7 @@
         "API-CLASSIFIED": {
           "evidence": [
             {
-              "anchor": "docs/freeze/public_api_inventory.md:142::## EngineBase/Diagnostics",
+              "anchor": "docs/freeze/public_api_inventory.md:143::## EngineBase/Diagnostics",
               "kind": "contract"
             }
           ],
@@ -561,7 +561,7 @@
         "API-OVERLOADS": {
           "evidence": [
             {
-              "anchor": "docs/freeze/public_api_inventory.md:142::## EngineBase/Diagnostics",
+              "anchor": "docs/freeze/public_api_inventory.md:143::## EngineBase/Diagnostics",
               "kind": "contract"
             }
           ],
@@ -911,7 +911,7 @@
         "API-CLASSIFIED": {
           "evidence": [
             {
-              "anchor": "docs/freeze/public_api_inventory.md:192::## EngineBase/Foundation",
+              "anchor": "docs/freeze/public_api_inventory.md:193::## EngineBase/Foundation",
               "kind": "contract"
             }
           ],
@@ -981,7 +981,7 @@
         "API-OVERLOADS": {
           "evidence": [
             {
-              "anchor": "docs/freeze/public_api_inventory.md:192::## EngineBase/Foundation",
+              "anchor": "docs/freeze/public_api_inventory.md:193::## EngineBase/Foundation",
               "kind": "contract"
             }
           ],
@@ -1576,9 +1576,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:146::void TestInputKeyboardContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:145::void TestInputKeyboardContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:160::Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A)"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:159::Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A)"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1594,9 +1594,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:146::void TestInputKeyboardContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:145::void TestInputKeyboardContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:160::Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A)"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:159::Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A)"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1616,9 +1616,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:146::void TestInputKeyboardContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:145::void TestInputKeyboardContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:160::Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A)"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:159::Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A)"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1644,9 +1644,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:265::void TestInputInvalidAndDuplicateTransitions()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:264::void TestInputInvalidAndDuplicateTransitions()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:174::Assert(input.CurrentEvents().empty()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:173::Assert(input.CurrentEvents().empty()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1662,9 +1662,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:146::void TestInputKeyboardContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:145::void TestInputKeyboardContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:168::Assert(input.CurrentSnapshot().update_index == 1"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:167::Assert(input.CurrentSnapshot().update_index == 1"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1685,9 +1685,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:626::void TestInputNumericBoundaries()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:652::void TestInputNumericBoundaries()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:631::Assert(epidemic::input::detail::AdvanceUpdateIndex(maximum_index) == maximum_index"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:657::Assert(epidemic::input::detail::AdvanceUpdateIndex(maximum_index) == maximum_index"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1707,9 +1707,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:265::void TestInputInvalidAndDuplicateTransitions()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:264::void TestInputInvalidAndDuplicateTransitions()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:164::Assert(!input.CurrentSnapshot().keyboard.WasReleasedThisFrame"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:163::Assert(!input.CurrentSnapshot().keyboard.WasReleasedThisFrame"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1725,9 +1725,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:146::void TestInputKeyboardContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:145::void TestInputKeyboardContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:174::Assert(input.CurrentEvents().empty()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:173::Assert(input.CurrentEvents().empty()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1767,9 +1767,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:265::void TestInputInvalidAndDuplicateTransitions()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:264::void TestInputInvalidAndDuplicateTransitions()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:260::Assert(!input.CurrentSnapshot().mouse.IsButtonDown"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:259::Assert(!input.CurrentSnapshot().mouse.IsButtonDown"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1821,9 +1821,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:146::void TestInputKeyboardContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:145::void TestInputKeyboardContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:160::Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A)"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:159::Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A)"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1835,9 +1835,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:265::void TestInputInvalidAndDuplicateTransitions()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:264::void TestInputInvalidAndDuplicateTransitions()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:174::Assert(input.CurrentEvents().empty()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:173::Assert(input.CurrentEvents().empty()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1849,9 +1849,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:265::void TestInputInvalidAndDuplicateTransitions()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:264::void TestInputInvalidAndDuplicateTransitions()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:164::Assert(!input.CurrentSnapshot().keyboard.WasReleasedThisFrame"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:163::Assert(!input.CurrentSnapshot().keyboard.WasReleasedThisFrame"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1868,9 +1868,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:146::void TestInputKeyboardContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:145::void TestInputKeyboardContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:174::Assert(input.CurrentEvents().empty()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:173::Assert(input.CurrentEvents().empty()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1882,9 +1882,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:626::void TestInputNumericBoundaries()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:652::void TestInputNumericBoundaries()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:637::Assert(mouse.WheelDelta() == std::numeric_limits<std::int32_t>::max()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:663::Assert(mouse.WheelDelta() == std::numeric_limits<std::int32_t>::max()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -1906,9 +1906,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:265::void TestInputInvalidAndDuplicateTransitions()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:264::void TestInputInvalidAndDuplicateTransitions()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:271::Assert(!keyboard.IsKeyDown(epidemic::input::KeyCode::Unknown)"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:270::Assert(!keyboard.IsKeyDown(epidemic::input::KeyCode::Unknown)"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2372,9 +2372,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:379::Assert(runtime.WindowCount() == 0"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:378::Assert(runtime.WindowCount() == 0"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2390,9 +2390,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:379::Assert(runtime.WindowCount() == 0"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:378::Assert(runtime.WindowCount() == 0"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2412,9 +2412,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:379::Assert(runtime.WindowCount() == 0"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:378::Assert(runtime.WindowCount() == 0"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2440,9 +2440,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:374::Assert(!invalid_width.HasValue()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:373::Assert(!invalid_width.HasValue()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2458,9 +2458,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:668::void TestNativeCloseReflectionAndWrapperLifetime()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:694::void TestNativeCloseReflectionAndWrapperLifetime()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:404::Assert(runtime.WindowCount() == 1"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:403::Assert(runtime.WindowCount() == 1"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2476,9 +2476,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:668::void TestNativeCloseReflectionAndWrapperLifetime()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:694::void TestNativeCloseReflectionAndWrapperLifetime()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:379::Assert(runtime.WindowCount() == 0"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:378::Assert(runtime.WindowCount() == 0"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2494,9 +2494,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:353::void TestWindowIdBoundaryPolicy()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:352::void TestWindowIdBoundaryPolicy()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:365::Assert(!CanAllocateWindowId(exhausted)"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:364::Assert(!CanAllocateWindowId(exhausted)"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2516,9 +2516,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:391::Assert(runtime.DrainEvents().empty()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:390::Assert(runtime.DrainEvents().empty()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2534,7 +2534,7 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
                 "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:411::Assert(runtime.IsExitRequested()"
               ],
@@ -2552,9 +2552,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:397::Assert(runtime.WindowCount() == 2"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:396::Assert(runtime.WindowCount() == 2"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2570,9 +2570,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:428::Assert(!create_after_shutdown.HasValue()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:427::Assert(!create_after_shutdown.HasValue()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2588,9 +2588,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:443::void TestWindowWrapperAfterRuntimeTeardown()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:442::void TestWindowWrapperAfterRuntimeTeardown()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:450::Assert(!survivor->GetNativeHandle().IsValid()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:449::Assert(!survivor->GetNativeHandle().IsValid()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2610,9 +2610,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:825::void TestShutdownRetryAfterExternalCleanupFailure()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:851::void TestShutdownRetryAfterExternalCleanupFailure()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:844::Assert(cleanup_failure_seen"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:870::Assert(cleanup_failure_seen"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2632,9 +2632,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:854::void TestDynamicLibraryContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:880::void TestDynamicLibraryContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:873::Assert(GetModuleHandleW(L\"EpidemicPlatformDefinitelyMissing.dll\") == nullptr"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:899::Assert(GetModuleHandleW(L\"EpidemicPlatformDefinitelyMissing.dll\") == nullptr"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2654,9 +2654,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:668::void TestNativeCloseReflectionAndWrapperLifetime()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:694::void TestNativeCloseReflectionAndWrapperLifetime()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:379::Assert(runtime.WindowCount() == 0"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:378::Assert(runtime.WindowCount() == 0"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2676,9 +2676,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:854::void TestDynamicLibraryContracts()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:880::void TestDynamicLibraryContracts()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:861::Assert(GetModuleHandleW(L\"EpidemicPlatformTestLibrary.dll\") == nullptr"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:887::Assert(GetModuleHandleW(L\"EpidemicPlatformTestLibrary.dll\") == nullptr"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2720,9 +2720,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:379::Assert(runtime.WindowCount() == 0"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:378::Assert(runtime.WindowCount() == 0"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2734,9 +2734,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:374::Assert(!invalid_width.HasValue()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:373::Assert(!invalid_width.HasValue()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2748,9 +2748,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:415::Assert(CountEvents(events, PlatformEventType::WindowCloseRequested) == 2"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:414::Assert(CountEvents(events, PlatformEventType::WindowCloseRequested) == 2"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2762,9 +2762,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:443::void TestWindowWrapperAfterRuntimeTeardown()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:442::void TestWindowWrapperAfterRuntimeTeardown()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:450::Assert(!survivor->GetNativeHandle().IsValid()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:449::Assert(!survivor->GetNativeHandle().IsValid()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2776,9 +2776,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:789::void TestEventPumpDoesNotReplayStaleEvents()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:815::void TestEventPumpDoesNotReplayStaleEvents()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:391::Assert(runtime.DrainEvents().empty()"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:390::Assert(runtime.DrainEvents().empty()"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2790,9 +2790,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:353::void TestWindowIdBoundaryPolicy()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:352::void TestWindowIdBoundaryPolicy()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:365::Assert(!CanAllocateWindowId(exhausted)"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:364::Assert(!CanAllocateWindowId(exhausted)"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2804,9 +2804,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:439::Assert(pump_after_shutdown_rejected"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:438::Assert(pump_after_shutdown_rejected"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2822,9 +2822,9 @@
             },
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:825::void TestShutdownRetryAfterExternalCleanupFailure()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:851::void TestShutdownRetryAfterExternalCleanupFailure()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:844::Assert(cleanup_failure_seen"
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:870::Assert(cleanup_failure_seen"
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -2836,9 +2836,9 @@
           "evidence": [
             {
               "kind": "test",
-              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:369::void TestWindowLifecycleAndExitRequest()",
+              "anchor": "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:368::void TestWindowLifecycleAndExitRequest()",
               "assertions": [
-                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:388::Assert(first->Title() == \"Platform Lifecycle A\""
+                "EngineBase/Tests/Integration/platform_input_integration_tests.cpp:387::Assert(first->Title() == \"Platform Lifecycle A\""
               ],
               "target": "EpidemicPlatformInputIntegrationTests"
             }
@@ -4184,9 +4184,26 @@
           "rationale": ""
         },
         "ATOMIC-EXTERNAL": {
-          "status": "N/A",
-          "evidence": [],
-          "rationale": "Backend creation occurs before publication but Support exposes no external prepare/commit/cancel transaction."
+          "status": "PASS",
+          "evidence": [
+            {
+              "kind": "contract",
+              "anchor": "docs/freeze/enginebase_support_audit.md:25::RegisterMainSwapChain"
+            },
+            {
+              "kind": "fault",
+              "anchor": "docs/freeze/enginebase_support_audit.md:41::Graphics factories execute before"
+            },
+            {
+              "kind": "test",
+              "anchor": "EngineBase/Tests/Integration/support_integration_tests.cpp:397::void TestMainSwapChainDuplicateOwnerIsRejectedBeforeBackendWork()",
+              "target": "EpidemicSupportIntegrationTests",
+              "assertions": [
+                "EngineBase/Tests/Integration/support_integration_tests.cpp:448::Swap-chain backend failure must not publish a partial main swap-chain owner"
+              ]
+            }
+          ],
+          "rationale": "The service slot is fully prepared before external swap-chain creation; only no-throw map publication remains after backend success."
         },
         "ATOMIC-RECONCILE": {
           "status": "N/A",
@@ -4304,7 +4321,7 @@
           "evidence": [
             {
               "kind": "fault",
-              "anchor": "docs/freeze/enginebase_support_audit.md:41::Backend factories execute before"
+              "anchor": "docs/freeze/enginebase_support_audit.md:41::Graphics factories execute before"
             },
             {
               "kind": "test",

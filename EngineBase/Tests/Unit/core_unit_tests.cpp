@@ -311,6 +311,30 @@ void TestServiceContainerContracts()
     Assert(precommit_failed && !precommit_services.Contains<CountingService>(),
            "Failed composition pre-commit must not publish the staged service bundle");
 
+    epidemic::core::ServiceContainer factory_services;
+    bool factory_called = false;
+    auto factory_instance = factory_services.RegisterInstanceFromFactoryAtomic<CountingService>([&] {
+        factory_called = true;
+        return std::make_shared<CountingServiceImpl>(duplicate_emplace_construction_count);
+    });
+    Assert(factory_called && factory_services.Get<CountingService>() == factory_instance,
+           "Atomic service factory must publish exactly the instance returned by its non-reentrant callback");
+    bool duplicate_factory_called = false;
+    bool duplicate_factory_failed = false;
+    try
+    {
+        static_cast<void>(factory_services.RegisterInstanceFromFactoryAtomic<CountingService>([&] {
+            duplicate_factory_called = true;
+            return factory_instance;
+        }));
+    }
+    catch (const std::runtime_error &)
+    {
+        duplicate_factory_failed = true;
+    }
+    Assert(duplicate_factory_failed && !duplicate_factory_called,
+           "Atomic service factory must reject duplicate ownership before invoking its callback");
+
     epidemic::core::ServiceContainer sealed_services;
     sealed_services.Seal();
     Assert(sealed_services.IsSealed(), "Seal must mark the service container as sealed");

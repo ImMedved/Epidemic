@@ -16,6 +16,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace
@@ -80,10 +81,11 @@ void LogInputEvent(epidemic::diagnostics::ILogger &logger, const epidemic::input
 } // namespace
 
 // Composes platform and input services, opens a window, and logs live normalized input until exit.
-int main()
+int main(int argc, char **argv)
 {
     try
     {
+        const bool smoke_mode = argc == 2 && std::string_view(argv[1]) == "--smoke";
         epidemic::core::Application application;
         static_cast<void>(epidemic::enginebase::RegisterEngineBase(
             application, {.runtime_name = "EpidemicInputSmokeApp", .log_module = "InputSmokeApp"}));
@@ -100,7 +102,12 @@ int main()
             epidemic::platform::WindowCreateInfo{"Epidemic Input Smoke",
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowWidth().value_or(1280)),
                                                  static_cast<std::uint32_t>(configuration->GetDefaultWindowHeight().value_or(720)),
-                                                 true}));
+                                                 !smoke_mode}));
+
+        if (smoke_mode)
+        {
+            application.SetFrameLimit(1);
+        }
 
         epidemic::enginebase::RegisterPlatformFrameLoop(application);
         epidemic::enginebase::RegisterInputFrameLoop(application);

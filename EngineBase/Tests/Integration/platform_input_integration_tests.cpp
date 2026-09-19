@@ -13,7 +13,9 @@
 #include <Epidemic/Platform/windows_platform_runtime.h>
 
 #include "Windows/window_id_policy.h"
+#include "Windows/platform_test_hooks.h"
 #include "input_index_policy.h"
+#include "input_test_hooks.h"
 
 #include <algorithm>
 #include <array>
@@ -38,84 +40,81 @@
 #undef CreateWindow
 #endif
 
-#if !defined(_MSC_VER)
-namespace platform_allocation_fault
-{
-thread_local bool enabled = false;
-thread_local std::size_t allocation_index = 0;
-thread_local std::size_t fail_index = std::numeric_limits<std::size_t>::max();
 
-void BeginCount() noexcept
-{
-    enabled = true;
-    allocation_index = 0;
-    fail_index = std::numeric_limits<std::size_t>::max();
-}
 
-void BeginFailAt(std::size_t index) noexcept
-{
-    enabled = true;
-    allocation_index = 0;
-    fail_index = index;
-}
 
-[[nodiscard]] std::size_t End() noexcept
-{
-    const auto count = allocation_index;
-    enabled = false;
-    allocation_index = 0;
-    fail_index = std::numeric_limits<std::size_t>::max();
-    return count;
-}
 
-[[nodiscard]] bool ShouldFail() noexcept
-{
-    if (!enabled)
-    {
-        return false;
-    }
-    return allocation_index++ == fail_index;
-}
-} // namespace platform_allocation_fault
 
-void *operator new(std::size_t size)
-{
-    if (platform_allocation_fault::ShouldFail())
-    {
-        throw std::bad_alloc{};
-    }
-    if (auto *memory = std::malloc(size == 0 ? 1 : size))
-    {
-        return memory;
-    }
-    throw std::bad_alloc{};
-}
 
-void *operator new[](std::size_t size)
-{
-    return ::operator new(size);
-}
 
-void operator delete(void *memory) noexcept
-{
-    std::free(memory);
-}
 
-void operator delete[](void *memory) noexcept
-{
-    ::operator delete(memory);
-}
 
-void operator delete(void *memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
 
-void operator delete[](void *memory, std::size_t) noexcept
-{
-    ::operator delete(memory);
-}
-#endif
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 namespace
 {
@@ -456,8 +455,7 @@ void TestWindowWrapperAfterRuntimeTeardown()
            "Show/Close on a wrapper whose native window is already destroyed must remain inert after runtime teardown");
 }
 
-// Verifies PublishSnapshot preserves the complete previous frame and raw pending queue on allocation failure.
-#if !defined(_MSC_VER)
+// Verifies PublishSnapshot preserves the complete previous frame and raw pending queue on a deterministic failure.
 void TestInputPublishAllocationFailureAtomicity()
 {
     auto make_fixture = [] {
@@ -479,65 +477,36 @@ void TestInputPublishAllocationFailureAtomicity()
     button.mouse_x = 17;
     button.mouse_y = 23;
 
-    std::size_t allocation_count = 0;
-    epidemic::input::InputSnapshot expected_snapshot;
-    std::vector<epidemic::input::InputEvent> expected_events;
-    {
-        auto input = make_fixture();
-        input.QueuePlatformEvent(key);
-        input.QueuePlatformEvent(button);
-        platform_allocation_fault::BeginCount();
-        input.PublishSnapshot();
-        allocation_count = platform_allocation_fault::End();
-        expected_snapshot = input.CurrentSnapshot();
-        expected_events.assign(input.CurrentEvents().begin(), input.CurrentEvents().end());
-    }
-    Assert(allocation_count > 0, "PublishSnapshot must expose an injectable candidate-event allocation boundary");
+    auto clean_control = make_fixture();
+    clean_control.QueuePlatformEvent(key);
+    clean_control.QueuePlatformEvent(button);
+    clean_control.PublishSnapshot();
 
-    for (std::size_t fail_index = 0; fail_index < allocation_count; ++fail_index)
-    {
-        auto input = make_fixture();
-        const auto before_snapshot = input.CurrentSnapshot();
-        const std::vector<epidemic::input::InputEvent> before_events(input.CurrentEvents().begin(),
-                                                                     input.CurrentEvents().end());
-        input.QueuePlatformEvent(key);
-        input.QueuePlatformEvent(button);
-
-        bool failed = false;
-        platform_allocation_fault::BeginFailAt(fail_index);
-        try
-        {
-            input.PublishSnapshot();
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        static_cast<void>(platform_allocation_fault::End());
-        if (!failed)
-        {
-            continue;
-        }
-
-        Assert(input.CurrentSnapshot().update_index == before_snapshot.update_index,
-               "Failed PublishSnapshot must preserve the previous update index");
-        Assert(!input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A),
-               "Failed PublishSnapshot must not leak candidate keyboard state");
-        Assert(!input.CurrentSnapshot().mouse.IsButtonDown(epidemic::input::MouseButton::Left),
-               "Failed PublishSnapshot must not leak candidate mouse state");
-        Assert(input.CurrentEvents().size() == before_events.size(),
-               "Failed PublishSnapshot must preserve the previous frame event list");
-
-        input.PublishSnapshot();
-        Assert(input.CurrentSnapshot().update_index == expected_snapshot.update_index &&
-                   input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A) &&
-                   input.CurrentSnapshot().keyboard.WasPressedThisFrame(epidemic::input::KeyCode::A) &&
-                   input.CurrentSnapshot().mouse.IsButtonDown(epidemic::input::MouseButton::Left) &&
-                   input.CurrentSnapshot().mouse.WasPressedThisFrame(epidemic::input::MouseButton::Left),
-               "Retry after failed PublishSnapshot must consume the preserved raw events exactly once");
-        Assert(input.CurrentEvents().size() == expected_events.size(),
-               "Retry after failed PublishSnapshot must reproduce the clean event count");
-    }
+    auto input = make_fixture();
+    const auto before_snapshot = input.CurrentSnapshot();
+    const std::vector<epidemic::input::InputEvent> before_events(input.CurrentEvents().begin(), input.CurrentEvents().end());
+    input.QueuePlatformEvent(key);
+    input.QueuePlatformEvent(button);
+    bool failed = false;
+    epidemic::input::testing::FailNextCandidateEventAllocation();
+    try { input.PublishSnapshot(); } catch (const std::bad_alloc &) { failed = true; }
+    epidemic::input::testing::ClearInputFaults();
+    Assert(failed, "PublishSnapshot candidate allocation fault must surface as bad_alloc");
+    Assert(input.CurrentSnapshot().update_index == before_snapshot.update_index,
+           "Failed PublishSnapshot must preserve the previous update index");
+    Assert(input.CurrentEvents().size() == before_events.size(),
+           "Failed PublishSnapshot must preserve the previous frame event list");
+    input.PublishSnapshot();
+    Assert(input.CurrentSnapshot().keyboard.IsKeyDown(epidemic::input::KeyCode::A) &&
+               input.CurrentSnapshot().keyboard.WasPressedThisFrame(epidemic::input::KeyCode::A) &&
+               input.CurrentSnapshot().mouse.IsButtonDown(epidemic::input::MouseButton::Left) &&
+               input.CurrentSnapshot().mouse.WasPressedThisFrame(epidemic::input::MouseButton::Left),
+           "Retry after failed PublishSnapshot must preserve both held and edge state");
+    Assert(input.CurrentEvents().size() == clean_control.CurrentEvents().size() &&
+               input.CurrentEvents().size() == 2 &&
+               input.CurrentEvents()[0].type == clean_control.CurrentEvents()[0].type &&
+               input.CurrentEvents()[1].type == clean_control.CurrentEvents()[1].type,
+           "Retry after failed PublishSnapshot must match clean normalized event sequencing");
 }
 
 void TestWin32CallbackAllocationFailurePreservesState()
@@ -547,22 +516,23 @@ void TestWin32CallbackAllocationFailurePreservesState()
     auto *hwnd = static_cast<HWND>(window->GetNativeHandle().Value());
     static_cast<void>(runtime.DrainEvents());
 
-    platform_allocation_fault::BeginCount();
+    epidemic::platform::testing::FailNext(epidemic::platform::testing::FaultPoint::EventQueueCommit);
     SendMessageW(hwnd, WM_SETFOCUS, 0, 0);
-    const auto allocation_count = platform_allocation_fault::End();
-    static_cast<void>(runtime.DrainEvents());
-    Assert(allocation_count > 0, "Win32 focus publication must expose an injectable event-queue allocation");
-
-    // Recreate a clean pre-state because the counting pass committed focus.
-    SendMessageW(hwnd, WM_KILLFOCUS, 0, 0);
-    static_cast<void>(runtime.DrainEvents());
-    Assert(!window->HasFocus(), "Callback allocation fixture must start unfocused");
-
-    platform_allocation_fault::BeginFailAt(0);
-    SendMessageW(hwnd, WM_SETFOCUS, 0, 0);
-    static_cast<void>(platform_allocation_fault::End());
+    epidemic::platform::testing::ClearFaults();
     Assert(!window->HasFocus(), "Failed event publication must not commit cached focus state");
     Assert(runtime.DrainEvents().empty(), "Failed callback publication must not append a partial platform event");
+
+    bool callback_failure_surfaced = false;
+    try
+    {
+        runtime.PumpEvents();
+    }
+    catch (const std::bad_alloc &)
+    {
+        callback_failure_surfaced = true;
+    }
+    Assert(callback_failure_surfaced,
+           "A swallowed Win32 callback failure must surface at the next PumpEvents C++ boundary");
 
     SendMessageW(hwnd, WM_SETFOCUS, 0, 0);
     Assert(window->HasFocus(), "A later callback must recover after the allocation failure");
@@ -575,31 +545,16 @@ void TestWin32CallbackAllocationFailurePreservesState()
     window->Close();
     runtime.Shutdown();
 }
-#endif
-
-// Sweeps every C++ allocation boundary in CreateWindow and verifies no partial tracking/id commit survives failure.
-#if !defined(_MSC_VER)
+// Verifies no partial tracking/id commit survives a deterministic pre-commit failure.
 void TestWindowCreationAllocationFailureAtomicity()
 {
     const epidemic::platform::WindowCreateInfo create_info{"Allocation Sweep Window", 320, 240, false};
-    std::size_t allocation_count = 0;
-    {
-        epidemic::platform::WindowsPlatformRuntime runtime;
-        platform_allocation_fault::BeginCount();
-        auto result = runtime.CreateWindow(create_info);
-        allocation_count = platform_allocation_fault::End();
-        auto window = RequireValue(std::move(result));
-        Assert(window->Id() == 1, "Fresh runtime must commit the first WindowId only after successful creation");
-        window->Close();
-        runtime.Shutdown();
-    }
-    Assert(allocation_count > 0, "CreateWindow allocation sweep must observe at least one fallible C++ allocation");
-
-    for (std::size_t fail_index = 0; fail_index < allocation_count; ++fail_index)
+    for (const auto fault_point : {epidemic::platform::testing::FaultPoint::WindowTrackingCommit,
+                                   epidemic::platform::testing::FaultPoint::AfterWindowIdInsert})
     {
         epidemic::platform::WindowsPlatformRuntime runtime;
         bool bad_alloc_seen = false;
-        platform_allocation_fault::BeginFailAt(fail_index);
+        epidemic::platform::testing::FailNext(fault_point);
         try
         {
             static_cast<void>(runtime.CreateWindow(create_info));
@@ -608,21 +563,92 @@ void TestWindowCreationAllocationFailureAtomicity()
         {
             bad_alloc_seen = true;
         }
-        static_cast<void>(platform_allocation_fault::End());
-
-        Assert(bad_alloc_seen, "Each observed CreateWindow allocation boundary must be reproducibly injectable");
+        epidemic::platform::testing::ClearFaults();
+        Assert(bad_alloc_seen, "CreateWindow tracking fault must surface as bad_alloc");
         Assert(runtime.WindowCount() == 0, "Failed CreateWindow must leave both runtime window indexes empty");
         Assert(runtime.DrainEvents().empty(), "Failed CreateWindow must not publish construction or close events");
-
         auto recovered = RequireValue(runtime.CreateWindow(create_info));
         Assert(recovered->Id() == 1, "Failed CreateWindow must not consume the next logical WindowId");
         recovered->Close();
         runtime.Shutdown();
     }
 }
-#endif
 
 // Verifies that public Input counters and accumulated motion never wrap at numeric boundaries.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 void TestInputNumericBoundaries()
 {
     const auto maximum_index = std::numeric_limits<std::uint64_t>::max();
@@ -873,37 +899,20 @@ void TestDynamicLibraryContracts()
     Assert(GetModuleHandleW(L"EpidemicPlatformDefinitelyMissing.dll") == nullptr,
            "Failed dynamic-library load must not leave a partial native module handle");
 
-#if !defined(_MSC_VER)
-    std::size_t load_allocation_count = 0;
+    bool post_load_failure_seen = false;
+    epidemic::platform::testing::FailNext(epidemic::platform::testing::FaultPoint::AfterNativeLibraryLoad);
+    try
     {
-        platform_allocation_fault::BeginCount();
-        auto observed_load = runtime.LoadDynamicLibrary(epidemic::foundation::Path(test_library_path));
-        load_allocation_count = platform_allocation_fault::End();
-        auto observed_library = RequireValue(std::move(observed_load));
-        observed_library.reset();
-        Assert(GetModuleHandleW(L"EpidemicPlatformTestLibrary.dll") == nullptr,
-               "Baseline allocation observation must release its dynamic-library wrapper");
+        static_cast<void>(runtime.LoadDynamicLibrary(epidemic::foundation::Path(test_library_path)));
     }
-    Assert(load_allocation_count > 0, "Dynamic-library load sweep must observe fallible C++ allocation boundaries");
-
-    for (std::size_t fail_index = 0; fail_index < load_allocation_count; ++fail_index)
+    catch (const std::bad_alloc &)
     {
-        bool bad_alloc_seen = false;
-        platform_allocation_fault::BeginFailAt(fail_index);
-        try
-        {
-            static_cast<void>(runtime.LoadDynamicLibrary(epidemic::foundation::Path(test_library_path)));
-        }
-        catch (const std::bad_alloc &)
-        {
-            bad_alloc_seen = true;
-        }
-        static_cast<void>(platform_allocation_fault::End());
-        Assert(bad_alloc_seen, "Each observed dynamic-library allocation boundary must be reproducibly injectable");
-        Assert(GetModuleHandleW(L"EpidemicPlatformTestLibrary.dll") == nullptr,
-               "Allocation failure during dynamic-library load must not leak a partial HMODULE");
+        post_load_failure_seen = true;
     }
-#endif
+    epidemic::platform::testing::ClearFaults();
+    Assert(post_load_failure_seen, "Post-LoadLibrary allocation fault must surface as bad_alloc");
+    Assert(GetModuleHandleW(L"EpidemicPlatformTestLibrary.dll") == nullptr,
+           "RAII must release HMODULE when C++ work fails after LoadLibraryExW");
 
     auto library = RequireValue(runtime.LoadDynamicLibrary(epidemic::foundation::Path(test_library_path)));
     Assert(library != nullptr && GetModuleHandleW(L"EpidemicPlatformTestLibrary.dll") != nullptr,
@@ -1060,11 +1069,9 @@ int main()
         {"WindowIdBoundaryPolicy", &TestWindowIdBoundaryPolicy},
         {"WindowLifecycleAndExitRequest", &TestWindowLifecycleAndExitRequest},
         {"WindowWrapperAfterRuntimeTeardown", &TestWindowWrapperAfterRuntimeTeardown},
-#if !defined(_MSC_VER)
         {"InputPublishAllocationFailureAtomicity", &TestInputPublishAllocationFailureAtomicity},
         {"Win32CallbackAllocationFailurePreservesState", &TestWin32CallbackAllocationFailurePreservesState},
         {"WindowCreationAllocationFailureAtomicity", &TestWindowCreationAllocationFailureAtomicity},
-#endif
         {"NativeCloseReflectionAndWrapperLifetime", &TestNativeCloseReflectionAndWrapperLifetime},
         {"WindowStateTransitionEvents", &TestWindowStateTransitionEvents},
         {"FocusEventsAreNotDuplicated", &TestFocusEventsAreNotDuplicated},

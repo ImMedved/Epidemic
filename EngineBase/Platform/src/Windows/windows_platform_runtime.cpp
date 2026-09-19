@@ -1,6 +1,7 @@
 #include <Epidemic/Platform/windows_platform_runtime.h>
 
 #include "Windows/window_id_policy.h"
+#include "Windows/platform_test_hooks.h"
 
 #define NOMINMAX
 #define WIN32_LEAN_AND_MEAN
@@ -34,6 +35,8 @@ namespace epidemic::platform
 
 namespace
 {
+thread_local std::optional<testing::FaultPoint> g_platform_fault_point;
+
 constexpr std::uint8_t kMouseButtonLeft = 0;
 constexpr std::uint8_t kMouseButtonRight = 1;
 constexpr std::uint8_t kMouseButtonMiddle = 2;
@@ -351,6 +354,26 @@ class ScopedModuleHandle final
 };
 } // namespace
 
+void testing::FailNext(FaultPoint fault_point) noexcept
+{
+    g_platform_fault_point = fault_point;
+}
+
+void testing::ClearFaults() noexcept
+{
+    g_platform_fault_point.reset();
+}
+
+bool testing::Consume(FaultPoint fault_point) noexcept
+{
+    if (g_platform_fault_point != fault_point)
+    {
+        return false;
+    }
+    g_platform_fault_point.reset();
+    return true;
+}
+
 struct WindowsPlatformRuntime::Impl
 {
     struct RuntimeToken
@@ -536,17 +559,23 @@ struct WindowsPlatformRuntime::Impl
                     SetWindowLongPtrW(hwnd_, GWLP_USERDATA, 0);
                 }
                 hwnd_ = nullptr;
-                if (tracked_)
+                // Preserve tracking until a failed close notification can be retried. This keeps
+                // an unavoidable native WM_DESTROY from silently losing its EngineBase event.
+                if (publish_close)
+                {
+                    try
+                    {
+                        QueueEvent(*owner, MakeWindowEvent(PlatformEventType::WindowCloseRequested, id_));
+                    }
+                    catch (...)
+                    {
+                        close_event_pending_ = true;
+                    }
+                }
+                if (tracked_ && !close_event_pending_)
                 {
                     tracked_ = false;
                     owner->OnWindowDestroyed(id_);
-                }
-
-                // Native destruction bookkeeping is authoritative and must complete even if the
-                // best-effort close notification cannot allocate.
-                if (publish_close)
-                {
-                    QueueEvent(*owner, MakeWindowEvent(PlatformEventType::WindowCloseRequested, id_));
                 }
                 return 0;
             }
@@ -676,9 +705,12 @@ struct WindowsPlatformRuntime::Impl
             }
             catch (...)
             {
-                // A Win32 callback boundary must never propagate a C++ exception. State-changing
-                // handlers prepare event publication before commit so swallowing here preserves
-                // the previous retryable state whenever publication itself failed.
+                // Win32 callbacks cannot propagate C++ exceptions. Preserve the failure and surface
+                // it at the next PumpEvents C++ boundary instead of silently losing the native message.
+                if (auto *owner = TryOwner())
+                {
+                    owner->RecordCallbackFailure(std::current_exception());
+                }
                 return 0;
             }
         }
@@ -729,8 +761,9 @@ struct WindowsPlatformRuntime::Impl
                     }
                     catch (...)
                     {
-                        // Close is a noexcept cleanup boundary. The notification is best effort here.
+                        // Keep the notification durable and retry it from the runtime reconciliation pass.
                         close_requested_ = true;
+                        close_event_pending_ = true;
                     }
                 }
                 else
@@ -836,6 +869,32 @@ struct WindowsPlatformRuntime::Impl
             close_requested_ = true;
         }
 
+      public:
+        [[nodiscard]] bool HasPendingCloseEvent() const noexcept { return close_event_pending_; }
+
+        void FlushPendingCloseEventNoThrow(Impl &owner) noexcept
+        {
+            if (!close_event_pending_)
+            {
+                return;
+            }
+            try
+            {
+                QueueEvent(owner, MakeWindowEvent(PlatformEventType::WindowCloseRequested, id_));
+                close_event_pending_ = false;
+                if (hwnd_ == nullptr && tracked_)
+                {
+                    tracked_ = false;
+                    owner.OnWindowDestroyed(id_);
+                }
+            }
+            catch (...)
+            {
+            }
+        }
+
+      private:
+
         void QueueEvent(Impl &owner, PlatformEvent event)
         {
             QueueEvents(owner, &event, 1);
@@ -877,6 +936,7 @@ struct WindowsPlatformRuntime::Impl
         bool focused_{false};
         bool minimized_{false};
         bool close_requested_{false};
+        bool close_event_pending_{false};
         bool mouse_captured_{false};
         std::uint8_t mouse_button_mask_{0};
         bool tracked_{false};
@@ -895,6 +955,7 @@ struct WindowsPlatformRuntime::Impl
     bool class_registered{false};
     std::atomic_bool exit_requested{false};
     bool shutdown{false};
+    std::exception_ptr pending_callback_failure;
     std::thread::id main_thread_id{std::this_thread::get_id()};
     mutable std::mutex mutex;
 
@@ -1045,12 +1106,22 @@ struct WindowsPlatformRuntime::Impl
         window->EnsureClientSize(create_info.client_width, create_info.client_height);
         try
         {
+            if (testing::Consume(testing::FaultPoint::WindowTrackingCommit))
+            {
+                throw std::bad_alloc{};
+            }
             std::scoped_lock lock(mutex);
             const auto [id_it, id_inserted] = windows_by_id.emplace(window_id, window);
             static_cast<void>(id_it);
             if (!id_inserted)
             {
                 throw std::logic_error("WindowsPlatformRuntime generated a duplicate WindowId");
+            }
+
+            if (testing::Consume(testing::FaultPoint::AfterWindowIdInsert))
+            {
+                windows_by_id.erase(window_id);
+                throw std::bad_alloc{};
             }
 
             try
@@ -1123,6 +1194,8 @@ struct WindowsPlatformRuntime::Impl
             throw std::runtime_error("WindowsPlatformRuntime is shut down: PumpEvents");
         }
 
+        RethrowPendingCallbackFailure();
+
         MSG message{};
         while (PeekMessageW(&message, nullptr, 0, 0, PM_REMOVE))
         {
@@ -1134,6 +1207,62 @@ struct WindowsPlatformRuntime::Impl
 
             TranslateMessage(&message);
             DispatchMessageW(&message);
+            RethrowPendingCallbackFailure();
+        }
+        ReconcilePendingCloseEvents();
+    }
+
+    void RecordCallbackFailure(std::exception_ptr failure) noexcept
+    {
+        if (!pending_callback_failure)
+        {
+            pending_callback_failure = std::move(failure);
+        }
+    }
+
+    void RethrowPendingCallbackFailure()
+    {
+        if (!pending_callback_failure)
+        {
+            return;
+        }
+        auto failure = std::exchange(pending_callback_failure, {});
+        std::rethrow_exception(failure);
+    }
+
+    // Retries close notifications that could not allocate at the Win32 callback boundary.
+    void ReconcilePendingCloseEvents() noexcept
+    {
+        while (true)
+        {
+            std::shared_ptr<WindowsWindow> pending_window;
+            try
+            {
+                std::scoped_lock lock(mutex);
+                for (const auto &[window_id, window] : windows_by_id)
+                {
+                    static_cast<void>(window_id);
+                    if (window->HasPendingCloseEvent())
+                    {
+                        pending_window = window;
+                        break;
+                    }
+                }
+            }
+            catch (...)
+            {
+                return;
+            }
+
+            if (!pending_window)
+            {
+                return;
+            }
+            pending_window->FlushPendingCloseEventNoThrow(*this);
+            if (pending_window->HasPendingCloseEvent())
+            {
+                return;
+            }
         }
     }
 
@@ -1146,6 +1275,10 @@ struct WindowsPlatformRuntime::Impl
         }
 
         std::scoped_lock lock(mutex);
+        if (testing::Consume(testing::FaultPoint::EventQueueCommit))
+        {
+            throw std::bad_alloc{};
+        }
         queued_events.reserve(queued_events.size() + event_count);
         for (std::size_t index = 0; index < event_count; ++index)
         {
@@ -1179,6 +1312,7 @@ struct WindowsPlatformRuntime::Impl
         // Drains all queued PlatformEvent values.
     [[nodiscard]] std::vector<PlatformEvent> DrainEvents()
     {
+        ReconcilePendingCloseEvents();
         std::scoped_lock lock(mutex);
         std::vector<PlatformEvent> drained_events;
         drained_events.swap(queued_events);
@@ -1308,6 +1442,10 @@ WindowsPlatformRuntime::LoadDynamicLibrary(const epidemic::foundation::Path &pat
     }
 
     ScopedModuleHandle scoped_module(module_handle);
+    if (testing::Consume(testing::FaultPoint::AfterNativeLibraryLoad))
+    {
+        throw std::bad_alloc{};
+    }
     const auto library_name = epidemic::foundation::Path(canonical_path).GenericString();
     auto dynamic_library = std::make_shared<WindowsDynamicLibrary>(library_name, scoped_module.Get());
     static_cast<void>(scoped_module.Release());

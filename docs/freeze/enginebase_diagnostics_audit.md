@@ -36,7 +36,7 @@ The deleted copy constructor and copy assignment are compile-time lifecycle cons
 
 ## Public contract: thread context
 
-`SetCurrentThreadName` replaces only the calling thread's diagnostic name and accepts an empty name to clear it. `GetCurrentThreadName` returns an owning `std::string` copy. A previously returned value remains valid after later renames and after the originating thread exits. Thread-local names are diagnostic labels only and are never identity or ownership keys.
+`SetCurrentThreadName` is a best-effort `noexcept` diagnostic boundary. It replaces only the calling thread's diagnostic name and accepts an empty name to clear it; allocation failure preserves the previous name and never terminates a worker. `GetCurrentThreadName` returns an owning `std::string` copy. A previously returned value remains valid after later renames and after the originating thread exits. Thread-local names are diagnostic labels only and are never identity or ownership keys.
 
 ## Failure atomicity and no-op review
 
@@ -57,6 +57,8 @@ No multi-container engine transaction, external prepare/commit protocol, durable
 `DIAG-005 scope-collector-redirection`: `ProfileScope` previously re-read the global collector in its destructor, so replacing the collector while a scope was active redirected the event. A scope now captures and retains the collector selected at construction.
 
 `DIAG-006 disabled-profile-allocation`: disabled profiling previously copied the scope name before checking the enable gate, so a diagnostic allocation failure could affect otherwise disabled engine execution. The disabled path now returns before name capture, and a targeted allocation-fault regression verifies that no allocation is attempted.
+
+`DIAG-007 thread-name-allocation`: thread-name assignment could throw after worker construction or from a worker entry point. The setter now accepts `string_view`, is `noexcept`, and preserves the prior diagnostic label if storage allocation fails.
 
 ## Coverage cross-check note
 

@@ -150,7 +150,6 @@ SimpleTaskScheduler::SimpleTaskScheduler(std::size_t worker_count) : state_(std:
         throw;
     }
 
-    diagnostics::GlobalCounters().Set(diagnostics::CounterId::WorkerCount, static_cast<std::int64_t>(worker_names_.size()));
 }
 
 // Requests shutdown during destruction so owned workers are released.

@@ -2,7 +2,7 @@
 
 Scope: Goal 2.5 only. Module: `EngineBase/Platform`, target `EpidemicPlatform`.
 
-Status: `LOCAL_READY`. The original Linux syntax/stub audit was followed by strict MSVC Debug and Release execution of the real Win32 message pump on Windows 11; `EpidemicPlatformInputIntegrationTests` passes in both Base `10/10` profiles.
+Status: `LOCAL_READY`. The original Linux syntax/stub audit was followed by strict MSVC Debug and Release execution of the real Win32 message pump on Windows 11; `EpidemicPlatformInputIntegrationTests` passes in both Base `14/14` profiles.
 
 ## Reviewed responsibility and ownership
 
@@ -48,7 +48,7 @@ Resize publication is edge-based. Repeated equal positive dimensions do not repu
 
 Focus gain/loss is edge-based. Mouse capture state is changed before calling `SetCapture`/`ReleaseCapture`, so reentrant `WM_CAPTURECHANGED` cannot duplicate capture transition events. Native key, mouse, wheel and movement messages are normalized once per message.
 
-`DrainEvents()` removes the current queue; a second drain without new input is empty. Pumping again without new native messages cannot replay prior events.
+`DrainEvents()` removes the current queue; a second drain without new input is empty. Pumping again without new native messages cannot replay prior events. If an event-queue allocation fails in a `noexcept` WndProc while handling close, the wrapper retains a pending close notification and the runtime retries it before later pump/drain calls; runtime tracking is released only after successful delivery.
 
 ## Public contract: dynamic libraries
 
@@ -58,11 +58,11 @@ Focus gain/loss is edge-based. Mouse capture state is changed before calling `Se
 
 ## Failure atomicity and no-op review
 
-Rejected zero-size creation, wrong-thread creation and terminal-runtime creation do not publish a window. Native/C++ creation failure does not advance `next_window_id`. Two-index registration checks both insertions, rolls back the first map insertion if the second insertion fails, then destroys the native window. `TestWindowCreationAllocationFailureAtomicity` sweeps every observed C++ allocation boundary and verifies empty indexes, empty event publication and unchanged next id after each injected `std::bad_alloc`. `TestWindowIdBoundaryPolicy` separately verifies invalid zero, the final allocatable id and the exhausted sentinel without uint64 wrap.
+Rejected zero-size creation, wrong-thread creation and terminal-runtime creation do not publish a window. Native/C++ creation failure does not advance `next_window_id`. Two-index registration checks both insertions, rolls back the first map insertion if the second insertion fails, then destroys the native window. `TestWindowCreationAllocationFailureAtomicity` deterministically injects failure both before index publication and between the two map insertions, and verifies empty indexes, empty event publication and unchanged next id. `TestWindowIdBoundaryPolicy` separately verifies invalid zero, the final allocatable id and the exhausted sentinel without uint64 wrap.
 
 Duplicate `WM_CLOSE`, duplicate focus messages, duplicate minimize messages and repeated same-size resize messages are observable no-ops. Repeated `Close()` after native destruction and repeated successful `Shutdown()` are no-ops. Repeated `DrainEvents()` does not replay state.
 
-Platform persistence criteria are `N/A`: all authoritative state is process/native-runtime state and no snapshot API is exposed. Durable reconciliation and external prepare/commit/rollback are also `N/A` for this module.
+Platform persistence criteria are `N/A`: all authoritative state is process/native-runtime state and no snapshot API is exposed. The close-notification retry is in-memory reconciliation for an unavoidable native destruction; it is not persistence.
 
 ## Defect regressions fixed by this audit
 
@@ -72,7 +72,7 @@ Platform persistence criteria are `N/A`: all authoritative state is process/nati
 
 `PLAT-003`: destroying a native window while the runtime held the last `shared_ptr` could release the wrapper inside its own WndProc and leave `GWLP_USERDATA` dangling for later teardown messages. Fixed with WndProc keep-alive plus clearing native userdata before runtime ownership release. Covered by the ownerless-destruction leg of `TestNativeCloseReflectionAndWrapperLifetime`.
 
-`PLAT-004`: a successful `LoadLibraryExW` followed by C++ wrapper allocation/construction failure had no RAII guard for the acquired `HMODULE`. Fixed with `ScopedModuleHandle`; `TestDynamicLibraryContracts` now sweeps every observed C++ allocation boundary of a successful load and proves that injected `std::bad_alloc` never leaves the DLL loaded.
+`PLAT-004`: a successful `LoadLibraryExW` followed by C++ wrapper allocation/construction failure had no RAII guard for the acquired `HMODULE`. Fixed with `ScopedModuleHandle`; `TestDynamicLibraryContracts` injects a deterministic failure immediately after the native load and proves that `std::bad_alloc` never leaves the DLL loaded.
 
 `PLAT-005`: `ReleaseCapture()` could synchronously emit `WM_CAPTURECHANGED` before local capture state was updated, producing duplicate capture-change publication. Fixed by committing local capture state before the native call and covered by `TestMouseCaptureEventsAreNotDuplicated`.
 
@@ -81,6 +81,8 @@ Platform persistence criteria are `N/A`: all authoritative state is process/nati
 `PLAT-007`: window ids were consumed before successful native creation and two runtime indexes did not have an explicit rollback path. Fixed by committing the id only after native creation plus both checked index insertions, with rollback of the first index on second-index failure. The complete observed allocation boundary sweep is covered by `TestWindowCreationAllocationFailureAtomicity`.
 
 `PLAT-008`: a closed wrapper that outlived `WindowsPlatformRuntime` still resolved its dead owner before recognizing that `Show()` had no native window left. `Show()` and `Close()` now return before owner lookup when the native handle is already invalid; `TestWindowWrapperAfterRuntimeTeardown` verifies the surviving wrapper remains inert after runtime teardown.
+
+`PLAT-009`: a `std::bad_alloc` from event publication at a `noexcept` Win32 callback boundary was swallowed without a durable close-event retry. The runtime now keeps the close notification pending and reconciles it before pump/drain; deterministic `EventQueueCommit` fault injection verifies callback state remains retryable.
 
 ## Goal 2.5 checklist evidence
 
@@ -110,7 +112,7 @@ The process-wide `operator new` fault sweep remains enabled on the GCC/Clang con
 
 ## Corrective patch 2026-09-18
 
-`PLAT-009`: C++ exceptions from event-vector growth could escape the Win32 callback boundary. `WindowsWindow::HandleMessage` and `StaticWindowProc` are now catch-all callback boundaries. State-changing messages prepare event publication before cached-state commit so an allocation failure can be swallowed without exposing a half transition.
+`PLAT-009`: C++ exceptions from event-vector growth could escape the Win32 callback boundary. `WindowsWindow::HandleMessage` and `StaticWindowProc` are now catch-all callback boundaries. State-changing messages prepare event publication before cached-state commit; a callback failure is durably retained and rethrown by the next `PumpEvents` C++ boundary instead of being silently lost.
 
 `PLAT-010`: `WM_SIZE`, focus loss/gain and mouse-button/capture handling could commit cached state before a fallible event append, making cached state disagree with the event stream. Each affected message now prepares one atomic event batch first and commits cached state afterward. Native capture calls occur only after successful publication.
 
@@ -122,4 +124,4 @@ The process-wide `operator new` fault sweep remains enabled on the GCC/Clang con
 
 `PLAT-014`: public clock wording could be read as wall-clock semantics even though the implementation uses the Foundation steady-clock boundary. Public comments now state the monotonic steady-clock contract explicitly.
 
-`TestWin32CallbackAllocationFailurePreservesState` injects allocation failure into focus event publication, verifies no exception crosses `SendMessageW`, verifies cached focus/event queue remain unchanged, and verifies a later callback publishes one transition. As with the existing Platform allocation sweeps, this replacement-allocator test is intentionally excluded under MSVC Debug STL and remains evidence for supported non-MSVC fault configurations; real Win32 lifecycle regressions remain in the Windows suite.
+`TestWin32CallbackAllocationFailurePreservesState` injects allocation failure into focus event publication, verifies no exception crosses `SendMessageW`, verifies the next `PumpEvents` call surfaces the retained failure, verifies cached focus/event queue remain unchanged, and verifies a later callback publishes one transition. The deterministic Platform fault hooks execute under the Windows/MSVC qualification matrix.

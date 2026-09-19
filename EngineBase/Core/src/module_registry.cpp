@@ -54,6 +54,55 @@ std::string BuildLifecycleMessage(std::string_view action, const ModuleManifest 
     message += ")";
     return message;
 }
+
+void LogLifecycleNoThrow(diagnostics::ILogger &logger, diagnostics::LogLevel level, std::string_view action,
+                         const ModuleManifest &manifest) noexcept
+{
+    try
+    {
+        logger.Log(level, "Core", "Lifecycle", BuildLifecycleMessage(action, manifest));
+    }
+    catch (...)
+    {
+        // Formatting and logging are observational and cannot stop lifecycle work.
+    }
+}
+
+void LogModuleCountNoThrow(diagnostics::ILogger &logger, std::size_t module_count) noexcept
+{
+    try
+    {
+        logger.Info("Core", "Modules", "Registered modules: " + std::to_string(module_count));
+    }
+    catch (...)
+    {
+    }
+}
+
+// Keeps diagnostic formatting from masking the cleanup failure being reported.
+void LogShutdownFailureNoThrow(diagnostics::ILogger &logger, const ModuleManifest &manifest,
+                               std::exception_ptr failure) noexcept
+{
+    try
+    {
+        try
+        {
+            std::rethrow_exception(failure);
+        }
+        catch (const std::exception &exception)
+        {
+            logger.Error("Core", "Lifecycle", "Module shutdown failed for '" + manifest.id + "': " + exception.what());
+        }
+        catch (...)
+        {
+            logger.Error("Core", "Lifecycle", "Module shutdown failed for '" + manifest.id + "' with unknown exception");
+        }
+    }
+    catch (...)
+    {
+        // A best-effort diagnostic must never replace the original cleanup failure.
+    }
+}
 } // namespace
 
 // Adds a module to the registry before bootstrap begins.
@@ -118,7 +167,7 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
         throw std::runtime_error("Invalid state for module bootstrap");
     }
 
-    logger.Info("Core", "Modules", "Registered modules: " + std::to_string(modules_.size()));
+    LogModuleCountNoThrow(logger, modules_.size());
     EnsureExecutionPlan(logger);
     bootstrapped_count_ = 0;
     std::fill(shutdown_completed_.begin(), shutdown_completed_.end(), std::uint8_t{0});
@@ -128,7 +177,7 @@ void ModuleRegistry::BootstrapAll(ServiceContainer &services, diagnostics::ILogg
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Bootstrapping", module->Manifest()));
+            LogLifecycleNoThrow(logger, diagnostics::LogLevel::Info, "Bootstrapping", module->Manifest());
             module->Bootstrap(services);
             ++bootstrapped_count_;
         }
@@ -156,7 +205,7 @@ void ModuleRegistry::InitializeAll(ServiceContainer &services, diagnostics::ILog
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Initializing", module->Manifest()));
+            LogLifecycleNoThrow(logger, diagnostics::LogLevel::Info, "Initializing", module->Manifest());
             module->Initialize(services);
         }
 
@@ -183,7 +232,7 @@ void ModuleRegistry::TickAll(ServiceContainer &services, diagnostics::ILogger &l
         for (const auto index : execution_plan_)
         {
             const auto &module = modules_[index];
-            logger.Debug("Core", "Lifecycle", BuildLifecycleMessage("Ticking", module->Manifest()));
+            LogLifecycleNoThrow(logger, diagnostics::LogLevel::Debug, "Ticking", module->Manifest());
             module->Tick(services, frame_context);
         }
     }
@@ -221,28 +270,28 @@ void ModuleRegistry::ShutdownAll(ServiceContainer &services, diagnostics::ILogge
         }
 
         const auto &module = modules_[execution_index];
-        logger.Info("Core", "Lifecycle", BuildLifecycleMessage("Shutting down", module->Manifest()));
+        LogLifecycleNoThrow(logger, diagnostics::LogLevel::Info, "Shutting down", module->Manifest());
         try
         {
             module->Shutdown(services);
             shutdown_completed_[execution_index] = 1;
         }
-        catch (const std::exception &exception)
+        catch (const std::exception &)
         {
-            logger.Error("Core", "Lifecycle", "Module shutdown failed for '" + module->Manifest().id + "': " +
-                                                 std::string(exception.what()));
+            const auto failure = std::current_exception();
+            LogShutdownFailureNoThrow(logger, module->Manifest(), failure);
             if (!first_error)
             {
-                first_error = std::current_exception();
+                first_error = failure;
             }
         }
         catch (...)
         {
-            logger.Error("Core", "Lifecycle", "Module shutdown failed for '" + module->Manifest().id +
-                                                 "' with unknown exception");
+            const auto failure = std::current_exception();
+            LogShutdownFailureNoThrow(logger, module->Manifest(), failure);
             if (!first_error)
             {
-                first_error = std::current_exception();
+                first_error = failure;
             }
         }
     }

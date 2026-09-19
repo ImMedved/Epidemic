@@ -28945,6 +28945,20 @@
       "scope": "epidemic::gameplay::traversal::TraversalSessionId",
       "signature": "[[nodiscard]] constexpr bool operator==(const TraversalSessionId&)const noexcept=default;"
     },
+    "a50a677dfa97109a": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Core/include/Epidemic/Core/service_container.h",
+      "module": "EngineBase/Core",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::core::ServiceContainer",
+      "signature": "template <typename TService,typename TFactory> std::shared_ptr<TService> RegisterInstanceFromFactoryAtomic(TFactory&&factory)"
+    },
     "a50df106f8d19771": {
       "classification": "MUTATOR",
       "classification_status": "REVIEWED",
@@ -39596,6 +39610,20 @@
       "scope": "epidemic::gameplay::roles_jobs::JobTaskTypeId",
       "signature": "[[nodiscard]] constexpr bool operator==(const JobTaskTypeId&)const noexcept=default;"
     },
+    "e05bf7e2368951b3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/thread_context.h",
+      "module": "EngineBase/Diagnostics",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::diagnostics",
+      "signature": "void SetCurrentThreadName(std::string_view name)noexcept;"
+    },
     "e05e89eba1275aa9": {
       "classification": "QUERY",
       "classification_status": "REVIEWED",
@@ -42696,20 +42724,6 @@
       "obligations": {},
       "scope": "epidemic::gameplay::world::WorldAlterationId",
       "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
-    },
-    "f20840933104a704": {
-      "classification": "MUTATOR",
-      "classification_status": "REVIEWED",
-      "header": "EngineBase/Diagnostics/include/Epidemic/Diagnostics/thread_context.h",
-      "module": "EngineBase/Diagnostics",
-      "obligations": {
-        "failure": "REVIEWED",
-        "noop": "REVIEWED",
-        "preconditions": "REVIEWED",
-        "success": "REVIEWED"
-      },
-      "scope": "epidemic::diagnostics",
-      "signature": "void SetCurrentThreadName(std::string name);"
     },
     "f23aa43c450db5c1": {
       "classification": "MUTATOR",
@@ -47635,6 +47649,11 @@
       "module": "EngineFramework/GameplayWorldStateOwners/AI",
       "status": "DISCOVERED"
     },
+    "46c5822fd9ff46e4": {
+      "callable_id": "e05bf7e2368951b3",
+      "module": "EngineBase/Diagnostics",
+      "status": "DISCOVERED"
+    },
     "46d00a36a0925f3a": {
       "callable_id": "cf45b1b73fb08efd",
       "module": "EngineBase/Core",
@@ -48193,11 +48212,6 @@
     "5b28fb30f21e28fc": {
       "callable_id": "f2af4acbd0a3bff9",
       "module": "EngineFramework/GameplayWorldStateOwners/Narrative",
-      "status": "DISCOVERED"
-    },
-    "5bc97586577af5bf": {
-      "callable_id": "f20840933104a704",
-      "module": "EngineBase/Diagnostics",
       "status": "DISCOVERED"
     },
     "5bd1ea645531d3de": {

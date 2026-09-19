@@ -402,46 +402,45 @@ RegisterMainSwapChain(core::Application &application,
     swap_chain_desc.surface_handle = rhi::PresentationSurfaceHandle(native_handle.Value());
 
     const auto device = services.Get<rhi::IRhiDevice>();
-    auto swap_chain_result = device->CreateSwapChain(swap_chain_desc);
-    if (!swap_chain_result.HasValue())
-    {
-        return foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>::Failure(swap_chain_result.GetError());
-    }
-
-    auto swap_chain = std::move(swap_chain_result).Value();
-    if (const auto registration_error = detail::ValidateResultRegistrationBundle<rhi::IRhiSwapChain>(
-            services, "main swap chain");
-        registration_error.has_value())
-    {
-        return foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>::Failure(*registration_error);
-    }
-
+    std::optional<foundation::Error> creation_error;
     try
     {
-        services.RegisterInstance<rhi::IRhiSwapChain>(swap_chain);
+        const auto swap_chain = services.RegisterInstanceFromFactoryAtomic<rhi::IRhiSwapChain>([&] {
+            auto result = device->CreateSwapChain(swap_chain_desc);
+            if (!result.HasValue())
+            {
+                creation_error = result.GetError();
+                return std::shared_ptr<rhi::IRhiSwapChain>{};
+            }
+            return std::move(result).Value();
+        });
+
+        if (services.Contains<diagnostics::ILogger>())
+        {
+            try
+            {
+                const auto logger = services.Get<diagnostics::ILogger>();
+                logger->Info("EngineBaseSupport", "RHI",
+                             "Registered main swap chain " + std::to_string(swap_chain->Width()) + "x" +
+                                 std::to_string(swap_chain->Height()));
+            }
+            catch (...)
+            {
+                // Diagnostics must not roll back a completed composition transaction.
+            }
+        }
+        return foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>::Success(swap_chain);
     }
     catch (const std::exception &exception)
     {
+        if (creation_error.has_value())
+        {
+            return foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>::Failure(*creation_error);
+        }
         return foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>::Failure(
             foundation::Error::Create("engine_base.support.service_registration_failed", exception.what(),
                                       "main swap chain"));
     }
-
-    if (services.Contains<diagnostics::ILogger>())
-    {
-        try
-        {
-            const auto logger = services.Get<diagnostics::ILogger>();
-            logger->Info("EngineBaseSupport", "RHI",
-                         "Main swap chain ready: " + std::to_string(swap_chain->Width()) + "x" +
-                             std::to_string(swap_chain->Height()) + ", backend=" + std::string(device->BackendName()));
-        }
-        catch (...)
-        {
-        }
-    }
-
-    return foundation::Result<std::shared_ptr<rhi::IRhiSwapChain>>::Success(std::move(swap_chain));
 }
 
 // Wires platform message pumping and platform-event drainage into the frame loop.

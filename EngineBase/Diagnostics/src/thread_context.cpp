@@ -1,7 +1,5 @@
 #include <Epidemic/Diagnostics/thread_context.h>
 
-#include <utility>
-
 namespace epidemic::diagnostics
 {
 // This file implements thread-local naming used by the logging and profiling layers.
@@ -13,9 +11,16 @@ thread_local std::string current_thread_name;
 } // namespace
 
 // Replaces the current thread's stored display name.
-void SetCurrentThreadName(std::string name)
+void SetCurrentThreadName(std::string_view name) noexcept
 {
-    current_thread_name = std::move(name);
+    try
+    {
+        current_thread_name.assign(name);
+    }
+    catch (...)
+    {
+        // Thread names are observational diagnostics and must never terminate worker entry.
+    }
 }
 
 // Returns the current thread's stored display name.

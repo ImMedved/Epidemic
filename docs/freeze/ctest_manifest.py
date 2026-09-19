@@ -11,12 +11,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 MANIFEST = ROOT / "docs" / "freeze" / "ctest_manifest.json"
 EXPECTED_PROFILES = {
-    "base-debug": {"runtime": False, "framework": False, "configuration": "Debug", "count": 10},
-    "base-release": {"runtime": False, "framework": False, "configuration": "Release", "count": 10},
-    "runtime-debug": {"runtime": True, "framework": False, "configuration": "Debug", "count": 30},
-    "runtime-release": {"runtime": True, "framework": False, "configuration": "Release", "count": 30},
-    "full-debug": {"runtime": True, "framework": True, "configuration": "Debug", "count": 90},
-    "full-release": {"runtime": True, "framework": True, "configuration": "Release", "count": 90},
+    "base-debug": {"runtime": False, "framework": False, "configuration": "Debug", "count": 14},
+    "base-release": {"runtime": False, "framework": False, "configuration": "Release", "count": 14},
+    "runtime-debug": {"runtime": True, "framework": False, "configuration": "Debug", "count": 34},
+    "runtime-release": {"runtime": True, "framework": False, "configuration": "Release", "count": 34},
+    "full-debug": {"runtime": True, "framework": True, "configuration": "Debug", "count": 94},
+    "full-release": {"runtime": True, "framework": True, "configuration": "Release", "count": 94},
 }
 
 

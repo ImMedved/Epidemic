@@ -64,6 +64,45 @@ class ServiceContainer
         RegisterInstancesAtomicWithPreCommit([] {}, std::move(instances)...);
     }
 
+    // Prepares the service-map entry before invoking a factory that may commit external state.
+    // Once the factory has returned a non-null instance, filling the reserved node and swapping
+    // the candidate map are no-throw operations, so the external owner and service graph commit together.
+    // The factory executes while the container is exclusively locked and must not re-enter this container.
+    template <typename TService, typename TFactory>
+    std::shared_ptr<TService> RegisterInstanceFromFactoryAtomic(TFactory &&factory)
+    {
+        std::unique_lock lock(mutex_);
+        if (sealed_)
+        {
+            throw std::runtime_error("Service container is sealed");
+        }
+
+        const auto key = std::type_index(typeid(TService));
+        if (services_.contains(key))
+        {
+            throw std::runtime_error("Service already registered");
+        }
+
+        auto candidate = services_;
+        candidate.reserve(candidate.size() + 1);
+        const auto [slot, inserted] = candidate.emplace(key, std::shared_ptr<void>{});
+        if (!inserted)
+        {
+            throw std::runtime_error("Service already registered");
+        }
+
+        auto instance = std::forward<TFactory>(factory)();
+        if (!instance)
+        {
+            throw std::invalid_argument("Service factory returned a null instance");
+        }
+
+        // `slot` already owns a node and shared_ptr assignment is noexcept.
+        slot->second = instance;
+        services_.swap(candidate);
+        return instance;
+    }
+
     // Stages a service bundle, runs one external strong-guarantee pre-commit action, then publishes the
     // service map with a no-allocation swap. The callback must not re-enter this ServiceContainer.
     template <typename TPreCommit, typename... TServices>

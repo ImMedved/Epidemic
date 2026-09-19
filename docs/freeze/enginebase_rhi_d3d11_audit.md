@@ -61,7 +61,7 @@ Debug validation is a separate path. When requested and available, the created d
 
 ## Regression scope and environment boundary
 
-`EpidemicRhiIntegrationTests` now contains five named cases, including the real hidden-window D3D11 smoke plus factory cleanup/debug and swap-chain recovery/lifetime cases. The integration translation unit is syntax-checked under GCC and Clang with C++20 warnings-as-errors in the current Linux audit environment. Actual D3D11 execution requires the project Windows 11/MSVC environment; the current container has no Windows SDK or D3D runtime, so the new native tests cannot be executed here. The patch therefore preserves the established Windows CTest target and adds deterministic fault seams that execute there without requiring a physical device-loss event.
+`EpidemicRhiIntegrationTests` contains five named cases, including the real hidden-window D3D11 smoke plus factory cleanup/debug and swap-chain recovery/lifetime cases. The integration translation unit is also syntax-checked under GCC and Clang with C++20 warnings-as-errors. Native D3D11 execution passed in the project Windows 11/MSVC Debug and Release matrix; deterministic fault seams exercise failure paths without requiring a physical device-loss event.
 
 ## Corrective patch 2026-09-18
 

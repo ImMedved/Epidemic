@@ -218,10 +218,11 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Core",
-      "normalized_sha256": "fb81deb93fafc5ced4744bfba6eff2866e490d424bd277cb9c90d1f99867c8de",
+      "normalized_sha256": "ecdd72799e1b4215e6a86b5e8acc8c509f61ebc26c56c6f868e232b4da297b01",
       "public_fields": [],
       "templates": [
         "template <typename TPreCommit, typename... TServices> void RegisterInstancesAtomicWithPreCommit(TPreCommit &&pre_commit, std::shared_ptr<TServices>",
+        "template <typename TService, typename TFactory> std::shared_ptr<TService>",
         "template <typename TService, typename TImplementation, typename... TArgs> std::shared_ptr<TService>",
         "template <typename TService>",
         "template <typename TService> [[nodiscard]] std::shared_ptr<TService>",
@@ -358,7 +359,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineBase/Diagnostics",
-      "normalized_sha256": "4a9ce0d90d3c2e0168d60bd231b0ceb304a25f553199a9be57c48c29d7574361",
+      "normalized_sha256": "4f86c93e5d357e2757e1a6cdf2c63e20f6055099c6785afc10bad1bcdc6bf3f9",
       "public_fields": [],
       "templates": []
     },

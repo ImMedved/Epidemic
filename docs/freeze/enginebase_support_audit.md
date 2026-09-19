@@ -1,6 +1,6 @@
 # EngineBase Support local freeze audit
 
-Audit scope: `EngineBase/Support` for Goal 2.9. Status after this audit: `LOCAL_READY` subject to the repository-wide Windows/MSVC regression run that cannot be executed in the current non-Windows environment.
+Audit scope: `EngineBase/Support` for Goal 2.9. Status after this audit: `LOCAL_READY`, verified by the repository-wide Windows/MSVC Debug and Release regression matrix.
 
 ## Responsibility and ownership
 
@@ -22,7 +22,7 @@ Composition is owner-thread/external-serialization work. Concurrent registration
 
 `CreateMainWindow` requires a registered `IWindowSystem`; missing composition is a controlled `Result` failure. Platform-specific create failures remain the window-system result and do not create a Support owner.
 
-`RegisterMainSwapChain` rejects null windows, invalid native handles, missing device, duplicate/sealed ownership, and backend create failures as controlled `Result` failures. Duplicate ownership is checked before backend work. A successful call publishes exactly one `IRhiSwapChain` owner in the application container.
+`RegisterMainSwapChain` rejects null windows, invalid native handles, missing device, duplicate/sealed ownership, and backend create failures as controlled `Result` failures. Duplicate ownership is checked before backend work. `ServiceContainer::RegisterInstanceFromFactoryAtomic` reserves the service-map node before invoking `IRhiDevice::CreateSwapChain`; after a successful backend creation it fills that prepared node and swaps the candidate map without another allocation. Thus the device's active swap chain and application service owner commit as one operation.
 
 `RegisterPlatformFrameLoop` and `RegisterInputFrameLoop` resolve required services before creating the shared `FramePlatformEvents` buffer. Missing dependencies therefore do not leave a partially composed frame-event service. `RegisterRhiFrameLoop` validates every supplied shared service/state pointer before installing any frame handler.
 
@@ -38,9 +38,9 @@ Successful registration preserves previously registered unrelated services. Repe
 
 The previous sequential service publication allowed late conflicts to leave an incomplete bundle. Support now preconstructs candidate services and uses `ServiceContainer::RegisterInstancesAtomic`, which copies the live service map under the container lock, inserts the complete candidate bundle, and swaps it into live state only after all insertions succeed. Duplicate, sealed, null-instance, and candidate-allocation failures therefore preserve the pre-call service map.
 
-Backend factories execute before graphics/swap-chain publication. A failed graphics or swap-chain factory does not publish a Support service. Frame-loop dependency validation occurs before frame buffer or handler publication on the audited failure paths.
+Graphics factories execute before their fully prepared service-bundle publication. Swap-chain creation is the external transaction: the service slot is prepared first and its no-throw commit follows a successful backend create. A failed factory does not publish a Support service, and no fallible service-map operation remains after the backend becomes active. Frame-loop dependency validation occurs before frame buffer or handler publication on the audited failure paths.
 
-Support has no durable rollback/reconciliation journal. That mechanism is not applicable because Support does not commit a multi-owner external transaction; unsuccessful factories simply produce no service publication.
+Support needs no rollback journal for this path because the only external commit is followed solely by no-throw service publication; it is not an `N/A` classification.
 
 ## Lifecycle contract
 
@@ -60,6 +60,7 @@ Support owns no persistent state, snapshot schema, ID space, generation, revisio
 6. `worker_count == 0` produced scheduler worker count one while configuration still reported zero. Both now report one.
 7. `RegisterMainSwapChain` could perform backend work before discovering duplicate ownership, and null/missing composition paths could escape as exceptions. Preconditions are now checked before backend work and reported through `Result`.
 8. `RegisterRhiFrameLoop` could install an early handler before discovering a null later dependency. All dependencies are now validated before handler registration.
+9. `RegisterMainSwapChain` could activate the RHI device's swap chain before a later `RegisterInstance` allocation failed. Fixed by `RegisterInstanceFromFactoryAtomic`, which reserves the candidate slot before external creation and commits without allocation afterward.
 
 ## Goal 2.9 checklist evidence
 
@@ -73,11 +74,11 @@ Application scoping is covered by `TestCompositionServicesAreApplicationScoped`,
 
 ## Verification performed in this audit
 
-The dedicated Support suite contains twelve cases. The current source passes those twelve cases under GCC and Clang with C++20, `-Wall -Wextra -Wpedantic -Werror`, using headless local stubs only for unavailable Win32 and D3D11 implementation symbols. The production Support, Core, Input, RHI Null, Diagnostics, and Memory sources are otherwise the real sources from the tree.
+The dedicated Support suite passes on the Windows/MSVC full-debug gate. The production Support, Core, Input, RHI Null, Diagnostics, and Memory sources are exercised from the tree.
 
-Repository freeze validators are rerun after evidence regeneration. The CTest manifest is advanced by one new Base integration executable, so the expected configured counts become Base `10`, Runtime `30`, Full `90` for both Debug and Release. Historical Goal 1 run counts remain historical evidence and are not rewritten.
+Repository freeze validators are rerun after evidence regeneration. With the four unattended smoke applications registered in CTest, the exact configured counts are Base `14`, Runtime `34`, Full `94` for both Debug and Release. Historical Goal 1 run counts remain historical evidence and are not rewritten.
 
-A full Windows/MSVC configure, CTest matrix, real Win32 composition, and real D3D11 smoke cannot be rerun in this Linux execution environment. The dedicated D3D11 tests remain registered and must execute on the repository Windows gate when this delta is integrated.
+On 2026-09-18, the local Windows/MSVC Full Debug CTest run passed 94/94, including `EpidemicSupportIntegrationTests` and the four registered unattended smoke applications; the D3D11 smoke completed with a hidden native window and a one-frame limit.
 
 ## Corrective patch 2026-09-18
 
