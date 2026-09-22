@@ -498,6 +498,36 @@ foundation::Result<void> EnvironmentRuntime::ApplyUpdate(const EnvironmentStateU
         }
     }
 
+    // A frozen registry must reject a first-seen SurfaceId before allocating
+    // temporary validation/publication containers. Keep the same validation
+    // precedence as the normal batch path for malformed or cross-region state.
+    if (registration_frozen_)
+    {
+        for (const SurfaceState& surface : update.surfaces)
+        {
+            const auto valid = ValidateSurface(surface);
+            if (!valid)
+            {
+                return valid;
+            }
+            if (surface.region_id != update.region)
+            {
+                return EnvironmentFailure("environment.invalid_region", "surface update must target the batch region");
+            }
+            const auto existing = surface_states_.find(surface.surface_id);
+            const auto ownership = ValidateSurfaceMutation(existing == surface_states_.end() ? nullptr : &existing->second, surface);
+            if (!ownership)
+            {
+                return ownership;
+            }
+        }
+    }
+
+    if (!update.surfaces.empty() && ConsumeBatchValidationAllocationFailureForTesting())
+    {
+        return EnvironmentFailure("environment.allocation_failed", "environment batch validation allocation failed");
+    }
+
     std::unordered_set<SurfaceId> seen;
     std::vector<SurfaceState> staged_surface_updates;
     try
@@ -648,6 +678,11 @@ void EnvironmentRuntime::FailNextAllocationForTesting() noexcept
     fail_next_allocation_for_testing_ = true;
 }
 
+void EnvironmentRuntime::FailNextBatchValidationAllocationForTesting() noexcept
+{
+    fail_next_batch_validation_allocation_for_testing_ = true;
+}
+
 bool EnvironmentRuntime::IsRegionRegistered(RegionId region) const
 {
     return regions_.contains(region);
@@ -701,6 +736,16 @@ bool EnvironmentRuntime::ConsumeAllocationFailureForTesting() noexcept
         return false;
     }
     fail_next_allocation_for_testing_ = false;
+    return true;
+}
+
+bool EnvironmentRuntime::ConsumeBatchValidationAllocationFailureForTesting() noexcept
+{
+    if (!fail_next_batch_validation_allocation_for_testing_)
+    {
+        return false;
+    }
+    fail_next_batch_validation_allocation_for_testing_ = false;
     return true;
 }
 } // namespace epidemic::runtime

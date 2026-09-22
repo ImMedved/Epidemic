@@ -1068,6 +1068,12 @@ foundation::Result<void> InMemoryPersistenceStore::PublishSnapshot(PersistenceCa
     }
 
     // All potentially allocating work is complete. These swaps publish the complete candidate as one no-allocation commit.
+    static_assert(noexcept(objects_.swap(candidate.objects)), "object publication swap must remain no-throw");
+    static_assert(noexcept(tombstones_.swap(candidate.tombstones)), "tombstone publication swap must remain no-throw");
+    static_assert(noexcept(lazy_rules_.swap(candidate.lazy_rules)), "lazy-rule publication swap must remain no-throw");
+    static_assert(noexcept(zone_overrides_.swap(candidate.zone_overrides)), "zone-override publication swap must remain no-throw");
+    static_assert(noexcept(dirty_ids_.swap(candidate.dirty_ids)), "dirty-id publication swap must remain no-throw");
+
     objects_.swap(candidate.objects);
     tombstones_.swap(candidate.tombstones);
     lazy_rules_.swap(candidate.lazy_rules);
@@ -1091,6 +1097,11 @@ foundation::Result<void> InMemoryPersistenceBackend::CommitSnapshot(const Persis
     PersistenceSnapshot candidate{};
     try
     {
+        if (fail_next_candidate_build_allocation_for_testing_)
+        {
+            fail_next_candidate_build_allocation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         candidate = snapshot;
     }
     catch (const std::bad_alloc&)

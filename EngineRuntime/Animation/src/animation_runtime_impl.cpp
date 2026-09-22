@@ -5,6 +5,8 @@
 #include "Epidemic/Runtime/Foundation/numeric_validation.h"
 
 #include <algorithm>
+#include <array>
+#include <bit>
 #include <cmath>
 #include <memory>
 #include <limits>
@@ -13,6 +15,331 @@
 #include <string_view>
 #include <utility>
 #include <type_traits>
+
+
+namespace
+{
+static_assert(std::numeric_limits<double>::is_iec559, "playback scaling requires IEEE-754 binary64 semantics");
+static_assert(std::numeric_limits<double>::radix == 2 && std::numeric_limits<double>::digits == 53,
+              "playback scaling requires IEEE-754 binary64 precision");
+static_assert(std::numeric_limits<double>::min_exponent == -1021 && std::numeric_limits<double>::max_exponent == 1024,
+              "playback scaling requires IEEE-754 binary64 exponent range");
+
+struct WideUInt
+{
+    std::uint64_t high = 0;
+    std::uint64_t low = 0;
+};
+
+struct BinaryFraction
+{
+    WideUInt significand{};
+    int exponent = 0;
+};
+
+[[nodiscard]] constexpr bool IsZero(WideUInt value) noexcept
+{
+    return value.high == 0 && value.low == 0;
+}
+
+[[nodiscard]] int BitWidth(WideUInt value) noexcept
+{
+    if (value.high != 0) return 64 + static_cast<int>(std::bit_width(value.high));
+    return static_cast<int>(std::bit_width(value.low));
+}
+
+[[nodiscard]] WideUInt MultiplyWide(std::uint64_t lhs, std::uint64_t rhs) noexcept
+{
+    constexpr std::uint64_t limb_mask = 0xffff'ffffULL;
+    const std::uint64_t lhs_low = lhs & limb_mask;
+    const std::uint64_t lhs_high = lhs >> 32;
+    const std::uint64_t rhs_low = rhs & limb_mask;
+    const std::uint64_t rhs_high = rhs >> 32;
+
+    const std::uint64_t product_low = lhs_low * rhs_low;
+    const std::uint64_t product_mid_a = lhs_high * rhs_low;
+    const std::uint64_t product_mid_b = lhs_low * rhs_high;
+    const std::uint64_t product_high = lhs_high * rhs_high;
+
+    const std::uint64_t carry = (product_low >> 32) + (product_mid_a & limb_mask) + (product_mid_b & limb_mask);
+    return WideUInt{
+        product_high + (product_mid_a >> 32) + (product_mid_b >> 32) + (carry >> 32),
+        (product_low & limb_mask) | (carry << 32)};
+}
+
+[[nodiscard]] WideUInt ShiftRight(WideUInt value, unsigned shift) noexcept
+{
+    if (shift == 0) return value;
+    if (shift >= 128) return {};
+    if (shift >= 64) return WideUInt{0, value.high >> (shift - 64)};
+    return WideUInt{value.high >> shift, (value.low >> shift) | (value.high << (64 - shift))};
+}
+
+[[nodiscard]] WideUInt LowBits(WideUInt value, unsigned bit_count) noexcept
+{
+    if (bit_count == 0) return {};
+    if (bit_count >= 128) return value;
+    if (bit_count == 64) return WideUInt{0, value.low};
+    if (bit_count > 64)
+    {
+        const unsigned high_bits = bit_count - 64;
+        const std::uint64_t mask = (std::uint64_t{1} << high_bits) - 1;
+        return WideUInt{value.high & mask, value.low};
+    }
+    const std::uint64_t mask = (std::uint64_t{1} << bit_count) - 1;
+    return WideUInt{0, value.low & mask};
+}
+
+[[nodiscard]] unsigned CountTrailingZeros(WideUInt value) noexcept
+{
+    if (value.low != 0) return static_cast<unsigned>(std::countr_zero(value.low));
+    if (value.high != 0) return 64u + static_cast<unsigned>(std::countr_zero(value.high));
+    return 0;
+}
+
+[[nodiscard]] BinaryFraction NormalizeFraction(BinaryFraction value) noexcept
+{
+    if (IsZero(value.significand)) return BinaryFraction{};
+    const unsigned trailing = CountTrailingZeros(value.significand);
+    value.significand = ShiftRight(value.significand, trailing);
+    value.exponent += static_cast<int>(trailing);
+    return value;
+}
+
+[[nodiscard]] BinaryFraction DecomposeFraction(double value) noexcept
+{
+    if (value == 0.0) return {};
+    int exponent = 0;
+    const double fraction = std::frexp(value, &exponent);
+    const auto significand = static_cast<std::uint64_t>(std::ldexp(fraction, std::numeric_limits<double>::digits));
+    return NormalizeFraction(BinaryFraction{WideUInt{0, significand}, exponent - std::numeric_limits<double>::digits});
+}
+
+// Every positive binary64 value below 1.0 is an integer multiple of 2^-1074.
+// Keeping that fixed-point grid lets us combine the product fraction and the
+// carried remainder exactly before rounding back to binary64.
+constexpr int kBinary64FractionGridExponent = -1074;
+constexpr unsigned kBinary64FractionCarryBit = 1074;
+constexpr std::size_t kBinary64FractionGridLimbs = 17;
+using FractionGrid = std::array<std::uint64_t, kBinary64FractionGridLimbs>;
+
+void AddGridLimb(FractionGrid& grid, std::size_t index, std::uint64_t value) noexcept
+{
+    while (value != 0 && index < grid.size())
+    {
+        const std::uint64_t previous = grid[index];
+        grid[index] += value;
+        value = grid[index] < previous ? 1 : 0;
+        ++index;
+    }
+}
+
+void AddShiftedWord(FractionGrid& grid, std::uint64_t value, unsigned bit_offset) noexcept
+{
+    if (value == 0) return;
+    const std::size_t limb = bit_offset / 64;
+    const unsigned shift = bit_offset % 64;
+    AddGridLimb(grid, limb, value << shift);
+    if (shift != 0) AddGridLimb(grid, limb + 1, value >> (64 - shift));
+}
+
+void AddFractionToGrid(FractionGrid& grid, BinaryFraction value) noexcept
+{
+    value = NormalizeFraction(value);
+    if (IsZero(value.significand)) return;
+
+    const int offset = value.exponent - kBinary64FractionGridExponent;
+    if (offset < 0) return;
+    AddShiftedWord(grid, value.significand.low, static_cast<unsigned>(offset));
+    AddShiftedWord(grid, value.significand.high, static_cast<unsigned>(offset) + 64u);
+}
+
+[[nodiscard]] bool TestGridBit(const FractionGrid& grid, unsigned bit) noexcept
+{
+    return (grid[bit / 64] & (std::uint64_t{1} << (bit % 64))) != 0;
+}
+
+void ClearGridBit(FractionGrid& grid, unsigned bit) noexcept
+{
+    grid[bit / 64] &= ~(std::uint64_t{1} << (bit % 64));
+}
+
+[[nodiscard]] int HighestGridBit(const FractionGrid& grid) noexcept
+{
+    for (std::size_t index = grid.size(); index-- > 0;)
+    {
+        if (grid[index] != 0)
+        {
+            return static_cast<int>(index * 64 + std::bit_width(grid[index]) - 1);
+        }
+    }
+    return -1;
+}
+
+[[nodiscard]] std::uint64_t ExtractGridBits(const FractionGrid& grid, unsigned first_bit, unsigned bit_count) noexcept
+{
+    if (bit_count == 0) return 0;
+    const std::size_t limb = first_bit / 64;
+    const unsigned shift = first_bit % 64;
+    std::uint64_t value = grid[limb] >> shift;
+    if (shift != 0 && limb + 1 < grid.size()) value |= grid[limb + 1] << (64 - shift);
+    if (bit_count < 64) value &= (std::uint64_t{1} << bit_count) - 1;
+    return value;
+}
+
+[[nodiscard]] bool AnyGridBitsBelow(const FractionGrid& grid, unsigned bit_exclusive) noexcept
+{
+    if (bit_exclusive == 0) return false;
+    const std::size_t full_limbs = bit_exclusive / 64;
+    for (std::size_t i = 0; i < full_limbs; ++i)
+    {
+        if (grid[i] != 0) return true;
+    }
+    const unsigned remainder = bit_exclusive % 64;
+    if (remainder == 0) return false;
+    const std::uint64_t mask = (std::uint64_t{1} << remainder) - 1;
+    return (grid[full_limbs] & mask) != 0;
+}
+
+[[nodiscard]] double GridFractionToDouble(const FractionGrid& grid) noexcept
+{
+    const int highest = HighestGridBit(grid);
+    if (highest < 0) return 0.0;
+
+    if (highest < 52)
+    {
+        const std::uint64_t significand = ExtractGridBits(grid, 0, 52);
+        return std::ldexp(static_cast<double>(significand), kBinary64FractionGridExponent);
+    }
+
+    unsigned discarded_bits = static_cast<unsigned>(highest - 52);
+    std::uint64_t significand = ExtractGridBits(grid, discarded_bits, 53);
+    if (discarded_bits != 0)
+    {
+        const bool guard = TestGridBit(grid, discarded_bits - 1);
+        const bool sticky = AnyGridBitsBelow(grid, discarded_bits - 1);
+        if (guard && (sticky || (significand & 1u) != 0))
+        {
+            ++significand;
+            if (significand == (std::uint64_t{1} << 53))
+            {
+                significand >>= 1;
+                ++discarded_bits;
+            }
+        }
+    }
+
+    double result = std::ldexp(
+        static_cast<double>(significand),
+        kBinary64FractionGridExponent + static_cast<int>(discarded_bits));
+    if (result >= 1.0) result = std::nextafter(1.0, 0.0);
+    return result;
+}
+
+struct FractionSum
+{
+    bool carry = false;
+    FractionGrid exact_remainder{};
+    double rounded_remainder = 0.0;
+};
+
+[[nodiscard]] bool GridIsZero(const FractionGrid& grid) noexcept
+{
+    return HighestGridBit(grid) < 0;
+}
+
+[[nodiscard]] bool GridIsValidFraction(const FractionGrid& grid) noexcept
+{
+    return HighestGridBit(grid) < static_cast<int>(kBinary64FractionCarryBit);
+}
+
+[[nodiscard]] FractionSum AddFractions(BinaryFraction product_fraction, const FractionGrid& stored_remainder) noexcept
+{
+    FractionGrid grid = stored_remainder;
+    AddFractionToGrid(grid, product_fraction);
+
+    const bool carry = TestGridBit(grid, kBinary64FractionCarryBit);
+    if (carry) ClearGridBit(grid, kBinary64FractionCarryBit);
+    return FractionSum{carry, grid, GridFractionToDouble(grid)};
+}
+
+struct ScaledPlaybackDelta
+{
+    std::int64_t whole_microseconds = 0;
+    FractionGrid exact_fractional_microseconds{};
+    double fractional_microseconds = 0.0;
+};
+
+[[nodiscard]] std::optional<ScaledPlaybackDelta> ScalePlaybackDelta(
+    std::int64_t delta_microseconds,
+    double rate,
+    const FractionGrid& stored_remainder,
+    double stored_remainder_mirror) noexcept
+{
+    if (delta_microseconds < 0 || !std::isfinite(rate) || rate < 0.0 ||
+        !std::isfinite(stored_remainder_mirror) || stored_remainder_mirror < 0.0 || stored_remainder_mirror >= 1.0 ||
+        !GridIsValidFraction(stored_remainder))
+    {
+        return std::nullopt;
+    }
+
+    if (delta_microseconds == 0 || rate == 0.0)
+    {
+        return ScaledPlaybackDelta{0, stored_remainder, GridFractionToDouble(stored_remainder)};
+    }
+    if (rate == 1.0)
+    {
+        if (delta_microseconds == std::numeric_limits<std::int64_t>::max() && !GridIsZero(stored_remainder)) return std::nullopt;
+        return ScaledPlaybackDelta{delta_microseconds, stored_remainder, GridFractionToDouble(stored_remainder)};
+    }
+
+    int rate_exponent = 0;
+    const double rate_fraction = std::frexp(rate, &rate_exponent);
+    const auto rate_significand = static_cast<std::uint64_t>(std::ldexp(rate_fraction, std::numeric_limits<double>::digits));
+    BinaryFraction rate_parts{WideUInt{0, rate_significand}, rate_exponent - std::numeric_limits<double>::digits};
+    rate_parts = NormalizeFraction(rate_parts);
+
+    const WideUInt product = MultiplyWide(static_cast<std::uint64_t>(delta_microseconds), rate_parts.significand.low);
+    const int product_exponent = rate_parts.exponent;
+    std::uint64_t whole = 0;
+    BinaryFraction product_fraction{};
+
+    if (product_exponent >= 0)
+    {
+        const int width = BitWidth(product);
+        if (width != 0 && width + product_exponent > 63) return std::nullopt;
+        whole = product.low << static_cast<unsigned>(product_exponent);
+    }
+    else
+    {
+        const unsigned fractional_bits = static_cast<unsigned>(-product_exponent);
+        const WideUInt quotient = ShiftRight(product, fractional_bits);
+        if (quotient.high != 0 || quotient.low > static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())) return std::nullopt;
+        whole = quotient.low;
+        product_fraction = NormalizeFraction(BinaryFraction{LowBits(product, fractional_bits), product_exponent});
+    }
+
+    const bool has_product_fraction = !IsZero(product_fraction.significand);
+    if (whole == static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) &&
+        (has_product_fraction || !GridIsZero(stored_remainder)))
+    {
+        return std::nullopt;
+    }
+
+    const FractionSum fraction_sum = AddFractions(product_fraction, stored_remainder);
+    if (fraction_sum.carry)
+    {
+        if (whole == static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max())) return std::nullopt;
+        ++whole;
+    }
+    if (whole == static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max()) && !GridIsZero(fraction_sum.exact_remainder))
+    {
+        return std::nullopt;
+    }
+
+    return ScaledPlaybackDelta{static_cast<std::int64_t>(whole), fraction_sum.exact_remainder, fraction_sum.rounded_remainder};
+}
+}
 
 namespace epidemic::runtime::animation
 {
@@ -147,7 +474,7 @@ foundation::Result<void> AnimationRuntime::Play(const AnimationPlaybackCommand& 
     const auto clip_result=ResolveClip(command.clip); if (!clip_result) return foundation::Result<void>::Failure(clip_result.GetError());
     if (clip_result.Value().skeleton != animator->desc.skeleton) return foundation::Result<void>::Failure(foundation::Error::Create("animation.skeleton_mismatch", "clip skeleton does not match animator skeleton"));
     if (!event_storage_ready_) return foundation::Result<void>::Failure(foundation::Error::Create("animation.allocation_failed", "animation event storage is unavailable"));
-    animator->readiness=AnimatorReadiness::Ready; animator->playback=AnimatorPlayback{command.clip,command.loop,command.playback_rate,FrameDuration{},0.0}; animator->crossfade.reset();
+    animator->readiness=AnimatorReadiness::Ready; animator->playback=AnimatorPlayback{command.clip,command.loop,command.playback_rate,FrameDuration{},0.0}; animator->exact_fractional_microseconds.fill(0); animator->crossfade.reset();
     animator->playback_state=AnimatorPlaybackState::Playing; animator->pose_state=dependencies_.evaluator?PoseState::Evaluating:PoseState::Dirty; animator->revision=revision.Value();
     QueueEvent(command.animator.id,"animation.started",0.0f); return foundation::Result<void>::Success();
 }
@@ -168,7 +495,7 @@ foundation::Result<void> AnimationRuntime::Stop(AnimatorHandle handle)
     if (animator->playback_state==AnimatorPlaybackState::Stopped) return foundation::Result<void>::Success();
     const auto revision=NextRevision(*animator); if (!revision) return foundation::Result<void>::Failure(revision.GetError());
     if (!event_storage_ready_) return foundation::Result<void>::Failure(foundation::Error::Create("animation.allocation_failed", "animation event storage is unavailable"));
-    animator->playback_state=AnimatorPlaybackState::Stopped; animator->playback.local_time=FrameDuration{}; animator->playback.fractional_microseconds=0.0; animator->crossfade.reset(); animator->pose_state=PoseState::Clean; animator->revision=revision.Value();
+    animator->playback_state=AnimatorPlaybackState::Stopped; animator->playback.local_time=FrameDuration{}; animator->playback.fractional_microseconds=0.0; animator->exact_fractional_microseconds.fill(0); animator->crossfade.reset(); animator->pose_state=PoseState::Clean; animator->revision=revision.Value();
     QueueEvent(handle.id,"animation.stopped",0.0f); return foundation::Result<void>::Success();
 }
 
@@ -182,7 +509,7 @@ foundation::Result<void> AnimationRuntime::Crossfade(AnimatorHandle handle, Anim
     if (clip_result.Value().skeleton!=animator->desc.skeleton) return foundation::Result<void>::Failure(foundation::Error::Create("animation.skeleton_mismatch", "clip skeleton does not match animator skeleton"));
     if (!animator->playback.clip.IsValid()) return Play(AnimationPlaybackCommand{handle,clip,false,1.0});
     if (!duration.IsZero() && !event_storage_ready_) return foundation::Result<void>::Failure(foundation::Error::Create("animation.allocation_failed", "animation event storage is unavailable"));
-    if (duration.IsZero()) { animator->playback=AnimatorPlayback{clip,false,1.0,FrameDuration{},0.0}; animator->playback_state=AnimatorPlaybackState::Playing; animator->crossfade.reset(); animator->pose_state=dependencies_.evaluator?PoseState::Evaluating:PoseState::Dirty; animator->revision=revision.Value(); return foundation::Result<void>::Success(); }
+    if (duration.IsZero()) { animator->playback=AnimatorPlayback{clip,false,1.0,FrameDuration{},0.0}; animator->exact_fractional_microseconds.fill(0); animator->playback_state=AnimatorPlaybackState::Playing; animator->crossfade.reset(); animator->pose_state=dependencies_.evaluator?PoseState::Evaluating:PoseState::Dirty; animator->revision=revision.Value(); return foundation::Result<void>::Success(); }
     animator->crossfade=CrossfadeState{animator->playback.clip,clip,animator->playback.local_time,FrameDuration{},FrameDuration{},duration,1.0f,0.0f}; animator->playback_state=AnimatorPlaybackState::Blending; animator->pose_state=dependencies_.evaluator?PoseState::Evaluating:PoseState::Dirty; animator->revision=revision.Value();
     QueueEvent(handle.id,"animation.crossfade",static_cast<float>(duration.value.count())/1000000.0f); return foundation::Result<void>::Success();
 }
@@ -477,10 +804,28 @@ foundation::Result<void> AnimationRuntime::PublishPose(std::shared_ptr<const Pos
 
 foundation::Result<void> AnimationRuntime::AdvancePlayback(AnimatorRecord& animator, FrameDuration delta)
 {
-    const long double scaled=static_cast<long double>(delta.value.count())*static_cast<long double>(animator.playback.playback_rate)+static_cast<long double>(animator.playback.fractional_microseconds);
-    if(!std::isfinite(static_cast<double>(scaled))||scaled<0.0L||scaled>static_cast<long double>(std::numeric_limits<std::int64_t>::max())) return foundation::Result<void>::Failure(foundation::Error::Create("animation.time_overflow","scaled playback delta exceeds runtime range"));
-    const auto whole=static_cast<std::int64_t>(scaled); const auto next=CheckedAdd(animator.playback.local_time,FrameDuration{std::chrono::microseconds{whole}}); if(!next) return foundation::Result<void>::Failure(foundation::Error::Create("animation.time_overflow","animation local time overflow"));
-    animator.playback.fractional_microseconds=static_cast<double>(scaled-static_cast<long double>(whole)); animator.playback.local_time=*next; return foundation::Result<void>::Success();
+    const auto scaled = ScalePlaybackDelta(
+        delta.value.count(),
+        animator.playback.playback_rate,
+        animator.exact_fractional_microseconds,
+        animator.playback.fractional_microseconds);
+    if (!scaled)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("animation.time_overflow", "scaled playback delta exceeds runtime range"));
+    }
+
+    const auto next = CheckedAdd(animator.playback.local_time, FrameDuration{std::chrono::microseconds{scaled->whole_microseconds}});
+    if (!next)
+    {
+        return foundation::Result<void>::Failure(
+            foundation::Error::Create("animation.time_overflow", "animation local time overflow"));
+    }
+
+    animator.exact_fractional_microseconds = scaled->exact_fractional_microseconds;
+    animator.playback.fractional_microseconds = scaled->fractional_microseconds;
+    animator.playback.local_time = *next;
+    return foundation::Result<void>::Success();
 }
 
 
@@ -558,6 +903,30 @@ foundation::Result<void> AnimationRuntime::ValidateClip(const AnimationClipDesc&
 
 void AnimationRuntime::SetRevisionForTesting(AnimatorHandle handle, std::uint64_t revision) noexcept { if(auto* a=FindAnimator(handle)) a->revision=revision; }
 void AnimationRuntime::SetNextIdentityForTesting(std::uint64_t id, std::uint32_t generation) noexcept { next_animator_value_=id; next_generation_=generation; }
+void AnimationRuntime::SetFractionalMicrosecondsForTesting(AnimatorHandle handle, double fractional_microseconds) noexcept
+{
+    if (auto* animator = FindAnimator(handle))
+    {
+        animator->playback.fractional_microseconds = fractional_microseconds;
+        animator->exact_fractional_microseconds.fill(0);
+        if (std::isfinite(fractional_microseconds) && fractional_microseconds >= 0.0 && fractional_microseconds < 1.0)
+        {
+            AddFractionToGrid(animator->exact_fractional_microseconds, DecomposeFraction(fractional_microseconds));
+        }
+    }
+}
+double AnimationRuntime::FractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept { if(const auto* a=FindAnimator(handle)) return a->playback.fractional_microseconds; return 0.0; }
+bool AnimationRuntime::HasExactFractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept
+{
+    if (const auto* animator = FindAnimator(handle)) return !GridIsZero(animator->exact_fractional_microseconds);
+    return false;
+}
+
+std::array<std::uint64_t, 17> AnimationRuntime::ExactFractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept
+{
+    if (const auto* animator = FindAnimator(handle)) return animator->exact_fractional_microseconds;
+    return {};
+}
 
 } // namespace epidemic::runtime::animation
 

@@ -12,69 +12,61 @@
 #include "migration_registry.h"
 #include "serializer_registry.h"
 
-#include <atomic>
 #include <cstddef>
-#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <new>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
-namespace
+namespace epidemic::runtime
 {
-std::atomic<std::ptrdiff_t> g_fail_allocation_index{0};
-std::atomic_bool g_allocation_fault_triggered{false};
-
-[[nodiscard]] void* AllocateTestMemory(std::size_t size)
+struct SerializationRuntimeTestAccess
 {
-    const auto countdown = g_fail_allocation_index.load(std::memory_order_relaxed);
-    if (countdown > 0 && g_fail_allocation_index.fetch_sub(1, std::memory_order_relaxed) == 1)
+    static void FailNextObjectPublication(InMemoryArchiveWriter& writer) noexcept
     {
-        // Disable before throwing so exception propagation may allocate safely on debug runtimes.
-        g_fail_allocation_index.store(0, std::memory_order_relaxed);
-        g_allocation_fault_triggered.store(true, std::memory_order_relaxed);
-        throw std::bad_alloc{};
+        writer.fail_next_object_publication_for_testing_ = true;
     }
 
-    if (void* memory = std::malloc(size == 0 ? 1 : size))
+    static void FailNextArrayPublication(InMemoryArchiveWriter& writer) noexcept
     {
-        return memory;
+        writer.fail_next_array_publication_for_testing_ = true;
     }
-    throw std::bad_alloc{};
-}
-}
 
-void* operator new(std::size_t size)
-{
-    return AllocateTestMemory(size);
-}
+    static void FailNextArrayElementPublication(InMemoryArchiveWriter& writer) noexcept
+    {
+        writer.fail_next_array_element_publication_for_testing_ = true;
+    }
 
-void* operator new[](std::size_t size)
-{
-    return AllocateTestMemory(size);
-}
+    static void FailNextFieldPublication(InMemoryArchiveWriter& writer) noexcept
+    {
+        writer.fail_next_field_publication_for_testing_ = true;
+    }
 
-void operator delete(void* memory) noexcept
-{
-    std::free(memory);
-}
+    static void FailNextFinalizeCandidate(InMemoryArchiveWriter& writer) noexcept
+    {
+        writer.fail_next_finalize_candidate_for_testing_ = true;
+    }
 
-void operator delete[](void* memory) noexcept
-{
-    std::free(memory);
-}
+    static void FailNextSerializerRegistrationAllocation(SerializerRegistry& registry) noexcept
+    {
+        registry.fail_next_registration_allocation_for_testing_ = true;
+    }
 
-void operator delete(void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
+    static void FailNextMigrationRegistrationAllocation(MigrationRegistry& registry) noexcept
+    {
+        registry.fail_next_registration_allocation_for_testing_ = true;
+    }
 
-void operator delete[](void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
+    static void FailNextMigrationPathAllocation(MigrationRegistry& registry) noexcept
+    {
+        registry.fail_next_path_allocation_for_testing_ = true;
+    }
+};
+} // namespace epidemic::runtime
 
 namespace
 {
@@ -102,73 +94,91 @@ using epidemic::runtime::SerializerRegistry;
     return StringId::FromString(value);
 }
 
-void FailAllocationAt(std::ptrdiff_t index) noexcept
-{
-    g_allocation_fault_triggered.store(false, std::memory_order_relaxed);
-    g_fail_allocation_index.store(index, std::memory_order_relaxed);
-}
-
-void DisableAllocationFailure() noexcept
-{
-    g_fail_allocation_index.store(0, std::memory_order_relaxed);
-}
-
-[[nodiscard]] bool AllocationFaultTriggered() noexcept
-{
-    return g_allocation_fault_triggered.load(std::memory_order_relaxed);
-}
-
 [[nodiscard]] bool HasRootField(const InMemoryArchiveWriter& writer, std::string_view name)
 {
     const auto snapshot = writer.Snapshot();
     return snapshot != nullptr && snapshot->fields.find(std::string(name)) != snapshot->fields.end();
 }
 
-template <typename TOperation, typename TInvariant>
-[[nodiscard]] bool SweepWriterAllocationFailure(TOperation&& operation, TInvariant&& invariant, std::ptrdiff_t max_fault = 32)
+template <typename TArm, typename TOperation, typename TInvariant>
+[[nodiscard]] bool VerifyWriterFault(TArm&& arm, TOperation&& operation, TInvariant&& invariant)
 {
-    bool observed_fault = false;
-    for (std::ptrdiff_t fault_index = 1; fault_index <= max_fault; ++fault_index)
+    InMemoryArchiveWriter writer;
+    if (!writer.WriteUInt64("baseline", 7u))
     {
-        InMemoryArchiveWriter writer;
-        if (!writer.WriteUInt64("baseline", 7u))
-        {
-            return false;
-        }
-
-        FailAllocationAt(fault_index);
-        bool succeeded = false;
-        try
-        {
-            succeeded = operation(writer);
-        }
-        catch (const std::bad_alloc&)
-        {
-            // The public archive implementation normally translates OOM into Result, but the
-            // sweep also accepts a policy-compliant propagated bad_alloc from generic helpers.
-        }
-        const bool triggered = AllocationFaultTriggered();
-        DisableAllocationFailure();
-
-        if (!triggered)
-        {
-            return observed_fault && succeeded;
-        }
-
-        observed_fault = true;
-        if (succeeded || !invariant(writer) || !HasRootField(writer, "baseline"))
-        {
-            return false;
-        }
+        return false;
     }
-    DisableAllocationFailure();
-    return false;
+
+    arm(writer);
+    const auto result = operation(writer);
+    return !result && result.GetError().HasCode("serialization.out_of_memory") &&
+           invariant(writer) && HasRootField(writer, "baseline");
 }
 
 struct ProbeData
 {
     std::string name;
     std::uint64_t count = 0;
+};
+
+struct CopyFaultData
+{
+    std::string name;
+    std::uint64_t count = 0;
+
+    CopyFaultData() = default;
+    CopyFaultData(std::string value, std::uint64_t value_count) : name(std::move(value)), count(value_count) {}
+
+    CopyFaultData(const CopyFaultData& other)
+    {
+        if (fail_next_copy)
+        {
+            fail_next_copy = false;
+            throw std::bad_alloc{};
+        }
+        name = other.name;
+        count = other.count;
+    }
+
+    CopyFaultData& operator=(const CopyFaultData&) = default;
+    CopyFaultData(CopyFaultData&&) noexcept = default;
+    CopyFaultData& operator=(CopyFaultData&&) noexcept = default;
+
+    friend void swap(CopyFaultData& left, CopyFaultData& right) noexcept
+    {
+        using std::swap;
+        swap(left.name, right.name);
+        swap(left.count, right.count);
+    }
+
+    inline static bool fail_next_copy = false;
+};
+
+class CopyFaultSerializer final : public epidemic::runtime::ISerializer
+{
+  public:
+    [[nodiscard]] StringId GetTypeId() const override { return Id("serialization.copy_fault"); }
+    [[nodiscard]] SchemaVersion GetSchemaVersion() const override { return {1u, 0u, 0u}; }
+    [[nodiscard]] std::type_index GetCppType() const override { return typeid(CopyFaultData); }
+
+    [[nodiscard]] Result<void> Serialize(const void* object, IArchiveWriter& writer) const override
+    {
+        const auto& value = *static_cast<const CopyFaultData*>(object);
+        const auto name = writer.WriteString("name", value.name);
+        if (!name)
+        {
+            return name;
+        }
+        return writer.WriteUInt64("count", value.count);
+    }
+
+    [[nodiscard]] Result<void> Deserialize(IArchiveReader&, void* object) const override
+    {
+        auto& value = *static_cast<CopyFaultData*>(object);
+        value.name = "committed";
+        value.count = 42u;
+        return Result<void>::Success();
+    }
 };
 
 struct ThrowingCommitData
@@ -389,6 +399,57 @@ class MetadataOverrideArchiveFactory final : public IArchiveFactory
     epidemic::runtime::InMemoryArchiveFactory in_memory_{};
 };
 
+class FaultInjectingArchiveFactory final : public IArchiveFactory
+{
+  public:
+    enum class Fault
+    {
+        None,
+        CreateWriter,
+        FieldPublication,
+        FinalizeCandidate,
+    };
+
+    explicit FaultInjectingArchiveFactory(Fault fault, std::size_t writer_index = 1u)
+        : fault_(fault), writer_index_(writer_index)
+    {
+    }
+
+    [[nodiscard]] std::unique_ptr<IArchiveWriter> CreateWriter() const override
+    {
+        const std::size_t current_index = ++writer_count_;
+        if (fault_ == Fault::CreateWriter && current_index == writer_index_)
+        {
+            throw std::bad_alloc{};
+        }
+
+        auto writer = std::make_unique<InMemoryArchiveWriter>();
+        if (current_index == writer_index_)
+        {
+            if (fault_ == Fault::FieldPublication)
+            {
+                epidemic::runtime::SerializationRuntimeTestAccess::FailNextFieldPublication(*writer);
+            }
+            else if (fault_ == Fault::FinalizeCandidate)
+            {
+                epidemic::runtime::SerializationRuntimeTestAccess::FailNextFinalizeCandidate(*writer);
+            }
+        }
+        return writer;
+    }
+
+    [[nodiscard]] Result<std::unique_ptr<IArchiveReader>> CreateReader(const SerializedDocument& document) const override
+    {
+        return in_memory_.CreateReader(document);
+    }
+
+  private:
+    Fault fault_ = Fault::None;
+    std::size_t writer_index_ = 1u;
+    mutable std::size_t writer_count_ = 0u;
+    epidemic::runtime::InMemoryArchiveFactory in_memory_{};
+};
+
 class BlindProbeSerializer final : public epidemic::runtime::ISerializer
 {
   public:
@@ -598,113 +659,111 @@ class FailingMigration final : public IMigration
         return !HasRootField(writer, name);
     };
 
-    if (!SweepWriterAllocationFailure(
-            [](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.BeginObject("candidate_object")); },
+    if (!VerifyWriterFault(
+            [](InMemoryArchiveWriter& writer)
+            {
+                epidemic::runtime::SerializationRuntimeTestAccess::FailNextObjectPublication(writer);
+            },
+            [](InMemoryArchiveWriter& writer) { return writer.BeginObject("candidate_object"); },
             [&](const InMemoryArchiveWriter& writer) { return absent(writer, "candidate_object"); }))
     {
         return false;
     }
-    if (!SweepWriterAllocationFailure(
-            [](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.BeginArray("candidate_array", 4)); },
+
+    if (!VerifyWriterFault(
+            [](InMemoryArchiveWriter& writer)
+            {
+                epidemic::runtime::SerializationRuntimeTestAccess::FailNextArrayPublication(writer);
+            },
+            [](InMemoryArchiveWriter& writer) { return writer.BeginArray("candidate_array", 4); },
             [&](const InMemoryArchiveWriter& writer) { return absent(writer, "candidate_array"); }))
     {
         return false;
     }
 
-    bool element_fault_observed = false;
-    for (std::ptrdiff_t fault_index = 1; fault_index <= 32; ++fault_index)
+    InMemoryArchiveWriter element_writer;
+    if (!element_writer.WriteUInt64("baseline", 7u) || !element_writer.BeginArray("items", 1))
     {
-        InMemoryArchiveWriter writer;
-        if (!writer.BeginArray("items", 1))
-        {
-            return false;
-        }
-        FailAllocationAt(fault_index);
-        bool success = false;
-        try { success = static_cast<bool>(writer.BeginArrayElement(0)); } catch (const std::bad_alloc&) {}
-        const bool triggered = AllocationFaultTriggered();
-        DisableAllocationFailure();
-        if (!triggered)
-        {
-            if (!element_fault_observed || !success || !writer.EndArrayElement() || !writer.EndArray())
-            {
-                return false;
-            }
-            break;
-        }
-        element_fault_observed = true;
-        if (success)
-        {
-            return false;
-        }
-        const auto snapshot = writer.Snapshot();
-        const auto found = snapshot->fields.find("items");
-        if (found == snapshot->fields.end())
-        {
-            return false;
-        }
-        const auto array = std::get_if<epidemic::runtime::ArchiveArrayPtr>(&found->second.storage);
-        if (array == nullptr || !*array || (*array)->initialized.size() != 1u || (*array)->initialized[0])
-        {
-            return false;
-        }
+        return false;
     }
-    if (!element_fault_observed)
+    epidemic::runtime::SerializationRuntimeTestAccess::FailNextArrayElementPublication(element_writer);
+    const auto element_failed = element_writer.BeginArrayElement(0);
+    if (element_failed || !element_failed.GetError().HasCode("serialization.out_of_memory") ||
+        !HasRootField(element_writer, "baseline"))
+    {
+        return false;
+    }
+    const auto element_snapshot = element_writer.Snapshot();
+    const auto element_found = element_snapshot->fields.find("items");
+    if (element_found == element_snapshot->fields.end())
+    {
+        return false;
+    }
+    const auto array = std::get_if<epidemic::runtime::ArchiveArrayPtr>(&element_found->second.storage);
+    if (array == nullptr || !*array || (*array)->initialized.size() != 1u || (*array)->initialized[0] ||
+        !element_writer.BeginArrayElement(0) || !element_writer.EndArrayElement() || !element_writer.EndArray())
     {
         return false;
     }
 
     const std::vector<std::byte> bytes(64u, std::byte{0x5a});
-    const auto sweep_write = [&](auto&& operation, std::string_view field)
+    const auto verify_field = [&](auto&& operation, std::string_view field)
     {
-        return SweepWriterAllocationFailure(
-            [&](InMemoryArchiveWriter& writer) { return operation(writer); },
+        return VerifyWriterFault(
+            [](InMemoryArchiveWriter& writer)
+            {
+                epidemic::runtime::SerializationRuntimeTestAccess::FailNextFieldPublication(writer);
+            },
+            std::forward<decltype(operation)>(operation),
             [&](const InMemoryArchiveWriter& writer) { return absent(writer, field); });
     };
-    if (!sweep_write([](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.WriteString("string", std::string(96u, 'x'))); }, "string") ||
-        !sweep_write([](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.WriteUInt64("u64", 1u)); }, "u64") ||
-        !sweep_write([](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.WriteInt64("i64", -1)); }, "i64") ||
-        !sweep_write([](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.WriteDouble("double", 1.5)); }, "double") ||
-        !sweep_write([](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.WriteBool("bool", true)); }, "bool") ||
-        !sweep_write([&](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.WriteBytes("bytes", bytes)); }, "bytes") ||
-        !sweep_write([](InMemoryArchiveWriter& writer) { return static_cast<bool>(writer.WriteNull("null")); }, "null"))
+
+    if (!verify_field([](InMemoryArchiveWriter& writer) { return writer.WriteString("string", std::string(96u, 'x')); }, "string") ||
+        !verify_field([](InMemoryArchiveWriter& writer) { return writer.WriteUInt64("u64", 1u); }, "u64") ||
+        !verify_field([](InMemoryArchiveWriter& writer) { return writer.WriteInt64("i64", -1); }, "i64") ||
+        !verify_field([](InMemoryArchiveWriter& writer) { return writer.WriteDouble("double", 1.5); }, "double") ||
+        !verify_field([](InMemoryArchiveWriter& writer) { return writer.WriteBool("bool", true); }, "bool") ||
+        !verify_field([&](InMemoryArchiveWriter& writer) { return writer.WriteBytes("bytes", bytes); }, "bytes") ||
+        !verify_field([](InMemoryArchiveWriter& writer) { return writer.WriteNull("null"); }, "null"))
     {
         return false;
     }
 
-    bool finalize_fault_observed = false;
-    for (std::ptrdiff_t fault_index = 1; fault_index <= 16; ++fault_index)
+    InMemoryArchiveWriter finalize_writer;
+    if (!finalize_writer.WriteString("name", "stable"))
     {
-        InMemoryArchiveWriter writer;
-        if (!writer.WriteString("name", "stable"))
-        {
-            return false;
-        }
-        const auto type = Id("serialization.finalize_fault");
-        FailAllocationAt(fault_index);
-        bool success = false;
-        try { success = static_cast<bool>(writer.Finalize(type, {1u, 0u, 0u})); } catch (const std::bad_alloc&) {}
-        const bool triggered = AllocationFaultTriggered();
-        DisableAllocationFailure();
-        if (!triggered)
-        {
-            if (!finalize_fault_observed || !success)
-            {
-                return false;
-            }
-            break;
-        }
-        finalize_fault_observed = true;
-        if (success || !writer.WriteString("after_failure", "still_writable"))
-        {
-            return false;
-        }
+        return false;
     }
-    return finalize_fault_observed;
+    epidemic::runtime::SerializationRuntimeTestAccess::FailNextFinalizeCandidate(finalize_writer);
+    const auto failed_finalize = finalize_writer.Finalize(Id("serialization.finalize_fault"), {1u, 0u, 0u});
+    if (failed_finalize || !failed_finalize.GetError().HasCode("serialization.out_of_memory") ||
+        !finalize_writer.WriteString("after_failure", "still_writable"))
+    {
+        return false;
+    }
+    const auto recovered = finalize_writer.Finalize(Id("serialization.finalize_fault"), {1u, 0u, 0u});
+    return recovered && recovered.Value().IsValid();
 }
 
 [[nodiscard]] bool TestSerializerRegistryAndTypedBoundaryValidation()
 {
+    SerializerRegistry allocation_registry;
+    auto allocation_baseline = std::make_shared<BlindProbeSerializer>();
+    auto allocation_candidate = std::make_shared<ProbeSerializer>();
+    if (!allocation_registry.RegisterSerializer(allocation_baseline))
+    {
+        return false;
+    }
+    epidemic::runtime::SerializationRuntimeTestAccess::FailNextSerializerRegistrationAllocation(allocation_registry);
+    const auto allocation_failed = allocation_registry.RegisterSerializer(allocation_candidate);
+    if (allocation_failed || !allocation_failed.GetError().HasCode("serialization.out_of_memory") ||
+        !allocation_registry.HasSerializer(allocation_baseline->GetTypeId()) ||
+        allocation_registry.HasSerializer(allocation_candidate->GetTypeId()) ||
+        !allocation_registry.RegisterSerializer(allocation_candidate))
+    {
+        return false;
+    }
+
     SerializerRegistry registry;
     const auto null_result = registry.RegisterSerializer(nullptr);
     const auto invalid_type = registry.RegisterSerializer(std::make_shared<InvalidMetadataSerializer>(StringId{}, SchemaVersion{1u, 0u, 0u}));
@@ -775,48 +834,27 @@ class FailingMigration final : public IMigration
 
 [[nodiscard]] bool TestDeserializeAllocationFailureAtomicity()
 {
-    ProbeSerializer serializer;
-    const ProbeData source{std::string(256u, 's'), 42u};
+    CopyFaultSerializer serializer;
     InMemoryArchiveWriter writer;
-    if (!writer.WriteString("name", source.name) || !writer.WriteUInt64("count", source.count))
-    {
-        return false;
-    }
     const auto document = writer.Finalize(serializer.GetTypeId(), serializer.GetSchemaVersion());
     if (!document)
     {
         return false;
     }
 
-    bool observed_fault = false;
-    for (std::ptrdiff_t fault_index = 1; fault_index <= 64; ++fault_index)
+    InMemoryArchiveReader failing_reader(document.Value());
+    CopyFaultData destination{"original", 7u};
+    CopyFaultData::fail_next_copy = true;
+    const auto failed = DeserializeObject(serializer, failing_reader, destination);
+    if (failed || !failed.GetError().HasCode("serialization.out_of_memory") ||
+        destination.name != "original" || destination.count != 7u)
     {
-        InMemoryArchiveReader reader(document.Value());
-        ProbeData destination{std::string(256u, 'd'), 7u};
-        const ProbeData before = destination;
-        FailAllocationAt(fault_index);
-        bool success = false;
-        try
-        {
-            success = static_cast<bool>(DeserializeObject(serializer, reader, destination));
-        }
-        catch (const std::bad_alloc&)
-        {
-        }
-        const bool triggered = AllocationFaultTriggered();
-        DisableAllocationFailure();
-
-        if (!triggered)
-        {
-            return observed_fault && success && destination.name == source.name && destination.count == source.count;
-        }
-        observed_fault = true;
-        if (success || destination.name != before.name || destination.count != before.count)
-        {
-            return false;
-        }
+        return false;
     }
-    return false;
+
+    InMemoryArchiveReader recovery_reader(document.Value());
+    const auto recovered = DeserializeObject(serializer, recovery_reader, destination);
+    return recovered && destination.name == "committed" && destination.count == 42u;
 }
 
 [[nodiscard]] bool TestApplyMigrationsAllocationFailureAtomicity()
@@ -841,25 +879,18 @@ class FailingMigration final : public IMigration
         return false;
     }
 
-    bool observed_fault = false;
-    for (std::ptrdiff_t fault_index = 1; fault_index <= 128; ++fault_index)
+    const auto source_is_unchanged = [&]()
     {
-        FailAllocationAt(fault_index);
-        bool success = false;
-        try
-        {
-            const auto migrated = ApplyMigrations(source.Value(), {3u, 0u, 0u}, registry, archives);
-            success = static_cast<bool>(migrated);
-        }
-        catch (const std::bad_alloc&)
-        {
-        }
-        const bool triggered = AllocationFaultTriggered();
-        DisableAllocationFailure();
-
         const auto source_reader = archives.CreateReader(source.Value());
-        if (!source_reader || source.Value().GetSchemaVersion() != SchemaVersion{1u, 0u, 0u} ||
-            source_reader.Value()->ReadString("name").Value() != "source")
+        return source_reader && source.Value().GetSchemaVersion() == SchemaVersion{1u, 0u, 0u} &&
+               source_reader.Value()->ReadString("name").Value() == "source";
+    };
+
+    for (std::size_t writer_index = 1u; writer_index <= 2u; ++writer_index)
+    {
+        FaultInjectingArchiveFactory faulting_archives{FaultInjectingArchiveFactory::Fault::FinalizeCandidate, writer_index};
+        const auto failed = ApplyMigrations(source.Value(), {3u, 0u, 0u}, registry, faulting_archives);
+        if (failed || !failed.GetError().HasCode("serialization.out_of_memory") || !source_is_unchanged())
         {
             return false;
         }
@@ -868,18 +899,17 @@ class FailingMigration final : public IMigration
         {
             return false;
         }
-
-        if (!triggered)
-        {
-            return observed_fault && success;
-        }
-        observed_fault = true;
-        if (success)
-        {
-            return false;
-        }
     }
-    return false;
+
+    FaultInjectingArchiveFactory field_fault_archives{FaultInjectingArchiveFactory::Fault::FieldPublication, 1u};
+    const auto write_failed = ApplyMigrations(source.Value(), {3u, 0u, 0u}, registry, field_fault_archives);
+    if (write_failed || !write_failed.GetError().HasCode("serialization.out_of_memory") || !source_is_unchanged())
+    {
+        return false;
+    }
+
+    const auto recovered = ApplyMigrations(source.Value(), {3u, 0u, 0u}, registry, archives);
+    return recovered && recovered.Value().GetSchemaVersion() == SchemaVersion{3u, 0u, 0u} && source_is_unchanged();
 }
 
 [[nodiscard]] bool TestMigrationFailuresPreserveSourceAndContainExceptions()
@@ -927,48 +957,62 @@ class FailingMigration final : public IMigration
     const auto zero_to = registry.RegisterMigration(std::make_shared<ProbeMigration>(MigrationKey{type, {1u, 0u, 0u}, {}}));
     if (zero_from || zero_to || !zero_from.GetError().HasCode("serialization.migration.invalid_version") ||
         !zero_to.GetError().HasCode("serialization.migration.invalid_version") ||
-        !registry.RegisterMigration(std::make_shared<ProbeMigration>(one_to_two)) ||
-        !registry.RegisterMigration(std::make_shared<ProbeMigration>(two_to_three)))
+        !registry.RegisterMigration(std::make_shared<ProbeMigration>(one_to_two)))
     {
         return false;
     }
 
-    bool observed_fault = false;
-    for (std::ptrdiff_t fault_index = 1; fault_index <= 64; ++fault_index)
+    auto second_migration = std::make_shared<ProbeMigration>(two_to_three);
+    epidemic::runtime::SerializationRuntimeTestAccess::FailNextMigrationRegistrationAllocation(registry);
+    const auto registration_failed = registry.RegisterMigration(second_migration);
+    if (registration_failed || !registration_failed.GetError().HasCode("serialization.out_of_memory") ||
+        !registry.HasMigration(one_to_two) || registry.HasMigration(two_to_three) ||
+        !registry.RegisterMigration(second_migration))
     {
-        FailAllocationAt(fault_index);
-        bool success = false;
-        try
-        {
-            const auto path = registry.FindMigrationPath(type, {1u, 0u, 0u}, {3u, 0u, 0u});
-            success = static_cast<bool>(path);
-        }
-        catch (const std::bad_alloc&)
-        {
-        }
-        const bool triggered = AllocationFaultTriggered();
-        DisableAllocationFailure();
-
-        if (!triggered)
-        {
-            if (!observed_fault || !success)
-            {
-                return false;
-            }
-            break;
-        }
-        observed_fault = true;
-        if (!registry.HasMigration(one_to_two) || !registry.HasMigration(two_to_three))
-        {
-            return false;
-        }
-        const auto recovery = registry.FindMigrationPath(type, {1u, 0u, 0u}, {3u, 0u, 0u});
-        if (!recovery || recovery.Value().size() != 2u)
-        {
-            return false;
-        }
+        return false;
     }
-    return observed_fault;
+
+    epidemic::runtime::SerializationRuntimeTestAccess::FailNextMigrationPathAllocation(registry);
+    const auto failed_path = registry.FindMigrationPath(type, {1u, 0u, 0u}, {3u, 0u, 0u});
+    if (failed_path || !failed_path.GetError().HasCode("serialization.out_of_memory") ||
+        !registry.HasMigration(one_to_two) || !registry.HasMigration(two_to_three))
+    {
+        return false;
+    }
+
+    const auto recovery = registry.FindMigrationPath(type, {1u, 0u, 0u}, {3u, 0u, 0u});
+    return recovery && recovery.Value().size() == 2u;
+}
+
+[[nodiscard]] bool TestSerializeToDocumentAllocationFailureAtomicity()
+{
+    ProbeSerializer serializer;
+    const ProbeData source{"source", 17u};
+
+    FaultInjectingArchiveFactory create_fault{FaultInjectingArchiveFactory::Fault::CreateWriter};
+    const auto create_failed = epidemic::runtime::SerializeToDocument(serializer, source, create_fault);
+    if (create_failed || !create_failed.GetError().HasCode("serialization.out_of_memory"))
+    {
+        return false;
+    }
+
+    FaultInjectingArchiveFactory field_fault{FaultInjectingArchiveFactory::Fault::FieldPublication};
+    const auto field_failed = epidemic::runtime::SerializeToDocument(serializer, source, field_fault);
+    if (field_failed || !field_failed.GetError().HasCode("serialization.out_of_memory"))
+    {
+        return false;
+    }
+
+    FaultInjectingArchiveFactory finalize_fault{FaultInjectingArchiveFactory::Fault::FinalizeCandidate};
+    const auto finalize_failed = epidemic::runtime::SerializeToDocument(serializer, source, finalize_fault);
+    if (finalize_failed || !finalize_failed.GetError().HasCode("serialization.out_of_memory"))
+    {
+        return false;
+    }
+
+    FaultInjectingArchiveFactory healthy{FaultInjectingArchiveFactory::Fault::None};
+    const auto recovered = epidemic::runtime::SerializeToDocument(serializer, source, healthy);
+    return recovered && recovered.Value().IsValid();
 }
 
 [[nodiscard]] bool TestPrimitiveDocumentRoundTrip()
@@ -1393,6 +1437,45 @@ class FailingMigration final : public IMigration
     const auto reader = services.Value().archives->CreateReader(document.Value());
     return reader && reader.Value()->ReadString("name").Value() == "factory";
 }
+bool TestPublicApiEvidenceCoverage()
+{
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveFactory>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveReader>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IArchiveWriter>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IMigration>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IMigrationRegistry>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISerializer>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISerializerRegistry>);
+
+    const SerializedDocument empty{};
+    if (empty.IsValid())
+    {
+        return false;
+    }
+
+    const SchemaVersion one{1u, 0u, 0u};
+    const SchemaVersion two{2u, 0u, 0u};
+    if (!(one < two))
+    {
+        return false;
+    }
+
+    const MigrationKey key{Id("serialization.evidence"), one, two};
+    const MigrationKey same = key;
+    if (!(key == same) || std::hash<MigrationKey>{}(key) != std::hash<MigrationKey>{}(same))
+    {
+        return false;
+    }
+
+    ProbeSerializer serializer;
+    if (serializer.GetCppType() != typeid(ProbeData))
+    {
+        return false;
+    }
+
+    return CreateSerializationError("serialization.evidence", "evidence").HasCode("serialization.evidence");
+}
+
 } // namespace
 
 int main()
@@ -1408,6 +1491,7 @@ int main()
         {"DeepEmptyStructuresBytesAndNullRoundTrip", TestDeepEmptyStructuresBytesAndNullRoundTrip},
         {"FinalizeValidatesMetadataAndPreservesWriterOnFailure", TestFinalizeValidatesMetadataAndPreservesWriterOnFailure},
         {"ArchiveAllocationFailureAtomicity", TestArchiveAllocationFailureAtomicity},
+        {"SerializeToDocumentAllocationFailureAtomicity", TestSerializeToDocumentAllocationFailureAtomicity},
         {"SerializerRegistryAndTypedBoundaryValidation", TestSerializerRegistryAndTypedBoundaryValidation},
         {"SerializerBodyExceptionsAreContained", TestSerializerBodyExceptionsAreContained},
         {"DeserializeAllocationFailureAtomicity", TestDeserializeAllocationFailureAtomicity},
@@ -1433,6 +1517,7 @@ int main()
         {"DeserializeRejectsThrowingCommit", TestDeserializeRejectsThrowingCommitBeforeMutation},
         {"RegistriesCanFreeze", TestRegistriesCanFreeze},
         {"SerializationServicesFactoryCreatesUsableServices", TestSerializationServicesFactoryCreatesUsableServices},
+        {"PublicApiEvidenceCoverage", TestPublicApiEvidenceCoverage},
     };
 
     for (const NamedTest& test : tests)

@@ -32,6 +32,7 @@ class EnvironmentRuntime final : public IEnvironmentRuntime
 
     void SetRevisionForTesting(std::uint64_t revision) noexcept;
     void FailNextAllocationForTesting() noexcept;
+    void FailNextBatchValidationAllocationForTesting() noexcept;
 
   private:
     struct RegionEnvironmentRecord
@@ -48,6 +49,7 @@ class EnvironmentRuntime final : public IEnvironmentRuntime
     [[nodiscard]] foundation::Result<std::uint64_t> PeekNextRevision() const;
     [[nodiscard]] foundation::Result<void> ValidateSurfaceMutation(const SurfaceState* existing, const SurfaceState& candidate) const;
     [[nodiscard]] bool ConsumeAllocationFailureForTesting() noexcept;
+    [[nodiscard]] bool ConsumeBatchValidationAllocationFailureForTesting() noexcept;
 
     std::unordered_map<RegionId, RegionEnvironmentRecord> regions_;
     std::unordered_map<SurfaceId, SurfaceState> surface_states_;
@@ -55,5 +57,6 @@ class EnvironmentRuntime final : public IEnvironmentRuntime
     std::uint64_t revision_ = 0;
     bool registration_frozen_ = false;
     bool fail_next_allocation_for_testing_ = false;
+    bool fail_next_batch_validation_allocation_for_testing_ = false;
 };
 } // namespace epidemic::runtime

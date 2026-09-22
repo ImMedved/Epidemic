@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <new>
 #include <sstream>
 #include <string_view>
 #include <utility>
@@ -182,6 +183,12 @@ foundation::Result<void> InMemoryAssetCatalog::RegisterAsset(const AssetMetadata
     {
         return foundation::Result<void>::Failure(
             foundation::Error::Create("asset.duplicate", "asset id is already registered"));
+    }
+
+    if (fail_next_catalog_publication_for_testing_)
+    {
+        fail_next_catalog_publication_for_testing_ = false;
+        throw std::bad_alloc{};
     }
 
     assets_.emplace(normalized.Value().id, std::move(normalized).Value());
@@ -480,6 +487,12 @@ foundation::Result<AssetMetadata> InMemoryAssetCatalog::ValidateAndNormalize(con
     {
         return foundation::Result<AssetMetadata>::Failure(
             foundation::Error::Create("asset.invalid_tag", "duplicate asset tags are not allowed"));
+    }
+
+    if (fail_next_metadata_candidate_build_for_testing_)
+    {
+        fail_next_metadata_candidate_build_for_testing_ = false;
+        throw std::bad_alloc{};
     }
 
     AssetMetadata normalized = metadata;

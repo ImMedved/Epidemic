@@ -1,0 +1,17 @@
+{
+  "callables": 234,
+  "callables_by_module": {
+    "EngineRuntime/Assets": 24,
+    "EngineRuntime/Persistence": 48,
+    "EngineRuntime/Resources": 37,
+    "EngineRuntime/Serialization": 72,
+    "EngineRuntime/World": 53
+  },
+  "defects": 8,
+  "dossier_fields": 75,
+  "external_boundary": 1,
+  "lifecycle": 7,
+  "local_ready_criteria": 185,
+  "mutator_obligations": 288,
+  "stale_identity": 56
+}

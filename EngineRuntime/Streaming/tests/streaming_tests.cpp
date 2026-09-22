@@ -5,10 +5,8 @@
 
 #include "Epidemic/Foundation/error.h"
 
-#include <atomic>
 #include <chrono>
 #include <cstddef>
-#include <cstdlib>
 #include <limits>
 #include <new>
 #include <stdexcept>
@@ -17,110 +15,6 @@
 #include <unordered_set>
 #include <vector>
 
-
-namespace streaming_allocation_fault
-{
-std::atomic<long long> allocations_before_failure{-1};
-
-[[nodiscard]] bool IsIgnoredBookkeepingAllocation(std::size_t size) noexcept
-{
-#if defined(_MSC_VER) && defined(_ITERATOR_DEBUG_LEVEL) && _ITERATOR_DEBUG_LEVEL > 0
-    if (size == sizeof(void*) * 2u)
-    {
-        return true;
-    }
-#endif
-    (void)size;
-    return false;
-}
-
-[[nodiscard]] bool ShouldFail(std::size_t size) noexcept
-{
-    if (IsIgnoredBookkeepingAllocation(size))
-    {
-        return false;
-    }
-    auto remaining = allocations_before_failure.load(std::memory_order_relaxed);
-    while (remaining >= 0)
-    {
-        if (remaining == 0)
-        {
-            allocations_before_failure.store(-1, std::memory_order_relaxed);
-            return true;
-        }
-        if (allocations_before_failure.compare_exchange_weak(remaining, remaining - 1, std::memory_order_relaxed))
-        {
-            return false;
-        }
-    }
-    return false;
-}
-
-class FailAfter final
-{
-  public:
-    explicit FailAfter(long long successful_allocations_before_failure) noexcept
-    {
-        allocations_before_failure.store(successful_allocations_before_failure, std::memory_order_relaxed);
-    }
-
-    ~FailAfter()
-    {
-        allocations_before_failure.store(-1, std::memory_order_relaxed);
-    }
-
-    FailAfter(const FailAfter&) = delete;
-    FailAfter& operator=(const FailAfter&) = delete;
-};
-} // namespace streaming_allocation_fault
-
-#if defined(_MSC_VER)
-#define EPIDEMIC_STREAMING_TEST_NOINLINE __declspec(noinline)
-#elif defined(__GNUC__) || defined(__clang__)
-#define EPIDEMIC_STREAMING_TEST_NOINLINE __attribute__((noinline))
-#else
-#define EPIDEMIC_STREAMING_TEST_NOINLINE
-#endif
-
-void* operator new(std::size_t size)
-{
-    if (streaming_allocation_fault::ShouldFail(size))
-    {
-        throw std::bad_alloc{};
-    }
-    if (void* memory = std::malloc(size == 0 ? 1 : size))
-    {
-        return memory;
-    }
-    throw std::bad_alloc{};
-}
-
-void* operator new[](std::size_t size)
-{
-    return ::operator new(size);
-}
-
-EPIDEMIC_STREAMING_TEST_NOINLINE void operator delete(void* memory) noexcept
-{
-    std::free(memory);
-}
-
-EPIDEMIC_STREAMING_TEST_NOINLINE void operator delete[](void* memory) noexcept
-{
-    std::free(memory);
-}
-
-EPIDEMIC_STREAMING_TEST_NOINLINE void operator delete(void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
-
-EPIDEMIC_STREAMING_TEST_NOINLINE void operator delete[](void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
-
-#undef EPIDEMIC_STREAMING_TEST_NOINLINE
 
 namespace
 {
@@ -1526,97 +1420,65 @@ bool TestRemainingDependencyPortExceptionsAreContained()
     }
 }
 
-bool TestRequestAllocationFaultSweepPreservesPublishedState()
+bool TestRequestPublicationFailureRestoresPublishedState()
 {
-    bool saw_failure = false;
-    bool saw_success = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    StreamingRuntime runtime;
+    runtime.CleanupCompletedRecords(1);
+    const ChunkId recycled_chunk{842};
+    const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{recycled_chunk}}, StreamingPriorityClass::Normal);
+    const auto other = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{843}}}, StreamingPriorityClass::Normal);
+    if (!first || !other || !runtime.ReleaseDemand(first.Value()) || !runtime.ReleaseDemand(other.Value())) return false;
+    (void)runtime.Tick();
+    if (runtime.RecordCount() != 1u || runtime.GetChunkState(recycled_chunk) != StreamingState::Cancelled) return false;
+
+    const std::size_t before_records = runtime.RecordCount();
+    const std::uint64_t before_request = runtime.NextRequestValueForTesting();
+    const std::uint64_t before_demand = runtime.NextDemandValueForTesting();
+    // The old terminal request has been pruned, so its chunk state remains but its mapping is gone.
+    // Fail specifically after the new request and Requested chunk state are staged, at the later
+    // chunk-to-request mapping publication boundary. This exercises G3-STR-004 rollback rather
+    // than merely failing before publication begins.
+    runtime.FailNextChunkMappingPublicationForTesting();
+    const auto failed = runtime.Request(StreamingTarget{ChunkStreamingTarget{recycled_chunk}}, StreamingPriorityClass::Normal);
+    if (failed || !failed.GetError().HasCode("streaming.allocation_failed") ||
+        runtime.RecordCount() != before_records || runtime.GetChunkState(recycled_chunk) != StreamingState::Cancelled ||
+        runtime.NextRequestValueForTesting() != before_request || runtime.NextDemandValueForTesting() != before_demand)
     {
-        StreamingRuntime runtime;
-        runtime.CleanupCompletedRecords(1);
-        const ChunkId recycled_chunk{842};
-        const auto first = runtime.Request(StreamingTarget{ChunkStreamingTarget{recycled_chunk}}, StreamingPriorityClass::Normal);
-        const auto other = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{843}}}, StreamingPriorityClass::Normal);
-        if (!first || !other || !runtime.ReleaseDemand(first.Value()) || !runtime.ReleaseDemand(other.Value())) return false;
-        (void)runtime.Tick();
-        if (runtime.RecordCount() != 1u || runtime.GetChunkState(recycled_chunk) != StreamingState::Cancelled) return false;
-
-        const std::size_t before_records = runtime.RecordCount();
-        const std::uint64_t before_request = runtime.NextRequestValueForTesting();
-        const std::uint64_t before_demand = runtime.NextDemandValueForTesting();
-        bool bad_alloc_seen = false;
-        Result<StreamingDemandHandle> requested = Result<StreamingDemandHandle>::Failure(
-            epidemic::foundation::Error::Create("test.unset", "request was not attempted"));
-        {
-            streaming_allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                requested = runtime.Request(StreamingTarget{ChunkStreamingTarget{recycled_chunk}}, StreamingPriorityClass::Normal);
-            }
-            catch (const std::bad_alloc&)
-            {
-                bad_alloc_seen = true;
-            }
-        }
-
-        if (!bad_alloc_seen && requested)
-        {
-            saw_success = true;
-            break;
-        }
-        saw_failure = true;
-        if (runtime.RecordCount() != before_records || runtime.GetChunkState(recycled_chunk) != StreamingState::Cancelled ||
-            runtime.NextRequestValueForTesting() != before_request || runtime.NextDemandValueForTesting() != before_demand)
-        {
-            return false;
-        }
+        return false;
     }
-    return saw_failure && saw_success;
+
+    const auto retried = runtime.Request(StreamingTarget{ChunkStreamingTarget{recycled_chunk}}, StreamingPriorityClass::Normal);
+    return retried && runtime.GetChunkState(recycled_chunk) == StreamingState::Requested &&
+           runtime.NextRequestValueForTesting() == before_request + 1u &&
+           runtime.NextDemandValueForTesting() == before_demand + 1u;
 }
 
-bool TestReactivationAllocationFaultSweepPreservesDemandOwnership()
+bool TestReactivationDemandPublicationFailurePreservesOwnership()
 {
-    bool saw_failure = false;
-    bool saw_success = false;
-    for (long long fail_after = 0; fail_after < 24; ++fail_after)
+    auto residency = std::make_shared<InMemoryResidencyController>();
+    StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency));
+    const ChunkId chunk{844};
+    const auto original = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    if (!original || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(original.Value())) return false;
+    const auto before = runtime.GetProgress(original.Value().request);
+    if (!before || before->state != StreamingState::Deactivating || before->demand_count != 0u) return false;
+    const std::uint64_t before_demand = runtime.NextDemandValueForTesting();
+
+    runtime.FailNextDemandPublicationForTesting();
+    const auto failed = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    const auto after = runtime.GetProgress(original.Value().request);
+    if (failed || !failed.GetError().HasCode("streaming.allocation_failed") || !after ||
+        after->state != StreamingState::Deactivating || after->demand_count != 0u ||
+        runtime.GetChunkState(chunk) != StreamingState::Deactivating ||
+        runtime.NextDemandValueForTesting() != before_demand)
     {
-        auto residency = std::make_shared<InMemoryResidencyController>();
-        StreamingRuntime runtime(MakeDependencies({}, {}, {}, residency));
-        const ChunkId chunk{844};
-        const auto original = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
-        if (!original || !AdvanceTo(runtime, chunk, StreamingState::Active) || !runtime.ReleaseDemand(original.Value())) return false;
-        const auto before = runtime.GetProgress(original.Value().request);
-        if (!before || before->state != StreamingState::Deactivating || before->demand_count != 0u) return false;
-
-        bool bad_alloc_seen = false;
-        Result<StreamingDemandHandle> requested = Result<StreamingDemandHandle>::Failure(
-            epidemic::foundation::Error::Create("test.unset", "request was not attempted"));
-        {
-            streaming_allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                requested = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
-            }
-            catch (const std::bad_alloc&)
-            {
-                bad_alloc_seen = true;
-            }
-        }
-
-        if (!bad_alloc_seen && requested)
-        {
-            saw_success = true;
-            break;
-        }
-        saw_failure = true;
-        const auto after = runtime.GetProgress(original.Value().request);
-        if (!after || after->state != StreamingState::Deactivating || after->demand_count != 0u ||
-            runtime.GetChunkState(chunk) != StreamingState::Deactivating)
-        {
-            return false;
-        }
+        return false;
     }
-    return saw_failure && saw_success;
+
+    const auto retried = runtime.Request(StreamingTarget{ChunkStreamingTarget{chunk}}, StreamingPriorityClass::Normal);
+    const auto reactivated = runtime.GetProgress(original.Value().request);
+    return retried && reactivated && reactivated->state == StreamingState::Resident &&
+           reactivated->demand_count == 1u && runtime.NextDemandValueForTesting() == before_demand + 1u;
 }
 
 bool SameStatistics(const StreamingStatistics& left, const StreamingStatistics& right) noexcept
@@ -1637,33 +1499,43 @@ bool SameProgress(const epidemic::runtime::streaming::StreamingProgress& left,
 
 bool TestTickAllocationPreflightFailuresPropagateWithoutMutation()
 {
-    for (const long long fail_after : {0LL, 1LL})
+    for (const bool fail_work_list : {true, false})
     {
         StreamingRuntime runtime;
-        const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{829 + static_cast<std::uint64_t>(fail_after)}}},
+        const auto demand = runtime.Request(StreamingTarget{ChunkStreamingTarget{ChunkId{829 + static_cast<std::uint64_t>(fail_work_list ? 0u : 1u)}}},
                                             StreamingPriorityClass::Normal);
         if (!demand) return false;
         const auto before_progress = runtime.GetProgress(demand.Value().request);
         const auto before_statistics = runtime.GetStatistics();
         if (!before_progress) return false;
 
-        bool bad_alloc_seen = false;
+        if (fail_work_list)
         {
-            streaming_allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                (void)runtime.Tick();
-            }
-            catch (const std::bad_alloc&)
-            {
-                bad_alloc_seen = true;
-            }
+            runtime.FailNextWorkListPreparationForTesting();
+        }
+        else
+        {
+            runtime.FailNextTickResultPreparationForTesting();
+        }
+        bool bad_alloc_seen = false;
+        try
+        {
+            (void)runtime.Tick();
+        }
+        catch (const std::bad_alloc&)
+        {
+            bad_alloc_seen = true;
         }
 
         const auto after_progress = runtime.GetProgress(demand.Value().request);
         const auto after_statistics = runtime.GetStatistics();
         if (!bad_alloc_seen || !after_progress || !SameProgress(*before_progress, *after_progress) ||
             !SameStatistics(before_statistics, after_statistics))
+        {
+            return false;
+        }
+        const auto retried = runtime.Tick();
+        if (retried.processed_requests != 1u)
         {
             return false;
         }
@@ -1793,8 +1665,8 @@ int main()
     if (!TestAllStreamingExtensionExceptionsStayInsideResultBoundary()) return 42;
     if (!TestStreamingIdentityAllocatorExhaustionBoundaries()) return 43;
     if (!TestRemainingDependencyPortExceptionsAreContained()) return 47;
-    if (!TestRequestAllocationFaultSweepPreservesPublishedState()) return 48;
-    if (!TestReactivationAllocationFaultSweepPreservesDemandOwnership()) return 49;
+    if (!TestRequestPublicationFailureRestoresPublishedState()) return 48;
+    if (!TestReactivationDemandPublicationFailurePreservesOwnership()) return 49;
     if (!TestTickAllocationPreflightFailuresPropagateWithoutMutation()) return 44;
     if (!TestAcceptedStepResultIsNotExecutedAgainAfterLocalCommitFailure()) return 45;
     if (!TestCommitStepMustBeTerminalAndUniqueWhenPresent()) return 46;

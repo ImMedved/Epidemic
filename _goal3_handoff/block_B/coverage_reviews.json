@@ -1,0 +1,2863 @@
+{
+  "api": {
+    "06665ae70320d982": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> UpdateLazyRule(LazyRuleRecord record)=0;"
+    },
+    "06b605441e1b9d2a": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_metadata.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::AssetDependency",
+      "signature": "[[nodiscard]] constexpr bool operator==(const AssetDependency&)const noexcept=default;"
+    },
+    "07238383d4fe70bf": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<std::string> ReadString(std::string_view name)const=0;"
+    },
+    "08536b65f1b1a214": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_value.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::SerializedDocument",
+      "signature": "[[nodiscard]] SchemaVersion GetSchemaVersion()const;"
+    },
+    "0af2eb7ffefaa137": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_handle.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ResourceLease",
+      "signature": "[[nodiscard]] constexpr bool operator==(const ResourceLease&)const noexcept=default;"
+    },
+    "0b98d4b8e67b2ccf": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location_resolver.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetLocationResolver",
+      "signature": "[[nodiscard]] virtual foundation::Result<AssetLocation> Resolve(AssetId id)const=0;"
+    },
+    "0d6ef8701d069b11": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_placement.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::EquippedPlacement",
+      "signature": "[[nodiscard]] constexpr bool operator==(const EquippedPlacement&)const noexcept=default;"
+    },
+    "0e73f0ed9cbecf4a": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistent_object_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistentObjectStore",
+      "signature": "[[nodiscard]] virtual std::vector<PersistentObjectRecord> FindByLocation(const PersistenceLocation&location)const=0;"
+    },
+    "0edc90c695b4cff4": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serialization_services.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveFactory",
+      "signature": "[[nodiscard]] virtual foundation::Result<std::unique_ptr<IArchiveReader>> CreateReader(const SerializedDocument&document)const=0;"
+    },
+    "0ff3a2b6042db618": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<SerializedDocument> Finalize(foundation::StringId type_id,SchemaVersion schema_version)=0;"
+    },
+    "10230c704b0ffd57": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_invariants.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] foundation::Result<void> ValidateWorldObjectInvariant(const WorldObjectSnapshot&object,const IRegionRegistry&regions,const IChunkRegistry&chunks,const IWorldQuery&objects);"
+    },
+    "11763d5fc9344a91": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_placement.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::HiddenPlacement",
+      "signature": "[[nodiscard]] constexpr bool operator==(const HiddenPlacement&)const noexcept=default;"
+    },
+    "128c1859ed7026ef": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> BeginObject(std::string_view name)=0;"
+    },
+    "134d5b82878230b9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_policy.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr std::uint32_t ToProtectionMask(ObjectProtectionFlags flags)noexcept"
+    },
+    "146adb21842f8449": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog_writer.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IAssetCatalogWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterAsset(const AssetMetadata&metadata)=0;"
+    },
+    "14d45bcaf812759a": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "virtual void SetMemoryBudgetBytes(std::size_t bytes)=0;"
+    },
+    "156ee0e33084be16": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_location.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::WorldLocation",
+      "signature": "[[nodiscard]] constexpr bool operator==(const WorldLocation&)const noexcept=default;"
+    },
+    "15b8a0f4f0097662": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> WriteUInt64(std::string_view name,std::uint64_t value)=0;"
+    },
+    "16b99a54af3ca041": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_policy.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr bool HasProtectionFlag(ObjectProtectionMask mask,ObjectProtectionFlags flag)noexcept"
+    },
+    "16c630e44c5850dc": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IChunkRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<ChunkSnapshot> GetChunkSnapshot(ChunkId id)const=0;"
+    },
+    "16ffc573bf46c74e": {
+      "classification": "CONSTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::AssetLocation",
+      "signature": "AssetLocation()=default;"
+    },
+    "173dcd58e4ddcea8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RemoveLazyRule(LazyRuleId id)=0;"
+    },
+    "17ded4ada564e618": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_handle.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ResourceLease",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "1a5d676c13d7522b": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> WriteBool(std::string_view name,bool value)=0;"
+    },
+    "1bb53dcda63333b1": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader_registry.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceLoaderRegistry",
+      "signature": "[[nodiscard]] virtual const IResourceLoader*FindLoader(ResourceType type)const=0;"
+    },
+    "1c55c01ea10de0dc": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IChunkRegistry",
+      "signature": "virtual void Freeze()noexcept=0;"
+    },
+    "1d0103e95e3a065a": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serialization_services.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveFactory",
+      "signature": "virtual ~IArchiveFactory()=default;"
+    },
+    "1e8adf9a6cd102af": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> EndArray()=0;"
+    },
+    "1eb2553907af9385": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::AssetLocation",
+      "signature": "[[nodiscard]] bool operator==(const AssetLocation&)const=default;"
+    },
+    "1ec6c3f9e4905ff3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<std::size_t> BeginArray(std::string_view name)=0;"
+    },
+    "1ec8f4ff94f4ac20": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime",
+      "signature": "template <typename TObject> [[nodiscard]] foundation::Result<SerializedDocument> SerializeToDocument(const ISerializer&serializer,const TObject&object,IArchiveFactory&archives);"
+    },
+    "20f69459182c9068": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> DeleteObject(TombstoneRecord tombstone)=0;"
+    },
+    "21b972ab69903435": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader_registry.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceLoaderRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Freeze()=0;"
+    },
+    "22e234080e5c23c5": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_query.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IWorldQuery",
+      "signature": "[[nodiscard]] virtual std::vector<WorldObjectRecord> FindObjectsInRegion(RegionId region)const=0;"
+    },
+    "250eec283c8a413d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_query.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IWorldQuery",
+      "signature": "[[nodiscard]] virtual std::vector<WorldObjectRecord> FindObjectsInChunk(ChunkId chunk)const=0;"
+    },
+    "252398d081709181": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/zone_override_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IZoneOverrideStore",
+      "signature": "[[nodiscard]] virtual std::vector<ZoneOverrideSnapshot> ListZoneOverrides()const=0;"
+    },
+    "25f1a1b839699cae": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> EndArrayElement()=0;"
+    },
+    "2871f95469097c83": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IMigrationRegistry",
+      "signature": "virtual ~IMigrationRegistry()=default;"
+    },
+    "288d8fb8c0d33b80": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "virtual ~ISaveTransaction()=default;"
+    },
+    "28ae564a6344588d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IMigration",
+      "signature": "[[nodiscard]] virtual MigrationKey GetKey()const=0;"
+    },
+    "2cbb6cfdd830f6c5": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual ResourceState GetState(ResourceHandle handle)const=0;"
+    },
+    "2d4e5bd87d983bb4": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/region.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IRegionRegistry",
+      "signature": "virtual void Freeze()noexcept=0;"
+    },
+    "2e21fc7186cac499": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceLoader",
+      "signature": "[[nodiscard]] virtual foundation::Result<ResourceLoadArtifact> Load(ResourceRequest request)=0;"
+    },
+    "2ec7f2b5522be461": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/tombstone_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::ITombstoneStore",
+      "signature": "[[nodiscard]] virtual std::vector<TombstoneRecord> ListTombstones()const=0;"
+    },
+    "37e7280ad6adbde9": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog_writer.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetCatalogWriter",
+      "signature": "virtual ~IAssetCatalogWriter()=default;"
+    },
+    "38322a1f4d669572": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_policy.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::ObjectProtectionMask",
+      "signature": "[[nodiscard]] constexpr bool operator==(const ObjectProtectionMask&)const noexcept=default;"
+    },
+    "38367b8804f4309f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_placement.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] inline std::optional<RegionId> GetPlacementRegion(const ObjectPlacement&placement)"
+    },
+    "386fa83fd22883ed": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/region.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IRegionRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterRegion(RegionDescriptor region)=0;"
+    },
+    "39168528bff0ac51": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/zone_override_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IZoneOverrideStore",
+      "signature": "[[nodiscard]] virtual std::optional<ZoneOverrideSnapshot> FindZoneOverride(const PersistenceLocation&location)const=0;"
+    },
+    "3bf73d88313f26cc": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_placement.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::WorldSurfacePlacement",
+      "signature": "[[nodiscard]] constexpr bool operator==(const WorldSurfacePlacement&)const noexcept=default;"
+    },
+    "3ce0f011859e4bb9": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual foundation::Result<ResourceLease> RequestLease(ResourceRequest request)=0;"
+    },
+    "3ceb1bfd9a45e7a3": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistent_object_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistentObjectStore",
+      "signature": "virtual ~IPersistentObjectStore()=default;"
+    },
+    "3d7377f422f50efc": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> EndObject()=0;"
+    },
+    "3d7dd2a0452a9277": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IChunkRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterChunk(ChunkDescriptor chunk)=0;"
+    },
+    "3e21f3b99d080ce3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_backend.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IPersistenceBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> CommitSnapshot(const PersistenceSnapshot&snapshot,PersistenceDurability durability)=0;"
+    },
+    "40d94f377320a676": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_query.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IWorldQuery",
+      "signature": "[[nodiscard]] virtual std::vector<WorldObjectRecord> FindObjectsByReality(ObjectRealityLevel reality)const=0;"
+    },
+    "426925a9f27dfe12": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_payload.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ByteResourcePayload",
+      "signature": "[[nodiscard]] const std::vector<std::byte>&Bytes()const noexcept"
+    },
+    "427603039ed1e2ba": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_services.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] foundation::Result<ResourceServices> CreateResourceServices(const ResourceOptions&options={});"
+    },
+    "434b9081faa21e74": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::DemotionCommitToken",
+      "signature": "[[nodiscard]] constexpr bool operator==(const DemotionCommitToken&)const noexcept=default;"
+    },
+    "4379437fe264a433": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IMigration",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Apply(IArchiveReader&input,IArchiveWriter&output)const=0;"
+    },
+    "448ff66780eb21c5": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual SchemaVersion GetSchemaVersion()const=0;"
+    },
+    "44e4f40c850795cd": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceQuery",
+      "signature": "[[nodiscard]] virtual std::vector<LazyRuleRecord> FindLazyRules(PersistentObjectId target_id)const=0;"
+    },
+    "4500897bc90a36f4": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> BeginArrayElement(std::size_t index)=0;"
+    },
+    "477a801e2770d49d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] bool IsValidAssetLocation(const AssetLocation&location)noexcept;"
+    },
+    "47810d10d66f0d25": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader_registry.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceLoaderRegistry",
+      "signature": "virtual ~IResourceLoaderRegistry()=default;"
+    },
+    "4c112e722fa6d6da": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_dependency_graph.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ResourceDependency",
+      "signature": "[[nodiscard]] constexpr bool operator==(const ResourceDependency&)const noexcept=default;"
+    },
+    "4c7fc69b7ea53e99": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_state.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr bool IsValidAssetState(AssetState value)noexcept"
+    },
+    "4dbaa509d4e31f1a": {
+      "classification": "CONSTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::AssetLocation",
+      "signature": "AssetLocation(AssetLocationKind location_kind,std::string location_path)"
+    },
+    "4eee56d3beee924e": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_services.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] foundation::Result<WorldServices> CreateWorldServices(const WorldOptions&options={});"
+    },
+    "5196cf09d01c522e": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IMigrationRegistry",
+      "signature": "[[nodiscard]] virtual bool IsFrozen()const noexcept=0;"
+    },
+    "527b731acb1f52af": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual foundation::Result<ResourceProcessingStats> ProcessPendingLoads(RuntimeBudget budget={})=0;"
+    },
+    "5384f77d2b95cd80": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr bool CanTransition(ChunkState from,ChunkState to)noexcept"
+    },
+    "53a62e217de54b2e": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual std::uint32_t GetFormatVersion()const=0;"
+    },
+    "55131c84bcde0600": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> BeginArrayElement(std::size_t index)=0;"
+    },
+    "57902774e6e56bae": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetCatalog",
+      "signature": "[[nodiscard]] virtual bool IsSealed()const=0;"
+    },
+    "58815928bb667df0": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceQuery",
+      "signature": "virtual ~IPersistenceQuery()=default;"
+    },
+    "59091eef89718772": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistent_object_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistentObjectStore",
+      "signature": "[[nodiscard]] virtual std::vector<PersistentObjectRecord> ListObjects()const=0;"
+    },
+    "59259aae5c3c1076": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_type.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ResourceType",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "59bf4a3dd51d44d5": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::DemotionSnapshot",
+      "signature": "[[nodiscard]] constexpr bool operator==(const DemotionSnapshot&)const noexcept=default;"
+    },
+    "5b1451f2b2c4ed8f": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> WriteInt64(std::string_view name,std::int64_t value)=0;"
+    },
+    "5b47a8e4c371b344": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> BeginObject(std::string_view name)=0;"
+    },
+    "5bce4578fc21820b": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISerializerRegistry",
+      "signature": "virtual ~ISerializerRegistry()=default;"
+    },
+    "5de74158ee6dd0f4": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::AssetLocation",
+      "signature": "[[nodiscard]] bool Empty()const noexcept"
+    },
+    "5fb673ffe7714512": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IObjectMaterializer",
+      "signature": "[[nodiscard]] virtual foundation::Result<RuntimeObjectId> Materialize(const MaterializationRequest&request)=0;"
+    },
+    "5ff5081733d48ef1": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetCatalog",
+      "signature": "[[nodiscard]] virtual std::vector<AssetMetadata> FindByType(AssetType type)const=0;"
+    },
+    "603b27c79e14c6c4": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_placement.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::ContainerPlacement",
+      "signature": "[[nodiscard]] constexpr bool operator==(const ContainerPlacement&)const noexcept=default;"
+    },
+    "62956b0acef1a927": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IMigrationRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterMigration(std::shared_ptr<const IMigration> migration)=0;"
+    },
+    "636e48255b70834f": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_query.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IWorldQuery",
+      "signature": "virtual ~IWorldQuery()=default;"
+    },
+    "6427e88432eb35d8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_object_registry.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IWorldObjectRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<WorldCommandResult> Apply(const DestroyObjectCommand&command)=0;"
+    },
+    "649e7cc6afd92242": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISerializerRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Freeze()=0;"
+    },
+    "64b2fd94195b70c3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_object_registry.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IWorldObjectRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<WorldCommandResult> Apply(const PromotePersistenceTierCommand&command)=0;"
+    },
+    "6822ea6ac048185e": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader_registry.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceLoaderRegistry",
+      "signature": "[[nodiscard]] virtual bool HasLoader(ResourceType type)const=0;"
+    },
+    "684b7e1a0742394a": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual ResourceMemoryStats GetMemoryStatistics()const=0;"
+    },
+    "6a29754411247e0d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISerializer",
+      "signature": "[[nodiscard]] virtual foundation::StringId GetTypeId()const=0;"
+    },
+    "6afa5f953871b428": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual ResourcePayloadPtr GetPayload(ResourceHandle handle)const=0;"
+    },
+    "6b0eba1e89c6562b": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serialization_services.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime",
+      "signature": "template <typename TObject> [[nodiscard]] foundation::Result<SerializedDocument> SerializeToDocument(const ISerializer&serializer,const TObject&object,IArchiveFactory&archives)"
+    },
+    "6b6d5840bc22393c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceQuery",
+      "signature": "[[nodiscard]] virtual std::vector<LazyRuleRecord> QueryDueLazyRules(GameTimePoint now)const=0;"
+    },
+    "6ca7e1ea3d929716": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> EndArray()=0;"
+    },
+    "6cba12d3ace4f283": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_invariants.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr bool IsValidObjectRealityLevel(ObjectRealityLevel level)noexcept"
+    },
+    "6d675bc3f0d6be41": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_query.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IWorldQuery",
+      "signature": "[[nodiscard]] virtual std::optional<WorldObjectRecord> FindObject(RuntimeObjectId id)const=0;"
+    },
+    "6e7ca49dc24b28fb": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_type.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ResourceType",
+      "signature": "[[nodiscard]] constexpr bool operator==(const ResourceType&)const noexcept=default;"
+    },
+    "70600b95134bc261": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime",
+      "signature": "template <typename TObject> [[nodiscard]] foundation::Result<void> SerializeObject(const ISerializer&serializer,const TObject&object,IArchiveWriter&writer);"
+    },
+    "72e5c7e6e72eae02": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<std::uint64_t> ReadUInt64(std::string_view name)const=0;"
+    },
+    "73202027e43ec08d": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime",
+      "signature": "template <typename TObject> [[nodiscard]] foundation::Result<void> DeserializeObject(const ISerializer&serializer,IArchiveReader&reader,TObject&object)"
+    },
+    "74dee2a01e95afcf": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceQuery",
+      "signature": "[[nodiscard]] virtual PersistenceRevision GetRevision()const=0;"
+    },
+    "75a7320df7873957": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_value.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::SerializedDocument",
+      "signature": "[[nodiscard]] std::uint32_t GetFormatVersion()const;"
+    },
+    "770123acb7b8ba50": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Evict(ResourceId id)=0;"
+    },
+    "77fadf870e96a8ca": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IChunkRegistry",
+      "signature": "virtual ~IChunkRegistry()=default;"
+    },
+    "7856c135a45e31f7": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> ValidateHandle(ResourceHandle handle)const=0;"
+    },
+    "787e2a7a40ca6c0f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISerializer",
+      "signature": "[[nodiscard]] virtual SchemaVersion GetSchemaVersion()const=0;"
+    },
+    "78a70cce08464ba3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_backend.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IPersistenceBackend",
+      "signature": "[[nodiscard]] virtual foundation::Result<PersistenceSnapshot> Load()=0;"
+    },
+    "7986b1c1c0c08f41": {
+      "classification": "CONSTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_value.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::SerializedDocument",
+      "signature": "SerializedDocument()=default;"
+    },
+    "7a408b3ca5c68bc6": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/tombstone_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::ITombstoneStore",
+      "signature": "[[nodiscard]] virtual std::optional<TombstoneRecord> FindTombstone(PersistentObjectId id)const=0;"
+    },
+    "7b8593f2163f0bf2": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> EndArrayElement()=0;"
+    },
+    "7bd54262eec254d8": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<std::int64_t> ReadInt64(std::string_view name)const=0;"
+    },
+    "7cbbdb10e66f3a4a": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISerializerRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterSerializer(std::shared_ptr<const ISerializer> serializer)=0;"
+    },
+    "7d57ded577de76dd": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serialization_services.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] foundation::Result<SerializationServices> CreateSerializationServices(const SerializationOptions&options={});"
+    },
+    "7d92070b2512e562": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IMigrationRegistry",
+      "signature": "[[nodiscard]] virtual bool HasMigration(const MigrationKey&key)const=0;"
+    },
+    "7e109513de2678db": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IChunkRegistry",
+      "signature": "[[nodiscard]] virtual bool IsFrozen()const noexcept=0;"
+    },
+    "7ff813e954dc14b6": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISerializerRegistry",
+      "signature": "[[nodiscard]] virtual bool HasSerializer(foundation::StringId type_id)const=0;"
+    },
+    "7ffbc7598b46aa68": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceStore",
+      "signature": "virtual ~IPersistenceStore()=default;"
+    },
+    "80bf7287169cb742": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_state.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr bool CanTransition(ResourceState from,ResourceState to)noexcept"
+    },
+    "8396c4b61da44532": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> UpsertObject(PersistentObjectRecord record)=0;"
+    },
+    "852f765ea9617db3": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> WriteNull(std::string_view name)=0;"
+    },
+    "874ca9b4442b67c6": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/dirty_tracker.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IDirtyTracker",
+      "signature": "virtual ~IDirtyTracker()=default;"
+    },
+    "87b27bb9a709bac0": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetCatalog",
+      "signature": "[[nodiscard]] virtual std::optional<AssetMetadata> FindById(AssetId id)const=0;"
+    },
+    "8a3dd7db69528aee": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RemoveZoneOverride(const PersistenceLocation&location)=0;"
+    },
+    "8c0a3a1fe135da84": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_object.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::WorldObjectRecord",
+      "signature": "[[nodiscard]] bool operator==(const WorldObjectRecord&)const noexcept=default;"
+    },
+    "8ccd3acc3adefde9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] AssetLocation CanonicalizeAssetLocation(AssetLocation location);"
+    },
+    "8d16fe30d12e75ec": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> UpsertLazyRule(LazyRuleRecord record)=0;"
+    },
+    "8d842e4acd8f484d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_placement.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::DestroyedPlacement",
+      "signature": "[[nodiscard]] constexpr bool operator==(const DestroyedPlacement&)const noexcept=default;"
+    },
+    "8d9e5a56da811885": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual std::optional<ResourceId> GetResourceId(ResourceHandle handle)const=0;"
+    },
+    "9352c73a0473d3c1": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IPersistenceAdministrativeTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> AdminAddTombstone(TombstoneRecord tombstone)=0;"
+    },
+    "958bdfc6f6bcab82": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IMigrationRegistry",
+      "signature": "[[nodiscard]] virtual std::shared_ptr<const IMigration> FindMigration(const MigrationKey&key)const=0;"
+    },
+    "95be2f4c56f95568": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> BeginArray(std::string_view name,std::size_t size)=0;"
+    },
+    "95d15c17fb6d6857": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Commit()=0;"
+    },
+    "975a0d561df6d58d": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IObjectMaterializer",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Demote(const DemotionRequest&request)=0;"
+    },
+    "97eed344953706d9": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime",
+      "signature": "template <typename TObject> [[nodiscard]] foundation::Result<void> DeserializeObject(const ISerializer&serializer,IArchiveReader&reader,TObject&object);"
+    },
+    "980bafb47be15dbe": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Release(ResourceLease lease)=0;"
+    },
+    "991ee8a4e6151fc4": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader_registry.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceLoaderRegistry",
+      "signature": "[[nodiscard]] virtual bool IsFrozen()const noexcept=0;"
+    },
+    "9ae3c845f1963c5d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_placement.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] inline std::optional<ChunkId> GetPlacementChunk(const ObjectPlacement&placement)"
+    },
+    "9c2d4b2a80a9052a": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<double> ReadDouble(std::string_view name)const=0;"
+    },
+    "9dba6ae138d8dfd8": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IMigration",
+      "signature": "virtual ~IMigration()=default;"
+    },
+    "9ee99dc03a58ba22": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "virtual ~IArchiveWriter()=default;"
+    },
+    "9f3053f1207bf5ef": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IChunkRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> SetChunkState(ChangeChunkStateCommand command)=0;"
+    },
+    "a0179394c4127d40": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetCatalog",
+      "signature": "[[nodiscard]] virtual std::vector<AssetMetadata> FindByTag(foundation::StringId tag)const=0;"
+    },
+    "a03fa9246926b216": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serialization_services.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveFactory",
+      "signature": "[[nodiscard]] virtual std::unique_ptr<IArchiveWriter> CreateWriter()const=0;"
+    },
+    "a099614894ae2612": {
+      "classification": "CONSTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_payload.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ByteResourcePayload",
+      "signature": "explicit ByteResourcePayload(std::vector<std::byte> bytes={})"
+    },
+    "a0c987e8a40c4669": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> UpsertZoneOverride(ZoneOverrideSnapshot snapshot)=0;"
+    },
+    "a12c38985e389cd2": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<bool> IsNull(std::string_view name)const=0;"
+    },
+    "a151119b869c78d8": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_payload.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourcePayload",
+      "signature": "virtual ~IResourcePayload()=default;"
+    },
+    "a35a367ce094d269": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/region.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IRegionRegistry",
+      "signature": "[[nodiscard]] virtual bool IsFrozen()const noexcept=0;"
+    },
+    "a4529d2011d9770a": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_location.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::PersistenceLocation",
+      "signature": "[[nodiscard]] constexpr bool operator==(const PersistenceLocation&)const noexcept=default;"
+    },
+    "a47ba144a07ca338": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/region.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::RegionDescriptor",
+      "signature": "[[nodiscard]] constexpr bool operator==(const RegionDescriptor&)const noexcept=default;"
+    },
+    "a4ca8f03ff6b9cba": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "virtual ~IArchiveReader()=default;"
+    },
+    "a501aabd6811aba5": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_services.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] foundation::Result<AssetServices> CreateAssetServices(const AssetsOptions&options={});"
+    },
+    "a67cf70946dd56a1": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::DemotionCommitToken",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "a6fd598e82cbb0ed": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime",
+      "signature": "template <typename TObject> [[nodiscard]] foundation::Result<void> SerializeObject(const ISerializer&serializer,const TObject&object,IArchiveWriter&writer)"
+    },
+    "a7a8d73c6abe4178": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISerializer",
+      "signature": "[[nodiscard]] virtual std::type_index GetCppType()const=0;"
+    },
+    "a89cddb99a3426f0": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_placement.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::InventoryPlacement",
+      "signature": "[[nodiscard]] constexpr bool operator==(const InventoryPlacement&)const noexcept=default;"
+    },
+    "a98b1cf8f2682a5f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::StringId GetTypeId()const=0;"
+    },
+    "a9df6ff064f8235c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/tombstone_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::ITombstoneStore",
+      "signature": "[[nodiscard]] virtual bool IsTombstoned(PersistentObjectId id)const=0;"
+    },
+    "aaa8babdd4de6b51": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::DemotionRequest",
+      "signature": "[[nodiscard]] constexpr bool operator==(const DemotionRequest&)const noexcept=default;"
+    },
+    "ab250d44c64d64c1": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> EndObject()=0;"
+    },
+    "abcabd4399f8b01b": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IDemotionCommitAuthority",
+      "signature": "[[nodiscard]] virtual foundation::Result<DemotionCommitToken> IssueDemotionCommitToken(DemotionSnapshot snapshot)=0;"
+    },
+    "ac99988860174f7d": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_payload.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourcePayload",
+      "signature": "[[nodiscard]] virtual std::size_t GetSizeBytes()const noexcept=0;"
+    },
+    "ad518df3d43272df": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual PersistenceRevision GetBaseRevision()const=0;"
+    },
+    "affcca23c4e1c4f9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/dirty_tracker.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IDirtyTracker",
+      "signature": "[[nodiscard]] virtual bool IsDirty(PersistentObjectId id)const=0;"
+    },
+    "b2c45a59b02c16fc": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/dirty_tracker.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IDirtyTracker",
+      "signature": "[[nodiscard]] virtual std::vector<PersistentObjectId> CollectDirty()const=0;"
+    },
+    "b4a3f18304ae82e9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_type.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::AssetType",
+      "signature": "[[nodiscard]] constexpr bool operator==(const AssetType&)const noexcept=default;"
+    },
+    "b53963cc127eeabe": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IObjectMaterializer",
+      "signature": "virtual ~IObjectMaterializer()=default;"
+    },
+    "b5ff4b6e992b6cac": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IPersistenceStore",
+      "signature": "[[nodiscard]] virtual std::unique_ptr<ISaveTransaction> OpenTransaction(PersistenceRevision base_revision)=0;"
+    },
+    "b798e4bd58c580e7": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/region.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IRegionRegistry",
+      "signature": "[[nodiscard]] virtual std::optional<RegionDescriptor> FindRegion(RegionId id)const=0;"
+    },
+    "b7fde22f9603c689": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceLoader",
+      "signature": "[[nodiscard]] virtual ResourceType GetResourceType()const=0;"
+    },
+    "b819720510d395cb": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_value.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::SerializedDocument",
+      "signature": "[[nodiscard]] foundation::StringId GetTypeId()const;"
+    },
+    "b9211fa0f998be9c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISerializerRegistry",
+      "signature": "[[nodiscard]] virtual std::shared_ptr<const ISerializer> FindSerializer(foundation::StringId type_id)const=0;"
+    },
+    "b99ebe9336e7c8a2": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "virtual void Rollback()=0;"
+    },
+    "ba4318085a71a935": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetCatalog",
+      "signature": "virtual ~IAssetCatalog()=default;"
+    },
+    "bb43106c7534f6f5": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IPersistenceStore",
+      "signature": "[[nodiscard]] virtual std::unique_ptr<ISaveTransaction> OpenTransaction()=0;"
+    },
+    "bbcebecd9778b644": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::ChunkDescriptor",
+      "signature": "[[nodiscard]] constexpr bool operator==(const ChunkDescriptor&)const noexcept=default;"
+    },
+    "be09b1246caf5d99": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/region.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IRegionRegistry",
+      "signature": "virtual ~IRegionRegistry()=default;"
+    },
+    "beffcf5a1c18d248": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_invariants.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr bool IsValidPersistenceTier(PersistenceTier tier)noexcept"
+    },
+    "c0035097151e4b5a": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_invariants.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr bool IsValidResidencyState(ResidencyState state)noexcept"
+    },
+    "c013e410f27e4753": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr bool IsValidAssetLocationKind(AssetLocationKind value)noexcept"
+    },
+    "c0bfe9ccde828d72": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/tombstone_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::ITombstoneStore",
+      "signature": "virtual ~ITombstoneStore()=default;"
+    },
+    "c3ebfbe474f70a7e": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISerializerRegistry",
+      "signature": "[[nodiscard]] virtual bool IsFrozen()const noexcept=0;"
+    },
+    "c3f418e013d0fa3d": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader_registry.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceLoaderRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RegisterLoader(IResourceLoader&loader)=0;"
+    },
+    "c49d3da7e7718c13": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/schema_version.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::SchemaVersion",
+      "signature": "[[nodiscard]] constexpr auto operator<=>(const SchemaVersion&)const noexcept=default;"
+    },
+    "c4fb346826e5c459": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISaveTransaction",
+      "signature": "[[nodiscard]] virtual SaveTransactionState GetState()const=0;"
+    },
+    "c6655c900b99c29b": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "std::hash",
+      "signature": "[[nodiscard]] size_t operator()(const epidemic::runtime::MigrationKey&key)const noexcept"
+    },
+    "c6aa8c0d59d8ffbf": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> WriteString(std::string_view name,std::string_view value)=0;"
+    },
+    "c819fa376e414c54": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_backend.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceBackend",
+      "signature": "virtual ~IPersistenceBackend()=default;"
+    },
+    "ca26fb40866d7489": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_handle.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ResourceHandle",
+      "signature": "[[nodiscard]] constexpr bool operator==(const ResourceHandle&)const noexcept=default;"
+    },
+    "ce53e71277b35f0a": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serializer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::ISerializer",
+      "signature": "virtual ~ISerializer()=default;"
+    },
+    "ce819f7ab076b523": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual bool IsReady(ResourceHandle handle)const=0;"
+    },
+    "ce8266654474e4ac": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "virtual ~IResourceManager()=default;"
+    },
+    "cf87e9e356e61a28": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<bool> ReadBool(std::string_view name)const=0;"
+    },
+    "d0194061b8ec11e8": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_payload.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ByteResourcePayload",
+      "signature": "[[nodiscard]] std::size_t GetSizeBytes()const noexcept override"
+    },
+    "d05896cec808e010": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistent_object_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistentObjectStore",
+      "signature": "[[nodiscard]] virtual std::optional<PersistentObjectRecord> FindObject(PersistentObjectId id)const=0;"
+    },
+    "d1468745ee77306f": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> WriteBytes(std::string_view name,std::span<const std::byte> value)=0;"
+    },
+    "d226c1c6aefb7546": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_type.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::AssetType",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "d25f58fcff9cf0cc": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader_registry.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceLoaderRegistry",
+      "signature": "[[nodiscard]] virtual IResourceLoader*FindLoader(ResourceType type)=0;"
+    },
+    "d2683d0a87a1590e": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog_writer.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IAssetCatalogWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Seal()=0;"
+    },
+    "d548c8897e50dcec": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::MigrationKey",
+      "signature": "[[nodiscard]] constexpr bool operator==(const MigrationKey&)const noexcept=default;"
+    },
+    "d61a75f4bf9babe5": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_value.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::SerializedDocument",
+      "signature": "[[nodiscard]] bool IsValid()const noexcept;"
+    },
+    "d7a1c05c83468a97": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_invariants.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] foundation::Result<void> ValidateRealityResidencyCombination(ObjectRealityLevel reality,ResidencyState residency);"
+    },
+    "da526dd22f40d6c8": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IPersistenceAdministrativeTransaction",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> AdminRemoveObject(PersistentObjectId id)=0;"
+    },
+    "dad28c10a25904b8": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::MaterializationRequest",
+      "signature": "[[nodiscard]] constexpr bool operator==(const MaterializationRequest&)const noexcept=default;"
+    },
+    "db010917563528de": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_policy.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] constexpr ObjectProtectionMask AddProtectionFlag(ObjectProtectionMask mask,ObjectProtectionFlags flag)noexcept"
+    },
+    "e008952150de2abc": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IDemotionCommitAuthority",
+      "signature": "virtual ~IDemotionCommitAuthority()=default;"
+    },
+    "e21e19a50a3d5995": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/zone_override_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IZoneOverrideStore",
+      "signature": "virtual ~IZoneOverrideStore()=default;"
+    },
+    "e351c3c91d30b40b": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_handle.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::ResourceHandle",
+      "signature": "[[nodiscard]] constexpr bool IsValid()const noexcept"
+    },
+    "e855283b5e5de806": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_payload.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::PersistencePayload",
+      "signature": "[[nodiscard]] bool IsValid()const noexcept"
+    },
+    "e8c783924c32ba4e": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_object_registry.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IWorldObjectRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<WorldCommandResult> Apply(const ChangePlacementCommand&command)=0;"
+    },
+    "e95c723437fb8014": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_object_registry.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IWorldObjectRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<WorldCommandResult> Apply(const CreateObjectCommand&command)=0;"
+    },
+    "e9a1d1f9524d278c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/chunk.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IChunkRegistry",
+      "signature": "[[nodiscard]] virtual std::optional<ChunkDescriptor> FindChunk(ChunkId id)const=0;"
+    },
+    "ea8a2c26b864a8d2": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_object_registry.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IWorldObjectRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<WorldCommandResult> Apply(const ChangeResidencyCommand&command)=0;"
+    },
+    "eab56c9528190889": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceQuery",
+      "signature": "[[nodiscard]] virtual std::vector<LazyRuleRecord> ListLazyRules()const=0;"
+    },
+    "ead6dd825ed7d109": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/serialization_error.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] inline foundation::Error CreateSerializationError(std::string_view code,std::string_view message,std::string_view context={})"
+    },
+    "eadb1a248bdc15bb": {
+      "classification": "FACTORY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_services.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] foundation::Result<PersistenceServices> CreatePersistenceServices(const PersistenceOptions&options={});"
+    },
+    "ec21526d5f3a59d2": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_loader.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {},
+      "scope": "epidemic::runtime::IResourceLoader",
+      "signature": "virtual ~IResourceLoader()=default;"
+    },
+    "ec42021b8a6030a4": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/save_transaction.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceAdministrativeTransaction",
+      "signature": "virtual ~IPersistenceAdministrativeTransaction()=default;"
+    },
+    "edfc2c87ec340067": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration_executor.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime",
+      "signature": "[[nodiscard]] foundation::Result<SerializedDocument> ApplyMigrations(const SerializedDocument&document,SchemaVersion target,const IMigrationRegistry&migrations,const IArchiveFactory&archives);"
+    },
+    "eef92aca35729a14": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/world_object_registry.h",
+      "module": "EngineRuntime/World",
+      "obligations": {},
+      "scope": "epidemic::runtime::IWorldObjectRegistry",
+      "signature": "virtual ~IWorldObjectRegistry()=default;"
+    },
+    "f37635fdc2c74edb": {
+      "classification": "LIFECYCLE",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IMigrationRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> Freeze()=0;"
+    },
+    "f425ad6a6ee9d5e3": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Persistence/include/Epidemic/Runtime/Persistence/persistence_store.h",
+      "module": "EngineRuntime/Persistence",
+      "obligations": {},
+      "scope": "epidemic::runtime::IPersistenceQuery",
+      "signature": "[[nodiscard]] virtual std::optional<LazyRuleRecord> FindLazyRule(LazyRuleId id)const=0;"
+    },
+    "f4d2bcd0f23e2d4f": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetCatalog",
+      "signature": "[[nodiscard]] virtual bool Contains(AssetId id)const=0;"
+    },
+    "f4e9358e54c3fca9": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/migration_registry.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IMigrationRegistry",
+      "signature": "[[nodiscard]] virtual foundation::Result<std::vector<std::shared_ptr<const IMigration>>> FindMigrationPath(foundation::StringId type_id,SchemaVersion from,SchemaVersion to)const=0;"
+    },
+    "f5554d404cad7d4f": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Resources/include/Epidemic/Runtime/Resources/resource_manager.h",
+      "module": "EngineRuntime/Resources",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IResourceManager",
+      "signature": "[[nodiscard]] virtual std::size_t EvictUnreferenced()=0;"
+    },
+    "f7eb929e4f9faa2c": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_reader.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {},
+      "scope": "epidemic::runtime::IArchiveReader",
+      "signature": "[[nodiscard]] virtual foundation::Result<std::vector<std::byte>> ReadBytes(std::string_view name)const=0;"
+    },
+    "fcf168fed822c30e": {
+      "classification": "QUERY",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_catalog.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetCatalog",
+      "signature": "[[nodiscard]] virtual foundation::Result<AssetDependencyManifest> BuildDependencyManifest(AssetId root)const=0;"
+    },
+    "fd27ffb1f62128a9": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/World/include/Epidemic/Runtime/World/object_materialization.h",
+      "module": "EngineRuntime/World",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IDemotionCommitAuthority",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> RevokeDemotionCommitToken(std::uint64_t token_id)=0;"
+    },
+    "ff63b7b59fc7c82a": {
+      "classification": "DESTRUCTOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Assets/include/Epidemic/Runtime/Assets/asset_location_resolver.h",
+      "module": "EngineRuntime/Assets",
+      "obligations": {},
+      "scope": "epidemic::runtime::IAssetLocationResolver",
+      "signature": "virtual ~IAssetLocationResolver()=default;"
+    },
+    "ffd3dc9f6c608469": {
+      "classification": "MUTATOR",
+      "classification_status": "REVIEWED",
+      "header": "EngineRuntime/Serialization/include/Epidemic/Runtime/Serialization/archive_writer.h",
+      "module": "EngineRuntime/Serialization",
+      "obligations": {
+        "failure": "REVIEWED",
+        "noop": "REVIEWED",
+        "preconditions": "REVIEWED",
+        "success": "REVIEWED"
+      },
+      "scope": "epidemic::runtime::IArchiveWriter",
+      "signature": "[[nodiscard]] virtual foundation::Result<void> WriteDouble(std::string_view name,double value)=0;"
+    }
+  },
+  "defects": {
+    "g3-asset-001-manifest-requiredness-order": {
+      "defect": "G3-ASSET-001: dependency manifest requiredness for a shared dependency depended on traversal order.",
+      "fix": "EngineRuntime/Assets/src/in_memory_asset_catalog.cpp::InMemoryAssetCatalog::BuildDependencyManifest",
+      "module": "EngineRuntime/Assets",
+      "regression": "EngineRuntime/Assets/tests/assets_tests.cpp::TestDependencyManifestMergesRequirednessIndependentlyOfTraversalOrder",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeAssetsTests"
+    },
+    "g3-asset-002-embedded-nul-path": {
+      "defect": "G3-ASSET-002: logical asset path validation accepted embedded NUL bytes.",
+      "fix": "EngineRuntime/Assets/src/in_memory_asset_catalog.cpp::IsSafeRelativePath",
+      "module": "EngineRuntime/Assets",
+      "regression": "EngineRuntime/Assets/tests/assets_tests.cpp::TestPathValidationRejectsTraversalAndRequiresMounts",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeAssetsTests"
+    },
+    "g3-asset-003-invalid-resolve-id": {
+      "defect": "G3-ASSET-003: Resolve treated invalid AssetId as an ordinary missing asset.",
+      "fix": "EngineRuntime/Assets/src/in_memory_asset_catalog.cpp::InMemoryAssetCatalog::Resolve",
+      "module": "EngineRuntime/Assets",
+      "regression": "EngineRuntime/Assets/tests/assets_tests.cpp::TestInvalidQueryInputsAreControlled",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeAssetsTests"
+    },
+    "g3-pers-001-strong-commit": {
+      "defect": "G3-PERS-001: candidate/backend commit failure must leave the previous durable and live snapshot authoritative.",
+      "fix": "EngineRuntime/Persistence/src/in_memory_persistence_support.cpp::InMemoryPersistenceBackend::CommitSnapshot",
+      "module": "EngineRuntime/Persistence",
+      "regression": "EngineRuntime/Persistence/tests/persistence_tests.cpp::TestInMemoryBackendStrongCommitUnderAllocationFaults",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimePersistenceTests"
+    },
+    "g3-res-001-dependency-replacement-strong-commit": {
+      "defect": "G3-RES-001: dependency replacement could not expose a partially replaced dependency set on failure.",
+      "fix": "EngineRuntime/Resources/src/resource_dependency_graph.cpp::ResourceDependencyGraph::ReplaceDependencies",
+      "module": "EngineRuntime/Resources",
+      "regression": "EngineRuntime/Resources/tests/resources_tests.cpp::TestDependencyReplacementStrongCommit",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeResourcesTests"
+    },
+    "g3-res-002-waiting-owner-publication": {
+      "defect": "G3-RES-002: a WaitingForDependencies job must retain a durable owner when requeue/publication fails.",
+      "fix": "EngineRuntime/Resources/src/resource_manager.cpp::ResourceManager::ProcessPendingLoads",
+      "module": "EngineRuntime/Resources",
+      "regression": "EngineRuntime/Resources/tests/resources_tests.cpp::TestWaitingOwnerPublicationFailureKeepsLoadOwner",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeResourcesTests"
+    },
+    "g3-res-003-local-finalization-accepted-loader-result": {
+      "defect": "G3-RES-003: successful loader work must stay durably owned across later local finalization failure.",
+      "fix": "EngineRuntime/Resources/src/resource_manager.cpp::ResourceManager::LoadSlot",
+      "module": "EngineRuntime/Resources",
+      "regression": "EngineRuntime/Resources/tests/resources_tests.cpp::TestLocalFinalizationFailureDoesNotReloadArtifact",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeResourcesTests"
+    },
+    "g3-res-004-selected-job-ownership": {
+      "defect": "G3-RES-004: selected queue ownership must not be dropped before loading ownership is durably published.",
+      "fix": "EngineRuntime/Resources/src/resource_manager.cpp::ResourceManager::ProcessPendingLoads",
+      "module": "EngineRuntime/Resources",
+      "regression": "EngineRuntime/Resources/tests/resources_tests.cpp::TestSelectedJobOwnershipSurvivesLoadingPublicationFailure",
+      "status": "REVIEWED",
+      "target": "EpidemicRuntimeResourcesTests"
+    }
+  },
+  "external_boundary": {
+    "c764275d4f3c6d3f": {
+      "callable_id": "c819fa376e414c54",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    }
+  },
+  "lifecycle": {
+    "0419959b73d9bef6": {
+      "callable_id": "1c55c01ea10de0dc",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "377b3ad701d95a8e": {
+      "callable_id": "649e7cc6afd92242",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "3b906a9d5e4c241f": {
+      "callable_id": "b5ff4b6e992b6cac",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "3bc449e298795642": {
+      "callable_id": "2d4e5bd87d983bb4",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "5a2f89edec82387c": {
+      "callable_id": "f37635fdc2c74edb",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "5da17559e369d663": {
+      "callable_id": "bb43106c7534f6f5",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "7044e7e34f7f5dc3": {
+      "callable_id": "21b972ab69903435",
+      "module": "EngineRuntime/Resources",
+      "status": "REVIEWED"
+    }
+  },
+  "schema_version": 1,
+  "stale_identity": {
+    "056e3c1529288fb2": {
+      "callable_id": "8d16fe30d12e75ec",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "062e39a4d8bbac85": {
+      "callable_id": "a0c987e8a40c4669",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "07a1fb1875f56ac4": {
+      "callable_id": "4500897bc90a36f4",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "081ca37e7ab94d69": {
+      "callable_id": "649e7cc6afd92242",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "09a8546b9db28c91": {
+      "callable_id": "8396c4b61da44532",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "0dd3bc438217130f": {
+      "callable_id": "7cbbdb10e66f3a4a",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "16650e22983da792": {
+      "callable_id": "25f1a1b839699cae",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "18515de72fed0762": {
+      "callable_id": "95d15c17fb6d6857",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "21a3d190b511c8c6": {
+      "callable_id": "146adb21842f8449",
+      "module": "EngineRuntime/Assets",
+      "status": "REVIEWED"
+    },
+    "2382b14aa199a94d": {
+      "callable_id": "06665ae70320d982",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "23b624d379658cf1": {
+      "callable_id": "73202027e43ec08d",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "2607d926c0b77577": {
+      "callable_id": "9f3053f1207bf5ef",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "2c126ac98899b59f": {
+      "callable_id": "5fb673ffe7714512",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "2cb4a101688fecf4": {
+      "callable_id": "975a0d561df6d58d",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "3a76f589f6378c0a": {
+      "callable_id": "97eed344953706d9",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "3db44ec85250d666": {
+      "callable_id": "6ca7e1ea3d929716",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "47cf74ae834cecbb": {
+      "callable_id": "5b47a8e4c371b344",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "4977bac4e8eb80b5": {
+      "callable_id": "55131c84bcde0600",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "4a04ae330454d513": {
+      "callable_id": "d2683d0a87a1590e",
+      "module": "EngineRuntime/Assets",
+      "status": "REVIEWED"
+    },
+    "4a2f24d3be58aaaf": {
+      "callable_id": "2d4e5bd87d983bb4",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "509d98ca397b16ac": {
+      "callable_id": "14d45bcaf812759a",
+      "module": "EngineRuntime/Resources",
+      "status": "REVIEWED"
+    },
+    "5beee9e1bd3ef2a6": {
+      "callable_id": "0ff3a2b6042db618",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "61c8339586b672fd": {
+      "callable_id": "a6fd598e82cbb0ed",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "66c103b713761a20": {
+      "callable_id": "f37635fdc2c74edb",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "699e21243d5adcbc": {
+      "callable_id": "70600b95134bc261",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "6cc65b81750ffbfb": {
+      "callable_id": "3d7377f422f50efc",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "6fc438c30f297c4a": {
+      "callable_id": "fd27ffb1f62128a9",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "720bf2b6c3aa43c6": {
+      "callable_id": "1a5d676c13d7522b",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "72ee8c01b54a4a56": {
+      "callable_id": "8a3dd7db69528aee",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "82c795c75b0bb883": {
+      "callable_id": "1e8adf9a6cd102af",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "834901ac8e7ad20b": {
+      "callable_id": "95be2f4c56f95568",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "8eb8c27e7a949b7d": {
+      "callable_id": "7b8593f2163f0bf2",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "9c011229eaa697ef": {
+      "callable_id": "20f69459182c9068",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "a29a0c3880a2caa9": {
+      "callable_id": "b99ebe9336e7c8a2",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "a945a045095b43fb": {
+      "callable_id": "128c1859ed7026ef",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "aa05217b9bf81dcc": {
+      "callable_id": "da526dd22f40d6c8",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "b490e2e7fcf5e19f": {
+      "callable_id": "c6aa8c0d59d8ffbf",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "b4ec8cd75ad551f7": {
+      "callable_id": "980bafb47be15dbe",
+      "module": "EngineRuntime/Resources",
+      "status": "REVIEWED"
+    },
+    "b59d9dab4bbeb210": {
+      "callable_id": "62956b0acef1a927",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "c44b09a53cad19b5": {
+      "callable_id": "173dcd58e4ddcea8",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "cbab82008a9af4d5": {
+      "callable_id": "ea8a2c26b864a8d2",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "d00393a326ce68e1": {
+      "callable_id": "21b972ab69903435",
+      "module": "EngineRuntime/Resources",
+      "status": "REVIEWED"
+    },
+    "d0d6a971271a01e9": {
+      "callable_id": "5b1451f2b2c4ed8f",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "d669d8e195a9314b": {
+      "callable_id": "ab250d44c64d64c1",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "dd330775324a26cd": {
+      "callable_id": "386fa83fd22883ed",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "de5d56751017319c": {
+      "callable_id": "852f765ea9617db3",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "deec27f3712bd9dd": {
+      "callable_id": "15b8a0f4f0097662",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "e031795a35c970c9": {
+      "callable_id": "f5554d404cad7d4f",
+      "module": "EngineRuntime/Resources",
+      "status": "REVIEWED"
+    },
+    "e29ff075ee86d01f": {
+      "callable_id": "3d7dd2a0452a9277",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "e725e07ea9efebb8": {
+      "callable_id": "3e21f3b99d080ce3",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "e7f3371017376488": {
+      "callable_id": "ffd3dc9f6c608469",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    },
+    "ee8839cfdf057d3a": {
+      "callable_id": "c3f418e013d0fa3d",
+      "module": "EngineRuntime/Resources",
+      "status": "REVIEWED"
+    },
+    "f2382cf7ae673828": {
+      "callable_id": "9352c73a0473d3c1",
+      "module": "EngineRuntime/Persistence",
+      "status": "REVIEWED"
+    },
+    "f2548921be39162d": {
+      "callable_id": "770123acb7b8ba50",
+      "module": "EngineRuntime/Resources",
+      "status": "REVIEWED"
+    },
+    "f53092e5cad35f74": {
+      "callable_id": "1c55c01ea10de0dc",
+      "module": "EngineRuntime/World",
+      "status": "REVIEWED"
+    },
+    "f9bc7e3fda86ddef": {
+      "callable_id": "d1468745ee77306f",
+      "module": "EngineRuntime/Serialization",
+      "status": "REVIEWED"
+    }
+  }
+}

@@ -22,7 +22,7 @@ Active record не может одновременно быть tombstoned. Lazy
 
 ## Стабильность
 
-Модуль является freeze candidate до завершения Goal 3 и общего Runtime LOCAL_READY gate. Backend может быть memory, file или database implementation при сохранении atomic commit contract.
+После завершения Goal 3 и общего Runtime admission gate модуль имеет статус `LOCAL_READY`. Backend может быть memory, file или database implementation при сохранении atomic commit contract; системный `FROZEN` остаётся за Goals 5–9.
 
 ## Карта публичных заголовков
 

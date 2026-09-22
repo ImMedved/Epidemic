@@ -2,7 +2,7 @@
 
 Scope: Goal 3.2. Module: `EngineRuntime/Time`, target `EpidemicRuntimeTimeTests`.
 
-Status: module-local contracts, regressions and persistence continuation are complete. Publication into the shared `LOCAL_READY` ledger and regeneration of global API/surface/dossier manifests are intentionally left to the integrated Goal 3 tree so parallel module deltas do not overwrite one another.
+Status: module-local contracts, regressions and persistence continuation are complete and requalified by the Block A portable test pass. Final `LOCAL_READY` admission still requires the official MSVC Debug/Release run. Publication into the shared `LOCAL_READY` ledger and regeneration of global API/surface/dossier manifests are intentionally left to the integrated Goal 3 tree so parallel module deltas do not overwrite one another.
 
 ## Reviewed state and ownership
 
@@ -40,10 +40,10 @@ A checkpoint captured with a non-zero fractional remainder can be restored into 
 
 ## Additional audit regressions
 
-`TestFactoryRejectsInvalidOptions` covers duplicate phase boundaries, overflowing calendar configuration and invalid default boundaries for a short custom day. `TestLargeSkipReportsCrossedPhaseBoundaryWhenFinalPhaseMatches` covers semantic phase crossings whose final phase equals the initial phase. `TestFractionalRemainderMutationIncrementsRevision` covers the newly authoritative remainder. `TestRevisionExhaustionPreservesState` verifies both remainder-only advance and Skip at `UINT64_MAX`. Checkpoint tests cover invalid normalized scale, negative time, negative/out-of-range remainder, tick-rate/calendar/phase incompatibility, allocation failure, pause restoration and transient-state clearing.
+`TestFactoryRejectsInvalidOptions` covers duplicate phase boundaries, overflowing calendar configuration and invalid default boundaries for a short custom day. `TestLargeSkipReportsCrossedPhaseBoundaryWhenFinalPhaseMatches` covers semantic phase crossings whose final phase equals the initial phase. `TestFractionalRemainderMutationIncrementsRevision` covers the newly authoritative remainder. `TestRevisionExhaustionPreservesState` verifies both remainder-only advance and Skip at `UINT64_MAX`. Checkpoint tests cover invalid normalized scale, negative time, negative/out-of-range remainder, a non-zero remainder whose scaled denominator cannot be represented, tick-rate/calendar/phase incompatibility, an out-of-domain `DayPhase` in compatibility identity, allocation failure, pause restoration and transient-state clearing.
 
 ## Verification
 
-The Time suite passes C++20 with warnings-as-errors in four portable configurations: GCC Debug, GCC Release, Clang Debug and Clang Release. A Clang AddressSanitizer plus UndefinedBehaviorSanitizer run passes, and a standalone public-header consumer for `time_runtime.h` compiles and runs.
+The Time suite passes C++20 with warnings-as-errors in GCC Debug/Release and Clang Debug/Release portable builds. The Block A pass additionally keeps the checkpoint persistence regressions active after the RuntimeFoundation numeric/spatial changes. Public-header self-containment is rechecked separately for all Time headers.
 
 The repository-wide CMake profile cannot be executed in the Linux task container because the existing `EngineBase/Platform` CMake contract intentionally rejects non-Windows platform builds before reaching Runtime tests. No project code was changed to bypass that platform gate. The official Windows MSVC Debug/Release and complete CTest qualification therefore remains an integration-step check after parallel Goal 3 deltas are merged.

@@ -40,7 +40,7 @@ Navigation не имеет local `Shutdown()` API. Lifetime backend/providers п
 
 ## Статус freeze
 
-Этот документ описывает target contract для локального Goal 3 audit. После прохождения `EpidemicRuntimeNavigationTests` и freeze evidence module может получить `LOCAL_READY`. `SYSTEM_READY` и `FROZEN` присваиваются только после последующих system-wide Goals 5–9.
+Этот документ описывает проверенный локальный Goal 3 contract. После прохождения `EpidemicRuntimeNavigationTests` и canonical evidence convergence модуль имеет статус `LOCAL_READY`. `SYSTEM_READY` и `FROZEN` присваиваются только после последующих system-wide Goals 5–9.
 
 ## Карта публичных заголовков
 

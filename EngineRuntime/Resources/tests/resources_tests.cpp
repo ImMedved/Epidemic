@@ -13,12 +13,14 @@
 #include "resource_loader_registry.h"
 #include "resource_manager.h"
 
+#include <chrono>
 #include <cstddef>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -110,6 +112,39 @@ class CountingLoader final : public IResourceLoader
     int load_count_ = 0;
     ResourceRequest last_request_{};
     std::vector<ResourceDependency> dependencies_;
+};
+
+
+class SlowCountingLoader final : public IResourceLoader
+{
+  public:
+    SlowCountingLoader(ResourceType type, std::chrono::milliseconds delay) : type_(type), delay_(delay)
+    {
+    }
+
+    [[nodiscard]] ResourceType GetResourceType() const override
+    {
+        return type_;
+    }
+
+    [[nodiscard]] epidemic::foundation::Result<ResourceLoadArtifact> Load(ResourceRequest request) override
+    {
+        ++load_count_;
+        std::this_thread::sleep_for(delay_);
+        return epidemic::foundation::Result<ResourceLoadArtifact>::Success(
+            ResourceLoadArtifact{request.resource_id, request.type,
+                                 std::make_shared<ByteResourcePayload>(std::vector<std::byte>{std::byte{0x2a}}), {}});
+    }
+
+    [[nodiscard]] int load_count() const noexcept
+    {
+        return load_count_;
+    }
+
+  private:
+    ResourceType type_{};
+    std::chrono::milliseconds delay_{};
+    int load_count_ = 0;
 };
 
 
@@ -300,6 +335,26 @@ class ArtifactOverrideLoader final : public IResourceLoader
     const auto processed = manager.ProcessPendingLoads(budget);
     return first && second && processed && processed.Value().processed_jobs == 1u && loader.load_count() == 1 &&
            manager.GetState(first.Value().resource) == ResourceState::Ready && manager.GetState(second.Value().resource) == ResourceState::Queued;
+}
+
+[[nodiscard]] bool TestTimeBudgetStopsFurtherJobs()
+{
+    ResourceLoaderRegistry registry;
+    SlowCountingLoader loader(Type("mesh"), std::chrono::milliseconds{200});
+    if (!registry.RegisterLoader(loader))
+    {
+        return false;
+    }
+
+    ResourceManager manager(&registry);
+    const auto first = manager.RequestLease(MakeRequest("resources/time-a.mesh", "mesh"));
+    const auto second = manager.RequestLease(MakeRequest("resources/time-b.mesh", "mesh"));
+    RuntimeBudget budget{};
+    budget.max_time = std::chrono::milliseconds{100};
+    const auto processed = manager.ProcessPendingLoads(budget);
+    return first && second && processed && processed.Value().processed_jobs == 1u && loader.load_count() == 1 &&
+           manager.GetState(first.Value().resource) == ResourceState::Ready &&
+           manager.GetState(second.Value().resource) == ResourceState::Queued;
 }
 
 [[nodiscard]] bool TestRepeatedReadyRequestDoesNotReload()
@@ -1239,6 +1294,48 @@ class ArtifactOverrideLoader final : public IResourceLoader
     const auto processed = services.Value().manager->ProcessPendingLoads();
     return handle && processed && services.Value().manager->IsReady(handle.Value().resource);
 }
+bool TestPublicApiEvidenceCoverage()
+{
+    static_assert(std::has_virtual_destructor_v<IResourceLoader>);
+    static_assert(std::has_virtual_destructor_v<IResourceLoaderRegistry>);
+    static_assert(std::has_virtual_destructor_v<IResourceManager>);
+    static_assert(std::has_virtual_destructor_v<IResourcePayload>);
+
+    const ByteResourcePayload payload{{std::byte{0x01}, std::byte{0x02}}};
+    if (payload.GetSizeBytes() != 2u || payload.Bytes().size() != 2u)
+    {
+        return false;
+    }
+
+    const ResourceType type{Type("mesh")};
+    const ResourceType same_type = type;
+    const ResourceDependency dependency = MakeDependency("resources/dependency.mesh", "mesh");
+    const ResourceDependency same_dependency = dependency;
+    const ResourceHandle handle{ResourceId::FromString("resources/evidence-handle.mesh"), 2u};
+    const ResourceHandle same_handle = handle;
+    const ResourceLease lease{handle, 99u};
+    const ResourceLease same_lease = lease;
+    if (!(type == same_type) || !(dependency == same_dependency) || !(handle == same_handle) || !(lease == same_lease))
+    {
+        return false;
+    }
+
+    ResourceLoaderRegistry registry;
+    CountingLoader loader(Type("mesh"));
+    if (!registry.RegisterLoader(loader))
+    {
+        return false;
+    }
+    ResourceManager manager(&registry);
+    const auto acquired = manager.RequestLease(MakeRequest("resources/evidence.mesh", "mesh"));
+    if (!acquired)
+    {
+        return false;
+    }
+    const auto id = manager.GetResourceId(acquired.Value().resource);
+    return id.has_value() && id.value() == acquired.Value().resource.id;
+}
+
 } // namespace
 
 int main()
@@ -1261,6 +1358,7 @@ int main()
         {"LoaderRegistryNonOwningContract", TestLoaderRegistryNonOwningContract},
         {"RequestQueuesAndProcessLoadsPayload", TestRequestQueuesAndProcessLoadsPayload},
         {"ProcessBudgetLimitsJobs", TestProcessBudgetLimitsJobs},
+        {"TimeBudgetStopsFurtherJobs", TestTimeBudgetStopsFurtherJobs},
         {"AttemptBudgetCountsSkippedQueueEntries", TestAttemptBudgetCountsSkippedQueueEntries},
         {"RepeatedReadyRequestDoesNotReload", TestRepeatedReadyRequestDoesNotReload},
         {"TypeMismatchRejectsConflictingRequest", TestTypeMismatchRejectsConflictingRequest},
@@ -1299,6 +1397,7 @@ int main()
         {"InvalidRequestsAndSelfDependencyAreRejected", TestInvalidRequestsAndSelfDependencyAreRejected},
         {"AcquisitionIdExhaustionBoundary", TestAcquisitionIdExhaustionBoundary},
         {"FactoryCreatesUsableServices", TestFactoryCreatesUsableServices},
+        {"PublicApiEvidenceCoverage", TestPublicApiEvidenceCoverage},
     };
 
     for (const NamedTest& test : tests)

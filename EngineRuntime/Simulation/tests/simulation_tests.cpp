@@ -5,7 +5,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <new>
@@ -13,81 +12,6 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
-
-namespace allocation_fault
-{
-thread_local std::int64_t successful_allocations_before_failure = -1;
-
-void ArmAfter(std::size_t successful_allocations) noexcept
-{
-    successful_allocations_before_failure = static_cast<std::int64_t>(successful_allocations);
-}
-
-void ArmNext() noexcept
-{
-    ArmAfter(0);
-}
-
-void Disable() noexcept
-{
-    successful_allocations_before_failure = -1;
-}
-} // namespace allocation_fault
-
-void* operator new(std::size_t size)
-{
-    if (allocation_fault::successful_allocations_before_failure == 0)
-    {
-        allocation_fault::Disable();
-        throw std::bad_alloc();
-    }
-    if (allocation_fault::successful_allocations_before_failure > 0)
-    {
-        --allocation_fault::successful_allocations_before_failure;
-    }
-    if (void* memory = std::malloc(size == 0 ? 1 : size))
-    {
-        return memory;
-    }
-    throw std::bad_alloc();
-}
-
-void* operator new[](std::size_t size)
-{
-    return ::operator new(size);
-}
-
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((noinline))
-#endif
-void operator delete(void* memory) noexcept
-{
-    std::free(memory);
-}
-
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((noinline))
-#endif
-void operator delete[](void* memory) noexcept
-{
-    std::free(memory);
-}
-
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((noinline))
-#endif
-void operator delete(void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
-
-#if defined(__GNUC__) || defined(__clang__)
-__attribute__((noinline))
-#endif
-void operator delete[](void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
 
 using epidemic::runtime::GameDuration;
 using epidemic::runtime::RegionId;
@@ -270,14 +194,13 @@ struct TestSimulationJob final : ISimulationJob
     }
 };
 
-struct FaultArmedSuccessJob final : ISimulationJob
+struct CountingSuccessJob final : ISimulationJob
 {
     SimulationStepResult first{};
     SimulationStepResult second{};
     int execute_count = 0;
-    bool arm_first_return = false;
 
-    FaultArmedSuccessJob(const SimulationJobDesc& desc, bool with_proposal)
+    CountingSuccessJob(const SimulationJobDesc& desc, bool with_proposal)
     {
         auto initialize = [&](SimulationStepResult& result) {
             result.state = SimulationJobState::Completed;
@@ -303,10 +226,6 @@ struct FaultArmedSuccessJob final : ISimulationJob
     {
         ++execute_count;
         SimulationStepResult result = execute_count == 1 ? std::move(first) : std::move(second);
-        if (arm_first_return && execute_count == 1)
-        {
-            allocation_fault::ArmNext();
-        }
         return epidemic::foundation::Result<SimulationStepResult>::Success(std::move(result));
     }
 
@@ -316,7 +235,7 @@ struct FaultArmedSuccessJob final : ISimulationJob
     }
 };
 
-struct FaultArmedFailureJob final : ISimulationJob
+struct CountingFailureJob final : ISimulationJob
 {
     int execute_count = 0;
 
@@ -324,7 +243,6 @@ struct FaultArmedFailureJob final : ISimulationJob
     {
         ++execute_count;
         auto error = epidemic::foundation::Error::Create("simulation.test_failed", "fault-armed semantic failure");
-        allocation_fault::ArmNext();
         return epidemic::foundation::Result<SimulationStepResult>::Failure(std::move(error));
     }
 
@@ -1027,17 +945,19 @@ bool TestGoal3SimulationFaultAtomicity()
         SimulationRuntime runtime{{}};
         runtime.SetBudget(SimulationBudget{1, 1});
         const auto desc = MakeJob(1);
-        auto executable = std::make_shared<FaultArmedSuccessJob>(desc, true);
-        executable->arm_first_return = true;
+        auto executable = std::make_shared<CountingSuccessJob>(desc, true);
         const auto handle = runtime.SubmitJob(executable, desc);
         ok &= Expect(handle.HasValue(), "fault-retry job should submit");
 
+        runtime.FailNextTickResultStagingForTesting();
         const auto first = runtime.Tick();
-        allocation_fault::Disable();
         ok &= Expect(!first && first.GetError().HasCode("simulation.allocation_failed"),
-                     "local staging allocation failure should surface without consuming the accepted result");
+                     "named tick-result staging fault should surface without consuming the accepted result");
         ok &= Expect(executable->execute_count == 1,
                      "successful ExecuteStep must be called exactly once before retry");
+        ok &= Expect(runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Pending &&
+                         runtime.PendingBatches().empty(),
+                     "tick-result staging failure must preserve authoritative job and proposal pre-state");
 
         const auto retry = runtime.Tick();
         ok &= Expect(retry && retry.Value().processed_jobs == 1,
@@ -1052,48 +972,40 @@ bool TestGoal3SimulationFaultAtomicity()
         SimulationRuntime runtime{{}};
         runtime.SetBudget(SimulationBudget{1, 1});
         const auto desc = MakeJob(1);
-        auto executable = std::make_shared<FaultArmedFailureJob>();
+        auto executable = std::make_shared<CountingFailureJob>();
         const auto handle = runtime.SubmitJob(executable, desc);
-        bool threw = false;
-        bool normalized = false;
-        try
-        {
-            const auto tick = runtime.Tick();
-            allocation_fault::Disable();
-            normalized = tick && tick.Value().failures.size() == 1 &&
-                         runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Failed;
-        }
-        catch (const std::bad_alloc&)
-        {
-            allocation_fault::Disable();
-            threw = true;
-        }
-        ok &= Expect(!threw && normalized,
-                     "reserved failure bookkeeping must not allocate after a callback failure is returned");
+        const auto tick = runtime.Tick();
+        ok &= Expect(tick && tick.Value().failures.size() == 1 && executable->execute_count == 1 &&
+                         runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Failed,
+                     "semantic callback failure should remain contained in the reserved tick result bookkeeping");
     }
     {
         SimulationRuntime runtime{SimulationOptions{.max_terminal_jobs = 1}};
         runtime.SetBudget(SimulationBudget{1, 1});
         const auto desc = MakeJob(1);
-        auto executable = std::make_shared<FaultArmedSuccessJob>(desc, false);
-        executable->arm_first_return = true;
+        auto executable = std::make_shared<CountingSuccessJob>(desc, false);
         const auto handle = runtime.SubmitJob(executable, desc);
-        bool threw = false;
-        bool completed = false;
-        try
-        {
-            const auto tick = runtime.Tick();
-            allocation_fault::Disable();
-            completed = tick && tick.Value().processed_jobs == 1 &&
-                        runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Completed;
-        }
-        catch (const std::bad_alloc&)
-        {
-            allocation_fault::Disable();
-            threw = true;
-        }
-        ok &= Expect(!threw && completed,
-                     "terminal pruning must not allocate after the authoritative job commit");
+        const auto tick = runtime.Tick();
+        ok &= Expect(tick && tick.Value().processed_jobs == 1 && executable->execute_count == 1 &&
+                         runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Completed,
+                     "post-commit housekeeping must preserve the authoritative completed job state");
+    }
+    {
+        SimulationRuntime runtime{{}};
+        runtime.SetBudget(SimulationBudget{1, 1});
+        const auto desc = MakeJob(1);
+        auto executable = std::make_shared<CountingSuccessJob>(desc, false);
+        const auto handle = runtime.SubmitJob(executable, desc);
+        ok &= Expect(handle.HasValue(), "work-list fault job should submit");
+        runtime.FailNextTickWorkListPreparationForTesting();
+        const auto failed = runtime.Tick();
+        ok &= Expect(!failed && failed.GetError().HasCode("simulation.allocation_failed") &&
+                         executable->execute_count == 0 &&
+                         runtime.GetJobState(handle.Value()).Value() == SimulationJobState::Pending,
+                     "tick work-list preparation fault must happen before callback execution or state mutation");
+        const auto retried = runtime.Tick();
+        ok &= Expect(retried && retried.Value().processed_jobs == 1 && executable->execute_count == 1,
+                     "tick work-list preparation seam should be deterministic and one-shot");
     }
     {
         SimulationRuntime runtime{{}};
@@ -1108,50 +1020,47 @@ bool TestGoal3SimulationFaultAtomicity()
             1,
             {}};
         SimulationProposalBatch batch{handle.Value(), desc.zone, desc.source_revision, {proposal}};
-        allocation_fault::ArmNext();
+        runtime.FailNextProposalPublicationForTesting();
         const auto published = runtime.Publish(batch);
-        allocation_fault::Disable();
         ok &= Expect(!published && published.GetError().HasCode("simulation.allocation_failed") && runtime.PendingBatches().empty(),
-                     "proposal publication allocation failure must be contained and leave the queue unchanged");
+                     "proposal publication fault must be contained and leave the queue unchanged");
+        ok &= Expect(runtime.Publish(batch).HasValue() && runtime.PendingBatches().size() == 1,
+                     "proposal publication fault seam should be one-shot and preserve retryability");
     }
     {
         SimulationRuntime runtime{{}};
-        allocation_fault::ArmNext();
+        runtime.FailNextAttentionPublicationForTesting();
         const auto attention = runtime.SetAttention(RuntimeObjectId{9001}, AttentionScore{0.5f});
-        allocation_fault::Disable();
         ok &= Expect(!attention && attention.GetError().HasCode("simulation.allocation_failed") &&
                          runtime.GetAttention(RuntimeObjectId{9001}).value == 0.0f,
-                     "attention publication allocation failure must preserve pre-state");
+                     "attention publication fault must preserve pre-state");
+        ok &= Expect(runtime.SetAttention(RuntimeObjectId{9001}, AttentionScore{0.5f}).HasValue() &&
+                         runtime.GetAttention(RuntimeObjectId{9001}).value == 0.5f,
+                     "attention publication fault seam should be one-shot and retryable");
     }
     {
-        // Sweep the allocation boundaries around expiration. Any allocation failure must happen before
-        // an event is marked expired; once mutation begins, pruning itself is allocation-free.
-        for (std::size_t fail_after = 0; fail_after < 5; ++fail_after)
+        SimulationRuntime runtime{SimulationOptions{.max_memory_events = 2}};
+        ok &= Expect(runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{1}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Observed}).HasValue(),
+                     "expiration fault event one should record");
+        ok &= Expect(runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{2}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Observed}).HasValue(),
+                     "expiration fault event two should record");
+        const auto before = runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false});
+        runtime.FailNextMemoryWorkListPreparationForTesting();
+        bool threw = false;
+        try
         {
-            SimulationRuntime runtime{SimulationOptions{.max_memory_events = 2}};
-            ok &= Expect(runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{1}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Observed}).HasValue(),
-                         "expiration fault-sweep event one should record");
-            ok &= Expect(runtime.RecordEvent(WorldMemoryEvent{{}, RegionId{1}, SimulationTime{2}, GameDuration{1}, MemoryLifetime::Temporary, ObservationState::Observed}).HasValue(),
-                         "expiration fault-sweep event two should record");
-            const auto before = runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false});
-            bool threw = false;
-            allocation_fault::ArmAfter(fail_after);
-            try
-            {
-                (void)runtime.ExpireOldEvents(SimulationTime{10}, 2);
-            }
-            catch (const std::bad_alloc&)
-            {
-                threw = true;
-            }
-            allocation_fault::Disable();
-            if (threw)
-            {
-                const auto after = runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false});
-                ok &= Expect(after.size() == before.size(),
-                             "expiration allocation failure must preserve exact active-event pre-state");
-            }
+            (void)runtime.ExpireOldEvents(SimulationTime{10}, 2);
         }
+        catch (const std::bad_alloc&)
+        {
+            threw = true;
+        }
+        const auto after = runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false});
+        ok &= Expect(threw && after.size() == before.size(),
+                     "expiration work-list preparation fault must occur before any event is marked expired");
+        ok &= Expect(runtime.ExpireOldEvents(SimulationTime{10}, 2) == 2 &&
+                         runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).empty(),
+                     "expiration work-list fault seam should be one-shot and preserve retryability");
     }
     {
         SimulationRuntime runtime{{}};
@@ -1176,6 +1085,9 @@ bool TestGoal3SimulationFaultAtomicity()
         const auto blocked_main_thread = runtime.ProcessMainThreadCommits();
         ok &= Expect(!blocked_main_thread && blocked_main_thread.GetError().HasCode("simulation.shutdown"),
                      "main-thread work must be rejected after shutdown has started");
+        const auto blocked_publish = runtime.Publish(SimulationProposalBatch{});
+        ok &= Expect(!blocked_publish && blocked_publish.GetError().HasCode("simulation.shutdown"),
+                     "new proposal publication must be rejected after shutdown has started");
         executable->throw_cancel = false;
         ok &= Expect(runtime.Shutdown().HasValue(), "shutdown retry should finish cleanup after cancellation recovers");
     }

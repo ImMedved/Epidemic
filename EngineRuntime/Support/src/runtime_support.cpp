@@ -4806,6 +4806,13 @@ foundation::Result<void> RegisterAudio(core::Application& app, audio::AudioOptio
 foundation::Result<void> RegisterRenderer(core::Application& app,
                                           const renderer::RendererOptions& options)
 {
+    // Renderer registration creates the main Scene view before publishing the service bundle.
+    // Reject duplicates before that external Scene mutation so a failed registration is atomic.
+    if (app.Services().Contains<renderer::RendererServices>())
+    {
+        return FailureVoid("runtime_support.duplicate_registration",
+                           "runtime service is already registered: Renderer");
+    }
     if (const auto required = Require<ResourceServices>(app, "Resources"); !required)
     {
         return required;

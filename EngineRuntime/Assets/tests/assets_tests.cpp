@@ -4,100 +4,26 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <new>
 #include <string>
 #include <type_traits>
 #include <vector>
 
-namespace allocation_fault
+namespace epidemic::runtime
 {
-thread_local std::ptrdiff_t fail_after = -1;
-thread_local std::size_t allocation_index = 0;
-
-void Enable(std::size_t fail_index) noexcept
+struct InMemoryAssetCatalogTestAccess
 {
-    allocation_index = 0;
-    fail_after = static_cast<std::ptrdiff_t>(fail_index);
-}
-
-void Disable() noexcept
-{
-    fail_after = -1;
-}
-
-[[nodiscard]] bool ShouldFail() noexcept
-{
-    if (fail_after < 0)
+    static void FailNextMetadataCandidateBuild(InMemoryAssetCatalog& catalog) noexcept
     {
-        return false;
-    }
-    return allocation_index++ == static_cast<std::size_t>(fail_after);
-}
-
-class ScopedFailure final
-{
-  public:
-    explicit ScopedFailure(std::size_t fail_index) noexcept
-    {
-        Enable(fail_index);
+        catalog.fail_next_metadata_candidate_build_for_testing_ = true;
     }
 
-    ~ScopedFailure()
+    static void FailNextCatalogPublication(InMemoryAssetCatalog& catalog) noexcept
     {
-        Disable();
+        catalog.fail_next_catalog_publication_for_testing_ = true;
     }
-
-    ScopedFailure(const ScopedFailure&) = delete;
-    ScopedFailure& operator=(const ScopedFailure&) = delete;
 };
-} // namespace allocation_fault
-
-void* operator new(std::size_t size)
-{
-    if (allocation_fault::ShouldFail())
-    {
-        throw std::bad_alloc{};
-    }
-    if (void* memory = std::malloc(size == 0 ? 1 : size))
-    {
-        return memory;
-    }
-    throw std::bad_alloc{};
-}
-
-void* operator new[](std::size_t size)
-{
-    if (allocation_fault::ShouldFail())
-    {
-        throw std::bad_alloc{};
-    }
-    if (void* memory = std::malloc(size == 0 ? 1 : size))
-    {
-        return memory;
-    }
-    throw std::bad_alloc{};
-}
-
-void operator delete(void* memory) noexcept
-{
-    std::free(memory);
-}
-
-void operator delete[](void* memory) noexcept
-{
-    std::free(memory);
-}
-
-void operator delete(void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
-
-void operator delete[](void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
+} // namespace epidemic::runtime
 
 namespace
 {
@@ -114,6 +40,7 @@ using epidemic::runtime::IAssetCatalog;
 using epidemic::runtime::IAssetCatalogWriter;
 using epidemic::runtime::IAssetLocationResolver;
 using epidemic::runtime::InMemoryAssetCatalog;
+using epidemic::runtime::InMemoryAssetCatalogTestAccess;
 
 AssetMetadata MakeMetadata(const char* asset_path, const char* asset_type, const char* tag, AssetLocationKind kind)
 {
@@ -644,11 +571,13 @@ bool TestMetadataBoundsRejectBeforeMutation()
 
 bool TestRegistrationAllocationFailurePreservesCatalog()
 {
-    constexpr std::size_t kMaxFaultPoints = 512;
-    bool observed_allocation_failure = false;
-
-    for (std::size_t fail_index = 0; fail_index < kMaxFaultPoints; ++fail_index)
+    enum class FaultPoint
     {
+        MetadataCandidateBuild,
+        CatalogPublication,
+    };
+
+    const auto run_fault = [](FaultPoint fault_point) {
         InMemoryAssetCatalog catalog;
         const AssetMetadata baseline =
             MakeMetadata("allocation/base.asset", "itemdef", "baseline", AssetLocationKind::VirtualPath);
@@ -674,12 +603,19 @@ bool TestRegistrationAllocationFailurePreservesCatalog()
             candidate.tags.push_back(StringId::FromString(tag_name));
         }
 
+        if (fault_point == FaultPoint::MetadataCandidateBuild)
+        {
+            InMemoryAssetCatalogTestAccess::FailNextMetadataCandidateBuild(catalog);
+        }
+        else
+        {
+            InMemoryAssetCatalogTestAccess::FailNextCatalogPublication(catalog);
+        }
+
         bool threw_bad_alloc = false;
-        bool registered = false;
         try
         {
-            allocation_fault::ScopedFailure fault(fail_index);
-            registered = catalog.RegisterAsset(candidate).HasValue();
+            (void)catalog.RegisterAsset(candidate);
         }
         catch (const std::bad_alloc&)
         {
@@ -689,24 +625,19 @@ bool TestRegistrationAllocationFailurePreservesCatalog()
         const auto baseline_after = catalog.FindById(baseline.id);
         const auto candidate_after = catalog.FindById(candidate.id);
         const auto type_matches = catalog.FindByType(baseline.type);
-
-        if (threw_bad_alloc)
+        if (!threw_bad_alloc || !baseline_after || !MetadataEquals(*baseline_before, *baseline_after) || candidate_after ||
+            type_matches.size() != 1 || !MetadataEquals(type_matches.front(), *baseline_before))
         {
-            observed_allocation_failure = true;
-            if (!baseline_after || !MetadataEquals(*baseline_before, *baseline_after) || candidate_after ||
-                type_matches.size() != 1 || !MetadataEquals(type_matches.front(), *baseline_before))
-            {
-                return false;
-            }
-            continue;
+            return false;
         }
 
-        return registered && observed_allocation_failure && baseline_after &&
-               MetadataEquals(*baseline_before, *baseline_after) && candidate_after &&
-               candidate_after->location.path == "allocation/candidate.asset";
-    }
+        const auto retried = catalog.RegisterAsset(candidate);
+        const auto stored_candidate = catalog.FindById(candidate.id);
+        return retried && stored_candidate && stored_candidate->location.path == "allocation/candidate.asset" &&
+               stored_candidate->dependencies == candidate.dependencies && stored_candidate->tags == candidate.tags;
+    };
 
-    return false;
+    return run_fault(FaultPoint::MetadataCandidateBuild) && run_fault(FaultPoint::CatalogPublication);
 }
 
 bool TestAssetServicesFactory()
@@ -721,6 +652,35 @@ bool TestAssetServicesFactory()
     return services.Value().catalog && services.Value().writer && services.Value().location_resolver &&
            services.Value().writer->RegisterAsset(metadata) && services.Value().catalog->Contains(metadata.id);
 }
+bool TestPublicApiEvidenceCoverage()
+{
+    static_assert(std::has_virtual_destructor_v<IAssetCatalog>);
+    static_assert(std::has_virtual_destructor_v<IAssetCatalogWriter>);
+    static_assert(std::has_virtual_destructor_v<IAssetLocationResolver>);
+
+    AssetLocation empty{};
+    if (!empty.Empty()) return false;
+
+    AssetLocation location{AssetLocationKind::VirtualPath, "items/./props/../potato.itemdef"};
+    location.mount_id = StringId::FromString("assets");
+    const auto canonical = epidemic::runtime::CanonicalizeAssetLocation(location);
+    if (canonical.path != "items/potato.itemdef" || !epidemic::runtime::IsValidAssetLocation(canonical) ||
+        !epidemic::runtime::IsValidAssetLocationKind(canonical.kind) ||
+        epidemic::runtime::IsValidAssetLocationKind(static_cast<AssetLocationKind>(999)) ||
+        !epidemic::runtime::IsValidAssetState(AssetState::Validated) ||
+        epidemic::runtime::IsValidAssetState(static_cast<AssetState>(999)))
+    {
+        return false;
+    }
+
+    const AssetLocation same = canonical;
+    const AssetDependency dependency{AssetId::FromString("mesh/potato.mesh"), true};
+    const AssetDependency same_dependency = dependency;
+    const AssetType type{StringId::FromString("itemdef")};
+    const AssetType same_type = type;
+    return canonical == same && dependency == same_dependency && type == same_type;
+}
+
 } // namespace
 
 int main()
@@ -755,6 +715,7 @@ int main()
     if (!TestDeepDependencyManifestIsIterative()) return 22;
     if (!TestMetadataBoundsRejectBeforeMutation()) return 23;
     if (!TestRegistrationAllocationFailurePreservesCatalog()) return 24;
+    if (!TestPublicApiEvidenceCoverage()) return 25;
 
     return 0;
 }

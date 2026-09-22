@@ -373,32 +373,60 @@ int main()
 
     AbilityTargetSet retention_targets;
     retention_targets.primary = player;
+    GameplayContext retention_context;
+    retention_context.actor = player;
+
+    // Keep one complete AbilityService lifecycle in this scenario so the synthetic retention
+    // stress below is anchored to the canonical output shape and delivery path.
+    const GameplayTimePoint retention_now{0};
+    auto retention_execution = retention_abilities.BeginActivation(
+        {retention_instance.Value(), retention_targets, retention_now, retention_context});
+    if (!retention_execution) return 156;
+    auto retention_outputs = retention_abilities.CompleteExecution(retention_execution.Value(), retention_now);
+    const auto* completed_execution = retention_abilities.FindExecution(retention_execution.Value());
+    if (!retention_outputs || retention_outputs.Value().size() != 1 ||
+        (completed_execution && !IsTerminal(completed_execution->state)))
+        return 157;
+
+    const ScheduleId canonical_retention_trigger = ScheduleId::FromRaw(1, 1);
+    AbilityTimeCheckpoint canonical_pending;
+    canonical_pending.clock = retention_clock.Value();
+    canonical_pending.action = retention_due_action.Value();
+    canonical_pending.pending.push_back(
+        {canonical_retention_trigger, retention_execution.Value(), retention_now, retention_outputs.Value()});
+    if (!retention_time_adapter.RestoreCheckpoint(std::move(canonical_pending)))
+        return 158;
+    auto canonical_retention_delivery = retention_delivery.DeliverPendingOutputs(canonical_retention_trigger);
+    if (!canonical_retention_delivery || canonical_retention_delivery.Value().size() != 1 ||
+        retention_time_adapter.PendingOutputCount() != 0 ||
+        !retention_dispatcher.CaptureCheckpoint().delivered.empty())
+        return 159;
+
+    // M05 retention boundary: model already-purged terminal executions directly. The
+    // coordinator contract explicitly allows an absent execution record once its outbox batch
+    // has been acknowledged, so this crosses the 4096-entry delivery capacity without
+    // repeatedly exercising AbilityService's bounded change journal.
+    const AbilityOutput retention_output_template = retention_outputs.Value().front();
     for (std::uint64_t i = 0; i < 4097; ++i)
     {
-        GameplayContext retention_context;
-        retention_context.actor = player;
-        const GameplayTimePoint now{static_cast<std::int64_t>(i)};
-        auto retention_execution = retention_abilities.BeginActivation(
-            {retention_instance.Value(), retention_targets, now, retention_context});
-        if (!retention_execution) return 156;
-        auto retention_outputs = retention_abilities.CompleteExecution(retention_execution.Value(), now);
-        const auto* completed_execution = retention_abilities.FindExecution(retention_execution.Value());
-        if (!retention_outputs || retention_outputs.Value().size() != 1 ||
-            (completed_execution && !IsTerminal(completed_execution->state)))
-            return 157;
+        const AbilityExecutionId synthetic_execution{GameplayObjectId::FromRaw(2, i + 1)};
+        const ScheduleId retention_trigger = ScheduleId::FromRaw(2, i + 1);
+        const GameplayTimePoint now{static_cast<std::int64_t>(i + 1)};
+        auto synthetic_output = retention_output_template;
+        synthetic_output.execution = synthetic_execution;
+        synthetic_output.occurrence_at = now;
 
-        const ScheduleId retention_trigger = ScheduleId::FromRaw(1, i + 1);
         AbilityTimeCheckpoint pending_checkpoint;
         pending_checkpoint.clock = retention_clock.Value();
         pending_checkpoint.action = retention_due_action.Value();
         pending_checkpoint.pending.push_back(
-            {retention_trigger, retention_execution.Value(), now, retention_outputs.Value()});
+            {retention_trigger, synthetic_execution, now, {std::move(synthetic_output)}});
         if (!retention_time_adapter.RestoreCheckpoint(std::move(pending_checkpoint)))
-            return 158;
+            return 160;
         auto delivered = retention_delivery.DeliverPendingOutputs(retention_trigger);
-        if (!delivered || retention_time_adapter.PendingOutputCount() != 0 ||
+        if (!delivered || delivered.Value().size() != 1 || retention_time_adapter.PendingOutputCount() != 0 ||
             !retention_dispatcher.CaptureCheckpoint().delivered.empty())
-            return 159;
+            return 161;
     }
 
     ProgressionRewardHandler progression_reward(progression);

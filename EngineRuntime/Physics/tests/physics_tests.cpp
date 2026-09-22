@@ -1075,6 +1075,58 @@ bool TestRaycastRejectsInvalidInputAndInvalidBackendPayload()
     return !invalid_hit && invalid_hit.GetError().HasCode("physics.invalid_backend_hit");
 }
 
+bool TestRaycastLargeFiniteDirectionNormalizesSafely()
+{
+    constexpr float max_value = std::numeric_limits<float>::max();
+    constexpr float epsilon = std::numeric_limits<float>::epsilon();
+
+    auto backend = std::make_shared<JournalBackend>();
+    PhysicsRuntime external{PhysicsDependencies{backend, nullptr, nullptr}};
+
+    const auto axis = external.Raycast(RaycastQuery{Vec3{}, Vec3{max_value, 0.0f, 0.0f}, 10.0f});
+    if (!axis || backend->raycasts != 1 || !std::isfinite(backend->last_raycast_direction.x) ||
+        !std::isfinite(backend->last_raycast_direction.y) || !std::isfinite(backend->last_raycast_direction.z) ||
+        backend->last_raycast_direction.x <= 0.0f || backend->last_raycast_direction.y != 0.0f ||
+        backend->last_raycast_direction.z != 0.0f || std::fabs(backend->last_raycast_direction.x - 1.0f) > 1.0e-6f)
+    {
+        return false;
+    }
+
+    const auto diagonal = external.Raycast(RaycastQuery{Vec3{}, Vec3{max_value, max_value, max_value}, 10.0f});
+    const Vec3 normalized = backend->last_raycast_direction;
+    const double normalized_length = std::sqrt(
+        static_cast<double>(normalized.x) * normalized.x +
+        static_cast<double>(normalized.y) * normalized.y +
+        static_cast<double>(normalized.z) * normalized.z);
+    if (!diagonal || backend->raycasts != 2 || !std::isfinite(normalized_length) || normalized_length <= 0.0 ||
+        std::fabs(normalized_length - 1.0) > 1.0e-6)
+    {
+        return false;
+    }
+
+    const auto at_epsilon = external.Raycast(RaycastQuery{Vec3{}, Vec3{epsilon, 0.0f, 0.0f}, 10.0f});
+    const float above_epsilon = std::nextafter(epsilon, std::numeric_limits<float>::infinity());
+    const auto above = external.Raycast(RaycastQuery{Vec3{}, Vec3{above_epsilon, 0.0f, 0.0f}, 10.0f});
+    const auto infinite = external.Raycast(RaycastQuery{Vec3{}, Vec3{std::numeric_limits<float>::infinity(), 0.0f, 0.0f}, 10.0f});
+    const auto nan_direction = external.Raycast(RaycastQuery{Vec3{}, Vec3{std::numeric_limits<float>::quiet_NaN(), 0.0f, 0.0f}, 10.0f});
+    if (at_epsilon || !above || infinite || nan_direction || backend->raycasts != 3 ||
+        std::fabs(backend->last_raycast_direction.x - 1.0f) > 1.0e-6f)
+    {
+        return false;
+    }
+
+    PhysicsRuntime reference;
+    const CollisionShapeId shape{59};
+    if (!RegisterDefaultShape(reference, shape) || !reference.CreateBody(MakeBodyDesc(shape, PhysicsBodyType::Static)))
+    {
+        return false;
+    }
+    const auto reference_hit = reference.RaycastBackend(
+        RaycastQuery{Vec3{-1.0f, 0.5f, 0.5f}, Vec3{max_value, 0.0f, 0.0f}, 10.0f});
+    return reference_hit && reference_hit.Value().hit && std::isfinite(reference_hit.Value().distance) &&
+           reference_hit.Value().distance > 0.0f;
+}
+
 bool TestBackendBodyCreationFailureAndExceptionDoNotConsumeRuntimeIdentity()
 {
     auto backend = std::make_shared<JournalBackend>();
@@ -1252,6 +1304,7 @@ int main()
     if (!TestShapeRegistrationValidationAndBackendFailureAtomicity()) return 35;
     if (!TestDuplicateBackendContactsPreserveBackendOrder()) return 36;
     if (!TestRaycastRejectsInvalidInputAndInvalidBackendPayload()) return 37;
+    if (!TestRaycastLargeFiniteDirectionNormalizesSafely()) return 42;
     if (!TestBackendBodyCreationFailureAndExceptionDoNotConsumeRuntimeIdentity()) return 38;
     if (!TestPublicationRollbackFailureRetainsCleanupOwnership()) return 39;
     if (!TestOverlapResultsAreDeterministicAndDetached()) return 40;

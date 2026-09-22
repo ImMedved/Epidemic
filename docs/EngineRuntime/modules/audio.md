@@ -24,7 +24,7 @@ Base gain, fade multiplier и mixer gain разделены. Pause сохран�
 
 ## Статус
 
-После локального аудита Goal 3 модуль является кандидатом на `LOCAL_READY`. Это не означает `FROZEN`: системные persistence/determinism, integration, fault/load qualification и окончательный freeze выполняются в последующих Goals 5–9.
+После локального аудита Goal 3 и canonical evidence convergence модуль имеет статус `LOCAL_READY`. Это не означает `FROZEN`: системные persistence/determinism, integration, fault/load qualification и окончательный freeze выполняются в последующих Goals 5–9.
 
 ## Карта публичных заголовков
 

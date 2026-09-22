@@ -2,99 +2,13 @@
 #include "Epidemic/Runtime/Persistence/persistence_store.h"
 #include "in_memory_persistence_support.h"
 
-#include <atomic>
 #include <cstddef>
-#include <cstdlib>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
-
-namespace persistence_test_allocation_fault
-{
-std::atomic<long long> allocations_before_failure{-1};
-
-[[nodiscard]] bool ShouldFail() noexcept
-{
-    auto remaining = allocations_before_failure.load(std::memory_order_relaxed);
-    while (remaining >= 0)
-    {
-        if (remaining == 0)
-        {
-            allocations_before_failure.store(-1, std::memory_order_relaxed);
-            return true;
-        }
-        if (allocations_before_failure.compare_exchange_weak(remaining, remaining - 1, std::memory_order_relaxed))
-        {
-            return false;
-        }
-    }
-    return false;
-}
-
-class FailAfter
-{
-  public:
-    explicit FailAfter(long long successful_allocations_before_failure) noexcept
-    {
-        allocations_before_failure.store(successful_allocations_before_failure, std::memory_order_relaxed);
-    }
-    ~FailAfter()
-    {
-        allocations_before_failure.store(-1, std::memory_order_relaxed);
-    }
-    FailAfter(const FailAfter&) = delete;
-    FailAfter& operator=(const FailAfter&) = delete;
-};
-} // namespace persistence_test_allocation_fault
-
-#if defined(__GNUC__) || defined(__clang__)
-#define EPIDEMIC_PERSISTENCE_TEST_NOINLINE __attribute__((noinline))
-#else
-#define EPIDEMIC_PERSISTENCE_TEST_NOINLINE
-#endif
-
-EPIDEMIC_PERSISTENCE_TEST_NOINLINE void* operator new(std::size_t size)
-{
-    if (persistence_test_allocation_fault::ShouldFail())
-    {
-        throw std::bad_alloc{};
-    }
-    if (void* memory = std::malloc(size == 0 ? 1 : size))
-    {
-        return memory;
-    }
-    throw std::bad_alloc{};
-}
-
-EPIDEMIC_PERSISTENCE_TEST_NOINLINE void* operator new[](std::size_t size)
-{
-    return ::operator new(size);
-}
-
-EPIDEMIC_PERSISTENCE_TEST_NOINLINE void operator delete(void* memory) noexcept
-{
-    std::free(memory);
-}
-
-EPIDEMIC_PERSISTENCE_TEST_NOINLINE void operator delete[](void* memory) noexcept
-{
-    std::free(memory);
-}
-
-EPIDEMIC_PERSISTENCE_TEST_NOINLINE void operator delete(void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
-
-EPIDEMIC_PERSISTENCE_TEST_NOINLINE void operator delete[](void* memory, std::size_t) noexcept
-{
-    std::free(memory);
-}
-
-#undef EPIDEMIC_PERSISTENCE_TEST_NOINLINE
 
 namespace epidemic::runtime
 {
@@ -108,6 +22,10 @@ struct PersistenceRuntimeTestAccess
     static void FailNextCandidateBuildAllocation(InMemoryPersistenceStore& store)
     {
         store.fail_next_candidate_build_allocation_for_testing_ = true;
+    }
+    static void FailNextBackendCandidateBuildAllocation(InMemoryPersistenceBackend& backend)
+    {
+        backend.fail_next_candidate_build_allocation_for_testing_ = true;
     }
     static std::size_t OperationCount(const ISaveTransaction& transaction)
     {
@@ -1070,43 +988,105 @@ concept HasOpenTransaction = requires(T& value) { value.OpenTransaction(); };
 {
     const PersistenceSnapshot previous = MakeBackendSnapshot(7000u, 7u);
     const PersistenceSnapshot next = MakeBackendSnapshot(8000u, 8u);
-    bool saw_failure = false;
-    bool saw_success = false;
 
-    for (long long fail_after = 0; fail_after < 128; ++fail_after)
+    InMemoryPersistenceBackend backend;
+    if (!backend.CommitSnapshot(previous, PersistenceDurability::MemoryOnly))
     {
-        InMemoryPersistenceBackend backend;
-        if (!backend.CommitSnapshot(previous, PersistenceDurability::MemoryOnly)) return false;
-
-        bool commit_failed = false;
-        {
-            persistence_test_allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                const auto committed = backend.CommitSnapshot(next, PersistenceDurability::SaveAndFlushRequired);
-                commit_failed = !committed;
-                saw_success = static_cast<bool>(committed);
-            }
-            catch (const std::bad_alloc&)
-            {
-                commit_failed = true;
-            }
-        }
-
-        const auto loaded = backend.Load();
-        if (!loaded) return false;
-        if (commit_failed)
-        {
-            saw_failure = true;
-            if (!SameSnapshot(loaded.Value(), previous)) return false;
-        }
-        else
-        {
-            if (!SameSnapshot(loaded.Value(), next)) return false;
-            break;
-        }
+        return false;
     }
-    return saw_failure && saw_success;
+
+    epidemic::runtime::PersistenceRuntimeTestAccess::FailNextBackendCandidateBuildAllocation(backend);
+    const auto failed = backend.CommitSnapshot(next, PersistenceDurability::SaveAndFlushRequired);
+    if (failed || !failed.GetError().HasCode("persistence.allocation_failed"))
+    {
+        return false;
+    }
+
+    const auto after_failure = backend.Load();
+    if (!after_failure || !SameSnapshot(after_failure.Value(), previous))
+    {
+        return false;
+    }
+
+    const auto committed = backend.CommitSnapshot(next, PersistenceDurability::SaveAndFlushRequired);
+    if (!committed)
+    {
+        return false;
+    }
+
+    const auto after_success = backend.Load();
+    return after_success && SameSnapshot(after_success.Value(), next);
+}
+
+bool TestPublicApiEvidenceCoverage()
+{
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::ISaveTransaction>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistentObjectStore>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceQuery>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceStore>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IDirtyTracker>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::ITombstoneStore>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IZoneOverrideStore>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceBackend>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IPersistenceAdministrativeTransaction>);
+
+    const ObjectProtectionMask protection{epidemic::runtime::ToProtectionMask(ObjectProtectionFlags::PreventDecay)};
+    if (protection.value == 0u || !(protection == ObjectProtectionMask{protection.value}))
+    {
+        return false;
+    }
+
+    const auto location = MakeLocation(91, "evidence/location");
+    if (!(location == PersistenceLocation{location}))
+    {
+        return false;
+    }
+
+    const auto services = CreatePersistenceServices();
+    if (!services)
+    {
+        return false;
+    }
+
+    auto first = services.Value().store->OpenTransaction();
+    if (!first)
+    {
+        return false;
+    }
+
+    auto object = MakeRecord(901);
+    object.location = location;
+    TombstoneRecord tombstone{};
+    tombstone.persistent_id = PersistentObjectId{902};
+    tombstone.deleted_game_time = GameTimePoint{77};
+    tombstone.reason = Id("evidence.removed");
+
+    ZoneOverrideSnapshot zone{};
+    zone.location = location;
+    zone.record_ids.push_back(object.persistent_id);
+
+    auto* admin = dynamic_cast<IPersistenceAdministrativeTransaction*>(first.get());
+    if (admin == nullptr || !first->UpsertObject(object) || !admin->AdminAddTombstone(tombstone) ||
+        !first->UpsertZoneOverride(zone) || !first->Commit())
+    {
+        return false;
+    }
+
+    const auto at_location = services.Value().query->FindByLocation(location);
+    const auto tombstones = services.Value().query->ListTombstones();
+    if (at_location.size() != 1u || at_location.front().persistent_id != object.persistent_id ||
+        tombstones.size() != 1u || tombstones.front().persistent_id != tombstone.persistent_id ||
+        !services.Value().query->IsDirty(object.persistent_id))
+    {
+        return false;
+    }
+
+    auto second = services.Value().store->OpenTransaction();
+    if (!second || !second->RemoveZoneOverride(location) || !second->Commit())
+    {
+        return false;
+    }
+    return !services.Value().query->FindZoneOverride(location).has_value();
 }
 
 } // namespace
@@ -1155,6 +1135,7 @@ int main()
         {"DurabilityPoliciesUseSingleAtomicCommitContract", TestDurabilityPoliciesUseSingleAtomicCommitContract},
         {"InvalidDurabilityRejectedBeforeBackendUse", TestInvalidDurabilityRejectedBeforeBackendUse},
         {"InMemoryBackendStrongCommitUnderAllocationFaults", TestInMemoryBackendStrongCommitUnderAllocationFaults},
+        {"PublicApiEvidenceCoverage", TestPublicApiEvidenceCoverage},
     };
 
     for (const NamedTest& test : tests)

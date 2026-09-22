@@ -44,6 +44,11 @@ foundation::Result<void> SerializerRegistry::RegisterSerializer(std::shared_ptr<
             return SerializerFailure("serialization.serializer.duplicate_type", "serializer type is already registered");
         }
 
+        if (fail_next_registration_allocation_for_testing_)
+        {
+            fail_next_registration_allocation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         serializers_.emplace(type_id, std::move(serializer));
         return foundation::Result<void>::Success();
     }

@@ -57,6 +57,11 @@ foundation::Result<void> MigrationRegistry::RegisterMigration(std::shared_ptr<co
             return MigrationFailure("serialization.migration.duplicate_key", "migration key is already registered");
         }
 
+        if (fail_next_registration_allocation_for_testing_)
+        {
+            fail_next_registration_allocation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         migrations_.emplace(key, std::move(migration));
         return foundation::Result<void>::Success();
     }
@@ -131,6 +136,11 @@ foundation::Result<std::vector<std::shared_ptr<const IMigration>>> MigrationRegi
     std::vector<WorkItem> stack;
     try
     {
+        if (fail_next_path_allocation_for_testing_)
+        {
+            fail_next_path_allocation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         stack.push_back(WorkItem{from, {}, {from}});
     }
     catch (const std::bad_alloc&)

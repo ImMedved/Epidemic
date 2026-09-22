@@ -810,10 +810,11 @@ bool SceneRuntime::IntersectsSphere(const Aabb& bounds, const Vec3& center, floa
     const float closest_x = clamp(center.x, bounds.min.x, bounds.max.x);
     const float closest_y = clamp(center.y, bounds.min.y, bounds.max.y);
     const float closest_z = clamp(center.z, bounds.min.z, bounds.max.z);
-    const float dx = center.x - closest_x;
-    const float dy = center.y - closest_y;
-    const float dz = center.z - closest_z;
-    return (dx * dx) + (dy * dy) + (dz * dz) <= radius * radius;
+    const double dx = static_cast<double>(center.x) - static_cast<double>(closest_x);
+    const double dy = static_cast<double>(center.y) - static_cast<double>(closest_y);
+    const double dz = static_cast<double>(center.z) - static_cast<double>(closest_z);
+    const double radius_double = static_cast<double>(radius);
+    return (dx * dx) + (dy * dy) + (dz * dz) <= radius_double * radius_double;
 }
 
 SceneRuntime::SceneNodeRecord* SceneRuntime::FindRecord(SceneNodeId node)

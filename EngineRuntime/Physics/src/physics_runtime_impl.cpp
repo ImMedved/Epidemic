@@ -1155,19 +1155,25 @@ bool PhysicsRuntime::IsValidBackendContactPayload(const BackendContactEvent& con
            IsValidEventState(contact.state);
 }
 
-float PhysicsRuntime::Length(Vec3 value) noexcept
+double PhysicsRuntime::Length(Vec3 value) noexcept
 {
-    return std::sqrt(value.x * value.x + value.y * value.y + value.z * value.z);
+    const double x = static_cast<double>(value.x);
+    const double y = static_cast<double>(value.y);
+    const double z = static_cast<double>(value.z);
+    return std::sqrt(x * x + y * y + z * z);
 }
 
 Vec3 PhysicsRuntime::Normalize(Vec3 value) noexcept
 {
-    const float length = Length(value);
-    if (length <= std::numeric_limits<float>::epsilon())
+    const double length = Length(value);
+    if (length <= static_cast<double>(std::numeric_limits<float>::epsilon()))
     {
         return {};
     }
-    return Vec3{value.x / length, value.y / length, value.z / length};
+    return Vec3{
+        static_cast<float>(static_cast<double>(value.x) / length),
+        static_cast<float>(static_cast<double>(value.y) / length),
+        static_cast<float>(static_cast<double>(value.z) / length)};
 }
 
 RaycastQuery PhysicsRuntime::NormalizeRaycastQuery(const RaycastQuery& query) noexcept

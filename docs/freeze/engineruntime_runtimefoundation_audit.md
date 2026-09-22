@@ -1,8 +1,8 @@
 # EngineRuntime/RuntimeFoundation local freeze audit
 
-Audit date: 2026-09-19.
+Audit date: 2026-09-21 (Block A closure requalification).
 
-Status: `LOCAL_READY` for Goal 3.1. This document is module-local evidence only; whole-engine `SYSTEM_READY` and `FROZEN` remain outside Goal 3.
+Status: `REQUALIFY` for Goal 3.1. The Block A code fixes and portable regressions are complete, but this module must not be treated as finally `LOCAL_READY` until the official MSVC Debug and Release runs pass. The shared ledger is intentionally not edited by this parallel block. Whole-engine `SYSTEM_READY` and `FROZEN` remain outside Goal 3.
 
 ## Scope and ownership
 
@@ -32,9 +32,26 @@ Why it matters: `INT64_MAX` rounds to `2^63` when represented as `double`. A val
 
 Cause: range validation was performed in the same floating representation that cannot distinguish `INT64_MAX` from the next integer power-of-two boundary.
 
-Fix: perform the multiplication and range comparison in `long double`, comparing against an exact `long double` conversion of `INT64_MAX`, and only cast after the value is proven representable.
+Fix: remove the extended-precision assumption completely. The implementation decomposes the represented binary `double` with `frexp`, reconstructs its exact integer significand, multiplies that significand by the integer scale in a portable two-word unsigned product, and applies the binary exponent with checked shifts. Truncation is therefore performed by integer right shift and overflow is rejected before any conversion to `std::int64_t`. No `long double`, saturation, or out-of-range floating-to-integer cast is used.
 
-Regression/evidence: `TestCheckedSecondsToMicrosecondsBoundaries` exercises the rounded upper-bound input and its next representable overflow input. The former must produce a non-negative representable microsecond count, and the latter must be rejected. The same path is run under UBSan in the local audit.
+Regression/evidence: `TestCheckedSecondsToMicrosecondsBoundaries` now verifies the exact rounded upper-bound result `INT64_MAX - 417`, rejects the first representable input above it, and checks values immediately below, exactly on, and immediately above six exact microsecond truncation boundaries. A separate exact-rational randomized verification compared 200,000 binary64 samples against the mathematical represented-value result with no mismatch.
+
+
+### Block A A2 — `CheckedScaleDuration()` portable int64 boundary
+
+Problem: the previous implementation converted `duration.count()` to `long double`, multiplied by `rate`, compared against a `long double` conversion of `INT64_MAX`, and then cast to `std::int64_t`. On MSVC this has binary64 precision, so `INT64_MAX * 1.0` can be represented as `2^63` and reach an out-of-range cast.
+
+Fix: use the same exact binary-significand/two-word integer-product strategy as the seconds conversion. `rate == 0.0`, exact `rate == 1.0`, fractional rates, subnormal rates, and overflow rates all go through a conversion that never needs an intermediate floating type wider than `double` and never casts an unproven value to `std::int64_t`.
+
+Regression/evidence: `TestCheckedScaleDurationBoundaries` verifies `INT64_MAX * 1.0`, zero scaling, `INT64_MAX * 0.5`, the exact represented binary64 semantics of `INT64_MAX * 0.1`, truncation of `3 * 0.5`, rejection of `nextafter(1.0, 2.0)` at `INT64_MAX`, and all negative/NaN/infinite invalid inputs. A separate exact-rational randomized verification compared 200,000 `(duration, rate)` pairs against the mathematical represented-value result with no mismatch.
+
+### Block A A3 — quaternion magnitude preflight before float overflow
+
+Problem: `Normalize()` and `IsNormalized()` formed the quaternion sum of squares in `float`. Very large finite components therefore overflowed before the finite guard. On MSVC Release this surfaced as warning C4756 under warnings-as-errors.
+
+Fix: form the squared magnitude in `double`, reject non-finite, tiny, or values greater than `FLT_MAX`, then convert the already-proven representable squared magnitude back to `float` for the existing normalization semantics. `IsNormalized()` uses the same safe magnitude family. This deliberately preserves the established fallback contract: `Normalize(Quat{FLT_MAX, 0, 0, 0})` returns identity rather than normalizing to `{1,0,0,0}`.
+
+Regression/evidence: `TestQuaternionNormalizationAndFallbackContract` covers identity/normal normalization behavior, zero and non-finite fallback, `FLT_MAX` independently in x/y/z/w, a finite near-overflow magnitude that remains normalizable, and `IsNormalized()` rejection of overflow-family input without a float square-sum expression.
 
 ### G3-RF-003 — `spatial.h` is not self-contained
 
@@ -56,9 +73,9 @@ Monotonic allocation is checked at `1`, ordinary values, `UINT64_MAX`, and exhau
 
 `RuntimeBudget{}` and zero item/byte/time fields mean unlimited. Negative time is invalid. `RuntimeBudget` is a value contract only; each consuming major defines whether its particular limit is hard, soft for the current work unit, deferred, or backpressure. Maximum unsigned item/byte values remain unsigned through current Runtime consumers and are not converted through a narrower signed type.
 
-Time conversion rejects negative, NaN, infinity, and non-representable seconds/scales. Checked game-time arithmetic covers `INT64_MIN/MAX`, including `INT64_MIN` duration, before any signed arithmetic that could overflow. Convenience operators use the documented saturating direction.
+Time conversion rejects negative, NaN, infinity, and non-representable seconds/scales. The seconds and duration-scale conversions use exact binary significand plus checked integer arithmetic and do not depend on `long double` precision. Checked game-time arithmetic covers `INT64_MIN/MAX`, including `INT64_MIN` duration, before any signed arithmetic that could overflow. Convenience operators use the documented saturating direction.
 
-Spatial finite validation covers `Vec3`, `Quat`, `Transform`, and `Aabb`. `Normalize()` returns identity for zero-length or non-finite/overflowed quaternion magnitude; that fallback is a convenience behavior and is not authoritative input validation. Authoritative callers must use `IsFinite`, `IsNormalized`, and `IsValidTransform` as appropriate. `IsValidTransform` requires finite fields, normalized rotation, and non-zero scale on all axes. `IsValidAabb` rejects inverted bounds. `Sphere` has no common validator because the only authoritative Runtime query consumer currently validates center/radius at its own public boundary.
+Spatial finite validation covers `Vec3`, `Quat`, `Transform`, and `Aabb`. Quaternion squared magnitude is preflighted in `double` before any `float` overflow can occur; magnitudes exceeding the representable float-contract range preserve the identity fallback. `Normalize()` returns identity for zero-length or non-finite/overflowed quaternion magnitude; that fallback is a convenience behavior and is not authoritative input validation. Authoritative callers must use `IsFinite`, `IsNormalized`, and `IsValidTransform` as appropriate. `IsValidTransform` requires finite fields, normalized rotation, and non-zero scale on all axes. `IsValidAabb` rejects inverted bounds. `Sphere` has no common validator because the only authoritative Runtime query consumer currently validates center/radius at its own public boundary.
 
 ## Failure atomicity and observable state
 
@@ -77,8 +94,6 @@ The applicable criteria are public contract classification, invalid/boundary beh
 
 The production top-level CMake configuration cannot complete in this Linux audit environment because the project intentionally rejects non-Windows platform builds in `EngineBase/Platform`. No Windows/MSVC whole-project qualification is claimed here. Before any build attempt the complete extracted project tree was copied to a separate task backup directory and checksummed.
 
-The actual `EpidemicRuntimeFoundation` and `EpidemicRuntimeFoundationTests` CMake targets were built in an isolated harness with the real module CMakeLists and warnings treated as errors. Debug and Release both pass `EpidemicRuntimeFoundationTests`. The same sources/tests pass direct GCC 14.2 and Clang 17 Debug/Release builds. GCC UBSan with `undefined,float-cast-overflow` passes the complete module suite.
+After the Block A closure fixes, `EpidemicRuntimeFoundationTests` passes direct C++20 GCC Debug, GCC Release, Clang Debug and Clang Release builds with `-Wall -Wextra -Wpedantic -Werror`. The checked conversion helpers were also compared against an exact rational reference for 400,000 randomized cases total with no mismatch. Public-header self-containment is rechecked as part of the Block A validation pass.
 
-All ten RuntimeFoundation public headers compile independently as the sole project include under GCC and Clang with warnings treated as errors. This permanently corresponds to the repository `EpidemicPublicHeaderSelfContainment` contract used by the normal Windows qualification.
-
-The architecture ownership, exact public API inventory, public surface manifest, module dossier, quantified coverage manifest, LOCAL_READY contract, semantic CI gate, and exact CTest manifest checks and their available negative/self-tests pass on the resulting tree. The LOCAL_READY ledger reports EngineRuntime/RuntimeFoundation as the first Runtime module admitted after the nine EngineBase modules.
+The repository-wide CMake profile still cannot be executed in this Linux task container because `EngineBase/Platform` intentionally rejects non-Windows builds. Consequently this document does not claim the required MSVC Debug/Release qualification, and the existing shared-ledger `LOCAL_READY` value must be treated as stale evidence until the serial Windows integration pass re-admits the module. Shared generated manifests and ledger files were not edited in this parallel block.

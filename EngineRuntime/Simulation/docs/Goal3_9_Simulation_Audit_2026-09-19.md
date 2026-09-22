@@ -11,7 +11,7 @@ A successful `ISimulationJob::ExecuteStep()` is now accepted exactly once into p
 
 The grant associated with the accepted callback is retained in `pending_step_granted_work_units`, so a retry validates the result against the budget under which the callback actually ran. Successful cancellation explicitly releases pending worker/main-thread results.
 
-Permanent regression: the fake job arms an allocation failure immediately after returning success. First `Tick()` fails in Runtime-local staging with one callback invocation. Retry completes the same step with the callback count still equal to one.
+Permanent regression: a named internal tick-result staging seam fails immediately after Runtime has accepted a successful callback result. First `Tick()` returns `simulation.allocation_failed` with one callback invocation and unchanged authoritative job/proposal state. Retry completes the same retained step with the callback count still equal to one.
 
 ### G3-SIM-002: no allocation-dependent post-commit pruning/result bookkeeping
 
@@ -19,7 +19,7 @@ Permanent regression: the fake job arms an allocation failure immediately after 
 
 `Tick()`, `ProcessMainThreadCommits()` and scheduled execution reserve result buffers before mutation. Existing callback failure payloads are moved into reserved result storage instead of copied. Scheduled failure storage is reserved before task mutation. Proposal publication reserves both authoritative and returned batch storage before commit.
 
-Permanent regressions cover allocation immediately after a callback failure, allocation immediately after a successful no-proposal callback, and an expiration allocation sweep. A fault either happens before mutation and preserves pre-state, or the post-commit path contains no Runtime-owned allocation at the audited boundary.
+Permanent regressions cover callback failure bookkeeping, successful no-proposal post-commit housekeeping, named tick work-list preparation failure, and named memory-expiration work-list preparation failure. A fault either happens before mutation and preserves pre-state, or the post-commit path contains no Runtime-owned allocation at the audited boundary.
 
 ## Additional defects found by the 3.9 audit
 
@@ -36,6 +36,12 @@ First insertion into the object-attention map could throw `std::bad_alloc` direc
 ### G3-SIM-AUDIT-003: proposal Publish allocation escaped its Result contract
 
 `ISimulationProposalQueue::Publish()` validated the complete batch but performed the vector copy without containment. Allocation failure is now returned as `simulation.allocation_failed`, with no partial queue entry.
+
+## Block D allocator-harness closure
+
+The Simulation test executable no longer replaces process-global `operator new/new[]`. The old allocator-index sweep has been replaced by named internal seams at the semantic boundaries required by Goal 3: tick work-list preparation, accepted-step/result staging, object-attention publication, proposal-batch publication and memory-expiration work-list preparation. Each seam is one-shot and the regression checks both exact pre-state preservation and retry behavior where retry is part of the contract.
+
+Portable Block D verification compiles and executes the Simulation suite as C++20 with warnings-as-errors in GCC Debug/Release and Clang Debug/Release. Clang AddressSanitizer plus UndefinedBehaviorSanitizer and standalone public-header consumers pass. Repository-wide CMake still intentionally rejects this Linux environment at `EngineBase/Platform`, so official MSVC Debug/Release qualification remains an integration requirement rather than being claimed by this audit.
 
 ## Checklist evidence
 

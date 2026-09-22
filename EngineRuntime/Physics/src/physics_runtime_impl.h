@@ -131,7 +131,7 @@ class PhysicsRuntime final : public ICollisionShapeRegistry,
     [[nodiscard]] static bool IsValidEventState(PhysicsEventState value) noexcept;
     [[nodiscard]] static bool IsValidBackendSnapshot(const BackendBodySnapshot& snapshot) noexcept;
     [[nodiscard]] static bool IsValidBackendContactPayload(const BackendContactEvent& contact) noexcept;
-    [[nodiscard]] static float Length(Vec3 value) noexcept;
+    [[nodiscard]] static double Length(Vec3 value) noexcept;
     [[nodiscard]] static Vec3 Normalize(Vec3 value) noexcept;
     [[nodiscard]] static RaycastQuery NormalizeRaycastQuery(const RaycastQuery& query) noexcept;
     [[nodiscard]] BodyRecord* FindBody(PhysicsBodyHandle handle);

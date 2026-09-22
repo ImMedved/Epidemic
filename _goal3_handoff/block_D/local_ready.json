@@ -1,0 +1,2659 @@
+{
+  "contract": "LOCAL_READY",
+  "modules": {
+    "EngineRuntime/Audio": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "API-CLASSIFIED reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "API-FAILURE reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:424::TestValidationFailures",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:427::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:428::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:429::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:430::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:431::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:432::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:433::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "API-INVALID reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "API-OVERLOADS reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "API-PRECONDITIONS reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "API-SUCCESS reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "ARCH-DIRECT-DEPS reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "ARCH-PORTS reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "ARCH-RESPONSIBILITY reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:90::## EngineRuntime/Audio",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.h:13::class AudioRuntime final",
+              "kind": "state"
+            }
+          ],
+          "rationale": "ARCH-SINGLE-OWNER reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:1101::TestBackendRetryContractDoesNotDoubleAdvanceTime",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1118::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1121::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1126::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1133::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1137::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1138::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1144::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1147::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1148::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "ATOMIC-EXTERNAL reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.h:13::class AudioRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "ATOMIC-MULTI reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.h:13::class AudioRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:1242::TestListenerPublicationRollbackRetainsCleanupOwnership",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1250::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1252::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1257::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1260::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "ATOMIC-RECONCILE reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.h:13::class AudioRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "ATOMIC-SINGLE reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.cpp:1200::AudioRuntime::Shutdown(",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "LIFE-ALLOWED reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.cpp:1200::AudioRuntime::Shutdown(",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:773::TestPostShutdownOperationsRejected",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:776::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:778::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:779::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:781::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:782::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:783::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:785::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:787::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:789::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:791::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:793::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "LIFE-FORBIDDEN reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.cpp:1200::AudioRuntime::Shutdown(",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:1212::TestVoiceShutdownIsBestEffortAndRetryable",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1228::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1230::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1235::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1237::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1239::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "LIFE-RETRY-CLEANUP reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.cpp:1200::AudioRuntime::Shutdown(",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:1212::TestVoiceShutdownIsBestEffortAndRetryable",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1228::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1230::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1235::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1237::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1239::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "LIFE-SHUTDOWN reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Audio does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Audio does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Audio does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Audio does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Audio does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.h:13::class AudioRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:973::TestAudioNumericEnumAndRevisionContracts",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:976::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:979::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:983::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:987::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:991::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:995::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:999::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1005::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1008::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1012::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1016::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1019::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "STATE-COUNTERS reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.h:13::class AudioRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "STATE-INDEXES reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.h:13::class AudioRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:955::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:960::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:967::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:970::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "STATE-NO-FALSE-PUBLISH reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/audio.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "STATE-NOOP reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/src/audio_runtime_impl.h:13::class AudioRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "STATE-PRIMARY reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:973::TestAudioNumericEnumAndRevisionContracts",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:976::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:979::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:983::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:987::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:991::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:995::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:999::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1005::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1008::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1012::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1016::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1019::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-BOUNDARY reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:939::TestTickFailureDoesNotAdvanceLocalState",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:1101::TestBackendRetryContractDoesNotDoubleAdvanceTime",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1118::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1121::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1126::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1133::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1137::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1138::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1144::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1147::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1148::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-CALLBACK-FAILURE reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:388::TestInvalidSoundBehavior",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:391::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:393::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:394::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:395::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:396::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:397::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-DUPLICATE reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:388::TestInvalidSoundBehavior",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:391::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:393::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:394::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:395::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:396::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:397::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-EMPTY reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:354::TestCreatePlayStopDestroyEmitter",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:357::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:359::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:360::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:361::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:362::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:363::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:364::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:365::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:366::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:367::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:368::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:369::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-HAPPY reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:424::TestValidationFailures",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:427::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:428::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:429::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:430::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:431::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:432::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:433::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-INVALID reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:1101::TestBackendRetryContractDoesNotDoubleAdvanceTime",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1118::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1121::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1126::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1133::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1137::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1138::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1144::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1147::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:1148::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-REGRESSION reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:503::TestListenerGenerationAndUnknownErrors",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:507::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:508::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:512::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:513::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:514::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:515::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:516::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-STALE reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Audio/tests/audio_tests.cpp:773::TestPostShutdownOperationsRejected",
+              "assertions": [
+                "EngineRuntime/Audio/tests/audio_tests.cpp:776::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:778::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:779::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:781::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:782::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:783::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:785::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:787::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:789::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:791::Expect(",
+                "EngineRuntime/Audio/tests/audio_tests.cpp:793::return ok;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeAudioTests"
+            }
+          ],
+          "rationale": "TEST-WRONG-LIFECYCLE reviewed for EngineRuntime/Audio against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineRuntime/Renderer": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "API-CLASSIFIED reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "API-FAILURE reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:668::TestRendererEnumValidationAndIdExhaustion",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:692::return !bad_set && bad_set.GetError().HasCode(\"renderer.invalid_enum\") && runtime.GetProxyVisibility(last_proxy.Value())"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "API-INVALID reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "API-OVERLOADS reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "API-PRECONDITIONS reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "API-SUCCESS reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "ARCH-DIRECT-DEPS reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "ARCH-PORTS reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "ARCH-RESPONSIBILITY reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:125::## EngineRuntime/Renderer",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.h:16::class RendererRuntime final",
+              "kind": "state"
+            }
+          ],
+          "rationale": "ARCH-SINGLE-OWNER reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:1111::TestBeginAndEndExceptionFailureMatrix",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:1135::return runtime.PrepareFrame() && runtime.RenderFrame();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "ATOMIC-EXTERNAL reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.h:16::class RendererRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "ATOMIC-MULTI reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.h:16::class RendererRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:821::return retry && sink.abort_count == 3 && sink.begin_count == 2 && sink.end_count == 1 &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "ATOMIC-RECONCILE reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.h:16::class RendererRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "ATOMIC-SINGLE reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.cpp:724::RendererRuntime::Shutdown(",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "LIFE-ALLOWED reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.cpp:724::RendererRuntime::Shutdown(",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:821::return retry && sink.abort_count == 3 && sink.begin_count == 2 && sink.end_count == 1 &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "LIFE-FORBIDDEN reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.cpp:724::RendererRuntime::Shutdown(",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:826::TestShutdownReconcilesOpenFrameBeforeResourceRelease",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:848::return retry && sink.abort_count == 3 && bridge.release_count == 1 &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "LIFE-RETRY-CLEANUP reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.cpp:724::RendererRuntime::Shutdown(",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:826::TestShutdownReconcilesOpenFrameBeforeResourceRelease",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:848::return retry && sink.abort_count == 3 && bridge.release_count == 1 &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "LIFE-SHUTDOWN reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Renderer does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Renderer does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Renderer does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Renderer does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Renderer does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.h:16::class RendererRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "STATE-COUNTERS reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.h:16::class RendererRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "STATE-INDEXES reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.h:16::class RendererRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:821::return retry && sink.abort_count == 3 && sink.begin_count == 2 && sink.end_count == 1 &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "STATE-NO-FALSE-PUBLISH reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/renderer.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "STATE-NOOP reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/src/renderer_runtime_impl.h:16::class RendererRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "STATE-PRIMARY reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:668::TestRendererEnumValidationAndIdExhaustion",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:692::return !bad_set && bad_set.GetError().HasCode(\"renderer.invalid_enum\") && runtime.GetProxyVisibility(last_proxy.Value())"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "TEST-BOUNDARY reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:1111::TestBeginAndEndExceptionFailureMatrix",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:1135::return runtime.PrepareFrame() && runtime.RenderFrame();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "TEST-CALLBACK-FAILURE reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [],
+          "rationale": "Renderer has generated resource identities rather than caller-selected identity registration; uniqueness/counter behavior is covered by state/boundary tests.",
+          "status": "N/A"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:751::TestInvalidOrderAndNoMainViewDoNotBecomeStickyFailed",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:761::return !no_view && no_view.GetError().HasCode(\"renderer.main_view_missing\") && runtime.GetFrameState() == RenderFrameSta"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "TEST-EMPTY reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:417::TestFrameFlowEndsSubmittedAndClearsDirty",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:436::return render && runtime.GetFrameState() == RenderFrameState::Submitted && runtime.GetProxyDirtyFlags(proxy.Value()) == "
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "TEST-HAPPY reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:751::TestInvalidOrderAndNoMainViewDoNotBecomeStickyFailed",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:761::return !no_view && no_view.GetError().HasCode(\"renderer.main_view_missing\") && runtime.GetFrameState() == RenderFrameSta"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "TEST-INVALID reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:791::TestAbortFailureRetainsRecoveryAndBlocksNewBegin",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:821::return retry && sink.abort_count == 3 && sink.begin_count == 2 && sink.end_count == 1 &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "TEST-REGRESSION reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:764::TestDeferredDestroyReleaseFailureIsRetryablePrefixProgress",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:777::return retry && runtime.GetProxyLifecycle(proxy.Value()) == RenderProxyLifecycle::Unregistered && bridge.release_count ="
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "TEST-STALE reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Renderer/tests/renderer_tests.cpp:604::TestShutdownFailureStartsTerminalLifecycleAndIsRetryable",
+              "assertions": [
+                "EngineRuntime/Renderer/tests/renderer_tests.cpp:645::return !reg && !destroy && !flush && !dirty && !material && !visibility && !view && !destroy_view && !main && !prepare &"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeRendererTests"
+            }
+          ],
+          "rationale": "TEST-WRONG-LIFECYCLE reviewed for EngineRuntime/Renderer against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineRuntime/Scene": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/scene.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "API-CLASSIFIED reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/scene.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:477::TestFailedReparentIsTransactional",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "API-FAILURE reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/scene.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "API-INVALID reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/scene.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "API-OVERLOADS reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/scene.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "API-PRECONDITIONS reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/scene.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "API-SUCCESS reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "ARCH-DIRECT-DEPS reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineRuntime/modules/scene.md:7::## Контракты",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "ARCH-PORTS reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "ARCH-RESPONSIBILITY reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:146::## EngineRuntime/Scene",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/src/scene_runtime_impl.h:15::class SceneRuntime final",
+              "kind": "state"
+            }
+          ],
+          "rationale": "ARCH-SINGLE-OWNER reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Scene has no module-wide shutdown/freeze lifecycle and invokes no external callback/backend in Goal 3 production code; generated lifecycle/external candidate sets are empty.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:477::TestFailedReparentIsTransactional",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/src/scene_runtime_impl.h:15::class SceneRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:848::TestWorldRangeOverflowIsTransactional",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:900::return !bounds && bounds.GetError().HasCode(\"scene.world_bounds_out_of_range\") &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "ATOMIC-MULTI reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Scene has no module-wide shutdown/freeze lifecycle and invokes no external callback/backend in Goal 3 production code; generated lifecycle/external candidate sets are empty.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:477::TestFailedReparentIsTransactional",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/src/scene_runtime_impl.h:15::class SceneRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:477::TestFailedReparentIsTransactional",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:514::return !allocation_failed && allocation_failed.GetError().HasCode(\"scene.allocation_failed\") &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "ATOMIC-SINGLE reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [],
+          "rationale": "Scene has no module-wide shutdown/freeze lifecycle and invokes no external callback/backend in Goal 3 production code; generated lifecycle/external candidate sets are empty.",
+          "status": "N/A"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [],
+          "rationale": "Scene has no module-wide shutdown/freeze lifecycle and invokes no external callback/backend in Goal 3 production code; generated lifecycle/external candidate sets are empty.",
+          "status": "N/A"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Scene has no module-wide shutdown/freeze lifecycle and invokes no external callback/backend in Goal 3 production code; generated lifecycle/external candidate sets are empty.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Scene has no module-wide shutdown/freeze lifecycle and invokes no external callback/backend in Goal 3 production code; generated lifecycle/external candidate sets are empty.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Scene does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Scene does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Scene does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Scene does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Scene does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/src/scene_runtime_impl.h:15::class SceneRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:566::TestCreateRevisionAndAllocationFailureDoNotPublishOrConsumeIdentity",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:602::return allocation_retry && allocation_retry.Value().Raw() == 1u;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "STATE-COUNTERS reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/src/scene_runtime_impl.h:15::class SceneRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "STATE-INDEXES reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:477::TestFailedReparentIsTransactional",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/src/scene_runtime_impl.h:15::class SceneRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:477::TestFailedReparentIsTransactional",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:514::return !allocation_failed && allocation_failed.GetError().HasCode(\"scene.allocation_failed\") &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "STATE-NO-FALSE-PUBLISH reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/scene.md:7::## Контракты",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "STATE-NOOP reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/src/scene_runtime_impl.h:15::class SceneRuntime final",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "STATE-PRIMARY reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:406::TestLargeFiniteSphereQueryDoesNotOverflowToIntersection",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:418::return miss.empty() && hit.size() == 1u && hit.front() == node.Value();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "TEST-BOUNDARY reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "Scene has no module-wide shutdown/freeze lifecycle and invokes no external callback/backend in Goal 3 production code; generated lifecycle/external candidate sets are empty.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:522::TestIdentityLifecycleStaleAndDuplicateContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:562::return !duplicate && duplicate.GetError().HasCode(\"scene.duplicate_node_id\") &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "TEST-DUPLICATE reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "TEST-EMPTY reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "TEST-HAPPY reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:945::TestSceneBoundaryContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:993::return !failed_create && allocation.GetRevision() == revision_before && allocation.CaptureSnapshot().nodes.empty();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "TEST-INVALID reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:406::TestLargeFiniteSphereQueryDoesNotOverflowToIntersection",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:418::return miss.empty() && hit.size() == 1u && hit.front() == node.Value();"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "TEST-REGRESSION reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Scene/tests/scene_tests.cpp:522::TestIdentityLifecycleStaleAndDuplicateContracts",
+              "assertions": [
+                "EngineRuntime/Scene/tests/scene_tests.cpp:562::return !duplicate && duplicate.GetError().HasCode(\"scene.duplicate_node_id\") &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSceneTests"
+            }
+          ],
+          "rationale": "TEST-STALE reviewed for EngineRuntime/Scene against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [],
+          "rationale": "Scene has no module-wide shutdown/freeze lifecycle and invokes no external callback/backend in Goal 3 production code; generated lifecycle/external candidate sets are empty.",
+          "status": "N/A"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineRuntime/Support": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "API-CLASSIFIED reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "API-FAILURE reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:612::TestIndividualRegistrationFailuresAreAtomic",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:616::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:618::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:620::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:622::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:624::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:626::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:628::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:630::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:632::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:634::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:636::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:638::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "API-INVALID reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "API-OVERLOADS reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "API-PRECONDITIONS reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "API-SUCCESS reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "ARCH-DIRECT-DEPS reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "ARCH-PORTS reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "ARCH-RESPONSIBILITY reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:174::## EngineRuntime/Support",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2913::struct PendingCoordinatorFrame",
+              "kind": "state"
+            }
+          ],
+          "rationale": "ARCH-SINGLE-OWNER reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1007::TestReferenceEventSinkAtomicityAndCoordinatorContainment",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1039::return value.phase == RuntimeUpdateStep::DiagnosticsEvents &&",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1044::return retry && throwing_sink->calls == 2;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "ATOMIC-EXTERNAL reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2913::struct PendingCoordinatorFrame",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "ATOMIC-MULTI reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2913::struct PendingCoordinatorFrame",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1003::return retry && retry.Value().executed_steps == GetRuntimeUpdateOrder() &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "ATOMIC-RECONCILE reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2913::struct PendingCoordinatorFrame",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "ATOMIC-SINGLE reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2943::class EngineRuntimeCoordinator final",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "LIFE-ALLOWED reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2943::class EngineRuntimeCoordinator final",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "LIFE-FORBIDDEN reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2943::class EngineRuntimeCoordinator final",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1073::TestAudioResourceLeaseTransferAndDestructorRetry",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1104::return shutdown && manager->ActiveCount() == 0 && manager->SuccessfulReleaseCount(resource) == 1;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "LIFE-RETRY-CLEANUP reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2943::class EngineRuntimeCoordinator final",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "LIFE-SHUTDOWN reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Support does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Support does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Support does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Support does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "EngineRuntime/Support does not own a Goal 3 persistence/restore contract; persistence is supplied by composition/persistence owners where applicable.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2913::struct PendingCoordinatorFrame",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "STATE-COUNTERS reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2913::struct PendingCoordinatorFrame",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "STATE-INDEXES reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2913::struct PendingCoordinatorFrame",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:612::TestIndividualRegistrationFailuresAreAtomic",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:616::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:618::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:620::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:622::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:624::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:626::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:628::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:630::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:632::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:634::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:636::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:638::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "STATE-NO-FALSE-PUBLISH reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineRuntime/modules/support.md:3::##",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "STATE-NOOP reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/src/runtime_support.cpp:2913::struct PendingCoordinatorFrame",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "STATE-PRIMARY reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1003::return retry && retry.Value().executed_steps == GetRuntimeUpdateOrder() &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "TEST-BOUNDARY reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:972::TestCoordinatorAcceptedPrefixRetry",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1007::TestReferenceEventSinkAtomicityAndCoordinatorContainment",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1039::return value.phase == RuntimeUpdateStep::DiagnosticsEvents &&",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1044::return retry && throwing_sink->calls == 2;"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "TEST-CALLBACK-FAILURE reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:612::TestIndividualRegistrationFailuresAreAtomic",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:616::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:618::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:620::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:622::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:624::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:626::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:628::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:630::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:632::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:634::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:636::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:638::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "TEST-DUPLICATE reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "TEST-EMPTY reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "TEST-HAPPY reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:612::TestIndividualRegistrationFailuresAreAtomic",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:616::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:618::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:620::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:622::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:624::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:626::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:628::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:630::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:632::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:634::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:636::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:638::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "TEST-INVALID reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:904::TestSceneProjectionPrefixRetry",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:938::return retry && retry.Value() == 1 && runtime.Value().integrations->scene_projections->PendingCount() == 0 &&"
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "TEST-REGRESSION reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [],
+          "rationale": "Support owns wiring/adapters but no caller-visible removable/reusable identity space; generated stale-identity scanner hits were individually reviewed as interface-token candidates or covered through major-owner handles.",
+          "status": "N/A"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Support/tests/runtime_support_tests.cpp:1200::TestFullTickAndTerminalShutdown",
+              "assertions": [
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1204::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1213::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1216::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1218::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1221::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1222::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1224::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1225::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1226::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1227::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1228::Expect(",
+                "EngineRuntime/Support/tests/runtime_support_tests.cpp:1229::Expect("
+              ],
+              "kind": "test",
+              "reviewed": true,
+              "target": "EpidemicRuntimeSupportTests"
+            }
+          ],
+          "rationale": "TEST-WRONG-LIFECYCLE reviewed for EngineRuntime/Support against current source/contract and the exact registered test evidence in this handoff.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    }
+  },
+  "schema_version": 1
+}

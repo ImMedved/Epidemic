@@ -6,6 +6,8 @@
 
 namespace epidemic::runtime
 {
+struct SerializationRuntimeTestAccess;
+
 class SerializerRegistry final : public ISerializerRegistry
 {
   public:
@@ -16,7 +18,10 @@ class SerializerRegistry final : public ISerializerRegistry
     [[nodiscard]] bool HasSerializer(foundation::StringId type_id) const override;
 
   private:
+    friend struct SerializationRuntimeTestAccess;
+
     std::unordered_map<foundation::StringId, std::shared_ptr<const ISerializer>> serializers_;
     bool frozen_ = false;
+    bool fail_next_registration_allocation_for_testing_ = false;
 };
 } // namespace epidemic::runtime

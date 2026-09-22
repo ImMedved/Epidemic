@@ -3,12 +3,14 @@
 #include "Epidemic/Foundation/error.h"
 
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <cfloat>
 #include <cstdint>
+#include <functional>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -252,14 +254,29 @@ bool TestLodPlaceholderChangesPoseState()
 bool TestValidationFailures()
 {
     AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}};
-    bool ok = Expect(!runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{}, 1}).HasValue(), "invalid skeleton should fail");
-    ok &= Expect(!runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{1}, 0}).HasValue(), "empty skeleton should fail");
-    ok &= Expect(runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{1}, 1}).HasValue(), "valid skeleton should register");
-    ok &= Expect(!runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{1}, 1}).HasValue(), "duplicate skeleton should fail");
-    ok &= Expect(!runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{}, SkeletonId{1}, AnimationLodLevel::Full}).HasValue(), "invalid owner should fail");
-    ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{99}, 1.0f}).HasValue(), "clip with missing skeleton should fail");
-    ok &= Expect(runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{1}, 1.0f}).HasValue(), "valid clip should register");
-    ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{1}, 1.0f}).HasValue(), "duplicate clip should fail");
+    const SkeletonId skeleton{1};
+    const AnimationClipId clip{1};
+    const epidemic::runtime::animation::AnimatorInstanceId instance{1};
+    const epidemic::runtime::animation::AnimatorHandle handle{instance, 1};
+    bool ok = Expect(!SkeletonId{}.IsValid() && skeleton.IsValid() && skeleton == SkeletonId{1} &&
+                         !AnimationClipId{}.IsValid() && clip.IsValid() && clip == AnimationClipId{1} &&
+                         !epidemic::runtime::animation::AnimatorInstanceId{}.IsValid() && instance.IsValid() &&
+                         !epidemic::runtime::animation::AnimatorHandle{}.IsValid() && handle.IsValid() &&
+                         std::hash<SkeletonId>{}(skeleton) == std::hash<SkeletonId>{}(SkeletonId{1}) &&
+                         std::hash<AnimationClipId>{}(clip) == std::hash<AnimationClipId>{}(AnimationClipId{1}) &&
+                         std::hash<epidemic::runtime::animation::AnimatorInstanceId>{}(instance) ==
+                             std::hash<epidemic::runtime::animation::AnimatorInstanceId>{}(epidemic::runtime::animation::AnimatorInstanceId{1}),
+                     "animation public identity value contracts should be explicit");
+    ok &= Expect(!runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{}, 1}).HasValue(), "invalid skeleton should fail");
+    ok &= Expect(!runtime.RegisterSkeleton(SkeletonDesc{skeleton, 0}).HasValue(), "empty skeleton should fail");
+    ok &= Expect(runtime.RegisterSkeleton(SkeletonDesc{skeleton, 1}).HasValue() && runtime.HasSkeleton(skeleton), "valid skeleton should register and be queryable");
+    ok &= Expect(!runtime.RegisterSkeleton(SkeletonDesc{skeleton, 1}).HasValue(), "duplicate skeleton should fail");
+    ok &= Expect(!runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{}, skeleton, AnimationLodLevel::Full}).HasValue(), "invalid owner should fail");
+    ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{clip, SkeletonId{99}, 1.0f}).HasValue(), "clip with missing skeleton should fail");
+    ok &= Expect(runtime.RegisterClip(AnimationClipDesc{clip, skeleton, 1.0f}).HasValue() && runtime.HasClip(clip), "valid clip should register and be queryable");
+    ok &= Expect(!runtime.RegisterClip(AnimationClipDesc{clip, skeleton, 1.0f}).HasValue(), "duplicate clip should fail");
+    ok &= Expect(!runtime.IsFrozen() && runtime.Freeze().HasValue() && runtime.IsFrozen() && runtime.Freeze().HasValue(),
+                 "animation registry freeze should be observable and idempotent");
     return ok;
 }
 
@@ -544,6 +561,251 @@ bool TestFactoryProfilesSeparateMockEvaluation()
     ok &= Expect(mock.runtime != nullptr && mock.poses != nullptr, "mock services should be populated");
     return ok;
 }
+
+bool TestPortablePlaybackScalingBoundaries()
+{
+    bool ok = true;
+
+    auto make_runtime = [] {
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}};
+        const bool seeded = runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{1}, 1}).HasValue() &&
+                            runtime.RegisterClip(AnimationClipDesc{AnimationClipId{1}, SkeletonId{1}, 1000.0f}).HasValue();
+        return std::pair<AnimationRuntime, bool>{std::move(runtime), seeded};
+    };
+
+    {
+        auto [runtime, seeded] = make_runtime();
+        ok &= Expect(seeded, "portable scaling boundary resources should seed");
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{601}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{1}, false, 1.0}).HasValue(),
+                     "exact-rate boundary animator should start");
+        const auto tick = runtime.Tick(FrameDuration{std::chrono::microseconds{std::numeric_limits<std::int64_t>::max()}}, 1);
+        const auto after = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(tick && after && after.Value().playback == AnimatorPlaybackState::Finished &&
+                         after.Value().local_time == FrameDuration{std::chrono::microseconds{1'000'000'000}},
+                     "INT64_MAX * 1.0 must remain a valid scaled delta and follow normal clip completion");
+    }
+
+    {
+        auto [runtime, seeded] = make_runtime();
+        ok &= Expect(seeded, "first-overflow resources should seed");
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{602}, SkeletonId{1}, AnimationLodLevel::Full});
+        const double overflow_rate = std::nextafter(1.0, 2.0);
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{1}, false, overflow_rate}).HasValue(),
+                     "first-overflow animator should start");
+        const auto before = runtime.GetAnimatorSnapshot(animator.Value());
+        const auto failed = runtime.Tick(FrameDuration{std::chrono::microseconds{std::numeric_limits<std::int64_t>::max()}}, 1);
+        const auto after = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(!failed && failed.GetError().HasCode("animation.time_overflow") && before && after &&
+                         before.Value().local_time == after.Value().local_time && before.Value().revision == after.Value().revision,
+                     "first representable playback rate above 1.0 must reject atomically at INT64_MAX");
+    }
+
+    {
+        auto [runtime, seeded] = make_runtime();
+        ok &= Expect(seeded, "fractional-boundary resources should seed");
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{603}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{1}, false, 1.0}).HasValue(),
+                     "fractional-boundary animator should start");
+        runtime.SetFractionalMicrosecondsForTesting(animator.Value(), 0.5);
+        const auto before = runtime.GetAnimatorSnapshot(animator.Value());
+        const auto failed = runtime.Tick(FrameDuration{std::chrono::microseconds{std::numeric_limits<std::int64_t>::max()}}, 1);
+        const auto after = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(!failed && failed.GetError().HasCode("animation.time_overflow") && before && after &&
+                         before.Value().local_time == after.Value().local_time && before.Value().revision == after.Value().revision,
+                     "non-zero carried fraction must reject an otherwise exact INT64_MAX boundary atomically");
+    }
+
+    {
+        auto [runtime, seeded] = make_runtime();
+        ok &= Expect(seeded, "fractional carry resources should seed");
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{604}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{1}, true, 0.1}).HasValue(),
+                     "fractional carry animator should start");
+        runtime.SetFractionalMicrosecondsForTesting(animator.Value(), std::nextafter(1.0, 0.0));
+        const auto tick = runtime.Tick(FrameDuration{std::chrono::microseconds{10}}, 1);
+        const auto after = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(tick && after && after.Value().local_time == FrameDuration{std::chrono::microseconds{1}},
+                     "rounded fractional addition must not create a false carry across a microsecond boundary");
+    }
+
+    {
+        auto [runtime, seeded] = make_runtime();
+        ok &= Expect(seeded, "post-carry overflow resources should seed");
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{605}, SkeletonId{1}, AnimationLodLevel::Full});
+        const double overflow_rate = std::nextafter(1.0, 2.0);
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{1}, false, overflow_rate}).HasValue(),
+                     "post-carry overflow animator should start");
+        runtime.SetFractionalMicrosecondsForTesting(animator.Value(), 0.75);
+        const auto before = runtime.GetAnimatorSnapshot(animator.Value());
+        const auto failed = runtime.Tick(FrameDuration{std::chrono::microseconds{std::numeric_limits<std::int64_t>::max() - 2048}}, 1);
+        const auto after = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(!failed && failed.GetError().HasCode("animation.time_overflow") && before && after &&
+                         before.Value().local_time == after.Value().local_time && before.Value().revision == after.Value().revision,
+                     "fractional carry into INT64_MAX with a positive residual must reject atomically");
+    }
+
+    {
+        auto [runtime, seeded] = make_runtime();
+        ok &= Expect(seeded, "exact remainder rounding resources should seed");
+        const auto animator = runtime.CreateAnimatorHandle(AnimatorDesc{RuntimeObjectId{606}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{1}, false, 0.1}).HasValue(),
+                     "exact remainder rounding animator should start");
+        runtime.SetFractionalMicrosecondsForTesting(animator.Value(), 0x1.55c5bddc376f8p-4);
+        const auto tick = runtime.Tick(FrameDuration{std::chrono::microseconds{1948608813260436178LL}}, 1);
+        ok &= Expect(tick && runtime.FractionalMicrosecondsForTesting(animator.Value()) == 0x1.6699d4b59816ap-1,
+                     "fractional remainder must be rounded once from the exact binary sum");
+    }
+
+    return ok;
+}
+
+bool TestStatefulPlaybackRemainderPartitionAndFailureAtomicity()
+{
+    bool ok = true;
+    constexpr std::int64_t kFirstDelta = 36028797018963948LL;
+    constexpr std::int64_t kSmallDelta = 10LL;
+    constexpr std::int64_t kCombinedDelta = 36028797018963968LL;
+    constexpr std::int64_t kExpectedFirst = 3602879701896394LL;
+    constexpr std::int64_t kExpectedSecond = 3602879701896395LL;
+    constexpr std::int64_t kExpectedFinal = 3602879701896397LL;
+
+    auto seed_long_clip = [](AnimationRuntime& runtime) {
+        return runtime.RegisterSkeleton(SkeletonDesc{SkeletonId{1}, 1}).HasValue() &&
+               runtime.RegisterClip(AnimationClipDesc{AnimationClipId{71}, SkeletonId{1}, 5.0e9f}).HasValue() &&
+               runtime.RegisterClip(AnimationClipDesc{AnimationClipId{72}, SkeletonId{1}, 5.0e9f}).HasValue();
+    };
+
+    {
+        AnimationRuntime partitioned{AnimationOptions{.enable_mock_pose_evaluation = true}};
+        AnimationRuntime combined{AnimationOptions{.enable_mock_pose_evaluation = true}};
+        ok &= Expect(seed_long_clip(partitioned) && seed_long_clip(combined), "stateful remainder resources should seed");
+        const auto partitioned_animator = partitioned.CreateAnimatorHandle(
+            AnimatorDesc{RuntimeObjectId{701}, SkeletonId{1}, AnimationLodLevel::Full});
+        const auto combined_animator = combined.CreateAnimatorHandle(
+            AnimatorDesc{RuntimeObjectId{702}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(partitioned_animator && combined_animator &&
+                         partitioned.Play(AnimationPlaybackCommand{partitioned_animator.Value(), AnimationClipId{71}, false, 0.1}).HasValue() &&
+                         combined.Play(AnimationPlaybackCommand{combined_animator.Value(), AnimationClipId{71}, false, 0.1}).HasValue(),
+                     "partitioned and combined animators should start");
+
+        const auto first_tick = partitioned.Tick(FrameDuration{std::chrono::microseconds{kFirstDelta}}, 1);
+        const auto first = partitioned.GetAnimatorSnapshot(partitioned_animator.Value());
+        ok &= Expect(first_tick && first && first.Value().local_time.value.count() == kExpectedFirst &&
+                         partitioned.HasExactFractionalMicrosecondsForTesting(partitioned_animator.Value()),
+                     "first partition must retain an exact non-zero fractional remainder");
+
+        const auto second_tick = partitioned.Tick(FrameDuration{std::chrono::microseconds{kSmallDelta}}, 1);
+        const auto second = partitioned.GetAnimatorSnapshot(partitioned_animator.Value());
+        ok &= Expect(second_tick && second && second.Value().local_time.value.count() == kExpectedSecond,
+                     "second partition must advance to the exact represented-rate floor");
+
+        const auto third_tick = partitioned.Tick(FrameDuration{std::chrono::microseconds{kSmallDelta}}, 1);
+        const auto partitioned_final = partitioned.GetAnimatorSnapshot(partitioned_animator.Value());
+        const auto combined_tick = combined.Tick(FrameDuration{std::chrono::microseconds{kCombinedDelta}}, 1);
+        const auto combined_final = combined.GetAnimatorSnapshot(combined_animator.Value());
+        ok &= Expect(third_tick && combined_tick && partitioned_final && combined_final &&
+                         partitioned_final.Value().local_time.value.count() == kExpectedFinal &&
+                         combined_final.Value().local_time.value.count() == kExpectedFinal &&
+                         partitioned_final.Value().local_time == combined_final.Value().local_time,
+                     "partitioned and combined playback must preserve the same exact represented-rate accumulation");
+    }
+
+    auto verify_failure_atomicity = [&](bool evaluator_result_failure,
+                                        bool evaluator_exception,
+                                        bool sink_result_failure,
+                                        bool sink_exception,
+                                        std::string_view label) {
+        auto evaluator = std::make_shared<TestEvaluatorBackend>();
+        auto sink = std::make_shared<TestPoseSink>();
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}, AnimationDependencies{{}, sink, evaluator}};
+        bool case_ok = Expect(seed_long_clip(runtime), "failure-atomicity resources should seed");
+        const auto animator = runtime.CreateAnimatorHandle(
+            AnimatorDesc{RuntimeObjectId{703}, SkeletonId{1}, AnimationLodLevel::Full});
+        case_ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{71}, false, 0.1}).HasValue(),
+                          "failure-atomicity animator should start");
+        case_ok &= Expect(runtime.Tick(FrameDuration{std::chrono::microseconds{kFirstDelta}}, 1).HasValue(),
+                          "failure-atomicity setup tick should succeed");
+        const auto before = runtime.GetAnimatorSnapshot(animator.Value());
+        const double remainder_before = runtime.FractionalMicrosecondsForTesting(animator.Value());
+        const auto exact_before = runtime.ExactFractionalMicrosecondsForTesting(animator.Value());
+
+        evaluator->fail = evaluator_result_failure;
+        evaluator->throw_on_evaluate = evaluator_exception;
+        sink->fail = sink_result_failure;
+        sink->throw_on_publish = sink_exception;
+        const auto failed = runtime.Tick(FrameDuration{std::chrono::microseconds{kSmallDelta}}, 1);
+        const auto after = runtime.GetAnimatorSnapshot(animator.Value());
+        case_ok &= Expect(!failed && before && after &&
+                              before.Value().local_time == after.Value().local_time &&
+                              before.Value().revision == after.Value().revision &&
+                              remainder_before == runtime.FractionalMicrosecondsForTesting(animator.Value()) &&
+                              exact_before == runtime.ExactFractionalMicrosecondsForTesting(animator.Value()),
+                          label);
+
+        evaluator->fail = false;
+        evaluator->throw_on_evaluate = false;
+        sink->fail = false;
+        sink->throw_on_publish = false;
+        case_ok &= Expect(runtime.Tick(FrameDuration{std::chrono::microseconds{kSmallDelta}}, 1).HasValue() &&
+                              runtime.Tick(FrameDuration{std::chrono::microseconds{kSmallDelta}}, 1).HasValue(),
+                          "retry after staged failure should accept each playback delta exactly once");
+        const auto recovered = runtime.GetAnimatorSnapshot(animator.Value());
+        case_ok &= Expect(recovered && recovered.Value().local_time.value.count() == kExpectedFinal,
+                          "retry after staged failure must match the clean partitioned execution");
+        return case_ok;
+    };
+
+    ok &= verify_failure_atomicity(true, false, false, false,
+                                   "evaluator Result failure must preserve local time, revision and exact fractional remainder");
+    ok &= verify_failure_atomicity(false, true, false, false,
+                                   "evaluator exception must preserve local time, revision and exact fractional remainder");
+    ok &= verify_failure_atomicity(false, false, true, false,
+                                   "pose-sink Result failure must preserve local time, revision and exact fractional remainder");
+    ok &= verify_failure_atomicity(false, false, false, true,
+                                   "pose-sink exception must preserve local time, revision and exact fractional remainder");
+
+    {
+        AnimationRuntime runtime{AnimationOptions{.enable_mock_pose_evaluation = true}};
+        ok &= Expect(seed_long_clip(runtime), "remainder reset resources should seed");
+        const auto animator = runtime.CreateAnimatorHandle(
+            AnimatorDesc{RuntimeObjectId{704}, SkeletonId{1}, AnimationLodLevel::Full});
+        ok &= Expect(animator && runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{71}, false, 0.1}).HasValue() &&
+                         runtime.Tick(FrameDuration{std::chrono::microseconds{kFirstDelta}}, 1).HasValue() &&
+                         runtime.HasExactFractionalMicrosecondsForTesting(animator.Value()),
+                     "reset test should first establish an exact fractional remainder");
+
+        ok &= Expect(runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{71}, false, 0.1}).HasValue() &&
+                         !runtime.HasExactFractionalMicrosecondsForTesting(animator.Value()) &&
+                         runtime.FractionalMicrosecondsForTesting(animator.Value()) == 0.0,
+                     "Play must reset both exact and mirrored fractional playback state");
+        ok &= Expect(runtime.Tick(FrameDuration{std::chrono::microseconds{kSmallDelta}}, 1).HasValue(),
+                     "play-reset animator should tick");
+        const auto after_play_reset = runtime.GetAnimatorSnapshot(animator.Value());
+        ok &= Expect(after_play_reset && after_play_reset.Value().local_time.value.count() == 1,
+                     "Play reset must prevent the previous clip remainder from carrying into the new playback");
+
+        ok &= Expect(runtime.Tick(FrameDuration{std::chrono::microseconds{kFirstDelta}}, 1).HasValue() &&
+                         runtime.HasExactFractionalMicrosecondsForTesting(animator.Value()),
+                     "Stop reset test should establish a new exact remainder");
+        ok &= Expect(runtime.Stop(animator.Value()).HasValue() &&
+                         !runtime.HasExactFractionalMicrosecondsForTesting(animator.Value()) &&
+                         runtime.FractionalMicrosecondsForTesting(animator.Value()) == 0.0,
+                     "Stop must clear both exact and mirrored fractional playback state");
+
+        ok &= Expect(runtime.Play(AnimationPlaybackCommand{animator.Value(), AnimationClipId{71}, false, 0.1}).HasValue() &&
+                         runtime.Tick(FrameDuration{std::chrono::microseconds{kFirstDelta}}, 1).HasValue() &&
+                         runtime.HasExactFractionalMicrosecondsForTesting(animator.Value()),
+                     "immediate replacement test should establish an exact remainder");
+        ok &= Expect(runtime.Crossfade(animator.Value(), AnimationClipId{72}, FrameDuration{}).HasValue() &&
+                         !runtime.HasExactFractionalMicrosecondsForTesting(animator.Value()) &&
+                         runtime.FractionalMicrosecondsForTesting(animator.Value()) == 0.0,
+                     "zero-duration Crossfade must not inherit the replaced clip fractional remainder");
+    }
+
+    return ok;
+}
+
 bool TestDeepFreezeAnimationContracts()
 {
     bool ok = true;
@@ -687,6 +949,8 @@ int main()
     ok &= TestEventCapacityDropsOldest();
     ok &= TestZeroEventCapacityUsesDefaultBound();
     ok &= TestFactoryProfilesSeparateMockEvaluation();
+    ok &= TestPortablePlaybackScalingBoundaries();
+    ok &= TestStatefulPlaybackRemainderPartitionAndFailureAtomicity();
     ok &= TestDeepFreezeAnimationContracts();
     return ok ? 0 : 1;
 }

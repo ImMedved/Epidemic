@@ -403,6 +403,21 @@ using epidemic::runtime::WorldTransformWriteMode;
            sphere == result;
 }
 
+[[nodiscard]] bool TestLargeFiniteSphereQueryDoesNotOverflowToIntersection()
+{
+    SceneRuntime runtime;
+    const auto node = runtime.CreateNode();
+    if (!node ||
+        !runtime.SetLocalBounds(node.Value(), Aabb{Vec3{-1.0f, -1.0f, -1.0f}, Vec3{1.0f, 1.0f, 1.0f}}))
+    {
+        return false;
+    }
+
+    const auto miss = runtime.QuerySphere(Vec3{1.0e30f, 0.0f, 0.0f}, 1.0e20f);
+    const auto hit = runtime.QuerySphere(Vec3{1.0e30f, 0.0f, 0.0f}, 2.0e30f);
+    return miss.empty() && hit.size() == 1u && hit.front() == node.Value();
+}
+
 [[nodiscard]] bool TestSnapshotCapturesRevisionAndSortedNodes()
 {
     SceneRuntime runtime;
@@ -1040,6 +1055,7 @@ int main()
         {"DirtyFlagsSetAndClear", TestDirtyFlagsSetAndClear},
         {"DirtyFlagsAreTransientForRevisionAndSnapshots", TestDirtyFlagsAreTransientForRevisionAndSnapshots},
         {"QueriesAreVisibleAndDeterministic", TestQueriesAreVisibleAndDeterministic},
+        {"LargeFiniteSphereQueryDoesNotOverflowToIntersection", TestLargeFiniteSphereQueryDoesNotOverflowToIntersection},
         {"SnapshotCapturesRevisionAndSortedNodes", TestSnapshotCapturesRevisionAndSortedNodes},
         {"FactoryCreatesSharedRuntimeServices", TestFactoryCreatesSharedRuntimeServices},
         {"FailedReparentIsTransactional", TestFailedReparentIsTransactional},

@@ -7212,7 +7212,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineRuntime/RuntimeFoundation",
-      "normalized_sha256": "e0bcc5f59f96deb2d4df0f73d8335661f3b0438acd2bb20304aff0c06245dfad",
+      "normalized_sha256": "1828dc6074c453bbfbf203fa04176de32cc7aa5c120823105f4c4ad06651a28b",
       "public_fields": [
         "GameTimePoint::ticks"
       ],
@@ -7237,7 +7237,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineRuntime/RuntimeFoundation",
-      "normalized_sha256": "3cb0b5f91f1a1d35f8b8d2a263d67904b046996e0e4c060eaa4c6fc547a77365",
+      "normalized_sha256": "1860f8776eea278d34781b3c644606e5e7b26ce55e6cf4d47a164612f9544e6b",
       "public_fields": [
         "Quat::w",
         "Quat::x",
@@ -7557,7 +7557,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineRuntime/Serialization",
-      "normalized_sha256": "6cd34d5f446c1aa9a625f3547f1c2dc132208dcab6f63016dbcde7c5246d7283",
+      "normalized_sha256": "65e2510992fa96972bde694d50835a87fcf00d1c13cda38c705bcefb13eb3c9b",
       "public_fields": [
         "SerializationServices::archives",
         "SerializationServices::migrations",
@@ -7578,7 +7578,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineRuntime/Serialization",
-      "normalized_sha256": "d9521515cd81999d6a24537ff75301856acce086ce358401636d9a4d4bdf6ed5",
+      "normalized_sha256": "0ce60bbd181169cc6e0feaf5c66bfc6cde84a5511bd75076ee3f1d8f25745632",
       "public_fields": [],
       "templates": [
         "template <typename TObject> [[nodiscard]] foundation::Result<SerializedDocument>",
@@ -8120,6 +8120,7 @@
         "class ITimeRuntime",
         "struct PhaseBoundary",
         "struct TimeAdvanceResult",
+        "struct TimeCheckpoint",
         "struct TimeOptions",
         "struct TimeServices"
       ],
@@ -8128,7 +8129,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineRuntime/Time",
-      "normalized_sha256": "d0c297b41ac5911e34589f9cb3b3cb7c4ad65d0ef44ff640348ec3e152fa9f80",
+      "normalized_sha256": "edfb6453276c0e77fea57cba2c6de2ca84b570e4e8588c90d225855b7936bdd4",
       "public_fields": [
         "PhaseBoundary::phase",
         "PhaseBoundary::start_minute",
@@ -8213,7 +8214,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineRuntime/World",
-      "normalized_sha256": "fc012d993e9a5124a12021b8d4b2296e17f1918d999c6ab80ed4c571cb1c1677",
+      "normalized_sha256": "689cf298e6074cf2f1fe10a94d1d6d5c5e4cbb870849bbead0556508afafc695",
       "public_fields": [],
       "templates": []
     },

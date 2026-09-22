@@ -14,7 +14,7 @@ A request can own one private accepted `pending_step_result`. It contains the pl
 
 The old `Tick()` wrapped both `BuildWorkList()` and result-capacity preparation in `catch (...)`, incremented `statistics.failed` and returned an empty successful-looking tick result. The same broad catch around `AdvanceRequest()` could convert Runtime-local `std::bad_alloc` into `streaming.runtime_exception` and drive request rollback/failure semantics.
 
-The fix removes semantic conversion for Runtime-owned preparation and explicitly rethrows `std::bad_alloc` from request processing. Work-list construction and `StreamingTickResult::failures` capacity are completed before any request mutation. Regression fault injection at the first and second Tick allocations proves exact progress/statistics pre-state preservation. External callback exceptions remain contained inside their specific port boundaries.
+The fix removes semantic conversion for Runtime-owned preparation and explicitly rethrows `std::bad_alloc` from request processing. Work-list construction and `StreamingTickResult::failures` capacity are completed before any request mutation. Block D replaces process-wide allocation counting with named internal seams for work-list preparation and tick-result capacity preparation; both regressions prove exact progress/statistics pre-state preservation. External callback exceptions remain contained inside their specific port boundaries.
 
 ## G3-STR-002
 
@@ -38,7 +38,7 @@ Problem: when terminal history cleanup had removed the old chunk mapping but ret
 
 Cause: publication rollback tracked only whether a state/mapping key was newly inserted, not whether an existing value had been overwritten before a later fallible operation.
 
-Fix: request publication stages the previous chunk state/mapping values and restores them on any publication exception. A bounded global-allocation sweep recreates the terminal-history scenario and verifies record count, chunk state and identity allocators remain exactly at pre-call values for every injected failure position.
+Fix: request publication stages the previous chunk state/mapping values and restores them on any publication exception. The regression now injects failure at the later chunk-to-request mapping publication boundary, after the replacement request and Requested chunk state have already been staged. This recreates the partial-publication rollback case and verifies record count, prior chunk state and identity allocators return exactly to pre-call values. A separate named demand-publication seam verifies reactivation failure preserves demand ownership and chunk state.
 
 ## Demand, identity and ordering audit
 
@@ -60,6 +60,6 @@ Unload records durable cleanup prefix flags. If resource release succeeds and re
 
 ## Verification
 
-The Streaming suite is compiled and executed directly as C++20 with warnings-as-errors because the repository-wide CMake configuration intentionally rejects non-Windows `EngineBase/Platform` before Runtime tests in this task container. Portable verification covers GCC Debug/Release and Clang Debug/Release. Clang AddressSanitizer plus UndefinedBehaviorSanitizer and standalone public-header consumers are also run for this delta.
+The Streaming suite is compiled and executed directly as C++20 with warnings-as-errors because the repository-wide CMake configuration intentionally rejects non-Windows `EngineBase/Platform` before Runtime tests in this task container. Block D portable verification covers GCC Debug/Release and Clang Debug/Release. Clang AddressSanitizer plus UndefinedBehaviorSanitizer and standalone public-header consumers are also run for this delta. A source scan confirms that the suite no longer defines process-global `operator new/new[]` and no longer contains the `_ITERATOR_DEBUG_LEVEL` allocator workaround.
 
 The official Windows MSVC Debug/Release, exact CTest manifests, shared `LOCAL_READY` ledger and global generated freeze manifests remain the integration-step qualification after the parallel Goal 3 module deltas are merged.

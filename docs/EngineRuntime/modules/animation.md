@@ -20,4 +20,4 @@ Animation не содержит animation graph gameplay rules, actor state, Ren
 
 ## Стабильность
 
-Публичный runtime contract считается frozen. Cross-major pose wiring реализуется только в Support.
+После локального аудита Goal 3 и canonical evidence convergence модуль имеет статус `LOCAL_READY`. Это не означает `FROZEN`: общесистемные integration/fault/load gates и финальный freeze выполняются в последующих Goals 5–9. Cross-major pose wiring реализуется только в Support.

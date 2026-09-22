@@ -56,7 +56,10 @@ class StreamingRuntime final : public IStreamingRuntime, public IStreamingQuery,
     [[nodiscard]] std::uint64_t NextDemandValueForTesting() const noexcept { return next_demand_value_; }
     [[nodiscard]] bool IsShuttingDownForTesting() const noexcept;
     void FailNextRequestPublicationForTesting() noexcept { fail_next_request_publication_for_testing_ = true; }
+    void FailNextChunkMappingPublicationForTesting() noexcept { fail_next_chunk_mapping_publication_for_testing_ = true; }
     void FailNextDemandPublicationForTesting() noexcept { fail_next_demand_publication_for_testing_ = true; }
+    void FailNextWorkListPreparationForTesting() noexcept { fail_next_work_list_preparation_for_testing_ = true; }
+    void FailNextTickResultPreparationForTesting() noexcept { fail_next_tick_result_preparation_for_testing_ = true; }
     [[nodiscard]] const StreamingBudget& BudgetForTesting() const noexcept { return budget_; }
     void SetStatisticsForTesting(StreamingStatistics value) noexcept { statistics_ = value; }
 
@@ -161,6 +164,9 @@ class StreamingRuntime final : public IStreamingRuntime, public IStreamingQuery,
     };
     Lifecycle lifecycle_ = Lifecycle::Running;
     bool fail_next_request_publication_for_testing_ = false;
+    bool fail_next_chunk_mapping_publication_for_testing_ = false;
     bool fail_next_demand_publication_for_testing_ = false;
+    bool fail_next_work_list_preparation_for_testing_ = false;
+    bool fail_next_tick_result_preparation_for_testing_ = false;
 };
 } // namespace epidemic::runtime::streaming

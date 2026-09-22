@@ -572,9 +572,13 @@ public:
         return false;
     }
 
+    const auto existing_before = runtime.GetSurfaceState(existing_surface);
     const auto rejected_direct = runtime.SetSurfaceState(MakeSurface(new_surface, region));
-    if (rejected_direct || !rejected_direct.GetError().HasCode("environment.registration_frozen") ||
-        runtime.GetRevision() != before_global || runtime.GetSurfaceState(new_surface))
+    const auto after_direct_region = runtime.GetRegionRevision(region);
+    const auto existing_after_direct = runtime.GetSurfaceState(existing_surface);
+    if (!existing_before || rejected_direct || !rejected_direct.GetError().HasCode("environment.registration_frozen") ||
+        runtime.GetRevision() != before_global || !after_direct_region || after_direct_region.Value() != before_region.Value() ||
+        runtime.GetSurfaceState(new_surface) || !existing_after_direct || existing_after_direct.Value() != existing_before.Value())
     {
         return false;
     }
@@ -583,9 +587,32 @@ public:
     batch.region = region;
     batch.source_revision = before_region.Value();
     batch.surfaces.push_back(MakeSurface(new_surface, region));
+    runtime.FailNextBatchValidationAllocationForTesting();
     const auto rejected_batch = runtime.ApplyUpdate(batch);
+    const auto after_batch_region = runtime.GetRegionRevision(region);
+    const auto existing_after_batch = runtime.GetSurfaceState(existing_surface);
     if (rejected_batch || !rejected_batch.GetError().HasCode("environment.registration_frozen") ||
-        runtime.GetRevision() != before_global || runtime.GetSurfaceState(new_surface))
+        runtime.GetRevision() != before_global || !after_batch_region || after_batch_region.Value() != before_region.Value() ||
+        runtime.GetSurfaceState(new_surface) || !existing_after_batch || existing_after_batch.Value() != existing_before.Value())
+    {
+        return false;
+    }
+
+    // The frozen-new-surface rejection must occur before batch validation staging.
+    // The named allocation fault therefore remains armed and is consumed only by
+    // the next otherwise-valid batch.
+    EnvironmentStateUpdate allocation_probe{};
+    allocation_probe.region = region;
+    allocation_probe.source_revision = before_region.Value();
+    SurfaceState allocation_probe_surface = existing_before.Value();
+    allocation_probe_surface.temperature = 3.0f;
+    allocation_probe.surfaces.push_back(allocation_probe_surface);
+    const auto failed_staging = runtime.ApplyUpdate(allocation_probe);
+    const auto after_staging_region = runtime.GetRegionRevision(region);
+    const auto existing_after_staging = runtime.GetSurfaceState(existing_surface);
+    if (failed_staging || !failed_staging.GetError().HasCode("environment.allocation_failed") ||
+        runtime.GetRevision() != before_global || !after_staging_region || after_staging_region.Value() != before_region.Value() ||
+        !existing_after_staging || existing_after_staging.Value() != existing_before.Value())
     {
         return false;
     }

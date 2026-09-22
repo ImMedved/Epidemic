@@ -34,7 +34,7 @@ Scene локально владеет только nodes, hierarchy, transforms,
 
 ## Стабильность
 
-После прохождения Goal 3.7 модуль может иметь статус `LOCAL_READY`. `SYSTEM_READY` и `FROZEN` присваиваются только после обязательных системных gates Goals 5–9.
+После прохождения Goal 3.7 и canonical evidence convergence модуль имеет статус `LOCAL_READY`. `SYSTEM_READY` и `FROZEN` присваиваются только после обязательных системных gates Goals 5–9.
 
 ## Карта публичных заголовков
 

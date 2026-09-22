@@ -10,6 +10,8 @@
 
 namespace epidemic::runtime
 {
+struct SerializationRuntimeTestAccess;
+
 class InMemoryArchiveWriter final : public IArchiveWriter
 {
   public:
@@ -35,6 +37,8 @@ class InMemoryArchiveWriter final : public IArchiveWriter
     [[nodiscard]] foundation::Result<void> MergeRootFieldsTransactional(const ArchiveObject& source);
 
   private:
+    friend struct SerializationRuntimeTestAccess;
+
     enum class ContextKind { Object, Array, ArrayElement };
     struct Context
     {
@@ -53,6 +57,11 @@ class InMemoryArchiveWriter final : public IArchiveWriter
     ArchiveObjectPtr root_;
     std::vector<Context> stack_;
     bool finalized_ = false;
+    bool fail_next_object_publication_for_testing_ = false;
+    bool fail_next_array_publication_for_testing_ = false;
+    bool fail_next_array_element_publication_for_testing_ = false;
+    bool fail_next_field_publication_for_testing_ = false;
+    bool fail_next_finalize_candidate_for_testing_ = false;
 };
 
 class InMemoryArchiveReader final : public IArchiveReader

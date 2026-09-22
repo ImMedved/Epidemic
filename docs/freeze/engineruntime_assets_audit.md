@@ -2,7 +2,7 @@
 
 Audit date: 2026-09-19.
 
-Status: `LOCAL_READY` for Goal 3.5. This is module-local evidence only. Whole-engine `SYSTEM_READY` and `FROZEN` remain outside Goal 3.
+Status: `LOCAL_READY candidate` pending the required MSVC Debug/Release requalification after the Block C fault-harness rewrite. This remains module-local evidence only. Whole-engine `SYSTEM_READY` and `FROZEN` remain outside Goal 3.
 
 ## Scope and ownership
 
@@ -70,7 +70,7 @@ The only lifecycle transition is mutable catalog to sealed catalog. `Seal()` is 
 
 ## Failure atomicity and observable state
 
-`RegisterAsset` performs all semantic validation and candidate normalization before touching `assets_`. Duplicate detection happens before insertion. The final `unordered_map::emplace` is the single authoritative publication step; allocation failure during that operation leaves the container unchanged. The fault-injection regression sweeps allocation points across candidate copy, normalization, validation helpers, and insertion while comparing the pre-existing record and query results after every `std::bad_alloc`.
+`RegisterAsset` performs all semantic validation and candidate normalization before touching `assets_`. Duplicate detection happens before insertion. The final `unordered_map::emplace` is the single authoritative publication step; allocation failure during that operation leaves the container unchanged. The fault-injection regression uses named implementation-local seams at the metadata candidate-build boundary and the final catalog-publication boundary. Each injected `std::bad_alloc` must preserve the pre-existing record and query results, and the same registration must succeed on retry. The test no longer replaces process-global `operator new`/`operator new[]` or depends on STL/CRT allocation order.
 
 The module has no multi-container commit, external callback/backend side effect, rollback, reconciliation state, event/journal publication, or generated counter. `Seal()` mutates only one boolean and cannot fail after mutation.
 
@@ -88,7 +88,7 @@ Secondary-index consistency, generated counters/revisions, false event/revision 
 
 Before build work, the extracted source tree was copied to a separate task backup directory and checksummed. All edits and build directories are isolated under the dedicated Goal 3.5 task directory.
 
-The actual `EpidemicRuntimeAssetsTests` target passes in isolated CMake harnesses for GCC Debug/Release and Clang Debug/Release. The same suite passes GCC UBSan. The harness also builds the direct RuntimeFoundation dependency, and both registered CTest executables pass.
+Block C replaces the process-global allocator sweep with deterministic named seams. The updated suite passes GCC 14 Debug/Release and Clang 17 Debug/Release with warnings treated as errors, GCC 14 ASan+UBSan, and a GCC libstdc++ debug-iterator/assertion build. The required repository MSVC Debug/Release qualification is still pending, so `LOCAL_READY` is not re-admitted by this local audit.
 
 All nine Assets public headers compile independently as the sole project include under GCC and Clang with warnings treated as errors. This corresponds to the repository public-header self-containment requirement.
 

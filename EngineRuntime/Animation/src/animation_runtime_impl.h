@@ -2,6 +2,8 @@
 
 #include "Epidemic/Runtime/Animation/animation_runtime.h"
 
+#include <array>
+#include <cstdint>
 #include <optional>
 #include <unordered_map>
 #include <vector>
@@ -44,6 +46,10 @@ public:
 
     void SetRevisionForTesting(AnimatorHandle handle, std::uint64_t revision) noexcept;
     void SetNextIdentityForTesting(std::uint64_t id, std::uint32_t generation) noexcept;
+    void SetFractionalMicrosecondsForTesting(AnimatorHandle handle, double fractional_microseconds) noexcept;
+    [[nodiscard]] double FractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept;
+    [[nodiscard]] bool HasExactFractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept;
+    [[nodiscard]] std::array<std::uint64_t, 17> ExactFractionalMicrosecondsForTesting(AnimatorHandle handle) const noexcept;
 
 private:
     struct AnimatorRecord
@@ -55,6 +61,7 @@ private:
         AnimatorPlaybackState playback_state = AnimatorPlaybackState::Stopped;
         PoseState pose_state = PoseState::Clean;
         AnimatorPlayback playback{};
+        std::array<std::uint64_t, 17> exact_fractional_microseconds{};
         std::optional<CrossfadeState> crossfade{};
         PoseBuffer cached_pose{};
         std::uint64_t revision = 0;

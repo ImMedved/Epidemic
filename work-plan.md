@@ -193,131 +193,132 @@ Top-level `CMakeLists.txt` включает:
 ---
 # Цель 3. Полный локальный freeze-аудит EngineRuntime
 
-Статус: `READY_TO_START` (2026-09-19). Goal 2 закрыт. Подробный рабочий план: `Epidemic_Goal3_Runtime_Freeze_Plan_2026-09-18.md`.
+Статус: `READY_FOR_FINAL_PUBLICATION` (2026-09-22). Локальная qualification и serial convergence закрыты; до `COMPLETE` остаются commit recorded SHA и remote Architecture Freeze CI. Авторитетные подробные планы: `milestone 3.md` и `Milestone_3_Final_Closure_4_Block_Plan_2026-09-21.md`.
 
 В этом `work-plan` остаются только задачи, подтверждённые проблемы и exit gates. Причины, конкретные failure paths, proposed fixes и regression requirements находятся в подробном Goal 3 плане.
 
 ## 3.0. Admission и общие обязательства
 
-[x] EngineBase `9/9 LOCAL_READY`; admission matrix Base `14/14`, Runtime `34/34`, Full `94/94` в Debug/Release, суммарно `284/284`.
-[x] Exact CTest manifests, 37/37 LOCAL_READY criteria, 78/78 ledger records, architecture/dossier/coverage/API/public-surface/CI validators и negative/self-tests зелёные.
-[ ] `G3-DOC-001`: убрать преждевременные `frozen` status claims из Runtime module docs и синхронизировать их с ledger.
-[ ] Для всех 17 modules пройти единый LOCAL_READY audit: contracts, authoritative/derived state, identity exhaustion, no-op semantics, failure atomicity, external boundaries, deterministic observable order, persistence applicability и cleanup ownership.
-[ ] Каждый найденный defect получает failing regression до fix и постоянный evidence anchor после fix.
+[~] EngineBase `9/9 LOCAL_READY`; admission matrix Base `14/14`, Runtime `34/34`, Full `94/94` в Debug/Release, суммарно `284/284`.
+[~] Exact CTest manifests, 37/37 LOCAL_READY criteria, 78/78 ledger records, architecture/dossier/coverage/API/public-surface/CI validators и negative/self-tests зелёные.
+[~] `G3-DOC-001`: убрать преждевременные `frozen` status claims из Runtime module docs и синхронизировать их с ledger.
+[~] Для всех 17 modules пройти единый LOCAL_READY audit: contracts, authoritative/derived state, identity exhaustion, no-op semantics, failure atomicity, external boundaries, deterministic observable order, persistence applicability и cleanup ownership.
+[~] Каждый найденный defect получает failing regression до fix и постоянный evidence anchor после fix.
 
 ## 3.1. RuntimeFoundation
 
-[ ] `G3-RF-001`: устранить противоречие TRS contract, зафиксировав deterministic approximate TRS semantics.
-[ ] RuntimeFoundation audit complete; `EpidemicRuntimeFoundationTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-RF-001`: устранить противоречие TRS contract, зафиксировав deterministic approximate TRS semantics.
+[~] RuntimeFoundation audit complete; `EpidemicRuntimeFoundationTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.2. Time
 
-[ ] `G3-TIME-001`: добавить persistence-complete clock checkpoint с fractional remainder и atomic restore.
-[ ] Time audit complete; deterministic accumulation/persistent continuation tests green; module = `LOCAL_READY`.
+[~] `G3-TIME-001`: добавить persistence-complete clock checkpoint с fractional remainder и atomic restore.
+[~] Time audit complete; deterministic accumulation/persistent continuation tests green; module = `LOCAL_READY`.
 
 ## 3.3. Serialization
 
-[ ] Serialization local contract/failure-atomicity/migration audit complete; `EpidemicRuntimeSerializationTests` Debug/Release green; module = `LOCAL_READY`.
+[~] Serialization local contract/failure-atomicity/migration audit complete; `EpidemicRuntimeSerializationTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.4. Resources
 
-[ ] `G3-RES-001`: сделать replacement dependency set атомарным.
-[ ] `G3-RES-002`: исключить потерю WaitingForDependencies retry ownership.
-[ ] `G3-RES-003`: отделить loader callback exception boundary от Runtime-local artifact finalization.
-[ ] `G3-RES-004`: не удалять queue ownership до публикации следующего durable owner.
-[ ] Resources ownership/load/dependency/budget/eviction/cancellation audit complete; `EpidemicRuntimeResourcesTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-RES-001`: сделать replacement dependency set атомарным.
+[~] `G3-RES-002`: исключить потерю WaitingForDependencies retry ownership.
+[~] `G3-RES-003`: отделить loader callback exception boundary от Runtime-local artifact finalization.
+[~] `G3-RES-004`: не удалять queue ownership до публикации следующего durable owner.
+[~] Resources ownership/load/dependency/budget/eviction/cancellation audit complete; `EpidemicRuntimeResourcesTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.5. Assets
 
-[ ] Assets registration/path/dependency/seal audit complete; `EpidemicRuntimeAssetsTests` Debug/Release green; module = `LOCAL_READY`.
+[~] Assets registration/path/dependency/seal audit complete; `EpidemicRuntimeAssetsTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.6. Streaming
 
-[ ] `G3-STR-001`: local allocation failure не превращать в semantic streaming failure после partial mutation.
-[ ] `G3-STR-002`: сохранять successful ExecuteStep result durably до local cursor/accounting commit.
-[ ] Streaming demand/request/state-machine/external-failure/budget/shutdown audit complete; `EpidemicRuntimeStreamingTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-STR-001`: local allocation failure не превращать в semantic streaming failure после partial mutation.
+[~] `G3-STR-002`: сохранять successful ExecuteStep result durably до local cursor/accounting commit.
+[~] Streaming demand/request/state-machine/external-failure/budget/shutdown audit complete; `EpidemicRuntimeStreamingTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.7. Scene
 
-[ ] Scene identity/hierarchy/TRS/bounds/query/snapshot audit complete; `EpidemicRuntimeSceneTests` Debug/Release green; module = `LOCAL_READY`.
+[~] Scene identity/hierarchy/TRS/bounds/query/snapshot audit complete; `EpidemicRuntimeSceneTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.8. World
 
-[ ] World topology/object identity/placement/persistence-tier/token/query audit complete; `EpidemicRuntimeWorldTests` Debug/Release green; module = `LOCAL_READY`.
+[~] World topology/object identity/placement/persistence-tier/token/query audit complete; `EpidemicRuntimeWorldTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.9. Simulation
 
-[ ] `G3-SIM-001`: не повторять successful job ExecuteStep после local staging failure.
-[ ] `G3-SIM-002`: убрать обязательные Runtime allocations из post-commit housekeeping/result bookkeeping.
-[ ] Simulation jobs/schedules/memory/attention/facts/proposal-commit/shutdown audit complete; `EpidemicRuntimeSimulationTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-SIM-001`: не повторять successful job ExecuteStep после local staging failure.
+[~] `G3-SIM-002`: убрать обязательные Runtime allocations из post-commit housekeeping/result bookkeeping.
+[~] Simulation jobs/schedules/memory/attention/facts/proposal-commit/shutdown audit complete; `EpidemicRuntimeSimulationTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.10. Physics
 
-[ ] `G3-PHYS-001`: зафиксировать acceptance/retry semantics Tick(delta) после partial fixed-step progress.
-[ ] Physics shape/body ownership/fixed-step/backend-sync/projection/contact/query/shutdown audit complete; `EpidemicRuntimePhysicsTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-PHYS-001`: зафиксировать acceptance/retry semantics Tick(delta) после partial fixed-step progress.
+[~] Physics shape/body ownership/fixed-step/backend-sync/projection/contact/query/shutdown audit complete; `EpidemicRuntimePhysicsTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.11. Navigation
 
-[ ] `G3-NAV-001`: byte-budget считать по фактически подготавливаемому path shape.
-[ ] `G3-NAV-002`: не превращать local allocation failure после backend success в semantic path failure/re-execution.
-[ ] `G3-NAV-003`: не выполнять purge до последующей fallible work-list preparation.
-[ ] Navigation tile/revision/query/provider/backend/budget audit complete; `EpidemicRuntimeNavigationTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-NAV-001`: byte-budget считать по фактически подготавливаемому path shape.
+[~] `G3-NAV-002`: не превращать local allocation failure после backend success в semantic path failure/re-execution.
+[~] `G3-NAV-003`: не выполнять purge до последующей fallible work-list preparation.
+[~] Navigation tile/revision/query/provider/backend/budget audit complete; `EpidemicRuntimeNavigationTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.12. Animation
 
-[ ] `G3-ANIM-001`: убрать pose publication после authoritative animator commit.
-[ ] `G3-ANIM-002`: исключить silent loss semantic animation events при allocation failure.
-[ ] Animation registry/animator/evaluation/pose/event audit complete; `EpidemicRuntimeAnimationTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-ANIM-001`: убрать pose publication после authoritative animator commit.
+[~] `G3-ANIM-002`: исключить silent loss semantic animation events при allocation failure.
+[~] Animation registry/animator/evaluation/pose/event audit complete; `EpidemicRuntimeAnimationTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.13. Audio
 
-[ ] `G3-AUDIO-001`: зафиксировать backend retry/commit semantics без добавления transaction API.
-[ ] `G3-AUDIO-002`: preflight cleanup ownership до CreateVoice; failed rollback не теряет backend voice.
-[ ] Audio sound/emitter/listener/backend/fade/mixer/event/resource/shutdown audit complete; `EpidemicRuntimeAudioTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-AUDIO-001`: зафиксировать backend retry/commit semantics без добавления transaction API.
+[~] `G3-AUDIO-002`: preflight cleanup ownership до CreateVoice; failed rollback не теряет backend voice.
+[~] Audio sound/emitter/listener/backend/fade/mixer/event/resource/shutdown audit complete; `EpidemicRuntimeAudioTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.14. Environment
 
-[ ] Environment region/surface/update/snapshot/projection audit complete; `EpidemicRuntimeEnvironmentTests` Debug/Release green; module = `LOCAL_READY`.
+[~] Environment region/surface/update/snapshot/projection audit complete; `EpidemicRuntimeEnvironmentTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.15. Renderer
 
-[ ] `G3-REN-001`: failed AbortFrame сохраняет recovery ownership и блокирует новый BeginFrame до reconciliation.
-[ ] Renderer proxy/view/resource/scene/pose/frame/abort/shutdown audit complete; `EpidemicRuntimeRendererTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-REN-001`: failed AbortFrame сохраняет recovery ownership и блокирует новый BeginFrame до reconciliation.
+[~] Renderer proxy/view/resource/scene/pose/frame/abort/shutdown audit complete; `EpidemicRuntimeRendererTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.16. Persistence
 
-[ ] `G3-PERS-001`: сделать InMemoryPersistenceBackend::CommitSnapshot strong-commit.
-[ ] Persistence transaction/candidate/backend `CommitSnapshot(durability)`/query/snapshot audit complete без добавления несуществующих `Save()`/`Flush()` APIs; `EpidemicRuntimePersistenceTests` Debug/Release green; module = `LOCAL_READY`.
+[~] `G3-PERS-001`: сделать InMemoryPersistenceBackend::CommitSnapshot strong-commit.
+[~] Persistence transaction/candidate/backend `CommitSnapshot(durability)`/query/snapshot audit complete без добавления несуществующих `Save()`/`Flush()` APIs; `EpidemicRuntimePersistenceTests` Debug/Release green; module = `LOCAL_READY`.
 
 ## 3.17. Support
 
-[ ] `G3-SUP-001`: Scene projection retry не повторяет уже successful prefix.
-[ ] `G3-SUP-002`: coordinator сохраняет accepted frame prefix при late local allocation failure.
-[ ] `G3-SUP-003`: зафиксировать atomic failure semantics IRuntimeEventSink и reference sink.
-[ ] `G3-SUP-004`: закрыть post-acquire ResourceLease publication gaps Animation/Audio adapters.
-[ ] `G3-SUP-005`: сделать audio wrapper lease cleanup действительно no-throw и durably retryable.
-[ ] `G3-SUP-006`: reference audio backend не потребляет voice ID до publication commit.
-[ ] `G3-SUP-007`: сделать dual-index animation pose publication атомарной.
-[ ] Runtime composition prepare/commit, profiles и `registered_majors` audit complete.
-[ ] Все standard cross-major adapters закрыты isolated fake-based tests и ownership/retry contracts.
-[ ] Coordinator Tick order, phase failure semantics, event publication и result atomicity закрыты.
-[ ] Coordinator Shutdown order, best-effort cleanup и retry completion закрыты.
-[ ] `EpidemicRuntimeSupportTests` Debug/Release green; Support = `LOCAL_READY`.
+[~] `G3-SUP-001`: Scene projection retry не повторяет уже successful prefix.
+[~] `G3-SUP-002`: coordinator сохраняет accepted frame prefix при late local allocation failure.
+[~] `G3-SUP-003`: зафиксировать atomic failure semantics IRuntimeEventSink и reference sink.
+[~] `G3-SUP-004`: закрыть post-acquire ResourceLease publication gaps Animation/Audio adapters.
+[~] `G3-SUP-005`: сделать audio wrapper lease cleanup действительно no-throw и durably retryable.
+[~] `G3-SUP-006`: reference audio backend не потребляет voice ID до publication commit.
+[~] `G3-SUP-007`: сделать dual-index animation pose publication атомарной.
+[~] Runtime composition prepare/commit, profiles и `registered_majors` audit complete.
+[~] Все standard cross-major adapters закрыты isolated fake-based tests и ownership/retry contracts.
+[~] Coordinator Tick order, phase failure semantics, event publication и result atomicity закрыты.
+[~] Coordinator Shutdown order, best-effort cleanup и retry completion закрыты.
+[~] `EpidemicRuntimeSupportTests` Debug/Release green; Support = `LOCAL_READY`.
 
 ## 3.18. Runtime-wide gate
 
-[ ] `17/17 EngineRuntime production modules = LOCAL_READY`.
-[ ] Runtime Architecture, Integration, Regression и Support reference/preflight smoke проходят.
-[ ] Runtime не зависит от Framework; majors не получили новые peer dependencies вместо Support adapters.
-[ ] Все найденные defects имеют permanent regressions; disabled/skipped tests без explicit freeze exception отсутствуют.
+[~] `17/17 EngineRuntime production modules = LOCAL_READY`.
+[~] Runtime Architecture, Integration, Regression и Support reference/preflight smoke проходят.
+[~] Runtime не зависит от Framework; majors не получили новые peer dependencies вместо Support adapters.
+[~] Все найденные defects имеют permanent regressions; disabled/skipped tests без explicit freeze exception отсутствуют.
 
 ## 3.19. Финальный выход Goal 3
 
-[ ] LOCAL_READY ledger содержит PASS/N/A evidence по всем применимым 37 criteria для всех 17 Runtime modules.
-[ ] Runtime API inventory/public surface/dossiers/evidence anchors актуальны; `UNCLASSIFIED = 0`.
-[ ] Base Debug/Release, Runtime Debug/Release и Full Debug/Release проходят после всех Runtime fixes; exact CTest manifests перегенерированы под фактическое число tests.
-[ ] Public-header consumers, architecture/freeze validators и все validator negative/self-tests зелёные.
-[ ] `git diff --check`, warnings-as-errors и remote CI на recorded SHA зелёные.
+[~] LOCAL_READY ledger содержит PASS/N/A evidence по всем применимым 37 criteria для всех 17 Runtime modules.
+[~] Runtime API inventory/public surface/dossiers/evidence anchors актуальны; `UNCLASSIFIED = 0`.
+[~] Base Debug/Release, Runtime Debug/Release и Full Debug/Release проходят после всех Runtime fixes; exact CTest manifests перегенерированы под фактическое число tests.
+[~] MSVC public-header consumers, architecture/freeze validators и все validator negative/self-tests зелёные.
+[~] `git diff --check` чист; warnings-as-errors зелёные на всех шести локальных профилях.
+[ ] Commit final Goal 3 baseline и remote Architecture Freeze CI на recorded SHA; CI обязан подтвердить отдельный `clang-public-surface` job.
 
 Критерий выхода: `EngineBase = 9/9 LOCAL_READY`, `EngineRuntime = 17/17 LOCAL_READY`, Goal 3 = `COMPLETE`. `SYSTEM_READY/FROZEN` не присваивается до Goals 5–9.
 

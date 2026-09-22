@@ -32,4 +32,4 @@ Scene/Resources/Animation подключаются к Renderer только adap
 
 ## Статус
 
-Этот документ описывает локально проверяемый Goal 3 contract Renderer. Слово `FROZEN` не применяется до общесистемных Goals 5–9 и финального ledger/freeze gate.
+Этот документ описывает локально проверенный Goal 3 contract Renderer; после canonical evidence convergence модуль имеет статус `LOCAL_READY`. Слово `FROZEN` не применяется до общесистемных Goals 5–9 и финального freeze gate.

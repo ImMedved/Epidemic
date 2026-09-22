@@ -1265,6 +1265,74 @@ bool TestDestroyPersistentObjectLeavesTombstone()
     return second && second.Value().Raw() > first.Value().Raw() && !runtime.FindObject(first.Value()).has_value();
 }
 
+bool TestPublicApiEvidenceCoverage()
+{
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IRegionRegistry>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IChunkRegistry>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IWorldQuery>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IWorldObjectRegistry>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IObjectMaterializer>);
+    static_assert(std::has_virtual_destructor_v<epidemic::runtime::IDemotionCommitAuthority>);
+
+    if (!epidemic::runtime::IsValidResidencyState(ResidencyState::Resident) ||
+        epidemic::runtime::IsValidResidencyState(static_cast<ResidencyState>(999)) ||
+        !epidemic::runtime::IsValidObjectRealityLevel(ObjectRealityLevel::Logical) ||
+        epidemic::runtime::IsValidObjectRealityLevel(static_cast<ObjectRealityLevel>(999)) ||
+        !epidemic::runtime::IsValidPersistenceTier(PersistenceTier::Protected) ||
+        epidemic::runtime::IsValidPersistenceTier(static_cast<PersistenceTier>(999)))
+    {
+        return false;
+    }
+
+    const WorldSurfacePlacement surface{RegionId{7}, ChunkId{8}, Transform{}};
+    const ObjectPlacement surface_variant{surface};
+    const auto region = epidemic::runtime::GetPlacementRegion(surface_variant);
+    const auto chunk = epidemic::runtime::GetPlacementChunk(surface_variant);
+    if (!region.has_value() || region.value() != surface.region || !chunk.has_value() || chunk.value() != surface.chunk)
+    {
+        return false;
+    }
+
+    const HiddenPlacement hidden{RegionId{9}};
+    const ObjectPlacement hidden_variant{hidden};
+    if (epidemic::runtime::GetPlacementRegion(hidden_variant) != hidden.region ||
+        epidemic::runtime::GetPlacementChunk(hidden_variant).has_value())
+    {
+        return false;
+    }
+
+    const ContainerPlacement container{RuntimeObjectId{11}, epidemic::foundation::StringId::FromString("slot")};
+    const InventoryPlacement inventory{RuntimeObjectId{12}};
+    const EquippedPlacement equipped{RuntimeObjectId{13}, epidemic::foundation::StringId::FromString("hand")};
+    const DestroyedPlacement destroyed{GameTimePoint{14}, epidemic::foundation::StringId::FromString("test")};
+    const WorldLocation location{RegionId{15}, ChunkId{16}};
+    const RegionDescriptor region_descriptor{RegionId{17}, epidemic::foundation::StringId::FromString("region")};
+    const ChunkDescriptor chunk_descriptor{ChunkId{18}, RegionId{17}, 1, 2, 3};
+    const MaterializationRequest materialization{PersistentObjectId{19}, ObjectRealityLevel::Physical};
+    const DemotionCommitToken token{20, RuntimeObjectId{21}, ObjectRealityLevel::Logical, hidden,
+                                    epidemic::foundation::StringId::FromString("collapse"), 22};
+    const DemotionSnapshot snapshot{RuntimeObjectId{21}, ObjectRealityLevel::Logical, hidden,
+                                    epidemic::foundation::StringId::FromString("collapse"), 22};
+    const DemotionRequest demotion{RuntimeObjectId{21}, ObjectRealityLevel::Logical, token};
+    WorldObjectRecord record{};
+    record.runtime_id = RuntimeObjectId{23};
+
+    if (!(surface == WorldSurfacePlacement{surface}) || !(container == ContainerPlacement{container}) ||
+        !(inventory == InventoryPlacement{inventory}) || !(equipped == EquippedPlacement{equipped}) ||
+        !(hidden == HiddenPlacement{hidden}) || !(destroyed == DestroyedPlacement{destroyed}) ||
+        !(location == WorldLocation{location}) || !(region_descriptor == RegionDescriptor{region_descriptor}) ||
+        !(chunk_descriptor == ChunkDescriptor{chunk_descriptor}) ||
+        !(materialization == MaterializationRequest{materialization}) || !(token == DemotionCommitToken{token}) ||
+        !(snapshot == DemotionSnapshot{snapshot}) || !(demotion == DemotionRequest{demotion}) ||
+        !(record == WorldObjectRecord{record}))
+    {
+        return false;
+    }
+
+    WorldRuntime runtime;
+    return static_cast<bool>(epidemic::runtime::ValidateWorldObjectInvariant(record, runtime, runtime, runtime));
+}
+
 } // namespace
 
 // Runs the local test suite and maps failures to stable exit codes.
@@ -1489,6 +1557,7 @@ int main()
     if (!TestMaterializeAndDemoteCommandsRequireExpectedRevision()) return 55;
     if (!TestChunkTransitionRejectsOutOfDomainStates()) return 49;
     if (!TestDestroyedObjectCannotIssueDemotionToken()) return 50;
+    if (!TestPublicApiEvidenceCoverage()) return 56;
 
     return 0;
 }

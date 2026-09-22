@@ -542,9 +542,13 @@ bool TestInvalidCheckpointPreservesLiveClock()
     invalid_negative_remainder.tick_remainder_numerator = -1;
     auto invalid_large_remainder = before_checkpoint;
     invalid_large_remainder.tick_remainder_numerator = invalid_large_remainder.time_scale.denominator * 1000000;
+    auto unrepresentable_remainder_scale = before_checkpoint;
+    unrepresentable_remainder_scale.time_scale = TimeScale{1, std::numeric_limits<std::int64_t>::max()};
+    unrepresentable_remainder_scale.tick_remainder_numerator = 1;
 
     return rejects_without_mutation(invalid_scale) && rejects_without_mutation(invalid_time) &&
-           rejects_without_mutation(invalid_negative_remainder) && rejects_without_mutation(invalid_large_remainder);
+           rejects_without_mutation(invalid_negative_remainder) && rejects_without_mutation(invalid_large_remainder) &&
+           rejects_without_mutation(unrepresentable_remainder_scale);
 }
 
 bool TestIncompatibleCheckpointPreservesLiveClock()
@@ -582,9 +586,11 @@ bool TestIncompatibleCheckpointPreservesLiveClock()
     incompatible_calendar.calendar.days_per_month += 1;
     auto incompatible_phases = destination.CaptureCheckpoint();
     incompatible_phases.phase_boundaries[0].phase = DayPhase::Day;
+    auto invalid_phase_enum = destination.CaptureCheckpoint();
+    invalid_phase_enum.phase_boundaries[0].phase = static_cast<DayPhase>(99);
 
     return rejects_without_mutation(incompatible_rate) && rejects_without_mutation(incompatible_calendar) &&
-           rejects_without_mutation(incompatible_phases);
+           rejects_without_mutation(incompatible_phases) && rejects_without_mutation(invalid_phase_enum);
 }
 
 bool TestRestoreAllocationFailurePreservesLiveClock()

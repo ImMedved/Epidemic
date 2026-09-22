@@ -20,7 +20,7 @@ RuntimeFoundation содержит общий язык EngineRuntime: типоб
 
 ## Стабильность
 
-Модуль имеет статус `LOCAL_READY` в рамках Goal 3.1. Это не означает whole-engine `SYSTEM_READY` или `FROZEN`. Добавлять сюда новый тип следует только тогда, когда он действительно нужен нескольким независимым majors и не принадлежит их domain.
+После Block A, повторной официальной MSVC Debug/Release qualification и canonical evidence convergence модуль имеет статус `LOCAL_READY`. Это не означает whole-engine `SYSTEM_READY` или `FROZEN`. Добавлять сюда новый тип следует только тогда, когда он действительно нужен нескольким независимым majors и не принадлежит их domain.
 
 ## Карта публичных заголовков
 

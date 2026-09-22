@@ -1,0 +1,493 @@
+{
+  "modules": {
+    "EngineRuntime/Assets": {
+      "external_boundary": {},
+      "lifecycle": {},
+      "mutator_obligations": "Every generated mutator/lifecycle callable obligation was rechecked against the mapped callable contract/test evidence; coverage_reviews.json marks all four obligations REVIEWED for current IDs.",
+      "stale_identity": {
+        "21a3d190b511c8c6": {
+          "callable": "epidemic::runtime::IAssetCatalogWriter::RegisterAsset",
+          "callable_id": "146adb21842f8449",
+          "decision": "REVIEWED",
+          "rationale": "Scanner candidate is not a reusable generation handle: Assets identities are caller-provided/non-recycled or the callable is the Seal lifecycle; invalid/duplicate behavior remains tested.",
+          "test": "TestCatalogSeal"
+        },
+        "4a04ae330454d513": {
+          "callable": "epidemic::runtime::IAssetCatalogWriter::Seal",
+          "callable_id": "d2683d0a87a1590e",
+          "decision": "REVIEWED",
+          "rationale": "Scanner candidate is not a reusable generation handle: Assets identities are caller-provided/non-recycled or the callable is the Seal lifecycle; invalid/duplicate behavior remains tested.",
+          "test": "TestCatalogSeal"
+        }
+      }
+    },
+    "EngineRuntime/Persistence": {
+      "external_boundary": {
+        "c764275d4f3c6d3f": {
+          "callable": "epidemic::runtime::IPersistenceBackend::~IPersistenceBackend",
+          "callable_id": "c819fa376e414c54",
+          "decision": "REVIEWED",
+          "rationale": "Scanner false positive for an operational external call: the public virtual destructor defines safe polymorphic lifetime ownership but does not itself invoke backend work. Backend Result/exception and strong-commit boundaries are independently covered by TestBackendLoadsFactoryStore, TestBackendSaveFailureLeavesStoreUnchanged, TestBackendFlushFailureLeavesStoreUnchanged and TestInMemoryBackendStrongCommitUnderAllocationFaults.",
+          "test": "TestBackendLoadsFactoryStore; TestBackendSaveFailureLeavesStoreUnchanged; TestBackendFlushFailureLeavesStoreUnchanged; TestInMemoryBackendStrongCommitUnderAllocationFaults"
+        }
+      },
+      "lifecycle": {
+        "3b906a9d5e4c241f": {
+          "callable": "epidemic::runtime::IPersistenceStore::OpenTransaction",
+          "callable_id": "b5ff4b6e992b6cac",
+          "decision": "REVIEWED",
+          "rationale": "epidemic::runtime::IPersistenceStore::OpenTransaction is an actual lifecycle transition or terminal-state operation; reviewed against TestConcurrentTransactionConflict.",
+          "test": "TestConcurrentTransactionConflict"
+        },
+        "5da17559e369d663": {
+          "callable": "epidemic::runtime::IPersistenceStore::OpenTransaction",
+          "callable_id": "bb43106c7534f6f5",
+          "decision": "REVIEWED",
+          "rationale": "epidemic::runtime::IPersistenceStore::OpenTransaction is an actual lifecycle transition or terminal-state operation; reviewed against TestConcurrentTransactionConflict.",
+          "test": "TestConcurrentTransactionConflict"
+        }
+      },
+      "mutator_obligations": "Every generated mutator/lifecycle callable obligation was rechecked against the mapped callable contract/test evidence; coverage_reviews.json marks all four obligations REVIEWED for current IDs.",
+      "stale_identity": {
+        "056e3c1529288fb2": {
+          "callable": "epidemic::runtime::ISaveTransaction::UpsertLazyRule",
+          "callable_id": "8d16fe30d12e75ec",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestTransactionCommitPersistsObjectsAndRevision"
+        },
+        "062e39a4d8bbac85": {
+          "callable": "epidemic::runtime::ISaveTransaction::UpsertZoneOverride",
+          "callable_id": "a0c987e8a40c4669",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestTransactionCommitPersistsObjectsAndRevision"
+        },
+        "09a8546b9db28c91": {
+          "callable": "epidemic::runtime::ISaveTransaction::UpsertObject",
+          "callable_id": "8396c4b61da44532",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestTransactionCommitPersistsObjectsAndRevision"
+        },
+        "18515de72fed0762": {
+          "callable": "epidemic::runtime::ISaveTransaction::Commit",
+          "callable_id": "95d15c17fb6d6857",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestTransactionCommitPersistsObjectsAndRevision"
+        },
+        "2382b14aa199a94d": {
+          "callable": "epidemic::runtime::ISaveTransaction::UpdateLazyRule",
+          "callable_id": "06665ae70320d982",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestTransactionCommitPersistsObjectsAndRevision"
+        },
+        "72ee8c01b54a4a56": {
+          "callable": "epidemic::runtime::ISaveTransaction::RemoveZoneOverride",
+          "callable_id": "8a3dd7db69528aee",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestTransactionCommitPersistsObjectsAndRevision"
+        },
+        "9c011229eaa697ef": {
+          "callable": "epidemic::runtime::ISaveTransaction::DeleteObject",
+          "callable_id": "20f69459182c9068",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestDeleteObjectIsAtomicTombstoneOperation"
+        },
+        "a29a0c3880a2caa9": {
+          "callable": "epidemic::runtime::ISaveTransaction::Rollback",
+          "callable_id": "b99ebe9336e7c8a2",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestRollbackDiscardsStagedMutations"
+        },
+        "aa05217b9bf81dcc": {
+          "callable": "epidemic::runtime::IPersistenceAdministrativeTransaction::AdminRemoveObject",
+          "callable_id": "da526dd22f40d6c8",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestFailedCommitIsAtomic"
+        },
+        "c44b09a53cad19b5": {
+          "callable": "epidemic::runtime::ISaveTransaction::RemoveLazyRule",
+          "callable_id": "173dcd58e4ddcea8",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestTransactionCommitPersistsObjectsAndRevision"
+        },
+        "e725e07ea9efebb8": {
+          "callable": "epidemic::runtime::IPersistenceBackend::CommitSnapshot",
+          "callable_id": "3e21f3b99d080ce3",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestInMemoryBackendStrongCommitUnderAllocationFaults"
+        },
+        "f2382cf7ae673828": {
+          "callable": "epidemic::runtime::IPersistenceAdministrativeTransaction::AdminAddTombstone",
+          "callable_id": "9352c73a0473d3c1",
+          "decision": "REVIEWED",
+          "rationale": "Persistent IDs/revisions are durable stable identities rather than recycled generation handles; duplicate/missing/revision conflict behavior is covered by persistence tests.",
+          "test": "TestFailedCommitIsAtomic"
+        }
+      }
+    },
+    "EngineRuntime/Resources": {
+      "external_boundary": {},
+      "lifecycle": {
+        "7044e7e34f7f5dc3": {
+          "callable": "epidemic::runtime::IResourceLoaderRegistry::Freeze",
+          "callable_id": "21b972ab69903435",
+          "decision": "REVIEWED",
+          "rationale": "epidemic::runtime::IResourceLoaderRegistry::Freeze is an actual lifecycle transition or terminal-state operation; reviewed against TestLoaderRegistryFreezeAndEmptyQueueBoundaries.",
+          "test": "TestLoaderRegistryFreezeAndEmptyQueueBoundaries"
+        }
+      },
+      "mutator_obligations": "Every generated mutator/lifecycle callable obligation was rechecked against the mapped callable contract/test evidence; coverage_reviews.json marks all four obligations REVIEWED for current IDs.",
+      "stale_identity": {
+        "509d98ca397b16ac": {
+          "callable": "epidemic::runtime::IResourceManager::SetMemoryBudgetBytes",
+          "callable_id": "14d45bcaf812759a",
+          "decision": "REVIEWED",
+          "rationale": "Reviewed as real lease/resource generation identity where applicable; registry/budget lifecycle false positives are separated by the module regression evidence.",
+          "test": "TestMemoryBudgetFailureRollsBackPayload"
+        },
+        "b4ec8cd75ad551f7": {
+          "callable": "epidemic::runtime::IResourceManager::Release",
+          "callable_id": "980bafb47be15dbe",
+          "decision": "REVIEWED",
+          "rationale": "Reviewed as real lease/resource generation identity where applicable; registry/budget lifecycle false positives are separated by the module regression evidence.",
+          "test": "TestResourceLeasePreventsCrossConsumerDoubleRelease"
+        },
+        "d00393a326ce68e1": {
+          "callable": "epidemic::runtime::IResourceLoaderRegistry::Freeze",
+          "callable_id": "21b972ab69903435",
+          "decision": "REVIEWED",
+          "rationale": "Reviewed as real lease/resource generation identity where applicable; registry/budget lifecycle false positives are separated by the module regression evidence.",
+          "test": "TestLoaderRegistryFreezeAndEmptyQueueBoundaries"
+        },
+        "e031795a35c970c9": {
+          "callable": "epidemic::runtime::IResourceManager::EvictUnreferenced",
+          "callable_id": "f5554d404cad7d4f",
+          "decision": "REVIEWED",
+          "rationale": "Reviewed as real lease/resource generation identity where applicable; registry/budget lifecycle false positives are separated by the module regression evidence.",
+          "test": "TestInFlightResourcesAreNotEvicted"
+        },
+        "ee8839cfdf057d3a": {
+          "callable": "epidemic::runtime::IResourceLoaderRegistry::RegisterLoader",
+          "callable_id": "c3f418e013d0fa3d",
+          "decision": "REVIEWED",
+          "rationale": "Reviewed as real lease/resource generation identity where applicable; registry/budget lifecycle false positives are separated by the module regression evidence.",
+          "test": "TestLoaderRegistryNonOwningContract"
+        },
+        "f2548921be39162d": {
+          "callable": "epidemic::runtime::IResourceManager::Evict",
+          "callable_id": "770123acb7b8ba50",
+          "decision": "REVIEWED",
+          "rationale": "Reviewed as real lease/resource generation identity where applicable; registry/budget lifecycle false positives are separated by the module regression evidence.",
+          "test": "TestEvictingRetryKeepsCompletedPrefix"
+        }
+      }
+    },
+    "EngineRuntime/Serialization": {
+      "external_boundary": {},
+      "lifecycle": {
+        "377b3ad701d95a8e": {
+          "callable": "epidemic::runtime::ISerializerRegistry::Freeze",
+          "callable_id": "649e7cc6afd92242",
+          "decision": "REVIEWED",
+          "rationale": "epidemic::runtime::ISerializerRegistry::Freeze is an actual lifecycle transition or terminal-state operation; reviewed against TestRegistriesCanFreeze.",
+          "test": "TestRegistriesCanFreeze"
+        },
+        "5a2f89edec82387c": {
+          "callable": "epidemic::runtime::IMigrationRegistry::Freeze",
+          "callable_id": "f37635fdc2c74edb",
+          "decision": "REVIEWED",
+          "rationale": "epidemic::runtime::IMigrationRegistry::Freeze is an actual lifecycle transition or terminal-state operation; reviewed against TestMigrationRegistryFindsExactAndChainedPaths.",
+          "test": "TestMigrationRegistryFindsExactAndChainedPaths"
+        }
+      },
+      "mutator_obligations": "Every generated mutator/lifecycle callable obligation was rechecked against the mapped callable contract/test evidence; coverage_reviews.json marks all four obligations REVIEWED for current IDs.",
+      "stale_identity": {
+        "07a1fb1875f56ac4": {
+          "callable": "epidemic::runtime::IArchiveReader::BeginArrayElement",
+          "callable_id": "4500897bc90a36f4",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestNestedObjectAndArrayRoundTrip"
+        },
+        "081ca37e7ab94d69": {
+          "callable": "epidemic::runtime::ISerializerRegistry::Freeze",
+          "callable_id": "649e7cc6afd92242",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestRegistriesCanFreeze"
+        },
+        "0dd3bc438217130f": {
+          "callable": "epidemic::runtime::ISerializerRegistry::RegisterSerializer",
+          "callable_id": "7cbbdb10e66f3a4a",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestSerializerRegistryAndTypedBoundaryValidation"
+        },
+        "16650e22983da792": {
+          "callable": "epidemic::runtime::IArchiveWriter::EndArrayElement",
+          "callable_id": "25f1a1b839699cae",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArraySlotsAreWriteOnceAndComplete"
+        },
+        "23b624d379658cf1": {
+          "callable": "epidemic::runtime::DeserializeObject",
+          "callable_id": "73202027e43ec08d",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestDeserializeObjectIsFailureAtomic"
+        },
+        "3a76f589f6378c0a": {
+          "callable": "epidemic::runtime::DeserializeObject",
+          "callable_id": "97eed344953706d9",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestDeserializeObjectIsFailureAtomic"
+        },
+        "3db44ec85250d666": {
+          "callable": "epidemic::runtime::IArchiveReader::EndArray",
+          "callable_id": "6ca7e1ea3d929716",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestNestedObjectAndArrayRoundTrip"
+        },
+        "47cf74ae834cecbb": {
+          "callable": "epidemic::runtime::IArchiveReader::BeginObject",
+          "callable_id": "5b47a8e4c371b344",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestNestedObjectAndArrayRoundTrip"
+        },
+        "4977bac4e8eb80b5": {
+          "callable": "epidemic::runtime::IArchiveWriter::BeginArrayElement",
+          "callable_id": "55131c84bcde0600",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArraySlotsAreWriteOnceAndComplete"
+        },
+        "5beee9e1bd3ef2a6": {
+          "callable": "epidemic::runtime::IArchiveWriter::Finalize",
+          "callable_id": "0ff3a2b6042db618",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestFinalizeValidatesMetadataAndPreservesWriterOnFailure"
+        },
+        "61c8339586b672fd": {
+          "callable": "epidemic::runtime::SerializeObject",
+          "callable_id": "a6fd598e82cbb0ed",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestSerializerExecutesRoundTrip"
+        },
+        "66c103b713761a20": {
+          "callable": "epidemic::runtime::IMigrationRegistry::Freeze",
+          "callable_id": "f37635fdc2c74edb",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestMigrationRegistryFindsExactAndChainedPaths"
+        },
+        "699e21243d5adcbc": {
+          "callable": "epidemic::runtime::SerializeObject",
+          "callable_id": "70600b95134bc261",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestSerializerExecutesRoundTrip"
+        },
+        "6cc65b81750ffbfb": {
+          "callable": "epidemic::runtime::IArchiveReader::EndObject",
+          "callable_id": "3d7377f422f50efc",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestNestedObjectAndArrayRoundTrip"
+        },
+        "720bf2b6c3aa43c6": {
+          "callable": "epidemic::runtime::IArchiveWriter::WriteBool",
+          "callable_id": "1a5d676c13d7522b",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArchiveAllocationFailureAtomicity"
+        },
+        "82c795c75b0bb883": {
+          "callable": "epidemic::runtime::IArchiveWriter::EndArray",
+          "callable_id": "1e8adf9a6cd102af",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArraySlotsAreWriteOnceAndComplete"
+        },
+        "834901ac8e7ad20b": {
+          "callable": "epidemic::runtime::IArchiveWriter::BeginArray",
+          "callable_id": "95be2f4c56f95568",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArraySlotsAreWriteOnceAndComplete"
+        },
+        "8eb8c27e7a949b7d": {
+          "callable": "epidemic::runtime::IArchiveReader::EndArrayElement",
+          "callable_id": "7b8593f2163f0bf2",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestNestedObjectAndArrayRoundTrip"
+        },
+        "a945a045095b43fb": {
+          "callable": "epidemic::runtime::IArchiveWriter::BeginObject",
+          "callable_id": "128c1859ed7026ef",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArchiveStructuralAndReaderFailuresAreControlled"
+        },
+        "b490e2e7fcf5e19f": {
+          "callable": "epidemic::runtime::IArchiveWriter::WriteString",
+          "callable_id": "c6aa8c0d59d8ffbf",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestFinalizeValidatesMetadataAndPreservesWriterOnFailure"
+        },
+        "b59d9dab4bbeb210": {
+          "callable": "epidemic::runtime::IMigrationRegistry::RegisterMigration",
+          "callable_id": "62956b0acef1a927",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestMigrationRegistryFindsExactAndChainedPaths"
+        },
+        "d0d6a971271a01e9": {
+          "callable": "epidemic::runtime::IArchiveWriter::WriteInt64",
+          "callable_id": "5b1451f2b2c4ed8f",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArchiveAllocationFailureAtomicity"
+        },
+        "d669d8e195a9314b": {
+          "callable": "epidemic::runtime::IArchiveWriter::EndObject",
+          "callable_id": "ab250d44c64d64c1",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArchiveStructuralAndReaderFailuresAreControlled"
+        },
+        "de5d56751017319c": {
+          "callable": "epidemic::runtime::IArchiveWriter::WriteNull",
+          "callable_id": "852f765ea9617db3",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArchiveAllocationFailureAtomicity"
+        },
+        "deec27f3712bd9dd": {
+          "callable": "epidemic::runtime::IArchiveWriter::WriteUInt64",
+          "callable_id": "15b8a0f4f0097662",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArchiveStructuralAndReaderFailuresAreControlled"
+        },
+        "e7f3371017376488": {
+          "callable": "epidemic::runtime::IArchiveWriter::WriteDouble",
+          "callable_id": "ffd3dc9f6c608469",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArchiveAllocationFailureAtomicity"
+        },
+        "f9bc7e3fda86ddef": {
+          "callable": "epidemic::runtime::IArchiveWriter::WriteBytes",
+          "callable_id": "d1468745ee77306f",
+          "decision": "REVIEWED",
+          "rationale": "Scanner token match is structural/archive/registry identity, not a recycled runtime handle; invalid key/index/type behavior is still covered by archive/registry tests.",
+          "test": "TestArchiveAllocationFailureAtomicity"
+        }
+      }
+    },
+    "EngineRuntime/World": {
+      "external_boundary": {},
+      "lifecycle": {
+        "0419959b73d9bef6": {
+          "callable": "epidemic::runtime::IChunkRegistry::Freeze",
+          "callable_id": "1c55c01ea10de0dc",
+          "decision": "REVIEWED",
+          "rationale": "epidemic::runtime::IChunkRegistry::Freeze is an actual lifecycle transition or terminal-state operation; reviewed against TestTopologyFreezeContract.",
+          "test": "TestTopologyFreezeContract"
+        },
+        "3bc449e298795642": {
+          "callable": "epidemic::runtime::IRegionRegistry::Freeze",
+          "callable_id": "2d4e5bd87d983bb4",
+          "decision": "REVIEWED",
+          "rationale": "epidemic::runtime::IRegionRegistry::Freeze is an actual lifecycle transition or terminal-state operation; reviewed against TestTopologyFreezeContract.",
+          "test": "TestTopologyFreezeContract"
+        }
+      },
+      "mutator_obligations": "Every generated mutator/lifecycle callable obligation was rechecked against the mapped callable contract/test evidence; coverage_reviews.json marks all four obligations REVIEWED for current IDs.",
+      "stale_identity": {
+        "2607d926c0b77577": {
+          "callable": "epidemic::runtime::IChunkRegistry::SetChunkState",
+          "callable_id": "9f3053f1207bf5ef",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestChunkTransitionRejectsOutOfDomainStates"
+        },
+        "2c126ac98899b59f": {
+          "callable": "epidemic::runtime::IObjectMaterializer::Materialize",
+          "callable_id": "5fb673ffe7714512",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestMaterializeAndDemoteCommandsRequireExpectedRevision"
+        },
+        "2cb4a101688fecf4": {
+          "callable": "epidemic::runtime::IObjectMaterializer::Demote",
+          "callable_id": "975a0d561df6d58d",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestMaterializeAndDemoteCommandsRequireExpectedRevision"
+        },
+        "4a2f24d3be58aaaf": {
+          "callable": "epidemic::runtime::IRegionRegistry::Freeze",
+          "callable_id": "2d4e5bd87d983bb4",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestTopologyFreezeContract"
+        },
+        "6fc438c30f297c4a": {
+          "callable": "epidemic::runtime::IDemotionCommitAuthority::RevokeDemotionCommitToken",
+          "callable_id": "fd27ffb1f62128a9",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestRevokedDemotionTokenRejected"
+        },
+        "cbab82008a9af4d5": {
+          "callable": "epidemic::runtime::IWorldObjectRegistry::Apply",
+          "callable_id": "ea8a2c26b864a8d2",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestInvalidResidencyTransitionIsRejected"
+        },
+        "dd330775324a26cd": {
+          "callable": "epidemic::runtime::IRegionRegistry::RegisterRegion",
+          "callable_id": "386fa83fd22883ed",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestTopologyFreezeContract"
+        },
+        "e29ff075ee86d01f": {
+          "callable": "epidemic::runtime::IChunkRegistry::RegisterChunk",
+          "callable_id": "3d7dd2a0452a9277",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestTopologyFreezeContract"
+        },
+        "f53092e5cad35f74": {
+          "callable": "epidemic::runtime::IChunkRegistry::Freeze",
+          "callable_id": "1c55c01ea10de0dc",
+          "decision": "REVIEWED",
+          "rationale": "World identity/revision/token semantics were reviewed individually in the existing World evidence fragment; topology registration/freeze scanner false positives are distinguished from real stale-command/token obligations.",
+          "test": "TestTopologyFreezeContract"
+        }
+      }
+    }
+  },
+  "schema_version": 1
+}

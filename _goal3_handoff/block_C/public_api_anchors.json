@@ -1,0 +1,2721 @@
+{
+  "anchors": {
+    "00b6c398bea569d2": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:84::`00b6c398bea569d2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "00db649fe3c3aa61": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:76::`00db649fe3c3aa61`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:791::bool TestRevisionAndAllocatorExhaustionAreAtomic(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:818::return !create && create.GetError().HasCode(\"physics.body_id_overflow\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "01ad4b379ec18503": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:74::`01ad4b379ec18503`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "0226dbd0dde066a8": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:38::`0226dbd0dde066a8`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "02272163ae2f0588": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:58::`02272163ae2f0588`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:722::bool TestServicesFactoryPassesAllDependencies(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:754::return world->resolves == 1 && persistence->prepares == 1 && resources->prepares == 1 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "05553a45ceea690a": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:65::`05553a45ceea690a`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:555::bool TestAbstractFactRevision(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:572::ok &= Expect(facts.size() == 2 && facts[0].revision == 1 && facts[1].revision == 2,"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "0783ef2c08ef98fe": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:75::`0783ef2c08ef98fe`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:652::bool TestRequestGenerationAndStaleDemand(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:666::return !released && released.GetError().HasCode(\"streaming.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "07aa50346e4f43ae": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:66::`07aa50346e4f43ae`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1058::bool TestRaycastRejectsInvalidInputAndInvalidBackendPayload(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1075::return !invalid_hit && invalid_hit.GetError().HasCode(\"physics.invalid_backend_hit\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "07cd9695d13a17cf": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:63::`07cd9695d13a17cf`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "0d520e9341accb4a": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:68::`0d520e9341accb4a`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "102521c7366dcf60": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:39::`102521c7366dcf60`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:427::bool TestFactoryBackendSelectionAndFailure(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:464::ok &= Expect(reference.HasValue(), \"reference mock should be explicit through mock-enabled profile\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "115089a8c8233feb": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:49::`115089a8c8233feb`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:264::bool TestGenerationSnapshotAndDestroyLifecycle(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:290::return !stale_snapshot && stale_snapshot.GetError().HasCode(\"physics.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "129d5c0a2e20baf2": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:79::`129d5c0a2e20baf2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "12cec580a43ec370": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:69::`12cec580a43ec370`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "12ef4e73729f1baa": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:56::`12ef4e73729f1baa`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:652::bool TestRequestGenerationAndStaleDemand(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:666::return !released && released.GetError().HasCode(\"streaming.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "143d9d9ea4ddd565": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:83::`143d9d9ea4ddd565`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "145c45cf178164e9": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:80::`145c45cf178164e9`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1311::bool TestStreamingIdentityAllocatorExhaustionBoundaries(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1373::before->demand_count != after->demand_count) return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "192b447330ac4e92": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:61::`192b447330ac4e92`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "1983d34ea1235fa2": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:39::`1983d34ea1235fa2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:429::bool TestContactBufferStoresExplicitBeginPersistEnd(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:451::return runtime.Contacts().empty();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "19f537a5a74c3cc4": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:50::`19f537a5a74c3cc4`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:427::bool TestFactoryBackendSelectionAndFailure(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:464::ok &= Expect(reference.HasValue(), \"reference mock should be explicit through mock-enabled profile\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "1b793048655cefb9": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:73::`1b793048655cefb9`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1223::bool TestAllStreamingExtensionExceptionsStayInsideResultBoundary(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1305::if (!runtime.Tick().failures.empty() || runtime.GetChunkState(ChunkId{823}) != StreamingState::Resident) return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "1d3ac65adcab297e": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:70::`1d3ac65adcab297e`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "2165b097b0e24e2a": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:49::`2165b097b0e24e2a`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:383::bool TestAttentionAndValidationFailures(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:397::ok &= Expect(!runtime.SetRegionAttention(RegionId{3}, AttentionScore{-std::numeric_limits<float>::infinity()}).HasValue(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "22b1f18d58cfa224": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:56::`22b1f18d58cfa224`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "25493b6c71c30a16": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:55::`25493b6c71c30a16`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:842::bool TestBackendResultValidationAudit(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:868::ok &= Expect(backend->calls == 1, \"invalid backend result should be evaluated exactly once\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "2590b08475f5ebfd": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:81::`2590b08475f5ebfd`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "25c189b1fe5be460": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:78::`25c189b1fe5be460`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:791::bool TestRevisionAndAllocatorExhaustionAreAtomic(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:818::return !create && create.GetError().HasCode(\"physics.body_id_overflow\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "26632313cf26ded4": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:67::`26632313cf26ded4`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:541::bool TestExternalBackendInvalidContactIsDroppedAtomically(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:567::return step && runtime->Contacts().size() == 1 && runtime->Contacts()[0].a == first.Value() &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "27f7c18c8a33c61e": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:89::`27f7c18c8a33c61e`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "299a7ab298067aa2": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:38::`299a7ab298067aa2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:952::bool TestShutdownRetriesRollbackAndUnloadCleanup(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1008::return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "2ad0c339921bbdcc": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:39::`2ad0c339921bbdcc`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:322::bool TestCancellation(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:332::ok &= Expect(runtime.Tick().Value().processed_jobs == 0, \"cancelled job should not consume work\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "2d8b05f9a5195f62": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:52::`2d8b05f9a5195f62`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "31724d9b82f2840c": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:66::`31724d9b82f2840c`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:555::bool TestAbstractFactRevision(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:572::ok &= Expect(facts.size() == 2 && facts[0].revision == 1 && facts[1].revision == 2,"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "32403f57102d7f5f": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:86::`32403f57102d7f5f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "3376744e2cdcecb5": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:63::`3376744e2cdcecb5`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:455::bool TestProposalCommitAtomicityAndFaultIsolation(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:484::ok &= Expect(runtime.PendingBatches().empty(), \"cancelled job should leave proposals empty\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "33e36f70beca629d": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:61::`33e36f70beca629d`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1130::bool TestBackendBodyCreationFailureAndExceptionDoNotConsumeRuntimeIdentity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1146::return !failed && failed.GetError().HasCode(\"physics.create_body_failed\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "35fd9421397ff6f7": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:69::`35fd9421397ff6f7`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:968::bool TestTransformSourceFailureStopsBeforeBackendBodyCreation(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:982::return !created && created.GetError().HasCode(\"physics.transform_read_failed\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "36453f603e5d6ac3": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:48::`36453f603e5d6ac3`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:729::bool TestInvalidBodyInputsAreRejectedBeforeBackend(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:755::return !type_result && type_result.GetError().HasCode(\"physics.invalid_body_type\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "374c221ec4b479fa": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:68::`374c221ec4b479fa`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1546::bool TestAcceptedStepResultIsNotExecutedAgainAfterLocalCommitFailure(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1569::return retried.failures.empty() && retried.processed_bytes == 5u && source->executed.size() == 1u &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "391791fb53ce052d": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:44::`391791fb53ce052d`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:396::bool TestCostAndObstacleProjectionsStayExternal(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:414::ok &= Expect(result.HasValue() && result.Value().points.size() == 3, \"blocking obstacle should add deterministic detour point\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "3a460cb899fe5fdc": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:49::`3a460cb899fe5fdc`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "3b188fc2bb41a33b": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:46::`3b188fc2bb41a33b`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "3c1ed78230a9a02b": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:58::`3c1ed78230a9a02b`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:383::bool TestAttentionAndValidationFailures(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:397::ok &= Expect(!runtime.SetRegionAttention(RegionId{3}, AttentionScore{-std::numeric_limits<float>::infinity()}).HasValue(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "3de99752159a4a45": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:47::`3de99752159a4a45`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:428::bool TestBudgetsLimitItemsAndBytes(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:445::return runtime.GetChunkState(ChunkId{201}) == StreamingState::Loading && runtime.GetChunkState(ChunkId{202}) == StreamingState::Requested;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "3edfd7c3b767e24f": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:64::`3edfd7c3b767e24f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "3fd1f34e726f0da2": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:47::`3fd1f34e726f0da2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "3fed77236decd79e": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:71::`3fed77236decd79e`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:821::bool TestTransformProjectionFailureIsRetryableAfterAuthoritativeCommit(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:838::return second && runtime.PendingProjectionCountForTesting() == 0 && adapter->writes >= 3;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "3ffba33a74ba3bed": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:72::`3ffba33a74ba3bed`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "401b8b22144cfa00": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:85::`401b8b22144cfa00`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "42c829724fc70dc0": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:51::`42c829724fc70dc0`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:383::bool TestAttentionAndValidationFailures(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:397::ok &= Expect(!runtime.SetRegionAttention(RegionId{3}, AttentionScore{-std::numeric_limits<float>::infinity()}).HasValue(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "456b863758383b50": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:60::`456b863758383b50`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:986::bool TestShutdownCleansIndependentShapesAfterBodyFailure(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1002::return !failed && failed.GetError().HasCode(\"physics.destroy_body_failed\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "457ad94cda41a43c": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:77::`457ad94cda41a43c`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:652::bool TestRequestGenerationAndStaleDemand(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:666::return !released && released.GetError().HasCode(\"streaming.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "4736e0433d0fcbe0": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:57::`4736e0433d0fcbe0`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "476f5ed6fba1419c": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:77::`476f5ed6fba1419c`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:791::bool TestRevisionAndAllocatorExhaustionAreAtomic(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:818::return !create && create.GetError().HasCode(\"physics.body_id_overflow\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "4b4498e58f4860c8": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:71::`4b4498e58f4860c8`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:455::bool TestProposalCommitAtomicityAndFaultIsolation(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:484::ok &= Expect(runtime.PendingBatches().empty(), \"cancelled job should leave proposals empty\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "4bc54c7c28fd0710": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:82::`4bc54c7c28fd0710`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "4cb643a8932bbfd2": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:82::`4cb643a8932bbfd2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "4cc1248eb325e076": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:52::`4cc1248eb325e076`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:750::bool TestTerminalCancelReleaseAndStaleGenerationSemantics(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:781::ok &= Expect(!released_state && released_state.GetError().HasCode(\"navigation.stale_handle\"),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "4e671e7179356df3": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:53::`4e671e7179356df3`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:945::bool TestTickSyncFailureRetriesAcceptedBackendStepWithoutResimulation(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:964::return retried && backend->simulates == 1 && runtime.AccumulatorForTesting().value.count() == 0 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "4ee642ecf8a168a9": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:41::`4ee642ecf8a168a9`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "5083f6bb087159d4": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:78::`5083f6bb087159d4`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "51b8e9d756744806": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:74::`51b8e9d756744806`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1311::bool TestStreamingIdentityAllocatorExhaustionBoundaries(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1373::before->demand_count != after->demand_count) return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "52a7296ce48add36": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:41::`52a7296ce48add36`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1078::bool TestRaycastLargeFiniteDirectionNormalizesSafely(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1126::return reference_hit && reference_hit.Value().hit && std::isfinite(reference_hit.Value().distance) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "52e379d0c90f5f31": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:89::`52e379d0c90f5f31`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:264::bool TestGenerationSnapshotAndDestroyLifecycle(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:290::return !stale_snapshot && stale_snapshot.GetError().HasCode(\"physics.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "5622a0fcd7464e2a": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:65::`5622a0fcd7464e2a`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1074::bool TestUnloadPhasesDoNotRepeatResourceRelease(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1089::return retried.failures.empty() && resources->releases == 1 && residency->unloads == 2 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "59f5e151496f5a7f": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:75::`59f5e151496f5a7f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:791::bool TestRevisionAndAllocatorExhaustionAreAtomic(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:818::return !create && create.GetError().HasCode(\"physics.body_id_overflow\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "5c6bafdb09b70f4c": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:87::`5c6bafdb09b70f4c`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "5cf6032a8662685e": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:67::`5cf6032a8662685e`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "5f1de054afbd3bda": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:61::`5f1de054afbd3bda`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "607d8b02fa8a4471": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:84::`607d8b02fa8a4471`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "60d6c9c3f96c00fb": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:90::`60d6c9c3f96c00fb`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:264::bool TestGenerationSnapshotAndDestroyLifecycle(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:290::return !stale_snapshot && stale_snapshot.GetError().HasCode(\"physics.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "624fcbaa101195f4": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:43::`624fcbaa101195f4`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "62beb9ee1cbee351": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:60::`62beb9ee1cbee351`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "630b1c0d0335c367": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:88::`630b1c0d0335c367`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "64407fa2be04d449": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:85::`64407fa2be04d449`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "65795bd424e8b920": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:73::`65795bd424e8b920`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "6704cf4c448e8748": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:43::`6704cf4c448e8748`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "677a7e3ea9199da9": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:85::`677a7e3ea9199da9`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "68fcf12faa2b6d87": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:91::`68fcf12faa2b6d87`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "6912a87f5faa3ca5": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:70::`6912a87f5faa3ca5`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:499::bool TestProposalPublicationStateMatrix(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:550::ok &= Expect(main_runtime.Publish(SimulationProposalBatch{main_job.Value(), main_desc.zone, main_desc.source_revision, {MakeValidProposal()}}).HasValue(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "6b4a1377368d6dde": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:53::`6b4a1377368d6dde`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:1097::bool TestDeepFreezeFailureContracts(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:1196::ok &= Expect(!runtime.SubmitJob(MakeExecutableJob(desc), desc), \"job allocator should be exhausted after final committed identity\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "6ba5fc052f6441f2": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:90::`6ba5fc052f6441f2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "6bdcff5da9d60855": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:49::`6bdcff5da9d60855`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:601::bool TestTileRegistrationTransitionBudgetAndRevisionAudit(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:696::ok &= Expect(rebuild_overflow.GetTileState(NavTileId{1}) == NavTileState::Dirty,"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "6f97c215bb3cfce5": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:56::`6f97c215bb3cfce5`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:383::bool TestShutdownBestEffortAndIdempotent(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:399::return !shutdown && shutdown.GetError().HasCode(\"physics.destroy_shape_failed\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "7142f14af7c1b278": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:56::`7142f14af7c1b278`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:468::bool TestHandleReleaseTtlAndStaleRevision(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:507::ok &= Expect(services.runtime != nullptr && services.tiles != nullptr, \"mock navigation services should be populated\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "717f8a5d86121718": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:55::`717f8a5d86121718`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "725540046675416f": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:78::`725540046675416f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1311::bool TestStreamingIdentityAllocatorExhaustionBoundaries(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1373::before->demand_count != after->demand_count) return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "73f85ea963b81618": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:81::`73f85ea963b81618`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:652::bool TestRequestGenerationAndStaleDemand(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:666::return !released && released.GetError().HasCode(\"streaming.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "7983cf169c86e89f": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:48::`7983cf169c86e89f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:383::bool TestAttentionAndValidationFailures(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:397::ok &= Expect(!runtime.SetRegionAttention(RegionId{3}, AttentionScore{-std::numeric_limits<float>::infinity()}).HasValue(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "7a57974d3b03ae69": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:63::`7a57974d3b03ae69`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "7bc69c9657bda761": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:57::`7bc69c9657bda761`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:427::bool TestFactoryBackendSelectionAndFailure(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:464::ok &= Expect(reference.HasValue(), \"reference mock should be explicit through mock-enabled profile\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "7d54beeaaf040301": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:88::`7d54beeaaf040301`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:264::bool TestGenerationSnapshotAndDestroyLifecycle(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:290::return !stale_snapshot && stale_snapshot.GetError().HasCode(\"physics.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "7e4ada52d1fef486": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:73::`7e4ada52d1fef486`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "7eb1a8941604c4ce": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:61::`7eb1a8941604c4ce`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:322::bool TestCancellation(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:332::ok &= Expect(runtime.Tick().Value().processed_jobs == 0, \"cancelled job should not consume work\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "7f836c1e900f5f00": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:87::`7f836c1e900f5f00`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "81141925f1abba63": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:50::`81141925f1abba63`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "821151c9e563fa43": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:40::`821151c9e563fa43`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1074::bool TestUnloadPhasesDoNotRepeatResourceRelease(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1089::return retried.failures.empty() && resources->releases == 1 && residency->unloads == 2 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "82ec5be060db43d9": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:54::`82ec5be060db43d9`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:336::bool TestWorldMemoryTtlAndStates(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:345::ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, true}).size() == 2, \"include expired should return both events\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "89a88078a54c2529": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:67::`89a88078a54c2529`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:555::bool TestAbstractFactRevision(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:572::ok &= Expect(facts.size() == 2 && facts[0].revision == 1 && facts[1].revision == 2,"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "8a415d0c9f8943bd": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:65::`8a415d0c9f8943bd`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:606::bool TestInvalidBackendSnapshotDoesNotMutateBody(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:632::if (adapter->writes != writes_before_failed_step + 1) { std::cerr << \"valid retry did not write sink\\n\"; return false; }"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "8b240aa3d7162c95": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:43::`8b240aa3d7162c95`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:427::bool TestFactoryBackendSelectionAndFailure(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:464::ok &= Expect(reference.HasValue(), \"reference mock should be explicit through mock-enabled profile\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "8b6dbfae7051c431": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:63::`8b6dbfae7051c431`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:874::bool TestBackendExceptionsStayInsideResultBoundary(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:888::return !impulse && impulse.GetError().HasCode(\"physics.backend_exception\") && runtime.RevisionForTesting() == rev;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "8c4ad7c94f56635b": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:67::`8c4ad7c94f56635b`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1130::bool TestMalformedPlansAndBuildExceptionsAreRejectedAtomically(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1148::return !thrown && thrown.GetError().HasCode(\"streaming.data_source_exception\") && runtime.RecordCount() == 0u;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "8cc043029ecb2295": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:58::`8cc043029ecb2295`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:427::bool TestFactoryBackendSelectionAndFailure(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:464::ok &= Expect(reference.HasValue(), \"reference mock should be explicit through mock-enabled profile\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "8e7c10ae349eae3b": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:72::`8e7c10ae349eae3b`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:798::bool TestMemoryFactShutdownAndProposalCleanupEdges(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:872::ok &= Expect(!runtime.GetJobState(first.Value()).HasValue(), \"commit should immediately allow terminal job pruning\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "8f12dd1083e05496": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:81::`8f12dd1083e05496`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "902446e6a5e5fd96": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:45::`902446e6a5e5fd96`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:364::bool TestUnregisterShapeRejectsInUseAndDestroysFreeShape(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:379::return body && !rejected && rejected.GetError().HasCode(\"physics.shape_in_use\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "92833a989f9a3fde": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:46::`92833a989f9a3fde`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "92a4a2daaf35d478": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:37::`92a4a2daaf35d478`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:427::bool TestFactoryBackendSelectionAndFailure(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:464::ok &= Expect(reference.HasValue(), \"reference mock should be explicit through mock-enabled profile\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "938318cc869ba6a5": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:66::`938318cc869ba6a5`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "944929ff033741a8": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:51::`944929ff033741a8`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:526::bool TestInvalidNumericPathRequestsAreRejected(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:541::Expect(!ttl_result && ttl_result.GetError().HasCode(\"navigation.invalid_ttl\"), \"negative TTL must be rejected\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "94b3d72ff6247bb5": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:59::`94b3d72ff6247bb5`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "9512926f47cabaa0": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:70::`9512926f47cabaa0`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1573::bool TestCommitStepMustBeTerminalAndUniqueWhenPresent(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1588::return !duplicate_commit && duplicate_commit.GetError().HasCode(\"streaming.invalid_plan\") && runtime.RecordCount() == 0u;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "9554555472ada26c": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:86::`9554555472ada26c`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "9720b3a5d02bf38e": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:41::`9720b3a5d02bf38e`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:291::bool TestPartialCompletionByBudget(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:303::ok &= Expect(runtime.GetJobState(job.Value()).Value() == SimulationJobState::Completed, \"job should complete after enough budget\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "97557709dc1a11b7": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:46::`97557709dc1a11b7`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:601::bool TestTileRegistrationTransitionBudgetAndRevisionAudit(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:696::ok &= Expect(rebuild_overflow.GetTileState(NavTileId{1}) == NavTileState::Dirty,"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "97656191970fe42e": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:37::`97656191970fe42e`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "98362837c92ff691": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:76::`98362837c92ff691`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:577::bool TestScheduledTaskBudget(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:607::ok &= Expect(!runtime.Cancel(missing).HasValue(), \"unknown scheduled task cancellation should fail\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "9a0f58c90bd9fe8d": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:74::`9a0f58c90bd9fe8d`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:577::bool TestScheduledTaskBudget(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:607::ok &= Expect(!runtime.Cancel(missing).HasValue(), \"unknown scheduled task cancellation should fail\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "9a7316721d54c29d": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:42::`9a7316721d54c29d`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1109::bool TestRevisionAndPriorityDomainsAreChecked(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1127::return before && after && tick.failures.size() == 1u && after->revision == before->revision && after->state == before->state;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "9b89aeb4fcbc9261": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:79::`9b89aeb4fcbc9261`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:402::bool TestBackendOrientedContractsAndServices(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:447::ok &= Expect(services.HasValue() && services.Value().runtime != nullptr && services.Value().scheduler != nullptr &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "9bb7dbbd5db0a818": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:51::`9bb7dbbd5db0a818`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "9d8270dd936b20ec": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:62::`9d8270dd936b20ec`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "9f8cadda93fddf0f": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:80::`9f8cadda93fddf0f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:402::bool TestBackendOrientedContractsAndServices(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:447::ok &= Expect(services.HasValue() && services.Value().runtime != nullptr && services.Value().scheduler != nullptr &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "a034df722be5297d": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:88::`a034df722be5297d`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "a4ba6b1cbc4315a8": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:64::`a4ba6b1cbc4315a8`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "a6d7f4ca651b01b9": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:77::`a6d7f4ca651b01b9`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:577::bool TestScheduledTaskBudget(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:607::ok &= Expect(!runtime.Cancel(missing).HasValue(), \"unknown scheduled task cancellation should fail\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "a864c122d048d263": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:45::`a864c122d048d263`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:427::bool TestFactoryBackendSelectionAndFailure(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:464::ok &= Expect(reference.HasValue(), \"reference mock should be explicit through mock-enabled profile\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "a869f34a06b1a872": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:62::`a869f34a06b1a872`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:709::bool TestShutdownRetriesBodyBeforeDestroyingShape(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:724::return body && !failed && failed.GetError().HasCode(\"physics.destroy_body_failed\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "a9543e58eb53910f": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:59::`a9543e58eb53910f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "a9ae56126be7a142": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:41::`a9ae56126be7a142`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:427::bool TestFactoryBackendSelectionAndFailure(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:464::ok &= Expect(reference.HasValue(), \"reference mock should be explicit through mock-enabled profile\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "ab02f957e53f12e8": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:48::`ab02f957e53f12e8`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:569::bool TestRepeatedDirtyIsNoOp(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:575::ok &= Expect(runtime.GetTileState(NavTileId{1}) == NavTileState::Dirty, \"tile should remain dirty\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "ab7de562c3e82092": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:83::`ab7de562c3e82092`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "ac10c1ea6f59ae9d": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:82::`ac10c1ea6f59ae9d`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "ac437f78f2a76db0": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:57::`ac437f78f2a76db0`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:952::bool TestShutdownRetriesRollbackAndUnloadCleanup(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1008::return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "aca73164e9c48c23": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:48::`aca73164e9c48c23`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1500::bool TestTickAllocationPreflightFailuresPropagateWithoutMutation(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1540::return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "ae77ee6556a03f26": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:87::`ae77ee6556a03f26`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:264::bool TestGenerationSnapshotAndDestroyLifecycle(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:290::return !stale_snapshot && stale_snapshot.GetError().HasCode(\"physics.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "afdbd58280a50ebf": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:64::`afdbd58280a50ebf`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:945::bool TestTickSyncFailureRetriesAcceptedBackendStepWithoutResimulation(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:964::return retried && backend->simulates == 1 && runtime.AccumulatorForTesting().value.count() == 0 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "afdd1dc21c863aee": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:84::`afdd1dc21c863aee`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "b02051a985c1bc3b": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:83::`b02051a985c1bc3b`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "b0502bf076eaa398": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:55::`b0502bf076eaa398`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:349::bool TestWorldMemoryExpirationBudget(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:363::ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, false}).empty(), \"no active events should remain\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "b3bf41873fc71644": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:52::`b3bf41873fc71644`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "b45b12a1ba8c3345": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:40::`b45b12a1ba8c3345`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:905::bool TestBackendResultOwnershipSurvivesBudgetAndAllocationFault(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:952::ok &= Expect(fault_backend->calls == 1, \"retry after local failure must not call backend again\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "b4c48e2bd72ceca2": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:37::`b4c48e2bd72ceca2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "b5363abc930c0230": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:54::`b5363abc930c0230`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:298::bool TestRequestPathCompletesThroughBudgetedStates(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:318::ok &= Expect(result.HasValue() && result.Value().revision == 4, \"completed query should have four revisions\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "b5caa88d51eeeb19": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:60::`b5caa88d51eeeb19`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "b7cb8e25361b9acc": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:45::`b7cb8e25361b9acc`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "b8bdc552def7ab1f": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:44::`b8bdc552def7ab1f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "b99922140ea3fd13": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:57::`b99922140ea3fd13`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "bb52e935b4111b77": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:55::`bb52e935b4111b77`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "bb9b4bc8e763cc72": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:60::`bb9b4bc8e763cc72`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "bbb47fb79ab4122b": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:38::`bbb47fb79ab4122b`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:396::bool TestCostAndObstacleProjectionsStayExternal(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:414::ok &= Expect(result.HasValue() && result.Value().points.size() == 3, \"blocking obstacle should add deterministic detour point\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "bbbd254d21e7e241": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:68::`bbbd254d21e7e241`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "bc6584d500a454d8": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:53::`bc6584d500a454d8`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:991::bool TestPurgeOccursOnlyAfterAllFallibleWorkListPreparation(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:1030::ok &= Expect(!removed && removed.GetError().HasCode(\"navigation.stale_handle\"),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "bcd2bf743370ca1a": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:39::`bcd2bf743370ca1a`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:952::bool TestShutdownRetriesRollbackAndUnloadCleanup(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1008::return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "bd661c392ba09261": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:65::`bd661c392ba09261`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "bd923e9e51724e21": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:80::`bd923e9e51724e21`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "bda846b3688c86c3": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:43::`bda846b3688c86c3`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "bdbf0487a889e187": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:59::`bdbf0487a889e187`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "bea469b2902df368": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:59::`bea469b2902df368`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "bfa123ff450326f7": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:72::`bfa123ff450326f7`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "bfc438fb3ee696ac": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:42::`bfc438fb3ee696ac`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "c00eaf5f7a656b37": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:40::`c00eaf5f7a656b37`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "c2523c51e7d53e70": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:46::`c2523c51e7d53e70`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:364::bool TestUnregisterShapeRejectsInUseAndDestroysFreeShape(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:379::return body && !rejected && rejected.GetError().HasCode(\"physics.shape_in_use\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "c2a2de92add28808": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:54::`c2a2de92add28808`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:945::bool TestTickSyncFailureRetriesAcceptedBackendStepWithoutResimulation(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:964::return retried && backend->simulates == 1 && runtime.AccumulatorForTesting().value.count() == 0 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "c5983c86df105d6f": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:50::`c5983c86df105d6f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:294::bool TestUnknownHandleAndImpulseRules(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:310::return static_body && !rejected && rejected.GetError().HasCode(\"physics.impulse_not_allowed\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "c706b39f80e7f187": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:47::`c706b39f80e7f187`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1235::bool TestDirtyFlagsAndServicesFactory(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1239::return HasFlag(flags, PhysicsDirtyFlags::Transform) && HasFlag(flags, PhysicsDirtyFlags::Shape) &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "c75bc0b4d1013857": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:50::`c75bc0b4d1013857`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:383::bool TestAttentionAndValidationFailures(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:397::ok &= Expect(!runtime.SetRegionAttention(RegionId{3}, AttentionScore{-std::numeric_limits<float>::infinity()}).HasValue(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "c8b0a64008fa0a63": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:40::`c8b0a64008fa0a63`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:322::bool TestCancellation(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:332::ok &= Expect(runtime.Tick().Value().processed_jobs == 0, \"cancelled job should not consume work\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "c8c14be22603a72b": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:75::`c8c14be22603a72b`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:322::bool TestCancellation(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:332::ok &= Expect(runtime.Tick().Value().processed_jobs == 0, \"cancelled job should not consume work\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "cd96f007e26d1674": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:58::`cd96f007e26d1674`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1227::bool TestFactoryReportsBackendInitializationFailure(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1232::return !services && services.GetError().HasCode(\"physics.init_failed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "ce1d3128c36b42cd": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:47::`ce1d3128c36b42cd`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:378::bool TestTileDirtyRebuildStates(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:392::ok &= Expect(runtime.GetTileState(tile) == NavTileState::Ready, \"tile should return to ready after rebuild\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "cf4d7506d6b701d2": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:44::`cf4d7506d6b701d2`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1423::bool TestRequestPublicationFailureRestoresPublishedState(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1451::return retried && runtime.GetChunkState(recycled_chunk) == StreamingState::Requested &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "d1c4326627c7d38a": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:52::`d1c4326627c7d38a`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "d4692a78eccaee08": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:54::`d4692a78eccaee08`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "d4b9e6577aa22890": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:69::`d4b9e6577aa22890`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "d5c766fddc7d51fe": {
+      "contract": {
+        "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:86::`d5c766fddc7d51fe`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+        "assertions": [
+          "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeSimulationTests"
+      }
+    },
+    "d8405341201f5eef": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:42::`d8405341201f5eef`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1183::bool TestOverlapResultsAreDeterministicAndDetached(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1212::return detached.bodies.size() == 2 && after && after.Value().bodies.size() == 1;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "dae9105edf41355a": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:37::`dae9105edf41355a`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "db39e0adabf61650": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:66::`db39e0adabf61650`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "db5c66162d5e0925": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:53::`db5c66162d5e0925`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "de725a698a7ff1f8": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:68::`de725a698a7ff1f8`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "df56894544f03f5d": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:76::`df56894544f03f5d`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1311::bool TestStreamingIdentityAllocatorExhaustionBoundaries(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1373::before->demand_count != after->demand_count) return false;"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "e2204be01db50e04": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:44::`e2204be01db50e04`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "e28b8b6b7b7dee2f": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:51::`e28b8b6b7b7dee2f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:264::bool TestGenerationSnapshotAndDestroyLifecycle(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:290::return !stale_snapshot && stale_snapshot.GetError().HasCode(\"physics.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "e68fcf9c019aa36b": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:64::`e68fcf9c019aa36b`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1378::bool TestRemainingDependencyPortExceptionsAreContained(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1418::return retried.failures.empty() && resources->releases == 1 && residency->unloads == 2 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "e859d1092f168fae": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:69::`e859d1092f168fae`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "ef125dfbd77a2601": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:62::`ef125dfbd77a2601`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1378::bool TestRemainingDependencyPortExceptionsAreContained(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1418::return retried.failures.empty() && resources->releases == 1 && residency->unloads == 2 &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "efaf4880959824a0": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:71::`efaf4880959824a0`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:687::bool TestRollbackFailureMarksRollbackFailed(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:704::return !cancelled && cancelled.GetError().HasCode(\"streaming.rollback_failed\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "f177b4262587f12f": {
+      "contract": {
+        "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:38::`f177b4262587f12f`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:429::bool TestContactBufferStoresExplicitBeginPersistEnd(",
+        "assertions": [
+          "EngineRuntime/Physics/tests/physics_tests.cpp:451::return runtime.Contacts().empty();"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimePhysicsTests"
+      }
+    },
+    "f25eb24705d8eb5d": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:62::`f25eb24705d8eb5d`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "fa6d4f9163d18165": {
+      "contract": {
+        "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:42::`fa6d4f9163d18165`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:512::bool TestSourceRevisionZeroBecomesStaleAfterAdvance(",
+        "assertions": [
+          "EngineRuntime/Navigation/tests/navigation_tests.cpp:518::if (!Expect(query.HasValue(), \"zero-revision source request should succeed\"))"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeNavigationTests"
+      }
+    },
+    "faaa49396c788c28": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:79::`faaa49396c788c28`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:652::bool TestRequestGenerationAndStaleDemand(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:666::return !released && released.GetError().HasCode(\"streaming.stale_handle\") &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    },
+    "fdf2ca09390ab3ed": {
+      "contract": {
+        "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:45::`fdf2ca09390ab3ed`",
+        "reviewed": true
+      },
+      "test": {
+        "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1456::bool TestReactivationDemandPublicationFailurePreservesOwnership(",
+        "assertions": [
+          "EngineRuntime/Streaming/tests/streaming_tests.cpp:1480::return retried && reactivated && reactivated->state == StreamingState::Resident &&"
+        ],
+        "reviewed": true,
+        "target": "EpidemicRuntimeStreamingTests"
+      }
+    }
+  },
+  "schema_version": 1
+}

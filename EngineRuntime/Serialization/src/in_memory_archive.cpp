@@ -38,6 +38,11 @@ foundation::Result<void> InMemoryArchiveWriter::BeginObject(std::string_view nam
         std::string field_name{name};
         stack_.reserve(stack_.size() + 1);
         auto object = std::make_shared<ArchiveObject>();
+        if (fail_next_object_publication_for_testing_)
+        {
+            fail_next_object_publication_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         auto [iterator, inserted] = stack_.back().object->fields.emplace(std::move(field_name), ArchiveValue{object});
         (void)iterator;
         if (!inserted)
@@ -78,6 +83,11 @@ foundation::Result<void> InMemoryArchiveWriter::BeginArray(std::string_view name
         auto array = std::make_shared<ArchiveArray>();
         array->elements.resize(size);
         array->initialized.assign(size, false);
+        if (fail_next_array_publication_for_testing_)
+        {
+            fail_next_array_publication_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         auto [iterator, inserted] = stack_.back().object->fields.emplace(std::move(field_name), ArchiveValue{array});
         (void)iterator;
         if (!inserted)
@@ -117,6 +127,11 @@ foundation::Result<void> InMemoryArchiveWriter::BeginArrayElement(std::size_t in
 
         stack_.reserve(stack_.size() + 1);
         auto object = std::make_shared<ArchiveObject>();
+        if (fail_next_array_element_publication_for_testing_)
+        {
+            fail_next_array_element_publication_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         stack_.back().array->elements[index] = ArchiveValue{object};
         stack_.back().array->initialized[index] = true;
         stack_.push_back(Context{ContextKind::ArrayElement, object, {}});
@@ -228,6 +243,11 @@ foundation::Result<SerializedDocument> InMemoryArchiveWriter::Finalize(foundatio
 
     try
     {
+        if (fail_next_finalize_candidate_for_testing_)
+        {
+            fail_next_finalize_candidate_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         auto impl = std::make_shared<SerializedDocument::Impl>();
         impl->type_id = type_id;
         impl->schema_version = schema_version;
@@ -287,6 +307,11 @@ foundation::Result<void> InMemoryArchiveWriter::WriteValue(std::string_view name
         if (!valid)
         {
             return valid;
+        }
+        if (fail_next_field_publication_for_testing_)
+        {
+            fail_next_field_publication_for_testing_ = false;
+            throw std::bad_alloc{};
         }
         auto [iterator, inserted] = stack_.back().object->fields.emplace(std::string(name), std::move(value));
         (void)iterator;

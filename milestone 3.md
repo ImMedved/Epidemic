@@ -4,7 +4,7 @@
 
 Основа: архив `Epidemic 19-09-2026-2`, общий `work-plan.md` и уже закрытый Goal 2.
 
-Статус входа: `READY_TO_START`. EngineBase = `9/9 LOCAL_READY`. Admission baseline после Goal 2: Base Debug/Release `14/14`, Runtime Debug/Release `34/34`, Full Debug/Release `94/94`, суммарно `284/284` CTest по отчёту последней qualification. Freeze validators, exact manifests и negative/self-tests согласованы с текущим деревом.
+Статус: `READY_FOR_FINAL_PUBLICATION` (2026-09-22). EngineBase = `9/9 LOCAL_READY`, EngineRuntime = `17/17 LOCAL_READY`; canonical evidence и локальная qualification зелёные. До `COMPLETE` остаются commit recorded SHA и remote Architecture Freeze CI. Исторический admission baseline: EngineBase = `9/9 LOCAL_READY`. Admission baseline после Goal 2: Base Debug/Release `14/14`, Runtime Debug/Release `34/34`, Full Debug/Release `94/94`, суммарно `284/284` CTest по отчёту последней qualification. Freeze validators, exact manifests и negative/self-tests согласованы с текущим деревом.
 
 Цель документа: последовательно довести все 17 production-модулей `EngineRuntime` до `LOCAL_READY`, исправляя только подтверждённые локальные defects и нарушения уже существующих contracts. Whole-engine persistence/determinism, sanitizer/race qualification, semantic cluster validation и load/final freeze остаются в Goals 5–9.
 
@@ -381,27 +381,27 @@ Regression/evidence: fault на preparation каждого индекса сох
 
 Для каждого из 17 modules проверить, не предполагая заранее необходимость code change:
 
-[ ] Все public enum inputs отклоняют значения вне declared domain до mutation.
+[~] Все public enum inputs отклоняют значения вне declared domain до mutation.
 
-[ ] Все public numeric inputs отклоняют NaN/infinity, отрицательные значения и overflow там, где они недопустимы.
+[~] Все public numeric inputs отклоняют NaN/infinity, отрицательные значения и overflow там, где они недопустимы.
 
-[ ] Все ID/generation/revision/sequence allocators имеют exhaustion test и не wrap-around.
+[~] Все ID/generation/revision/sequence allocators имеют exhaustion test и не wrap-around.
 
-[ ] Semantic no-op не публикует ложный revision/state/event и не вызывает внешний effect, если contract не говорит обратное.
+[~] Semantic no-op не публикует ложный revision/state/event и не вызывает внешний effect, если contract не говорит обратное.
 
-[ ] Любая multi-state mutation сохраняет согласованность на allocation failure либо имеет явно documented prefix-progress/reconciliation semantics.
+[~] Любая multi-state mutation сохраняет согласованность на allocation failure либо имеет явно documented prefix-progress/reconciliation semantics.
 
-[ ] Любой loader/provider/backend/sink/source callback считается throwing boundary. Exceptions не выходят через public operation, если contract обещает `Result` containment.
+[~] Любой loader/provider/backend/sink/source callback считается throwing boundary. Exceptions не выходят через public operation, если contract обещает `Result` containment.
 
-[ ] Если внешний effect уже commit-нут и rollback не гарантирован, module сохраняет durable retry/reconciliation ownership.
+[~] Если внешний effect уже commit-нут и rollback не гарантирован, module сохраняет durable retry/reconciliation ownership.
 
-[ ] Query results, snapshots и returned collections detached от mutable internal state там, где contract обещает snapshot/value semantics.
+[~] Query results, snapshots и returned collections detached от mutable internal state там, где contract обещает snapshot/value semantics.
 
-[ ] Observable ordering не зависит от `unordered_map` iteration.
+[~] Observable ordering не зависит от `unordered_map` iteration.
 
-[ ] Budget semantics определены отдельно для item/time/byte limits: hard, soft-current-unit, defer либо backpressure.
+[~] Budget semantics определены отдельно для item/time/byte limits: hard, soft-current-unit, defer либо backpressure.
 
-[ ] Cleanup semantics проверяются только для реально принадлежащего module ownership.
+[~] Cleanup semantics проверяются только для реально принадлежащего module ownership.
 
 ---
 
@@ -445,61 +445,61 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Шаг A. Contract inventory
 
-[ ] Сверить public headers с Goal 1 API inventory.
+[~] Сверить public headers с Goal 1 API inventory.
 
-[ ] Отметить все mutators, lifecycle operations, factories, callbacks/backends/providers и snapshot/query APIs.
+[~] Отметить все mutators, lifecycle operations, factories, callbacks/backends/providers и snapshot/query APIs.
 
-[ ] Для каждого mutator записать preconditions, success state, no-op semantics и failure semantics.
+[~] Для каждого mutator записать preconditions, success state, no-op semantics и failure semantics.
 
-[ ] Для каждого внешнего port записать ownership и exception/failure contract.
+[~] Для каждого внешнего port записать ownership и exception/failure contract.
 
-[ ] Исправить ложные `DISCOVERED` поля dossier и перевести реально проверенные поля в `REVIEWED`.
+[~] Исправить ложные `DISCOVERED` поля dossier и перевести реально проверенные поля в `REVIEWED`.
 
 ## Шаг B. State inventory
 
-[ ] Выписать authoritative containers/records.
+[~] Выписать authoritative containers/records.
 
-[ ] Выписать derived indexes/cache/queues.
+[~] Выписать derived indexes/cache/queues.
 
-[ ] Выписать ID/generation/revision/cursor counters.
+[~] Выписать ID/generation/revision/cursor counters.
 
-[ ] Выписать pending cleanup/reconciliation state.
+[~] Выписать pending cleanup/reconciliation state.
 
-[ ] Выписать persistent и transient state. Если persistence для module `N/A`, указать конкретную причину.
+[~] Выписать persistent и transient state. Если persistence для module `N/A`, указать конкретную причину.
 
 ## Шаг C. Mutation audit
 
-[ ] Happy path.
+[~] Happy path.
 
-[ ] Invalid input.
+[~] Invalid input.
 
-[ ] Duplicate identity.
+[~] Duplicate identity.
 
-[ ] Stale identity.
+[~] Stale identity.
 
-[ ] Wrong lifecycle/state.
+[~] Wrong lifecycle/state.
 
-[ ] Boundary/exhaustion.
+[~] Boundary/exhaustion.
 
-[ ] Semantic no-op.
+[~] Semantic no-op.
 
-[ ] Allocation failure после начала потенциальной mutation.
+[~] Allocation failure после начала потенциальной mutation.
 
-[ ] External callback/backend failure и exception, если применимо.
+[~] External callback/backend failure и exception, если применимо.
 
-[ ] Retry после controlled failure, если operation retryable.
+[~] Retry после controlled failure, если operation retryable.
 
 ## Шаг D. Regression acceptance
 
 Если любой AUDIT-пункт не проходит, до изменения production code добавить в этот документ локальный `DEFECT` record с пятью обязательными полями: `Проблема`, `Что не так`, `Причина`, `Предлагаемый фикс`, `Regression/evidence`. Только после этого выполнять fix. Это запрещает менять contract по догадке и сохраняет однозначную историю Goal 3.
 
-[ ] Любой найденный defect сначала получает failing regression.
+[~] Любой найденный defect сначала получает failing regression.
 
-[ ] Fix проходит regression и весь module suite.
+[~] Fix проходит regression и весь module suite.
 
-[ ] После module fix прогоняется Runtime isolated suite и Runtime regression suite.
+[~] После module fix прогоняется Runtime isolated suite и Runtime regression suite.
 
-[ ] Изменение public contract обновляет API/public-surface manifests и affected evidence anchors.
+[~] Изменение public contract обновляет API/public-surface manifests и affected evidence anchors.
 
 Только после A–D module получает `LOCAL_READY`. Если AUDIT-пункт уже доказан существующими code/tests/evidence, достаточно зафиксировать anchors; production change не требуется.
 
@@ -511,69 +511,69 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## IDs и handles
 
-[ ] Все numeric Runtime IDs имеют единственный invalid state `0`.
+[~] Все numeric Runtime IDs имеют единственный invalid state `0`.
 
-[ ] `AssetId` и `ResourceId` имеют единый invalid `StringId` state и не смешиваются с numeric ID spaces.
+[~] `AssetId` и `ResourceId` имеют единый invalid `StringId` state и не смешиваются с numeric ID spaces.
 
-[ ] Compile-time доказать невозможность случайного смешивания `RuntimeObjectId`, `PersistentObjectId`, `RegionId`, `ChunkId`, `SurfaceId`, `SimulationZoneId`, `LazyRuleId`.
+[~] Compile-time доказать невозможность случайного смешивания `RuntimeObjectId`, `PersistentObjectId`, `RegionId`, `ChunkId`, `SurfaceId`, `SimulationZoneId`, `LazyRuleId`.
 
-[ ] Equality/hash согласованы для каждого ID type.
+[~] Equality/hash согласованы для каждого ID type.
 
-[ ] `PeekMonotonicId`, `ReserveMonotonicId`, `CommitMonotonicId`, `AllocateMonotonicId` проверены на `1`, normal value, `UINT_MAX`, exhausted `0`.
+[~] `PeekMonotonicId`, `ReserveMonotonicId`, `CommitMonotonicId`, `AllocateMonotonicId` проверены на `1`, normal value, `UINT_MAX`, exhausted `0`.
 
-[ ] Failed reservation/operation не потребляет ID.
+[~] Failed reservation/operation не потребляет ID.
 
-[ ] Commit reservation идемпотентно не продвигает allocator второй раз.
+[~] Commit reservation идемпотентно не продвигает allocator второй раз.
 
 ## Budget
 
-[ ] `RuntimeBudget{}` означает unlimited.
+[~] `RuntimeBudget{}` означает unlimited.
 
-[ ] Negative time budget отклоняется.
+[~] Negative time budget отклоняется.
 
-[ ] Zero item/byte/time имеют documented unlimited semantics.
+[~] Zero item/byte/time имеют documented unlimited semantics.
 
-[ ] Max item/byte values не приводят к signed conversion или overflow в consuming majors.
+[~] Max item/byte values не приводят к signed conversion или overflow в consuming majors.
 
-[ ] Документировать, что `RuntimeBudget` является value contract, а hard/soft semantics задаёт конкретный major.
+[~] Документировать, что `RuntimeBudget` является value contract, а hard/soft semantics задаёт конкретный major.
 
 ## Time arithmetic
 
-[ ] `CheckedSecondsToMicroseconds` отклоняет negative, NaN, infinity и overflow.
+[~] `CheckedSecondsToMicroseconds` отклоняет negative, NaN, infinity и overflow.
 
-[ ] `CheckedScaleDuration` отклоняет negative/non-finite scale и overflow.
+[~] `CheckedScaleDuration` отклоняет negative/non-finite scale и overflow.
 
-[ ] `CheckedAdd`, `CheckedSubtract`, `CheckedDifference` покрыты на `INT64_MIN/MAX`, включая `INT64_MIN` duration.
+[~] `CheckedAdd`, `CheckedSubtract`, `CheckedDifference` покрыты на `INT64_MIN/MAX`, включая `INT64_MIN` duration.
 
-[ ] Saturating operators насыщаются в правильную сторону и не содержат signed UB.
+[~] Saturating operators насыщаются в правильную сторону и не содержат signed UB.
 
 ## Spatial
 
-[ ] `Vec3`, `Quat`, `Transform`, `Aabb` finite validation покрыта NaN/infinity по каждой component family.
+[~] `Vec3`, `Quat`, `Transform`, `Aabb` finite validation покрыта NaN/infinity по каждой component family.
 
-[ ] Не добавлять общий `IsValidSphere` только ради freeze. Проверить существующие Sphere/query boundaries; новый common validator допустим только если одинаковая authoritative validation реально нужна нескольким независимым consumers.
+[~] Не добавлять общий `IsValidSphere` только ради freeze. Проверить существующие Sphere/query boundaries; новый common validator допустим только если одинаковая authoritative validation реально нужна нескольким независимым consumers.
 
-[ ] `Normalize(valid quat)` возвращает normalized finite quaternion.
+[~] `Normalize(valid quat)` возвращает normalized finite quaternion.
 
-[ ] Поведение `Normalize(zero/invalid)` документировано. Текущее fallback-поведение в identity quaternion не должно использоваться как замена authoritative input validation.
+[~] Поведение `Normalize(zero/invalid)` документировано. Текущее fallback-поведение в identity quaternion не должно использоваться как замена authoritative input validation.
 
-[ ] `IsValidTransform` проверяет finite fields, normalized rotation и non-zero scale.
+[~] `IsValidTransform` проверяет finite fields, normalized rotation и non-zero scale.
 
-[ ] `IsValidAabb` отклоняет inverted bounds.
+[~] `IsValidAabb` отклоняет inverted bounds.
 
-[ ] `TransformAabb` проверен для rotation, negative scale и degenerate bounds.
+[~] `TransformAabb` проверен для rotation, negative scale и degenerate bounds.
 
-[ ] Закрыть `G3-RF-001`: зафиксировать уже существующую deterministic approximate TRS semantics и синхронизировать module docs/tests с public headers.
+[~] Закрыть `G3-RF-001`: зафиксировать уже существующую deterministic approximate TRS semantics и синхронизировать module docs/tests с public headers.
 
 ## Exit 3.1
 
-[ ] Все RuntimeFoundation public helpers классифицированы и имеют boundary evidence.
+[~] Все RuntimeFoundation public helpers классифицированы и имеют boundary evidence.
 
-[ ] Нет недокументированного spatial fallback, который превращает invalid authoritative input в valid state.
+[~] Нет недокументированного spatial fallback, который превращает invalid authoritative input в valid state.
 
-[ ] `EpidemicRuntimeFoundationTests` проходит Debug/Release.
+[~] `EpidemicRuntimeFoundationTests` проходит Debug/Release.
 
-[ ] RuntimeFoundation = `LOCAL_READY`.
+[~] RuntimeFoundation = `LOCAL_READY`.
 
 ---
 
@@ -583,79 +583,79 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Configuration
 
-[ ] `game_ticks_per_real_second > 0`.
+[~] `game_ticks_per_real_second > 0`.
 
-[ ] `TimeScale numerator/denominator > 0` и normalizes через GCD.
+[~] `TimeScale numerator/denominator > 0` и normalizes через GCD.
 
-[ ] Calendar units positive и multiplication boundaries overflow-safe.
+[~] Calendar units positive и multiplication boundaries overflow-safe.
 
-[ ] Phase boundary enum valid, minute внутри configured day, duplicate minute rejected.
+[~] Phase boundary enum valid, minute внутри configured day, duplicate minute rejected.
 
-[ ] Empty phase list получает documented default boundaries.
+[~] Empty phase list получает documented default boundaries.
 
 ## Advance/Skip
 
-[ ] `Advance(0)` является no-op по authoritative revision.
+[~] `Advance(0)` является no-op по authoritative revision.
 
-[ ] Negative real delta rejected без mutation.
+[~] Negative real delta rejected без mutation.
 
-[ ] Normal delta и large delta.
+[~] Normal delta и large delta.
 
-[ ] Fractional remainder сохраняется между frames без floating drift.
+[~] Fractional remainder сохраняется между frames без floating drift.
 
-[ ] Разные frame splits дают одинаковый `now` и remainder-equivalent future behavior.
+[~] Разные frame splits дают одинаковый `now` и remainder-equivalent future behavior.
 
-[ ] `SetTimeScale` сбрасывает remainder ровно по текущему contract.
+[~] `SetTimeScale` сбрасывает remainder ровно по текущему contract.
 
-[ ] `Skip` сбрасывает remainder ровно по contract.
+[~] `Skip` сбрасывает remainder ровно по contract.
 
-[ ] Scale/delta numerator/denominator multiplication overflow rejected before commit.
+[~] Scale/delta numerator/denominator multiplication overflow rejected before commit.
 
-[ ] Game time `INT64` overflow rejected с полным pre-state preservation.
+[~] Game time `INT64` overflow rejected с полным pre-state preservation.
 
 ## Lifecycle/events/revision
 
-[ ] Pause/Resume state machine.
+[~] Pause/Resume state machine.
 
-[ ] Duplicate Pause и duplicate Resume являются no-op и не стирают предыдущие observable events неожиданно.
+[~] Duplicate Pause и duplicate Resume являются no-op и не стирают предыдущие observable events неожиданно.
 
-[ ] Day/month/year boundaries.
+[~] Day/month/year boundaries.
 
-[ ] Dawn/Day/Dusk/Night boundaries.
+[~] Dawn/Day/Dusk/Night boundaries.
 
-[ ] Один large Advance/Skip может пересечь несколько semantic boundaries без потери обязательных events.
+[~] Один large Advance/Skip может пересечь несколько semantic boundaries без потери обязательных events.
 
-[ ] `last_delta` является transient и сам по себе не повышает authoritative revision.
+[~] `last_delta` является transient и сам по себе не повышает authoritative revision.
 
-[ ] Revision exhaustion rejected before mutation/event publication.
+[~] Revision exhaustion rejected before mutation/event publication.
 
-[ ] Allocation failure при построении event vector/candidate сохраняет полный pre-call state.
+[~] Allocation failure при построении event vector/candidate сохраняет полный pre-call state.
 
 ## DEFECT G3-TIME-001: persistence-complete clock state
 
 `TimeSnapshot` остаётся observational snapshot. Не использовать его как save format.
 
-[ ] Добавить отдельный persistent clock state/checkpoint: `now`, normalized current `time_scale`, `paused`, fractional remainder и authoritative revision.
+[~] Добавить отдельный persistent clock state/checkpoint: `now`, normalized current `time_scale`, `paused`, fractional remainder и authoritative revision.
 
-[ ] Добавить capture API и validate-first/candidate-build restore API.
+[~] Добавить capture API и validate-first/candidate-build restore API.
 
-[ ] Restore проверяет immutable configuration compatibility: `game_ticks_per_real_second`, calendar definition и phase boundaries.
+[~] Restore проверяет immutable configuration compatibility: `game_ticks_per_real_second`, calendar definition и phase boundaries.
 
-[ ] `last_delta`, current event buffer и operation-only `TimeRuntimeState` остаются transient, если на них нет отдельного persistent contract.
+[~] `last_delta`, current event buffer и operation-only `TimeRuntimeState` остаются transient, если на них нет отдельного persistent contract.
 
-[ ] Failed validation/allocation restore сохраняет полный pre-state.
+[~] Failed validation/allocation restore сохраняет полный pre-state.
 
-[ ] После successful restore следующий `Advance()` детерминированно совпадает с uninterrupted control run, включая случай ненулевого fractional remainder.
+[~] После successful restore следующий `Advance()` детерминированно совпадает с uninterrupted control run, включая случай ненулевого fractional remainder.
 
 ## Exit 3.2
 
-[ ] `G3-TIME-001` закрыт до `LOCAL_READY`; Goal 5 может использовать готовый clock persistence contract без изменения frozen Time API.
+[~] `G3-TIME-001` закрыт до `LOCAL_READY`; Goal 5 может использовать готовый clock persistence contract без изменения frozen Time API.
 
-[ ] Existing deterministic accumulation tests сохранены и дополнены persistent-state roundtrip/continuation tests.
+[~] Existing deterministic accumulation tests сохранены и дополнены persistent-state roundtrip/continuation tests.
 
-[ ] `EpidemicRuntimeTimeTests` проходит Debug/Release.
+[~] `EpidemicRuntimeTimeTests` проходит Debug/Release.
 
-[ ] Time = `LOCAL_READY`.
+[~] Time = `LOCAL_READY`.
 
 ---
 
@@ -665,75 +665,75 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Archive writer/reader
 
-[ ] Duplicate object field rejected.
+[~] Duplicate object field rejected.
 
-[ ] Empty field name rejected.
+[~] Empty field name rejected.
 
-[ ] Begin/End object mismatch controlled.
+[~] Begin/End object mismatch controlled.
 
-[ ] Begin/End array mismatch controlled.
+[~] Begin/End array mismatch controlled.
 
-[ ] Array element index validated.
+[~] Array element index validated.
 
-[ ] Один array slot нельзя записать дважды.
+[~] Один array slot нельзя записать дважды.
 
-[ ] Incomplete array нельзя Finalize.
+[~] Incomplete array нельзя Finalize.
 
-[ ] Deep object/array, empty structures, bytes и null roundtrip.
+[~] Deep object/array, empty structures, bytes и null roundtrip.
 
-[ ] Finalize требует valid type ID, supported/non-zero schema contract и valid root.
+[~] Finalize требует valid type ID, supported/non-zero schema contract и valid root.
 
-[ ] После успешного Finalize writer immutable.
+[~] После успешного Finalize writer immutable.
 
-[ ] Allocation sweep `BeginObject`, `BeginArray`, `BeginArrayElement`, `Write*`, `Finalize` подтверждает отсутствие partial archive tree publication. Учитывать существующий pre-reserve design, не переписывать его без причины.
+[~] Allocation sweep `BeginObject`, `BeginArray`, `BeginArrayElement`, `Write*`, `Finalize` подтверждает отсутствие partial archive tree publication. Учитывать существующий pre-reserve design, не переписывать его без причины.
 
-[ ] Reader wrong type/kind/index/missing field даёт controlled failure.
+[~] Reader wrong type/kind/index/missing field даёт controlled failure.
 
 ## Serializer
 
-[ ] Registry duplicate type rejected.
+[~] Registry duplicate type rejected.
 
-[ ] Registry null serializer/invalid type rejected.
+[~] Registry null serializer/invalid type rejected.
 
-[ ] Freeze idempotent; registration после freeze rejected.
+[~] Freeze idempotent; registration после freeze rejected.
 
-[ ] Serializer metadata/body exceptions contained согласно cross-engine policy.
+[~] Serializer metadata/body exceptions contained согласно cross-engine policy.
 
-[ ] Deserialization строит candidate и не mutates output object до полного success.
+[~] Deserialization строит candidate и не mutates output object до полного success.
 
-[ ] Throw/failure во время commit semantics не оставляет half-mutated destination.
+[~] Throw/failure во время commit semantics не оставляет half-mutated destination.
 
-[ ] Typed serializer rejects wrong C++ type и wrong document type.
+[~] Typed serializer rejects wrong C++ type и wrong document type.
 
 ## Migration
 
-[ ] Exact migration и multi-step chain.
+[~] Exact migration и multi-step chain.
 
-[ ] Missing path.
+[~] Missing path.
 
-[ ] Cycle.
+[~] Cycle.
 
-[ ] Ambiguous path.
+[~] Ambiguous path.
 
-[ ] Каждый step сохраняет `type_id`.
+[~] Каждый step сохраняет `type_id`.
 
-[ ] Каждый step возвращает ровно declared target schema.
+[~] Каждый step возвращает ровно declared target schema.
 
-[ ] Intermediate output полностью валидируется до следующего step.
+[~] Intermediate output полностью валидируется до следующего step.
 
-[ ] Migration exception contained.
+[~] Migration exception contained.
 
-[ ] Failed migration не изменяет source immutable document.
+[~] Failed migration не изменяет source immutable document.
 
-[ ] Migration path search allocation failure не меняет registry.
+[~] Migration path search allocation failure не меняет registry.
 
 ## Exit 3.3
 
-[ ] Writer/serializer/migration failure atomicity доказана fault tests.
+[~] Writer/serializer/migration failure atomicity доказана fault tests.
 
-[ ] `EpidemicRuntimeSerializationTests` проходит Debug/Release.
+[~] `EpidemicRuntimeSerializationTests` проходит Debug/Release.
 
-[ ] Serialization = `LOCAL_READY`.
+[~] Serialization = `LOCAL_READY`.
 
 ---
 
@@ -745,99 +745,99 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Identity и ownership
 
-[ ] Каждый `RequestLease` создаёт новый acquisition ID.
+[~] Каждый `RequestLease` создаёт новый acquisition ID.
 
-[ ] Два consumers одного resource делят `ResourceHandle`, но имеют независимые acquisition IDs.
+[~] Два consumers одного resource делят `ResourceHandle`, но имеют независимые acquisition IDs.
 
-[ ] Release одного consumer не освобождает lease другого.
+[~] Release одного consumer не освобождает lease другого.
 
-[ ] Duplicate/double release rejected.
+[~] Duplicate/double release rejected.
 
-[ ] Stale `ResourceHandle` после generation advance не получает новый payload.
+[~] Stale `ResourceHandle` после generation advance не получает новый payload.
 
-[ ] Acquisition ID exhaustion не меняет queue/cache/reference count.
+[~] Acquisition ID exhaustion не меняет queue/cache/reference count.
 
-[ ] Generation exhaustion не допускает ABA через eviction/recreate.
+[~] Generation exhaustion не допускает ABA через eviction/recreate.
 
-[ ] Reference count overflow rejected before publication.
+[~] Reference count overflow rejected before publication.
 
 ## Request/load queue
 
-[ ] Invalid ResourceId/ResourceType rejected.
+[~] Invalid ResourceId/ResourceType rejected.
 
-[ ] Один Ready resource не загружается повторно при новом lease.
+[~] Один Ready resource не загружается повторно при новом lease.
 
-[ ] Queue publication failure откатывает новый slot и acquisition state.
+[~] Queue publication failure откатывает новый slot и acquisition state.
 
-[ ] Acquisition publication failure откатывает queued job и slot publication.
+[~] Acquisition publication failure откатывает queued job и slot publication.
 
-[ ] Retry после loader failure не создаёт duplicate active load.
+[~] Retry после loader failure не создаёт duplicate active load.
 
-[ ] Loader exception contained.
+[~] Loader exception contained.
 
-[ ] Artifact ID/type обязаны совпадать с request.
+[~] Artifact ID/type обязаны совпадать с request.
 
-[ ] Null payload rejected.
+[~] Null payload rejected.
 
 ## Dependencies
 
-[ ] Self dependency rejected.
+[~] Self dependency rejected.
 
-[ ] Deep dependency cycle detected без recursive stack overflow.
+[~] Deep dependency cycle detected без recursive stack overflow.
 
-[ ] Required dependency failure fails root.
+[~] Required dependency failure fails root.
 
-[ ] Optional missing/failing dependency не блокирует root по contract.
+[~] Optional missing/failing dependency не блокирует root по contract.
 
-[ ] Dependency RequestLease ownership публикуется atomically.
+[~] Dependency RequestLease ownership публикуется atomically.
 
-[ ] Failure публикации dependency ownership освобождает только lease текущей операции.
+[~] Failure публикации dependency ownership освобождает только lease текущей операции.
 
-[ ] Rollback root не снимает shared dependency lease другого root/consumer.
+[~] Rollback root не снимает shared dependency lease другого root/consumer.
 
-[ ] Failed dependency release сохраняет lease в retryable bookkeeping, а не забывает ownership.
+[~] Failed dependency release сохраняет lease в retryable bookkeeping, а не забывает ownership.
 
-[ ] Dependency graph соответствует реально удерживаемым blocking dependencies.
+[~] Dependency graph соответствует реально удерживаемым blocking dependencies.
 
 ## Budget/accounting/eviction
 
-[ ] `max_items` ограничивает attempts/processing согласно documented statistics semantics.
+[~] `max_items` ограничивает attempts/processing согласно documented statistics semantics.
 
-[ ] `max_time` прекращает взятие новых jobs, не оставляя текущий slot half-mutated.
+[~] `max_time` прекращает взятие новых jobs, не оставляя текущий slot half-mutated.
 
-[ ] `max_bytes` является soft-current-unit budget: начатый payload может завершиться, затем новые jobs не начинаются.
+[~] `max_bytes` является soft-current-unit budget: начатый payload может завершиться, затем новые jobs не начинаются.
 
-[ ] `resident_bytes`, `bytes_loaded`, resource counts overflow-safe.
+[~] `resident_bytes`, `bytes_loaded`, resource counts overflow-safe.
 
-[ ] Memory budget failure не публикует payload и освобождает acquired dependencies.
+[~] Memory budget failure не публикует payload и освобождает acquired dependencies.
 
-[ ] Evict запрещён при references > 0.
+[~] Evict запрещён при references > 0.
 
-[ ] `Evicting` является retryable prefix-progress state.
+[~] `Evicting` является retryable prefix-progress state.
 
-[ ] Повторный eviction не освобождает уже освобождённую dependency второй раз.
+[~] Повторный eviction не освобождает уже освобождённую dependency второй раз.
 
-[ ] Evict generation advances только после завершения required cleanup.
+[~] Evict generation advances только после завершения required cleanup.
 
 ## Cancellation semantics
 
 В Resources нет public `Cancel()`. Cancellation определяется release ownership.
 
-[ ] Release последнего queued lease гарантирует, что устаревший queued job не публикует payload.
+[~] Release последнего queued lease гарантирует, что устаревший queued job не публикует payload.
 
-[ ] Release последнего loading/waiting lease приводит к controlled rollback при следующей processing boundary.
+[~] Release последнего loading/waiting lease приводит к controlled rollback при следующей processing boundary.
 
-[ ] In-flight/unreferenced records не становятся Ready с потерянным ownership.
+[~] In-flight/unreferenced records не становятся Ready с потерянным ownership.
 
 ## Exit 3.4
 
-[ ] Не добавлять искусственный Shutdown API только ради старого checklist.
+[~] Не добавлять искусственный Shutdown API только ради старого checklist.
 
-[ ] Все ownership/retry states наблюдаемы через tests/internal audit.
+[~] Все ownership/retry states наблюдаемы через tests/internal audit.
 
-[ ] `EpidemicRuntimeResourcesTests` проходит Debug/Release.
+[~] `EpidemicRuntimeResourcesTests` проходит Debug/Release.
 
-[ ] Resources = `LOCAL_READY`.
+[~] Resources = `LOCAL_READY`.
 
 ---
 
@@ -847,61 +847,61 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Registration/validation
 
-[ ] Invalid AssetId/AssetType/AssetState rejected.
+[~] Invalid AssetId/AssetType/AssetState rejected.
 
-[ ] Duplicate ID rejected.
+[~] Duplicate ID rejected.
 
-[ ] Version `0` rejected; version semantics определены как metadata version, не как global catalog revision.
+[~] Version `0` rejected; version semantics определены как metadata version, не как global catalog revision.
 
-[ ] Location kind enum validated.
+[~] Location kind enum validated.
 
-[ ] Host absolute paths, UNC/device/rooted paths и Windows drive-relative paths rejected.
+[~] Host absolute paths, UNC/device/rooted paths и Windows drive-relative paths rejected.
 
-[ ] `..` traversal за engine root rejected.
+[~] `..` traversal за engine root rejected.
 
-[ ] Package/virtual location требует valid mount ID.
+[~] Package/virtual location требует valid mount ID.
 
-[ ] Generated location требует valid generator ID.
+[~] Generated location требует valid generator ID.
 
-[ ] Path/dependency/tag hard limits проверены до mutation.
+[~] Path/dependency/tag hard limits проверены до mutation.
 
-[ ] Duplicate tags/dependencies и self dependency обрабатываются по contract.
+[~] Duplicate tags/dependencies и self dependency обрабатываются по contract.
 
-[ ] Allocation failure во время normalization/emplace не оставляет partial catalog entry.
+[~] Allocation failure во время normalization/emplace не оставляет partial catalog entry.
 
 ## Dependency manifest
 
-[ ] Required missing dependency fails manifest.
+[~] Required missing dependency fails manifest.
 
-[ ] Optional missing dependency сохраняется/отмечается согласно contract.
+[~] Optional missing dependency сохраняется/отмечается согласно contract.
 
-[ ] Cycle detected.
+[~] Cycle detected.
 
-[ ] Diamond dependencies deduplicated.
+[~] Diamond dependencies deduplicated.
 
-[ ] Deep graph обходится iteratively.
+[~] Deep graph обходится iteratively.
 
-[ ] Manifest deterministic sorted независимо от unordered storage.
+[~] Manifest deterministic sorted независимо от unordered storage.
 
 ## Queries/seal
 
-[ ] `FindById` возвращает detached metadata copy.
+[~] `FindById` возвращает detached metadata copy.
 
-[ ] `FindByType`/`FindByTag` deterministic sorted.
+[~] `FindByType`/`FindByTag` deterministic sorted.
 
-[ ] Missing query controlled.
+[~] Missing query controlled.
 
-[ ] Seal idempotent.
+[~] Seal idempotent.
 
-[ ] Registration после Seal rejected без mutation.
+[~] Registration после Seal rejected без mutation.
 
-[ ] Snapshot/catalog restore не требовать локально: в текущем public API такого contract нет. Если Assets будет загружаться из persistent catalog, это отдельный producer/bootstrap contract, а не скрытый restore.
+[~] Snapshot/catalog restore не требовать локально: в текущем public API такого contract нет. Если Assets будет загружаться из persistent catalog, это отдельный producer/bootstrap contract, а не скрытый restore.
 
 ## Exit 3.5
 
-[ ] `EpidemicRuntimeAssetsTests` проходит Debug/Release.
+[~] `EpidemicRuntimeAssetsTests` проходит Debug/Release.
 
-[ ] Assets = `LOCAL_READY`.
+[~] Assets = `LOCAL_READY`.
 
 ---
 
@@ -913,95 +913,95 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Demand/request identity
 
-[ ] Несколько demands одного target имеют разные handles и один shared active request.
+[~] Несколько demands одного target имеют разные handles и один shared active request.
 
-[ ] Demand handle содержит generation/request identity достаточную для stale rejection.
+[~] Demand handle содержит generation/request identity достаточную для stale rejection.
 
-[ ] Stale demand не release/cancel новый request.
+[~] Stale demand не release/cancel новый request.
 
-[ ] Demand/request/generation/revision/sequence exhaustion rejected atomically.
+[~] Demand/request/generation/revision/sequence exhaustion rejected atomically.
 
-[ ] Request publication fault не потребляет identity и не оставляет record/mapping.
+[~] Request publication fault не потребляет identity и не оставляет record/mapping.
 
-[ ] Demand publication fault не повреждает существующий request.
+[~] Demand publication fault не повреждает существующий request.
 
 ## Loading state machine
 
-[ ] Requested -> Loading -> Prepared/Commit -> Resident/Active transitions соответствуют contract.
+[~] Requested -> Loading -> Prepared/Commit -> Resident/Active transitions соответствуют contract.
 
-[ ] Incomplete progressive step не двигает cursor ложным образом.
+[~] Incomplete progressive step не двигает cursor ложным образом.
 
-[ ] Zero-work incomplete step не считается completion.
+[~] Zero-work incomplete step не считается completion.
 
-[ ] Commit выполняется только после полного plan completion и только один раз.
+[~] Commit выполняется только после полного plan completion и только один раз.
 
-[ ] Last demand release до load выполняет cancellation/rollback.
+[~] Last demand release до load выполняет cancellation/rollback.
 
-[ ] Last demand release resident target запускает unload.
+[~] Last demand release resident target запускает unload.
 
-[ ] Новый demand во время reversible state использует existing request по contract.
+[~] Новый demand во время reversible state использует existing request по contract.
 
-[ ] Во время irreversible `Unloading` существует максимум один successor.
+[~] Во время irreversible `Unloading` существует максимум один successor.
 
-[ ] Все demands successor разделяют именно его.
+[~] Все demands successor разделяют именно его.
 
-[ ] Последний waiting demand удаляет successor без повреждения predecessor mapping.
+[~] Последний waiting demand удаляет successor без повреждения predecessor mapping.
 
 ## External failure boundaries
 
-[ ] Data source plan build failure.
+[~] Data source plan build failure.
 
-[ ] Data source exception.
+[~] Data source exception.
 
-[ ] Progressive step failure/exception.
+[~] Progressive step failure/exception.
 
-[ ] Commit target failure/exception.
+[~] Commit target failure/exception.
 
-[ ] Rollback failure/exception.
+[~] Rollback failure/exception.
 
-[ ] Unload failure/exception.
+[~] Unload failure/exception.
 
-[ ] Priority/provider/residency/world/persistence/resource port exceptions contained.
+[~] Priority/provider/residency/world/persistence/resource port exceptions contained.
 
-[ ] Failed rollback переводит request в explicit retry state и сохраняет ownership.
+[~] Failed rollback переводит request в explicit retry state и сохраняет ownership.
 
-[ ] Failed unload сохраняет resident ownership и completed cleanup prefix.
+[~] Failed unload сохраняет resident ownership и completed cleanup prefix.
 
-[ ] Retry не повторяет уже committed external side effect.
+[~] Retry не повторяет уже committed external side effect.
 
 ## Budget/statistics
 
-[ ] Invalid negative time budget rejected/normalized согласно API contract.
+[~] Invalid negative time budget rejected/normalized согласно API contract.
 
-[ ] Item limit.
+[~] Item limit.
 
-[ ] Byte limit по estimated/actual semantics.
+[~] Byte limit по estimated/actual semantics.
 
-[ ] Partial step получает только remaining budget.
+[~] Partial step получает только remaining budget.
 
-[ ] Authoritative counters/identity fields reject overflow before mutation; diagnostic/statistical counters saturate только там, где это прямо зафиксировано их contract.
+[~] Authoritative counters/identity fields reject overflow before mutation; diagnostic/statistical counters saturate только там, где это прямо зафиксировано их contract.
 
-[ ] Deterministic request processing order при равном priority.
+[~] Deterministic request processing order при равном priority.
 
 ## Cleanup/history/shutdown
 
-[ ] Terminal record cleanup bounded и не удаляет mapping нового successor.
+[~] Terminal record cleanup bounded и не удаляет mapping нового successor.
 
-[ ] Shutdown terminal: новые demands rejected с первого shutdown start.
+[~] Shutdown terminal: новые demands rejected с первого shutdown start.
 
-[ ] Shutdown продолжает rollback/unload всех owned records best-effort.
+[~] Shutdown продолжает rollback/unload всех owned records best-effort.
 
-[ ] Failed cleanup retryable на следующем `Shutdown()`.
+[~] Failed cleanup retryable на следующем `Shutdown()`.
 
-[ ] `Shutdown()` complete только при отсутствии live demands/requests/temp/resident ownership.
+[~] `Shutdown()` complete только при отсутствии live demands/requests/temp/resident ownership.
 
 ## Exit 3.6
 
-[ ] Все dependency ports проверены throwing fakes.
+[~] Все dependency ports проверены throwing fakes.
 
-[ ] `EpidemicRuntimeStreamingTests` проходит Debug/Release.
+[~] `EpidemicRuntimeStreamingTests` проходит Debug/Release.
 
-[ ] Streaming = `LOCAL_READY`.
+[~] Streaming = `LOCAL_READY`.
 
 ---
 
@@ -1011,71 +1011,71 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Node identity/lifecycle
 
-[ ] Create returns valid unique ID.
+[~] Create returns valid unique ID.
 
-[ ] ID/revision exhaustion rejected before publication.
+[~] ID/revision exhaustion rejected before publication.
 
-[ ] Destroy unknown/stale node rejected.
+[~] Destroy unknown/stale node rejected.
 
-[ ] Destroy parent отсоединяет children по documented KeepWorld semantics.
+[~] Destroy parent отсоединяет children по documented KeepWorld semantics.
 
-[ ] Unbounded/deep hierarchy traversal выполняется iteratively; recursion допустима только для structurally bounded helper с явно доказанным hard bound.
+[~] Unbounded/deep hierarchy traversal выполняется iteratively; recursion допустима только для structurally bounded helper с явно доказанным hard bound.
 
 ## Hierarchy/reparent
 
-[ ] Attach valid path.
+[~] Attach valid path.
 
-[ ] Detach valid path.
+[~] Detach valid path.
 
-[ ] Self parent rejected.
+[~] Self parent rejected.
 
-[ ] Cycle rejected.
+[~] Cycle rejected.
 
-[ ] KeepWorld сохраняет observable world transform в рамках frozen approximate TRS semantics.
+[~] KeepWorld сохраняет observable world transform в рамках frozen approximate TRS semantics.
 
-[ ] KeepLocal сохраняет local transform.
+[~] KeepLocal сохраняет local transform.
 
-[ ] Reparent failure сохраняет old parent child list, new parent child list, local/world transforms и revisions.
+[~] Reparent failure сохраняет old parent child list, new parent child list, local/world transforms и revisions.
 
-[ ] Allocation failure при staging child vectors/subtree state сохраняет полный pre-state.
+[~] Allocation failure при staging child vectors/subtree state сохраняет полный pre-state.
 
 ## Transform/bounds
 
-[ ] Invalid/non-finite transform rejected before mutation.
+[~] Invalid/non-finite transform rejected before mutation.
 
-[ ] Non-invertible parent scale rejected для world->local conversion.
+[~] Non-invertible parent scale rejected для world->local conversion.
 
-[ ] SetLocalTransform и SetWorldTransform обновляют subtree world results согласованно.
+[~] SetLocalTransform и SetWorldTransform обновляют subtree world results согласованно.
 
-[ ] Bounds validation.
+[~] Bounds validation.
 
-[ ] Rotated/non-uniform/negative scale bounds.
+[~] Rotated/non-uniform/negative scale bounds.
 
-[ ] Dirty flags transient: clear dirty не повышает authoritative revision.
+[~] Dirty flags transient: clear dirty не повышает authoritative revision.
 
 ## Queries/snapshot
 
-[ ] Query AABB/Sphere input validation.
+[~] Query AABB/Sphere input validation.
 
-[ ] Query result order deterministic.
+[~] Query result order deterministic.
 
-[ ] Snapshot nodes deterministic sorted.
+[~] Snapshot nodes deterministic sorted.
 
-[ ] Snapshot detached и не содержит internal aliases.
+[~] Snapshot detached и не содержит internal aliases.
 
-[ ] Scene restore не требовать локально, если Scene официально transient materialization state. Это решение записать в dossier; восстановление выполняется системной rematerialization в Goal 5/7.
+[~] Scene restore не требовать локально, если Scene официально transient materialization state. Это решение записать в dossier; восстановление выполняется системной rematerialization в Goal 5/7.
 
 ## Scope correction
 
-[ ] Не проверять здесь `ISceneProjectionQueue`: он принадлежит Support.
+[~] Не проверять здесь `ISceneProjectionQueue`: он принадлежит Support.
 
-[ ] Локально проверять только Scene mutation interfaces и state invariants.
+[~] Локально проверять только Scene mutation interfaces и state invariants.
 
 ## Exit 3.7
 
-[ ] `EpidemicRuntimeSceneTests` проходит Debug/Release.
+[~] `EpidemicRuntimeSceneTests` проходит Debug/Release.
 
-[ ] Scene = `LOCAL_READY`.
+[~] Scene = `LOCAL_READY`.
 
 ---
 
@@ -1085,89 +1085,89 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Topology
 
-[ ] Region registration invalid/duplicate.
+[~] Region registration invalid/duplicate.
 
-[ ] Chunk registration invalid/duplicate.
+[~] Chunk registration invalid/duplicate.
 
-[ ] Chunk обязательно принадлежит зарегистрированному region.
+[~] Chunk обязательно принадлежит зарегистрированному region.
 
-[ ] Chunk state transitions validated.
+[~] Chunk state transitions validated.
 
-[ ] Unknown chunk отличается от known `Unloaded`.
+[~] Unknown chunk отличается от known `Unloaded`.
 
-[ ] Topology freeze contract: после freeze запрещённые topology mutations rejected.
+[~] Topology freeze contract: после freeze запрещённые topology mutations rejected.
 
 ## Runtime object identity
 
-[ ] RuntimeObjectId monotonic, не reused.
+[~] RuntimeObjectId monotonic, не reused.
 
-[ ] Exhaustion rejected без создания record.
+[~] Exhaustion rejected без создания record.
 
-[ ] Persistent identity index создаётся atomically вместе с object record.
+[~] Persistent identity index создаётся atomically вместе с object record.
 
-[ ] Persistent index publication allocation failure откатывает весь create/promotion.
+[~] Persistent index publication allocation failure откатывает весь create/promotion.
 
-[ ] Duplicate PersistentObjectId rejected.
+[~] Duplicate PersistentObjectId rejected.
 
-[ ] Persistent identity нельзя произвольно rename после publication.
+[~] Persistent identity нельзя произвольно rename после publication.
 
-[ ] `PlayerTouched` и более высокий persistence tier требует persistent identity.
+[~] `PlayerTouched` и более высокий persistence tier требует persistent identity.
 
-[ ] Persistence tier downgrade rejected, если contract monotonic.
+[~] Persistence tier downgrade rejected, если contract monotonic.
 
 ## Placement/containment/reality
 
-[ ] Все placement variant enums/IDs validated.
+[~] Все placement variant enums/IDs validated.
 
-[ ] Surface placement требует valid region/chunk relation.
+[~] Surface placement требует valid region/chunk relation.
 
-[ ] Owner/container missing rejected.
+[~] Owner/container missing rejected.
 
-[ ] Self-container rejected.
+[~] Self-container rejected.
 
-[ ] Containment cycle rejected.
+[~] Containment cycle rejected.
 
-[ ] Reality/residency incompatible combination rejected.
+[~] Reality/residency incompatible combination rejected.
 
-[ ] Materialize разрешён только с compatible placement.
+[~] Materialize разрешён только с compatible placement.
 
-[ ] Demote требует collapse confirmation/token semantics по contract.
+[~] Demote требует collapse confirmation/token semantics по contract.
 
-[ ] Destroyed object terminal; resurrection любой обычной mutation rejected.
+[~] Destroyed object terminal; resurrection любой обычной mutation rejected.
 
-[ ] Destroy объекта с dependents rejected либо выполняет явно documented cascade, без неявного orphaning.
+[~] Destroy объекта с dependents rejected либо выполняет явно documented cascade, без неявного orphaning.
 
 ## Revision/tokens
 
-[ ] Все mutating commands требуют expected revision там, где API это обещает.
+[~] Все mutating commands требуют expected revision там, где API это обещает.
 
-[ ] Revision conflict leaves state unchanged.
+[~] Revision conflict leaves state unchanged.
 
-[ ] Object revision exhaustion rejected before mutation.
+[~] Object revision exhaustion rejected before mutation.
 
-[ ] Demotion token содержит достаточную object/revision identity.
+[~] Demotion token содержит достаточную object/revision identity.
 
-[ ] Token invalidated при object revision change.
+[~] Token invalidated при object revision change.
 
-[ ] Revoked/forged/stale token rejected.
+[~] Revoked/forged/stale token rejected.
 
-[ ] Token publication allocation failure не потребляет ID и не меняет object.
+[~] Token publication allocation failure не потребляет ID и не меняет object.
 
-[ ] Promotion/index failure не повреждает существующие demotion tokens.
+[~] Promotion/index failure не повреждает существующие demotion tokens.
 
 ## Queries
 
-[ ] Find/query results detached.
+[~] Find/query results detached.
 
-[ ] Query by region/chunk/reality deterministic order.
+[~] Query by region/chunk/reality deterministic order.
 
-[ ] Invalid enum domains rejected до mutation.
+[~] Invalid enum domains rejected до mutation.
 
 ## Exit 3.8
 
-[ ] `EpidemicRuntimeWorldTests` проходит Debug/Release.
+[~] `EpidemicRuntimeWorldTests` проходит Debug/Release.
 
-[ ] World = `LOCAL_READY`.
+[~] World = `LOCAL_READY`.
 
 ---
 
@@ -1179,95 +1179,95 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Jobs/scheduler
 
-[ ] Submit valid job/metadata.
+[~] Submit valid job/metadata.
 
-[ ] Null job/invalid metadata rejected.
+[~] Null job/invalid metadata rejected.
 
-[ ] Handle generation stale after terminal removal/reuse.
+[~] Handle generation stale after terminal removal/reuse.
 
-[ ] Submit/generation exhaustion atomic.
+[~] Submit/generation exhaustion atomic.
 
-[ ] Pending -> Running -> Continue/Complete/Failed/Cancelled transitions.
+[~] Pending -> Running -> Continue/Complete/Failed/Cancelled transitions.
 
-[ ] Job `ExecuteStep` Result failure contained.
+[~] Job `ExecuteStep` Result failure contained.
 
-[ ] Job exception contained.
+[~] Job exception contained.
 
-[ ] Failed step не публикует synthetic Running/Completed state.
+[~] Failed step не публикует synthetic Running/Completed state.
 
-[ ] Budget exhaustion leaves job retryable/deferred without duplicate work commit.
+[~] Budget exhaustion leaves job retryable/deferred without duplicate work commit.
 
-[ ] Equal-priority/budget order deterministic.
+[~] Equal-priority/budget order deterministic.
 
 ## Cancellation/scheduling
 
-[ ] `CancelJob` вызывает job cancel boundary по contract.
+[~] `CancelJob` вызывает job cancel boundary по contract.
 
-[ ] Cancel failure/exception не теряет job ownership.
+[~] Cancel failure/exception не теряет job ownership.
 
-[ ] Associated scheduled task удаляется только в согласованной state transition.
+[~] Associated scheduled task удаляется только в согласованной state transition.
 
-[ ] Scheduled task ID exhaustion.
+[~] Scheduled task ID exhaustion.
 
-[ ] Due ordering deterministic.
+[~] Due ordering deterministic.
 
-[ ] Invalid due task не оставляет active phantom schedule.
+[~] Invalid due task не оставляет active phantom schedule.
 
-[ ] Schedule budget exhaustion defers remainder.
+[~] Schedule budget exhaustion defers remainder.
 
 ## World memory/attention/facts
 
-[ ] World memory ID exhaustion.
+[~] World memory ID exhaustion.
 
-[ ] TTL zero/negative/boundary semantics.
+[~] TTL zero/negative/boundary semantics.
 
-[ ] Expiration budget и deterministic order.
+[~] Expiration budget и deterministic order.
 
-[ ] Capacity hard limit и retention semantics.
+[~] Capacity hard limit и retention semantics.
 
-[ ] Attention finite и `[0,1]`.
+[~] Attention finite и `[0,1]`.
 
-[ ] Relevance provider failure/exception contained.
+[~] Relevance provider failure/exception contained.
 
-[ ] Abstract fact validation и revision exhaustion.
+[~] Abstract fact validation и revision exhaustion.
 
-[ ] Fact/query ordering deterministic.
+[~] Fact/query ordering deterministic.
 
 ## Proposal queue/commit
 
-[ ] Publish допускается только из legal job/source state.
+[~] Publish допускается только из legal job/source state.
 
-[ ] Proposal batch полностью validates до publication.
+[~] Proposal batch полностью validates до publication.
 
-[ ] Allocation failure публикации не оставляет partial queue entry.
+[~] Allocation failure публикации не оставляет partial queue entry.
 
-[ ] `CommitNext` external target failure означает no external commit согласно interface contract.
+[~] `CommitNext` external target failure означает no external commit согласно interface contract.
 
-[ ] Commit target exception contained.
+[~] Commit target exception contained.
 
-[ ] Failed commit оставляет batch retryable и не двигает queue ложным образом.
+[~] Failed commit оставляет batch retryable и не двигает queue ложным образом.
 
-[ ] Success commit removes exactly one batch.
+[~] Success commit removes exactly one batch.
 
-[ ] Discard semantics explicit и не маскируют committed batch.
+[~] Discard semantics explicit и не маскируют committed batch.
 
-[ ] Terminal job удерживается столько, сколько требуется pending proposal ownership.
+[~] Terminal job удерживается столько, сколько требуется pending proposal ownership.
 
 ## Shutdown
 
-[ ] Первый Shutdown запрещает new jobs/schedules/work.
+[~] Первый Shutdown запрещает new jobs/schedules/work.
 
-[ ] Pending proposals обрабатываются согласно explicit `ShutdownProposalPolicy`, не удаляются молча.
+[~] Pending proposals обрабатываются согласно explicit `ShutdownProposalPolicy`, не удаляются молча.
 
-[ ] Cancel/cleanup best-effort, повторный Shutdown продолжает незавершённое.
+[~] Cancel/cleanup best-effort, повторный Shutdown продолжает незавершённое.
 
-[ ] Complete shutdown idempotent.
+[~] Complete shutdown idempotent.
 
 ## Exit 3.9
 
-[ ] `EpidemicRuntimeSimulationTests` проходит Debug/Release.
+[~] `EpidemicRuntimeSimulationTests` проходит Debug/Release.
 
-[ ] Simulation = `LOCAL_READY`.
+[~] Simulation = `LOCAL_READY`.
 
 ---
 
@@ -1279,81 +1279,81 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Shape/body ownership
 
-[ ] Shape registration input validation и duplicate ID.
+[~] Shape registration input validation и duplicate ID.
 
-[ ] Shape backend creation failure/exception не публикует registry record.
+[~] Shape backend creation failure/exception не публикует registry record.
 
-[ ] Shape publication allocation failure уничтожает созданный backend shape либо сохраняет retry cleanup ownership.
+[~] Shape publication allocation failure уничтожает созданный backend shape либо сохраняет retry cleanup ownership.
 
-[ ] Unregister shape while referenced rejected.
+[~] Unregister shape while referenced rejected.
 
-[ ] Body create validates shape, transform, motion parameters и enums до backend call.
+[~] Body create validates shape, transform, motion parameters и enums до backend call.
 
-[ ] Backend body creation failure/exception не публикует body record.
+[~] Backend body creation failure/exception не публикует body record.
 
-[ ] Body publication allocation failure выполняет rollback либо durable cleanup.
+[~] Body publication allocation failure выполняет rollback либо durable cleanup.
 
-[ ] Stale body handle rejected.
+[~] Stale body handle rejected.
 
-[ ] Body generation/shape revision/ID exhaustion atomic.
+[~] Body generation/shape revision/ID exhaustion atomic.
 
 ## Simulation
 
-[ ] Fixed step default/configured values.
+[~] Fixed step default/configured values.
 
-[ ] Accumulator handles zero/normal/large delta.
+[~] Accumulator handles zero/normal/large delta.
 
-[ ] `max_substeps` ограничивает work и сохраняет remainder по contract.
+[~] `max_substeps` ограничивает work и сохраняет remainder по contract.
 
-[ ] Frame/step time counters overflow-safe.
+[~] Frame/step time counters overflow-safe.
 
-[ ] Backend `SimulateFixed` failure/exception не приводит к локальному ложному advancement.
+[~] Backend `SimulateFixed` failure/exception не приводит к локальному ложному advancement.
 
-[ ] Backend snapshot batch fully validates before applying any body update.
+[~] Backend snapshot batch fully validates before applying any body update.
 
-[ ] Invalid one-body snapshot не оставляет partial writes другим bodies.
+[~] Invalid one-body snapshot не оставляет partial writes другим bodies.
 
-[ ] Retry после backend sync failure не resimulates already committed backend step, если contract требует только retry projection/sync.
+[~] Retry после backend sync failure не resimulates already committed backend step, если contract требует только retry projection/sync.
 
 ## Transform boundary
 
-[ ] Transform source failure before simulation controlled.
+[~] Transform source failure before simulation controlled.
 
-[ ] Transform sink failure после authoritative backend commit сохраняет pending projection/retry state.
+[~] Transform sink failure после authoritative backend commit сохраняет pending projection/retry state.
 
-[ ] Retry sink publication не выполняет physical step второй раз.
+[~] Retry sink publication не выполняет physical step второй раз.
 
-[ ] Здесь тестируется neutral `IPhysicsTransformSink`, не конкретный Scene queue.
+[~] Здесь тестируется neutral `IPhysicsTransformSink`, не конкретный Scene queue.
 
 ## Contacts/query
 
-[ ] Begin/Persist/End contact semantics explicit.
+[~] Begin/Persist/End contact semantics explicit.
 
-[ ] Invalid backend contact payload dropped/rejected atomically.
+[~] Invalid backend contact payload dropped/rejected atomically.
 
-[ ] Duplicate contact publication policy explicit.
+[~] Duplicate contact publication policy explicit.
 
-[ ] Raycast validates finite origin/direction/max distance.
+[~] Raycast validates finite origin/direction/max distance.
 
-[ ] Backend raycast hit referencing unknown body rejected.
+[~] Backend raycast hit referencing unknown body rejected.
 
 ## Shutdown
 
-[ ] Destroy body failure retains body/handle for retry.
+[~] Destroy body failure retains body/handle for retry.
 
-[ ] Destroy shape failure retains shape for retry.
+[~] Destroy shape failure retains shape for retry.
 
-[ ] Shutdown пытается независимые cleanup steps best-effort.
+[~] Shutdown пытается независимые cleanup steps best-effort.
 
-[ ] Shape не уничтожается раньше body, который её использует.
+[~] Shape не уничтожается раньше body, который её использует.
 
-[ ] Repeated Shutdown continues pending cleanup и становится idempotent после completion.
+[~] Repeated Shutdown continues pending cleanup и становится idempotent после completion.
 
 ## Exit 3.10
 
-[ ] `EpidemicRuntimePhysicsTests` проходит Debug/Release.
+[~] `EpidemicRuntimePhysicsTests` проходит Debug/Release.
 
-[ ] Physics = `LOCAL_READY`.
+[~] Physics = `LOCAL_READY`.
 
 ---
 
@@ -1365,63 +1365,63 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Tiles/revision
 
-[ ] `RegisterTile` invalid/duplicate ID и invalid enum state.
+[~] `RegisterTile` invalid/duplicate ID и invalid enum state.
 
-[ ] Tile state transition matrix.
+[~] Tile state transition matrix.
 
-[ ] Repeated `MarkTileDirty` является defined no-op и не создаёт duplicate work.
+[~] Repeated `MarkTileDirty` является defined no-op и не создаёт duplicate work.
 
-[ ] Dirty rebuild deterministic order.
+[~] Dirty rebuild deterministic order.
 
-[ ] Tile/navigation revision overflow rejected before publication.
+[~] Tile/navigation revision overflow rejected before publication.
 
-[ ] Item/byte budget rebuild semantics documented и tested.
+[~] Item/byte budget rebuild semantics documented и tested.
 
 ## Path request identity
 
-[ ] Invalid start/target region/coordinates/non-finite values rejected.
+[~] Invalid start/target region/coordinates/non-finite values rejected.
 
-[ ] Query handle ID/generation exhaustion.
+[~] Query handle ID/generation exhaustion.
 
-[ ] Cancel pending/partial query.
+[~] Cancel pending/partial query.
 
-[ ] Cancel terminal query semantics.
+[~] Cancel terminal query semantics.
 
-[ ] Released handle stale.
+[~] Released handle stale.
 
-[ ] TTL-expired record stale.
+[~] TTL-expired record stale.
 
-[ ] Stale generation не видит новый query record.
+[~] Stale generation не видит новый query record.
 
 ## Provider/backend boundary
 
-[ ] `INavigationDataSource::CurrentRevision` exception contained.
+[~] `INavigationDataSource::CurrentRevision` exception contained.
 
-[ ] Cost provider exception contained.
+[~] Cost provider exception contained.
 
-[ ] Obstacle provider exception contained.
+[~] Obstacle provider exception contained.
 
-[ ] Backend failure/exception contained.
+[~] Backend failure/exception contained.
 
-[ ] Backend `PathResult` validates finite points, legal state, start/target contract и expected source revision before publication.
+[~] Backend `PathResult` validates finite points, legal state, start/target contract и expected source revision before publication.
 
-[ ] Source revision change делает старый query/result stale по contract.
+[~] Source revision change делает старый query/result stale по contract.
 
-[ ] Partial/deferred/no-path/success states однозначно различаются.
+[~] Partial/deferred/no-path/success states однозначно различаются.
 
-[ ] Equal-order query processing deterministic under budget.
+[~] Equal-order query processing deterministic under budget.
 
 ## Scope correction
 
-[ ] Не требовать local Shutdown: такого API нет.
+[~] Не требовать local Shutdown: такого API нет.
 
-[ ] Environment -> Navigation projection adapter проверяется в 3.17 Support. Локально Navigation проверяет только neutral provider behavior.
+[~] Environment -> Navigation projection adapter проверяется в 3.17 Support. Локально Navigation проверяет только neutral provider behavior.
 
 ## Exit 3.11
 
-[ ] `EpidemicRuntimeNavigationTests` проходит Debug/Release.
+[~] `EpidemicRuntimeNavigationTests` проходит Debug/Release.
 
-[ ] Navigation = `LOCAL_READY`.
+[~] Navigation = `LOCAL_READY`.
 
 ---
 
@@ -1433,75 +1433,75 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Registry/resources
 
-[ ] Skeleton ID/descriptor validation.
+[~] Skeleton ID/descriptor validation.
 
-[ ] Clip ID/descriptor validation.
+[~] Clip ID/descriptor validation.
 
-[ ] Duplicate skeleton/clip rejected.
+[~] Duplicate skeleton/clip rejected.
 
-[ ] Skeleton/clip compatibility validated.
+[~] Skeleton/clip compatibility validated.
 
-[ ] Registry Freeze idempotent; registration after freeze rejected.
+[~] Registry Freeze idempotent; registration after freeze rejected.
 
-[ ] `IAnimationResourceSource` failure/exception contained.
+[~] `IAnimationResourceSource` failure/exception contained.
 
-[ ] Loaded descriptor полностью validated before registry/animator publication.
+[~] Loaded descriptor полностью validated before registry/animator publication.
 
 ## Animator lifecycle
 
-[ ] Create/destroy handle generation semantics.
+[~] Create/destroy handle generation semantics.
 
-[ ] ID/generation/revision exhaustion atomic.
+[~] ID/generation/revision exhaustion atomic.
 
-[ ] Stale handle rejected for every mutator/query.
+[~] Stale handle rejected for every mutator/query.
 
-[ ] Play/Pause/Stop state matrix.
+[~] Play/Pause/Stop state matrix.
 
-[ ] Play invalid clip rejected without mutation.
+[~] Play invalid clip rejected without mutation.
 
-[ ] Crossfade with/without current clip.
+[~] Crossfade with/without current clip.
 
-[ ] Loop setting isolated per animator; immutable clip metadata не mutates.
+[~] Loop setting isolated per animator; immutable clip metadata не mutates.
 
-[ ] Playback rate finite/valid.
+[~] Playback rate finite/valid.
 
-[ ] Fractional playback accumulation deterministic.
+[~] Fractional playback accumulation deterministic.
 
-[ ] LOD state transition and placeholder pose semantics.
+[~] LOD state transition and placeholder pose semantics.
 
 ## Evaluation/pose/events
 
-[ ] Evaluator failure/exception не публикует partial pose.
+[~] Evaluator failure/exception не публикует partial pose.
 
-[ ] Pose buffer owner matches animator owner.
+[~] Pose buffer owner matches animator owner.
 
-[ ] Закрыть `G3-ANIM-001`: pose sink вызывается на полностью staged pose до no-throw authoritative animator/event commit.
+[~] Закрыть `G3-ANIM-001`: pose sink вызывается на полностью staged pose до no-throw authoritative animator/event commit.
 
-[ ] Sink Result failure и exception оставляют animator snapshot, cached pose, event buffer и revision в pre-call state; retry эквивалентен clean Tick.
+[~] Sink Result failure и exception оставляют animator snapshot, cached pose, event buffer и revision в pre-call state; retry эквивалентен clean Tick.
 
-[ ] Закрыть `G3-ANIM-002`: semantic events не теряются silently на allocation failure; event buffer staging входит в ту же transaction semantics, что animator mutation.
+[~] Закрыть `G3-ANIM-002`: semantic events не теряются silently на allocation failure; event buffer staging входит в ту же transaction semantics, что animator mutation.
 
-[ ] Event buffer hard bound и overflow policy остаются explicit/deterministic, включая zero configured capacity fallback.
+[~] Event buffer hard bound и overflow policy остаются explicit/deterministic, включая zero configured capacity fallback.
 
-[ ] Play, Stop, Crossfade, loop/finished Tick events проверены на allocation failure до commit и при full buffer.
+[~] Play, Stop, Crossfade, loop/finished Tick events проверены на allocation failure до commit и при full buffer.
 
-[ ] Tick processing order deterministic.
+[~] Tick processing order deterministic.
 
-[ ] Event Clear semantics не mutates animator state.
+[~] Event Clear semantics не mutates animator state.
 
 ## Scope correction
 
-[ ] Не проверять `ResourceLease` здесь. Animation не видит Resources API.
+[~] Не проверять `ResourceLease` здесь. Animation не видит Resources API.
 
-[ ] Реальный resource lease lifetime проверяется в `Resources -> Animation` adapter 3.17.
+[~] Реальный resource lease lifetime проверяется в `Resources -> Animation` adapter 3.17.
 
-[ ] Не требовать local Shutdown: public Animation lifecycle такого метода не имеет.
+[~] Не требовать local Shutdown: public Animation lifecycle такого метода не имеет.
 
 ## Exit 3.12
 
-[ ] `EpidemicRuntimeAnimationTests` проходит Debug/Release.
+[~] `EpidemicRuntimeAnimationTests` проходит Debug/Release.
 
-[ ] Animation = `LOCAL_READY`.
+[~] Animation = `LOCAL_READY`.
 
 ---
 
@@ -1511,83 +1511,83 @@ Goal 2 закрыт. Текущий admission baseline:
 
 Фактическая роль: sound registry, emitter/listener handles, backend voices, fades, mixer, one-shot event queue и terminal shutdown.
 
-[ ] Закрыть `G3-AUDIO-001`: backend command/retry contract исключает повторное temporal advance и недокументированный commit-on-failure.
+[~] Закрыть `G3-AUDIO-001`: backend command/retry contract исключает повторное temporal advance и недокументированный commit-on-failure.
 
-[ ] Закрыть `G3-AUDIO-002`: cleanup ownership для newly-created voice preflight-ится до `CreateVoice()` и не может потеряться при failed rollback.
+[~] Закрыть `G3-AUDIO-002`: cleanup ownership для newly-created voice preflight-ится до `CreateVoice()` и не может потеряться при failed rollback.
 
 ## Sound/emitter/listener identity
 
-[ ] Sound descriptor enums/numerics validated.
+[~] Sound descriptor enums/numerics validated.
 
-[ ] Duplicate sound ID rejected.
+[~] Duplicate sound ID rejected.
 
-[ ] Emitter create input validated before resource/backend effects.
+[~] Emitter create input validated before resource/backend effects.
 
-[ ] Emitter ID/generation/revision exhaustion atomic.
+[~] Emitter ID/generation/revision exhaustion atomic.
 
-[ ] Listener ID/generation exhaustion atomic.
+[~] Listener ID/generation exhaustion atomic.
 
-[ ] Stale emitter/listener handles rejected.
+[~] Stale emitter/listener handles rejected.
 
-[ ] Listener publication failure после backend create выполняет rollback либо сохраняет pending cleanup ownership.
+[~] Listener publication failure после backend create выполняет rollback либо сохраняет pending cleanup ownership.
 
-[ ] Main listener switch atomic; failed selection не теряет старый main listener.
+[~] Main listener switch atomic; failed selection не теряет старый main listener.
 
 ## Playback/fade/virtualization
 
-[ ] Play/Pause/Resume/Stop transition matrix.
+[~] Play/Pause/Resume/Stop transition matrix.
 
-[ ] Backend CreateVoice/Play/Pause/Stop/SetGain/SetSpatial exception/failure contained.
+[~] Backend CreateVoice/Play/Pause/Stop/SetGain/SetSpatial exception/failure contained.
 
-[ ] Play failure не оставляет phantom Playing state.
+[~] Play failure не оставляет phantom Playing state.
 
-[ ] Fade zero duration, normal duration, completion.
+[~] Fade zero duration, normal duration, completion.
 
-[ ] Fade pause/resume continuation.
+[~] Fade pause/resume continuation.
 
-[ ] Failed fade/backend mutation preserves local state или explicit reconciliation.
+[~] Failed fade/backend mutation preserves local state или explicit reconciliation.
 
-[ ] Virtualize destroys backend voice exactly once и keeps semantic emitter alive.
+[~] Virtualize destroys backend voice exactly once и keeps semantic emitter alive.
 
-[ ] Replay virtualized emitter follows documented restart behavior.
+[~] Replay virtualized emitter follows documented restart behavior.
 
-[ ] One-shot completion and cleanup.
+[~] One-shot completion and cleanup.
 
-[ ] Tick failure не advances local fade/playback state falsely.
+[~] Tick failure не advances local fade/playback state falsely.
 
 ## Mixer/events/resources
 
-[ ] Mixer group ID/enum/gain validation.
+[~] Mixer group ID/enum/gain validation.
 
-[ ] Mixer parent cycle rejected.
+[~] Mixer parent cycle rejected.
 
-[ ] Effective gain propagation deterministic.
+[~] Effective gain propagation deterministic.
 
-[ ] Event queue bound и overflow policy explicit.
+[~] Event queue bound и overflow policy explicit.
 
-[ ] Resource source failure/exception contained.
+[~] Resource source failure/exception contained.
 
-[ ] Stream read contract validated.
+[~] Stream read contract validated.
 
-[ ] Реальный ResourceLease ownership wrapper проверяется в Support 3.17.
+[~] Реальный ResourceLease ownership wrapper проверяется в Support 3.17.
 
 ## Shutdown
 
-[ ] First shutdown terminal: new work rejected.
+[~] First shutdown terminal: new work rejected.
 
-[ ] Voice/listener cleanup best-effort.
+[~] Voice/listener cleanup best-effort.
 
-[ ] Failed cleanup retains handles for retry.
+[~] Failed cleanup retains handles for retry.
 
-[ ] Successful cleanup removes ownership exactly once.
+[~] Successful cleanup removes ownership exactly once.
 
-[ ] Repeated shutdown continues unfinished work и idempotent after complete.
+[~] Repeated shutdown continues unfinished work и idempotent after complete.
 
 ## Exit 3.13
 
-[ ] `EpidemicRuntimeAudioTests` проходит Debug/Release.
+[~] `EpidemicRuntimeAudioTests` проходит Debug/Release.
 
-[ ] Audio = `LOCAL_READY`.
+[~] Audio = `LOCAL_READY`.
 
 ---
 
@@ -1597,65 +1597,65 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Registration
 
-[ ] Region registration requires complete valid weather/season/climate state.
+[~] Region registration requires complete valid weather/season/climate state.
 
-[ ] Partial initialization rejected before mutation.
+[~] Partial initialization rejected before mutation.
 
-[ ] Duplicate region rejected.
+[~] Duplicate region rejected.
 
-[ ] Allocation failure publication preserves revision and region map.
+[~] Allocation failure publication preserves revision and region map.
 
-[ ] Registration freeze idempotent; new regions/surfaces rejected after freeze as defined.
+[~] Registration freeze idempotent; new regions/surfaces rejected after freeze as defined.
 
-[ ] Enum domains validated.
+[~] Enum domains validated.
 
 ## Region/surface ownership
 
-[ ] Per-region revision conflicts isolated: change region A не создаёт false conflict в B.
+[~] Per-region revision conflicts isolated: change region A не создаёт false conflict в B.
 
-[ ] Existing `SurfaceId` нельзя move в другой region.
+[~] Existing `SurfaceId` нельзя move в другой region.
 
-[ ] Duplicate surface ownership in one batch rejected transactionally.
+[~] Duplicate surface ownership in one batch rejected transactionally.
 
-[ ] Unknown region/surface query controlled.
+[~] Unknown region/surface query controlled.
 
-[ ] Weather/climate/season/surface numeric values finite и within contract.
+[~] Weather/climate/season/surface numeric values finite и within contract.
 
-[ ] Wind direction normalization/validation deterministic.
+[~] Wind direction normalization/validation deterministic.
 
 ## Updates
 
-[ ] Empty update no-op без revision bump.
+[~] Empty update no-op без revision bump.
 
-[ ] Setter same value no-op без revision bump.
+[~] Setter same value no-op без revision bump.
 
-[ ] Batch validates полностью до commit.
+[~] Batch validates полностью до commit.
 
-[ ] Invalid one entry leaves all regions/surfaces unchanged.
+[~] Invalid one entry leaves all regions/surfaces unchanged.
 
-[ ] Update policy Result failure contained.
+[~] Update policy Result failure contained.
 
-[ ] Update policy exception contained.
+[~] Update policy exception contained.
 
-[ ] Policy output ownership/enum/numeric validation перед commit.
+[~] Policy output ownership/enum/numeric validation перед commit.
 
-[ ] Revision exhaustion rejected before mutation.
+[~] Revision exhaustion rejected before mutation.
 
 ## Snapshot/projection
 
-[ ] Snapshot detached, complete и revisioned.
+[~] Snapshot detached, complete и revisioned.
 
-[ ] Projection consistent with authoritative region/surface state.
+[~] Projection consistent with authoritative region/surface state.
 
-[ ] Snapshot/order deterministic where collections observable.
+[~] Snapshot/order deterministic where collections observable.
 
-[ ] Local restore не требовать, пока public API declares Environment state as runtime-owned/transient. Persistence role решить в Goal 5 map без скрытого обещания `EnvironmentSnapshot` как restore format.
+[~] Local restore не требовать, пока public API declares Environment state as runtime-owned/transient. Persistence role решить в Goal 5 map без скрытого обещания `EnvironmentSnapshot` как restore format.
 
 ## Exit 3.14
 
-[ ] `EpidemicRuntimeEnvironmentTests` проходит Debug/Release.
+[~] `EpidemicRuntimeEnvironmentTests` проходит Debug/Release.
 
-[ ] Environment = `LOCAL_READY`.
+[~] Environment = `LOCAL_READY`.
 
 ---
 
@@ -1667,81 +1667,81 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Factory/dependencies
 
-[ ] Strict/production profile требует command sink/resource bridge/scene source согласно actual factory contract.
+[~] Strict/production profile требует command sink/resource bridge/scene source согласно actual factory contract.
 
-[ ] Mock/reference profile явно отделён от production behavior.
+[~] Mock/reference profile явно отделён от production behavior.
 
-[ ] Dependency null/missing/throwing cases controlled.
+[~] Dependency null/missing/throwing cases controlled.
 
 ## Proxy/view identity
 
-[ ] Proxy descriptor validation, including finite transforms/visibility/layer/resource IDs.
+[~] Proxy descriptor validation, including finite transforms/visibility/layer/resource IDs.
 
-[ ] Proxy ID exhaustion atomic.
+[~] Proxy ID exhaustion atomic.
 
-[ ] Proxy publication allocation failure не acquires resources и не consumes ID.
+[~] Proxy publication allocation failure не acquires resources и не consumes ID.
 
-[ ] Register/update/remove lifecycle.
+[~] Register/update/remove lifecycle.
 
-[ ] Deferred destroy retains resource ownership until successful release.
+[~] Deferred destroy retains resource ownership until successful release.
 
-[ ] Failed release preserves exact pending cleanup prefix for retry.
+[~] Failed release preserves exact pending cleanup prefix for retry.
 
-[ ] View create/update/remove/main-view lifecycle.
+[~] View create/update/remove/main-view lifecycle.
 
-[ ] Main view invalid/missing behavior explicit.
+[~] Main view invalid/missing behavior explicit.
 
-[ ] Camera numeric inputs finite/valid.
+[~] Camera numeric inputs finite/valid.
 
 ## Resource/scene/pose boundaries
 
-[ ] Resource bridge acquire failure/exception не публикует Ready proxy falsely.
+[~] Resource bridge acquire failure/exception не публикует Ready proxy falsely.
 
-[ ] Permanent resource failure maps to explicit failed state.
+[~] Permanent resource failure maps to explicit failed state.
 
-[ ] Missing/not-ready resource skips/defer semantics.
+[~] Missing/not-ready resource skips/defer semantics.
 
-[ ] Scene transform source failure/exception controlled.
+[~] Scene transform source failure/exception controlled.
 
-[ ] Animation pose source failure/exception controlled.
+[~] Animation pose source failure/exception controlled.
 
-[ ] `PrepareFrame` stages all fallible transform/pose reads before publishing staged frame state.
+[~] `PrepareFrame` stages all fallible transform/pose reads before publishing staged frame state.
 
-[ ] Failure одного staged read не leaves partial transformed proxy state.
+[~] Failure одного staged read не leaves partial transformed proxy state.
 
 ## Frame lifecycle
 
-[ ] Legal order `PrepareFrame -> RenderFrame`.
+[~] Legal order `PrepareFrame -> RenderFrame`.
 
-[ ] Render without prepared frame rejected.
+[~] Render without prepared frame rejected.
 
-[ ] Repeated prepare/render invalid transitions controlled.
+[~] Repeated prepare/render invalid transitions controlled.
 
-[ ] Submission order deterministic by documented layer/proxy key.
+[~] Submission order deterministic by documented layer/proxy key.
 
-[ ] Command sink Begin/Submit/End failures/exceptions have explicit abort semantics.
+[~] Command sink Begin/Submit/End failures/exceptions have explicit abort semantics.
 
-[ ] Submit failure не leaves renderer in sticky corrupt state unless explicit terminal failure contract says so.
+[~] Submit failure не leaves renderer in sticky corrupt state unless explicit terminal failure contract says so.
 
-[ ] Dirty flags clear only after successful applicable frame commit.
+[~] Dirty flags clear only after successful applicable frame commit.
 
 ## Shutdown
 
-[ ] First Shutdown enters terminal lifecycle and new render work rejected.
+[~] First Shutdown enters terminal lifecycle and new render work rejected.
 
-[ ] All proxies/resource holds cleanup best-effort.
+[~] All proxies/resource holds cleanup best-effort.
 
-[ ] Failed releases remain retryable.
+[~] Failed releases remain retryable.
 
-[ ] Repeated Shutdown completes remaining cleanup.
+[~] Repeated Shutdown completes remaining cleanup.
 
-[ ] No resize/recreate checklist here: Renderer API такого contract не имеет.
+[~] No resize/recreate checklist here: Renderer API такого contract не имеет.
 
 ## Exit 3.15
 
-[ ] `EpidemicRuntimeRendererTests` проходит Debug/Release.
+[~] `EpidemicRuntimeRendererTests` проходит Debug/Release.
 
-[ ] Renderer = `LOCAL_READY`.
+[~] Renderer = `LOCAL_READY`.
 
 ---
 
@@ -1753,77 +1753,77 @@ Goal 2 закрыт. Текущий admission baseline:
 
 ## Transaction lifecycle
 
-[ ] Begin transaction captures base revision/version required for conflict detection.
+[~] Begin transaction captures base revision/version required for conflict detection.
 
-[ ] Staged operations ordered deterministically.
+[~] Staged operations ordered deterministically.
 
-[ ] Operation allocation failure не добавляет partial staged operation.
+[~] Operation allocation failure не добавляет partial staged operation.
 
-[ ] Rollback discards staged operations и terminal state explicit.
+[~] Rollback discards staged operations и terminal state explicit.
 
-[ ] Commit success terminal.
+[~] Commit success terminal.
 
-[ ] Failed commit terminal/retry semantics explicit.
+[~] Failed commit terminal/retry semantics explicit.
 
-[ ] Repeated Commit/Rollback after terminal state follows fixed contract.
+[~] Repeated Commit/Rollback after terminal state follows fixed contract.
 
-[ ] Concurrent transaction conflict rejected without publishing stale candidate.
+[~] Concurrent transaction conflict rejected without publishing stale candidate.
 
-[ ] Empty transaction semantics defined.
+[~] Empty transaction semantics defined.
 
 ## Candidate validation
 
-[ ] Upsert record full ID/location/kind/protection/payload/revision validation.
+[~] Upsert record full ID/location/kind/protection/payload/revision validation.
 
-[ ] Delete active record atomically removes active state, creates tombstone and removes associated lazy rules according to contract.
+[~] Delete active record atomically removes active state, creates tombstone and removes associated lazy rules according to contract.
 
-[ ] Active record и tombstone cannot coexist.
+[~] Active record и tombstone cannot coexist.
 
-[ ] Duplicate IDs inside candidate snapshot rejected.
+[~] Duplicate IDs inside candidate snapshot rejected.
 
-[ ] Lazy rule target must exist unless specific administrative restore contract permits otherwise.
+[~] Lazy rule target must exist unless specific administrative restore contract permits otherwise.
 
-[ ] `UpdateLazyRule` missing ID rejected, not upsert.
+[~] `UpdateLazyRule` missing ID rejected, not upsert.
 
-[ ] Zone override contents validated and detached.
+[~] Zone override contents validated and detached.
 
-[ ] Persisted enum/protection mask domains validated.
+[~] Persisted enum/protection mask domains validated.
 
-[ ] Revision overflow rejected before backend call/publication.
+[~] Revision overflow rejected before backend call/publication.
 
-[ ] Candidate build allocation failure leaves live store and backend untouched.
+[~] Candidate build allocation failure leaves live store and backend untouched.
 
 ## Backend atomicity
 
-[ ] Backend load invalid snapshot rejected before live publication.
+[~] Backend load invalid snapshot rejected before live publication.
 
-[ ] Backend `CommitSnapshot` Result failure leaves previous durable snapshot и previous live state authoritative.
+[~] Backend `CommitSnapshot` Result failure leaves previous durable snapshot и previous live state authoritative.
 
-[ ] Backend exception contained.
+[~] Backend exception contained.
 
-[ ] `PersistenceDurability::MemoryOnly`, `SaveRequired` и `SaveAndFlushRequired` передаются в существующий `CommitSnapshot(snapshot, durability)` contract без изобретения отдельных `Save()`/`Flush()` APIs.
+[~] `PersistenceDurability::MemoryOnly`, `SaveRequired` и `SaveAndFlushRequired` передаются в существующий `CommitSnapshot(snapshot, durability)` contract без изобретения отдельных `Save()`/`Flush()` APIs.
 
-[ ] Для non-memory durability live store публикует candidate только после successful backend `CommitSnapshot`.
+[~] Для non-memory durability live store публикует candidate только после successful backend `CommitSnapshot`.
 
-[ ] Atomic replacement semantics proven with backend fake that observes old/new snapshot и requested durability.
+[~] Atomic replacement semantics proven with backend fake that observes old/new snapshot и requested durability.
 
 ## Queries/snapshot
 
-[ ] Missing record/lazy rule/tombstone/override behavior explicit.
+[~] Missing record/lazy rule/tombstone/override behavior explicit.
 
-[ ] Returned records/payloads detached from mutable internal storage.
+[~] Returned records/payloads detached from mutable internal storage.
 
-[ ] Snapshot deterministic order.
+[~] Snapshot deterministic order.
 
-[ ] Rich tombstones and zone overrides roundtrip through backend snapshot.
+[~] Rich tombstones and zone overrides roundtrip through backend snapshot.
 
-[ ] Administrative transaction APIs remain separated from ordinary save mutation permissions.
+[~] Administrative transaction APIs remain separated from ordinary save mutation permissions.
 
 ## Exit 3.16
 
-[ ] `EpidemicRuntimePersistenceTests` проходит Debug/Release.
+[~] `EpidemicRuntimePersistenceTests` проходит Debug/Release.
 
-[ ] Persistence = `LOCAL_READY`.
+[~] Persistence = `LOCAL_READY`.
 
 ---
 
@@ -1837,169 +1837,169 @@ Support является самым большим локальным Runtime au
 
 ## 3.17.A. Preparation и aggregate commit
 
-[ ] `PrepareEngineRuntime()` выполняет полный preflight dependencies/options до публикации в `Application`.
+[~] `PrepareEngineRuntime()` выполняет полный preflight dependencies/options до публикации в `Application`.
 
-[ ] Failed prepare не меняет ServiceContainer/Application/frame handlers.
+[~] Failed prepare не меняет ServiceContainer/Application/frame handlers.
 
-[ ] Все созданные majors/adapters принадлежат только `PreparedEngineRuntime` до commit.
+[~] Все созданные majors/adapters принадлежат только `PreparedEngineRuntime` до commit.
 
-[ ] `CommitPreparedRuntime()` регистрирует aggregate `EngineRuntimeServices` атомарно.
+[~] `CommitPreparedRuntime()` регистрирует aggregate `EngineRuntimeServices` атомарно.
 
-[ ] Duplicate aggregate registration controlled и pre-existing services не повреждаются.
+[~] Duplicate aggregate registration controlled и pre-existing services не повреждаются.
 
-[ ] `RegisterDefaultEngineRuntime()` не реализован как последовательность `RegisterXxx` с partial root mutation.
+[~] `RegisterDefaultEngineRuntime()` не реализован как последовательность `RegisterXxx` с partial root mutation.
 
-[ ] Allocation failure в final aggregate publication оставляет Application pre-state.
+[~] Allocation failure в final aggregate publication оставляет Application pre-state.
 
-[ ] Каждый public `RegisterXxx` helper атомарен относительно полного service bundle, который он публикует: failure оставляет `Application`/`ServiceContainer` в pre-call state. Bootstrap-only status не используется как исключение из atomicity.
+[~] Каждый public `RegisterXxx` helper атомарен относительно полного service bundle, который он публикует: failure оставляет `Application`/`ServiceContainer` в pre-call state. Bootstrap-only status не используется как исключение из atomicity.
 
 ## 3.17.B. Profiles/dependency ownership
 
-[ ] Reference profile создаёт только разрешённые reference backends.
+[~] Reference profile создаёт только разрешённые reference backends.
 
-[ ] Production profile preflight требует renderer command sink, physics backend, navigation backend, animation evaluator, audio backend, simulation commit target и обязательный streaming manifest source согласно current contract.
+[~] Production profile preflight требует renderer command sink, physics backend, navigation backend, animation evaluator, audio backend, simulation commit target и обязательный streaming manifest source согласно current contract.
 
-[ ] Missing production role rejected до создания/commit composition root.
+[~] Missing production role rejected до создания/commit composition root.
 
-[ ] Partial override composite roles rejected.
+[~] Partial override composite roles rejected.
 
-[ ] Один adapter object используется для всех объявленных interface roles, без hidden duplicate state owners.
+[~] Один adapter object используется для всех объявленных interface roles, без hidden duplicate state owners.
 
-[ ] `EngineRuntimeServices.registered_majors` точно соответствует фактически созданным majors и не используется как второй owner state.
+[~] `EngineRuntimeServices.registered_majors` точно соответствует фактически созданным majors и не используется как второй owner state.
 
 ## 3.17.C. Scene -> Renderer
 
-[ ] Scene source adapter возвращает detached/valid transform data.
+[~] Scene source adapter возвращает detached/valid transform data.
 
-[ ] Missing scene node/resource maps to controlled renderer behavior.
+[~] Missing scene node/resource maps to controlled renderer behavior.
 
-[ ] Adapter exception boundary contained.
+[~] Adapter exception boundary contained.
 
-[ ] Нет обратной mutation Renderer -> Scene через этот adapter.
+[~] Нет обратной mutation Renderer -> Scene через этот adapter.
 
 ## 3.17.D. Resources -> Renderer
 
-[ ] Render resource bridge получает отдельный `ResourceLease` на ownership proxy.
+[~] Render resource bridge получает отдельный `ResourceLease` на ownership proxy.
 
-[ ] Publication failure после lease acquisition releases lease либо сохраняет retry ownership.
+[~] Publication failure после lease acquisition releases lease либо сохраняет retry ownership.
 
-[ ] Proxy destroy releases exactly its own lease.
+[~] Proxy destroy releases exactly its own lease.
 
-[ ] Failed release retry не double-releases completed prefix.
+[~] Failed release retry не double-releases completed prefix.
 
-[ ] Mesh/material payload type mapping validates concrete payload kind before exposure.
+[~] Mesh/material payload type mapping validates concrete payload kind before exposure.
 
 ## 3.17.E. Scene -> Physics
 
-[ ] Physics reads source transforms через adapter.
+[~] Physics reads source transforms через adapter.
 
-[ ] Physics writes не mutates Scene немедленно: они staging-ятся в `ISceneProjectionQueue`.
+[~] Physics writes не mutates Scene немедленно: они staging-ятся в `ISceneProjectionQueue`.
 
-[ ] Queue publication failure preserves physics retry semantics and Scene pre-state.
+[~] Queue publication failure preserves physics retry semantics and Scene pre-state.
 
-[ ] `Flush()` applies projections deterministic order.
+[~] `Flush()` applies projections deterministic order.
 
-[ ] Failed Scene write does not drop uncommitted queue entry.
+[~] Failed Scene write does not drop uncommitted queue entry.
 
-[ ] Retry does not reapply already committed entries.
+[~] Retry does not reapply already committed entries.
 
-[ ] `DiscardPending()` semantics explicit.
+[~] `DiscardPending()` semantics explicit.
 
 ## 3.17.F. Scene -> Audio
 
-[ ] Audio transform source validates missing/stale scene transform.
+[~] Audio transform source validates missing/stale scene transform.
 
-[ ] Failed transform read does not partially update emitter/listener state.
+[~] Failed transform read does not partially update emitter/listener state.
 
-[ ] No Scene ownership retained beyond documented detached transform result.
+[~] No Scene ownership retained beyond documented detached transform result.
 
 ## 3.17.G. Resources -> Animation
 
-[ ] Skeleton/clip mapping creates ResourceRequest with correct ResourceId/ResourceType.
+[~] Skeleton/clip mapping creates ResourceRequest with correct ResourceId/ResourceType.
 
-[ ] Adapter owns lease only during load/copy lifetime.
+[~] Adapter owns lease only during load/copy lifetime.
 
-[ ] Ready payload descriptor copied/detached before lease release.
+[~] Ready payload descriptor copied/detached before lease release.
 
-[ ] Failure before copy releases lease.
+[~] Failure before copy releases lease.
 
-[ ] Failure releasing lease preserves explicit cleanup ownership if release can fail.
+[~] Failure releasing lease preserves explicit cleanup ownership if release can fail.
 
-[ ] Wrong payload type rejected.
+[~] Wrong payload type rejected.
 
 ## 3.17.H. Resources -> Audio
 
-[ ] Закрыть `G3-SUP-004` и `G3-SUP-005`: lease acquisition/transfer/release не имеет allocation gap и destructor cleanup не теряет retry ownership.
+[~] Закрыть `G3-SUP-004` и `G3-SUP-005`: lease acquisition/transfer/release не имеет allocation gap и destructor cleanup не теряет retry ownership.
 
-[ ] Audio resource mapping validates ResourceId/type.
+[~] Audio resource mapping validates ResourceId/type.
 
-[ ] `IAudioClipResource` wrapper pins ResourceLease for exactly the clip/voice consumer lifetime.
+[~] `IAudioClipResource` wrapper pins ResourceLease for exactly the clip/voice consumer lifetime.
 
-[ ] Wrapper destruction/explicit cleanup releases exactly once.
+[~] Wrapper destruction/explicit cleanup releases exactly once.
 
-[ ] Failed release remains retryable through owning adapter/lifecycle state, not silently lost.
+[~] Failed release remains retryable through owning adapter/lifecycle state, not silently lost.
 
-[ ] Wrong payload/stream type rejected.
+[~] Wrong payload/stream type rejected.
 
 ## 3.17.I. Animation -> Renderer
 
-[ ] Закрыть `G3-SUP-007`: pose publication обновляет owner/animator indexes одной atomic transaction.
+[~] Закрыть `G3-SUP-007`: pose publication обновляет owner/animator indexes одной atomic transaction.
 
-[ ] Pose cache key = `RuntimeObjectId owner`, not animator pointer/address.
+[~] Pose cache key = `RuntimeObjectId owner`, not animator pointer/address.
 
-[ ] Pose publication replaces/updates owner state atomically.
+[~] Pose publication replaces/updates owner state atomically.
 
-[ ] Renderer receives neutral `RenderPoseBuffer`, not Animation concrete types.
+[~] Renderer receives neutral `RenderPoseBuffer`, not Animation concrete types.
 
-[ ] Missing/stale pose does not corrupt static proxy submission.
+[~] Missing/stale pose does not corrupt static proxy submission.
 
-[ ] Pose cache cleanup bounded by animator/object lifecycle.
+[~] Pose cache cleanup bounded by animator/object lifecycle.
 
 ## 3.17.J. World + Resources + Persistence -> Streaming
 
-[ ] Manifest source validation.
+[~] Manifest source validation.
 
-[ ] Standard adapter transitions only chunk state it actually owns.
+[~] Standard adapter transitions only chunk state it actually owns.
 
-[ ] `Unloaded -> Loading` occurs before resource/persistence preparation according to contract.
+[~] `Unloaded -> Loading` occurs before resource/persistence preparation according to contract.
 
-[ ] Persistence override read is detached.
+[~] Persistence override read is detached.
 
-[ ] Resource leases remain prepared, not active, until streaming commit.
+[~] Resource leases remain prepared, not active, until streaming commit.
 
-[ ] Commit publishes prepared data/leases/chunk state exactly once.
+[~] Commit publishes prepared data/leases/chunk state exactly once.
 
-[ ] Rollback only reverses adapter-owned prefix.
+[~] Rollback only reverses adapter-owned prefix.
 
-[ ] Unload order: `Unloading` -> lease release -> final `Unloaded`.
+[~] Unload order: `Unloading` -> lease release -> final `Unloaded`.
 
-[ ] Failed lease release keeps ownership and blocks final Unloaded.
+[~] Failed lease release keeps ownership and blocks final Unloaded.
 
-[ ] Failed World transition cleanup retained for retry.
+[~] Failed World transition cleanup retained for retry.
 
-[ ] Successor request cannot observe stale prepared persistence from predecessor.
+[~] Successor request cannot observe stale prepared persistence from predecessor.
 
-[ ] `IStreamingPreparedChunkDataQuery` lifetime exactly tied to prepared/resident request.
+[~] `IStreamingPreparedChunkDataQuery` lifetime exactly tied to prepared/resident request.
 
 ## 3.17.K. Environment -> Navigation
 
-[ ] Environment projection mapping validates region/revision.
+[~] Environment projection mapping validates region/revision.
 
-[ ] Navigation sees consistent complete projection, not partial environment batch.
+[~] Navigation sees consistent complete projection, not partial environment batch.
 
-[ ] Adapter failure does not mutate either owner inconsistently.
+[~] Adapter failure does not mutate either owner inconsistently.
 
-[ ] No duplicate authoritative environment state stored in Navigation adapter beyond required checkpoint/mapping.
+[~] No duplicate authoritative environment state stored in Navigation adapter beyond required checkpoint/mapping.
 
 ## 3.17.L. Time -> Simulation
 
-[ ] Simulation clock adapter derives time only from authoritative Runtime Time.
+[~] Simulation clock adapter derives time only from authoritative Runtime Time.
 
-[ ] No wall clock enters Simulation deterministic state.
+[~] No wall clock enters Simulation deterministic state.
 
-[ ] One Runtime frame publishes one intended game delta/time observation.
+[~] One Runtime frame publishes one intended game delta/time observation.
 
-[ ] Pause/time scale/skip mapping semantics explicit.
+[~] Pause/time scale/skip mapping semantics explicit.
 
 ## 3.17.M. Coordinator Tick
 
@@ -2022,67 +2022,67 @@ DiagnosticsEvents
 
 Проверить:
 
-[ ] Exact order returned by `GetRuntimeUpdateOrder()` и observed execution совпадают.
+[~] Exact order returned by `GetRuntimeUpdateOrder()` и observed execution совпадают.
 
-[ ] `RuntimeTickResult.executed_steps` содержит только реально начатые/выполненные phases по contract.
+[~] `RuntimeTickResult.executed_steps` содержит только реально начатые/выполненные phases по contract.
 
-[ ] Invalid frame input rejected before mutation.
+[~] Invalid frame input rejected before mutation.
 
-[ ] Time failure semantics: определить, какие downstream phases могут выполняться без valid new game delta.
+[~] Time failure semantics: определить, какие downstream phases могут выполняться без valid new game delta.
 
-[ ] Recoverable failure одного independent major записывается в failures и не блокирует независимые следующие phases.
+[~] Recoverable failure одного independent major записывается в failures и не блокирует независимые следующие phases.
 
-[ ] Dependency-sensitive phase не выполняется на заведомо invalid prerequisite state.
+[~] Dependency-sensitive phase не выполняется на заведомо invalid prerequisite state.
 
-[ ] MainThreadCommits budget limits proposal commits.
+[~] MainThreadCommits budget limits proposal commits.
 
-[ ] SceneProjectionCommit расположен после Physics и до Audio/Renderer.
+[~] SceneProjectionCommit расположен после Physics и до Audio/Renderer.
 
-[ ] Diagnostics event batch detached.
+[~] Diagnostics event batch detached.
 
-[ ] Source event buffers очищаются только после успешного event sink publication.
+[~] Source event buffers очищаются только после успешного event sink publication.
 
-[ ] Event sink failure/exception сохраняет source events/checkpoint для retry и не публикует false success.
+[~] Event sink failure/exception сохраняет source events/checkpoint для retry и не публикует false success.
 
-[ ] Allocation failure при построении `RuntimeTickResult`, failures/events/executed_steps не оставляет coordinator/internal buffers в logically committed half-state. Если operation допускает prefix-progress, это должно быть явно отражено.
+[~] Allocation failure при построении `RuntimeTickResult`, failures/events/executed_steps не оставляет coordinator/internal buffers в logically committed half-state. Если operation допускает prefix-progress, это должно быть явно отражено.
 
-[ ] Tick после shutdown start rejected.
+[~] Tick после shutdown start rejected.
 
 ## 3.17.N. Coordinator Shutdown
 
-[ ] Первый Shutdown переводит coordinator в terminal `shutdown started` до приёма следующего Tick.
+[~] Первый Shutdown переводит coordinator в terminal `shutdown started` до приёма следующего Tick.
 
-[ ] Cleanup order точно совпадает с `GetRuntimeShutdownOrder()`.
+[~] Cleanup order точно совпадает с `GetRuntimeShutdownOrder()`.
 
-[ ] Независимые cleanup steps продолжаются после первой ошибки.
+[~] Независимые cleanup steps продолжаются после первой ошибки.
 
-[ ] Возвращается первая ошибка, diagnostic context не теряется.
+[~] Возвращается первая ошибка, diagnostic context не теряется.
 
-[ ] Failed adapter/major cleanup сохраняет ownership/handle/lease для retry.
+[~] Failed adapter/major cleanup сохраняет ownership/handle/lease для retry.
 
-[ ] Повторный Shutdown пропускает completed steps и продолжает unfinished.
+[~] Повторный Shutdown пропускает completed steps и продолжает unfinished.
 
-[ ] Simulation proposals завершаются согласно `ShutdownProposalPolicy`.
+[~] Simulation proposals завершаются согласно `ShutdownProposalPolicy`.
 
-[ ] `IsShutdownComplete()` true только после полного owned cleanup.
+[~] `IsShutdownComplete()` true только после полного owned cleanup.
 
-[ ] Повторный Shutdown после complete идемпотентен.
+[~] Повторный Shutdown после complete идемпотентен.
 
 ## Exit 3.17
 
-[ ] Каждый adapter имеет isolated fake-based tests. Реальные соседние majors не используются для маскировки локального adapter defect там, где достаточно fake.
+[~] Каждый adapter имеет isolated fake-based tests. Реальные соседние majors не используются для маскировки локального adapter defect там, где достаточно fake.
 
-[ ] Reference composition smoke.
+[~] Reference composition smoke.
 
-[ ] Production preflight negative smoke.
+[~] Production preflight negative smoke.
 
-[ ] Full tick с injected phase failures.
+[~] Full tick с injected phase failures.
 
-[ ] Full shutdown с injected cleanup failures и retry.
+[~] Full shutdown с injected cleanup failures и retry.
 
-[ ] `EpidemicRuntimeSupportTests` проходит Debug/Release.
+[~] `EpidemicRuntimeSupportTests` проходит Debug/Release.
 
-[ ] Support = `LOCAL_READY`.
+[~] Support = `LOCAL_READY`.
 
 ---
 
@@ -2092,47 +2092,47 @@ DiagnosticsEvents
 
 ## 3.18.1. Architecture
 
-[ ] `EpidemicRuntimeArchitectureTests` проходит.
+[~] `EpidemicRuntimeArchitectureTests` проходит.
 
-[ ] Runtime не зависит от Framework.
+[~] Runtime не зависит от Framework.
 
-[ ] Majors не получили новые peer dependencies вместо Support adapters.
+[~] Majors не получили новые peer dependencies вместо Support adapters.
 
-[ ] RuntimeFoundation остаётся neutral и не знает majors.
+[~] RuntimeFoundation остаётся neutral и не знает majors.
 
-[ ] External SDK/platform includes не появились вне разрешённых Base boundaries.
+[~] External SDK/platform includes не появились вне разрешённых Base boundaries.
 
 ## 3.18.2. Integration
 
-[ ] Default Reference composition boot.
+[~] Default Reference composition boot.
 
-[ ] Production dependency preflight.
+[~] Production dependency preflight.
 
-[ ] Time -> Simulation.
+[~] Time -> Simulation.
 
-[ ] World/Resources/Persistence -> Streaming.
+[~] World/Resources/Persistence -> Streaming.
 
-[ ] Scene -> Physics -> Scene projection.
+[~] Scene -> Physics -> Scene projection.
 
-[ ] Scene/Resources/Animation -> Renderer.
+[~] Scene/Resources/Animation -> Renderer.
 
-[ ] Scene/Resources -> Audio.
+[~] Scene/Resources -> Audio.
 
-[ ] Environment -> Navigation.
+[~] Environment -> Navigation.
 
-[ ] Full coordinator tick order.
+[~] Full coordinator tick order.
 
-[ ] Recoverable one-phase failure не ломает independent later phases.
+[~] Recoverable one-phase failure не ломает independent later phases.
 
-[ ] Terminal shutdown + retry cleanup.
+[~] Terminal shutdown + retry cleanup.
 
 ## 3.18.3. Regression
 
-[ ] Каждый defect, найденный в 3.1–3.17, имеет permanent regression.
+[~] Каждый defect, найденный в 3.1–3.17, имеет permanent regression.
 
-[ ] Runtime regression executable содержит только cross-module/runtime regressions; локальные regressions остаются также в module suite, если defect module-local.
+[~] Runtime regression executable содержит только cross-module/runtime regressions; локальные regressions остаются также в module suite, если defect module-local.
 
-[ ] Никакой test не отключён/skip без explicit freeze exception.
+[~] Никакой test не отключён/skip без explicit freeze exception.
 
 ---
 
@@ -2142,7 +2142,7 @@ Goal 3 закрывается только одновременно при вы�
 
 ## Module status
 
-[ ] `17/17 EngineRuntime production modules = LOCAL_READY`:
+[~] `17/17 EngineRuntime production modules = LOCAL_READY`:
 
 ```text
 RuntimeFoundation
@@ -2166,59 +2166,61 @@ Support
 
 ## Evidence
 
-[ ] `local_ready_ledger.json` содержит PASS/N/A evidence для всех применимых 37 Goal 1 criteria по каждому из 17 modules.
+[~] `local_ready_ledger.json` содержит PASS/N/A evidence для всех применимых 37 Goal 1 criteria по каждому из 17 modules.
 
-[ ] Все Runtime public callables имеют актуальную classification и anchors.
+[~] Все Runtime public callables имеют актуальную classification и anchors.
 
-[ ] Runtime dossiers имеют reviewed responsibility/state/lifecycle/persistence/threading notes без известных ложных auto-discovery claims.
+[~] Runtime dossiers имеют reviewed responsibility/state/lifecycle/persistence/threading notes без известных ложных auto-discovery claims.
 
-[ ] `G3-DOC-001` закрыт: Runtime module docs не объявляют статус `frozen` в обход ledger; после module exit статус согласован с `LOCAL_READY`.
+[~] `G3-DOC-001` закрыт: Runtime module docs не объявляют статус `frozen` в обход ledger; после module exit статус согласован с `LOCAL_READY`.
 
-[ ] Все найденные Runtime defects имеют regression tests.
+[~] Все найденные Runtime defects имеют regression tests.
 
-[ ] `UNCLASSIFIED = 0` сохраняется после API изменений.
+[~] `UNCLASSIFIED = 0` сохраняется после API изменений.
 
 ## Build/test matrix
 
 После всех Runtime fixes обязательно повторно прогнать:
 
-[ ] Base Debug.
+[~] Base Debug.
 
-[ ] Base Release.
+[~] Base Release.
 
-[ ] Runtime Debug с Framework OFF.
+[~] Runtime Debug с Framework OFF.
 
-[ ] Runtime Release с Framework OFF.
+[~] Runtime Release с Framework OFF.
 
-[ ] Full Debug.
+[~] Full Debug.
 
-[ ] Full Release.
+[~] Full Release.
 
-[ ] Public-header consumers.
+[~] MSVC public-header consumers.
 
-[ ] Architecture/freeze validators.
+[~] Architecture/freeze validators.
 
-[ ] Validator negative/self-tests.
+[~] Validator negative/self-tests.
 
-[ ] Runtime module suites 17/17.
+[~] Runtime module suites 17/17.
 
-[ ] Runtime Architecture suite.
+[~] Runtime Architecture suite.
 
-[ ] Runtime Integration suite.
+[~] Runtime Integration suite.
 
-[ ] Runtime Regression suite.
+[~] Runtime Regression suite.
 
-[ ] Runtime Support Reference composition smoke.
+[~] Runtime Support Reference composition smoke.
 
-[ ] Production profile negative/preflight smoke.
+[~] Production profile negative/preflight smoke.
 
 Если число CTest cases изменилось, обновить configured manifests и зафиксировать новый baseline. Нельзя сохранять admission baseline `34/34` или `94/94` как ожидаемое число после добавления новых test cases без регенерации manifest.
 
+Финальный локальный closure baseline (2026-09-22): `4311` exact public callables, `232` public headers, `UNCLASSIFIED = 0`; Base `14/14`, Runtime `34/34`, Full `94/94` в Debug/Release, суммарно `284/284`. Исторический admission baseline `4309` выше не изменён.
+
 ## Publication
 
-[ ] `git diff --check`.
+[~] `git diff --check`.
 
-[ ] Warnings-as-errors на engine-owned targets.
+[~] Warnings-as-errors на engine-owned targets.
 
 [ ] Commit Runtime Goal 3 baseline.
 

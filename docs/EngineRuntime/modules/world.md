@@ -20,7 +20,7 @@ Destroyed object terminal. Обычная команда не может выс�
 
 ## Стабильность
 
-World frozen. Он не содержит inventory rules, корабли, NPC или quests; GameFramework строит их поверх neutral records.
+После прохождения Goal 3.8 и canonical evidence convergence World имеет статус `LOCAL_READY`. До обязательных системных gates Goals 5–9 модуль не считается `SYSTEM_READY` или `FROZEN`. Он не содержит inventory rules, корабли, NPC или quests; GameFramework строит их поверх neutral records.
 
 ## Карта публичных заголовков
 

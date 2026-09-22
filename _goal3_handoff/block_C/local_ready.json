@@ -1,0 +1,2275 @@
+{
+  "contract": "LOCAL_READY",
+  "modules": {
+    "EngineRuntime/Navigation": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:786::bool TestProviderAndBackendExceptionBoundaries(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:836::ok &= Expect(invalid_cost_runtime.Tick(RuntimeBudget{}) == 1, \"invalid provider cost should terminally process query\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:526::bool TestInvalidNumericPathRequestsAreRejected(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:541::Expect(!ttl_result && ttl_result.GetError().HasCode(\"navigation.invalid_ttl\"), \"negative TTL must be rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:418::bool TestInvalidInputsReturnFailures(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:423::ok &= Expect(!runtime.MarkTileDirty(NavTileId{99}).HasValue(), \"unknown tile should fail dirty mark\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:298::bool TestRequestPathCompletesThroughBudgetedStates(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:318::ok &= Expect(result.HasValue() && result.Value().revision == 4, \"completed query should have four revisions\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:104::## EngineRuntime/Navigation",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:905::bool TestBackendResultOwnershipSurvivesBudgetAndAllocationFault(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:952::ok &= Expect(fault_backend->calls == 1, \"retry after local failure must not call backend again\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:991::bool TestPurgeOccursOnlyAfterAllFallibleWorkListPreparation(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:1030::ok &= Expect(!removed && removed.GetError().HasCode(\"navigation.stale_handle\"),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:905::bool TestBackendResultOwnershipSurvivesBudgetAndAllocationFault(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:952::ok &= Expect(fault_backend->calls == 1, \"retry after local failure must not call backend again\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:601::bool TestTileRegistrationTransitionBudgetAndRevisionAudit(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:696::ok &= Expect(rebuild_overflow.GetTileState(NavTileId{1}) == NavTileState::Dirty,"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [],
+          "rationale": "Navigation has no module-level startup/shutdown lifecycle API; query state transitions are covered under state/API tests.",
+          "status": "N/A"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [],
+          "rationale": "Navigation has no module-level startup/shutdown lifecycle API; invalid query transitions are covered under state/API tests.",
+          "status": "N/A"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Navigation has no fallible external shutdown/cleanup lifecycle; accepted-result retry is covered by atomic reconciliation instead.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Navigation owns no module-level Shutdown contract in the Goal 3 public surface.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so off-state restore candidate construction is not applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists; persistence continuity is owned by later composition/system work.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so restore failure preservation is not applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "No module-local snapshot/restore surface exists; state is transient Runtime state or external through ports.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so restore validation is not applicable.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:991::bool TestPurgeOccursOnlyAfterAllFallibleWorkListPreparation(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:1030::ok &= Expect(!removed && removed.GetError().HasCode(\"navigation.stale_handle\"),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:956::bool TestReferencePlanSurvivesLocalAllocationFailure(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:986::ok &= Expect(obstacles->calls == 1 && costs->calls == 1,"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:569::bool TestRepeatedDirtyIsNoOp(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:575::ok &= Expect(runtime.GetTileState(NavTileId{1}) == NavTileState::Dirty, \"tile should remain dirty\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:905::bool TestBackendResultOwnershipSurvivesBudgetAndAllocationFault(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:952::ok &= Expect(fault_backend->calls == 1, \"retry after local failure must not call backend again\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:701::bool TestQueryIdentityGenerationAndResultRevisionExhaustion(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:744::ok &= Expect(backend->calls == 0, \"backend must not be called when result revision cannot be committed\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:786::bool TestProviderAndBackendExceptionBoundaries(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:836::ok &= Expect(invalid_cost_runtime.Tick(RuntimeBudget{}) == 1, \"invalid provider cost should terminally process query\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:601::bool TestTileRegistrationTransitionBudgetAndRevisionAudit(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:696::ok &= Expect(rebuild_overflow.GetTileState(NavTileId{1}) == NavTileState::Dirty,"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:343::bool TestCancelledQueryDoesNotProducePath(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:356::ok &= Expect(runtime.Tick(RuntimeBudget{}) == 0, \"cancelled query should not consume tick work\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:298::bool TestRequestPathCompletesThroughBudgetedStates(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:318::ok &= Expect(result.HasValue() && result.Value().revision == 4, \"completed query should have four revisions\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:418::bool TestInvalidInputsReturnFailures(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:423::ok &= Expect(!runtime.MarkTileDirty(NavTileId{99}).HasValue(), \"unknown tile should fail dirty mark\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:873::bool TestReferenceBudgetUsesActualPreparedShape(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:900::ok &= Expect(result.HasValue() && result.Value().points.size() == 3,"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:905::bool TestBackendResultOwnershipSurvivesBudgetAndAllocationFault(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:952::ok &= Expect(fault_backend->calls == 1, \"retry after local failure must not call backend again\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:956::bool TestReferencePlanSurvivesLocalAllocationFailure(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:986::ok &= Expect(obstacles->calls == 1 && costs->calls == 1,"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            },
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:991::bool TestPurgeOccursOnlyAfterAllFallibleWorkListPreparation(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:1030::ok &= Expect(!removed && removed.GetError().HasCode(\"navigation.stale_handle\"),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Navigation/tests/navigation_tests.cpp:468::bool TestHandleReleaseTtlAndStaleRevision(",
+              "assertions": [
+                "EngineRuntime/Navigation/tests/navigation_tests.cpp:507::ok &= Expect(services.runtime != nullptr && services.tiles != nullptr, \"mock navigation services should be populated\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeNavigationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [],
+          "rationale": "Navigation exposes no module-level lifecycle API; wrong query state/handle usage is covered by invalid/stale tests.",
+          "status": "N/A"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineRuntime/Physics": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:874::bool TestBackendExceptionsStayInsideResultBoundary(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:888::return !impulse && impulse.GetError().HasCode(\"physics.backend_exception\") && runtime.RevisionForTesting() == rev;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1058::bool TestRaycastRejectsInvalidInputAndInvalidBackendPayload(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:1075::return !invalid_hit && invalid_hit.GetError().HasCode(\"physics.invalid_backend_hit\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:729::bool TestInvalidBodyInputsAreRejectedBeforeBackend(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:755::return !type_result && type_result.GetError().HasCode(\"physics.invalid_body_type\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:264::bool TestGenerationSnapshotAndDestroyLifecycle(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:290::return !stale_snapshot && stale_snapshot.GetError().HasCode(\"physics.stale_handle\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:118::## EngineRuntime/Physics",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:945::bool TestTickSyncFailureRetriesAcceptedBackendStepWithoutResimulation(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:964::return retried && backend->simulates == 1 && runtime.AccumulatorForTesting().value.count() == 0 &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:636::bool TestBatchInvalidBackendSnapshotHasNoPartialWrites(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:664::return !failed && failed.GetError().HasCode(\"physics.snapshot_failed\") && adapter->writes == 0 &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:821::bool TestTransformProjectionFailureIsRetryableAfterAuthoritativeCommit(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:838::return second && runtime.PendingProjectionCountForTesting() == 0 && adapter->writes >= 3;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1006::bool TestShapeRegistrationValidationAndBackendFailureAtomicity(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:1026::return created && !duplicate && duplicate.GetError().HasCode(\"physics.duplicate_shape\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:471::bool TestExternalBackendLifecycleAndSynchronization(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:513::return ok && backend->destroy_shapes == 1 && backend->last_destroyed_shape == backend->shape;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:383::bool TestShutdownBestEffortAndIdempotent(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:399::return !shutdown && shutdown.GetError().HasCode(\"physics.destroy_shape_failed\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1151::bool TestPublicationRollbackFailureRetainsCleanupOwnership(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:1180::return retried_body && backend->destroy_bodies == body_destroys_before_retry + 1;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:709::bool TestShutdownRetriesBodyBeforeDestroyingShape(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:724::return body && !failed && failed.GetError().HasCode(\"physics.destroy_body_failed\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so off-state restore candidate construction is not applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists; persistence continuity is owned by later composition/system work.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so restore failure preservation is not applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "No module-local snapshot/restore surface exists; state is transient Runtime state or external through ports.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so restore validation is not applicable.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:841::bool TestTimeAndStepCounterOverflowAreRejectedBeforeMutation(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:871::return !shape && shape.GetError().HasCode(\"physics.backend_shape_id_overflow\") && !shape_exhausted.HasShape(CollisionShapeId{999});"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:764::bool TestBackendPublicationRollbackAndDuplicateHandles(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:787::return first && !second && second.GetError().HasCode(\"physics.duplicate_backend_body_handle\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1151::bool TestPublicationRollbackFailureRetainsCleanupOwnership(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:1180::return retried_body && backend->destroy_bodies == body_destroys_before_retry + 1;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:891::bool TestDefaultStaleAndRepeatedMutatorHandles(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:903::return !default_impulse && !stale_destroy && stale_destroy.GetError().HasCode(\"physics.stale_handle\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:636::bool TestBatchInvalidBackendSnapshotHasNoPartialWrites(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:664::return !failed && failed.GetError().HasCode(\"physics.snapshot_failed\") && adapter->writes == 0 &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:841::bool TestTimeAndStepCounterOverflowAreRejectedBeforeMutation(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:871::return !shape && shape.GetError().HasCode(\"physics.backend_shape_id_overflow\") && !shape_exhausted.HasShape(CollisionShapeId{999});"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:874::bool TestBackendExceptionsStayInsideResultBoundary(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:888::return !impulse && impulse.GetError().HasCode(\"physics.backend_exception\") && runtime.RevisionForTesting() == rev;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:764::bool TestBackendPublicationRollbackAndDuplicateHandles(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:787::return first && !second && second.GetError().HasCode(\"physics.duplicate_backend_body_handle\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:429::bool TestContactBufferStoresExplicitBeginPersistEnd(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:451::return runtime.Contacts().empty();"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:264::bool TestGenerationSnapshotAndDestroyLifecycle(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:290::return !stale_snapshot && stale_snapshot.GetError().HasCode(\"physics.stale_handle\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:729::bool TestInvalidBodyInputsAreRejectedBeforeBackend(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:755::return !type_result && type_result.GetError().HasCode(\"physics.invalid_body_type\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:907::bool TestTickFirstStepFailureKeepsAcceptedDeltaForZeroDeltaRetry(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:922::return retried && retried.Value().substeps == 2 && retried.Value().accumulated_time.value.count() == 5 &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:926::bool TestTickSecondStepFailurePreservesSuccessfulPrefix(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:941::return retried && retried.Value().substeps == 1 && retried.Value().accumulated_time.value.count() == 5 &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:945::bool TestTickSyncFailureRetriesAcceptedBackendStepWithoutResimulation(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:964::return retried && backend->simulates == 1 && runtime.AccumulatorForTesting().value.count() == 0 &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:821::bool TestTransformProjectionFailureIsRetryableAfterAuthoritativeCommit(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:838::return second && runtime.PendingProjectionCountForTesting() == 0 && adapter->writes >= 3;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            },
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:1078::bool TestRaycastLargeFiniteDirectionNormalizesSafely(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:1126::return reference_hit && reference_hit.Value().hit && std::isfinite(reference_hit.Value().distance) &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:891::bool TestDefaultStaleAndRepeatedMutatorHandles(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:903::return !default_impulse && !stale_destroy && stale_destroy.GetError().HasCode(\"physics.stale_handle\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Physics/tests/physics_tests.cpp:383::bool TestShutdownBestEffortAndIdempotent(",
+              "assertions": [
+                "EngineRuntime/Physics/tests/physics_tests.cpp:399::return !shutdown && shutdown.GetError().HasCode(\"physics.destroy_shape_failed\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimePhysicsTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineRuntime/Simulation": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:1097::bool TestDeepFreezeFailureContracts(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1196::ok &= Expect(!runtime.SubmitJob(MakeExecutableJob(desc), desc), \"job allocator should be exhausted after final committed identity\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:383::bool TestAttentionAndValidationFailures(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:397::ok &= Expect(!runtime.SetRegionAttention(RegionId{3}, AttentionScore{-std::numeric_limits<float>::infinity()}).HasValue(),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:277::bool TestSubmitJobAndCompletion(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:287::ok &= Expect(runtime.GetJobState(job.Value()).Value() == SimulationJobState::Completed, \"job should complete within budget\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:160::## EngineRuntime/Simulation",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:455::bool TestProposalCommitAtomicityAndFaultIsolation(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:484::ok &= Expect(runtime.PendingBatches().empty(), \"cancelled job should leave proposals empty\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:499::bool TestProposalPublicationStateMatrix(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:550::ok &= Expect(main_runtime.Publish(SimulationProposalBatch{main_job.Value(), main_desc.zone, main_desc.source_revision, {MakeValidProposal()}}).HasValue(),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:798::bool TestMemoryFactShutdownAndProposalCleanupEdges(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:872::ok &= Expect(!runtime.GetJobState(first.Value()).HasValue(), \"commit should immediately allow terminal job pruning\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:1097::bool TestDeepFreezeFailureContracts(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1196::ok &= Expect(!runtime.SubmitJob(MakeExecutableJob(desc), desc), \"job allocator should be exhausted after final committed identity\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:1097::bool TestDeepFreezeFailureContracts(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1196::ok &= Expect(!runtime.SubmitJob(MakeExecutableJob(desc), desc), \"job allocator should be exhausted after final committed identity\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:798::bool TestMemoryFactShutdownAndProposalCleanupEdges(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:872::ok &= Expect(!runtime.GetJobState(first.Value()).HasValue(), \"commit should immediately allow terminal job pruning\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so off-state restore candidate construction is not applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists; persistence continuity is owned by later composition/system work.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so restore failure preservation is not applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "No module-local snapshot/restore surface exists; state is transient Runtime state or external through ports.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so restore validation is not applicable.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:611::bool TestCancelJobRemovesScheduledTask(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:621::ok &= Expect(runtime.GetJobState(job.Value()).Value() == SimulationJobState::Cancelled,"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:336::bool TestWorldMemoryTtlAndStates(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:345::ok &= Expect(runtime.QueryEvents(WorldMemoryQuery{RegionId{1}, true}).size() == 2, \"include expired should return both events\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:1097::bool TestDeepFreezeFailureContracts(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1196::ok &= Expect(!runtime.SubmitJob(MakeExecutableJob(desc), desc), \"job allocator should be exhausted after final committed identity\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [],
+          "rationale": "This module does not expose caller-supplied identity registration for the relevant generated identity family; repeated operations have separate explicit sharing/no-op semantics.",
+          "status": "N/A"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:798::bool TestMemoryFactShutdownAndProposalCleanupEdges(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:872::ok &= Expect(!runtime.GetJobState(first.Value()).HasValue(), \"commit should immediately allow terminal job pruning\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:277::bool TestSubmitJobAndCompletion(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:287::ok &= Expect(runtime.GetJobState(job.Value()).Value() == SimulationJobState::Completed, \"job should complete within budget\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:383::bool TestAttentionAndValidationFailures(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:397::ok &= Expect(!runtime.SetRegionAttention(RegionId{3}, AttentionScore{-std::numeric_limits<float>::infinity()}).HasValue(),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:941::bool TestGoal3SimulationFaultAtomicity(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1092::ok &= Expect(runtime.Shutdown().HasValue(), \"shutdown retry should finish cleanup after cancellation recovers\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            },
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:1097::bool TestDeepFreezeFailureContracts(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1196::ok &= Expect(!runtime.SubmitJob(MakeExecutableJob(desc), desc), \"job allocator should be exhausted after final committed identity\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:876::bool TestGoal3SimulationBoundaryAudit(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:935::ok &= Expect(runtime.DiscardAll(ProposalDiscardReason::Shutdown).HasValue() && runtime.PendingBatches().empty(),"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Simulation/tests/simulation_tests.cpp:1097::bool TestDeepFreezeFailureContracts(",
+              "assertions": [
+                "EngineRuntime/Simulation/tests/simulation_tests.cpp:1196::ok &= Expect(!runtime.SubmitJob(MakeExecutableJob(desc), desc), \"job allocator should be exhausted after final committed identity\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeSimulationTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineRuntime/Streaming": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1546::bool TestAcceptedStepResultIsNotExecutedAgainAfterLocalCommitFailure(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1569::return retried.failures.empty() && retried.processed_bytes == 5u && source->executed.size() == 1u &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1109::bool TestRevisionAndPriorityDomainsAreChecked(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1127::return before && after && tick.failures.size() == 1u && after->revision == before->revision && after->state == before->state;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1130::bool TestMalformedPlansAndBuildExceptionsAreRejectedAtomically(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1148::return !thrown && thrown.GetError().HasCode(\"streaming.data_source_exception\") && runtime.RecordCount() == 0u;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:167::## EngineRuntime/Streaming",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1546::bool TestAcceptedStepResultIsNotExecutedAgainAfterLocalCommitFailure(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1569::return retried.failures.empty() && retried.processed_bytes == 5u && source->executed.size() == 1u &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1423::bool TestRequestPublicationFailureRestoresPublishedState(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1451::return retried && runtime.GetChunkState(recycled_chunk) == StreamingState::Requested &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:687::bool TestRollbackFailureMarksRollbackFailed(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:704::return !cancelled && cancelled.GetError().HasCode(\"streaming.rollback_failed\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1456::bool TestReactivationDemandPublicationFailurePreservesOwnership(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1480::return retried && reactivated && reactivated->state == StreamingState::Resident &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:952::bool TestShutdownRetriesRollbackAndUnloadCleanup(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1008::return false;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1165::bool TestShutdownLifecycleAndExceptionBoundary(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1179::return retried && runtime.Shutdown();"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1074::bool TestUnloadPhasesDoNotRepeatResourceRelease(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1089::return retried.failures.empty() && resources->releases == 1 && residency->unloads == 2 &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:19::## Lifecycle and cleanup",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:952::bool TestShutdownRetriesRollbackAndUnloadCleanup(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1008::return false;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so off-state restore candidate construction is not applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists; persistence continuity is owned by later composition/system work.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so restore failure preservation is not applicable.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "No module-local snapshot/restore surface exists; state is transient Runtime state or external through ports.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "No module-local restore operation exists, so restore validation is not applicable.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1311::bool TestStreamingIdentityAllocatorExhaustionBoundaries(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1373::before->demand_count != after->demand_count) return false;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:901::bool TestHistoryCleanupPreservesSuccessorMapping(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:927::return joined && joined.Value().request == successor.Value().request &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1423::bool TestRequestPublicationFailureRestoresPublishedState(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1451::return retried && runtime.GetChunkState(recycled_chunk) == StreamingState::Requested &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:342::bool TestOneConsumerReleaseKeepsLoad(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:355::return release && progress && progress->demand_count == 1 && runtime.GetChunkState(chunk) == StreamingState::Queued;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1423::bool TestRequestPublicationFailureRestoresPublishedState(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1451::return retried && runtime.GetChunkState(recycled_chunk) == StreamingState::Requested &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1311::bool TestStreamingIdentityAllocatorExhaustionBoundaries(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1373::before->demand_count != after->demand_count) return false;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/docs/Goal3_Block_C_Evidence_2026-09-21.md:15::## Public and external contract",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1223::bool TestAllStreamingExtensionExceptionsStayInsideResultBoundary(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1305::if (!runtime.Tick().failures.empty() || runtime.GetChunkState(ChunkId{823}) != StreamingState::Resident) return false;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [],
+          "rationale": "This module does not expose caller-supplied identity registration for the relevant generated identity family; repeated operations have separate explicit sharing/no-op semantics.",
+          "status": "N/A"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:671::bool TestRecordCleanup(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:684::return runtime.RecordCount() == 1;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:328::bool TestTwoConsumersRequestOneTarget(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:339::return progress && progress->demand_count == 2;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1130::bool TestMalformedPlansAndBuildExceptionsAreRejectedAtomically(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1148::return !thrown && thrown.GetError().HasCode(\"streaming.data_source_exception\") && runtime.RecordCount() == 0u;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1500::bool TestTickAllocationPreflightFailuresPropagateWithoutMutation(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1540::return false;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1546::bool TestAcceptedStepResultIsNotExecutedAgainAfterLocalCommitFailure(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1569::return retried.failures.empty() && retried.processed_bytes == 5u && source->executed.size() == 1u &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1573::bool TestCommitStepMustBeTerminalAndUniqueWhenPresent(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1588::return !duplicate_commit && duplicate_commit.GetError().HasCode(\"streaming.invalid_plan\") && runtime.RecordCount() == 0u;"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            },
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1423::bool TestRequestPublicationFailureRestoresPublishedState(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1451::return retried && runtime.GetChunkState(recycled_chunk) == StreamingState::Requested &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:652::bool TestRequestGenerationAndStaleDemand(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:666::return !released && released.GetError().HasCode(\"streaming.stale_handle\") &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineRuntime/Streaming/tests/streaming_tests.cpp:1165::bool TestShutdownLifecycleAndExceptionBoundary(",
+              "assertions": [
+                "EngineRuntime/Streaming/tests/streaming_tests.cpp:1179::return retried && runtime.Shutdown();"
+              ],
+              "kind": "test",
+              "target": "EpidemicRuntimeStreamingTests"
+            }
+          ],
+          "rationale": "",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    }
+  },
+  "schema_version": 1
+}

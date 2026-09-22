@@ -331,6 +331,11 @@ foundation::Result<StreamingDemandHandle> StreamingRuntime::Request(const Stream
                 const auto mapping_it = chunk_to_request_.find(chunk);
                 if (mapping_it == chunk_to_request_.end())
                 {
+                    if (fail_next_chunk_mapping_publication_for_testing_)
+                    {
+                        fail_next_chunk_mapping_publication_for_testing_ = false;
+                        throw std::bad_alloc{};
+                    }
                     chunk_to_request_.emplace(chunk, request_id);
                     inserted_chunk_mapping = true;
                 }
@@ -821,7 +826,17 @@ StreamingTickResult StreamingRuntime::Tick()
     StreamingTickResult result{};
     // Runtime-owned preparation is not a semantic request failure. Allocation failure
     // surfaces to the caller before any request mutation or statistics update.
+    if (fail_next_work_list_preparation_for_testing_)
+    {
+        fail_next_work_list_preparation_for_testing_ = false;
+        throw std::bad_alloc{};
+    }
     std::vector<StreamingRequestId> work_list = BuildWorkList();
+    if (fail_next_tick_result_preparation_for_testing_)
+    {
+        fail_next_tick_result_preparation_for_testing_ = false;
+        throw std::bad_alloc{};
+    }
     result.failures.reserve(work_list.size());
 
     const std::size_t max_requests = budget_.max_requests == 0 ? work_list.size() : budget_.max_requests;

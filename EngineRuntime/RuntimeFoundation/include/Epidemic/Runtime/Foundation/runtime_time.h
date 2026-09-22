@@ -28,21 +28,6 @@ struct RuntimeFrameDuration
 };
 
 
-[[nodiscard]] inline std::optional<RuntimeFrameDuration> CheckedSecondsToMicroseconds(double seconds) noexcept
-{
-    if (!std::isfinite(seconds) || seconds < 0.0)
-    {
-        return std::nullopt;
-    }
-    constexpr long double maximum = static_cast<long double>(std::numeric_limits<std::int64_t>::max());
-    const long double microseconds = static_cast<long double>(seconds) * 1000000.0L;
-    if (!std::isfinite(microseconds) || microseconds > maximum)
-    {
-        return std::nullopt;
-    }
-    return RuntimeFrameDuration{std::chrono::microseconds{static_cast<std::int64_t>(microseconds)}};
-}
-
 [[nodiscard]] inline std::optional<RuntimeFrameDuration> CheckedScaleDuration(
     RuntimeFrameDuration duration, double rate) noexcept
 {
@@ -50,13 +35,87 @@ struct RuntimeFrameDuration
     {
         return std::nullopt;
     }
-    constexpr long double maximum = static_cast<long double>(std::numeric_limits<std::int64_t>::max());
-    const long double scaled = static_cast<long double>(duration.value.count()) * static_cast<long double>(rate);
-    if (!std::isfinite(static_cast<double>(scaled)) || scaled > maximum)
+
+    // `double` is binary on every supported toolchain. Reconstruct its exact significand, multiply that
+    // by the non-negative integer duration as a portable two-word product, then apply the binary exponent.
+    // Right shifts implement truncation exactly, and every left shift is range-checked before conversion.
+    const auto checked_product = [](std::uint64_t integer, double factor) noexcept -> std::optional<std::int64_t> {
+        static_assert(std::numeric_limits<double>::radix == 2);
+        static_assert(std::numeric_limits<double>::digits <= 63);
+        if (integer == 0 || factor == 0.0)
+        {
+            return std::int64_t{0};
+        }
+
+        int exponent = 0;
+        const double fraction = std::frexp(factor, &exponent);
+        const int digits = std::numeric_limits<double>::digits;
+        const auto significand = static_cast<std::uint64_t>(std::ldexp(fraction, digits));
+        const int binary_exponent = exponent - digits;
+
+        const std::uint64_t mask = 0xffffffffULL;
+        const std::uint64_t a0 = integer & mask;
+        const std::uint64_t a1 = integer >> 32;
+        const std::uint64_t b0 = significand & mask;
+        const std::uint64_t b1 = significand >> 32;
+        const std::uint64_t p00 = a0 * b0;
+        const std::uint64_t p01 = a0 * b1;
+        const std::uint64_t p10 = a1 * b0;
+        const std::uint64_t p11 = a1 * b1;
+        const std::uint64_t middle = (p00 >> 32) + (p01 & mask) + (p10 & mask);
+        const std::uint64_t low = (middle << 32) | (p00 & mask);
+        const std::uint64_t high = p11 + (p01 >> 32) + (p10 >> 32) + (middle >> 32);
+        constexpr std::uint64_t maximum = static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max());
+
+        if (binary_exponent >= 0)
+        {
+            if (high != 0 || binary_exponent >= 63 || low > (maximum >> binary_exponent))
+            {
+                return std::nullopt;
+            }
+            return static_cast<std::int64_t>(low << binary_exponent);
+        }
+
+        const int shift = -binary_exponent;
+        std::uint64_t truncated = 0;
+        if (shift < 64)
+        {
+            if ((high >> shift) != 0)
+            {
+                return std::nullopt;
+            }
+            truncated = (high << (64 - shift)) | (low >> shift);
+        }
+        else if (shift < 128)
+        {
+            truncated = high >> (shift - 64);
+        }
+
+        if (truncated > maximum)
+        {
+            return std::nullopt;
+        }
+        return static_cast<std::int64_t>(truncated);
+    };
+
+    const auto scaled = checked_product(static_cast<std::uint64_t>(duration.value.count()), rate);
+    if (!scaled)
     {
         return std::nullopt;
     }
-    return RuntimeFrameDuration{std::chrono::microseconds{static_cast<std::int64_t>(scaled)}};
+    return RuntimeFrameDuration{std::chrono::microseconds{*scaled}};
+}
+
+[[nodiscard]] inline std::optional<RuntimeFrameDuration> CheckedSecondsToMicroseconds(double seconds) noexcept
+{
+    if (!std::isfinite(seconds) || seconds < 0.0)
+    {
+        return std::nullopt;
+    }
+
+    // One second is exactly one million microseconds. Reuse the exact checked `integer * double` path so the
+    // represented input is truncated mathematically without requiring a wider floating-point type.
+    return CheckedScaleDuration(RuntimeFrameDuration{std::chrono::microseconds{1000000}}, seconds);
 }
 
 [[nodiscard]] constexpr std::optional<RuntimeFrameDuration> CheckedAdd(

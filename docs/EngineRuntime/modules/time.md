@@ -20,7 +20,7 @@ Pause/Resume и повторные no-op операции сохраняют det
 
 ## Стабильность
 
-Модуль прошёл локальный Goal 3 Time audit и является `LOCAL_READY` кандидатом для системных Goals 5–9. Статус `FROZEN` здесь не утверждается до whole-engine qualification. Environment, Simulation и gameplay получают время через clock/result, а не рассчитывают собственную альтернативную шкалу.
+Модуль прошёл локальный Goal 3 Time audit и canonical evidence convergence и имеет статус `LOCAL_READY` для перехода к системным Goals 5–9. Статус `FROZEN` здесь не утверждается до whole-engine qualification. Environment, Simulation и gameplay получают время через clock/result, а не рассчитывают собственную альтернативную шкалу.
 
 ## Карта публичных заголовков
 

@@ -62,6 +62,11 @@ public:
     void SetNextMemoryIdForTesting(std::uint64_t id) noexcept;
     void SetNextTaskIdForTesting(std::uint64_t id) noexcept;
     void SetFactRevisionForTesting(std::uint64_t revision) noexcept;
+    void FailNextTickWorkListPreparationForTesting() noexcept { fail_next_tick_work_list_preparation_for_testing_ = true; }
+    void FailNextTickResultStagingForTesting() noexcept { fail_next_tick_result_staging_for_testing_ = true; }
+    void FailNextAttentionPublicationForTesting() noexcept { fail_next_attention_publication_for_testing_ = true; }
+    void FailNextProposalPublicationForTesting() noexcept { fail_next_proposal_publication_for_testing_ = true; }
+    void FailNextMemoryWorkListPreparationForTesting() noexcept { fail_next_memory_work_list_preparation_for_testing_ = true; }
 
 private:
     struct RegionAttentionRecord
@@ -124,5 +129,10 @@ private:
     std::vector<SimulationProposalBatch> proposal_batches_;
     std::unordered_map<ScheduledSimulationTaskId, ScheduledSimulationTask> scheduled_tasks_;
     ShutdownState shutdown_state_ = ShutdownState::Running;
+    bool fail_next_tick_work_list_preparation_for_testing_ = false;
+    bool fail_next_tick_result_staging_for_testing_ = false;
+    bool fail_next_attention_publication_for_testing_ = false;
+    bool fail_next_proposal_publication_for_testing_ = false;
+    mutable bool fail_next_memory_work_list_preparation_for_testing_ = false;
 };
 } // namespace epidemic::runtime::simulation

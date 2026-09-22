@@ -18,13 +18,15 @@ Backend snapshots сначала собираются и валидируютс�
 
 Contact payload проходит validation finite values и handles; invalid events фильтруются. Valid events сохраняют backend order, включая duplicate events: Physics не выполняет implicit deduplication.
 
+Raycast принимает finite direction только если его magnitude больше `float epsilon`. Нормализация выполняется без overflow для всего finite `float` range, поэтому accepted large finite direction не может превратиться в zero или non-finite payload. Public external-backend path и reference `RaycastBackend()` используют одну numeric policy.
+
 ## Shutdown
 
 Bodies уничтожаются раньше связанных с ними shapes. Failure одного body сохраняет его backend handle, запрещает уничтожение используемой им shape и не блокирует best-effort cleanup независимых bodies и свободных shapes. Pending rollback body с неизвестной опубликованной shape relation временно удерживает все shapes до успешного cleanup. Повторный shutdown продолжает оставшийся cleanup и после полного завершения является idempotent.
 
 ## Стабильность
 
-Документ описывает target contract кандидата на локальный freeze. Статус `LOCAL_READY` присваивается только после прохождения Goal 3 audit и ledger gates. Production SDK подключается через существующий backend port.
+Документ описывает проверенный локальный contract. После прохождения Goal 3 audit и ledger gates модуль имеет статус `LOCAL_READY`; системный `FROZEN` остаётся за Goals 5–9. Production SDK подключается через существующий backend port.
 
 ## Карта публичных заголовков
 

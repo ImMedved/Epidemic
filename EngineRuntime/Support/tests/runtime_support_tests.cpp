@@ -597,7 +597,61 @@ bool TestIndividualRegistration()
     ok &= Expect(RegisterPhysics(app).HasValue(), "physics registration failed");
     ok &= Expect(RegisterAudio(app).HasValue(), "audio registration failed");
     ok &= Expect(RegisterRenderer(app).HasValue(), "renderer registration failed");
-    ok &= Expect(!RegisterRenderer(app).HasValue(), "duplicate registration must fail");
+    const auto authoritative_renderer = app.Services().Get<renderer::RendererServices>();
+    const auto scene_revision_before_duplicate_renderer = app.Services().Get<SceneServices>()->nodes->GetRevision();
+    const auto duplicate_renderer = RegisterRenderer(app);
+    ok &= Expect(!duplicate_renderer && duplicate_renderer.GetError().HasCode("runtime_support.duplicate_registration"),
+                 "duplicate renderer registration must fail before publication");
+    ok &= Expect(app.Services().Get<renderer::RendererServices>() == authoritative_renderer,
+                 "duplicate renderer registration replaced the authoritative service");
+    ok &= Expect(app.Services().Get<SceneServices>()->nodes->GetRevision() == scene_revision_before_duplicate_renderer,
+                 "duplicate renderer registration mutated Scene before rejection");
+    return ok;
+}
+
+bool TestIndividualRegistrationFailuresAreAtomic()
+{
+    Application empty{};
+    bool ok = true;
+    ok &= Expect(!RegisterAssets(empty).HasValue() && !empty.Services().Contains<AssetServices>(),
+                 "failed Assets registration published a partial bundle");
+    ok &= Expect(!RegisterSerialization(empty).HasValue() && !empty.Services().Contains<SerializationServices>(),
+                 "failed Serialization registration published a partial bundle");
+    ok &= Expect(!RegisterResources(empty).HasValue() && !empty.Services().Contains<ResourceServices>(),
+                 "failed Resources registration published a partial bundle");
+    ok &= Expect(!RegisterPersistence(empty).HasValue() && !empty.Services().Contains<PersistenceServices>(),
+                 "failed Persistence registration published a partial bundle");
+    ok &= Expect(!RegisterTime(empty).HasValue() && !empty.Services().Contains<TimeServices>(),
+                 "failed Time registration published a partial bundle");
+    ok &= Expect(!RegisterEnvironment(empty).HasValue() && !empty.Services().Contains<EnvironmentServices>(),
+                 "failed Environment registration published a partial bundle");
+    ok &= Expect(!RegisterScene(empty).HasValue() && !empty.Services().Contains<SceneServices>(),
+                 "failed Scene registration published a partial bundle");
+    ok &= Expect(!RegisterWorld(empty).HasValue() && !empty.Services().Contains<WorldServices>(),
+                 "failed World registration published a partial bundle");
+    ok &= Expect(!RegisterStreaming(empty).HasValue() && !empty.Services().Contains<streaming::StreamingServices>(),
+                 "failed Streaming registration published a partial bundle");
+    ok &= Expect(!RegisterSimulation(empty).HasValue() && !empty.Services().Contains<simulation::SimulationServices>(),
+                 "failed Simulation registration published a partial bundle");
+    ok &= Expect(!RegisterNavigation(empty).HasValue() && !empty.Services().Contains<navigation::NavigationServices>(),
+                 "failed Navigation registration published a partial bundle");
+    ok &= Expect(!RegisterAnimation(empty).HasValue() && !empty.Services().Contains<animation::AnimationServices>(),
+                 "failed Animation registration published a partial bundle");
+    ok &= Expect(!RegisterPhysics(empty).HasValue() && !empty.Services().Contains<physics::PhysicsServices>(),
+                 "failed Physics registration published a partial bundle");
+    ok &= Expect(!RegisterAudio(empty).HasValue() && !empty.Services().Contains<audio::AudioServices>(),
+                 "failed Audio registration published a partial bundle");
+    ok &= Expect(!RegisterRenderer(empty).HasValue() && !empty.Services().Contains<renderer::RendererServices>(),
+                 "failed Renderer registration published a partial bundle");
+
+    Application foundation_app{};
+    if (!RegisterRuntimeFoundation(foundation_app)) return false;
+    const auto authoritative = foundation_app.Services().Get<RuntimeFoundationRegistration>();
+    const auto duplicate = RegisterRuntimeFoundation(foundation_app);
+    ok &= Expect(!duplicate && duplicate.GetError().HasCode("runtime_support.duplicate_registration"),
+                 "duplicate RuntimeFoundation registration was not rejected");
+    ok &= Expect(foundation_app.Services().Get<RuntimeFoundationRegistration>() == authoritative,
+                 "duplicate RuntimeFoundation registration replaced the authoritative service");
     return ok;
 }
 
@@ -669,6 +723,28 @@ bool TestAtomicDefaultCompositionAndTypedOwnership()
     ok &= Expect(!integrations.animation_pose_cache->GetPose(first_pose->animator).HasValue(),
                  "replaced animator pose remained reachable after owner replacement");
     return ok;
+}
+
+bool TestPreparedCommitDuplicateIsAtomic()
+{
+    Application app{};
+    auto first_prepared = PrepareEngineRuntime();
+    if (!first_prepared) return false;
+    auto first_commit = CommitPreparedRuntime(app, std::move(first_prepared.Value()));
+    if (!first_commit || !app.Services().Contains<EngineRuntimeServices>()) return false;
+
+    const auto authoritative = app.Services().Get<EngineRuntimeServices>();
+    if (!authoritative || authoritative->coordinator != first_commit.Value().coordinator) return false;
+
+    auto duplicate_prepared = PrepareEngineRuntime();
+    if (!duplicate_prepared) return false;
+    const auto duplicate = CommitPreparedRuntime(app, std::move(duplicate_prepared.Value()));
+    if (duplicate || !duplicate.GetError().HasCode("runtime_support.duplicate_registration")) return false;
+
+    const auto after_duplicate = app.Services().Get<EngineRuntimeServices>();
+    return after_duplicate == authoritative &&
+           after_duplicate->coordinator == first_commit.Value().coordinator &&
+           !app.Services().Contains<RuntimeFoundationRegistration>();
 }
 
 bool TestProductionPreflightIsAtomic()
@@ -1166,7 +1242,9 @@ int main()
     ok &= Expect(TestStreamingPrepareDataAndCleanupRetry(), "streaming prepare/cleanup regression failed");
     ok &= Expect(TestMainViewCreationRollback(), "main-view rollback regression failed");
     ok &= TestIndividualRegistration();
+    ok &= Expect(TestIndividualRegistrationFailuresAreAtomic(), "individual registration atomicity regression failed");
     ok &= TestAtomicDefaultCompositionAndTypedOwnership();
+    ok &= Expect(TestPreparedCommitDuplicateIsAtomic(), "prepared aggregate duplicate commit atomicity regression failed");
     ok &= TestProductionPreflightIsAtomic();
     ok &= TestSceneProjectionQueue();
     ok &= Expect(TestSceneProjectionPrefixRetry(), "scene projection prefix retry regression failed");

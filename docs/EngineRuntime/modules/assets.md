@@ -34,7 +34,7 @@ Assets не публикует snapshot/restore API. Goal 3.5 не вводит 
 
 ## Статус Goal 3
 
-Модуль имеет статус `LOCAL_READY` после локального аудита Goal 3.5. Это не означает `SYSTEM_READY` или `FROZEN`; системные и финальные freeze gates остаются в последующих целях общего плана.
+После локального аудита Goal 3.5, повторной MSVC Debug/Release qualification и canonical evidence convergence модуль имеет статус `LOCAL_READY`. Это не означает `SYSTEM_READY` или `FROZEN`; системные и финальные freeze gates остаются в последующих целях общего плана.
 
 ## Карта публичных заголовков
 

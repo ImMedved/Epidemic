@@ -28,4 +28,4 @@ Persistence override читается как detached data и доступен �
 
 ## Стабильность
 
-Модуль прошёл локальный Goal 3 Streaming audit и является `LOCAL_READY` кандидатом для системных Goals 5–9. Статус `FROZEN` здесь не утверждается до whole-engine qualification. Cross-major policy остаётся в Support.
+Модуль прошёл локальный Goal 3 Streaming audit и canonical evidence convergence и имеет статус `LOCAL_READY` для перехода к системным Goals 5–9. Статус `FROZEN` здесь не утверждается до whole-engine qualification. Cross-major policy остаётся в Support.

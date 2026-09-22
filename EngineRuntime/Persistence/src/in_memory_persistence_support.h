@@ -122,7 +122,10 @@ class InMemoryPersistenceBackend final : public IPersistenceBackend
     [[nodiscard]] foundation::Result<void> CommitSnapshot(const PersistenceSnapshot& snapshot, PersistenceDurability durability) override;
 
   private:
+    friend struct PersistenceRuntimeTestAccess;
+
     PersistenceSnapshot snapshot_{};
+    bool fail_next_candidate_build_allocation_for_testing_ = false;
 };
 } // namespace epidemic::runtime
 

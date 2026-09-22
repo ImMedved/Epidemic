@@ -104,6 +104,8 @@ namespace
 static_assert(std::is_nothrow_move_constructible_v<SimulationStepResult>);
 static_assert(std::is_nothrow_move_assignable_v<SimulationStepResult>);
 static_assert(std::is_nothrow_move_constructible_v<SimulationProposalBatch>);
+static_assert(std::is_nothrow_move_constructible_v<SimulationTickFailure>);
+static_assert(std::is_nothrow_move_constructible_v<ScheduledTaskFailure>);
 static_assert(std::is_nothrow_move_constructible_v<foundation::Error>);
 } // namespace
 
@@ -246,6 +248,11 @@ foundation::Result<SimulationTickResult> SimulationRuntime::Tick()
     std::vector<SimulationJobId> work_list;
     try
     {
+        if (fail_next_tick_work_list_preparation_for_testing_)
+        {
+            fail_next_tick_work_list_preparation_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         work_list = BuildJobWorkList();
         result.failures.reserve(work_list.size() + scheduled_tasks_.size());
         result.proposal_batches.reserve(work_list.size());
@@ -338,6 +345,11 @@ foundation::Result<SimulationTickResult> SimulationRuntime::Tick()
         std::optional<SimulationProposalBatch> staged_result_batch;
         try
         {
+            if (fail_next_tick_result_staging_for_testing_)
+            {
+                fail_next_tick_result_staging_for_testing_ = false;
+                throw std::bad_alloc{};
+            }
             if (step_result.state == SimulationJobState::WaitingForMainThread)
             {
                 step_result.proposals.job = job.handle;
@@ -536,6 +548,11 @@ foundation::Result<void> SimulationRuntime::SetAttention(RuntimeObjectId object,
 
     try
     {
+        if (fail_next_attention_publication_for_testing_)
+        {
+            fail_next_attention_publication_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         object_attention_.insert_or_assign(object, score);
     }
     catch (...)
@@ -836,6 +853,11 @@ foundation::Result<void> SimulationRuntime::Publish(const SimulationProposalBatc
 
     try
     {
+        if (fail_next_proposal_publication_for_testing_)
+        {
+            fail_next_proposal_publication_for_testing_ = false;
+            throw std::bad_alloc{};
+        }
         proposal_batches_.push_back(batch);
     }
     catch (...)
@@ -1147,6 +1169,11 @@ std::vector<SimulationJobId> SimulationRuntime::BuildMainThreadWorkList() const
 
 std::vector<WorldMemoryEventId> SimulationRuntime::BuildMemoryWorkList() const
 {
+    if (fail_next_memory_work_list_preparation_for_testing_)
+    {
+        fail_next_memory_work_list_preparation_for_testing_ = false;
+        throw std::bad_alloc{};
+    }
     std::vector<WorldMemoryEventId> work_list;
     work_list.reserve(memory_events_.size());
     for (const auto& [id, event] : memory_events_)
