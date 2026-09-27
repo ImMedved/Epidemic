@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
 
 get_filename_component(_repository "${CMAKE_CURRENT_LIST_DIR}/.." ABSOLUTE)
 set(_sandbox "${_repository}/build/architecture-freeze-self-test")
@@ -19,7 +19,7 @@ function(_run_case name root_body module_path module_body header_body expected_r
     set(_build "${_sandbox}/${name}/build")
     file(MAKE_DIRECTORY "${_source}/${module_path}")
     file(WRITE "${_source}/CMakeLists.txt"
-        "cmake_minimum_required(VERSION 3.24)\nproject(${name} NONE)\n${root_body}\n")
+        "cmake_minimum_required(VERSION 3.25)\nproject(${name} NONE)\n${root_body}\n")
     file(WRITE "${_source}/${module_path}/CMakeLists.txt" "${module_body}\n")
     if(NOT "${header_body}" STREQUAL "")
         file(MAKE_DIRECTORY "${_source}/${module_path}/include")

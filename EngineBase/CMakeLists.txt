@@ -1,8 +1,8 @@
 function(epidemic_configure_target target_name)
-    target_compile_features(${target_name} PUBLIC cxx_std_20)
+    target_compile_features(${target_name} PUBLIC cxx_std_23)
 
     if(MSVC)
-        target_compile_options(${target_name} PRIVATE /W4 /permissive-)
+        target_compile_options(${target_name} PRIVATE /W4 /permissive- /EHsc)
         # Keep per-target compiler PDBs below the Windows path-length limit.  Long
         # Framework target names otherwise place the default PDB path beyond what
         # cl.exe can reliably open during parallel Debug builds.

@@ -1,6 +1,6 @@
 # Epidemic Engine
 
-Epidemic Engine — Windows-only C++20 движок, построенный как несколько строго направленных слоев. Нижние слои предоставляют стабильные механизмы, верхние добавляют игровое значение и никогда не протягивают зависимости обратно вниз.
+Epidemic Engine — Windows-only C++23 движок, построенный как несколько строго направленных слоев. Нижние слои предоставляют стабильные механизмы, верхние добавляют игровое значение и никогда не протягивают зависимости обратно вниз.
 
 Текущая структура проекта:
 
@@ -62,18 +62,17 @@ ctest --test-dir build -C Debug -R EpidemicRuntime --output-on-failure
 
 ## TODO
 
+- [x] Переход на C++ 23
 - [ ] Engine Freeze
-  - [x] Архитектурная целостность и freeze границ
-  - [ ] Correctness всех локальных модулей
-  - [ ] Persistence, snapshot и restore hardening
-  - [ ] Determinism и replayability
-  - [ ] Memory и lifetime hardening
-  - [ ] Concurrency и async safety
-  - [ ] Integration correctness между majors и слоями
-  - [ ] Load, scale и degradation tests
-  - [ ] Full regression suite и failure injection
-  - [ ] Whole-engine smoke qualification и freeze
-- [ ] Code cleanup
+  - [x] Цель 1. Проверяемый baseline и единый freeze contract
+  - [x] Цель 2. Полный локальный freeze-аудит EngineBase
+  - [x] Цель 3. Полный локальный freeze-аудит EngineRuntime
+  - [ ] Цель 4. Полный локальный freeze-аудит EngineFramework
+  - [ ] Цель 5. Доказать persistence и determinism всего движка
+  - [ ] Цель 6. Доказать memory/lifetime и concurrency/async safety
+  - [ ] Цель 7. Второй круг: проверить смысловые кластеры и причинные цепочки
+  - [ ] Цель 8. Провести failure, regression, load, scale и degradation qualification
+  - [ ] Цель 9. Финальная test saturation, whole-engine qualification и окончательный freeze
 - [ ] Framework Documentation
 - [ ] Base and Runtime docs checkup
 - [ ] Комментарии
@@ -86,3 +85,4 @@ ctest --test-dir build -C Debug -R EpidemicRuntime --output-on-failure
 - [ ] Добавление инструментов мониторинга и контроля ресурсов приложения
 - [ ] Добавление дефолтного проекта
 - [ ] Полноценная мультиплатформенность Win/Mac/Android
+- [ ] Переход на С++ 26 после выхода stable версии языка

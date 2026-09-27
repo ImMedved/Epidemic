@@ -14,6 +14,6 @@ target_link_libraries(EpidemicInput
     PUBLIC EpidemicFoundation EpidemicPlatform
 )
 
-target_compile_features(EpidemicInput PUBLIC cxx_std_20)
+target_compile_features(EpidemicInput PUBLIC cxx_std_23)
 
 epidemic_configure_target(EpidemicInput)
