@@ -106,3 +106,15 @@ ctest --test-dir build -C Debug -R EpidemicRuntime --output-on-failure
 - [ ] Добавление дефолтного проекта
 - [ ] Полноценная мультиплатформенность Win/Mac/Android
 - [ ] Переход на С++ 26 после выхода stable версии языка
+
+Текущая базовая платформа — Windows 11 / Win32 / D3D11. Cross-platform поддержка не является целью этого этапа.
+
+## License
+
+This project is licensed under the PolyForm Noncommercial License 1.0.0.
+
+Non-commercial use, study, research, modification, and hobby projects are permitted under the terms of the license.
+
+Commercial use requires a separate license from the copyright holder.
+
+See [LICENSE](LICENSE) for the full license terms.
