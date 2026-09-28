@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Conditions/conditions.h"
+#include "conditions_test_seam.h"
 
 #include "Epidemic/Foundation/error.h"
 
@@ -1121,6 +1122,10 @@ foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot sn
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (!frozen_)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.registry_not_frozen", "condition registry must be frozen before restore"));
+
     std::unordered_map<ConditionInstanceId, bool, ConditionInstanceIdHash> seen;
     for (auto& instance : snapshot.instances)
     {
@@ -1179,6 +1184,9 @@ foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot sn
         for (std::size_t index = 0; index < restored_instances.size(); ++index)
         {
             const auto& instance = restored_instances[index];
+            if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+                return foundation::Result<void>::Failure(
+                    Error("gameplay.condition_allocation_failed", "failed while constructing condition snapshot candidates"));
             if (!restored_id_to_index.emplace(instance.id, index).second)
                 return foundation::Result<void>::Failure(Error("gameplay.condition_snapshot_invalid", "duplicate condition id in snapshot"));
             restored_subject_index[instance.subject].push_back(instance.id);
@@ -1191,6 +1199,10 @@ foundation::Result<void> ConditionService::RestoreSnapshot(ConditionsSnapshot sn
         return foundation::Result<void>::Failure(
             Error("gameplay.condition_allocation_failed", "failed to stage condition snapshot"));
     }
+
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.condition_allocation_failed", "failed to stage condition snapshot"));
 
     instances_.swap(restored_instances);
     id_to_index_.swap(restored_id_to_index);

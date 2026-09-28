@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Entities/entities.h"
+#include "entities_test_seam.h"
 
 #include "Epidemic/Foundation/error.h"
 
@@ -709,6 +710,9 @@ foundation::Result<void> EntityService::RestoreSnapshot(EntitySnapshot snapshot)
         const auto slot_index = static_cast<std::uint32_t>(rebuilt_slots.size());
         record.materialization = EntityMaterializationState::Abstract;
         Slot slot; slot.record = std::move(record); slot.generation = restored_generation; slot.occupied = true;
+        if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.entity_storage_failed", "failed while constructing entity snapshot candidates"));
         rebuilt_index.emplace(slot.record.id, slot_index);
         if (slot.record.lifecycle == EntityLifecycleState::PendingDestroy)
         {
@@ -719,6 +723,10 @@ foundation::Result<void> EntityService::RestoreSnapshot(EntitySnapshot snapshot)
         }
         rebuilt_slots.push_back(std::move(slot));
     }
+
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.entity_storage_failed", "failed to stage entity snapshot"));
 
     slots_ = std::move(rebuilt_slots); free_slots_.clear(); id_to_slot_ = std::move(rebuilt_index);
     pending_destroy_ = std::move(rebuilt_pending); pending_destroy_reasons_ = std::move(rebuilt_reasons); pending_destroy_contexts_ = std::move(rebuilt_contexts);

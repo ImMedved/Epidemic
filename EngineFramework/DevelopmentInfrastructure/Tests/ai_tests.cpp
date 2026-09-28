@@ -1,5 +1,5 @@
 #include "Epidemic/GameFramework/AI/ai.h"
-#include "allocation_fault_injection.h"
+#include "../../GameplayWorldStateOwners/AI/src/ai_test_seam.h"
 
 #include <limits>
 #include <stdexcept>
@@ -462,8 +462,10 @@ int main()
     atomic_profile.default_goals = {profile_goal.id};
     const auto profile_revision_before = profile_atomic.CurrentRevision();
     {
-        epidemic::tests::allocation_fault::FailAfter fault(0);
-        auto registered = profile_atomic.RegisterProfile(std::move(atomic_profile));
+        epidemic::gameplay::ai::internal_test::ArmAllocationFault(
+            epidemic::gameplay::ai::internal_test::AllocationFaultPoint::RegisterProfilePublication);
+        auto registered = profile_atomic.RegisterProfile(atomic_profile);
+        epidemic::gameplay::ai::internal_test::ResetAllocationFault();
         if (registered)
             return 66;
     }
@@ -475,8 +477,10 @@ int main()
         return 68;
     const auto agent_revision_before = agent_atomic.CurrentRevision();
     {
-        epidemic::tests::allocation_fault::FailAfter fault(0);
+        epidemic::gameplay::ai::internal_test::ArmAllocationFault(
+            epidemic::gameplay::ai::internal_test::AllocationFaultPoint::RegisterAgentPrimary);
         auto registered = agent_atomic.RegisterAgent(guard, profile_id, {10});
+        epidemic::gameplay::ai::internal_test::ResetAllocationFault();
         if (registered)
             return 69;
     }
@@ -488,8 +492,10 @@ int main()
     const auto schedule_revision_before = agent_atomic.CurrentRevision();
     const auto schedule_time_before = agent_atomic.FindAgent(guard)->next_think_at;
     {
-        epidemic::tests::allocation_fault::FailAfter fault(0);
+        epidemic::gameplay::ai::internal_test::ArmAllocationFault(
+            epidemic::gameplay::ai::internal_test::AllocationFaultPoint::ScheduleThinkIndex);
         auto scheduled = agent_atomic.ScheduleThink(guard, {20});
+        epidemic::gameplay::ai::internal_test::ResetAllocationFault();
         if (scheduled)
             return 72;
     }
@@ -498,9 +504,9 @@ int main()
         agent_atomic.FindDueAgents({10}, 10).size() != 1)
         return 73;
 
-    // AI-06/09: failure while staging the selected intent leaves agent/index/ID/revision unchanged.
-    bool saw_decision_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32 && !saw_decision_allocation_failure; ++fail_after)
+    // AI-06/09: module-local decision publication seams leave agent/index/ID/revision unchanged.
+    using AIFaultPoint = epidemic::gameplay::ai::internal_test::AllocationFaultPoint;
+    for (const auto point : {AIFaultPoint::ThinkDecisionStaging, AIFaultPoint::ThinkIntentIndex})
     {
         AIService decision_atomic;
         if (!RegisterCoreDefinitions(decision_atomic, profile_id, goal_id, intent_type, score_key) ||
@@ -513,24 +519,17 @@ int main()
             {target_a, AITargetSource::Perceived, {FixedInput(score_key, 800'000, AIAccessFlag::PerceivedState)}}};
         GameplayContext decision_tick;
         decision_tick.tick = {702};
-        epidemic::foundation::Result<AIThinkResult> result = epidemic::foundation::Result<AIThinkResult>::Failure(
-            epidemic::foundation::Error::Create("test", "not run"));
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            result = decision_atomic.Think(guard, decision_context, decision_tick);
-        }
-        if (!result && result.GetError().HasCode("gameplay.ai.allocation_failed"))
-        {
-            saw_decision_allocation_failure = true;
-            const auto after = decision_atomic.CaptureSnapshot();
-            if (after.revision != before.revision || after.intent_ids.scope != before.intent_ids.scope ||
-                after.intent_ids.next != before.intent_ids.next || after.agents.size() != 1 ||
-                after.agents.front().current_intent || after.agents.front().activity != AIAgentActivity::Idle)
-                return 75;
-        }
+        epidemic::gameplay::ai::internal_test::ArmAllocationFault(point);
+        const auto result = decision_atomic.Think(guard, decision_context, decision_tick);
+        epidemic::gameplay::ai::internal_test::ResetAllocationFault();
+        if (result || !result.GetError().HasCode("gameplay.ai.allocation_failed"))
+            return 75;
+        const auto after = decision_atomic.CaptureSnapshot();
+        if (after.revision != before.revision || after.intent_ids.scope != before.intent_ids.scope ||
+            after.intent_ids.next != before.intent_ids.next || after.agents.size() != 1 ||
+            after.agents.front().current_intent || after.agents.front().activity != AIAgentActivity::Idle)
+            return 76;
     }
-    if (!saw_decision_allocation_failure)
-        return 76;
 
     // AI-07/09: revision exhaustion is a hard mutation boundary.
     AIService revision_source;

@@ -9,6 +9,12 @@ using namespace epidemic::gameplay::resources;
 using namespace epidemic::gameplay::simulation;
 using namespace epidemic::gameplay::integration;
 
+namespace epidemic::gameplay::integration::test_support
+{
+void FailNextResourceReservationTokenPublicationForTest() noexcept;
+void ResetProcessResourceFailureSeamsForTest() noexcept;
+}
+
 namespace
 {
 [[nodiscard]] GameplayObjectRef Ref(const char *domain, const char *id)
@@ -84,6 +90,33 @@ int main()
     ProcessesService processes;
     ResourceProcessInputProvider in_provider(resources);
     ResourceProcessOutputHandler out_handler(resources);
+
+    // B08-PRSINT-001: provider-token storage must be staged before the
+    // Resources owner accepts a reservation. A deterministic local failure at
+    // that boundary therefore leaves Resources completely unchanged.
+    ProcessInputDefinition seam_input;
+    seam_input.id = ProcessInputId::FromString("test.input.seam");
+    seam_input.type = ProcessInputTypeId::FromString("framework.input.resource");
+    seam_input.amount = 2;
+    seam_input.consumption = InputConsumptionPolicy::ReserveThenConsume;
+    seam_input.payload = EncodeProcessResourcePayload({stockpile_a.Value(), iron_id.Value()});
+    StartProcessRequest seam_request;
+    seam_request.actor = worker_a;
+    const auto seam_before = resources.CaptureSnapshot();
+    integration::test_support::FailNextResourceReservationTokenPublicationForTest();
+    const auto seam_result = in_provider.Reserve(
+        seam_input, seam_request, ProcessInstanceId{GameplayObjectId::FromString("test.process.seam")});
+    if (seam_result)
+        return 32;
+    const auto seam_after = resources.CaptureSnapshot();
+    if (seam_after.reservations.size() != seam_before.reservations.size() ||
+        seam_after.reservation_ids.scope != seam_before.reservation_ids.scope ||
+        seam_after.reservation_ids.next != seam_before.reservation_ids.next ||
+        seam_after.revision != seam_before.revision ||
+        resources.GetAmount(stockpile_a.Value(), iron_id.Value()) != 10)
+        return 33;
+    integration::test_support::ResetProcessResourceFailureSeamsForTest();
+
     processes.SetInputProvider(&in_provider);
     processes.AddOutputHandler(&out_handler);
 

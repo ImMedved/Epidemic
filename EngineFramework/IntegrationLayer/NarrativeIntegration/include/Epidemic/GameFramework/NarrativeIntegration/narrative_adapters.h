@@ -176,7 +176,6 @@ class NarrativeExternalConsequenceOutbox final : public narrative::INarrativeCon
     [[nodiscard]] bool Matches(const NarrativeExternalConsequenceDelivery &delivery,
                                const narrative::NarrativeConsequenceDefinition &definition,
                                const narrative::NarrativeConsequenceExecution &execution) const noexcept;
-    void Bump() const noexcept { ++revision_.value; }
 
     std::size_t max_records_ = 4096;
     mutable Revision revision_{};

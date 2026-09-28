@@ -1,0 +1,3451 @@
+{
+  "closure_review": "All PASS criteria use typed evidence containing every required kind; test evidence names a registered target and exact assertion. N/A decisions have module-specific rationales.",
+  "modules": {
+    "EngineFramework/GameplayWorldStateOwners/Crime": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:56::- `08c9ada691f8407d` | `QUERY` | `epidemic::gameplay::crime::LawId` | `[[nodiscard]] constexpr bool IsValid()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Crime API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:56::- `08c9ada691f8407d` | `QUERY` | `epidemic::gameplay::crime::LawId` | `[[nodiscard]] constexpr bool IsValid()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:46::law.default_bounty = 50;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:48::Check(static_cast<bool>(service.RegisterLaw(law)), \"register law\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:56::- `08c9ada691f8407d` | `QUERY` | `epidemic::gameplay::crime::LawId` | `[[nodiscard]] constexpr bool IsValid()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:125::Check(crime.FindCrime(crime_id)->proof_state == CrimeProofState::Unknown, \"initial proof unknown\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:125::Check(crime.FindCrime(crime_id)->proof_state == CrimeProofState::Unknown, \"initial proof unknown\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:56::- `08c9ada691f8407d` | `QUERY` | `epidemic::gameplay::crime::LawId` | `[[nodiscard]] constexpr bool IsValid()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Crime API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:56::- `08c9ada691f8407d` | `QUERY` | `epidemic::gameplay::crime::LawId` | `[[nodiscard]] constexpr bool IsValid()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:125::Check(crime.FindCrime(crime_id)->proof_state == CrimeProofState::Unknown, \"initial proof unknown\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:125::Check(crime.FindCrime(crime_id)->proof_state == CrimeProofState::Unknown, \"initial proof unknown\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:56::- `08c9ada691f8407d` | `QUERY` | `epidemic::gameplay::crime::LawId` | `[[nodiscard]] constexpr bool IsValid()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:117::Check(static_cast<bool>(witness_required), \"record-if-witnessed evaluation succeeds without record\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:117::Check(static_cast<bool>(witness_required), \"record-if-witnessed evaluation succeeds without record\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Crime ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:56::- `08c9ada691f8407d` | `QUERY` | `epidemic::gameplay::crime::LawId` | `[[nodiscard]] constexpr bool IsValid()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Crime ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Crime ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            }
+          ],
+          "rationale": "Crime ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Crime has no ATOMIC-EXTERNAL surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Crime.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:46::law.default_bounty = 50;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:48::Check(static_cast<bool>(service.RegisterLaw(law)), \"register law\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Crime has no ATOMIC-RECONCILE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Crime.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:46::law.default_bounty = 50;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:48::Check(static_cast<bool>(service.RegisterLaw(law)), \"register law\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:88::Check(static_cast<bool>(service.FreezeDefinitions()), \"freeze definitions\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:88::Check(static_cast<bool>(service.FreezeDefinitions()), \"freeze definitions\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:191::Check(!insufficient, \"authority without required capability rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:191::Check(!insufficient, \"authority without required capability rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Crime has no LIFE-RETRY-CLEANUP surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Crime.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Crime has no LIFE-SHUTDOWN surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Crime.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:233::Check(old_batch.snapshot_required, \"bounded journal requires snapshot for stale reader\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:233::Check(old_batch.snapshot_required, \"bounded journal requires snapshot for stale reader\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:232::const auto old_batch = crime.ReadChangesSince(ChangeCursor{});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:233::Check(old_batch.snapshot_required, \"bounded journal requires snapshot for stale reader\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:46::law.default_bounty = 50;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:48::Check(static_cast<bool>(service.RegisterLaw(law)), \"register law\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:239::const auto snapshot = crime.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:245::Check(static_cast<bool>(preserved.RegisterLaw(keep_law)), \"prepare transactional restore target law\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:257::Check(!preserved.RestoreSnapshot(std::move(bad_generator)), \"stale generator snapshot rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:257::Check(!preserved.RestoreSnapshot(std::move(bad_generator)), \"stale generator snapshot rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:238::Check(pre_restore_cursor.sequence >= 2, \"pre-restore journal has multiple changes\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:238::Check(pre_restore_cursor.sequence >= 2, \"pre-restore journal has multiple changes\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:98::candidate.target_property = Ref(property_name);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:102::return candidate;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:46::law.default_bounty = 50;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:48::Check(static_cast<bool>(service.RegisterLaw(law)), \"register law\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:56::- `08c9ada691f8407d` | `QUERY` | `epidemic::gameplay::crime::LawId` | `[[nodiscard]] constexpr bool IsValid()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:146::auto duplicate_weak = crime.AddWitness(weak_witness);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:147::Check(static_cast<bool>(duplicate_weak) && duplicate_weak.Value() == weak_id.Value(),"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Crime.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:98::candidate.target_property = Ref(property_name);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:102::return candidate;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:5::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:5::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "Crime has no TEST-CALLBACK-FAILURE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Crime.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:47::law.statute_of_limitations = GameplaySeconds(50);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:48::Check(static_cast<bool>(service.RegisterLaw(law)), \"register law\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:119::Check(crime.FindCrimesByOffender(fixture.player).empty(), \"no hidden suspect record created\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:119::Check(crime.FindCrimesByOffender(fixture.player).empty(), \"no hidden suspect record created\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:118::Check(!witness_required.Value().crime, \"record-if-witnessed does not create crime without witness\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:118::Check(!witness_required.Value().crime, \"record-if-witnessed does not create crime without witness\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:125::Check(crime.FindCrime(crime_id)->proof_state == CrimeProofState::Unknown, \"initial proof unknown\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:125::Check(crime.FindCrime(crime_id)->proof_state == CrimeProofState::Unknown, \"initial proof unknown\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:46::law.default_bounty = 50;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:48::Check(static_cast<bool>(service.RegisterLaw(law)), \"register law\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:232::const auto old_batch = crime.ReadChangesSince(ChangeCursor{});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:233::Check(old_batch.snapshot_required, \"bounded journal requires snapshot for stale reader\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:216::Check(static_cast<bool>(second_bounty), \"new bounty allowed after previous terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:216::Check(static_cast<bool>(second_bounty), \"new bounty allowed after previous terminal\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkCrimeTests"
+            }
+          ],
+          "rationale": "Crime TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkCrimeTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/Encounters": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:56::- `03ebb494449cd2b4` | `FACTORY` | `epidemic::gameplay::encounters::EncounterInstanceId` | `static constexpr EncounterInstanceId FromString(std::string_view s)noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Encounters API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:56::- `03ebb494449cd2b4` | `FACTORY` | `epidemic::gameplay::encounters::EncounterInstanceId` | `static constexpr EncounterInstanceId FromString(std::string_view s)noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:17::void Check(bool value, const char* message){if(!value){std::cerr<<message<<'\\n';std::exit(1);}}"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:56::- `03ebb494449cd2b4` | `FACTORY` | `epidemic::gameplay::encounters::EncounterInstanceId` | `static constexpr EncounterInstanceId FromString(std::string_view s)noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:56::- `03ebb494449cd2b4` | `FACTORY` | `epidemic::gameplay::encounters::EncounterInstanceId` | `static constexpr EncounterInstanceId FromString(std::string_view s)noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Encounters API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:56::- `03ebb494449cd2b4` | `FACTORY` | `epidemic::gameplay::encounters::EncounterInstanceId` | `static constexpr EncounterInstanceId FromString(std::string_view s)noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:56::- `03ebb494449cd2b4` | `FACTORY` | `epidemic::gameplay::encounters::EncounterInstanceId` | `static constexpr EncounterInstanceId FromString(std::string_view s)noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:56::SpawnRequest request; request.id=SpawnRequestId::FromRaw(0x2702,100); request.encounter=def.id; request.area=forest; request.spawn_point=point_id.Value(); request.area_tags=Tags({\"biome.forest\"}); request.seed=RandomSeed{123}; request.context.tick=GameplayTickId{1}; request.context.time=GameplayTimePoint{10};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:57::auto first=service.SpawnEncounter(request); Check(first.state==SpawnResultState::Succeeded,\"spawn succeeded\"); Check(!first.spawned_records.empty(),\"spawn records\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Encounters ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:56::- `03ebb494449cd2b4` | `FACTORY` | `epidemic::gameplay::encounters::EncounterInstanceId` | `static constexpr EncounterInstanceId FromString(std::string_view s)noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Encounters ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Encounters ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            }
+          ],
+          "rationale": "Encounters ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Encounters has no ATOMIC-EXTERNAL surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Encounters.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:40::const auto before_revision = invalid_service.CurrentRevision();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Encounters has no ATOMIC-RECONCILE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Encounters.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:40::const auto before_revision = invalid_service.CurrentRevision();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:18::GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:18::GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Encounters has no LIFE-RETRY-CLEANUP surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Encounters.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Encounters has no LIFE-SHUTDOWN surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Encounters.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:108::auto stale=journal.ReadChangesSince(ChangeCursor{}); Check(stale.snapshot_required,\"journal gap requires snapshot\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:108::auto stale=journal.ReadChangesSince(ChangeCursor{}); Check(stale.snapshot_required,\"journal gap requires snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:108::auto stale=journal.ReadChangesSince(ChangeCursor{}); Check(stale.snapshot_required,\"journal gap requires snapshot\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:108::auto stale=journal.ReadChangesSince(ChangeCursor{}); Check(stale.snapshot_required,\"journal gap requires snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:113::auto snapshot=service.CaptureSnapshot(); EncountersService restored; Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)),\"restore\"); Check(restored.GetEncounterInstance(first.encounter_instance)!=nullptr,\"restore encounter\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:113::auto snapshot=service.CaptureSnapshot(); EncountersService restored; Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)),\"restore\"); Check(restored.GetEncounterInstance(first.encounter_instance)!=nullptr,\"restore encounter\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:17::void Check(bool value, const char* message){if(!value){std::cerr<<message<<'\\n';std::exit(1);}}"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:54::Check(service.FindSpawnPointsInArea(forest).size()==1,\"find spawn point\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:54::Check(service.FindSpawnPointsInArea(forest).size()==1,\"find spawn point\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:40::const auto before_revision = invalid_service.CurrentRevision();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:56::- `03ebb494449cd2b4` | `FACTORY` | `epidemic::gameplay::encounters::EncounterInstanceId` | `static constexpr EncounterInstanceId FromString(std::string_view s)noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:42::Check(invalid_service.CurrentRevision() == before_revision, \"invalid table leaves revision unchanged\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:42::Check(invalid_service.CurrentRevision() == before_revision, \"invalid table leaves revision unchanged\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Encounters.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:54::Check(service.FindSpawnPointsInArea(forest).size()==1,\"find spawn point\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:54::Check(service.FindSpawnPointsInArea(forest).size()==1,\"find spawn point\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:4::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:4::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "Encounters has no TEST-CALLBACK-FAILURE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Encounters.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:18::GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:18::GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:54::Check(service.FindSpawnPointsInArea(forest).size()==1,\"find spawn point\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:54::Check(service.FindSpawnPointsInArea(forest).size()==1,\"find spawn point\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:56::SpawnRequest request; request.id=SpawnRequestId::FromRaw(0x2702,100); request.encounter=def.id; request.area=forest; request.spawn_point=point_id.Value(); request.area_tags=Tags({\"biome.forest\"}); request.seed=RandomSeed{123}; request.context.tick=GameplayTickId{1}; request.context.time=GameplayTimePoint{10};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:57::auto first=service.SpawnEncounter(request); Check(first.state==SpawnResultState::Succeeded,\"spawn succeeded\"); Check(!first.spawned_records.empty(),\"spawn records\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:18::GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:18::GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:40::const auto before_revision = invalid_service.CurrentRevision();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:18::GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:18::GameplayObjectRef Ref(const char* domain,const char* id){return {GameplayDomainId::FromString(domain),GameplayObjectId::FromString(id)};}"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkEncountersTests"
+            }
+          ],
+          "rationale": "Encounters TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkEncountersTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/NeedsLife": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:56::- `01bcdb9e8e863023` | `QUERY` | `epidemic::gameplay::needs_life::NeedsLifeService` | `[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "NeedsLife API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:56::- `01bcdb9e8e863023` | `QUERY` | `epidemic::gameplay::needs_life::NeedsLifeService` | `[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:12::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:17::void Check(bool value, const char *message)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:56::- `01bcdb9e8e863023` | `QUERY` | `epidemic::gameplay::needs_life::NeedsLifeService` | `[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:56::- `01bcdb9e8e863023` | `QUERY` | `epidemic::gameplay::needs_life::NeedsLifeService` | `[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "NeedsLife API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:56::- `01bcdb9e8e863023` | `QUERY` | `epidemic::gameplay::needs_life::NeedsLifeService` | `[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:56::- `01bcdb9e8e863023` | `QUERY` | `epidemic::gameplay::needs_life::NeedsLifeService` | `[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:128::Check(static_cast<bool>(expired) && expired.Value() == 1, \"expire pressure\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:128::Check(static_cast<bool>(expired) && expired.Value() == 1, \"expire pressure\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "NeedsLife ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:56::- `01bcdb9e8e863023` | `QUERY` | `epidemic::gameplay::needs_life::NeedsLifeService` | `[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "NeedsLife ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "NeedsLife ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            }
+          ],
+          "rationale": "NeedsLife ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "NeedsLife has no ATOMIC-EXTERNAL surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/NeedsLife.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "NeedsLife has no ATOMIC-RECONCILE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/NeedsLife.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:58::Check(static_cast<bool>(service.FreezeDefinitions()), \"freeze definitions\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:58::Check(static_cast<bool>(service.FreezeDefinitions()), \"freeze definitions\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "NeedsLife has no LIFE-RETRY-CLEANUP surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/NeedsLife.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "NeedsLife has no LIFE-SHUTDOWN surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/NeedsLife.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:175::Check(service.ReadChangesSince(ChangeCursor{}).snapshot_required, \"journal gap requires snapshot\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:175::Check(service.ReadChangesSince(ChangeCursor{}).snapshot_required, \"journal gap requires snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:175::Check(service.ReadChangesSince(ChangeCursor{}).snapshot_required, \"journal gap requires snapshot\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:175::Check(service.ReadChangesSince(ChangeCursor{}).snapshot_required, \"journal gap requires snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:180::const auto snapshot = service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:182::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore valid snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:182::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore valid snapshot\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:182::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore valid snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:12::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:17::void Check(bool value, const char *message)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:83::Check(service.GetCommittedNeedState(npc, hunger.id)->value == 90, \"simulation profile applied\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:83::Check(service.GetCommittedNeedState(npc, hunger.id)->value == 90, \"simulation profile applied\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:56::- `01bcdb9e8e863023` | `QUERY` | `epidemic::gameplay::needs_life::NeedsLifeService` | `[[nodiscard]] static constexpr GameplayDomainId Domain()noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NeedsLife.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:83::Check(service.GetCommittedNeedState(npc, hunger.id)->value == 90, \"simulation profile applied\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:83::Check(service.GetCommittedNeedState(npc, hunger.id)->value == 90, \"simulation profile applied\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:5::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:5::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "NeedsLife has no TEST-CALLBACK-FAILURE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/NeedsLife.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:126::Check(service.FindLifePressures(npc).size() == 1, \"find pressure\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:126::Check(service.FindLifePressures(npc).size() == 1, \"find pressure\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:128::Check(static_cast<bool>(expired) && expired.Value() == 1, \"expire pressure\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:128::Check(static_cast<bool>(expired) && expired.Value() == 1, \"expire pressure\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:86::Check(!service.SimulateLifeInterval(first_interval), \"duplicate interval rejected\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:48::hunger.default_value = 100;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:175::Check(service.ReadChangesSince(ChangeCursor{}).snapshot_required, \"journal gap requires snapshot\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:175::Check(service.ReadChangesSince(ChangeCursor{}).snapshot_required, \"journal gap requires snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:130::Check(service.PruneTerminalPressures(npc) == 1, \"terminal pressure cleanup\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:130::Check(service.PruneTerminalPressures(npc) == 1, \"terminal pressure cleanup\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNeedsLifeTests"
+            }
+          ],
+          "rationale": "NeedsLife TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNeedsLifeTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/Population": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:56::- `0275f1c8b9365621` | `QUERY` | `epidemic::gameplay::population::PopulationService` | `[[nodiscard]] const PopulationTemplate*GetTemplate(PopulationTemplateId id)const noexcept;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Population API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:56::- `0275f1c8b9365621` | `QUERY` | `epidemic::gameplay::population::PopulationService` | `[[nodiscard]] const PopulationTemplate*GetTemplate(PopulationTemplateId id)const noexcept;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:12::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:17::void Check(bool value, const char *message)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:56::- `0275f1c8b9365621` | `QUERY` | `epidemic::gameplay::population::PopulationService` | `[[nodiscard]] const PopulationTemplate*GetTemplate(PopulationTemplateId id)const noexcept;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:50::Check(!service.RegisterTemplate(PopulationTemplate{}), \"definitions reject late registration\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:50::Check(!service.RegisterTemplate(PopulationTemplate{}), \"definitions reject late registration\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:56::- `0275f1c8b9365621` | `QUERY` | `epidemic::gameplay::population::PopulationService` | `[[nodiscard]] const PopulationTemplate*GetTemplate(PopulationTemplateId id)const noexcept;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Population API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:56::- `0275f1c8b9365621` | `QUERY` | `epidemic::gameplay::population::PopulationService` | `[[nodiscard]] const PopulationTemplate*GetTemplate(PopulationTemplateId id)const noexcept;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:50::Check(!service.RegisterTemplate(PopulationTemplate{}), \"definitions reject late registration\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:50::Check(!service.RegisterTemplate(PopulationTemplate{}), \"definitions reject late registration\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:56::- `0275f1c8b9365621` | `QUERY` | `epidemic::gameplay::population::PopulationService` | `[[nodiscard]] const PopulationTemplate*GetTemplate(PopulationTemplateId id)const noexcept;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:60::Check(service.GetGroup(group_id.Value())->current_known_count == 0, \"group counters are derived\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:60::Check(service.GetGroup(group_id.Value())->current_known_count == 0, \"group counters are derived\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Population ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:56::- `0275f1c8b9365621` | `QUERY` | `epidemic::gameplay::population::PopulationService` | `[[nodiscard]] const PopulationTemplate*GetTemplate(PopulationTemplateId id)const noexcept;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Population ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Population ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            }
+          ],
+          "rationale": "Population ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Population has no ATOMIC-EXTERNAL surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Population.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:141::auto snapshot = service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:145::Check(!transient_in_snapshot, \"nonpersistent template unit omitted from snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Population has no ATOMIC-RECONCILE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Population.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:141::auto snapshot = service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:145::Check(!transient_in_snapshot, \"nonpersistent template unit omitted from snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:48::Check(static_cast<bool>(service.FreezeDefinitions()), \"freeze definitions\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:48::Check(static_cast<bool>(service.FreezeDefinitions()), \"freeze definitions\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:49::Check(service.DefinitionsFrozen(), \"definitions frozen flag\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:49::Check(service.DefinitionsFrozen(), \"definitions frozen flag\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Population has no LIFE-RETRY-CLEANUP surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Population.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Population has no LIFE-SHUTDOWN surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Population.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:141::auto snapshot = service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:145::Check(!transient_in_snapshot, \"nonpersistent template unit omitted from snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:139::const auto pre_restore_cursor = service.ReadChangesSince(ChangeCursor{}).latest_cursor;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:140::Check(pre_restore_cursor.sequence >= 2, \"pre-restore population journal has multiple changes\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:150::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:150::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:141::auto snapshot = service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:145::Check(!transient_in_snapshot, \"nonpersistent template unit omitted from snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:150::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:150::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:12::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:17::void Check(bool value, const char *message)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:60::Check(service.GetGroup(group_id.Value())->current_known_count == 0, \"group counters are derived\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:60::Check(service.GetGroup(group_id.Value())->current_known_count == 0, \"group counters are derived\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:141::auto snapshot = service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:145::Check(!transient_in_snapshot, \"nonpersistent template unit omitted from snapshot\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:56::- `0275f1c8b9365621` | `QUERY` | `epidemic::gameplay::population::PopulationService` | `[[nodiscard]] const PopulationTemplate*GetTemplate(PopulationTemplateId id)const noexcept;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:166::\"failed restore leaves current state unchanged\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:173::Check(static_cast<bool>(collision_probe_id), \"generator continues after restore\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Population.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:60::Check(service.GetGroup(group_id.Value())->current_known_count == 0, \"group counters are derived\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:60::Check(service.GetGroup(group_id.Value())->current_known_count == 0, \"group counters are derived\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:5::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:5::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "Population has no TEST-CALLBACK-FAILURE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Population.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:80::Check(static_cast<bool>(other_id), \"create second unit\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:80::Check(static_cast<bool>(other_id), \"create second unit\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:73::Check(service.FindMaterializationCandidates(group.area, 10).empty(), \"no candidate after materialize\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:73::Check(service.FindMaterializationCandidates(group.area, 10).empty(), \"no candidate after materialize\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:60::Check(service.GetGroup(group_id.Value())->current_known_count == 0, \"group counters are derived\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:60::Check(service.GetGroup(group_id.Value())->current_known_count == 0, \"group counters are derived\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:50::Check(!service.RegisterTemplate(PopulationTemplate{}), \"definitions reject late registration\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:50::Check(!service.RegisterTemplate(PopulationTemplate{}), \"definitions reject late registration\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:43::PopulationService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:46::Check(static_cast<bool>(service.RegisterTemplate(templ)), \"register template\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:139::const auto pre_restore_cursor = service.ReadChangesSince(ChangeCursor{}).latest_cursor;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:140::Check(pre_restore_cursor.sequence >= 2, \"pre-restore population journal has multiple changes\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:49::Check(service.DefinitionsFrozen(), \"definitions frozen flag\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:49::Check(service.DefinitionsFrozen(), \"definitions frozen flag\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPopulationTests"
+            }
+          ],
+          "rationale": "Population TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPopulationTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/RolesJobs": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:56::- `07ade6805ccebd74` | `MUTATOR` | `epidemic::gameplay::roles_jobs::RolesJobsService` | `[[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty,GameplayContext context={});`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "RolesJobs API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:56::- `07ade6805ccebd74` | `MUTATOR` | `epidemic::gameplay::roles_jobs::RolesJobsService` | `[[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty,GameplayContext context={});`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:16::void Check(bool value, const char *message)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:56::- `07ade6805ccebd74` | `MUTATOR` | `epidemic::gameplay::roles_jobs::RolesJobsService` | `[[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty,GameplayContext context={});`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:88::JobAssignment rejected;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:56::- `07ade6805ccebd74` | `MUTATOR` | `epidemic::gameplay::roles_jobs::RolesJobsService` | `[[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty,GameplayContext context={});`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "RolesJobs API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:56::- `07ade6805ccebd74` | `MUTATOR` | `epidemic::gameplay::roles_jobs::RolesJobsService` | `[[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty,GameplayContext context={});`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:88::JobAssignment rejected;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:56::- `07ade6805ccebd74` | `MUTATOR` | `epidemic::gameplay::roles_jobs::RolesJobsService` | `[[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty,GameplayContext context={});`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:68::assignment.workplace = workplace_id.Value();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:70::Check(static_cast<bool>(assignment_id), \"assign job\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "RolesJobs ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:56::- `07ade6805ccebd74` | `MUTATOR` | `epidemic::gameplay::roles_jobs::RolesJobsService` | `[[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty,GameplayContext context={});`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "RolesJobs ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "RolesJobs ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            }
+          ],
+          "rationale": "RolesJobs ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "RolesJobs has no ATOMIC-EXTERNAL surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/RolesJobs.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:34::job.default_tasks.push_back(JobTaskTypeId::FromString(\"task.open_shop\"));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:35::return job;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "RolesJobs has no ATOMIC-RECONCILE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/RolesJobs.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:34::job.default_tasks.push_back(JobTaskTypeId::FromString(\"task.open_shop\"));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:35::return job;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:38::WorkSchedule MakeSchedule(JobAssignmentId assignment, GameplayTimePoint start, GameplayDuration duration)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:38::WorkSchedule MakeSchedule(JobAssignmentId assignment, GameplayTimePoint start, GameplayDuration duration)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:85::Check(!static_cast<bool>(service.CompleteDuty(duties.front())), \"terminal duty cannot complete twice\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:85::Check(!static_cast<bool>(service.CompleteDuty(duties.front())), \"terminal duty cannot complete twice\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "RolesJobs has no LIFE-RETRY-CLEANUP surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/RolesJobs.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "RolesJobs has no LIFE-SHUTDOWN surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/RolesJobs.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:176::Check(stale_batch.snapshot_required, \"bounded journal requires snapshot for stale reader\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:176::Check(stale_batch.snapshot_required, \"bounded journal requires snapshot for stale reader\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:175::auto stale_batch = journal.ReadChangesSince(ChangeCursor{});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:176::Check(stale_batch.snapshot_required, \"bounded journal requires snapshot for stale reader\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:34::job.default_tasks.push_back(JobTaskTypeId::FromString(\"task.open_shop\"));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:35::return job;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:187::auto snapshot = service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:189::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:189::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:189::Check(static_cast<bool>(restored.RestoreSnapshot(snapshot)), \"restore\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:16::void Check(bool value, const char *message)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:47::shift.target_area = Ref(\"world.area\", \"market\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:49::return schedule;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:34::job.default_tasks.push_back(JobTaskTypeId::FromString(\"task.open_shop\"));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:35::return job;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:56::- `07ade6805ccebd74` | `MUTATOR` | `epidemic::gameplay::roles_jobs::RolesJobsService` | `[[nodiscard]] foundation::Result<DutyId> CreateDuty(Duty duty,GameplayContext context={});`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:55::RolesJobsService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:57::Check(static_cast<bool>(service.RegisterJobDefinition(job)), \"register job\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/RolesJobs.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:47::shift.target_area = Ref(\"world.area\", \"market\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:49::return schedule;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:4::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:4::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "RolesJobs has no TEST-CALLBACK-FAILURE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/RolesJobs.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:120::auto second_recurring = recurrence.ActivateDueShifts(GameplayTimePoint{195}, GameplayTimePoint{210});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:121::Check(second_recurring.size() == 1, \"completed duty does not block next recurring occurrence\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:75::Check(service.ActivateDueShifts(GameplayTimePoint{700}).empty(), \"not due\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:75::Check(service.ActivateDueShifts(GameplayTimePoint{700}).empty(), \"not due\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:68::assignment.workplace = workplace_id.Value();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:70::Check(static_cast<bool>(assignment_id), \"assign job\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:88::JobAssignment rejected;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:34::job.default_tasks.push_back(JobTaskTypeId::FromString(\"task.open_shop\"));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:35::return job;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:175::auto stale_batch = journal.ReadChangesSince(ChangeCursor{});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:176::Check(stale_batch.snapshot_required, \"bounded journal requires snapshot for stale reader\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:85::Check(!static_cast<bool>(service.CompleteDuty(duties.front())), \"terminal duty cannot complete twice\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:85::Check(!static_cast<bool>(service.CompleteDuty(duties.front())), \"terminal duty cannot complete twice\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRolesJobsTests"
+            }
+          ],
+          "rationale": "RolesJobs TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkRolesJobsTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/Society": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:56::- `0081df8f83a717bd` | `QUERY` | `epidemic::gameplay::society::SocietyService` | `[[nodiscard]] ChangeCursor LatestChangeCursor()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Society API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:56::- `0081df8f83a717bd` | `QUERY` | `epidemic::gameplay::society::SocietyService` | `[[nodiscard]] ChangeCursor LatestChangeCursor()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:16::return {GameplayDomainId::FromString(\"test\"), GameplayObjectId::FromString(name)};"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:56::- `0081df8f83a717bd` | `QUERY` | `epidemic::gameplay::society::SocietyService` | `[[nodiscard]] ChangeCursor LatestChangeCursor()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:133::MembershipRecord unknown_group;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:136::if (society.AddMembership(unknown_group))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:56::- `0081df8f83a717bd` | `QUERY` | `epidemic::gameplay::society::SocietyService` | `[[nodiscard]] ChangeCursor LatestChangeCursor()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Society API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:56::- `0081df8f83a717bd` | `QUERY` | `epidemic::gameplay::society::SocietyService` | `[[nodiscard]] ChangeCursor LatestChangeCursor()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:106::const auto missing_group = Ref(\"missing_group\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:106::const auto missing_group = Ref(\"missing_group\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:56::- `0081df8f83a717bd` | `QUERY` | `epidemic::gameplay::society::SocietyService` | `[[nodiscard]] ChangeCursor LatestChangeCursor()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:148::const auto membership_id = membership_result.Value();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:151::if (!duplicate_retry || duplicate_retry.Value() != membership_id)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Society ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:56::- `0081df8f83a717bd` | `QUERY` | `epidemic::gameplay::society::SocietyService` | `[[nodiscard]] ChangeCursor LatestChangeCursor()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Society ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:3::## Scope",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Society ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:3::## Scope",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            }
+          ],
+          "rationale": "Society ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Society has no ATOMIC-EXTERNAL surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Society.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:25::definition.default_value_micro = 0;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:31::return definition;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Society has no ATOMIC-RECONCILE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Society.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:25::definition.default_value_micro = 0;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:31::return definition;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:122::MembershipRecord before_freeze;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:125::if (society.AddMembership(before_freeze))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:76::return a.definitions_frozen == b.definitions_frozen && a.groups.size() == b.groups.size() &&",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:76::return a.definitions_frozen == b.definitions_frozen && a.groups.size() == b.groups.size() &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Society has no LIFE-RETRY-CLEANUP surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Society.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Society has no LIFE-SHUTDOWN surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Society.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:74::static bool SameMutableSnapshot(const SocietySnapshot &a, const SocietySnapshot &b)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:76::return a.definitions_frozen == b.definitions_frozen && a.groups.size() == b.groups.size() &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:56::return a.sequence == b.sequence && a.kind == b.kind && a.subject == b.subject && a.target == b.target &&",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:56::return a.sequence == b.sequence && a.kind == b.kind && a.subject == b.subject && a.target == b.target &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:25::definition.default_value_micro = 0;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:31::return definition;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:224::const auto stable_snapshot = society.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:227::if (society.RestoreSnapshot(std::move(corrupted)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:20::## Persistence and deterministic reads",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:225::auto corrupted = stable_snapshot;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:227::if (society.RestoreSnapshot(std::move(corrupted)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:16::return {GameplayDomainId::FromString(\"test\"), GameplayObjectId::FromString(name)};"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:43::return a.id == b.id && a.subject == b.subject && a.target == b.target && a.type == b.type &&",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:43::return a.id == b.id && a.subject == b.subject && a.target == b.target && a.type == b.type &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:16::## Failure atomicity and boundary review",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:25::definition.default_value_micro = 0;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:31::return definition;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:56::- `0081df8f83a717bd` | `QUERY` | `epidemic::gameplay::society::SocietyService` | `[[nodiscard]] ChangeCursor LatestChangeCursor()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:150::auto duplicate_retry = society.AddMembership(membership);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:151::if (!duplicate_retry || duplicate_retry.Value() != membership_id)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Society.md:7::## Public contract review",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:43::return a.id == b.id && a.subject == b.subject && a.target == b.target && a.type == b.type &&",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:43::return a.id == b.id && a.subject == b.subject && a.target == b.target && a.type == b.type &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:4::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:4::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "Society has no TEST-CALLBACK-FAILURE surface in its reviewed public contract: the module-owned state and ports documented at docs/EngineFramework/Society.md:3::## Scope expose no applicable operation.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:150::auto duplicate_retry = society.AddMembership(membership);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:151::if (!duplicate_retry || duplicate_retry.Value() != membership_id)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:64::if (a.size() != b.size())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:64::if (a.size() != b.size())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:148::const auto membership_id = membership_result.Value();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:151::if (!duplicate_retry || duplicate_retry.Value() != membership_id)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:133::MembershipRecord unknown_group;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:136::if (society.AddMembership(unknown_group))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:25::definition.default_value_micro = 0;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:31::return definition;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:38::a.state == b.state && a.joined_at == b.joined_at && a.revision == b.revision;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:43::return a.id == b.id && a.subject == b.subject && a.target == b.target && a.type == b.type &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:76::return a.definitions_frozen == b.definitions_frozen && a.groups.size() == b.groups.size() &&",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:76::return a.definitions_frozen == b.definitions_frozen && a.groups.size() == b.groups.size() &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSocietyTests"
+            }
+          ],
+          "rationale": "Society TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSocietyTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    }
+  },
+  "note": "Block-local projection. Windows Debug/Release CTest remains integrator verification because the supplied top-level tree rejects non-Windows Platform configuration.",
+  "schema_version": 1
+}

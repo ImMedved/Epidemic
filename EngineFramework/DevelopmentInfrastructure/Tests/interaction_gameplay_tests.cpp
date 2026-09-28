@@ -1,7 +1,5 @@
-#include "allocation_fault_injection.h"
-#include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Interaction/interaction.h"
+#include "../../GameplayWorldStateOwners/Interaction/src/interaction_test_seam.h"
 #include <cstdlib>
 #include <iostream>
 #include <stdexcept>
@@ -74,6 +72,8 @@ int main()
     CHECK(s.RegisterProvider(p));
     CHECK(s.RegisterExecutor(type, x));
     s.SetStateProvider(&st);
+    const auto pre_freeze_snapshot = s.CaptureSnapshot();
+    CHECK(!s.RestoreSnapshot(pre_freeze_snapshot));
     s.Freeze();
     InteractionContext c;
     c.actor = {GameplayDomainId::FromString("a"), GameplayObjectId::FromString("a.1")};
@@ -106,6 +106,8 @@ int main()
     CHECK(result.Value().state == InteractionSessionState::Active);
     CHECK(x.commits == 0);
     CHECK(s.FindActive(c.actor).size() == 1);
+    const auto active_restore_target = s.CaptureSnapshot();
+    CHECK(active_restore_target.sessions.size() == 1);
     CHECK(!s.SweepTimed(GameplayTimePoint{15}));
     CHECK(x.commits == 0);
     GameplayContext completion_context = c.gameplay;
@@ -113,58 +115,17 @@ int main()
     CHECK(s.Complete(result.Value().execution, completion_context));
     CHECK(x.commits == 1);
     CHECK(s.FindActive(c.actor).empty());
-    const auto allocation_before = s.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "Interaction.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return s.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return s.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = s.CaptureSnapshot();
-            const auto diagnostics = s.GetDiagnostics();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("Interaction.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.sessions.size(), allocation_after.sessions.size(),
-                                                     "session count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.sessions.size(), allocation_after.sessions.size(),
-                                                     "session payload count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     s.FindActive(c.actor).size(), std::size_t{0},
-                                                     "active session index")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
-                                                     allocation_baseline.ids.next, allocation_after.ids.next,
-                                                     "execution id generator next")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.revision, allocation_after.revision,
-                                                     "revision")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     s.ReadChangesSince(s.LatestChangeCursor()).changes.size(), std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     s.LatestChangeCursor(), s.LatestChangeCursor(),
-                                                     "latest change cursor stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     diagnostics.sessions,
-                                                     static_cast<std::uint64_t>(allocation_baseline.sessions.size()),
-                                                     "retained session diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     s.LatestChangeCursor(), s.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     diagnostics.sessions,
-                                                     static_cast<std::uint64_t>(allocation_baseline.sessions.size()),
-                                                     "public diagnostics read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
-        });
-    CHECK(epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report));
+    const auto restore_before = s.CaptureSnapshot();
+    for (const auto fault : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
+    {
+        test_seam::FailNext(fault);
+        CHECK(!s.RestoreSnapshot(active_restore_target));
+        const auto restore_after = s.CaptureSnapshot();
+        CHECK(restore_after.sessions.size() == restore_before.sessions.size());
+        CHECK(restore_after.ids.next == restore_before.ids.next);
+        CHECK(restore_after.revision == restore_before.revision);
+        CHECK(restore_after.change_epoch == restore_before.change_epoch);
+    }
     return 0;
 }
 

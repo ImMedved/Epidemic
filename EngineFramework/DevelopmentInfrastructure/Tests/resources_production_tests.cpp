@@ -1,4 +1,4 @@
-#include "allocation_fault_injection.h"
+#include "../../GameplayWorldStateOwners/ResourcesProduction/src/resources_production_test_seam.h"
 #include "Epidemic/GameFramework/ResourcesProduction/resources_production.h"
 
 #include <limits>
@@ -21,6 +21,141 @@ namespace
     if (!id)
         return false;
     wood = id.Value();
+    return true;
+}
+
+[[nodiscard]] bool SameCoreSnapshot(const ResourcesSnapshot &a, const ResourcesSnapshot &b)
+{
+    return a.stockpiles.size() == b.stockpiles.size() && a.amounts.size() == b.amounts.size() &&
+           a.nodes.size() == b.nodes.size() && a.sites.size() == b.sites.size() &&
+           a.reservations.size() == b.reservations.size() && a.capabilities.size() == b.capabilities.size() &&
+           a.plans.size() == b.plans.size() && a.transactions.size() == b.transactions.size() &&
+           a.stockpile_ids.next == b.stockpile_ids.next && a.node_ids.next == b.node_ids.next &&
+           a.site_ids.next == b.site_ids.next && a.reservation_ids.next == b.reservation_ids.next &&
+           a.capability_ids.next == b.capability_ids.next && a.plan_ids.next == b.plan_ids.next &&
+           a.transaction_ids.next == b.transaction_ids.next && a.revision == b.revision &&
+           a.change_epoch == b.change_epoch;
+}
+
+[[nodiscard]] bool HasRevisionExhausted(const auto &result)
+{
+    return !result && result.GetError().HasCode("gameplay.resources.revision_exhausted");
+}
+
+[[nodiscard]] bool TestRevisionExhaustionKeepsAllGenerators()
+{
+    ResourcesProductionService service;
+    ResourceTypeId wood;
+    if (!RegisterWood(service, wood))
+        return false;
+    service.Freeze();
+    const auto owner = Ref("revision.owner");
+    auto source = service.CreateStockpile({{}, owner, {}, {}, StockpileState::Active, {}});
+    auto destination = service.CreateStockpile({{}, owner, {}, {}, StockpileState::Active, {}});
+    if (!source || !destination || !service.Add(source.Value(), {wood, 100}))
+        return false;
+
+    auto exhausted = service.CaptureSnapshot();
+    exhausted.revision.value = std::numeric_limits<std::uint64_t>::max();
+    if (!service.RestoreSnapshot(exhausted))
+        return false;
+    const auto before = service.CaptureSnapshot();
+
+    ResourceNode node;
+    node.type = wood;
+    node.remaining_amount = 1;
+    node.maximum_amount = 1;
+    node.state = ResourceNodeState::Active;
+    ProductionSite site;
+    site.site_object = owner;
+    ProductionCapability capability;
+    capability.site = owner;
+    capability.capacity = 1;
+    ProductionPlan plan;
+    plan.owner = owner;
+    plan.desired_output = wood;
+    plan.target_quantity = 1;
+
+    if (!HasRevisionExhausted(service.CreateStockpile({{}, owner, {}, {}, StockpileState::Active, {}})) ||
+        !SameCoreSnapshot(before, service.CaptureSnapshot()))
+        return false;
+    if (!HasRevisionExhausted(service.CreateNode(node)) || !SameCoreSnapshot(before, service.CaptureSnapshot()))
+        return false;
+    if (!HasRevisionExhausted(service.CreateProductionSite(site)) || !SameCoreSnapshot(before, service.CaptureSnapshot()))
+        return false;
+    if (!HasRevisionExhausted(service.Reserve(source.Value(), {{wood, 1}}, owner)) ||
+        !SameCoreSnapshot(before, service.CaptureSnapshot()) || service.GetReservedAmount(source.Value(), wood) != 0)
+        return false;
+    if (!HasRevisionExhausted(service.Transfer(source.Value(), destination.Value(), {{wood, 1}})) ||
+        !SameCoreSnapshot(before, service.CaptureSnapshot()) || service.GetAmount(source.Value(), wood) != 100 ||
+        service.GetAmount(destination.Value(), wood) != 0)
+        return false;
+    if (!HasRevisionExhausted(service.CreateProductionCapability(capability)) ||
+        !SameCoreSnapshot(before, service.CaptureSnapshot()))
+        return false;
+    if (!HasRevisionExhausted(service.CreateProductionPlan(plan)) || !SameCoreSnapshot(before, service.CaptureSnapshot()))
+        return false;
+    return true;
+}
+
+[[nodiscard]] bool TestPublicationFaultAtomicity()
+{
+    const auto owner = Ref("fault.owner");
+
+    for (const auto point : {internal_test::AllocationFaultPoint::PrimaryInsert,
+                             internal_test::AllocationFaultPoint::JournalAppend})
+    {
+        ResourcesProductionService service;
+        ResourceTypeId wood;
+        if (!RegisterWood(service, wood))
+            return false;
+        service.Freeze();
+        const auto before = service.CaptureSnapshot();
+        internal_test::ArmAllocationFault(point);
+        const auto result = service.CreateStockpile({{}, owner, {}, {}, StockpileState::Active, {}});
+        internal_test::ResetAllocationFault();
+        if (result || !result.GetError().HasCode("gameplay.resources.publication_failed") ||
+            !SameCoreSnapshot(before, service.CaptureSnapshot()))
+            return false;
+    }
+
+    {
+        ResourcesProductionService service;
+        ResourceTypeId wood;
+        if (!RegisterWood(service, wood))
+            return false;
+        service.Freeze();
+        auto stockpile = service.CreateStockpile({{}, owner, {}, {}, StockpileState::Active, {}});
+        if (!stockpile || !service.Add(stockpile.Value(), {wood, 10}))
+            return false;
+        const auto before = service.CaptureSnapshot();
+        internal_test::ArmAllocationFault(internal_test::AllocationFaultPoint::ReservedIndexInsert);
+        const auto result = service.Reserve(stockpile.Value(), {{wood, 1}}, owner);
+        internal_test::ResetAllocationFault();
+        if (result || !result.GetError().HasCode("gameplay.resources.publication_failed") ||
+            !SameCoreSnapshot(before, service.CaptureSnapshot()) || service.GetReservedAmount(stockpile.Value(), wood) != 0)
+            return false;
+    }
+
+    {
+        ResourcesProductionService service;
+        ResourceTypeId wood;
+        if (!RegisterWood(service, wood))
+            return false;
+        service.Freeze();
+        auto from = service.CreateStockpile({{}, owner, {}, {}, StockpileState::Active, {}});
+        auto to = service.CreateStockpile({{}, owner, {}, {}, StockpileState::Active, {}});
+        if (!from || !to || !service.Add(from.Value(), {wood, 10}))
+            return false;
+        const auto before = service.CaptureSnapshot();
+        internal_test::ArmAllocationFault(internal_test::AllocationFaultPoint::TransactionPublication);
+        const auto result = service.Transfer(from.Value(), to.Value(), {{wood, 1}});
+        internal_test::ResetAllocationFault();
+        if (result || !result.GetError().HasCode("gameplay.resources.publication_failed") ||
+            !SameCoreSnapshot(before, service.CaptureSnapshot()) || service.GetAmount(from.Value(), wood) != 10 ||
+            service.GetAmount(to.Value(), wood) != 0)
+            return false;
+    }
     return true;
 }
 } // namespace
@@ -153,30 +288,21 @@ int main()
     if (!empty_journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 56;
     if (journal.ReadChangesSince(journal.LatestChangeCursor()).changes.size() != 0) return 45;
 
-    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
+    // Goal 4: deterministic module-local restore seams replace process-global allocation hooks.
     const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    for (const auto point : {internal_test::AllocationFaultPoint::RestorePrimary,
+                             internal_test::AllocationFaultPoint::RestoreDerived})
     {
         auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
+        internal_test::ArmAllocationFault(point);
+        const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
+        internal_test::ResetAllocationFault();
+        if (restored_under_fault || !SameCoreSnapshot(allocation_before, restored.CaptureSnapshot()))
             return 941;
     }
-    if (!saw_restore_allocation_failure)
+    if (!TestRevisionExhaustionKeepsAllGenerators())
         return 942;
+    if (!TestPublicationFaultAtomicity())
+        return 943;
     return 0;
 }

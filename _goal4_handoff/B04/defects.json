@@ -1,0 +1,79 @@
+{
+  "defects": {
+    "G4-INFRA-001/B04": {
+      "defect": "Owned allocation-failure evidence depended on process-global allocator override.",
+      "fix": "RolesJobs, NeedsLife, Population, Encounters and Society tests now use narrow module-local one-shot failure seams for restore/publication evidence; shared helper files are untouched.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B04",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkRolesJobsTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:12::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkNeedsLifeTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:12::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkPopulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkEncountersTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkSocietyTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkRolesJobsTests",
+      "targets": [
+        "EpidemicGameFrameworkRolesJobsTests",
+        "EpidemicGameFrameworkNeedsLifeTests",
+        "EpidemicGameFrameworkPopulationTests",
+        "EpidemicGameFrameworkEncountersTests",
+        "EpidemicGameFrameworkSocietyTests"
+      ]
+    },
+    "G4-SOC-001": {
+      "defect": "Revision exhaustion was ignored by several Society mutators after restoring revision UINT64_MAX.",
+      "fix": "EngineFramework/GameplayWorldStateOwners/Society/src/society.cpp:394::SetMembershipRole and related revision-bearing mutators now reject exhaustion before authoritative mutation.",
+      "logical_id": "G4-SOC-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Society",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:251::const auto max_revision_atomic = [&](auto &&mutation) {",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:251::const auto max_revision_atomic = [&](auto &&mutation) {",
+          "target": "EpidemicGameFrameworkSocietyTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkSocietyTests",
+      "targets": [
+        "EpidemicGameFrameworkSocietyTests"
+      ]
+    },
+    "G4-SOC-002": {
+      "defect": "Society generator/revision/state/index/journal publication had fallible steps after partial commit.",
+      "fix": "EngineFramework/GameplayWorldStateOwners/Society/src/society.cpp:427::SetRelationship and related create paths stage generators/revisions, roll back indices, and use pre-reserved bounded journal storage.",
+      "logical_id": "G4-SOC-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/Society",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:259::return SameMutableSnapshot(before, after);",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:259::return SameMutableSnapshot(before, after);",
+          "target": "EpidemicGameFrameworkSocietyTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkSocietyTests",
+      "targets": [
+        "EpidemicGameFrameworkSocietyTests"
+      ]
+    }
+  },
+  "schema_version": 1
+}

@@ -82,7 +82,7 @@ def generate(previous: dict[str, object] | None = None) -> dict[str, object]:
             "EngineFramework/BaseInfrastructure/Foundation/include/Epidemic/GameFramework/Foundation/tags.h:107::operator==(const GameplayTagSet&)",
             "EngineFramework/BaseInfrastructure/Foundation/include/Epidemic/GameFramework/Foundation/gameplay_context.h:26::operator==(const GameplayContext&)",
         ],
-        "regression": "EngineFramework/DevelopmentInfrastructure/Tests/environment_gameplay_tests.cpp:39-48::equality_hazard ==",
+        "regression": "EngineFramework/DevelopmentInfrastructure/Tests/environment_gameplay_tests.cpp:39::CHECK(equality_hazard == expected_equality_hazard)",
         "target": "EpidemicGameFrameworkEnvironmentTests",
     }
     return {

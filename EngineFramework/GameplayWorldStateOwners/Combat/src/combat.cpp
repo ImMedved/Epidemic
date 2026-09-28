@@ -55,17 +55,86 @@ namespace
     r = AddSat(r, MulSat(ar, bq));
     return AddSat(r, MulSat(ar, br) / s);
 }
+[[nodiscard]] constexpr std::uint64_t UnsignedMagnitude(std::int64_t value) noexcept
+{
+    if (value >= 0)
+        return static_cast<std::uint64_t>(value);
+    return static_cast<std::uint64_t>(-(value + 1)) + 1;
+}
+
+struct WideUnsigned
+{
+    std::uint64_t high = 0;
+    std::uint64_t low = 0;
+};
+
+[[nodiscard]] constexpr WideUnsigned MultiplyWide(std::uint64_t lhs, std::uint64_t rhs) noexcept
+{
+    constexpr std::uint64_t kMask = 0xFFFF'FFFFull;
+    const std::uint64_t lhs_low = lhs & kMask;
+    const std::uint64_t lhs_high = lhs >> 32;
+    const std::uint64_t rhs_low = rhs & kMask;
+    const std::uint64_t rhs_high = rhs >> 32;
+
+    const std::uint64_t first = lhs_low * rhs_low;
+    const std::uint64_t word0 = first & kMask;
+    const std::uint64_t carry0 = first >> 32;
+
+    const std::uint64_t second = lhs_high * rhs_low + carry0;
+    const std::uint64_t word1 = second & kMask;
+    const std::uint64_t word2 = second >> 32;
+
+    const std::uint64_t third = lhs_low * rhs_high + word1;
+    const std::uint64_t carry1 = third >> 32;
+
+    return {lhs_high * rhs_high + word2 + carry1, (third << 32) | word0};
+}
+
+struct WideDivisionResult
+{
+    std::uint64_t quotient = 0;
+    bool quotient_overflow = false;
+};
+
+[[nodiscard]] constexpr WideDivisionResult DivideWideBy64(WideUnsigned numerator,
+                                                            std::uint64_t denominator) noexcept
+{
+    WideDivisionResult result;
+    std::uint64_t remainder = 0;
+    for (int bit = 127; bit >= 0; --bit)
+    {
+        const std::uint64_t incoming = bit >= 64
+                                           ? ((numerator.high >> static_cast<unsigned>(bit - 64)) & 1ull)
+                                           : ((numerator.low >> static_cast<unsigned>(bit)) & 1ull);
+        remainder = (remainder << 1) | incoming;
+        if (remainder < denominator)
+            continue;
+        remainder -= denominator;
+        if (bit >= 64)
+            result.quotient_overflow = true;
+        else
+            result.quotient |= std::uint64_t{1} << static_cast<unsigned>(bit);
+    }
+    return result;
+}
+
 [[nodiscard]] std::int64_t ScaleRatioSat(std::int64_t value, std::int64_t new_max, std::int64_t old_max) noexcept
 {
-    if (old_max == 0)
+    if (old_max == 0 || value == 0 || new_max == 0)
         return 0;
-    const long double scaled = static_cast<long double>(value) * static_cast<long double>(new_max) /
-                               static_cast<long double>(old_max);
-    if (scaled >= static_cast<long double>(std::numeric_limits<std::int64_t>::max()))
-        return std::numeric_limits<std::int64_t>::max();
-    if (scaled <= static_cast<long double>(std::numeric_limits<std::int64_t>::min()))
+
+    const bool negative = ((value < 0) != (new_max < 0)) != (old_max < 0);
+    const auto product = MultiplyWide(UnsignedMagnitude(value), UnsignedMagnitude(new_max));
+    const auto division = DivideWideBy64(product, UnsignedMagnitude(old_max));
+    const std::uint64_t limit = negative ? (std::uint64_t{1} << 63)
+                                         : static_cast<std::uint64_t>(std::numeric_limits<std::int64_t>::max());
+    if (division.quotient_overflow || division.quotient > limit)
+        return negative ? std::numeric_limits<std::int64_t>::min() : std::numeric_limits<std::int64_t>::max();
+    if (!negative)
+        return static_cast<std::int64_t>(division.quotient);
+    if (division.quotient == (std::uint64_t{1} << 63))
         return std::numeric_limits<std::int64_t>::min();
-    return static_cast<std::int64_t>(scaled);
+    return -static_cast<std::int64_t>(division.quotient);
 }
 } // namespace
 CombatService::CombatService()

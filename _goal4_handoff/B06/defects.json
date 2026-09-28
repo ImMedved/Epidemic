@@ -1,0 +1,159 @@
+{
+  "defects": {
+    "G4-B06-PROG-004": {
+      "defect": "Progression journal allocation could throw after authoritative state was already committed, exposing a retryable exception after accepted mutation.",
+      "fix": "Record catches std::bad_alloc specifically, rotates the journal epoch and preserves accepted authoritative state; unrelated exceptions are not converted into success.",
+      "logical_id": "G4-B06-PROG-004",
+      "module": "EngineFramework/GameplayWorldStateOwners/Progression",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:387::if (!journal_fault.HasProfile(atomic_actor) || !journal_after.journal.empty() ||",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:387::if (!journal_fault.HasProfile(atomic_actor) || !journal_after.journal.empty() ||",
+          "target": "EpidemicGameFrameworkProgressionTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkProgressionTests",
+      "targets": [
+        "EpidemicGameFrameworkProgressionTests"
+      ]
+    },
+    "G4-COMBAT-001": {
+      "defect": "ScaleRatioSat relied on long double precision for int64 ratio scaling, which is binary64 on MSVC and can return the wrong integer near INT64_MAX.",
+      "fix": "Replaced floating ratio scaling with portable exact 128-by-64 unsigned mul/div built from uint64 operations and explicit signed saturation/truncation.",
+      "logical_id": "G4-COMBAT-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Combat",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:283::if (!ratio_state || ratio_state.Value().maximum_micro != kMax - 1 ||",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:283::if (!ratio_state || ratio_state.Value().maximum_micro != kMax - 1 ||",
+          "target": "EpidemicGameFrameworkCombatTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkCombatTests",
+      "targets": [
+        "EpidemicGameFrameworkCombatTests"
+      ]
+    },
+    "G4-INFRA-001": {
+      "defect": "B06 baseline tests in Abilities, Progression and Traversal used process-global allocation fault injection.",
+      "fix": "All three owned baseline users now use module-private deterministic seams. Every named failure seam is exercised from a fresh fixture with full pre/post snapshot comparison; journal recovery catches std::bad_alloc specifically, never catch-all. Shared helpers are untouched.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B06 owned fault-evidence migration",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:452::test_seam::FailNext(test_seam::FaultPoint::BindScheduleBeforePublish);",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:452::test_seam::FailNext(test_seam::FaultPoint::BindScheduleBeforePublish);",
+          "target": "EpidemicGameFrameworkAbilitiesTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:252::test_seam::FailNext(test_seam::FaultPoint::EnsureProfileBeforePublish);",
+          "target": "EpidemicGameFrameworkProgressionTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:296::test_seam::FailNext(test_seam::FaultPoint::AssignProfileBeforePublish);",
+          "target": "EpidemicGameFrameworkTraversalTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkAbilitiesTests",
+      "targets": [
+        "EpidemicGameFrameworkAbilitiesTests",
+        "EpidemicGameFrameworkProgressionTests",
+        "EpidemicGameFrameworkTraversalTests"
+      ]
+    },
+    "G4-PROG-001": {
+      "defect": "RemoveProfile erased authoritative state before proving global revision capacity.",
+      "fix": "Revision exhaustion is checked before destructive profile erase.",
+      "logical_id": "G4-PROG-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Progression",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:344::if (atomic.RemoveProfile(atomic_actor) || !atomic.HasProfile(atomic_actor))",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:344::if (atomic.RemoveProfile(atomic_actor) || !atomic.HasProfile(atomic_actor))",
+          "target": "EpidemicGameFrameworkProgressionTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkProgressionTests",
+      "targets": [
+        "EpidemicGameFrameworkProgressionTests"
+      ]
+    },
+    "G4-PROG-002": {
+      "defect": "Several profile mutations and CommitProgressGrant changed state or consumed reservation before proving all required revisions/reward fan-out.",
+      "fix": "Revision capacity is preflighted before mutation; progress commit stages profile and milestone rewards and consumes reservation only after terminal publication.",
+      "logical_id": "G4-PROG-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/Progression",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:371::if (!atomic_track_state || atomic_track_state.Value().progress_micro != 0)",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:371::if (!atomic_track_state || atomic_track_state.Value().progress_micro != 0)",
+          "target": "EpidemicGameFrameworkProgressionTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkProgressionTests",
+      "targets": [
+        "EpidemicGameFrameworkProgressionTests"
+      ]
+    },
+    "G4-PROG-003": {
+      "defect": "AddModifier consumed the live modifier ID generator before revision/allocation publication succeeded.",
+      "fix": "Modifier ID generation and vector publication are staged; generator commits only after publication is guaranteed.",
+      "logical_id": "G4-PROG-003",
+      "module": "EngineFramework/GameplayWorldStateOwners/Progression",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:405::if (modifier_after.modifier_ids.next != modifier_before.modifier_ids.next ||",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:405::if (modifier_after.modifier_ids.next != modifier_before.modifier_ids.next ||",
+          "target": "EpidemicGameFrameworkProgressionTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkProgressionTests",
+      "targets": [
+        "EpidemicGameFrameworkProgressionTests"
+      ]
+    },
+    "G4-TRAV-001": {
+      "defect": "Traversal state-changing families could ignore failed revision bump and mutate at UINT64_MAX.",
+      "fix": "Capability/profile/mode/route/session/carrier mutations preflight max revision before authoritative mutation.",
+      "logical_id": "G4-TRAV-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Traversal",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:412::if (max_guard.GrantCapability(extra) || max_guard.RevokeCapability(guard_grant_id.Value()) ||",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:412::if (max_guard.GrantCapability(extra) || max_guard.RevokeCapability(guard_grant_id.Value()) ||",
+          "target": "EpidemicGameFrameworkTraversalTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkTraversalTests",
+      "targets": [
+        "EpidemicGameFrameworkTraversalTests"
+      ]
+    },
+    "G4-TRAV-002": {
+      "defect": "Traversal advanced revision before fallible map/journal publication and cross-linked session/carrier state.",
+      "fix": "Grant/profile/route/session/carrier publication is staged behind private seams; journal append failure rotates epoch instead of partially publishing retryable failure.",
+      "logical_id": "G4-TRAV-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/Traversal",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:297::if (service.AssignProfile(seam_actor, profile) || !SameSnapshot(before, service.CaptureSnapshot()))",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:297::if (service.AssignProfile(seam_actor, profile) || !SameSnapshot(before, service.CaptureSnapshot()))",
+          "target": "EpidemicGameFrameworkTraversalTests"
+        }
+      ],
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkTraversalTests",
+      "targets": [
+        "EpidemicGameFrameworkTraversalTests"
+      ]
+    }
+  },
+  "schema_version": 1
+}

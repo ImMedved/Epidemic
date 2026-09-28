@@ -1,5 +1,5 @@
-#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Ownership/ownership.h"
+#include "../../GameplayWorldStateOwners/Ownership/src/ownership_test_seam.h"
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::ownership;
@@ -249,30 +249,21 @@ int main()
     if (!restored.ReadChangesSince(ChangeCursor{}).snapshot_required)
         return 38;
 
-    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
-    const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    // Goal 4: module-local restore fault seam replaces process-global allocation override.
+    const auto restore_before = restored.CaptureSnapshot();
+    for (const auto fault : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
     {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
+        test_seam::FailNext(fault);
+        if (restored.RestoreSnapshot(restore_before))
             return 931;
+        const auto restore_after = restored.CaptureSnapshot();
+        if (restore_after.records.size() != restore_before.records.size() ||
+            restore_after.grants.size() != restore_before.grants.size() ||
+            restore_after.rules.size() != restore_before.rules.size() ||
+            restore_after.claims.size() != restore_before.claims.size() ||
+            restore_after.revision != restore_before.revision ||
+            restore_after.change_epoch != restore_before.change_epoch)
+            return 932;
     }
-    if (!saw_restore_allocation_failure)
-        return 932;
     return 0;
 }

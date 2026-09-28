@@ -1,7 +1,8 @@
 #include "Epidemic/GameFramework/Abilities/abilities.h"
 #include "Epidemic/Foundation/error.h"
-#include "allocation_fault_injection.h"
+#include "../../GameplayWorldStateOwners/Abilities/src/abilities_test_seam.h"
 
+#include <algorithm>
 #include <limits>
 
 using namespace epidemic;
@@ -10,6 +11,61 @@ using namespace epidemic::gameplay::abilities;
 
 namespace
 {
+template <class T, class Pred>
+bool SameVector(const std::vector<T>& a, const std::vector<T>& b, Pred pred)
+{
+    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);
+}
+
+bool SameTargetSet(const AbilityTargetSet& a, const AbilityTargetSet& b)
+{
+    return a.primary == b.primary && a.targets == b.targets && a.point_micro == b.point_micro &&
+           a.direction_micro == b.direction_micro && a.area_radius_micro == b.area_radius_micro;
+}
+
+bool SameReservation(const AbilityResourceReservation& a, const AbilityResourceReservation& b)
+{
+    return a.id == b.id && a.resource == b.resource && a.provider_token.type == b.provider_token.type &&
+           a.provider_token.bytes == b.provider_token.bytes;
+}
+
+bool SameInstance(const AbilityInstance& a, const AbilityInstance& b)
+{
+    return a.id == b.id && a.definition == b.definition && a.owner == b.owner && a.source == b.source &&
+           a.persistence == b.persistence && a.enabled == b.enabled && a.revision == b.revision;
+}
+
+bool SameExecution(const AbilityExecution& a, const AbilityExecution& b)
+{
+    return a.id == b.id && a.ability == b.ability && a.owner == b.owner && SameTargetSet(a.targets, b.targets) &&
+           a.state == b.state && a.started_at == b.started_at && a.due_at == b.due_at &&
+           a.next_channel_at == b.next_channel_at &&
+           SameVector(a.reservations, b.reservations, SameReservation) && a.schedule == b.schedule &&
+           a.context == b.context && a.revision == b.revision;
+}
+
+bool SameCooldown(const AbilityCooldownState& a, const AbilityCooldownState& b)
+{
+    return a.owner == b.owner && a.group == b.group && a.ends_at == b.ends_at;
+}
+
+bool SameChange(const AbilityChange& a, const AbilityChange& b)
+{
+    return a.sequence == b.sequence && a.kind == b.kind && a.owner == b.owner && a.ability == b.ability &&
+           a.execution == b.execution && a.time == b.time && a.context == b.context && a.reason == b.reason;
+}
+
+bool SameSnapshot(const AbilitiesSnapshot& a, const AbilitiesSnapshot& b)
+{
+    return SameVector(a.instances, b.instances, SameInstance) &&
+           SameVector(a.executions, b.executions, SameExecution) &&
+           SameVector(a.cooldowns, b.cooldowns, SameCooldown) &&
+           a.instance_ids.scope == b.instance_ids.scope && a.instance_ids.next == b.instance_ids.next &&
+           a.execution_ids.scope == b.execution_ids.scope && a.execution_ids.next == b.execution_ids.next &&
+           SameVector(a.journal, b.journal, SameChange) && a.next_change_sequence == b.next_change_sequence &&
+           a.change_epoch == b.change_epoch;
+}
+
 class Resource final : public IAbilityResourceProvider
 {
   public:
@@ -393,59 +449,42 @@ int main()
         return 48;
     const auto before_bind = bind_service.CaptureSnapshot();
     {
-        epidemic::tests::allocation_fault::FailAfter fault(0);
+        test_seam::FailNext(test_seam::FaultPoint::BindScheduleBeforePublish);
         auto rebound = bind_service.BindSchedule(bind_exec.Value(), new_schedule);
         if (rebound)
             return 49;
     }
     const auto after_bind = bind_service.CaptureSnapshot();
-    if (after_bind.executions.size() != before_bind.executions.size() || after_bind.executions.empty() ||
-        after_bind.executions.front().schedule != before_bind.executions.front().schedule ||
-        after_bind.executions.front().revision != before_bind.executions.front().revision)
+    if (!SameSnapshot(before_bind, after_bind))
         return 50;
 
-    // ABL-01/09: allocation failure after resource reservation rolls provider and local state back.
-    bool saw_post_reserve_failure = false;
-    bool saw_activation_success = false;
-    for (long long fail_after = 0; fail_after < 16 && !saw_activation_success; ++fail_after)
-    {
-        AbilityService atomic_service;
-        NoAllocResource atomic_res;
-        atomic_service.SetResourceProvider(&atomic_res);
-        AbilityDefinition atomic_def;
-        atomic_def.canonical_name = "game.atomic_activation";
-        atomic_def.timing.kind = AbilityTimingKind::CastTime;
-        atomic_def.timing.cast_duration = {1};
-        atomic_def.costs.push_back({AbilityResourceTypeId::FromString("game.atomic"), 10,
-                                    AbilityCostPolicy::ReserveThenCommit});
-        auto atomic_did = atomic_service.RegisterDefinition(atomic_def);
-        if (!atomic_did)
-            return 51;
-        atomic_service.Freeze();
-        auto atomic_iid = atomic_service.Grant(owner, atomic_did.Value());
-        if (!atomic_iid)
-            return 52;
-        const auto before = atomic_service.CaptureSnapshot();
-        foundation::Result<AbilityExecutionId> attempted = foundation::Result<AbilityExecutionId>::Failure(
-            foundation::Error::Create("test", "not run"));
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            attempted = atomic_service.BeginActivation({atomic_iid.Value(), {}, {0}, {}});
-        }
-        if (attempted)
-        {
-            saw_activation_success = true;
-            break;
-        }
-        if (atomic_res.reserve_calls > 0)
-            saw_post_reserve_failure = true;
-        const auto after = atomic_service.CaptureSnapshot();
-        if (atomic_res.balance != 100 || after.executions.size() != before.executions.size() ||
-            after.execution_ids.scope != before.execution_ids.scope || after.execution_ids.next != before.execution_ids.next)
-            return 53;
-    }
-    if (!saw_post_reserve_failure || !saw_activation_success)
+    // ABL-01/09 + G4-INFRA-001: module-local fault after provider reservation is failure-atomic.
+    AbilityService atomic_service;
+    NoAllocResource atomic_res;
+    atomic_service.SetResourceProvider(&atomic_res);
+    AbilityDefinition atomic_def;
+    atomic_def.canonical_name = "game.atomic_activation";
+    atomic_def.timing.kind = AbilityTimingKind::CastTime;
+    atomic_def.timing.cast_duration = {1};
+    atomic_def.costs.push_back({AbilityResourceTypeId::FromString("game.atomic"), 10,
+                                AbilityCostPolicy::ReserveThenCommit});
+    auto atomic_did = atomic_service.RegisterDefinition(atomic_def);
+    if (!atomic_did)
+        return 51;
+    atomic_service.Freeze();
+    auto atomic_iid = atomic_service.Grant(owner, atomic_did.Value());
+    if (!atomic_iid)
+        return 52;
+    const auto before = atomic_service.CaptureSnapshot();
+    test_seam::FailNext(test_seam::FaultPoint::BeginActivationBeforePublish);
+    auto attempted = atomic_service.BeginActivation({atomic_iid.Value(), {}, {0}, {}});
+    if (attempted || atomic_res.reserve_calls == 0)
+        return 53;
+    const auto after = atomic_service.CaptureSnapshot();
+    if (atomic_res.balance != 100 || !SameSnapshot(before, after))
         return 54;
+    if (!atomic_service.BeginActivation({atomic_iid.Value(), {}, {0}, {}}))
+        return 60;
 
     // ABL-02/09: output allocation failure cannot commit held resources or consume the execution.
     AbilityService output_service;
@@ -468,16 +507,34 @@ int main()
                                         foundation::Error::Create("test", "grant failed"));
     if (!output_exec || output_res.balance != 90)
         return 56;
+    const auto before_output_fault = output_service.CaptureSnapshot();
     {
-        epidemic::tests::allocation_fault::FailAfter fault(0);
+        test_seam::FailNext(test_seam::FaultPoint::CompleteExecutionBeforeOutputs);
         auto failed_output = output_service.CompleteExecution(output_exec.Value(), {1});
         if (failed_output)
             return 57;
     }
-    if (output_res.commit_calls != 0 || output_res.balance != 90 || !output_service.FindExecution(output_exec.Value()))
+    const auto after_output_fault = output_service.CaptureSnapshot();
+    if (output_res.commit_calls != 0 || output_res.balance != 90 || !output_service.FindExecution(output_exec.Value()) ||
+        !SameSnapshot(before_output_fault, after_output_fault))
         return 58;
     if (!output_service.CompleteExecution(output_exec.Value(), {1}) || output_res.commit_calls != 1)
         return 59;
+
+    // Restore staging failures leave the full live snapshot unchanged; each fault starts from a fresh fixture.
+    const auto restore_seed = output_service.CaptureSnapshot();
+    for (const auto point : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
+    {
+        auto restore_service = output_service;
+        const auto restore_before = restore_service.CaptureSnapshot();
+        auto restore_target = restore_seed;
+        test_seam::FailNext(point);
+        if (restore_service.RestoreSnapshot(std::move(restore_target)))
+            return 61;
+        const auto restore_after = restore_service.CaptureSnapshot();
+        if (!SameSnapshot(restore_before, restore_after))
+            return 62;
+    }
 
     return 0;
 }

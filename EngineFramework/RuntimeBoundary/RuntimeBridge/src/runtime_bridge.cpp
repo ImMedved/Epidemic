@@ -74,6 +74,52 @@ foundation::Result<RuntimeWorldPosition> ToWorldPosition(RuntimeVector3 value)
     if (!z) return foundation::Result<RuntimeWorldPosition>::Failure(z.GetError());
     return foundation::Result<RuntimeWorldPosition>::Success({x.Value(), y.Value(), z.Value()});
 }
+
+foundation::Result<void> ComputeVisibilityRayGeometryImpl(
+    RuntimeVector3 observer, RuntimeVector3 target, RuntimeVector3& direction, float& distance)
+{
+    const double dx = static_cast<double>(target.x) - static_cast<double>(observer.x);
+    const double dy = static_cast<double>(target.y) - static_cast<double>(observer.y);
+    const double dz = static_cast<double>(target.z) - static_cast<double>(observer.z);
+    const double wide_distance = std::hypot(dx, dy, dz);
+    if (!std::isfinite(wide_distance))
+    {
+        return foundation::Result<void>::Failure(
+            E("gameplay.runtime_bridge.visibility_invalid", "runtime visibility distance is non-finite"));
+    }
+    if (wide_distance <= static_cast<double>(runtime::kSpatialEpsilon))
+    {
+        direction = {};
+        distance = 0.0f;
+        return foundation::Result<void>::Success();
+    }
+    if (wide_distance > static_cast<double>(std::numeric_limits<float>::max()))
+    {
+        return foundation::Result<void>::Failure(E(
+            "gameplay.runtime_bridge.visibility_range",
+            "runtime visibility distance is outside the representable raycast range"));
+    }
+
+    const double inverse_distance = 1.0 / wide_distance;
+    const double nx = dx * inverse_distance;
+    const double ny = dy * inverse_distance;
+    const double nz = dz * inverse_distance;
+    if (!std::isfinite(nx) || !std::isfinite(ny) || !std::isfinite(nz))
+    {
+        return foundation::Result<void>::Failure(
+            E("gameplay.runtime_bridge.visibility_invalid", "runtime visibility direction is non-finite"));
+    }
+
+    direction = RuntimeVector3{static_cast<float>(nx), static_cast<float>(ny), static_cast<float>(nz)};
+    distance = static_cast<float>(wide_distance);
+    if (!std::isfinite(direction.x) || !std::isfinite(direction.y) || !std::isfinite(direction.z) ||
+        !std::isfinite(distance))
+    {
+        return foundation::Result<void>::Failure(
+            E("gameplay.runtime_bridge.visibility_invalid", "runtime visibility ray is not representable"));
+    }
+    return foundation::Result<void>::Success();
+}
 bool TakeCounter(std::uint64_t& next, std::uint64_t& value) noexcept
 {
     if (next == 0)
@@ -100,6 +146,15 @@ RuntimeNavigationPathState ToBridge(runtime::navigation::PathQueryState state) n
     return RuntimeNavigationPathState::Failed;
 }
 } // namespace
+
+namespace detail
+{
+foundation::Result<void> ComputeVisibilityRayGeometry(
+    RuntimeVector3 observer, RuntimeVector3 target, RuntimeVector3& direction, float& distance)
+{
+    return ComputeVisibilityRayGeometryImpl(observer, target, direction, distance);
+}
+} // namespace detail
 
 RuntimePersistentObjectHandle EngineRuntimeBridgeBackend::ImportPersistentObjectId(runtime::PersistentObjectId id)
 {
@@ -449,14 +504,20 @@ foundation::Result<bool> EngineRuntimeBridgeBackend::Visible(RuntimeObjectHandle
     {
         return foundation::Result<bool>::Failure(E("gameplay.runtime_bridge.visibility_unsupported", "visibility requires world-surface placements"));
     }
-    const auto delta = target_placement->transform.position - observer_placement->transform.position;
-    const auto distance = std::sqrt(delta.x * delta.x + delta.y * delta.y + delta.z * delta.z);
+    RuntimeVector3 direction{};
+    float distance = 0.0f;
+    const auto geometry = detail::ComputeVisibilityRayGeometry(
+        ToBridge(observer_placement->transform.position), ToBridge(target_placement->transform.position), direction, distance);
+    if (!geometry)
+    {
+        return foundation::Result<bool>::Failure(geometry.GetError());
+    }
     if (distance <= runtime::kSpatialEpsilon)
     {
         return foundation::Result<bool>::Success(true);
     }
-    const runtime::Vec3 direction{delta.x / distance, delta.y / distance, delta.z / distance};
-    const auto ray = physics_.query->Raycast(runtime::physics::RaycastQuery{observer_placement->transform.position, direction, distance});
+    const auto ray = physics_.query->Raycast(runtime::physics::RaycastQuery{
+        observer_placement->transform.position, ToRuntime(direction), distance});
     if (!ray)
     {
         return foundation::Result<bool>::Failure(ray.GetError());

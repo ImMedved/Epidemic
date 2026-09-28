@@ -1,6 +1,3 @@
-#include "allocation_fault_injection.h"
-#include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Narrative/narrative.h"
 #include <cstdlib>
 #include <iostream>
@@ -9,6 +6,12 @@
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::narrative;
+
+namespace epidemic::gameplay::narrative::detail
+{
+void SetNarrativeFaultPointForTesting(std::string_view point) noexcept;
+void ClearNarrativeFaultPointForTesting() noexcept;
+}
 
 namespace
 {
@@ -349,67 +352,41 @@ int main()
     Check(!corrupt_enum.event_executions.empty() && !static_cast<bool>(exhausted_service.RestoreSnapshot(corrupt_enum)),
           "restore rejects invalid event execution enum");
     Check(exhausted_service.CurrentRevision() == stable_revision,"failed enum restore is transactional");
-    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
+    // Goal 4: module-local publication failure preserves the complete live state.
     const auto allocation_before = resumed.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "Narrative.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return resumed.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return resumed.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = resumed.CaptureSnapshot();
-            const auto diagnostics = resumed.GetDiagnostics();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("Narrative.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.thread_states.size() +
-                                                         allocation_baseline.objective_states.size(),
-                                                     allocation_after.thread_states.size() +
-                                                         allocation_after.objective_states.size(),
-                                                     "thread and objective state count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.journal_entries.size() + allocation_baseline.clues.size() +
-                                                         allocation_baseline.rumors.size(),
-                                                     allocation_after.journal_entries.size() + allocation_after.clues.size() +
-                                                         allocation_after.rumors.size(),
-                                                     "journal clue rumor payload count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     diagnostics.threads,
-                                                     static_cast<std::uint64_t>(allocation_baseline.thread_states.size()),
-                                                     "thread index diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
-                                                     allocation_baseline.journal_ids.next, allocation_after.journal_ids.next,
-                                                     "journal id generator next")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.revision, allocation_after.revision,
-                                                     "revision")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     resumed.ReadChangesSince(resumed.LatestChangeCursor()).changes.size(),
-                                                     std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     resumed.LatestChangeCursor(), resumed.LatestChangeCursor(),
-                                                     "latest change cursor stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     diagnostics.journal_entries,
-                                                     static_cast<std::uint64_t>(allocation_baseline.journal_entries.size()),
-                                                     "retained journal diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     resumed.LatestChangeCursor(), resumed.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     diagnostics.objectives,
-                                                     static_cast<std::uint64_t>(allocation_baseline.objective_states.size()),
-                                                     "public diagnostics read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
-        });
-    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
-        return 920;
+    const auto diagnostics_before = resumed.GetDiagnostics();
+    const auto cursor_before = resumed.LatestChangeCursor();
+    epidemic::gameplay::narrative::detail::SetNarrativeFaultPointForTesting("restore.publish");
+    const auto failed_restore = resumed.RestoreSnapshot(allocation_before);
+    epidemic::gameplay::narrative::detail::ClearNarrativeFaultPointForTesting();
+    Check(!static_cast<bool>(failed_restore), "narrative restore publication fault is surfaced");
+    const auto allocation_after = resumed.CaptureSnapshot();
+    const auto diagnostics_after = resumed.GetDiagnostics();
+    Check(allocation_before.thread_states.size() == allocation_after.thread_states.size() &&
+              allocation_before.objective_states.size() == allocation_after.objective_states.size() &&
+              allocation_before.consequences.size() == allocation_after.consequences.size() &&
+              allocation_before.journal_entries.size() == allocation_after.journal_entries.size() &&
+              allocation_before.clues.size() == allocation_after.clues.size() &&
+              allocation_before.rumors.size() == allocation_after.rumors.size() &&
+              allocation_before.flags.size() == allocation_after.flags.size() &&
+              allocation_before.variables.size() == allocation_after.variables.size() &&
+              allocation_before.choices.size() == allocation_after.choices.size() &&
+              allocation_before.storylet_runtime.size() == allocation_after.storylet_runtime.size() &&
+              allocation_before.event_executions.size() == allocation_after.event_executions.size(),
+          "narrative publication fault preserves primary state cardinality");
+    Check(allocation_before.journal_ids.scope == allocation_after.journal_ids.scope &&
+              allocation_before.journal_ids.next == allocation_after.journal_ids.next &&
+              allocation_before.clue_ids.next == allocation_after.clue_ids.next &&
+              allocation_before.rumor_ids.next == allocation_after.rumor_ids.next &&
+              allocation_before.choice_ids.next == allocation_after.choice_ids.next &&
+              allocation_before.consequence_ids.next == allocation_after.consequence_ids.next &&
+              allocation_before.revision == allocation_after.revision &&
+              allocation_before.change_epoch == allocation_after.change_epoch,
+          "narrative publication fault preserves generators revision and epoch");
+    Check(diagnostics_before.threads == diagnostics_after.threads &&
+              diagnostics_before.objectives == diagnostics_after.objectives &&
+              diagnostics_before.journal_entries == diagnostics_after.journal_entries &&
+              resumed.LatestChangeCursor() == cursor_before,
+          "narrative publication fault preserves derived diagnostics and journal cursor");
     return 0;
 }

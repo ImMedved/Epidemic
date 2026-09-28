@@ -1,0 +1,53 @@
+{
+  "defects": {
+    "g4-infra-001-b07": {
+      "defect": "G4-INFRA-001: B07 World/SaveGame/Narrative allocation-failure evidence depended on process-global allocation injection/sweeps.",
+      "fix": "B07-owned tests now use narrow deterministic module-local publication seams at World dynamic feature/transaction/restore publication, SaveGame restore pre-commit, Narrative restore publication, and NarrativeIntegration outbox publication. Shared fault helpers remain untouched.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B07 distributed",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:232::CHECK(!restored.AddDynamicFeature(fault_feature));",
+      "regressions": {
+        "EpidemicGameFrameworkNarrativeIntegrationTests": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:102::TestNarrativeOutboxPublicationAtomicity",
+        "EpidemicGameFrameworkNarrativeTests": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:362::Check(!static_cast<bool>(failed_restore)",
+        "EpidemicGameFrameworkSaveGameTests": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:409::SetSaveGameFaultPointForTesting(\"restore.pre_commit\")",
+        "EpidemicGameFrameworkWorldTests": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:232::CHECK(!restored.AddDynamicFeature(fault_feature));"
+      },
+      "root_cause": "The owned tests injected failures through process-global operator-new interception instead of deterministic module-private publication boundaries, so evidence could fail at unrelated allocations and was not narrow enough for Goal 4.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkWorldTests",
+      "targets": [
+        "EpidemicGameFrameworkWorldTests",
+        "EpidemicGameFrameworkSaveGameTests",
+        "EpidemicGameFrameworkNarrativeTests",
+        "EpidemicGameFrameworkNarrativeIntegrationTests"
+      ]
+    },
+    "g4-narrint-001-revision-exhaustion": {
+      "defect": "G4-NARRINT-001: restored maximum outbox revision could wrap on the next mutating transition.",
+      "fix": "NarrativeExternalConsequenceOutbox preflights a checked next revision for Execute, retry, acknowledge, terminal fail and prune; exhaustion returns failure before mutation.",
+      "logical_id": "G4-NARRINT-001",
+      "module": "EngineFramework/IntegrationLayer/NarrativeIntegration",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:131::TestNarrativeOutboxRevisionExhaustion",
+      "root_cause": "The persisted outbox revision was advanced by an unchecked increment. A valid restored UINT64_MAX revision therefore had no terminal exhaustion semantics and could wrap to zero.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkNarrativeIntegrationTests",
+      "targets": [
+        "EpidemicGameFrameworkNarrativeIntegrationTests"
+      ]
+    },
+    "g4-narrint-002-publication-atomicity": {
+      "defect": "G4-NARRINT-002: Execute advanced outbox revision before fallible durable delivery publication.",
+      "fix": "Execute stages the complete delivery, exercises a private pre-publication seam, publishes the delivery, then commits revision only after successful publication.",
+      "logical_id": "G4-NARRINT-002",
+      "module": "EngineFramework/IntegrationLayer/NarrativeIntegration",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:102::TestNarrativeOutboxPublicationAtomicity",
+      "root_cause": "Execute committed revision metadata before the fallible vector publication of the durable delivery record, allowing allocation failure to leave false progress without durable work ownership.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkNarrativeIntegrationTests",
+      "targets": [
+        "EpidemicGameFrameworkNarrativeIntegrationTests"
+      ]
+    }
+  },
+  "schema_version": 1
+}

@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Interaction/interaction.h"
+#include "interaction_test_seam.h"
 #include <algorithm>
 #include <iterator>
 #include <limits>
@@ -575,6 +576,9 @@ foundation::Result<void> InteractionService::RestoreSnapshot(InteractionSnapshot
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (!frozen_)
+        return foundation::Result<void>::Failure(
+            E("gameplay.registry_not_frozen", "interaction registry must be frozen before restore"));
     if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(s.ids) || s.ids.scope != ids_.Scope().Raw())
         return foundation::Result<void>::Failure(
             E("gameplay.interaction.restore_invalid_generator", "invalid interaction execution id generator snapshot"));
@@ -590,11 +594,18 @@ foundation::Result<void> InteractionService::RestoreSnapshot(InteractionSnapshot
             return foundation::Result<void>::Failure(E("gameplay.interaction.restore_invalid", "invalid session in snapshot"));
         max_low = std::max(max_low, x.id.value.Low());
         x.completion_schedule.reset();
+        if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+            return foundation::Result<void>::Failure(
+                E("gameplay.interaction.storage_failed", "failed while constructing interaction snapshot candidates"));
         rebuilt.emplace(x.id, std::move(x));
     }
     if (max_low != 0 && s.ids.next != 0 && s.ids.next <= max_low)
         return foundation::Result<void>::Failure(
             E("gameplay.interaction.restore_invalid_generator", "interaction execution id generator is behind restored sessions"));
+
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+        return foundation::Result<void>::Failure(
+            E("gameplay.interaction.storage_failed", "failed to stage interaction snapshot"));
 
     sessions_ = std::move(rebuilt);
     session_by_schedule_.clear();

@@ -1,0 +1,122 @@
+{
+  "defects": {
+    "G4-B02-COND-001": {
+      "defect": "ConditionService::RestoreSnapshot accepted restore while the definition/provider registry was still mutable, so restored instances could be admitted before the current-build registry contract was frozen.",
+      "fix": "EngineFramework/GameplayWorldStateOwners/Conditions/src/conditions.cpp::ConditionService::RestoreSnapshot now requires frozen registry before snapshot validation/publication.",
+      "logical_id": "G4-B02-COND-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Conditions",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:94::if (service.RestoreSnapshot(pre_freeze_snapshot)) return 229;",
+      "regressions": {
+        "EpidemicGameFrameworkConditionsTests": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:94::if (service.RestoreSnapshot(pre_freeze_snapshot)) return 229;"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkConditionsTests",
+      "targets": [
+        "EpidemicGameFrameworkConditionsTests"
+      ]
+    },
+    "G4-B02-EFF-001": {
+      "defect": "EffectService::Execute bounded derived effects per parent but not the aggregate next wave against remaining max_effects. Multiple committed parents could therefore queue more derived work than the total execution budget and force result/vector growth after handler side effects had already committed.",
+      "fix": "EngineFramework/GameplayWorldStateOwners/Effects/src/effects.cpp::EffectService::Execute pre-reserves accepted result storage and admits derived work only when it fits both per-parent and remaining total execution budget; counters saturate instead of wrapping.",
+      "logical_id": "G4-B02-EFF-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Effects",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:688::const auto burst_result = burst_service.Execute(std::move(burst_request), burst_budget);",
+      "regressions": {
+        "EpidemicGameFrameworkEffectsTests": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:688::const auto burst_result = burst_service.Execute(std::move(burst_request), burst_budget);"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkEffectsTests",
+      "targets": [
+        "EpidemicGameFrameworkEffectsTests"
+      ]
+    },
+    "G4-B02-EFF-002": {
+      "defect": "EffectService::RestoreSnapshot accepted restore before handler/definition registry Freeze, allowing persistence validation against registry state that could still change afterward.",
+      "fix": "EngineFramework/GameplayWorldStateOwners/Effects/src/effects.cpp::EffectService::RestoreSnapshot requires frozen registry.",
+      "logical_id": "G4-B02-EFF-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/Effects",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:605::if (service.RestoreSnapshot(pre_freeze_snapshot)) return 22;",
+      "regressions": {
+        "EpidemicGameFrameworkEffectsTests": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:605::if (service.RestoreSnapshot(pre_freeze_snapshot)) return 22;"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkEffectsTests",
+      "targets": [
+        "EpidemicGameFrameworkEffectsTests"
+      ]
+    },
+    "G4-B02-EFF-003": {
+      "defect": "EffectService::Execute could return a top-level Failure when framework-owned PrepareWave storage failed on a derived wave after an earlier handler Commit had already succeeded. A caller could interpret that result as an unaccepted execution and retry an already committed side effect.",
+      "fix": "EngineFramework/GameplayWorldStateOwners/Effects/src/effects.cpp::EffectService::Execute now treats post-accept derived-wave staging failure as a terminal failed batch within the already accepted execution. Pre-accept first-wave staging failure still returns top-level Failure.",
+      "logical_id": "G4-B02-EFF-003",
+      "module": "EngineFramework/GameplayWorldStateOwners/Effects",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:421::[[nodiscard]] bool EffectsModuleLocalFaultChecksPassed()",
+      "regressions": {
+        "EpidemicGameFrameworkEffectsTests": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:421::[[nodiscard]] bool EffectsModuleLocalFaultChecksPassed()"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkEffectsTests",
+      "targets": [
+        "EpidemicGameFrameworkEffectsTests"
+      ]
+    },
+    "G4-B02-INT-001": {
+      "defect": "InteractionService::RestoreSnapshot accepted restore before definition/provider/executor registry Freeze, weakening restore validation against the final current-build interaction registry.",
+      "fix": "EngineFramework/GameplayWorldStateOwners/Interaction/src/interaction.cpp::InteractionService::RestoreSnapshot requires frozen registry.",
+      "logical_id": "G4-B02-INT-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Interaction",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:76::CHECK(!s.RestoreSnapshot(pre_freeze_snapshot));",
+      "regressions": {
+        "EpidemicGameFrameworkInteractionTests": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:76::CHECK(!s.RestoreSnapshot(pre_freeze_snapshot));"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkInteractionTests",
+      "targets": [
+        "EpidemicGameFrameworkInteractionTests"
+      ]
+    },
+    "G4-B02-OWN-001": {
+      "defect": "OwnershipService::ResolveClaim used compressed single-line control flow that triggers GCC -Wmisleading-indentation under the B02 portable warnings-as-errors audit.",
+      "fix": "EngineFramework/GameplayWorldStateOwners/Ownership/src/ownership.cpp::OwnershipService::ResolveClaim was reformatted into unambiguous structured control flow without semantic changes.",
+      "logical_id": "G4-B02-OWN-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Ownership",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:204::if (!o.ResolveClaim(cid.Value()) || !o.FindClaims(item).empty())",
+      "regressions": {
+        "EpidemicGameFrameworkOwnershipTests": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:204::if (!o.ResolveClaim(cid.Value()) || !o.FindClaims(item).empty())"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkOwnershipTests",
+      "targets": [
+        "EpidemicGameFrameworkOwnershipTests"
+      ]
+    },
+    "G4-INFRA-001": {
+      "defect": "Six B02 admission test sources used process-global allocation/fault sweep helpers as Goal 4 evidence, coupling unrelated allocations and preventing narrow ownership-local failure injection. Conditions did not use the global helper on the supplied baseline.",
+      "fix": "The six baseline users were migrated to module-private/internal deterministic fault seams. Conditions uses the same local restore seam convention as additional B02 evidence. Restore coverage now exercises candidate-construction and pre-commit publication boundaries; shared allocation/sweep helpers remain read-only for serial removal after all Bxx merge.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B02 / seven owned modules (six baseline global-helper users)",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/entities_tests.cpp:170::test_seam::FailNext(fault);",
+      "regressions": {
+        "EpidemicGameFrameworkConditionsTests": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:224::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkEffectsTests": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:426::test_seam::FailNext(test_seam::FaultPoint::RegisterHandlerBeforePublish);",
+        "EpidemicGameFrameworkEntitiesTests": "EngineFramework/DevelopmentInfrastructure/Tests/entities_tests.cpp:170::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkEnvironmentTests": "EngineFramework/DevelopmentInfrastructure/Tests/environment_gameplay_tests.cpp:302::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkInteractionTests": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:121::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkMaterialsTests": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:102::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkOwnershipTests": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:256::test_seam::FailNext(fault);"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkEntitiesTests",
+      "targets": [
+        "EpidemicGameFrameworkEntitiesTests",
+        "EpidemicGameFrameworkMaterialsTests",
+        "EpidemicGameFrameworkEnvironmentTests",
+        "EpidemicGameFrameworkConditionsTests",
+        "EpidemicGameFrameworkEffectsTests",
+        "EpidemicGameFrameworkInteractionTests",
+        "EpidemicGameFrameworkOwnershipTests"
+      ]
+    }
+  },
+  "schema_version": 1
+}

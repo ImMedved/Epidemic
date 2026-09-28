@@ -1,6 +1,8 @@
 #include "Epidemic/GameFramework/Perception/perception.h"
 #include "Epidemic/Foundation/error.h"
+#include "perception_test_seam.h"
 
+#include <array>
 #include <cmath>
 #include <exception>
 #include <iterator>
@@ -17,6 +19,128 @@ foundation::Error Error(std::string_view c, std::string_view m)
 }
 
 constexpr Fixed kMicro = 1'000'000;
+constexpr std::uint64_t kSignedOrderBias = std::uint64_t{1} << 63;
+constexpr std::uint64_t kSqrtInt64Max = 3'037'000'499ULL;
+
+struct ExactSignedDelta
+{
+    bool negative = false;
+    std::uint64_t magnitude = 0;
+};
+
+[[nodiscard]] constexpr std::uint64_t OrderedCoordinate(std::int64_t value) noexcept
+{
+    return static_cast<std::uint64_t>(value) ^ kSignedOrderBias;
+}
+
+[[nodiscard]] constexpr ExactSignedDelta ExactDifference(std::int64_t lhs, std::int64_t rhs) noexcept
+{
+    const auto ordered_lhs = OrderedCoordinate(lhs);
+    const auto ordered_rhs = OrderedCoordinate(rhs);
+    if (ordered_lhs >= ordered_rhs)
+        return {false, ordered_lhs - ordered_rhs};
+    return {true, ordered_rhs - ordered_lhs};
+}
+
+[[nodiscard]] long double SignedFloating(ExactSignedDelta value) noexcept
+{
+    const auto magnitude = static_cast<long double>(value.magnitude);
+    return value.negative ? -magnitude : magnitude;
+}
+
+[[nodiscard]] long double ExactNorm(WorldPosition a, WorldPosition b) noexcept
+{
+    const auto dx = ExactDifference(a.x_mm, b.x_mm).magnitude;
+    const auto dy = ExactDifference(a.y_mm, b.y_mm).magnitude;
+    const auto dz = ExactDifference(a.z_mm, b.z_mm).magnitude;
+    const auto largest = std::max({dx, dy, dz});
+    if (largest == 0)
+        return 0.0L;
+
+    const auto scale = static_cast<long double>(largest);
+    const auto sx = static_cast<long double>(dx) / scale;
+    const auto sy = static_cast<long double>(dy) / scale;
+    const auto sz = static_cast<long double>(dz) / scale;
+    return scale * std::sqrt(sx * sx + sy * sy + sz * sz);
+}
+
+
+struct WideUnsigned
+{
+    // Portable base-2^32 representation used only for exact squared range comparison.
+    std::array<std::uint32_t, 4> limb{};
+};
+
+[[nodiscard]] WideUnsigned SquareWide(std::uint64_t value) noexcept
+{
+    const std::array<std::uint32_t, 2> part{static_cast<std::uint32_t>(value),
+                                             static_cast<std::uint32_t>(value >> 32)};
+    WideUnsigned out;
+    for (std::size_t i = 0; i < part.size(); ++i)
+    {
+        std::uint64_t carry = 0;
+        for (std::size_t j = 0; j < part.size(); ++j)
+        {
+            const auto index = i + j;
+            const auto current = static_cast<std::uint64_t>(part[i]) * static_cast<std::uint64_t>(part[j]) +
+                                 static_cast<std::uint64_t>(out.limb[index]) + carry;
+            out.limb[index] = static_cast<std::uint32_t>(current);
+            carry = current >> 32;
+        }
+        std::size_t index = i + part.size();
+        while (carry != 0 && index < out.limb.size())
+        {
+            const auto current = static_cast<std::uint64_t>(out.limb[index]) + carry;
+            out.limb[index] = static_cast<std::uint32_t>(current);
+            carry = current >> 32;
+            ++index;
+        }
+    }
+    return out;
+}
+
+void AddWide(WideUnsigned &target, const WideUnsigned &value) noexcept
+{
+    std::uint64_t carry = 0;
+    for (std::size_t i = 0; i < target.limb.size(); ++i)
+    {
+        const auto sum = static_cast<std::uint64_t>(target.limb[i]) + value.limb[i] + carry;
+        target.limb[i] = static_cast<std::uint32_t>(sum);
+        carry = sum >> 32;
+    }
+}
+
+[[nodiscard]] int CompareWide(const WideUnsigned &a, const WideUnsigned &b) noexcept
+{
+    for (std::size_t i = a.limb.size(); i-- > 0;)
+    {
+        if (a.limb[i] < b.limb[i])
+            return -1;
+        if (a.limb[i] > b.limb[i])
+            return 1;
+    }
+    return 0;
+}
+
+[[nodiscard]] bool DistanceStrictlyWithinRange(WorldPosition a, WorldPosition b, Fixed range_mm) noexcept
+{
+    if (range_mm <= 0)
+        return false;
+    const auto range = static_cast<std::uint64_t>(range_mm);
+    const std::array<std::uint64_t, 3> component{
+        ExactDifference(a.x_mm, b.x_mm).magnitude,
+        ExactDifference(a.y_mm, b.y_mm).magnitude,
+        ExactDifference(a.z_mm, b.z_mm).magnitude};
+    // If any component alone reaches the range then the Euclidean distance is already out of range.
+    for (const auto value : component)
+        if (value >= range)
+            return false;
+
+    WideUnsigned squared_distance;
+    for (const auto value : component)
+        AddWide(squared_distance, SquareWide(value));
+    return CompareWide(squared_distance, SquareWide(range)) < 0;
+}
 
 [[nodiscard]] bool IsValidSenseEvaluationModel(SenseEvaluationModel value) noexcept
 {
@@ -299,20 +423,30 @@ foundation::Result<void> PerceptionService::ExpireStimuli(GameplayTimePoint now,
 
 Fixed PerceptionService::DistanceSquared(WorldPosition a, WorldPosition b) noexcept
 {
-    const long double dx = static_cast<long double>(a.x_mm) - static_cast<long double>(b.x_mm);
-    const long double dy = static_cast<long double>(a.y_mm) - static_cast<long double>(b.y_mm);
-    const long double dz = static_cast<long double>(a.z_mm) - static_cast<long double>(b.z_mm);
-    const long double d = dx * dx + dy * dy + dz * dz;
-    return d > static_cast<long double>(std::numeric_limits<Fixed>::max()) ? std::numeric_limits<Fixed>::max()
-                                                                           : static_cast<Fixed>(d);
+    const auto dx = ExactDifference(a.x_mm, b.x_mm).magnitude;
+    const auto dy = ExactDifference(a.y_mm, b.y_mm).magnitude;
+    const auto dz = ExactDifference(a.z_mm, b.z_mm).magnitude;
+    if (dx > kSqrtInt64Max || dy > kSqrtInt64Max || dz > kSqrtInt64Max)
+        return std::numeric_limits<Fixed>::max();
+
+    constexpr auto limit = static_cast<std::uint64_t>(std::numeric_limits<Fixed>::max());
+    std::uint64_t sum = 0;
+    for (const auto component : {dx, dy, dz})
+    {
+        const auto square = component * component;
+        if (square > limit - sum)
+            return std::numeric_limits<Fixed>::max();
+        sum += square;
+    }
+    return static_cast<Fixed>(sum);
 }
 
 Fixed PerceptionService::DistanceMm(WorldPosition a, WorldPosition b) noexcept
 {
-    const long double d2 = static_cast<long double>(DistanceSquared(a, b));
-    const auto d = std::sqrt(std::max<long double>(0.0L, d2));
-    return d >= static_cast<long double>(std::numeric_limits<Fixed>::max()) ? std::numeric_limits<Fixed>::max()
-                                                                            : static_cast<Fixed>(d);
+    const auto distance = ExactNorm(a, b);
+    return distance >= static_cast<long double>(std::numeric_limits<Fixed>::max())
+               ? std::numeric_limits<Fixed>::max()
+               : static_cast<Fixed>(distance);
 }
 
 Fixed PerceptionService::MultiplyMicro(Fixed a, Fixed b) noexcept
@@ -327,10 +461,10 @@ Fixed PerceptionService::DistanceAttenuatedScore(Fixed strength_micro, Fixed ran
 {
     if (strength_micro <= 0 || range_mm <= 0)
         return 0;
+    if (!DistanceStrictlyWithinRange(observer, stimulus, range_mm))
+        return 0;
     const auto distance = static_cast<long double>(DistanceMm(observer, stimulus));
     const auto range = static_cast<long double>(range_mm);
-    if (distance >= range)
-        return 0;
     const auto attenuation = 1.0L - distance / range;
     const auto score = static_cast<long double>(ClampMicro(strength_micro)) * attenuation;
     return std::clamp<Fixed>(static_cast<Fixed>(score), 0, kMicro);
@@ -343,10 +477,10 @@ bool PerceptionService::WithinFov(const SenseDefinition &definition, const Perce
         definition.field_of_view_cosine_micro <= -kMicro)
         return true;
 
-    const long double dx = static_cast<long double>(target.x_mm) - static_cast<long double>(sample.position.x_mm);
-    const long double dy = static_cast<long double>(target.y_mm) - static_cast<long double>(sample.position.y_mm);
-    const long double dz = static_cast<long double>(target.z_mm) - static_cast<long double>(sample.position.z_mm);
-    const long double target_length = std::sqrt(dx * dx + dy * dy + dz * dz);
+    const long double dx = SignedFloating(ExactDifference(target.x_mm, sample.position.x_mm));
+    const long double dy = SignedFloating(ExactDifference(target.y_mm, sample.position.y_mm));
+    const long double dz = SignedFloating(ExactDifference(target.z_mm, sample.position.z_mm));
+    const long double target_length = ExactNorm(target, sample.position);
     const long double fx = static_cast<long double>(sample.forward.x_micro);
     const long double fy = static_cast<long double>(sample.forward.y_micro);
     const long double fz = static_cast<long double>(sample.forward.z_micro);
@@ -945,10 +1079,13 @@ foundation::Result<void> PerceptionService::DecayAwareness(GameplayTimePoint now
             const auto old_suspicion = value.suspicion_micro;
             if (value.suspicion_micro > 0)
             {
-                const long double total_decay = static_cast<long double>(decay) * static_cast<long double>(steps);
-                value.suspicion_micro = total_decay >= static_cast<long double>(value.suspicion_micro)
+                const auto positive_decay = static_cast<std::uint64_t>(decay);
+                const auto positive_steps = static_cast<std::uint64_t>(steps);
+                const auto suspicion = static_cast<std::uint64_t>(value.suspicion_micro);
+                const auto steps_to_zero = (suspicion + positive_decay - 1) / positive_decay;
+                value.suspicion_micro = positive_steps >= steps_to_zero
                                              ? 0
-                                             : value.suspicion_micro - static_cast<Fixed>(total_decay);
+                                             : value.suspicion_micro - static_cast<Fixed>(positive_steps * positive_decay);
                 if (value.suspicion_micro >= 800'000)
                     value.level = AwarenessLevel::Confirmed;
                 else if (value.suspicion_micro >= 400'000)
@@ -963,11 +1100,11 @@ foundation::Result<void> PerceptionService::DecayAwareness(GameplayTimePoint now
                 value.level = AwarenessLevel::Unaware;
             }
 
-            const long double delta = static_cast<long double>(steps) * static_cast<long double>(interval);
-            const auto advance = delta >= static_cast<long double>(std::numeric_limits<std::int64_t>::max())
-                                     ? GameplayDuration{std::numeric_limits<std::int64_t>::max()}
-                                     : GameplayDuration{static_cast<std::int64_t>(delta)};
-            value.last_decay_at = SaturatingAdd(value.last_decay_at, advance);
+            // steps=floor(elapsed/interval), therefore this product is mathematically <= elapsed and
+            // representable in int64_t. Keep it entirely in integer arithmetic so MSVC binary64
+            // cannot round a valid value up to INT64_MAX.
+            const auto advance_ticks = steps * interval;
+            value.last_decay_at = SaturatingAdd(value.last_decay_at, GameplayDuration{advance_ticks});
             if (value.level == old_level && value.suspicion_micro == old_suspicion)
                 continue;
             updates.push_back(Update{key, value,
@@ -1273,6 +1410,8 @@ foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot s
     std::uint64_t max_stimulus_low = 0;
     std::uint64_t max_observation_low = 0;
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestorePerceivers))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "perceiver restore staging failed"));
     for (const auto &record : snapshot.perceivers)
     {
         if (!record.subject.IsValid() || !record.profile.IsValid() || !profile_definitions_.contains(record.profile) ||
@@ -1283,6 +1422,8 @@ foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot s
         }
     }
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreStimuli))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "stimulus restore staging failed"));
     for (const auto &stimulus : snapshot.stimuli)
     {
         if (!stimulus.id.IsValid() || !stimulus.source.IsValid() || !senses_.contains(stimulus.sense) ||
@@ -1297,6 +1438,8 @@ foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot s
         ids.push_back(stimulus.id);
     }
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestorePendingObservations))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "pending observation restore staging failed"));
     std::unordered_set<PerceptionObservationId, IdHash> seen_observations;
     for (const auto &pending : snapshot.pending_observations)
     {
@@ -1321,6 +1464,8 @@ foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot s
         max_observation_low = std::max(max_observation_low, observation.id.value.Low());
     }
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreObservations))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "observation restore staging failed"));
     for (const auto &observation : snapshot.observations)
     {
         if (!observation.id.IsValid() || !observation.perceiver.IsValid() ||
@@ -1339,6 +1484,8 @@ foundation::Result<void> PerceptionService::RestoreSnapshot(PerceptionSnapshot s
         max_observation_low = std::max(max_observation_low, observation.id.value.Low());
     }
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreAwareness))
+        return foundation::Result<void>::Failure(Error("gameplay.perception.allocation_failed", "awareness restore staging failed"));
     for (const auto &record : snapshot.awareness)
     {
         if (!record.perceiver.IsValid() || !record.target.IsValid() || !new_perceivers.contains(record.perceiver) ||

@@ -283,6 +283,8 @@ Every evidence anchor uses `path[:line]::symbol-or-case`; the validator resolves
 
 ## Ledger workflow
 
-`local_ready_ledger.json` is the authoritative audit ledger. The four verified architecture criteria are seeded as `PASS`; every other new criterion starts as `NOT_AUDITED`. `IN_AUDIT` and `BLOCKED` are intermediate module states. The validator rejects stale module/criterion sets, nonexistent anchor files/lines/symbols, unregistered test targets, missing assertion anchors, evidence-kind omissions, unjustified `N/A`, empty or inconsistent `BLOCKED`, inconsistent module states, and premature `LOCAL_READY`.
+`local_ready_ledger.json` is the authoritative audit ledger. The four verified architecture criteria are seeded as `PASS`; every other new criterion starts as `NOT_AUDITED`. `IN_AUDIT` and `BLOCKED` are intermediate module states. The schema validator rejects stale module/criterion sets, nonexistent anchor files/lines/symbols, unregistered test targets, missing assertion anchors, evidence-kind omissions, unjustified `N/A`, empty or inconsistent `BLOCKED`, and inconsistent module states. It does not prove that an existing anchor is semantically relevant: `main()` and a generic document heading are not per-item evidence.
+
+For EngineFramework Goal 4, also run `python docs/freeze/goal4_evidence_quality.py --check` and review every flagged API, criterion and defect. A schema-green ledger alone must not promote a module to `LOCAL_READY`.
 
 Run `python docs/freeze/local_ready_contract.py --check` for contract and ledger consistency and `python docs/freeze/local_ready_contract.py --self-test` for negative validator tests.

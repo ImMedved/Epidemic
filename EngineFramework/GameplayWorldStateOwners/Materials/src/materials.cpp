@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Materials/materials.h"
+#include "materials_test_seam.h"
 
 #include "Epidemic/Foundation/error.h"
 
@@ -816,8 +817,15 @@ foundation::Result<void> MaterialService::RestoreSnapshot(MaterialsSnapshot snap
             previous_quantity = quantity.substance;
         }
         state.composition = std::move(composition);
+        if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.material_storage_failed", "failed while constructing material snapshot candidates"));
         rebuilt.emplace(state.key, std::move(state));
     }
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.material_storage_failed", "failed to stage material snapshot"));
+
     states_ = std::move(rebuilt);
     revision_ = snapshot.revision;
     changes_.clear();

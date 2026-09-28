@@ -1,9 +1,30 @@
 #include "Epidemic/GameFramework/Queries/gameplay_queries.h"
 
 #include <limits>
+#include <new>
+#include <string_view>
 
 namespace epidemic::gameplay::queries
 {
+namespace detail
+{
+namespace
+{
+thread_local std::string_view g_query_fault_point;
+}
+void SetQueryFaultPointForTesting(std::string_view point) noexcept { g_query_fault_point = point; }
+void ClearQueryFaultPointForTesting() noexcept { g_query_fault_point = {}; }
+} // namespace detail
+
+void QueryPublicationFaultPointForInternalTest(std::string_view point)
+{
+    if (!detail::g_query_fault_point.empty() && detail::g_query_fault_point == point)
+    {
+        detail::g_query_fault_point = {};
+        throw std::bad_alloc{};
+    }
+}
+
 foundation::Result<QueryId> GameplayQueryService::NextQueryId() const noexcept
 {
     constexpr auto kScope = QueryId::FromString("framework.gameplay_queries").High();
@@ -86,3 +107,8 @@ bool GameplayQueryService::RequirementsSatisfied(QueryMetadata metadata, QueryRe
     return true;
 }
 } // namespace epidemic::gameplay::queries
+
+void QueryPublicationFaultPointForInternalTest(std::string_view point)
+{
+    epidemic::gameplay::queries::QueryPublicationFaultPointForInternalTest(point);
+}

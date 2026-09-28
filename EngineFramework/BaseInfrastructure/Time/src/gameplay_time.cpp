@@ -2,6 +2,8 @@
 
 #include <algorithm>
 #include <limits>
+#include <new>
+#include <string_view>
 #include <set>
 #include <unordered_set>
 
@@ -22,6 +24,24 @@ namespace
     return left * right;
 }
 } // namespace
+
+namespace detail
+{
+namespace
+{
+thread_local std::string_view g_time_fault_point;
+}
+void SetTimeFaultPointForTesting(std::string_view point) noexcept { g_time_fault_point = point; }
+void ClearTimeFaultPointForTesting() noexcept { g_time_fault_point = {}; }
+void MaybeFailTimePublication(std::string_view point)
+{
+    if (!g_time_fault_point.empty() && g_time_fault_point == point)
+    {
+        g_time_fault_point = {};
+        throw std::bad_alloc{};
+    }
+}
+} // namespace detail
 
 foundation::Result<ClockId> GameplayTimeService::RegisterClock(std::string_view canonical_name,
                                                                std::optional<CalendarDefinition> calendar)
@@ -52,6 +72,7 @@ foundation::Result<ClockId> GameplayTimeService::RegisterClock(std::string_view 
     staged_definitions.emplace(id, ClockDefinition{id, std::string(canonical_name), calendar});
     staged_clocks.emplace(id, ClockState{id, {}, {}});
     staged_index.emplace(id, std::set<ScheduleKey>{});
+    detail::MaybeFailTimePublication("clock_registration.publish");
     clock_definitions_.swap(staged_definitions);
     clocks_.swap(staged_clocks);
     schedule_index_.swap(staged_index);
@@ -261,6 +282,7 @@ foundation::Result<void> GameplayTimeService::SynchronizeClock(ClockId clock, Ga
     }
     staged_sync.insert_or_assign(clock, source_revision);
     staged_rebind.erase(clock);
+    detail::MaybeFailTimePublication("clock_sync.publish");
     clocks_.swap(staged_clocks);
     synchronization_revisions_.swap(staged_sync);
     synchronization_rebind_required_.swap(staged_rebind);
@@ -469,11 +491,13 @@ foundation::Result<ScheduleId> GameplayTimeService::Schedule(ClockId clock, Game
     bool schedule_inserted = false;
     try
     {
+        detail::MaybeFailTimePublication("schedule.record_publish");
         const auto [schedule_it, inserted] = schedules_.emplace(id, entry);
         if (!inserted)
             return foundation::Result<ScheduleId>::Failure(
                 foundation::Error::Create("gameplay.schedule_id_collision", "schedule id already exists"));
         schedule_inserted = true;
+        detail::MaybeFailTimePublication("schedule.index_publish");
         const auto [index_it, index_inserted] = schedule_index_.at(clock).insert(ScheduleKey{entry.due, entry.id});
         (void)index_it;
         if (!index_inserted)
@@ -638,6 +662,7 @@ foundation::Result<void> GameplayTimeService::Reschedule(ScheduleId schedule, Ga
     staged_index.at(staged.clock).erase(ScheduleKey{staged.due, staged.id});
     staged.due = new_due;
     staged.revision = *next_entry_revision;
+    detail::MaybeFailTimePublication("reschedule.publish");
     schedules_.swap(staged_schedules);
     schedule_index_.swap(staged_index);
     scheduler_revision_ = *next_scheduler_revision;
@@ -884,6 +909,7 @@ foundation::Result<std::vector<ScheduledTrigger>> GameplayTimeService::CollectDu
         staged_scheduler_revision = *next_revision;
     }
     sat(staged_emitted, triggers.size());
+    detail::MaybeFailTimePublication("collect_due.publish");
     schedules_.swap(staged_schedules);
     schedule_index_.swap(staged_index);
     scheduler_revision_ = staged_scheduler_revision;

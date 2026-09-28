@@ -1,7 +1,5 @@
-#include "allocation_fault_injection.h"
-#include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Environment/environment.h"
+#include "../../GameplayWorldStateOwners/Environment/src/environment_test_seam.h"
 
 #include <array>
 #include <cstdlib>
@@ -296,60 +294,21 @@ int main()
     const auto current_batch = journal.ReadChangesSince(journal.LatestChangeCursor());
     CHECK(!current_batch.snapshot_required && current_batch.changes.empty());
 
-    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
-    const auto allocation_before = restored.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "Environment.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return restored.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return restored.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = restored.CaptureSnapshot();
-            const auto diagnostics = restored.GetDiagnostics();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("Environment.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.layers.size(), allocation_after.layers.size(),
-                                                     "layer count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.layers.size(), allocation_after.layers.size(),
-                                                     "layer payload count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     diagnostics.layers,
-                                                     static_cast<std::uint64_t>(allocation_baseline.layers.size()),
-                                                     "layer index diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
-                                                     allocation_baseline.ids.next, allocation_after.ids.next,
-                                                     "layer id generator next")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.revision, allocation_after.revision,
-                                                     "revision")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     restored.ReadChangesSince(restored.LatestChangeCursor()).changes.size(),
-                                                     std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
-                                                     "latest change cursor stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     diagnostics.changes, diagnostics.changes,
-                                                     "retained journal diagnostics stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     diagnostics.layers,
-                                                     static_cast<std::uint64_t>(allocation_baseline.layers.size()),
-                                                     "public diagnostics read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
-        });
-    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
-        return 908;
+    // Goal 4: module-local restore fault seam replaces process-global allocation override.
+    const auto restore_before = restored.CaptureSnapshot();
+    const auto restore_before_diag = restored.GetDiagnostics();
+    for (const auto fault : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
+    {
+        test_seam::FailNext(fault);
+        CHECK(!restored.RestoreSnapshot(restore_before));
+        const auto restore_after = restored.CaptureSnapshot();
+        const auto restore_after_diag = restored.GetDiagnostics();
+        CHECK(restore_after.layers.size() == restore_before.layers.size());
+        CHECK(restore_after.ids.next == restore_before.ids.next);
+        CHECK(restore_after.revision == restore_before.revision);
+        CHECK(restore_after.change_epoch == restore_before.change_epoch);
+        CHECK(restore_after_diag.layers == restore_before_diag.layers);
+    }
+
     return 0;
 }

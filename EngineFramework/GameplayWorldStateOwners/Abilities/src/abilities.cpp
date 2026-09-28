@@ -1,9 +1,11 @@
 #include "Epidemic/GameFramework/Abilities/abilities.h"
 #include "Epidemic/Foundation/error.h"
+#include "abilities_test_seam.h"
 
 #include <algorithm>
 #include <iterator>
 #include <limits>
+#include <new>
 #include <unordered_set>
 #include <utility>
 
@@ -687,6 +689,8 @@ foundation::Result<AbilityExecutionId> AbilityService::BeginActivation(AbilityAc
     }
     try
     {
+        if (test_seam::Consume(test_seam::FaultPoint::BeginActivationBeforePublish))
+            throw std::bad_alloc{};
         const auto [execution_it, inserted] = executions_.emplace(execution.id, execution);
         (void)execution_it;
         if (!inserted)
@@ -819,6 +823,8 @@ foundation::Result<std::vector<AbilityOutput>> AbilityService::CompleteExecution
     std::vector<AbilityCooldownState> staged_cooldowns;
     try
     {
+        if (test_seam::Consume(test_seam::FaultPoint::CompleteExecutionBeforeOutputs))
+            throw std::bad_alloc{};
         out = BuildOutputs(*definition, execution, execution.due_at);
         staged_cooldowns = cooldowns_;
         if (starts_cooldown)
@@ -1130,6 +1136,8 @@ foundation::Result<void> AbilityService::BindSchedule(AbilityExecutionId id, Sch
             Error("gameplay.revision_exhausted", "ability execution revision exhausted"));
     try
     {
+        if (test_seam::Consume(test_seam::FaultPoint::BindScheduleBeforePublish))
+            throw std::bad_alloc{};
         auto [inserted_it, inserted] = schedule_to_execution_.try_emplace(schedule, id);
         (void)inserted_it;
         if (!inserted && inserted_it->second != id)
@@ -1347,6 +1355,11 @@ foundation::Result<void> AbilityService::RestoreSnapshot(AbilitiesSnapshot snaps
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ability.allocation_failed", "injected restore candidate allocation failure"));
+    try
+    {
     std::unordered_map<AbilityInstanceId, AbilityInstance, IdHash> instances;
     std::unordered_map<AbilityExecutionId, AbilityExecution, IdHash> executions;
     std::unordered_map<ScheduleId, AbilityExecutionId> schedules;
@@ -1436,6 +1449,9 @@ foundation::Result<void> AbilityService::RestoreSnapshot(AbilitiesSnapshot snaps
         return foundation::Result<void>::Failure(
             Error("gameplay.ability.restore_invalid", "invalid ability id generator snapshot"));
 
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ability.allocation_failed", "injected restore pre-commit allocation failure"));
     instances_.swap(instances);
     executions_.swap(executions);
     schedule_to_execution_.swap(schedules);
@@ -1451,6 +1467,12 @@ foundation::Result<void> AbilityService::RestoreSnapshot(AbilitiesSnapshot snaps
     diagnostics_.cooldowns = cooldowns_.size();
     journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ability.allocation_failed", "failed to stage ability restore"));
+    }
 }
 
 AbilitiesDiagnostics AbilityService::GetDiagnostics() const noexcept

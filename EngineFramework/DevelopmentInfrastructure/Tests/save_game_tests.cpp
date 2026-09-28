@@ -1,4 +1,3 @@
-#include "allocation_fault_injection.h"
 #include "Epidemic/Foundation/error.h"
 #include "Epidemic/GameFramework/SaveGame/save_game.h"
 #include <algorithm>
@@ -12,6 +11,12 @@
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::savegame;
+
+namespace epidemic::gameplay::savegame::detail
+{
+void SetSaveGameFaultPointForTesting(std::string_view point) noexcept;
+void ClearSaveGameFaultPointForTesting() noexcept;
+}
 
 namespace
 {
@@ -394,33 +399,27 @@ int main()
           "cycle participants");
     Check(!cycle.ResolveOrder(), "dependency cycle rejected");
 
-    // Allocation failure during orchestration must not cross the participant commit boundary.
+    // A deterministic module-local fail point immediately before commit proves
+    // that all fallible restore work completes before live participant publication.
     commit_order.clear();
     commit_order.reserve(2);
+    auto allocation_image = image.Value();
+    a.value = 100;
+    b.value = 200;
+    epidemic::gameplay::savegame::detail::SetSaveGameFaultPointForTesting("restore.pre_commit");
     bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 64; ++fail_after)
+    try
     {
-        auto allocation_image = image.Value();
-        a.value = 100;
-        b.value = 200;
-        commit_order.clear();
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            failed = !orchestrator.Restore(std::move(allocation_image), ExactRestoreCtx());
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        Check(a.value == 100 && b.value == 200, "allocation failure leaves participants untouched");
-        Check(commit_order.empty(), "allocation failure does not enter participant commit");
-        Check(!barrier.active, "allocation failure releases restore barrier");
+        (void)orchestrator.Restore(std::move(allocation_image), ExactRestoreCtx());
     }
-    Check(saw_restore_allocation_failure, "save restore exercised allocation failure");
+    catch (const std::bad_alloc &)
+    {
+        saw_restore_allocation_failure = true;
+    }
+    epidemic::gameplay::savegame::detail::ClearSaveGameFaultPointForTesting();
+    Check(saw_restore_allocation_failure, "save restore exercised local pre-commit allocation failure");
+    Check(a.value == 100 && b.value == 200, "allocation failure leaves participants untouched");
+    Check(commit_order.empty(), "allocation failure does not enter participant commit");
+    Check(!barrier.active, "allocation failure releases restore barrier");
     return 0;
 }

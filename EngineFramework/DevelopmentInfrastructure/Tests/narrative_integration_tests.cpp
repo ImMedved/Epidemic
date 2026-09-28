@@ -14,6 +14,12 @@ using namespace epidemic::gameplay::knowledge;
 using namespace epidemic::gameplay::narrative;
 using namespace epidemic::gameplay::narrative_integration;
 
+namespace epidemic::gameplay::narrative_integration::detail
+{
+void SetNarrativeIntegrationFaultPointForTesting(std::string_view point) noexcept;
+void ClearNarrativeIntegrationFaultPointForTesting() noexcept;
+}
+
 namespace
 {
 void Check(bool value, const char *message)
@@ -90,6 +96,111 @@ savegame::SaveSection DuplicateFirstDeliverySection(savegame::SaveSection sectio
     section.payload.insert(section.payload.end(), record.begin(), record.end());
     section.payload_hash = savegame::SaveGameOrchestrator::HashBytes(section.payload);
     return section;
+}
+
+
+void TestNarrativeOutboxPublicationAtomicity(const NarrativeConsequenceDefinition &definition,
+                                             GameplayObjectRef owner)
+{
+    NarrativeExternalConsequenceOutbox outbox;
+    NarrativeConsequenceExecution execution;
+    execution.id = NarrativeConsequenceExecutionId::FromString("execution.publication.fault");
+    execution.consequence = definition.id;
+    execution.correlation = CorrelationId::FromString("publication.fault");
+    const NarrativeExecutionContext context{.default_owner = owner, .now = GameplayTimePoint{120}};
+
+    const auto before = outbox.CaptureSnapshot();
+    epidemic::gameplay::narrative_integration::detail::SetNarrativeIntegrationFaultPointForTesting(
+        "outbox.execute.publish");
+    const auto failed = outbox.Execute(definition, execution, context);
+    epidemic::gameplay::narrative_integration::detail::ClearNarrativeIntegrationFaultPointForTesting();
+    Check(failed.state == ConsequenceExecutionState::FailedRetryable,
+          "outbox publication allocation failure is retryable");
+    Check(SameSnapshot(outbox.CaptureSnapshot(), before),
+          "outbox publication failure preserves revision and durable records");
+
+    const auto retry = outbox.Execute(definition, execution, context);
+    Check(retry.state == ConsequenceExecutionState::Deferred && outbox.PendingDeliveries().size() == 1,
+          "outbox publication retry creates exactly one durable delivery");
+    const auto retry_revision = outbox.CurrentRevision();
+    Check(outbox.Execute(definition, execution, context).state == ConsequenceExecutionState::Deferred &&
+              outbox.CurrentRevision() == retry_revision && outbox.PendingDeliveries().size() == 1,
+          "duplicate execute after retry is idempotent");
+}
+
+void TestNarrativeOutboxRevisionExhaustion(const NarrativeConsequenceDefinition &definition,
+                                           GameplayObjectRef owner)
+{
+    constexpr auto kMaxRevision = std::numeric_limits<std::uint64_t>::max();
+    const NarrativeExecutionContext context{.default_owner = owner, .now = GameplayTimePoint{120}};
+
+    NarrativeExternalConsequenceSnapshot exhausted_empty;
+    exhausted_empty.revision = Revision{kMaxRevision};
+    NarrativeExternalConsequenceOutbox exhausted_execute;
+    Check(static_cast<bool>(exhausted_execute.RestoreSnapshot(exhausted_empty)), "restore max empty outbox revision");
+    NarrativeConsequenceExecution exhausted_execution;
+    exhausted_execution.id = NarrativeConsequenceExecutionId::FromString("execution.exhausted.execute");
+    exhausted_execution.consequence = definition.id;
+    exhausted_execution.correlation = CorrelationId::FromString("exhausted.execute");
+    Check(exhausted_execute.Execute(definition, exhausted_execution, context).state ==
+              ConsequenceExecutionState::FailedPermanent,
+          "execute rejects exhausted outbox revision");
+    Check(exhausted_execute.CurrentRevision().value == kMaxRevision &&
+              exhausted_execute.CaptureSnapshot().deliveries.empty(),
+          "execute exhaustion does not wrap or publish");
+
+    NarrativeExternalConsequenceOutbox source;
+    NarrativeConsequenceExecution pending;
+    pending.id = NarrativeConsequenceExecutionId::FromString("execution.exhausted.pending");
+    pending.consequence = definition.id;
+    pending.correlation = CorrelationId::FromString("exhausted.pending");
+    Check(source.Execute(definition, pending, context).state == ConsequenceExecutionState::Deferred,
+          "prepare pending delivery for exhaustion tests");
+    auto pending_max = source.CaptureSnapshot();
+    pending_max.revision = Revision{kMaxRevision};
+    const auto pending_execution = pending_max.deliveries.front().execution;
+    const auto pending_operation = pending_max.deliveries.front().external_operation;
+
+    NarrativeExternalConsequenceOutbox exhausted_retry;
+    Check(static_cast<bool>(exhausted_retry.RestoreSnapshot(pending_max)), "restore max retry outbox");
+    const auto retry_before = exhausted_retry.CaptureSnapshot();
+    Check(!static_cast<bool>(exhausted_retry.MarkRetryable(pending_execution, GameplayTimePoint{121})),
+          "retry transition rejects exhausted revision");
+    Check(SameSnapshot(exhausted_retry.CaptureSnapshot(), retry_before), "retry exhaustion preserves state");
+
+    NarrativeExternalConsequenceOutbox exhausted_ack;
+    Check(static_cast<bool>(exhausted_ack.RestoreSnapshot(pending_max)), "restore max acknowledge outbox");
+    const auto ack_before = exhausted_ack.CaptureSnapshot();
+    Check(!static_cast<bool>(exhausted_ack.AcknowledgeApplied(pending_execution, pending_operation, GameplayTimePoint{121})),
+          "acknowledge rejects exhausted revision");
+    Check(SameSnapshot(exhausted_ack.CaptureSnapshot(), ack_before), "acknowledge exhaustion preserves state");
+
+    NarrativeExternalConsequenceOutbox exhausted_fail;
+    Check(static_cast<bool>(exhausted_fail.RestoreSnapshot(pending_max)), "restore max terminal-fail outbox");
+    const auto fail_before = exhausted_fail.CaptureSnapshot();
+    Check(!static_cast<bool>(exhausted_fail.FailTerminal(pending_execution, GameplayTimePoint{121})),
+          "terminal fail rejects exhausted revision");
+    Check(SameSnapshot(exhausted_fail.CaptureSnapshot(), fail_before), "terminal-fail exhaustion preserves state");
+
+    NarrativeExternalConsequenceOutbox terminal_source;
+    NarrativeConsequenceExecution terminal_execution;
+    terminal_execution.id = NarrativeConsequenceExecutionId::FromString("execution.exhausted.prune");
+    terminal_execution.consequence = definition.id;
+    terminal_execution.correlation = CorrelationId::FromString("exhausted.prune");
+    Check(terminal_source.Execute(definition, terminal_execution, context).state == ConsequenceExecutionState::Deferred,
+          "prepare terminal delivery for prune exhaustion test");
+    const auto terminal_operation = terminal_source.PendingDeliveries().front().external_operation;
+    Check(static_cast<bool>(terminal_source.AcknowledgeApplied(terminal_execution.id, terminal_operation,
+                                                               GameplayTimePoint{121})),
+          "prepare applied delivery for prune exhaustion test");
+    auto terminal_max = terminal_source.CaptureSnapshot();
+    terminal_max.revision = Revision{kMaxRevision};
+    NarrativeExternalConsequenceOutbox exhausted_prune;
+    Check(static_cast<bool>(exhausted_prune.RestoreSnapshot(terminal_max)), "restore max prune outbox");
+    const auto prune_before = exhausted_prune.CaptureSnapshot();
+    Check(!static_cast<bool>(exhausted_prune.PruneConfirmedTerminal(terminal_execution.id)),
+          "prune rejects exhausted revision");
+    Check(SameSnapshot(exhausted_prune.CaptureSnapshot(), prune_before), "prune exhaustion preserves state");
 }
 
 class DummyRestoreStage final : public savegame::IRestoreStage
@@ -353,6 +464,10 @@ int main()
     bounded_restored_participant.CommitRestore(*bounded_restore_stage);
     Check(bounded_restored.PendingDeliveries().size() == 1,
           "restore outbox snapshot exactly at configured capacity");
+
+    // Permanent regressions for G4-NARRINT-002 and G4-NARRINT-001.
+    TestNarrativeOutboxPublicationAtomicity(cons, player);
+    TestNarrativeOutboxRevisionExhaustion(cons, player);
 
     KnowledgeService knowledge_service;
     const auto speaker = Ref("game.actor", "witness");

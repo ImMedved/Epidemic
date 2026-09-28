@@ -1,4 +1,4 @@
-#include "allocation_fault_injection.h"
+#include "../../GameplayWorldStateOwners/Simulation/src/simulation_test_seam.h"
 #include "Epidemic/GameFramework/Simulation/simulation.h"
 #include "Epidemic/Foundation/error.h"
 
@@ -44,7 +44,7 @@ class Exec final : public ISimulationLayerExecutor
             return foundation::Result<SimulationLayerSummary>::Failure(TestError("test.prepare"));
         }
         return foundation::Result<SimulationLayerSummary>::Success(
-            {id, SimulationTaskState::Running, operations_, {1}});
+            {id, SimulationTaskState::Running, operations_, {1}, {}});
     }
 
     [[nodiscard]] foundation::Result<void> Commit(const SimulationTask &, const SimulationLayerSummary &) override
@@ -77,6 +77,38 @@ SimulationLayerDefinition Layer(const Exec &exec, int order)
     return {exec.id, exec.id == SimulationLayerId::FromString("test.layer.a") ? "test.layer.a" :
                      exec.id == SimulationLayerId::FromString("test.layer.b") ? "test.layer.b" : "test.layer.c",
             {}, order, SimulationMaterializationPolicy::AbstractCapable, {}};
+}
+
+
+bool EquivalentMutationState(const SimulationSnapshot &a, const SimulationSnapshot &b)
+{
+    if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||
+        a.summary_ids.scope != b.summary_ids.scope || a.summary_ids.next != b.summary_ids.next ||
+        a.next_change_sequence != b.next_change_sequence || a.change_epoch != b.change_epoch ||
+        a.regions.size() != b.regions.size() || a.active_intervals.size() != b.active_intervals.size() ||
+        a.summaries.size() != b.summaries.size())
+        return false;
+    for (std::size_t i = 0; i < a.regions.size(); ++i)
+        if (a.regions[i].id != b.regions[i].id || a.regions[i].last_simulated_at != b.regions[i].last_simulated_at ||
+            a.regions[i].revision != b.regions[i].revision)
+            return false;
+    for (std::size_t i = 0; i < a.active_intervals.size(); ++i)
+    {
+        const auto &left = a.active_intervals[i];
+        const auto &right = b.active_intervals[i];
+        if (left.id != right.id || left.region != right.region || left.state != right.state ||
+            left.revision != right.revision || left.layers.size() != right.layers.size())
+            return false;
+        for (std::size_t j = 0; j < left.layers.size(); ++j)
+            if (left.layers[j].task.id != right.layers[j].task.id ||
+                left.layers[j].task.state != right.layers[j].task.state ||
+                left.layers[j].task.revision != right.layers[j].task.revision ||
+                left.layers[j].prepared != right.layers[j].prepared ||
+                left.layers[j].prepared_summary.state != right.layers[j].prepared_summary.state ||
+                left.layers[j].prepared_summary.revision != right.layers[j].prepared_summary.revision)
+                return false;
+    }
+    return true;
 }
 } // namespace
 
@@ -247,30 +279,164 @@ int main()
     if (!retained.ReadChangesSince(retained.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)
         return 38;
 
-    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
+    // Goal 4: restore allocation evidence uses narrow module-local fault seams.
     const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    using SimFaultPoint = epidemic::gameplay::simulation::internal_test::AllocationFaultPoint;
+    for (const auto point : {SimFaultPoint::RestoreRegions, SimFaultPoint::RestoreSummaries,
+                             SimFaultPoint::RestoreIntervals})
     {
-        auto allocation_target = allocation_before;
-        bool restore_failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            restore_failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            restore_failed = true;
-        }
-        if (!restore_failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
+        auto target_snapshot = allocation_before;
+        epidemic::gameplay::simulation::internal_test::ArmAllocationFault(point);
+        const auto result = restored.RestoreSnapshot(std::move(target_snapshot));
+        epidemic::gameplay::simulation::internal_test::ResetAllocationFault();
+        if (result || !EquivalentMutationState(allocation_before, restored.CaptureSnapshot()))
             return 945;
     }
-    if (!saw_restore_allocation_failure)
+
+    // G4-SIM-001: restored max revision must reject before accepted external Commit.
+    auto max_revision_snapshot = pending_snapshot;
+    max_revision_snapshot.revision.value = std::numeric_limits<std::uint64_t>::max();
+    SimulationService max_revision_service;
+    Exec max_a("test.layer.a", 1);
+    Exec max_b("test.layer.b", 1);
+    if (!max_revision_service.RegisterLayer(Layer(max_a, 10), &max_a) ||
+        !max_revision_service.RegisterLayer(Layer(max_b, 20), &max_b))
         return 946;
+    max_revision_service.Freeze();
+    max_revision_service.SetBudget({8, 8, 1'000});
+    if (!max_revision_service.RestoreSnapshot(max_revision_snapshot))
+        return 947;
+    const auto max_before = max_revision_service.CaptureSnapshot();
+    const auto max_result = max_revision_service.SimulateInterval(save_region.Value(), GameplayTimePoint{0},
+                                                                   GameplayTimePoint{10});
+    if (max_result || !max_result.GetError().HasCode("gameplay.simulation.revision_exhausted") ||
+        max_b.commits != 0 || !EquivalentMutationState(max_before, max_revision_service.CaptureSnapshot()))
+        return 948;
+
+    // G4-SIM-001: the final external Commit also needs one more revision and journal slot for
+    // terminal interval summary publication. Exhaustion must therefore be detected before Commit.
+    auto one_revision_snapshot = pending_snapshot;
+    one_revision_snapshot.revision.value = std::numeric_limits<std::uint64_t>::max() - 1;
+    SimulationService one_revision_service;
+    Exec one_revision_a("test.layer.a", 1);
+    Exec one_revision_b("test.layer.b", 1);
+    if (!one_revision_service.RegisterLayer(Layer(one_revision_a, 10), &one_revision_a) ||
+        !one_revision_service.RegisterLayer(Layer(one_revision_b, 20), &one_revision_b))
+        return 956;
+    one_revision_service.Freeze();
+    one_revision_service.SetBudget({8, 8, 1'000});
+    if (!one_revision_service.RestoreSnapshot(one_revision_snapshot))
+        return 957;
+    const auto one_revision_before = one_revision_service.CaptureSnapshot();
+    const auto one_revision_result = one_revision_service.SimulateInterval(
+        save_region.Value(), GameplayTimePoint{0}, GameplayTimePoint{10});
+    if (one_revision_result ||
+        !one_revision_result.GetError().HasCode("gameplay.simulation.revision_exhausted") ||
+        one_revision_b.commits != 0 ||
+        !EquivalentMutationState(one_revision_before, one_revision_service.CaptureSnapshot()))
+        return 958;
+
+    auto one_sequence_snapshot = pending_snapshot;
+    one_sequence_snapshot.next_change_sequence = std::numeric_limits<std::uint64_t>::max();
+    SimulationService one_sequence_service;
+    Exec one_sequence_a("test.layer.a", 1);
+    Exec one_sequence_b("test.layer.b", 1);
+    if (!one_sequence_service.RegisterLayer(Layer(one_sequence_a, 10), &one_sequence_a) ||
+        !one_sequence_service.RegisterLayer(Layer(one_sequence_b, 20), &one_sequence_b))
+        return 959;
+    one_sequence_service.Freeze();
+    one_sequence_service.SetBudget({8, 8, 1'000});
+    if (!one_sequence_service.RestoreSnapshot(one_sequence_snapshot))
+        return 960;
+    const auto one_sequence_before = one_sequence_service.CaptureSnapshot();
+    const auto one_sequence_result = one_sequence_service.SimulateInterval(
+        save_region.Value(), GameplayTimePoint{0}, GameplayTimePoint{10});
+    if (one_sequence_result ||
+        !one_sequence_result.GetError().HasCode("gameplay.simulation.journal_exhausted") ||
+        one_sequence_b.commits != 0 ||
+        !EquivalentMutationState(one_sequence_before, one_sequence_service.CaptureSnapshot()))
+        return 961;
+
+    // Final summary storage is also staged before accepted external work.
+    SimulationService summary_preflight_service;
+    Exec summary_preflight_a("test.layer.a", 1);
+    Exec summary_preflight_b("test.layer.b", 1);
+    if (!summary_preflight_service.RegisterLayer(Layer(summary_preflight_a, 10), &summary_preflight_a) ||
+        !summary_preflight_service.RegisterLayer(Layer(summary_preflight_b, 20), &summary_preflight_b))
+        return 962;
+    summary_preflight_service.Freeze();
+    summary_preflight_service.SetBudget({8, 8, 1'000});
+    if (!summary_preflight_service.RestoreSnapshot(pending_snapshot))
+        return 963;
+    const auto summary_preflight_before = summary_preflight_service.CaptureSnapshot();
+    epidemic::gameplay::simulation::internal_test::ArmAllocationFault(SimFaultPoint::SummaryPublication);
+    const auto summary_preflight_result = summary_preflight_service.SimulateInterval(
+        save_region.Value(), GameplayTimePoint{0}, GameplayTimePoint{10});
+    epidemic::gameplay::simulation::internal_test::ResetAllocationFault();
+    if (summary_preflight_result ||
+        !summary_preflight_result.GetError().HasCode("gameplay.simulation.allocation_failed") ||
+        summary_preflight_b.commits != 0 ||
+        !EquivalentMutationState(summary_preflight_before, summary_preflight_service.CaptureSnapshot()))
+        return 964;
+    const auto summary_preflight_retry = summary_preflight_service.SimulateInterval(
+        save_region.Value(), GameplayTimePoint{0}, GameplayTimePoint{10});
+    if (!summary_preflight_retry || summary_preflight_b.commits != 1)
+        return 965;
+
+    // G4-SIM-002: interval primary publication and journal publication fail before authoritative state changes.
+    for (const auto point : {SimFaultPoint::IntervalPublication, SimFaultPoint::JournalPublication})
+    {
+        SimulationService atomic_interval;
+        Exec atomic_exec("test.layer.a", 1);
+        auto atomic_region = atomic_interval.RegisterRegion(Region("test.atomic_interval_region"));
+        if (!atomic_region || !atomic_interval.RegisterLayer(Layer(atomic_exec, 10), &atomic_exec))
+            return 949;
+        atomic_interval.Freeze();
+        const auto before = atomic_interval.CaptureSnapshot();
+        epidemic::gameplay::simulation::internal_test::ArmAllocationFault(point);
+        const auto result = atomic_interval.SimulateInterval(atomic_region.Value(), GameplayTimePoint{0},
+                                                              GameplayTimePoint{10});
+        epidemic::gameplay::simulation::internal_test::ResetAllocationFault();
+        if (result || !result.GetError().HasCode("gameplay.simulation.allocation_failed") ||
+            !EquivalentMutationState(before, atomic_interval.CaptureSnapshot()) || atomic_exec.commits != 0)
+            return 950;
+    }
+
+    // Isolate final summary publication with an already-completed restored interval.
+    auto completed_pending = pending_snapshot;
+    if (completed_pending.active_intervals.size() != 1 || completed_pending.active_intervals.front().layers.size() != 2)
+        return 951;
+    for (auto &layer_execution : completed_pending.active_intervals.front().layers)
+    {
+        layer_execution.task.state = SimulationTaskState::Completed;
+        layer_execution.prepared = true;
+        layer_execution.prepared_summary.state = SimulationTaskState::Completed;
+    }
+    for (const auto point : {SimFaultPoint::SummaryPublication, SimFaultPoint::JournalPublication})
+    {
+        SimulationService atomic_summary;
+        Exec summary_a("test.layer.a", 1);
+        Exec summary_b("test.layer.b", 1);
+        if (!atomic_summary.RegisterLayer(Layer(summary_a, 10), &summary_a) ||
+            !atomic_summary.RegisterLayer(Layer(summary_b, 20), &summary_b))
+            return 952;
+        atomic_summary.Freeze();
+        if (!atomic_summary.RestoreSnapshot(completed_pending))
+            return 953;
+        const auto before = atomic_summary.CaptureSnapshot();
+        epidemic::gameplay::simulation::internal_test::ArmAllocationFault(point);
+        const auto result = atomic_summary.SimulateInterval(save_region.Value(), GameplayTimePoint{0},
+                                                             GameplayTimePoint{10});
+        epidemic::gameplay::simulation::internal_test::ResetAllocationFault();
+        if (result || !result.GetError().HasCode("gameplay.simulation.allocation_failed") ||
+            !EquivalentMutationState(before, atomic_summary.CaptureSnapshot()) || summary_a.commits != 0 ||
+            summary_b.commits != 0)
+            return 954;
+        auto retry_summary = atomic_summary.SimulateInterval(save_region.Value(), GameplayTimePoint{0},
+                                                              GameplayTimePoint{10});
+        if (!retry_summary)
+            return 955;
+    }
+
     return 0;
 }

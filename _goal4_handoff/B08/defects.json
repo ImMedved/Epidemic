@@ -1,0 +1,72 @@
+{
+  "defects": {
+    "B08-INT-001": {
+      "defect": "ScheduledTriggerDispatcher could allocate its per-handler completion marker after an external handler returned Ack/Discard, allowing accepted side effects without durable local completion bookkeeping.",
+      "fix": "DispatchPending computes the missing completion set and reserves completion storage before invoking any handler. Failure at the narrow preflight seam leaves the delivery pending and performs zero handler calls.",
+      "logical_id": "B08-INT-001",
+      "module": "EngineFramework/IntegrationLayer/Integration",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/core_integration_tests.cpp:690::FailNextTriggerCompletionPublicationForTest",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkCoreIntegrationTests",
+      "targets": [
+        "EpidemicGameFrameworkCoreIntegrationTests"
+      ]
+    },
+    "B08-PRSINT-001": {
+      "defect": "ResourceProcessInputProvider encoded/allocated its provider token after Resources accepted the reservation.",
+      "fix": "Provider-token storage is fully staged and capacity-reserved before Resources::Reserve. After the external reservation succeeds, token encoding is non-allocating.",
+      "logical_id": "B08-PRSINT-001",
+      "module": "EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/process_resource_simulation_integration_tests.cpp:106::FailNextResourceReservationTokenPublicationForTest",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkProcessResourceSimulationIntegrationTests",
+      "targets": [
+        "EpidemicGameFrameworkProcessResourceSimulationIntegrationTests"
+      ]
+    },
+    "G4-EXTINT-001": {
+      "defect": "TradeCoordinator::Prepare consumed a persisted execution ID before complete goods-plan validation.",
+      "fix": "Prepare validates and stages every goods line first, obtains the ID from a staged generator copy, publishes the local execution record, and only then commits the live generator/external reservation work.",
+      "logical_id": "G4-EXTINT-001",
+      "module": "EngineFramework/IntegrationLayer/ExtendedGameplayIntegration",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/extended_gameplay_integration_tests.cpp:358::external reservation",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkExtendedGameplayIntegrationTests",
+      "targets": [
+        "EpidemicGameFrameworkExtendedGameplayIntegrationTests"
+      ]
+    },
+    "G4-EXTINT-002": {
+      "defect": "Goods/money reservations could be accepted before a durable local trade execution/reconciliation record existed.",
+      "fix": "TradeCoordinator publishes a ReconciliationRequired local execution before the first external reservation, updates it after each accepted leg, and transitions to Prepared only after all legs are accepted. Local publication failure occurs before any external call.",
+      "logical_id": "G4-EXTINT-002",
+      "module": "EngineFramework/IntegrationLayer/ExtendedGameplayIntegration",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/extended_gameplay_integration_tests.cpp:423::G4-EXTINT-002 accepted external work returns durable reconciliation execution",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkExtendedGameplayIntegrationTests",
+      "targets": [
+        "EpidemicGameFrameworkExtendedGameplayIntegrationTests"
+      ]
+    },
+    "G4-INFRA-001/B08": {
+      "defect": "Goal 4 allocation-failure evidence must not depend on the process-global allocator override.",
+      "fix": "B08 owned tests have zero direct users of the shared allocator/sweep helpers. New allocation/publication regressions use narrow one-shot test seams scoped to Integration, ExtendedGameplayIntegration and ProcessResourceSimulationIntegration; shared helpers are untouched.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B08",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/core_integration_tests.cpp:690::FailNextTriggerCompletionPublicationForTest",
+      "regressions": {
+        "EpidemicGameFrameworkCoreIntegrationTests": "EngineFramework/DevelopmentInfrastructure/Tests/core_integration_tests.cpp:690::FailNextTriggerCompletionPublicationForTest",
+        "EpidemicGameFrameworkExtendedGameplayIntegrationTests": "EngineFramework/DevelopmentInfrastructure/Tests/extended_gameplay_integration_tests.cpp:376::FailNextTradePublicationForTest",
+        "EpidemicGameFrameworkProcessResourceSimulationIntegrationTests": "EngineFramework/DevelopmentInfrastructure/Tests/process_resource_simulation_integration_tests.cpp:106::FailNextResourceReservationTokenPublicationForTest"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkCoreIntegrationTests",
+      "targets": [
+        "EpidemicGameFrameworkCoreIntegrationTests",
+        "EpidemicGameFrameworkExtendedGameplayIntegrationTests",
+        "EpidemicGameFrameworkProcessResourceSimulationIntegrationTests"
+      ]
+    }
+  },
+  "schema_version": 1
+}

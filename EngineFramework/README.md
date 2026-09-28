@@ -4,4 +4,4 @@
 
 Публичные headers расположены под `include/Epidemic/GameFramework/...`.
 
-Архитектурное описание и правила использования: `docs/GameFramework/README.md`.
+Архитектурное описание и правила использования: `docs/EngineFramework/README.md`.

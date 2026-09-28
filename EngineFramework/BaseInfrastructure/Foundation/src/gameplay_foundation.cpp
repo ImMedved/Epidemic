@@ -2,11 +2,33 @@
 
 #include "Epidemic/Foundation/error.h"
 
+#include <new>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace epidemic::gameplay
 {
+namespace detail
+{
+namespace
+{
+thread_local std::string_view g_foundation_fault_point;
+}
+
+void SetFoundationFaultPointForTesting(std::string_view point) noexcept { g_foundation_fault_point = point; }
+void ClearFoundationFaultPointForTesting() noexcept { g_foundation_fault_point = {}; }
+} // namespace detail
+
+void FoundationPublicationFaultPointForInternalTest(std::string_view point)
+{
+    if (!detail::g_foundation_fault_point.empty() && detail::g_foundation_fault_point == point)
+    {
+        detail::g_foundation_fault_point = {};
+        throw std::bad_alloc{};
+    }
+}
+
 foundation::Result<TagId> GameplayTagRegistry::Register(std::string_view canonical_name)
 {
     if (frozen_)
@@ -78,6 +100,7 @@ foundation::Result<TagId> GameplayTagRegistry::Register(std::string_view canonic
             staged_entries.emplace(tag.id, Entry{tag.id, tag.parent, tag.canonical_name});
         }
     }
+    FoundationPublicationFaultPointForInternalTest("tag_registry.publish");
     entries_.swap(staged_entries);
     return foundation::Result<TagId>::Success(pending.back().id);
 }
@@ -119,3 +142,8 @@ bool GameplayTagRegistry::Matches(TagId candidate, TagId required) const noexcep
     return false;
 }
 } // namespace epidemic::gameplay
+
+void FoundationPublicationFaultPointForInternalTest(std::string_view point)
+{
+    epidemic::gameplay::FoundationPublicationFaultPointForInternalTest(point);
+}

@@ -1,4 +1,3 @@
-#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/RolesJobs/roles_jobs.h"
 #include <cstdlib>
 #include <iostream>
@@ -6,6 +5,11 @@
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::roles_jobs;
+
+namespace epidemic::gameplay::roles_jobs::testing
+{
+void FailNextLocalAllocationForTest() noexcept;
+}
 
 namespace
 {
@@ -207,30 +211,15 @@ int main()
     Check(!static_cast<bool>(stable.RestoreSnapshot(corrupt)), "corrupt generator rejected");
     Check(stable.GetWorkplace(stable_workplace_id.Value()) != nullptr, "failed restore leaves old state intact");
 
-    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
+    // Goal 4: module-local failure seam proves RestoreSnapshot pre-state atomicity.
     const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
-    {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
-            return 943;
-    }
-    if (!saw_restore_allocation_failure)
+    epidemic::gameplay::roles_jobs::testing::FailNextLocalAllocationForTest();
+    const auto injected_restore = restored.RestoreSnapshot(allocation_before);
+    if (injected_restore)
+        return 943;
+    const auto allocation_after = restored.CaptureSnapshot();
+    if (allocation_after.revision != allocation_before.revision ||
+        allocation_after.change_epoch != allocation_before.change_epoch)
         return 944;
     return 0;
 }

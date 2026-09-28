@@ -1,7 +1,9 @@
 #include "Epidemic/GameFramework/ResourcesProduction/resources_production.h"
 #include "Epidemic/Foundation/error.h"
+#include "resources_production_test_seam.h"
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <utility>
 
@@ -27,15 +29,6 @@ namespace
 
 [[nodiscard]] bool CheckedMul(std::int64_t lhs, Fixed rhs, Fixed &out) noexcept
 {
-#if defined(__SIZEOF_INT128__)
-    const __int128 value = static_cast<__int128>(lhs) * static_cast<__int128>(rhs);
-    if (value > std::numeric_limits<Fixed>::max() || value < std::numeric_limits<Fixed>::min())
-    {
-        return false;
-    }
-    out = static_cast<Fixed>(value);
-    return true;
-#else
     if (lhs == 0 || rhs == 0)
     {
         out = 0;
@@ -51,7 +44,6 @@ namespace
         return false;
     out = lhs * rhs;
     return true;
-#endif
 }
 
 
@@ -183,6 +175,44 @@ void AdvanceGeneratorPastAcceptedId(MonotonicIdGenerator<GameplayObjectId> &gene
     return foundation::Result<void>::Success();
 }
 
+[[nodiscard]] bool TryStageJournal(const std::deque<ResourceChange> &current,
+                                   std::uint64_t next_sequence,
+                                   std::size_t retention,
+                                   std::span<const ResourceChange> additions,
+                                   std::deque<ResourceChange> &staged_out,
+                                   std::uint64_t &next_out) noexcept
+{
+    try
+    {
+        auto staged = current;
+        auto staged_next = next_sequence;
+        for (auto change : additions)
+        {
+            if (staged_next == 0)
+                continue;
+            if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::JournalAppend))
+                return false;
+            change.sequence = staged_next;
+            staged.push_back(std::move(change));
+            staged_next = staged_next == std::numeric_limits<std::uint64_t>::max() ? 0 : staged_next + 1;
+            while (staged.size() > retention)
+                staged.pop_front();
+        }
+        staged_out.swap(staged);
+        next_out = staged_next;
+        return true;
+    }
+    catch (...)
+    {
+        return false;
+    }
+}
+
+[[nodiscard]] foundation::Error PublicationFailed(std::string_view stage)
+{
+    return Error("gameplay.resources.publication_failed", stage);
+}
+
 } // namespace
 
 ResourcesProductionService::ResourcesProductionService()
@@ -205,13 +235,26 @@ foundation::Result<ResourceTypeId> ResourcesProductionService::RegisterResourceT
         !IsValidResourceDecayPolicy(type.decay_policy))
         return foundation::Result<ResourceTypeId>::Failure(
             Error("gameplay.resources.invalid_type", "invalid or duplicate resource type"));
-    if (!Bump())
-        return foundation::Result<ResourceTypeId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    type.revision = revision_;
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ResourceTypeId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next{revision_.value + 1};
+    type.revision = next;
     const auto id = type.id;
-    types_.emplace(id, std::move(type));
+    try
+    {
+        if (!types_.emplace(id, std::move(type)).second)
+            return foundation::Result<ResourceTypeId>::Failure(
+                Error("gameplay.resources.invalid_type", "duplicate resource type"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ResourceTypeId>::Failure(PublicationFailed("resource type publication failed"));
+    }
+    revision_ = next;
     return foundation::Result<ResourceTypeId>::Success(id);
 }
+
 
 foundation::Result<ProductionRecipeId> ResourcesProductionService::RegisterProductionRecipe(ProductionRecipe recipe)
 {
@@ -240,13 +283,26 @@ foundation::Result<ProductionRecipeId> ResourcesProductionService::RegisterProdu
     recipe.inputs = std::move(canonical_inputs.Value());
     recipe.outputs = std::move(canonical_outputs.Value());
 
-    if (!Bump())
-        return foundation::Result<ProductionRecipeId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    recipe.revision = revision_;
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ProductionRecipeId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next{revision_.value + 1};
+    recipe.revision = next;
     const auto id = recipe.id;
-    recipes_.emplace(id, std::move(recipe));
+    try
+    {
+        if (!recipes_.emplace(id, std::move(recipe)).second)
+            return foundation::Result<ProductionRecipeId>::Failure(
+                Error("gameplay.resources.invalid_recipe", "duplicate production recipe"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ProductionRecipeId>::Failure(PublicationFailed("production recipe publication failed"));
+    }
+    revision_ = next;
     return foundation::Result<ProductionRecipeId>::Success(id);
 }
+
 
 const ResourceType *ResourcesProductionService::FindResourceType(ResourceTypeId id) const noexcept
 {
@@ -377,27 +433,52 @@ foundation::Result<ResourceStockpileId> ResourcesProductionService::CreateStockp
     if (!stockpile.owner.IsValid() || !IsValidStockpileState(stockpile.state))
         return foundation::Result<ResourceStockpileId>::Failure(
             Error("gameplay.resources.invalid_stockpile", "invalid stockpile"));
+
+    auto staged_ids = stockpile_ids_;
     if (!stockpile.id.IsValid())
     {
-        stockpile.id = ResourceStockpileId{stockpile_ids_.Next()};
+        stockpile.id = ResourceStockpileId{staged_ids.Next()};
         if (!stockpile.id.IsValid())
-        {
             return foundation::Result<ResourceStockpileId>::Failure(
                 Error("gameplay.resources.id_exhausted", "stockpile id generator exhausted"));
-        }
     }
     if (stockpiles_.contains(stockpile.id))
         return foundation::Result<ResourceStockpileId>::Failure(
             Error("gameplay.resources.invalid_stockpile", "duplicate stockpile"));
-    AdvanceGeneratorPastAcceptedId(stockpile_ids_, stockpile.id);
-    if (!Bump())
-        return foundation::Result<ResourceStockpileId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    stockpile.revision = revision_;
+    AdvanceGeneratorPastAcceptedId(staged_ids, stockpile.id);
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ResourceStockpileId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+
+    const Revision next{revision_.value + 1};
+    stockpile.revision = next;
     const auto id = stockpile.id;
-    stockpiles_.emplace(id, std::move(stockpile));
-    Record({0, ResourceChangeKind::StockpileCreated, id, {}, {}, 0, {}, {}, revision_});
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::StockpileCreated, id, {}, {}, 0, {}, {}, next}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<ResourceStockpileId>::Failure(PublicationFailed("stockpile journal staging failed"));
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::PrimaryInsert))
+        return foundation::Result<ResourceStockpileId>::Failure(PublicationFailed("stockpile primary publication failed"));
+    try
+    {
+        if (!stockpiles_.emplace(id, std::move(stockpile)).second)
+            return foundation::Result<ResourceStockpileId>::Failure(
+                Error("gameplay.resources.invalid_stockpile", "duplicate stockpile"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ResourceStockpileId>::Failure(PublicationFailed("stockpile primary publication failed"));
+    }
+
+    stockpile_ids_ = staged_ids;
+    revision_ = next;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<ResourceStockpileId>::Success(id);
 }
+
 
 foundation::Result<ResourceNodeId> ResourcesProductionService::CreateNode(ResourceNode node)
 {
@@ -406,70 +487,109 @@ foundation::Result<ResourceNodeId> ResourcesProductionService::CreateNode(Resour
         return foundation::Result<ResourceNodeId>::Failure(
             Error("gameplay.resources.invalid_node", "invalid resource node"));
     if (node.maximum_amount <= 0)
-    {
         node.maximum_amount = node.remaining_amount;
-    }
     if (node.remaining_amount > node.maximum_amount)
-    {
         return foundation::Result<ResourceNodeId>::Failure(
             Error("gameplay.resources.invalid_node", "resource node exceeds capacity"));
-    }
     if (node.remaining_amount == 0 && node.state == ResourceNodeState::Active)
-    {
         node.state = ResourceNodeState::Depleted;
-    }
+
+    auto staged_ids = node_ids_;
     if (!node.id.IsValid())
     {
-        node.id = ResourceNodeId{node_ids_.Next()};
+        node.id = ResourceNodeId{staged_ids.Next()};
         if (!node.id.IsValid())
-        {
             return foundation::Result<ResourceNodeId>::Failure(
                 Error("gameplay.resources.id_exhausted", "node id generator exhausted"));
-        }
     }
     if (nodes_.contains(node.id))
         return foundation::Result<ResourceNodeId>::Failure(
             Error("gameplay.resources.invalid_node", "duplicate resource node"));
-    AdvanceGeneratorPastAcceptedId(node_ids_, node.id);
-    if (!Bump())
-        return foundation::Result<ResourceNodeId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    node.revision = revision_;
+    AdvanceGeneratorPastAcceptedId(staged_ids, node.id);
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ResourceNodeId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+
+    const Revision next{revision_.value + 1};
+    node.revision = next;
     const auto id = node.id;
-    nodes_.emplace(id, std::move(node));
     ResourceChange change{};
     change.kind = ResourceChangeKind::NodeCreated;
     change.node = id;
-    change.revision = revision_;
-    Record(std::move(change));
+    change.revision = next;
+    const std::array<ResourceChange, 1> additions{{change}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<ResourceNodeId>::Failure(PublicationFailed("node journal staging failed"));
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::PrimaryInsert))
+        return foundation::Result<ResourceNodeId>::Failure(PublicationFailed("node primary publication failed"));
+    try
+    {
+        if (!nodes_.emplace(id, std::move(node)).second)
+            return foundation::Result<ResourceNodeId>::Failure(
+                Error("gameplay.resources.invalid_node", "duplicate resource node"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ResourceNodeId>::Failure(PublicationFailed("node primary publication failed"));
+    }
+    node_ids_ = staged_ids;
+    revision_ = next;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<ResourceNodeId>::Success(id);
 }
+
 
 foundation::Result<ProductionSiteId> ResourcesProductionService::CreateProductionSite(ProductionSite site)
 {
     if (!site.site_object.IsValid() || site.efficiency_micro < 0 || !IsValidSiteState(site.state))
         return foundation::Result<ProductionSiteId>::Failure(
             Error("gameplay.resources.invalid_site", "invalid production site"));
+    auto staged_ids = site_ids_;
     if (!site.id.IsValid())
     {
-        site.id = ProductionSiteId{site_ids_.Next()};
+        site.id = ProductionSiteId{staged_ids.Next()};
         if (!site.id.IsValid())
-        {
             return foundation::Result<ProductionSiteId>::Failure(
-                Error("gameplay.resources.id_exhausted", "site id generator exhausted"));
-        }
+                Error("gameplay.resources.id_exhausted", "production site id generator exhausted"));
     }
     if (sites_.contains(site.id))
         return foundation::Result<ProductionSiteId>::Failure(
             Error("gameplay.resources.invalid_site", "duplicate production site"));
-    AdvanceGeneratorPastAcceptedId(site_ids_, site.id);
-    if (!Bump())
-        return foundation::Result<ProductionSiteId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    site.revision = revision_;
+    AdvanceGeneratorPastAcceptedId(staged_ids, site.id);
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ProductionSiteId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next{revision_.value + 1};
+    site.revision = next;
     const auto id = site.id;
-    sites_.emplace(id, std::move(site));
-    Record({0, ResourceChangeKind::ProductionSiteCreated, {}, {}, {}, 0, {}, {}, revision_});
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::ProductionSiteCreated, {}, {}, {}, 0, {}, {}, next}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<ProductionSiteId>::Failure(PublicationFailed("production site journal staging failed"));
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::PrimaryInsert))
+        return foundation::Result<ProductionSiteId>::Failure(PublicationFailed("production site primary publication failed"));
+    try
+    {
+        if (!sites_.emplace(id, std::move(site)).second)
+            return foundation::Result<ProductionSiteId>::Failure(
+                Error("gameplay.resources.invalid_site", "duplicate production site"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ProductionSiteId>::Failure(PublicationFailed("production site primary publication failed"));
+    }
+    site_ids_ = staged_ids;
+    revision_ = next;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<ProductionSiteId>::Success(id);
 }
+
 
 const ResourceStockpile *ResourcesProductionService::FindStockpile(ResourceStockpileId id) const noexcept
 {
@@ -494,19 +614,27 @@ foundation::Result<void> ResourcesProductionService::SetStockpileState(ResourceS
         {
             (void)rid;
             if (reservation.stockpile == id && reservation.state == ResourceReservationState::Active)
-            {
                 return foundation::Result<void>::Failure(
                     Error("gameplay.resources.active_reservations", "cannot destroy stockpile with active reservations"));
-            }
         }
     }
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next{revision_.value + 1};
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::StockpileStateChanged, id, {}, {}, 0, context.time, context, next}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<void>::Failure(PublicationFailed("stockpile state journal staging failed"));
     it->second.state = state;
-    it->second.revision = revision_;
-    Record({0, ResourceChangeKind::StockpileStateChanged, id, {}, {}, 0, context.time, context, revision_});
+    it->second.revision = next;
+    revision_ = next;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<void>::Success();
 }
+
 
 Fixed ResourcesProductionService::GetAmount(ResourceStockpileId stockpile, ResourceTypeId type) const noexcept
 {
@@ -536,21 +664,46 @@ foundation::Result<void> ResourcesProductionService::Add(ResourceStockpileId sto
     auto canonical = CanonicalizeQuantities(std::span<const ResourceQuantity>(&quantity, 1));
     if (!canonical)
         return foundation::Result<void>::Failure(canonical.GetError());
-
     const auto &q = canonical.Value().front();
-    auto key = AmountKey{stockpile, q.type};
-    Fixed next = 0;
-    if (!CheckedAddFixed(GetAmount(stockpile, q.type), q.amount, next))
-    {
-        return foundation::Result<void>::Failure(
-            Error("gameplay.resources.amount_overflow", "resource amount overflow"));
-    }
-    if (!Bump())
+    const AmountKey key{stockpile, q.type};
+    Fixed next_amount = 0;
+    if (!CheckedAddFixed(GetAmount(stockpile, q.type), q.amount, next_amount))
+        return foundation::Result<void>::Failure(Error("gameplay.resources.amount_overflow", "resource amount overflow"));
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    amounts_[key] = next;
-    Record({0, ResourceChangeKind::ResourceAdded, stockpile, q.type, {}, q.amount, context.time, context, revision_});
+    const Revision next_revision{revision_.value + 1};
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::ResourceAdded, stockpile, q.type, {}, q.amount, context.time, context, next_revision}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<void>::Failure(PublicationFailed("resource add journal staging failed"));
+
+    auto amount_it = amounts_.find(key);
+    if (amount_it == amounts_.end())
+    {
+        try
+        {
+            const auto [inserted_it, inserted] = amounts_.emplace(key, next_amount);
+            if (!inserted)
+                return foundation::Result<void>::Failure(PublicationFailed("resource amount publication conflict"));
+            amount_it = inserted_it;
+        }
+        catch (...)
+        {
+            return foundation::Result<void>::Failure(PublicationFailed("resource amount publication failed"));
+        }
+    }
+    else
+    {
+        amount_it->second = next_amount;
+    }
+    revision_ = next_revision;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<void>::Success();
 }
+
 
 foundation::Result<void> ResourcesProductionService::Remove(ResourceStockpileId stockpile, ResourceQuantity quantity,
                                                             GameplayContext context)
@@ -561,7 +714,6 @@ foundation::Result<void> ResourcesProductionService::Remove(ResourceStockpileId 
     auto canonical = CanonicalizeQuantities(std::span<const ResourceQuantity>(&quantity, 1));
     if (!canonical)
         return foundation::Result<void>::Failure(canonical.GetError());
-
     const auto &q = canonical.Value().front();
     const auto available = GetAvailableAmount(stockpile, q.type);
     if (available < q.amount)
@@ -572,18 +724,28 @@ foundation::Result<void> ResourcesProductionService::Remove(ResourceStockpileId 
         return foundation::Result<void>::Failure(
             Error("gameplay.resources.shortage", "insufficient unreserved resource amount"));
     }
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    auto key = AmountKey{stockpile, q.type};
-    auto &amount = amounts_[key];
-    amount -= q.amount;
-    if (amount == 0)
-    {
-        amounts_.erase(key);
-    }
-    Record({0, ResourceChangeKind::ResourceRemoved, stockpile, q.type, {}, q.amount, context.time, context, revision_});
+    const Revision next_revision{revision_.value + 1};
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::ResourceRemoved, stockpile, q.type, {}, q.amount, context.time, context, next_revision}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<void>::Failure(PublicationFailed("resource remove journal staging failed"));
+    const AmountKey key{stockpile, q.type};
+    auto amount_it = amounts_.find(key);
+    if (amount_it == amounts_.end() || amount_it->second < q.amount)
+        return foundation::Result<void>::Failure(Error("gameplay.resources.shortage", "resource amount disappeared"));
+    amount_it->second -= q.amount;
+    if (amount_it->second == 0)
+        amounts_.erase(amount_it);
+    revision_ = next_revision;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<void>::Success();
 }
+
 
 bool ResourcesProductionService::CanReserve(ResourceStockpileId stockpile,
                                             std::span<const ResourceQuantity> quantities) const
@@ -604,9 +766,10 @@ bool ResourcesProductionService::CanReserve(ResourceStockpileId stockpile,
 }
 
 foundation::Result<ResourceReservationId> ResourcesProductionService::Reserve(ResourceStockpileId stockpile,
-                                                                              std::vector<ResourceQuantity> quantities,
-                                                                              GameplayObjectRef owner, TypeId reason,
-                                                                              GameplayContext context)
+                                                                                         std::vector<ResourceQuantity> quantities,
+                                                                                         GameplayObjectRef owner,
+                                                                                         TypeId reason,
+                                                                                         GameplayContext context)
 {
     auto operation = ValidateStockpileOperation(stockpile, StockpileOperation::Reserve);
     if (!operation)
@@ -614,7 +777,8 @@ foundation::Result<ResourceReservationId> ResourcesProductionService::Reserve(Re
     auto canonical = CanonicalizeQuantities(quantities);
     if (!canonical)
         return foundation::Result<ResourceReservationId>::Failure(canonical.GetError());
-    for (const auto &q : canonical.Value())
+    auto canonical_quantities = std::move(canonical.Value());
+    for (const auto &q : canonical_quantities)
     {
         if (GetAvailableAmount(stockpile, q.type) < q.amount)
         {
@@ -626,28 +790,106 @@ foundation::Result<ResourceReservationId> ResourcesProductionService::Reserve(Re
         }
     }
 
+    auto staged_ids = reservation_ids_;
     ResourceReservation reservation;
-    reservation.id = ResourceReservationId{reservation_ids_.Next()};
+    reservation.id = ResourceReservationId{staged_ids.Next()};
     if (!reservation.id.IsValid())
         return foundation::Result<ResourceReservationId>::Failure(
             Error("gameplay.resources.id_exhausted", "reservation id generator exhausted"));
     reservation.stockpile = stockpile;
-    reservation.quantities = std::move(canonical.Value());
+    reservation.quantities = std::move(canonical_quantities);
     reservation.owner = owner;
     reservation.reason = reason;
-    if (!Bump())
-        return foundation::Result<ResourceReservationId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    reservation.revision = revision_;
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ResourceReservationId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next{revision_.value + 1};
+    reservation.revision = next;
     const auto id = reservation.id;
-    reservations_.emplace(id, reservation);
-    for (const auto &q : reservation.quantities)
+
+    std::vector<ResourceChange> additions;
+    struct ReservedUpdate
     {
-        AddReservedIndex(stockpile, q.type, q.amount);
-        Record({0, ResourceChangeKind::ResourceReserved, stockpile, q.type, {}, q.amount, context.time, context,
-                revision_});
+        AmountKey key{};
+        Fixed next = 0;
+        bool existed = false;
+    };
+    std::vector<ReservedUpdate> updates;
+    std::vector<AmountKey> missing_keys;
+    try
+    {
+        additions.reserve(reservation.quantities.size());
+        updates.reserve(reservation.quantities.size());
+        missing_keys.reserve(reservation.quantities.size());
+        for (const auto &q : reservation.quantities)
+        {
+            additions.push_back({0, ResourceChangeKind::ResourceReserved, stockpile, q.type, {}, q.amount,
+                                 context.time, context, next});
+            const AmountKey key{stockpile, q.type};
+            const auto existing = reserved_amounts_.find(key);
+            Fixed next_reserved = q.amount;
+            if (existing != reserved_amounts_.end() && !CheckedAddFixed(existing->second, q.amount, next_reserved))
+                return foundation::Result<ResourceReservationId>::Failure(
+                    Error("gameplay.resources.amount_overflow", "reserved resource amount overflow"));
+            const bool existed = existing != reserved_amounts_.end();
+            updates.push_back({key, next_reserved, existed});
+            if (!existed)
+                missing_keys.push_back(key);
+        }
     }
+    catch (...)
+    {
+        return foundation::Result<ResourceReservationId>::Failure(PublicationFailed("reservation staging failed"));
+    }
+
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<ResourceReservationId>::Failure(PublicationFailed("reservation journal staging failed"));
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::PrimaryInsert))
+        return foundation::Result<ResourceReservationId>::Failure(PublicationFailed("reservation primary publication failed"));
+    try
+    {
+        if (!reservations_.emplace(id, reservation).second)
+            return foundation::Result<ResourceReservationId>::Failure(
+                Error("gameplay.resources.duplicate_reservation", "duplicate resource reservation"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ResourceReservationId>::Failure(PublicationFailed("reservation primary publication failed"));
+    }
+
+    std::size_t inserted = 0;
+    try
+    {
+        for (const auto &key : missing_keys)
+        {
+            if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::ReservedIndexInsert))
+                throw std::bad_alloc{};
+            const auto [it, did_insert] = reserved_amounts_.emplace(key, 0);
+            (void)it;
+            if (!did_insert)
+                throw std::runtime_error("reserved index changed during single-threaded publication");
+            ++inserted;
+        }
+    }
+    catch (...)
+    {
+        for (std::size_t i = 0; i < inserted; ++i)
+            reserved_amounts_.erase(missing_keys[i]);
+        reservations_.erase(id);
+        return foundation::Result<ResourceReservationId>::Failure(PublicationFailed("reserved index publication failed"));
+    }
+
+    for (const auto &update : updates)
+        reserved_amounts_.find(update.key)->second = update.next;
+    reservation_ids_ = staged_ids;
+    revision_ = next;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<ResourceReservationId>::Success(id);
 }
+
 
 const ResourceReservation *ResourcesProductionService::FindReservation(ResourceReservationId id) const noexcept
 {
@@ -662,18 +904,34 @@ foundation::Result<void> ResourcesProductionService::ReleaseReservation(Resource
     if (it == reservations_.end() || it->second.state != ResourceReservationState::Active)
         return foundation::Result<void>::Failure(
             Error("gameplay.resources.reservation_missing", "active resource reservation missing"));
-    const auto reservation = it->second;
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    for (const auto &q : reservation.quantities)
+    const Revision next_revision{revision_.value + 1};
+    std::vector<ResourceChange> additions;
+    try
     {
-        RemoveReservedIndex(reservation.stockpile, q.type, q.amount);
-        Record({0, ResourceChangeKind::ResourceReservationReleased, reservation.stockpile, q.type, {}, q.amount,
-                context.time, context, revision_});
+        additions.reserve(it->second.quantities.size());
+        for (const auto &q : it->second.quantities)
+            additions.push_back({0, ResourceChangeKind::ResourceReservationReleased, it->second.stockpile, q.type, {},
+                                 q.amount, context.time, context, next_revision});
     }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(PublicationFailed("reservation release staging failed"));
+    }
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<void>::Failure(PublicationFailed("reservation release journal staging failed"));
+    for (const auto &q : it->second.quantities)
+        RemoveReservedIndex(it->second.stockpile, q.type, q.amount);
     reservations_.erase(it);
+    revision_ = next_revision;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<void>::Success();
 }
+
 
 foundation::Result<void> ResourcesProductionService::ConsumeReservation(ResourceReservationId id,
                                                                         GameplayContext context)
@@ -685,45 +943,57 @@ foundation::Result<void> ResourcesProductionService::ConsumeReservation(Resource
     auto operation = ValidateStockpileOperation(it->second.stockpile, StockpileOperation::Remove);
     if (!operation)
         return operation;
-    const auto reservation = it->second;
-    for (const auto &q : reservation.quantities)
+    for (const auto &q : it->second.quantities)
     {
-        if (GetAmount(reservation.stockpile, q.type) < q.amount)
-        {
+        if (GetAmount(it->second.stockpile, q.type) < q.amount)
             return foundation::Result<void>::Failure(
                 Error("gameplay.resources.reservation_invalid", "reserved resource amount is no longer available"));
-        }
     }
-
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    for (const auto &q : reservation.quantities)
+    const Revision next_revision{revision_.value + 1};
+    std::vector<ResourceChange> additions;
+    try
     {
-        auto key = AmountKey{reservation.stockpile, q.type};
-        auto &amount = amounts_[key];
-        amount -= q.amount;
-        if (amount == 0)
-        {
-            amounts_.erase(key);
-        }
-        RemoveReservedIndex(reservation.stockpile, q.type, q.amount);
-        Record({0, ResourceChangeKind::ResourceReservationConsumed, reservation.stockpile, q.type, {}, q.amount,
-                context.time, context, revision_});
+        additions.reserve(it->second.quantities.size());
+        for (const auto &q : it->second.quantities)
+            additions.push_back({0, ResourceChangeKind::ResourceReservationConsumed, it->second.stockpile, q.type, {},
+                                 q.amount, context.time, context, next_revision});
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(PublicationFailed("reservation consume staging failed"));
+    }
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<void>::Failure(PublicationFailed("reservation consume journal staging failed"));
+    for (const auto &q : it->second.quantities)
+    {
+        const AmountKey key{it->second.stockpile, q.type};
+        auto amount_it = amounts_.find(key);
+        amount_it->second -= q.amount;
+        if (amount_it->second == 0)
+            amounts_.erase(amount_it);
+        RemoveReservedIndex(it->second.stockpile, q.type, q.amount);
     }
     reservations_.erase(it);
+    revision_ = next_revision;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<void>::Success();
 }
 
+
 foundation::Result<ResourceTransactionId> ResourcesProductionService::Transfer(ResourceStockpileId from,
-                                                                               ResourceStockpileId to,
-                                                                               std::vector<ResourceQuantity> quantities,
-                                                                               TypeId reason, GameplayContext context)
+                                                                                               ResourceStockpileId to,
+                                                                                               std::vector<ResourceQuantity> quantities,
+                                                                                               TypeId reason,
+                                                                                               GameplayContext context)
 {
     if (from == to)
-    {
         return foundation::Result<ResourceTransactionId>::Failure(
             Error("gameplay.resources.invalid_transfer", "source and destination stockpiles must differ"));
-    }
     auto source_operation = ValidateStockpileOperation(from, StockpileOperation::TransferSource);
     if (!source_operation)
         return foundation::Result<ResourceTransactionId>::Failure(source_operation.GetError());
@@ -733,70 +1003,128 @@ foundation::Result<ResourceTransactionId> ResourcesProductionService::Transfer(R
     auto canonical = CanonicalizeQuantities(quantities);
     if (!canonical)
         return foundation::Result<ResourceTransactionId>::Failure(canonical.GetError());
+    auto canonical_quantities = std::move(canonical.Value());
 
-    for (const auto &q : canonical.Value())
+    for (const auto &q : canonical_quantities)
     {
         const auto available = GetAvailableAmount(from, q.type);
         if (available < q.amount)
         {
             ++diagnostics_.shortages;
-            Record({0, ResourceChangeKind::ShortageDetected, from, q.type, {}, q.amount - available, context.time,
-                    context, revision_});
+            Record({0, ResourceChangeKind::ShortageDetected, from, q.type, {}, q.amount - available,
+                    context.time, context, revision_});
             return foundation::Result<ResourceTransactionId>::Failure(
                 Error("gameplay.resources.shortage", "insufficient resources for transfer"));
         }
         Fixed destination_next = 0;
         if (!CheckedAddFixed(GetAmount(to, q.type), q.amount, destination_next))
-        {
             return foundation::Result<ResourceTransactionId>::Failure(
                 Error("gameplay.resources.amount_overflow", "destination resource amount overflow"));
-        }
     }
 
-    const auto id = ResourceTransactionId{transaction_ids_.Next()};
+    auto staged_ids = transaction_ids_;
+    const auto id = ResourceTransactionId{staged_ids.Next()};
     if (!id.IsValid())
         return foundation::Result<ResourceTransactionId>::Failure(
             Error("gameplay.resources.id_exhausted", "transaction id generator exhausted"));
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ResourceTransactionId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next{revision_.value + 1};
 
-    if (!Bump())
-        return foundation::Result<ResourceTransactionId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    for (const auto &q : canonical.Value())
-    {
-        auto from_key = AmountKey{from, q.type};
-        auto to_key = AmountKey{to, q.type};
-        auto &from_amount = amounts_[from_key];
-        from_amount -= q.amount;
-        if (from_amount == 0)
-        {
-            amounts_.erase(from_key);
-        }
-        amounts_[to_key] += q.amount;
-        Record({0, ResourceChangeKind::ResourceTransferred, to, q.type, {}, q.amount, context.time, context,
-                revision_});
-    }
     ResourceTransaction transaction;
-    transaction.id = id;
-    transaction.from = from;
-    transaction.to = to;
-    transaction.quantities = std::move(canonical.Value());
-    transaction.reason = reason;
-    transaction.time = context.time;
-    transaction.context = context;
-    transaction.revision = revision_;
-    transactions_.emplace(id, std::move(transaction));
+    std::vector<ResourceChange> additions;
+    std::vector<AmountKey> missing_destinations;
+    try
+    {
+        transaction.id = id;
+        transaction.from = from;
+        transaction.to = to;
+        transaction.quantities = canonical_quantities;
+        transaction.reason = reason;
+        transaction.time = context.time;
+        transaction.context = context;
+        transaction.revision = next;
+        additions.reserve(canonical_quantities.size());
+        missing_destinations.reserve(canonical_quantities.size());
+        for (const auto &q : canonical_quantities)
+        {
+            additions.push_back({0, ResourceChangeKind::ResourceTransferred, to, q.type, {}, q.amount,
+                                 context.time, context, next});
+            const AmountKey to_key{to, q.type};
+            if (!amounts_.contains(to_key))
+                missing_destinations.push_back(to_key);
+        }
+    }
+    catch (...)
+    {
+        return foundation::Result<ResourceTransactionId>::Failure(PublicationFailed("transaction staging failed"));
+    }
+
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<ResourceTransactionId>::Failure(PublicationFailed("transaction journal staging failed"));
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::TransactionPublication))
+        return foundation::Result<ResourceTransactionId>::Failure(PublicationFailed("transaction publication failed"));
+    try
+    {
+        if (!transactions_.emplace(id, std::move(transaction)).second)
+            return foundation::Result<ResourceTransactionId>::Failure(
+                Error("gameplay.resources.duplicate_transaction", "duplicate resource transaction"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ResourceTransactionId>::Failure(PublicationFailed("transaction publication failed"));
+    }
+
+    std::size_t inserted_destinations = 0;
+    try
+    {
+        for (const auto &key : missing_destinations)
+        {
+            const auto [it, did_insert] = amounts_.emplace(key, 0);
+            (void)it;
+            if (!did_insert)
+                throw std::runtime_error("destination index changed during single-threaded publication");
+            ++inserted_destinations;
+        }
+    }
+    catch (...)
+    {
+        for (std::size_t i = 0; i < inserted_destinations; ++i)
+            amounts_.erase(missing_destinations[i]);
+        transactions_.erase(id);
+        return foundation::Result<ResourceTransactionId>::Failure(PublicationFailed("destination amount publication failed"));
+    }
+
+    for (const auto &q : canonical_quantities)
+    {
+        const AmountKey from_key{from, q.type};
+        const AmountKey to_key{to, q.type};
+        auto from_it = amounts_.find(from_key);
+        auto to_it = amounts_.find(to_key);
+        from_it->second -= q.amount;
+        to_it->second += q.amount;
+        if (from_it->second == 0)
+            amounts_.erase(from_it);
+    }
+    transaction_ids_ = staged_ids;
+    revision_ = next;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     while (transactions_.size() > change_retention_)
     {
         auto oldest = transactions_.begin();
         for (auto it = transactions_.begin(); it != transactions_.end(); ++it)
-        {
             if (it->first < oldest->first)
                 oldest = it;
-        }
         transactions_.erase(oldest);
     }
     ++diagnostics_.transactions;
     return foundation::Result<ResourceTransactionId>::Success(id);
 }
+
 
 foundation::Result<void> ResourcesProductionService::DepleteNode(ResourceNodeId id, Fixed amount,
                                                                  GameplayContext context)
@@ -808,17 +1136,31 @@ foundation::Result<void> ResourcesProductionService::DepleteNode(ResourceNodeId 
         return foundation::Result<void>::Failure(Error("gameplay.resources.node_disabled", "resource node disabled"));
     if (amount == 0)
         return foundation::Result<void>::Success();
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    it->second.remaining_amount = amount >= it->second.remaining_amount ? 0 : it->second.remaining_amount - amount;
-    it->second.state = it->second.remaining_amount == 0 ? ResourceNodeState::Depleted : ResourceNodeState::Active;
-    it->second.revision = revision_;
-    if (it->second.remaining_amount == 0)
+    const Revision next_revision{revision_.value + 1};
+    const auto next_amount = amount >= it->second.remaining_amount ? Fixed{0} : it->second.remaining_amount - amount;
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (next_amount == 0)
     {
-        Record({0, ResourceChangeKind::NodeDepleted, {}, it->second.type, {}, 0, context.time, context, revision_});
+        const std::array<ResourceChange, 1> additions{{
+            {0, ResourceChangeKind::NodeDepleted, {}, it->second.type, {}, 0, context.time, context, next_revision}}};
+        if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+            return foundation::Result<void>::Failure(PublicationFailed("node depletion journal staging failed"));
+    }
+    it->second.remaining_amount = next_amount;
+    it->second.state = next_amount == 0 ? ResourceNodeState::Depleted : ResourceNodeState::Active;
+    it->second.revision = next_revision;
+    revision_ = next_revision;
+    if (next_amount == 0)
+    {
+        changes_.swap(staged_changes);
+        next_change_sequence_ = staged_next;
     }
     return foundation::Result<void>::Success();
 }
+
 
 foundation::Result<void> ResourcesProductionService::RegenerateNode(ResourceNodeId id, GameplayDuration elapsed,
                                                                     GameplayContext context)
@@ -832,28 +1174,33 @@ foundation::Result<void> ResourcesProductionService::RegenerateNode(ResourceNode
         return foundation::Result<void>::Success();
     Fixed produced = 0;
     if (!CheckedMul(elapsed.ticks, it->second.regeneration_rate_per_tick, produced))
-    {
         produced = std::numeric_limits<Fixed>::max();
-    }
     const auto before = it->second.remaining_amount;
-    if (produced >= it->second.maximum_amount - std::min(it->second.remaining_amount, it->second.maximum_amount))
-    {
-        it->second.remaining_amount = it->second.maximum_amount;
-    }
+    Fixed next_amount = before;
+    if (produced >= it->second.maximum_amount - std::min(before, it->second.maximum_amount))
+        next_amount = it->second.maximum_amount;
     else
-    {
-        it->second.remaining_amount += produced;
-    }
-    if (it->second.remaining_amount == before)
+        next_amount += produced;
+    if (next_amount == before)
         return foundation::Result<void>::Success();
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    it->second.state = it->second.remaining_amount == 0 ? ResourceNodeState::Depleted : ResourceNodeState::Active;
-    it->second.revision = revision_;
-    Record({0, ResourceChangeKind::NodeRegenerated, {}, it->second.type, {}, it->second.remaining_amount, context.time,
-            context, revision_});
+    const Revision next_revision{revision_.value + 1};
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::NodeRegenerated, {}, it->second.type, {}, next_amount, context.time, context, next_revision}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<void>::Failure(PublicationFailed("node regeneration journal staging failed"));
+    it->second.remaining_amount = next_amount;
+    it->second.state = next_amount == 0 ? ResourceNodeState::Depleted : ResourceNodeState::Active;
+    it->second.revision = next_revision;
+    revision_ = next_revision;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<void>::Success();
 }
+
 
 foundation::Result<void> ResourcesProductionService::RegenerateNode(ResourceNodeId id, GameplayTimePoint to,
                                                                     GameplayContext context)
@@ -868,39 +1215,48 @@ foundation::Result<void> ResourcesProductionService::RegenerateNode(ResourceNode
             Error("gameplay.resources.regeneration_interval_conflict", "node regeneration interval moved backward"));
     if (to.ticks == it->second.last_regenerated_at.ticks)
         return foundation::Result<void>::Success();
-
     const auto elapsed = CheckedDifference(to, it->second.last_regenerated_at);
     if (!elapsed.has_value())
         return foundation::Result<void>::Failure(
             Error("gameplay.time_overflow", "resource node regeneration interval overflows gameplay time"));
     Fixed produced = 0;
-    if (elapsed->ticks > 0 && it->second.regeneration_rate_per_tick > 0 && it->second.maximum_amount > 0)
-    {
-        if (!CheckedMul(elapsed->ticks, it->second.regeneration_rate_per_tick, produced))
-        {
-            produced = std::numeric_limits<Fixed>::max();
-        }
-    }
-    if (!Bump())
-        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    if (elapsed->ticks > 0 && it->second.regeneration_rate_per_tick > 0 && it->second.maximum_amount > 0 &&
+        !CheckedMul(elapsed->ticks, it->second.regeneration_rate_per_tick, produced))
+        produced = std::numeric_limits<Fixed>::max();
+    Fixed next_amount = it->second.remaining_amount;
     if (produced > 0)
     {
-        if (produced >= it->second.maximum_amount - std::min(it->second.remaining_amount, it->second.maximum_amount))
-        {
-            it->second.remaining_amount = it->second.maximum_amount;
-        }
+        if (produced >= it->second.maximum_amount - std::min(next_amount, it->second.maximum_amount))
+            next_amount = it->second.maximum_amount;
         else
-        {
-            it->second.remaining_amount += produced;
-        }
-        it->second.state = it->second.remaining_amount == 0 ? ResourceNodeState::Depleted : ResourceNodeState::Active;
-        Record({0, ResourceChangeKind::NodeRegenerated, {}, it->second.type, {}, it->second.remaining_amount,
-                context.time, context, revision_});
+            next_amount += produced;
     }
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next_revision{revision_.value + 1};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (produced > 0)
+    {
+        const std::array<ResourceChange, 1> additions{{
+            {0, ResourceChangeKind::NodeRegenerated, {}, it->second.type, {}, next_amount, context.time, context, next_revision}}};
+        if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+            return foundation::Result<void>::Failure(PublicationFailed("node regeneration journal staging failed"));
+    }
+    it->second.remaining_amount = next_amount;
+    if (produced > 0)
+        it->second.state = next_amount == 0 ? ResourceNodeState::Depleted : ResourceNodeState::Active;
     it->second.last_regenerated_at = to;
-    it->second.revision = revision_;
+    it->second.revision = next_revision;
+    revision_ = next_revision;
+    if (produced > 0)
+    {
+        changes_.swap(staged_changes);
+        next_change_sequence_ = staged_next;
+    }
     return foundation::Result<void>::Success();
 }
+
 
 foundation::Result<ProductionCapabilityId> ResourcesProductionService::CreateProductionCapability(
     ProductionCapability capability)
@@ -908,27 +1264,49 @@ foundation::Result<ProductionCapabilityId> ResourcesProductionService::CreatePro
     if (!capability.site.IsValid() || capability.capacity < 0)
         return foundation::Result<ProductionCapabilityId>::Failure(
             Error("gameplay.resources.invalid_capability", "invalid production capability"));
+    auto staged_ids = capability_ids_;
     if (!capability.id.IsValid())
     {
-        capability.id = ProductionCapabilityId{capability_ids_.Next()};
+        capability.id = ProductionCapabilityId{staged_ids.Next()};
         if (!capability.id.IsValid())
-        {
             return foundation::Result<ProductionCapabilityId>::Failure(
                 Error("gameplay.resources.id_exhausted", "capability id generator exhausted"));
-        }
     }
     if (capabilities_.contains(capability.id))
         return foundation::Result<ProductionCapabilityId>::Failure(
             Error("gameplay.resources.duplicate_capability", "duplicate production capability"));
-    AdvanceGeneratorPastAcceptedId(capability_ids_, capability.id);
-    if (!Bump())
-        return foundation::Result<ProductionCapabilityId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    capability.revision = revision_;
+    AdvanceGeneratorPastAcceptedId(staged_ids, capability.id);
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ProductionCapabilityId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next{revision_.value + 1};
+    capability.revision = next;
     const auto id = capability.id;
-    capabilities_.emplace(id, std::move(capability));
-    Record({0, ResourceChangeKind::ProductionCapabilityCreated, {}, {}, {}, 0, {}, {}, revision_});
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::ProductionCapabilityCreated, {}, {}, {}, 0, {}, {}, next}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<ProductionCapabilityId>::Failure(PublicationFailed("capability journal staging failed"));
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::PrimaryInsert))
+        return foundation::Result<ProductionCapabilityId>::Failure(PublicationFailed("capability primary publication failed"));
+    try
+    {
+        if (!capabilities_.emplace(id, std::move(capability)).second)
+            return foundation::Result<ProductionCapabilityId>::Failure(
+                Error("gameplay.resources.duplicate_capability", "duplicate production capability"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ProductionCapabilityId>::Failure(PublicationFailed("capability primary publication failed"));
+    }
+    capability_ids_ = staged_ids;
+    revision_ = next;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<ProductionCapabilityId>::Success(id);
 }
+
 
 const ProductionCapability *ResourcesProductionService::FindProductionCapability(
     ProductionCapabilityId id) const noexcept
@@ -943,27 +1321,49 @@ foundation::Result<ProductionPlanId> ResourcesProductionService::CreateProductio
         !IsValidPlanState(plan.state))
         return foundation::Result<ProductionPlanId>::Failure(
             Error("gameplay.resources.invalid_plan", "invalid production plan"));
+    auto staged_ids = plan_ids_;
     if (!plan.id.IsValid())
     {
-        plan.id = ProductionPlanId{plan_ids_.Next()};
+        plan.id = ProductionPlanId{staged_ids.Next()};
         if (!plan.id.IsValid())
-        {
             return foundation::Result<ProductionPlanId>::Failure(
                 Error("gameplay.resources.id_exhausted", "plan id generator exhausted"));
-        }
     }
     if (plans_.contains(plan.id))
         return foundation::Result<ProductionPlanId>::Failure(
             Error("gameplay.resources.duplicate_plan", "duplicate production plan"));
-    AdvanceGeneratorPastAcceptedId(plan_ids_, plan.id);
-    if (!Bump())
-        return foundation::Result<ProductionPlanId>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
-    plan.revision = revision_;
+    AdvanceGeneratorPastAcceptedId(staged_ids, plan.id);
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<ProductionPlanId>::Failure(
+            Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next{revision_.value + 1};
+    plan.revision = next;
     const auto id = plan.id;
-    plans_.emplace(id, std::move(plan));
-    Record({0, ResourceChangeKind::ProductionPlanCreated, {}, {}, {}, 0, {}, {}, revision_});
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::ProductionPlanCreated, {}, {}, {}, 0, {}, {}, next}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<ProductionPlanId>::Failure(PublicationFailed("plan journal staging failed"));
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::PrimaryInsert))
+        return foundation::Result<ProductionPlanId>::Failure(PublicationFailed("plan primary publication failed"));
+    try
+    {
+        if (!plans_.emplace(id, std::move(plan)).second)
+            return foundation::Result<ProductionPlanId>::Failure(
+                Error("gameplay.resources.duplicate_plan", "duplicate production plan"));
+    }
+    catch (...)
+    {
+        return foundation::Result<ProductionPlanId>::Failure(PublicationFailed("plan primary publication failed"));
+    }
+    plan_ids_ = staged_ids;
+    revision_ = next;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<ProductionPlanId>::Success(id);
 }
+
 
 foundation::Result<void> ResourcesProductionService::SetProductionPlanState(ProductionPlanId id,
                                                                             ProductionPlanState state,
@@ -974,14 +1374,24 @@ foundation::Result<void> ResourcesProductionService::SetProductionPlanState(Prod
         return foundation::Result<void>::Failure(Error("gameplay.resources.plan_missing", "production plan missing"));
     if (it->second.state == state)
         return foundation::Result<void>::Success();
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.resources.revision_exhausted", "resources revision exhausted"));
+    const Revision next_revision{revision_.value + 1};
+    const std::array<ResourceChange, 1> additions{{
+        {0, ResourceChangeKind::ProductionPlanChanged, {}, it->second.desired_output, {}, it->second.target_quantity,
+         context.time, context, next_revision}}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
+        return foundation::Result<void>::Failure(PublicationFailed("plan state journal staging failed"));
     it->second.state = state;
-    it->second.revision = revision_;
-    Record({0, ResourceChangeKind::ProductionPlanChanged, {}, it->second.desired_output, {},
-            it->second.target_quantity, context.time, context, revision_});
+    it->second.revision = next_revision;
+    revision_ = next_revision;
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
     return foundation::Result<void>::Success();
 }
+
 
 const ProductionPlan *ResourcesProductionService::FindProductionPlan(ProductionPlanId id) const noexcept
 {
@@ -1127,6 +1537,8 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestorePrimary))
+        return foundation::Result<void>::Failure(Error("gameplay.resources.publication_failed", "resource restore primary staging failed"));
     std::unordered_map<ResourceStockpileId, ResourceStockpile, IdHash> stockpiles;
     std::unordered_map<AmountKey, Fixed, AmountKeyHash> amounts;
     std::unordered_map<ResourceNodeId, ResourceNode, IdHash> nodes;
@@ -1184,6 +1596,8 @@ foundation::Result<void> ResourcesProductionService::RestoreSnapshot(ResourcesSn
         max_site = std::max(max_site, LowPart(v.id.value));
         sites.emplace(v.id, std::move(v));
     }
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreDerived))
+        return foundation::Result<void>::Failure(Error("gameplay.resources.publication_failed", "resource restore derived staging failed"));
     for (auto &v : s.reservations)
     {
         auto canonical = CanonicalizeQuantities(v.quantities);
@@ -1313,15 +1727,15 @@ ResourcesDiagnostics ResourcesProductionService::GetDiagnostics() const noexcept
 
 void ResourcesProductionService::Record(ResourceChange change)
 {
-    if (next_change_sequence_ == 0)
+    const std::array<ResourceChange, 1> additions{{std::move(change)}};
+    std::deque<ResourceChange> staged_changes;
+    std::uint64_t staged_next = next_change_sequence_;
+    if (!TryStageJournal(changes_, next_change_sequence_, change_retention_, additions, staged_changes, staged_next))
         return;
-    const auto assigned = next_change_sequence_;
-    change.sequence = assigned;
-    changes_.push_back(std::move(change));
-    next_change_sequence_ = assigned == std::numeric_limits<std::uint64_t>::max() ? 0 : assigned + 1;
-    while (changes_.size() > change_retention_)
-        changes_.pop_front();
+    changes_.swap(staged_changes);
+    next_change_sequence_ = staged_next;
 }
+
 
 void ResourcesProductionService::RebuildDerivedState()
 {

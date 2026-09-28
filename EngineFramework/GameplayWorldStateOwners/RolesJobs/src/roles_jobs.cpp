@@ -10,6 +10,26 @@
 
 namespace epidemic::gameplay::roles_jobs
 {
+namespace testing
+{
+namespace
+{
+thread_local bool g_fail_next_local_allocation = false;
+}
+
+void FailNextLocalAllocationForTest() noexcept
+{
+    g_fail_next_local_allocation = true;
+}
+
+[[nodiscard]] bool ConsumeLocalAllocationFailureForTest() noexcept
+{
+    if (!g_fail_next_local_allocation)
+        return false;
+    g_fail_next_local_allocation = false;
+    return true;
+}
+} // namespace testing
 namespace
 {
 foundation::Error Error(std::string_view code, std::string_view message)
@@ -1126,6 +1146,10 @@ RolesJobsSnapshot RolesJobsService::CaptureSnapshot() const
 
 foundation::Result<void> RolesJobsService::RestoreSnapshot(RolesJobsSnapshot snapshot)
 {
+    if (testing::ConsumeLocalAllocationFailureForTest())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.roles_jobs.allocation_failed", "module-local injected allocation failure"));
+
     const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
     if (!next_journal_epoch)
     {

@@ -48,6 +48,8 @@ template <typename TId> class StableTypeRegistry
                 "gameplay.already_registered", "canonical name is already registered", std::string(canonical_name)));
         }
 
+        extern void FoundationPublicationFaultPointForInternalTest(std::string_view point);
+        FoundationPublicationFaultPointForInternalTest("type_registry.publish");
         entries_.emplace(id.Raw(), Entry{id, std::string(canonical_name)});
         return foundation::Result<TId>::Success(id);
     }

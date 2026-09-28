@@ -8,6 +8,25 @@
 
 namespace epidemic::gameplay::facts
 {
+namespace detail
+{
+namespace
+{
+thread_local std::string_view g_facts_fault_point;
+}
+void SetFactsFaultPointForTesting(std::string_view point) noexcept { g_facts_fault_point = point; }
+void ClearFactsFaultPointForTesting() noexcept { g_facts_fault_point = {}; }
+} // namespace detail
+
+void FactsPublicationFaultPointForInternalTest(std::string_view point)
+{
+    if (!detail::g_facts_fault_point.empty() && detail::g_facts_fault_point == point)
+    {
+        detail::g_facts_fault_point = {};
+        throw std::bad_alloc{};
+    }
+}
+
 namespace
 {
 [[nodiscard]] bool IsPersistentFact(FactPersistence persistence) noexcept
@@ -140,6 +159,7 @@ foundation::Result<void> GameplayFactsService::MergeSubmittedBatches()
     for (auto& item : flattened)
         staged_pending.push_back(std::move(item.event));
 
+    FactsPublicationFaultPointForInternalTest("batch_merge.publish");
     pending_events_.swap(staged_pending);
     submitted_batches_.clear();
     return foundation::Result<void>::Success();
@@ -457,6 +477,7 @@ foundation::Result<std::vector<FactChange>> GameplayFactsService::Commit(
         ++next_order;
     }
 
+    FactsPublicationFaultPointForInternalTest("transaction_commit.publish");
     facts_.swap(staged_facts);
     pending_events_.swap(staged_pending);
     (void)fact_ids_.Restore(staged_ids.GetSnapshot());
@@ -1042,3 +1063,8 @@ FactsDiagnostics GameplayFactsService::GetDiagnostics() const noexcept
                             history_.size()};
 }
 } // namespace epidemic::gameplay::facts
+
+void FactsPublicationFaultPointForInternalTest(std::string_view point)
+{
+    epidemic::gameplay::facts::FactsPublicationFaultPointForInternalTest(point);
+}

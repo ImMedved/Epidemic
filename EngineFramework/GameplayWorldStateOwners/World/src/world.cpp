@@ -3,12 +3,31 @@
 #include <algorithm>
 #include <iterator>
 #include <limits>
+#include <new>
 #include <unordered_set>
 
 namespace epidemic::gameplay::world
 {
+namespace detail
+{
 namespace
 {
+thread_local std::string_view g_world_fault_point;
+}
+void SetWorldFaultPointForTesting(std::string_view point) noexcept { g_world_fault_point = point; }
+void ClearWorldFaultPointForTesting() noexcept { g_world_fault_point = {}; }
+}
+
+namespace
+{
+void WorldPublicationFaultPointForInternalTest(std::string_view point)
+{
+    if (!detail::g_world_fault_point.empty() && detail::g_world_fault_point == point)
+    {
+        detail::g_world_fault_point = {};
+        throw std::bad_alloc{};
+    }
+}
 foundation::Error Error(std::string_view code, std::string_view message)
 {
     return foundation::Error::Create(code, message);
@@ -553,6 +572,7 @@ foundation::Result<WorldFeatureId> WorldService::AddDynamicFeature(WorldFeatureR
         AppendWorldChange(staged_changes, next_sequence, last_sequence,
                           WorldChange{0, WorldChangeKind::FeatureChanged, {}, id, {}, next_revision.Value(), {}},
                           kChangeJournalCapacity);
+        WorldPublicationFaultPointForInternalTest("dynamic_feature.publish");
         features_.swap(staged_features);
         changes_.swap(staged_changes);
         next_change_sequence_ = next_sequence;
@@ -911,6 +931,7 @@ foundation::Result<void> WorldService::CommitMutations(std::span<const WorldTran
                               WorldChange{0, kind, mutation.id, {}, {}, rev.Value(), context}, kChangeJournalCapacity);
         }
 
+        WorldPublicationFaultPointForInternalTest("alteration_transaction.publish");
         alterations_.swap(staged_alterations);
         alteration_index_.swap(staged_index);
         large_alterations_.swap(staged_large);
@@ -1113,6 +1134,7 @@ foundation::Result<void> WorldService::RestoreSnapshot(WorldSnapshot snapshot)
             return foundation::Result<void>::Failure(
                 Error("gameplay.world.restore_invalid", "invalid alteration id generator snapshot"));
 
+        WorldPublicationFaultPointForInternalTest("restore.publish");
         features_.swap(staged_features);
         object_placements_.swap(staged_placements);
         alterations_.swap(staged_alterations);

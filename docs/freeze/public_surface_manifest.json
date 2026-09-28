@@ -1157,7 +1157,7 @@
         "MutationKind"
       ],
       "module": "EngineFramework/BaseInfrastructure/Facts",
-      "normalized_sha256": "bbf207fea505c35f6b6e68c000ac68442bae0ce275cf6842fb67b22025777caa",
+      "normalized_sha256": "9b4fd2627c6867be54757db20ab77db0d4631887469ea26ce8c37fb613c125b9",
       "public_fields": [
         "EventDispatchLimits::max_events",
         "EventDispatchLimits::max_waves",
@@ -1385,7 +1385,7 @@
       "enum_values": [],
       "enums": [],
       "module": "EngineFramework/BaseInfrastructure/Foundation",
-      "normalized_sha256": "b8fdd9a6d1f4771128a051336027f6958ede041e214d7afabc99b2ba69ea5020",
+      "normalized_sha256": "226d0a0b51724e9dffb01680837df44566f0ab340642c71ff23ba7e4521d74c7",
       "public_fields": [],
       "templates": [
         "template <typename TId>"
@@ -1437,7 +1437,7 @@
         "QueryCoverage"
       ],
       "module": "EngineFramework/BaseInfrastructure/Queries",
-      "normalized_sha256": "92e7f2289c4cf71d0326aba4be70b316cb7d64fd0a4437104f2a1027cc8679fe",
+      "normalized_sha256": "150a5e35e1cf79257abfb8145ea5315e8c119dd4daf7382e49e8f0b906545bd4",
       "public_fields": [
         "IQueryProvider::const",
         "QueryDiagnostics::budget_exceeded",
@@ -4606,7 +4606,7 @@
         "SimulationTaskState"
       ],
       "module": "EngineFramework/GameplayWorldStateOwners/Simulation",
-      "normalized_sha256": "30ec850ac4f91e3eedd603d1f524781a1ea2f6bfefed9d0e35983efb9ec52ba3",
+      "normalized_sha256": "df7ac01aacafed4301537cf8b9b25872c1e66227b40597c872381d56c9d03d6d",
       "public_fields": [
         "SimulationBudget::max_interval_ticks",
         "SimulationBudget::max_layer_commits",
@@ -4700,7 +4700,7 @@
         "SocietyChangeKind"
       ],
       "module": "EngineFramework/GameplayWorldStateOwners/Society",
-      "normalized_sha256": "e825a80580dd3cacca2d5b187172775ebdf5f0e285f140af835601a9ac689eba",
+      "normalized_sha256": "95b1f6986497637767660e1591ca6bf9cd96df1cce9e2a84e74bcbc0eb51d19c",
       "public_fields": [
         "RelationshipStateThreshold::minimum_value_micro",
         "RelationshipStateThreshold::state",
@@ -5129,7 +5129,7 @@
         "ExternalConsequenceDeliveryState"
       ],
       "module": "EngineFramework/IntegrationLayer/NarrativeIntegration",
-      "normalized_sha256": "82f307b1a580614afc8a567bf071637c4f7e9780cc0089175b318cb9bbfa1d4b",
+      "normalized_sha256": "32fd5f7e6c6813536b2c9f3d44139db43ebd50006c7cab6bdd69f5a2237eda3d",
       "public_fields": [
         "KnowledgeNarrativeAdapter::const"
       ],

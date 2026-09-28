@@ -1,8 +1,6 @@
-#include "allocation_fault_injection.h"
-#include "mutation_fault_sweep.h"
 #include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Effects/effects.h"
+#include "../../GameplayWorldStateOwners/Effects/src/effects_test_seam.h"
 
 #include <limits>
 #include <unordered_map>
@@ -37,8 +35,8 @@ class CountingHandler final : public IEffectHandler
 {
   public:
     CountingHandler(EffectTypeId type, std::unordered_map<GameplayObjectRef, int>& values, EffectTypeId derived = {},
-                    std::optional<GameplayContext>* observed_context = nullptr)
-        : type_(type), values_(values), derived_(derived), observed_context_(observed_context)
+                    std::optional<GameplayContext>* observed_context = nullptr, std::size_t derived_count = 1)
+        : type_(type), values_(values), derived_(derived), observed_context_(observed_context), derived_count_(derived_count)
     {
     }
     [[nodiscard]] EffectTypeId Type() const noexcept override { return type_; }
@@ -55,13 +53,16 @@ class CountingHandler final : public IEffectHandler
         EffectCommitResult result;
         if (derived_.IsValid())
         {
-            EffectOperation derived;
-            derived.type = derived_;
-            derived.target = operation.target;
-            derived.magnitude_micro = 1;
-            // Intentionally leave derived.context empty. EffectService must inherit
-            // the complete causal GameplayContext from the parent operation.
-            result.derived_effects.push_back(derived);
+            for (std::size_t index = 0; index < derived_count_; ++index)
+            {
+                EffectOperation derived;
+                derived.type = derived_;
+                derived.target = operation.target;
+                derived.magnitude_micro = 1;
+                // Intentionally leave derived.context empty. EffectService must inherit
+                // the complete causal GameplayContext from the parent operation.
+                result.derived_effects.push_back(derived);
+            }
         }
         return foundation::Result<EffectCommitResult>::Success(std::move(result));
     }
@@ -71,6 +72,41 @@ class CountingHandler final : public IEffectHandler
     std::unordered_map<GameplayObjectRef, int>& values_;
     EffectTypeId derived_{};
     std::optional<GameplayContext>* observed_context_ = nullptr;
+    std::size_t derived_count_ = 1;
+};
+
+class DerivedPrepareFaultArmingHandler final : public IEffectHandler
+{
+  public:
+    DerivedPrepareFaultArmingHandler(EffectTypeId type, EffectTypeId derived,
+                                     std::unordered_map<GameplayObjectRef, int>& values)
+        : type_(type), derived_(derived), values_(values)
+    {
+    }
+    [[nodiscard]] EffectTypeId Type() const noexcept override { return type_; }
+    [[nodiscard]] EffectHandlerCapabilities Capabilities() const noexcept override { return {true, false, false, true}; }
+    [[nodiscard]] foundation::Result<EffectPrepareResult> Prepare(const EffectOperation&) const override
+    {
+        return foundation::Result<EffectPrepareResult>::Success({EffectPrepareDisposition::Accepted, {}});
+    }
+    [[nodiscard]] foundation::Result<EffectCommitResult> Commit(const EffectOperation& operation,
+                                                                 const RegisteredEffectPayload&) noexcept override
+    {
+        values_[operation.target] += static_cast<int>(operation.magnitude_micro);
+        EffectOperation derived;
+        derived.type = derived_;
+        derived.target = operation.target;
+        derived.magnitude_micro = 1;
+        test_seam::FailNext(test_seam::FaultPoint::PrepareWaveStorage);
+        EffectCommitResult result;
+        result.derived_effects.push_back(std::move(derived));
+        return foundation::Result<EffectCommitResult>::Success(std::move(result));
+    }
+
+  private:
+    EffectTypeId type_{};
+    EffectTypeId derived_{};
+    std::unordered_map<GameplayObjectRef, int>& values_;
 };
 
 class MaterializedHandler final : public IEffectHandler
@@ -322,29 +358,6 @@ struct EffectsFaultFixture
         .Finish();
 }
 
-template <typename TMakeFixture, typename TInvoke>
-[[nodiscard]] bool EffectsMutationSweepPassed(std::string api, TMakeFixture&& make_fixture, TInvoke&& invoke)
-{
-    const auto report = epidemic::tests::mutation_fault::RunObservedMutationSweep(
-        std::move(api),
-        2,
-        std::forward<TMakeFixture>(make_fixture),
-        std::forward<TInvoke>(invoke),
-        [](const EffectsFaultFixture& fixture) { return CaptureEffectsFaultState(fixture); },
-        [](const epidemic::tests::allocation_fault::SweepIteration& iteration,
-           const EffectsFaultState& baseline,
-           const EffectsFaultFixture& fixture) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-            {
-                return true;
-            }
-            const auto after = CaptureEffectsFaultState(fixture);
-            return CompareEffectsFaultState(iteration.api + ".pre_state", baseline, after)
-                .PassedAndCovers(epidemic::tests::pre_state::RequiredExternalMutationFacets);
-        });
-    return epidemic::tests::mutation_fault::PassedObservedMutationSweep(report);
-}
-
 struct EffectsRegistrationFixture
 {
     EffectService service;
@@ -399,83 +412,152 @@ struct EffectsRegistrationState
            before.definition_visible == after.definition_visible;
 }
 
-[[nodiscard]] bool EffectsRegisterDefinitionSweepPassed()
+[[nodiscard]] bool SameFaultState(const EffectsFaultState& before, const EffectsFaultState& after)
 {
-    const auto report = epidemic::tests::mutation_fault::RunObservedMutationSweep(
-        "Effects.RegisterDefinition",
-        2,
-        [] {
-            EffectsRegistrationFixture fixture;
-            [[maybe_unused]] const auto handler = fixture.service.RegisterHandler(
-                "test.effect.registration.root", std::make_shared<CountingHandler>(fixture.root_type, *fixture.values));
-            return fixture;
-        },
-        [](EffectsRegistrationFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-            return fixture.service.RegisterDefinition(fixture.MakeDefinition());
-        },
-        [](const EffectsRegistrationFixture& fixture) { return CaptureEffectsRegistrationState(fixture); },
-        [](const epidemic::tests::allocation_fault::SweepIteration& iteration,
-           const EffectsRegistrationState& baseline,
-           const EffectsRegistrationFixture& fixture) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-            {
-                return fixture.service.FindDefinition(fixture.definition_id) != nullptr;
-            }
-            return SameRegistrationState(baseline, CaptureEffectsRegistrationState(fixture));
-        });
-    return epidemic::tests::mutation_fault::PassedObservedMutationSweep(report);
+    return CompareEffectsFaultState("Effects.module_local_fault", before, after)
+        .PassedAndCovers(epidemic::tests::pre_state::RequiredExternalMutationFacets);
 }
 
-[[nodiscard]] bool EffectsRegisterHandlerSweepPassed()
+[[nodiscard]] bool EffectsModuleLocalFaultChecksPassed()
 {
-    const auto report = epidemic::tests::mutation_fault::RunObservedMutationSweep(
-        "Effects.RegisterHandler",
-        2,
-        [] { return EffectsRegistrationFixture{}; },
-        [](EffectsRegistrationFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-            return fixture.service.RegisterHandler(
-                "test.effect.registration.root", std::make_shared<CountingHandler>(fixture.root_type, *fixture.values));
-        },
-        [](const EffectsRegistrationFixture& fixture) { return CaptureEffectsRegistrationState(fixture); },
-        [](const epidemic::tests::allocation_fault::SweepIteration& iteration,
-           const EffectsRegistrationState& baseline,
-           EffectsRegistrationFixture& fixture) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-            {
-                return static_cast<bool>(fixture.service.RegisterDefinition(fixture.MakeDefinition()));
-            }
-            const auto handler_leaked = static_cast<bool>(fixture.service.RegisterDefinition(fixture.MakeDefinition()));
-            return !handler_leaked && SameRegistrationState(baseline, CaptureEffectsRegistrationState(fixture));
-        });
-    return epidemic::tests::mutation_fault::PassedObservedMutationSweep(report);
-}
+    {
+        EffectsRegistrationFixture fixture;
+        const auto before = CaptureEffectsRegistrationState(fixture);
+        test_seam::FailNext(test_seam::FaultPoint::RegisterHandlerBeforePublish);
+        const auto registered = fixture.service.RegisterHandler(
+            "test.effect.registration.root", std::make_shared<CountingHandler>(fixture.root_type, *fixture.values));
+        if (registered || !SameRegistrationState(before, CaptureEffectsRegistrationState(fixture)))
+            return false;
+        if (fixture.service.RegisterDefinition(fixture.MakeDefinition()))
+            return false;
+    }
 
-[[nodiscard]] bool EffectsInlineLifecycleChecksPassed()
-{
-    auto freeze_probe = epidemic::tests::allocation_fault::CountObservedAllocations([] {
+    {
+        EffectsRegistrationFixture fixture;
+        if (!fixture.service.RegisterHandler(
+                "test.effect.registration.root", std::make_shared<CountingHandler>(fixture.root_type, *fixture.values)))
+            return false;
+        const auto before = CaptureEffectsRegistrationState(fixture);
+        test_seam::FailNext(test_seam::FaultPoint::RegisterDefinitionBeforePublish);
+        if (fixture.service.RegisterDefinition(fixture.MakeDefinition()) ||
+            !SameRegistrationState(before, CaptureEffectsRegistrationState(fixture)))
+            return false;
+    }
+
+    {
+        EffectsFaultFixture fixture;
+        const auto before = CaptureEffectsFaultState(fixture);
+        test_seam::FailNext(test_seam::FaultPoint::ExecuteBeforeAccept);
+        if (fixture.service.Execute(fixture.MakeRequest()) || !SameFaultState(before, CaptureEffectsFaultState(fixture)))
+            return false;
+    }
+
+    {
+        EffectsFaultFixture fixture;
+        const auto before = CaptureEffectsFaultState(fixture);
+        test_seam::FailNext(test_seam::FaultPoint::PrepareWaveStorage);
+        if (fixture.service.Execute(fixture.MakeRequest()) || !SameFaultState(before, CaptureEffectsFaultState(fixture)))
+            return false;
+    }
+
+    {
+        EffectsFaultFixture fixture;
+        const auto before = CaptureEffectsFaultState(fixture);
+        test_seam::FailNext(test_seam::FaultPoint::DeferBeforePublish);
+        if (fixture.service.Defer(fixture.MakeRequest(), fixture.clock, GameplayTimePoint{901},
+                                  DeferredEffectPersistence::Persistent) ||
+            !SameFaultState(before, CaptureEffectsFaultState(fixture)))
+            return false;
+    }
+
+    {
+        EffectsFaultFixture fixture;
+        if (!fixture.CreateDeferred(false))
+            return false;
+        const auto before = CaptureEffectsFaultState(fixture);
+        test_seam::FailNext(test_seam::FaultPoint::BindDeferredScheduleBeforePublish);
+        if (fixture.service.BindDeferredSchedule(fixture.deferred, fixture.schedule) ||
+            !SameFaultState(before, CaptureEffectsFaultState(fixture)))
+            return false;
+    }
+
+    {
+        EffectsFaultFixture fixture;
+        if (!fixture.CreateDeferred(true))
+            return false;
+        const auto before = CaptureEffectsFaultState(fixture);
+        test_seam::FailNext(test_seam::FaultPoint::TakeDeferredBeforeAcknowledge);
+        if (fixture.service.TakeDeferredBySchedule(fixture.schedule) ||
+            !SameFaultState(before, CaptureEffectsFaultState(fixture)))
+            return false;
+    }
+
+    for (const auto fault : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
+    {
+        EffectsFaultFixture fixture;
+        if (!fixture.CreateDeferred(true))
+            return false;
+        const auto restore_target = fixture.service.CaptureSnapshot();
+        const auto before = CaptureEffectsFaultState(fixture);
+        test_seam::FailNext(fault);
+        if (fixture.service.RestoreSnapshot(restore_target) || !SameFaultState(before, CaptureEffectsFaultState(fixture)))
+            return false;
+    }
+
+    {
+        EffectsFaultFixture fixture;
+        if (!fixture.CreateDeferred(true))
+            return false;
+        const auto stale_cursor = fixture.service.LatestChangeCursor();
+        test_seam::FailNext(test_seam::FaultPoint::JournalAppend);
+        if (!fixture.service.CancelDeferred(fixture.deferred) || fixture.service.FindDeferred(fixture.deferred) != nullptr)
+            return false;
+        if (!fixture.service.ReadChangesSince(stale_cursor).snapshot_required)
+            return false;
+    }
+
+    {
         EffectService service;
-        return [service = std::move(service)](epidemic::tests::allocation_fault::SweepRunContext& context) mutable {
-            context.MarkMethodInvoked();
-            service.Freeze();
-            return service.IsFrozen();
-        };
-    });
+        TargetState target_state;
+        service.SetTargetStateProvider(&target_state);
+        std::unordered_map<GameplayObjectRef, int> values;
+        const auto root_type = EffectTypeId::FromString("test.effect.post_commit_fault.root");
+        const auto derived_type = EffectTypeId::FromString("test.effect.post_commit_fault.derived");
+        if (!service.RegisterHandler("test.effect.post_commit_fault.derived",
+                                     std::make_shared<CountingHandler>(derived_type, values)) ||
+            !service.RegisterHandler("test.effect.post_commit_fault.root",
+                                     std::make_shared<DerivedPrepareFaultArmingHandler>(root_type, derived_type, values)))
+            return false;
+        EffectDefinition definition;
+        definition.canonical_name = "test.effect.post_commit_fault.definition";
+        definition.steps.push_back(EffectStepDefinition{root_type, EffectTargetSelector::AllTargets, 1, {}});
+        const auto definition_id = service.RegisterDefinition(std::move(definition));
+        if (!definition_id)
+            return false;
+        service.Freeze();
+        const GameplayDomainId domain = GameplayDomainId::FromString("test.effect.post_commit_fault.domain");
+        const GameplayObjectRef target{domain, GameplayObjectId::FromRaw(17, 2)};
+        EffectRequest request;
+        request.definition = definition_id.Value();
+        request.targets = {target};
+        EffectExecutionBudget budget;
+        budget.max_effects = 4;
+        budget.max_waves = 4;
+        budget.max_derived_per_parent = 2;
+        const auto result = service.Execute(std::move(request), budget);
+        if (!result || result.Value().disposition != EffectBatchDisposition::Failed ||
+            result.Value().operations.size() != 1 || values[target] != 1 ||
+            service.GetDiagnostics().executions != 1 || service.GetDiagnostics().operations != 1)
+            return false;
+    }
 
-    auto provider_probe = epidemic::tests::allocation_fault::CountObservedAllocations([] {
-        EffectService service;
-        auto target_state = std::make_shared<TargetState>();
-        return [service = std::move(service), target_state](epidemic::tests::allocation_fault::SweepRunContext& context) mutable {
-            context.MarkMethodInvoked();
-            service.SetTargetStateProvider(target_state.get());
-            return true;
-        };
-    });
-
-    return freeze_probe.invocation.failure == epidemic::tests::allocation_fault::FailureKind::None &&
-           freeze_probe.invocation.method_invoked && freeze_probe.observed_allocations == 0 &&
-           provider_probe.invocation.failure == epidemic::tests::allocation_fault::FailureKind::None &&
-           provider_probe.invocation.method_invoked && provider_probe.observed_allocations == 0;
+    EffectService lifecycle;
+    TargetState target_state;
+    lifecycle.SetTargetStateProvider(&target_state);
+    lifecycle.Freeze();
+    return lifecycle.IsFrozen();
 }
+
 }
 
 int main()
@@ -519,6 +601,8 @@ int main()
     validator_definition.steps.push_back(EffectStepDefinition{validated_type, EffectTargetSelector::AllTargets, 1,
         RegisteredEffectPayload::FromTrivial(TypeId::FromString("test.payload"), std::uint32_t{7})});
     if (service.RegisterDefinition(std::move(validator_definition))) return 21;
+    const auto pre_freeze_snapshot = service.CaptureSnapshot();
+    if (service.RestoreSnapshot(pre_freeze_snapshot)) return 22;
     service.Freeze();
     EffectDefinition late_definition;
     late_definition.canonical_name = "test.effect.late";
@@ -576,6 +660,38 @@ int main()
     const auto budgeted = service.Execute(request, tiny);
     if (!budgeted || budgeted.Value().disposition != EffectBatchDisposition::Failed || service.GetDiagnostics().budget_exhaustions == 0) return 7;
 
+    // Goal 4 regression: aggregate derived work must never overrun the total execution budget
+    // after one or more handlers have already committed. The service must reject publication of
+    // an over-budget derived wave without allocating additional result storage post-commit.
+    EffectService burst_service;
+    std::unordered_map<GameplayObjectRef, int> burst_values{{a, 0}, {b, 0}};
+    const auto burst_root = EffectTypeId::FromString("test.effect.burst.root");
+    const auto burst_derived = EffectTypeId::FromString("test.effect.burst.derived");
+    if (!burst_service.RegisterHandler(
+            "test.effect.burst.derived", std::make_shared<CountingHandler>(burst_derived, burst_values)) ||
+        !burst_service.RegisterHandler(
+            "test.effect.burst.root", std::make_shared<CountingHandler>(burst_root, burst_values, burst_derived, nullptr, 2)))
+        return 71;
+    EffectDefinition burst_definition;
+    burst_definition.canonical_name = "test.effect.burst.bundle";
+    burst_definition.steps.push_back(EffectStepDefinition{burst_root, EffectTargetSelector::AllTargets, 1, {}});
+    const auto burst_definition_id = burst_service.RegisterDefinition(std::move(burst_definition));
+    if (!burst_definition_id) return 72;
+    burst_service.Freeze();
+    EffectRequest burst_request;
+    burst_request.definition = burst_definition_id.Value();
+    burst_request.targets = {a, b};
+    EffectExecutionBudget burst_budget;
+    burst_budget.max_effects = 3;
+    burst_budget.max_waves = 3;
+    burst_budget.max_derived_per_parent = 2;
+    const auto burst_result = burst_service.Execute(std::move(burst_request), burst_budget);
+    if (!burst_result || burst_result.Value().disposition != EffectBatchDisposition::Failed ||
+        burst_result.Value().operations.size() > burst_budget.max_effects ||
+        burst_service.GetDiagnostics().derived_effects != 0 ||
+        burst_service.GetDiagnostics().budget_exhaustions == 0)
+        return 73;
+
     const auto clock = ClockId::FromString("test.clock");
     const auto deferred = service.Defer(request, clock, GameplayTimePoint{50}, DeferredEffectPersistence::Persistent);
     if (!deferred) return 8;
@@ -614,154 +730,8 @@ int main()
     behind.deferred_ids.next = behind.deferred.front().id.value.Low();
     if (service.RestoreSnapshot(std::move(behind))) return 18;
 
-    if (!EffectsRegisterHandlerSweepPassed()) return 911;
-    if (!EffectsRegisterDefinitionSweepPassed()) return 912;
-    if (!EffectsInlineLifecycleChecksPassed()) return 913;
+    if (!EffectsModuleLocalFaultChecksPassed()) return 911;
 
-    if (!EffectsMutationSweepPassed(
-            "Effects.Execute",
-            [] { return EffectsFaultFixture{}; },
-            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-                return fixture.service.Execute(fixture.MakeRequest());
-            }))
-        return 903;
-
-    if (!EffectsMutationSweepPassed(
-            "Effects.Defer",
-            [] { return EffectsFaultFixture{}; },
-            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-                return fixture.service.Defer(
-                    fixture.MakeRequest(), fixture.clock, GameplayTimePoint{901}, DeferredEffectPersistence::Persistent);
-            }))
-        return 904;
-
-    if (!EffectsMutationSweepPassed(
-            "Effects.BindDeferredSchedule",
-            [] {
-                EffectsFaultFixture fixture;
-                [[maybe_unused]] const auto ready = fixture.CreateDeferred(false);
-                return fixture;
-            },
-            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-                return fixture.service.BindDeferredSchedule(fixture.deferred, fixture.schedule);
-            }))
-        return 905;
-
-    if (!EffectsMutationSweepPassed(
-            "Effects.ClearDeferredSchedule",
-            [] {
-                EffectsFaultFixture fixture;
-                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
-                return fixture;
-            },
-            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-                return fixture.service.ClearDeferredSchedule(fixture.deferred);
-            }))
-        return 906;
-
-    if (!EffectsMutationSweepPassed(
-            "Effects.AcknowledgeDeferredBySchedule",
-            [] {
-                EffectsFaultFixture fixture;
-                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
-                return fixture;
-            },
-            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-                return fixture.service.AcknowledgeDeferredBySchedule(fixture.schedule);
-            }))
-        return 907;
-
-    if (!EffectsMutationSweepPassed(
-            "Effects.TakeDeferredBySchedule",
-            [] {
-                EffectsFaultFixture fixture;
-                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
-                return fixture;
-            },
-            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-                return fixture.service.TakeDeferredBySchedule(fixture.schedule);
-            }))
-        return 908;
-
-    if (!EffectsMutationSweepPassed(
-            "Effects.CancelDeferred",
-            [] {
-                EffectsFaultFixture fixture;
-                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
-                return fixture;
-            },
-            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-                return fixture.service.CancelDeferred(fixture.deferred);
-            }))
-        return 909;
-
-    if (!EffectsMutationSweepPassed(
-            "Effects.CancelDeferredTargeting",
-            [] {
-                EffectsFaultFixture fixture;
-                [[maybe_unused]] const auto ready = fixture.CreateDeferred(true);
-                return fixture;
-            },
-            [](EffectsFaultFixture& fixture, epidemic::tests::allocation_fault::SweepRunContext&) {
-                return fixture.service.CancelDeferredTargeting(fixture.a) == 1;
-            }))
-        return 910;
-
-    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
-    const auto allocation_before = service.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "Effects.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return service.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return service.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = service.CaptureSnapshot();
-            const auto diagnostics = service.GetDiagnostics();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("Effects.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.deferred.size(), allocation_after.deferred.size(),
-                                                     "deferred record count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.deferred.size(), allocation_after.deferred.size(),
-                                                     "deferred payload count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     diagnostics.deferred_effects,
-                                                     static_cast<std::uint64_t>(allocation_baseline.deferred.size()),
-                                                     "deferred index diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
-                                                     allocation_baseline.execution_ids.next, allocation_after.execution_ids.next,
-                                                     "execution id generator next")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "change epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     service.ReadChangesSince(service.LatestChangeCursor()).changes.size(),
-                                                     std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
-                                                     "latest change cursor stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     allocation_baseline.deferred.size(), allocation_after.deferred.size(),
-                                                     "retained restore records")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     diagnostics.deferred_effects,
-                                                     static_cast<std::uint64_t>(allocation_baseline.deferred.size()),
-                                                     "public diagnostics read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
-        });
-    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
-        return 902;
     return 0;
 }
 

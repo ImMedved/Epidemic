@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Ownership/ownership.h"
+#include "ownership_test_seam.h"
 #include "Epidemic/Foundation/error.h"
 
 #include <limits>
@@ -544,10 +545,29 @@ foundation::Result<PropertyClaimId> OwnershipService::CreateClaim(PropertyClaim 
 
 foundation::Result<void> OwnershipService::ResolveClaim(PropertyClaimId id, GameplayContext c)
 {
-    auto it=claims_.find(id);if(it==claims_.end())return foundation::Result<void>::Failure(Error("gameplay.ownership.claim_missing","claim missing"));
-    if(!CanRecordChanges())return foundation::Result<void>::Failure(Error("gameplay.ownership.change_sequence_exhausted","ownership change sequence is exhausted"));auto rev=PrepareRevision();if(!rev)return foundation::Result<void>::Failure(rev.GetError());const auto copy=it->second;
-    try{Record({0,OwnershipChangeKind::PropertyClaimResolved,copy.property,copy.claimant,{},{},c,rev.Value()});}catch(...){return foundation::Result<void>::Failure(Error("gameplay.ownership.publication_failed","claim resolution journal publication failed"));}
-    UnindexClaim(copy);claims_.erase(it);revision_=rev.Value();return foundation::Result<void>::Success();
+    auto it = claims_.find(id);
+    if (it == claims_.end())
+        return foundation::Result<void>::Failure(Error("gameplay.ownership.claim_missing", "claim missing"));
+    if (!CanRecordChanges())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ownership.change_sequence_exhausted", "ownership change sequence is exhausted"));
+    auto rev = PrepareRevision();
+    if (!rev)
+        return foundation::Result<void>::Failure(rev.GetError());
+    const auto copy = it->second;
+    try
+    {
+        Record({0, OwnershipChangeKind::PropertyClaimResolved, copy.property, copy.claimant, {}, {}, c, rev.Value()});
+    }
+    catch (...)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ownership.publication_failed", "claim resolution journal publication failed"));
+    }
+    UnindexClaim(copy);
+    claims_.erase(it);
+    revision_ = rev.Value();
+    return foundation::Result<void>::Success();
 }
 
 const PermissionGrant *OwnershipService::FindBestActiveGrant(GameplayObjectRef subject, GameplayObjectRef property,
@@ -945,6 +965,9 @@ foundation::Result<void> OwnershipService::RestoreSnapshot(OwnershipSnapshot s)
                     Error("gameplay.ownership.restore_owner_conflict", "multiple canonical owners for property/domain"));
             canonical.emplace(key, r.id);
         }
+        if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.ownership.storage_failed", "failed while constructing ownership snapshot candidates"));
         records.emplace(r.id, r);
         ownership_by_property[r.property].push_back(r.id);
         ownership_by_owner[r.owner].push_back(r.id);
@@ -995,6 +1018,10 @@ foundation::Result<void> OwnershipService::RestoreSnapshot(OwnershipSnapshot s)
     if (!ownership_generator_ok || !grant_generator_ok || !rule_generator_ok || !claim_generator_ok)
         return foundation::Result<void>::Failure(
             Error("gameplay.ownership.restore_invalid_generator", "invalid ownership id generator snapshot"));
+
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.ownership.storage_failed", "failed to stage ownership snapshot"));
 
     records_.swap(records);
     grants_.swap(grants);

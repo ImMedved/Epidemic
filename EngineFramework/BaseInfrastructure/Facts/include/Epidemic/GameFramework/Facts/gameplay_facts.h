@@ -557,6 +557,8 @@ class GameplayFactsService
                             typeid(TPayload),
                             producer,
                             order};
+        extern void FactsPublicationFaultPointForInternalTest(std::string_view point);
+        FactsPublicationFaultPointForInternalTest("direct_publish.publish");
         pending_events_.push_back(std::move(staged));
         ++next_direct_order_;
         ++published_events_;

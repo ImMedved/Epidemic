@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Conditions/conditions.h"
+#include "../../GameplayWorldStateOwners/Conditions/src/conditions_test_seam.h"
 
 #include <algorithm>
 #include <limits>
@@ -89,6 +90,8 @@ int main()
     });
 
     if (!stacking_id || !refresh_id || !stronger_id || !materialized_id || !throwing_payload_id) return 2;
+    const auto pre_freeze_snapshot = service.CaptureSnapshot();
+    if (service.RestoreSnapshot(pre_freeze_snapshot)) return 229;
     service.Freeze();
     if (service.SetSubjectStateProvider(&subject_state_provider)) return 202;
     ConditionDefinition late_condition;
@@ -213,6 +216,15 @@ int main()
 
     if (!service.RemoveSubject(subject, ConditionRemovalReason::SystemCleanup, context) || !service.AllConditions().empty()) return 18;
     if (!service.RestoreSnapshot(snapshot) || service.AllConditions().size() != count) return 19;
+    const auto restore_before = service.CaptureSnapshot();
+    const auto restore_before_count = service.AllConditions().size();
+    const auto restore_before_revision = service.CurrentRevision();
+    for (const auto fault : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
+    {
+        test_seam::FailNext(fault);
+        if (service.RestoreSnapshot(restore_before)) return 230;
+        if (service.AllConditions().size() != restore_before_count || service.CurrentRevision() != restore_before_revision) return 231;
+    }
 
     const auto diagnostics = service.GetDiagnostics();
     if (diagnostics.active_conditions != count) return 20;

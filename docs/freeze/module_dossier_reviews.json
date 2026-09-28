@@ -482,2446 +482,3046 @@
     },
     "EngineFramework/BaseInfrastructure/Facts": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/BaseInfrastructure/Foundation": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/BaseInfrastructure/Queries": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/BaseInfrastructure/SupportRandom": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/BaseInfrastructure/Time": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/AI": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns AI profiles/goals/considerations, agents, blackboards, intents, think scheduling indexes, generators, revisions and the bounded AI change journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "AI evaluators and target/input providers are decision inputs only. Throws/failures are isolated before authoritative agent/intent/schedule publication, with deterministic tie breaking retained.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 90 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/AI.md`.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 104 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns AI profiles/goals/considerations, agents, blackboards, intents, think scheduling indexes, generators, revisions and the bounded AI change journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Abilities": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Authoritative state against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Dependency list against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Derived/cache/index state against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed External ports/callbacks/providers/backends against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Hard limits, budgets and complexity bounds against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed ID spaces, generations, revisions and cursors against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Local invariants against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Persistent and transient state against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public headers and types against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public mutation API against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Read/query API for invariants against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B06 reviewed Responsibility against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Snapshot/restore contract against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed State machines against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Threading contract against current Abilities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Combat": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Authoritative state against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Dependency list against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Derived/cache/index state against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed External ports/callbacks/providers/backends against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Hard limits, budgets and complexity bounds against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed ID spaces, generations, revisions and cursors against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Local invariants against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Persistent and transient state against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public headers and types against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public mutation API against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Read/query API for invariants against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B06 reviewed Responsibility against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Snapshot/restore contract against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed State machines against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Threading contract against current Combat public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Conditions": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Authoritative state against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Dependency list against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Derived/cache/index state against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Local invariants against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Persistent and transient state against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public headers and types against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public mutation API against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Read/query API for invariants against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B02 reviewed Responsibility against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Snapshot/restore contract against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed State machines against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Threading contract against current Conditions public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Construction": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Authoritative state against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Dependency list against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Derived/cache/index state against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed External ports/callbacks/providers/backends against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Hard limits, budgets and complexity bounds against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed ID spaces, generations, revisions and cursors against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Local invariants against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Persistent and transient state against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public headers and types against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public mutation API against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Read/query API for invariants against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B06 reviewed Responsibility against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Snapshot/restore contract against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed State machines against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Threading contract against current Construction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Crime": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 100 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 80 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for Crime.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 1 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Dialogue": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Economy": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns currencies, accounts, fund reservations, offers, trades, debts, contracts, economy revisions/generators and the economy journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation and module-specific public dependencies. B03 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Secondary indexes, prepared/pending records and bounded journal state were reviewed against primary records; failure paths do not intentionally publish partial index state.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Price/provider failures are explicit service inputs. Admission emitted no separate external-boundary candidate rows. Callback/provider failures are converted to Result/error semantics; durable reconciliation is retained where rollback can fail.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Capacity/quantity/time/counter bounds and journal retention are reviewed; integer overflow and ID/revision/change-sequence exhaustion are explicit failure boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "ID generators, revision and journal sequence/cursor state are persistent contract state where exposed. Publication is staged so failed operations do not consume IDs or revisions.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, secondary indexes, reservation/transaction state and revision/journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative persistent records and required generator/revision/journal continuity. Provider/runtime handles that are only transient are not promoted to reusable semantic identity.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 105 exact admission callables. Per-callable contract and test anchors are in _goal4_handoff/B03/public_api_anchors.json and docs/EngineFramework/Economy.md.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 108 generated mutation obligations across success, no-op, preconditions/invalid input and failure semantics in coverage_reviews.json.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were reviewed against authoritative state, stale/invalid identities and deterministic index-derived results in the registered module suite.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns currencies, accounts, fund reservations, offers, trades, debts, contracts, economy revisions/generators and the economy journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates and stages candidate state before publication; B03 private restore fault seams verify failed staging leaves the live state and persistent counters unchanged where allocation evidence is required.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle candidates were reviewed for allowed, forbidden, terminal, cancel/release/consume/reconciliation and retry behavior as applicable to the module.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "No stronger internal thread-safety guarantee is asserted. B03 local correctness assumes externally serialized/owner-thread access; engine-wide concurrency qualification remains Goal 6.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Effects": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Authoritative state against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Dependency list against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Derived/cache/index state against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Local invariants against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Persistent and transient state against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public headers and types against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public mutation API against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Read/query API for invariants against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B02 reviewed Responsibility against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Snapshot/restore contract against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed State machines against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Threading contract against current Effects public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Encounters": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 70 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 68 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for Encounters.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 2 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Entities": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Authoritative state against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Dependency list against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Derived/cache/index state against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Local invariants against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Persistent and transient state against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public headers and types against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public mutation API against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Read/query API for invariants against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B02 reviewed Responsibility against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Snapshot/restore contract against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed State machines against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Threading contract against current Entities public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Environment": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Authoritative state against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Dependency list against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Derived/cache/index state against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Local invariants against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Persistent and transient state against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public headers and types against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public mutation API against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Read/query API for invariants against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B02 reviewed Responsibility against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Snapshot/restore contract against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed State machines against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Threading contract against current Environment public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Equipment": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns equipment profiles, slot definitions, entity loadouts, item bindings, equipment revision/journal state and reconciliation metadata.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation and module-specific public dependencies. B03 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Secondary indexes, prepared/pending records and bounded journal state were reviewed against primary records; failure paths do not intentionally publish partial index state.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Item-provider reservation/reconciliation is kept behind the Equipment provider contract. Admission emitted no separate external-boundary candidate rows. Callback/provider failures are converted to Result/error semantics; durable reconciliation is retained where rollback can fail.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Capacity/quantity/time/counter bounds and journal retention are reviewed; integer overflow and ID/revision/change-sequence exhaustion are explicit failure boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "ID generators, revision and journal sequence/cursor state are persistent contract state where exposed. Publication is staged so failed operations do not consume IDs or revisions.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, secondary indexes, reservation/transaction state and revision/journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative persistent records and required generator/revision/journal continuity. Provider/runtime handles that are only transient are not promoted to reusable semantic identity.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 72 exact admission callables. Per-callable contract and test anchors are in _goal4_handoff/B03/public_api_anchors.json and docs/EngineFramework/Equipment.md.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 72 generated mutation obligations across success, no-op, preconditions/invalid input and failure semantics in coverage_reviews.json.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were reviewed against authoritative state, stale/invalid identities and deterministic index-derived results in the registered module suite.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns equipment profiles, slot definitions, entity loadouts, item bindings, equipment revision/journal state and reconciliation metadata.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates and stages candidate state before publication; B03 private restore fault seams verify failed staging leaves the live state and persistent counters unchanged where allocation evidence is required.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle candidates were reviewed for allowed, forbidden, terminal, cancel/release/consume/reconciliation and retry behavior as applicable to the module.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "No stronger internal thread-safety guarantee is asserted. B03 local correctness assumes externally serialized/owner-thread access; engine-wide concurrency qualification remains Goal 6.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Interaction": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Authoritative state against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Dependency list against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Derived/cache/index state against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Local invariants against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Persistent and transient state against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public headers and types against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public mutation API against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Read/query API for invariants against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B02 reviewed Responsibility against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Snapshot/restore contract against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed State machines against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Threading contract against current Interaction public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/ItemsInventory": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns item definitions, item instances, containers, reservations, transfer preparation state, bindings, identity generators, revisions and the item change journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation and module-specific public dependencies. B03 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Secondary indexes, prepared/pending records and bounded journal state were reviewed against primary records; failure paths do not intentionally publish partial index state.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Transfer and reservation protocols are represented by owned durable records. No external-boundary candidates were emitted by the admission scanner. Callback/provider failures are converted to Result/error semantics; durable reconciliation is retained where rollback can fail.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Capacity/quantity/time/counter bounds and journal retention are reviewed; integer overflow and ID/revision/change-sequence exhaustion are explicit failure boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "ID generators, revision and journal sequence/cursor state are persistent contract state where exposed. Publication is staged so failed operations do not consume IDs or revisions.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, secondary indexes, reservation/transaction state and revision/journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative persistent records and required generator/revision/journal continuity. Provider/runtime handles that are only transient are not promoted to reusable semantic identity.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 82 exact admission callables. Per-callable contract and test anchors are in _goal4_handoff/B03/public_api_anchors.json and docs/EngineFramework/ItemsInventory.md.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 92 generated mutation obligations across success, no-op, preconditions/invalid input and failure semantics in coverage_reviews.json.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were reviewed against authoritative state, stale/invalid identities and deterministic index-derived results in the registered module suite.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns item definitions, item instances, containers, reservations, transfer preparation state, bindings, identity generators, revisions and the item change journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates and stages candidate state before publication; B03 private restore fault seams verify failed staging leaves the live state and persistent counters unchanged where allocation evidence is required.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle candidates were reviewed for allowed, forbidden, terminal, cancel/release/consume/reconciliation and retry behavior as applicable to the module.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "No stronger internal thread-safety guarantee is asserted. B03 local correctness assumes externally serialized/owner-thread access; engine-wide concurrency qualification remains Goal 6.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Knowledge": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns knowledge profile definitions, knowledge/memory records, relations/contradictions, indexes, generators, revisions and the bounded knowledge change journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "The admission inventory contains the block\u2019s single external-boundary candidate in Knowledge. Provider/callback failure is reviewed as a local Result/error boundary and may not partially publish graph/index state.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 40 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/Knowledge.md`.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 48 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns knowledge profile definitions, knowledge/memory records, relations/contradictions, indexes, generators, revisions and the bounded knowledge change journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Loot": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns loot tables, generated rewards, pending delivery records, delivery lifecycle, explicit random-source results, revisions/generators and the loot journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation and module-specific public dependencies. B03 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Secondary indexes, prepared/pending records and bounded journal state were reviewed against primary records; failure paths do not intentionally publish partial index state.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reward handler prepare/commit/cancel and reconciliation are explicit ports. Admission emitted no separate external-boundary candidate rows. Callback/provider failures are converted to Result/error semantics; durable reconciliation is retained where rollback can fail.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Capacity/quantity/time/counter bounds and journal retention are reviewed; integer overflow and ID/revision/change-sequence exhaustion are explicit failure boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "ID generators, revision and journal sequence/cursor state are persistent contract state where exposed. Publication is staged so failed operations do not consume IDs or revisions.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, secondary indexes, reservation/transaction state and revision/journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative persistent records and required generator/revision/journal continuity. Provider/runtime handles that are only transient are not promoted to reusable semantic identity.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 52 exact admission callables. Per-callable contract and test anchors are in _goal4_handoff/B03/public_api_anchors.json and docs/EngineFramework/Loot.md.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 64 generated mutation obligations across success, no-op, preconditions/invalid input and failure semantics in coverage_reviews.json.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were reviewed against authoritative state, stale/invalid identities and deterministic index-derived results in the registered module suite.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns loot tables, generated rewards, pending delivery records, delivery lifecycle, explicit random-source results, revisions/generators and the loot journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates and stages candidate state before publication; B03 private restore fault seams verify failed staging leaves the live state and persistent counters unchanged where allocation evidence is required.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle candidates were reviewed for allowed, forbidden, terminal, cancel/release/consume/reconciliation and retry behavior as applicable to the module.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "No stronger internal thread-safety guarantee is asserted. B03 local correctness assumes externally serialized/owner-thread access; engine-wide concurrency qualification remains Goal 6.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Materials": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Authoritative state against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Dependency list against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Derived/cache/index state against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Local invariants against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Persistent and transient state against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public headers and types against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public mutation API against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Read/query API for invariants against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B02 reviewed Responsibility against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Snapshot/restore contract against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed State machines against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Threading contract against current Materials public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Narrative": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/NavigationSemantics": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns semantic navigation profiles, layers and links/rules, their indexes, layer identity generator, revisions and the bounded navigation-semantics change journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Capability lookup/evaluation is a semantic provider boundary. Failure is not authoritative navigation state and may not leave a partial layer/link/index publication.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 69 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/NavigationSemantics.md`.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 60 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns semantic navigation profiles, layers and links/rules, their indexes, layer identity generator, revisions and the bounded navigation-semantics change journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/NeedsLife": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 65 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 72 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for NeedsLife.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 1 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Ownership": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Authoritative state against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Dependency list against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Derived/cache/index state against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed External ports/callbacks/providers/backends against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Hard limits, budgets and complexity bounds against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed ID spaces, generations, revisions and cursors against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Local invariants against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Persistent and transient state against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public headers and types against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Public mutation API against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Read/query API for invariants against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B02 reviewed Responsibility against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Snapshot/restore contract against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed State machines against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B02 reviewed Threading contract against current Ownership public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Perception": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns perception definitions, perceivers, stimuli, pending/active observations, awareness state, spatial evaluation policy, generators, revisions and the bounded perception change journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Perceiver sample providers and custom evaluators are read/evaluation ports. Their failure is translated to Result/error semantics before observation/index/revision publication.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 72 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/Perception.md`.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 56 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns perception definitions, perceivers, stimuli, pending/active observations, awareness state, spatial evaluation policy, generators, revisions and the bounded perception change journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Population": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 75 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 80 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for Population.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 2 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Processes": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns process definitions, recipes, stations, process instances, reservation/output reconciliation records, timing state, revisions/generators and the process journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation and module-specific public dependencies. B03 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Secondary indexes, prepared/pending records and bounded journal state were reviewed against primary records; failure paths do not intentionally publish partial index state.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Input and output providers are transactional ports. Prepare, commit, cancel, compensation and retry/reconciliation paths are part of the local contract. Four admission external-boundary candidates were reviewed. Callback/provider failures are converted to Result/error semantics; durable reconciliation is retained where rollback can fail.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Capacity/quantity/time/counter bounds and journal retention are reviewed; integer overflow and ID/revision/change-sequence exhaustion are explicit failure boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "ID generators, revision and journal sequence/cursor state are persistent contract state where exposed. Publication is staged so failed operations do not consume IDs or revisions.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, secondary indexes, reservation/transaction state and revision/journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative persistent records and required generator/revision/journal continuity. Provider/runtime handles that are only transient are not promoted to reusable semantic identity.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 93 exact admission callables. Per-callable contract and test anchors are in _goal4_handoff/B03/public_api_anchors.json and docs/EngineFramework/Processes.md.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 88 generated mutation obligations across success, no-op, preconditions/invalid input and failure semantics in coverage_reviews.json.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were reviewed against authoritative state, stale/invalid identities and deterministic index-derived results in the registered module suite.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns process definitions, recipes, stations, process instances, reservation/output reconciliation records, timing state, revisions/generators and the process journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates and stages candidate state before publication; B03 private restore fault seams verify failed staging leaves the live state and persistent counters unchanged where allocation evidence is required.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle candidates were reviewed for allowed, forbidden, terminal, cancel/release/consume/reconciliation and retry behavior as applicable to the module.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "No stronger internal thread-safety guarantee is asserted. B03 local correctness assumes externally serialized/owner-thread access; engine-wide concurrency qualification remains Goal 6.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Progression": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Authoritative state against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Dependency list against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Derived/cache/index state against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed External ports/callbacks/providers/backends against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Hard limits, budgets and complexity bounds against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed ID spaces, generations, revisions and cursors against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Local invariants against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Persistent and transient state against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public headers and types against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public mutation API against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Read/query API for invariants against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B06 reviewed Responsibility against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Snapshot/restore contract against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed State machines against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Threading contract against current Progression public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/ResourcesProduction": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns resource definitions and recipes, stockpiles, nodes, production sites, reservations, transfers, capabilities/plans, quantity/index state, identity generators, revisions and the resource journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation and module-specific public dependencies. B03 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Secondary indexes, prepared/pending records and bounded journal state were reviewed against primary records; failure paths do not intentionally publish partial index state.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Process integration remains behind resource/production ports. Three admission external-boundary candidates were reviewed. Accepted semantic state is not published before local primary/index/journal publication is proven. Callback/provider failures are converted to Result/error semantics; durable reconciliation is retained where rollback can fail.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Capacity/quantity/time/counter bounds and journal retention are reviewed; integer overflow and ID/revision/change-sequence exhaustion are explicit failure boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "ID generators, revision and journal sequence/cursor state are persistent contract state where exposed. Publication is staged so failed operations do not consume IDs or revisions.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, secondary indexes, reservation/transaction state and revision/journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative persistent records and required generator/revision/journal continuity. Provider/runtime handles that are only transient are not promoted to reusable semantic identity.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 88 exact admission callables. Per-callable contract and test anchors are in _goal4_handoff/B03/public_api_anchors.json and docs/EngineFramework/ResourcesProduction.md.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 84 generated mutation obligations across success, no-op, preconditions/invalid input and failure semantics in coverage_reviews.json.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were reviewed against authoritative state, stale/invalid identities and deterministic index-derived results in the registered module suite.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns resource definitions and recipes, stockpiles, nodes, production sites, reservations, transfers, capabilities/plans, quantity/index state, identity generators, revisions and the resource journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates and stages candidate state before publication; B03 private restore fault seams verify failed staging leaves the live state and persistent counters unchanged where allocation evidence is required.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle candidates were reviewed for allowed, forbidden, terminal, cancel/release/consume/reconciliation and retry behavior as applicable to the module.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "No stronger internal thread-safety guarantee is asserted. B03 local correctness assumes externally serialized/owner-thread access; engine-wide concurrency qualification remains Goal 6.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/RolesJobs": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 73 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 80 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for RolesJobs.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 5 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/SaveGame": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Simulation": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Owns Framework simulation regions, layer definitions/executor bindings, resumable interval/task state, completed summaries, task/summary generators, revisions and the bounded simulation journal.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed current Framework/Foundation public dependencies. B05 introduces no production dependency on another Bxx production directory.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Derived indexes and bounded journal/read models were reviewed with primary state. Fault paths may not publish a mismatched derived view.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "`ISimulationLayerExecutor::Prepare/Commit` is the critical accepted-work boundary. Stable task IDs and idempotent commit remain required. Local terminal publication is now staged before external Commit, and after accepted work only no-throw local state/journal publication remains.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Numeric bounds, budgets/retention and ID/revision/change-sequence exhaustion are explicit. B05 fixes preserve bounded journal/summary behavior and avoid unchecked signed overflow.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Generators, revisions and change sequence/cursor state are explicit contract boundaries. Exhaustion is rejected before publication and restore validates continuity.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Primary records, indexes, generators, revisions, lifecycle and journal publication were reviewed together, including invalid/stale/duplicate and failure-atomicity paths.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Snapshot state contains authoritative semantic records and continuity state required by the module. Transient provider/executor bindings are not reused as persistent semantic identities.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 45 exact callable rows. Contract/test anchors are in `_goal4_handoff/B05/public_api_anchors.json` and `docs/EngineFramework/Simulation.md`.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 40 mutation obligations across success, no-op, invalid/precondition and failure semantics.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Read/query surfaces were checked against authoritative records and deterministic derived indexes/order; diagnostic state is not promoted to authority.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Owns Framework simulation regions, layer definitions/executor bindings, resumable interval/task state, completed summaries, task/summary generators, revisions and the bounded simulation journal.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Restore validates into off-state and keeps the live service unchanged on validation/allocation failure; successful restore publishes a self-consistent state and advances/reset journal epoch according to contract.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Lifecycle states, allowed transitions, duplicate/terminal/retry behavior and wrong-lifecycle failures were reviewed against module tests.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Externally serialized/owner-thread for Goal 4 local correctness. No new thread-safety promise is introduced; Goal 6 owns concurrency qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Society": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed primary records, generators, revisions and journal ownership.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed includes/link boundaries; no cross-block production dependency changes were introduced.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed derived indexes for consistency and rollback on failed publication.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Admission external-boundary candidates: 0; none are owned by this B04 module.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed max generator/revision/change-sequence and module-specific capacity/budget boundaries.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed exhaustion and snapshot continuity for IDs, revisions and change cursors.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed stale identity, duplicate handling, revision and multi-container invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local snapshot state versus derived/transient indexes; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 62 admission callables; no callable IDs were added or removed by B04 changes.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 56 mutation obligations for success, no-op, invalid/failure and publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed deterministic reads and index/query consistency against module tests.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B04 ownership and module contract for Society.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed non-empty/invalid restore, generator/revision/cursor continuity and failed-restore atomicity.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 1 lifecycle candidates and terminal/forbidden transitions.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as module-local gameplay state ownership; no stronger concurrency guarantee is asserted by Goal 4.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/Traversal": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Authoritative state against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Dependency list against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Derived/cache/index state against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed External ports/callbacks/providers/backends against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Hard limits, budgets and complexity bounds against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed ID spaces, generations, revisions and cursors against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Local invariants against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Persistent and transient state against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public headers and types against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Public mutation API against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Read/query API for invariants against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "B06 reviewed Responsibility against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Snapshot/restore contract against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed State machines against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "B06 reviewed Threading contract against current Traversal public header, implementation and owned regression suite; module-local contract is recorded in this audit document.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/GameplayWorldStateOwners/World": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/ExtendedGameplayIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 1.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 42 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 68 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for ExtendedGameplayIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter checkpoint/snapshot validation and continuation; whole-engine ordered restore remains Goal 5.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 0 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/GameplayIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 0.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 72 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 132 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for GameplayIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter checkpoint/snapshot validation and continuation; whole-engine ordered restore remains Goal 5.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 5 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/Integration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 2.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 34 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 68 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for Integration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter checkpoint/snapshot validation and continuation; whole-engine ordered restore remains Goal 5.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 1 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/InteractionEffectsIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 0.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 11 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 24 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for InteractionEffectsIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter checkpoint/snapshot validation and continuation; whole-engine ordered restore remains Goal 5.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 1 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/InteractionTimeIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 0.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 8 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 16 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for InteractionTimeIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter checkpoint/snapshot validation and continuation; whole-engine ordered restore remains Goal 5.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 0 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/NarrativeIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/PerceptionKnowledgeAIIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 0.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 14 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 12 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for PerceptionKnowledgeAIIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed persistence applicability as N/A for independent adapter-owned snapshot state; durable owner-issued tokens/outputs remain with authoritative owners.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 0 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/PopulationSimulationIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 0.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 14 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 28 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for PopulationSimulationIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter checkpoint/snapshot validation and continuation; whole-engine ordered restore remains Goal 5.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 0 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/ProcessResourceSimulationIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 1.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 22 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 32 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for ProcessResourceSimulationIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed persistence applicability as N/A for independent adapter-owned snapshot state; durable owner-issued tokens/outputs remain with authoritative owners.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 0 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/SocialLegalIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 0.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 28 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 40 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for SocialLegalIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter checkpoint/snapshot validation and continuation; whole-engine ordered restore remains Goal 5.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 1 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/StateIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 0.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 52 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 72 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for StateIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter checkpoint/snapshot validation and continuation; whole-engine ordered restore remains Goal 5.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 0 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/TraversalNavigationConstructionIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-local durable/checkpoint/reconciliation state and confirmed peer modules remain authoritative owners.",
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed direct integration dependencies and ownership boundaries; no cross-block production directory was modified.",
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed delivery sets, pending queues, mappings and derived adapter bookkeeping for duplicate/retry consistency.",
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed external-provider/callback boundary behavior; admission external-boundary candidates: 0.",
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed bounded pending/batch behavior, retry progress, token payload bounds and module-specific processing limits where exposed.",
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed adapter-issued IDs/tokens/cursors and stale/retry semantics, including generator publication ordering where applicable.",
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed no false publication, idempotence, stable identity and durable-before-external-work invariants.",
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed local checkpoint/snapshot/token state versus transient owner references; whole-engine persistence remains Goal 5.",
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 8 admission callables; B08 production fixes did not modify public headers.",
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 0 mutation obligations for success, no-op, invalid/failure, duplicate/retry and accepted-work publication ordering.",
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed read/status/checkpoint surfaces used to prove pending, completed and reconciliation invariants.",
+        "status": "REVIEWED"
       },
       "Responsibility": {
+        "correction": "Reviewed B08 IntegrationLayer ownership and adapter responsibility for TraversalNavigationConstructionIntegration; no authoritative peer-owner state is duplicated.",
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed persistence applicability as N/A for independent adapter-owned snapshot state; durable owner-issued tokens/outputs remain with authoritative owners.",
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed 0 admission lifecycle candidates and adapter staging/prepared/reconciliation/terminal behavior where applicable.",
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "correction": "Reviewed as synchronous/owner-thread gameplay integration unless the public port contract explicitly delegates work; Goal 6 owns concurrency stress qualification.",
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/IntegrationLayer/WorldIntegration": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineFramework/RuntimeBoundary/RuntimeBridge": {
       "Authoritative state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Dependency list": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Derived/cache/index state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "External ports/callbacks/providers/backends": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Hard limits, budgets and complexity bounds": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "ID spaces, generations, revisions and cursors": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Local invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Persistent and transient state": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public headers and types": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Public mutation API": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Read/query API for invariants": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Responsibility": {
         "status": "REVIEWED"
       },
       "Snapshot/restore contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "State machines": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       },
       "Threading contract": {
-        "status": "DISCOVERED"
+        "status": "REVIEWED"
       }
     },
     "EngineRuntime/Animation": {

@@ -1,0 +1,3283 @@
+{
+  "closure_review": "All PASS criteria use typed evidence containing every required kind; test evidence names a registered target and exact assertion. N/A decisions have module-specific rationales.",
+  "contract": "LOCAL_READY",
+  "modules": {
+    "EngineFramework/GameplayWorldStateOwners/AI": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "AI API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:33::mutable bool fail_next = true;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:389::AIService invalid_budget;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "AI API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:389::AIService invalid_budget;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:45::return epidemic::foundation::Result<Fixed>::Success(kFixedOne);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:45::return epidemic::foundation::Result<Fixed>::Success(kFixedOne);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "AI ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "AI ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "AI ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "AI ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:279::if (!batch.snapshot_required || batch.oldest_available_sequence == 0 || batch.latest_sequence < batch.oldest_available_sequence)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:279::if (!batch.snapshot_required || batch.oldest_available_sequence == 0 || batch.latest_sequence < batch.oldest_available_sequence)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:35::epidemic::foundation::Result<Fixed> Evaluate(const AIConsideration &, const AIContextSnapshot &,",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:83::profile.default_goals = {goal_id};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:87::if (auto result = service.RegisterProfile(profile); !result)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:35::epidemic::foundation::Result<Fixed> Evaluate(const AIConsideration &, const AIContextSnapshot &,",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:125::if (!ai.Freeze())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:125::if (!ai.Freeze())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:271::if (!lifecycle.DisableAgent(guard, {}) || !lifecycle.EnableAgent(guard, {}) || !lifecycle.SuspendAgent(guard, {}) ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:271::if (!lifecycle.DisableAgent(guard, {}) || !lifecycle.EnableAgent(guard, {}) || !lifecycle.SuspendAgent(guard, {}) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:83::profile.default_goals = {goal_id};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:87::if (auto result = service.RegisterProfile(profile); !result)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:271::if (!lifecycle.DisableAgent(guard, {}) || !lifecycle.EnableAgent(guard, {}) || !lifecycle.SuspendAgent(guard, {}) ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:271::if (!lifecycle.DisableAgent(guard, {}) || !lifecycle.EnableAgent(guard, {}) || !lifecycle.SuspendAgent(guard, {}) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:35::epidemic::foundation::Result<Fixed> Evaluate(const AIConsideration &, const AIContextSnapshot &,",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:197::if (!restored.RestoreSnapshot(snapshot))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:197::if (!restored.RestoreSnapshot(snapshot))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:83::profile.default_goals = {goal_id};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:87::if (auto result = service.RegisterProfile(profile); !result)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:186::auto snapshot = ai.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:187::if (snapshot.agents.size() != 1 || snapshot.agents.front().blackboard.size() != 1 ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:197::if (!restored.RestoreSnapshot(snapshot))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:197::if (!restored.RestoreSnapshot(snapshot))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:33::mutable bool fail_next = true;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:36::const AITargetCandidate *) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:35::epidemic::foundation::Result<Fixed> Evaluate(const AIConsideration &, const AIContextSnapshot &,",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:64::- `015b85bcbf0854a9` | `QUERY` | `epidemic::gameplay::ai::AIConsiderationId` | `[[nodiscard]] constexpr bool operator==(const AIConsiderationId&)const noexcept=default;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:394::AIContextSnapshot duplicate_context;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:402::if (invalid_budget.Think(guard, duplicate_context, same_tick))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:35::epidemic::foundation::Result<Fixed> Evaluate(const AIConsideration &, const AIContextSnapshot &,",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:4::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:4::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/AI.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:33::mutable bool fail_next = true;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:39::if (fail_next)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:394::AIContextSnapshot duplicate_context;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:402::if (invalid_budget.Think(guard, duplicate_context, same_tick))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:146::if (!ai.FindDueAgents({9}, 10).empty() || ai.FindDueAgents({10}, 10).size() != 1)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:146::if (!ai.FindDueAgents({9}, 10).empty() || ai.FindDueAgents({10}, 10).size() != 1)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:45::return epidemic::foundation::Result<Fixed>::Success(kFixedOne);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:45::return epidemic::foundation::Result<Fixed>::Success(kFixedOne);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:389::AIService invalid_budget;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:83::profile.default_goals = {goal_id};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:87::if (auto result = service.RegisterProfile(profile); !result)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:205::const auto revision_before_bad_restore = restored.CurrentRevision();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:206::if (restored.RestoreSnapshot(std::move(corrupted)) || !restored.FindAgent(guard) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:271::if (!lifecycle.DisableAgent(guard, {}) || !lifecycle.EnableAgent(guard, {}) || !lifecycle.SuspendAgent(guard, {}) ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:271::if (!lifecycle.DisableAgent(guard, {}) || !lifecycle.EnableAgent(guard, {}) || !lifecycle.SuspendAgent(guard, {}) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkAITests"
+            }
+          ],
+          "rationale": "AI TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkAITests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/Knowledge": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Knowledge API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:317::const auto knowledge_before_invalid = k.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:321::if (k.CreateProfile(invalid_profile))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Knowledge API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:317::const auto knowledge_before_invalid = k.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:321::if (k.CreateProfile(invalid_profile))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:86::const auto* first = k.FindKnowledge(denied.Value());",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:87::if (!first || first->assertion != KnowledgeAssertionValue::Denied ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Knowledge ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Knowledge ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Knowledge ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "Knowledge ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:64::if (!k.RegisterDecayRule(decay) || !k.FreezeDefinitions())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:64::if (!k.RegisterDecayRule(decay) || !k.FreezeDefinitions())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:212::if (!transient_by_profile || !retention.CaptureSnapshot().knowledge.empty())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:212::if (!transient_by_profile || !retention.CaptureSnapshot().knowledge.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:215::const auto saved_change_cursor = k.ReadChangesSince(ChangeCursor{}).latest_cursor;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:218::if (!restored.RegisterDecayRule(decay) || !restored.FreezeDefinitions() || !restored.RestoreSnapshot(snap))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:212::if (!transient_by_profile || !retention.CaptureSnapshot().knowledge.empty())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:212::if (!transient_by_profile || !retention.CaptureSnapshot().knowledge.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:218::if (!restored.RegisterDecayRule(decay) || !restored.FreezeDefinitions() || !restored.RestoreSnapshot(snap))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:218::if (!restored.RegisterDecayRule(decay) || !restored.FreezeDefinitions() || !restored.RestoreSnapshot(snap))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:237::resumed_changes.changes.front().sequence <= restored_change_cursor.sequence)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:238::return 38;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:26::KnowledgeTopic Topic(std::string_view id, GameplayObjectRef subject, std::optional<TagId> tag = std::nullopt)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:31::if (tag)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:61::- `094f917c173c7e2a` | `MUTATOR` | `epidemic::gameplay::knowledge::KnowledgeService` | `[[nodiscard]] foundation::Result<KnowledgeRecordId> Learn(LearnKnowledgeRequest request);`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:26::KnowledgeTopic Topic(std::string_view id, GameplayObjectRef subject, std::optional<TagId> tag = std::nullopt)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:31::if (tag)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:5::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:5::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Knowledge.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:378::.RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:378::.RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:104::if (!opposite || opposite.Value() == denied.Value() || k.FindKnowledgeByTopic(npc, KnowledgeTopicId::FromString(\"game.door_open\")).size() != 2)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:104::if (!opposite || opposite.Value() == denied.Value() || k.FindKnowledgeByTopic(npc, KnowledgeTopicId::FromString(\"game.door_open\")).size() != 2)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:86::const auto* first = k.FindKnowledge(denied.Value());",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:87::if (!first || first->assertion != KnowledgeAssertionValue::Denied ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:317::const auto knowledge_before_invalid = k.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:321::if (k.CreateProfile(invalid_profile))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:69::np.default_decay_rule = decay.id;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:77::if (!k.CreateProfile(np) || !k.CreateProfile(gp) || !k.CreateProfile(cp))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:215::const auto saved_change_cursor = k.ReadChangesSince(ChangeCursor{}).latest_cursor;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:218::if (!restored.RegisterDecayRule(decay) || !restored.FreezeDefinitions() || !restored.RestoreSnapshot(snap))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:293::if (!bounded.Learn(std::move(q)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkKnowledgeTests"
+            }
+          ],
+          "rationale": "Knowledge TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkKnowledgeTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/NavigationSemantics": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "NavigationSemantics API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:265::using FaultPoint = epidemic::gameplay::navigation_semantics::internal_test::AllocationFaultPoint;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:273::if (result)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:199::auto invalid_generator = snap;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:203::if (restored.RestoreSnapshot(std::move(invalid_generator)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "NavigationSemantics API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:199::auto invalid_generator = snap;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:203::if (restored.RestoreSnapshot(std::move(invalid_generator)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:65::const auto *stored_layer = n.FindLayer(lid.Value());",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:66::if (stored_layer == nullptr)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "NavigationSemantics ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "NavigationSemantics ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "NavigationSemantics ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "NavigationSemantics ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:12::class TimedFactProvider final : public INavigationFactProvider",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:17::return fact == TypeId::FromString(\"game.fact.open\") && context.time.ticks >= 50;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:104::GameplayContext before_fact;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:265::using FaultPoint = epidemic::gameplay::navigation_semantics::internal_test::AllocationFaultPoint;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:273::if (result)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:104::GameplayContext before_fact;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:40::n.Freeze();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:47::if (!n.SetProfile({actor, domain, {}, {}}))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:207::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:207::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:265::using FaultPoint = epidemic::gameplay::navigation_semantics::internal_test::AllocationFaultPoint;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:273::if (result)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:207::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:207::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:149::const auto snapshot_with_session = n.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:151::if (layer_snapshot.id == session_id.Value())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:154::const auto generator_before = n.CaptureSnapshot().layer_ids;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:155::if (generator_before.next == 0 || generator_before.next > std::numeric_limits<std::uint64_t>::max() - 10)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:192::if (!restored.RestoreSnapshot(snap))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:192::if (!restored.RestoreSnapshot(snap))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:149::const auto snapshot_with_session = n.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:151::if (layer_snapshot.id == session_id.Value())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:192::if (!restored.RestoreSnapshot(snap))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:192::if (!restored.RestoreSnapshot(snap))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:73::if (!n.UpdateLayer(lid.Value(), moved, stored_layer->revision))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:73::if (!n.UpdateLayer(lid.Value(), moved, stored_layer->revision))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:65::const auto *stored_layer = n.FindLayer(lid.Value());",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:66::if (stored_layer == nullptr)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:104::GameplayContext before_fact;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:60::- `024229478713755e` | `QUERY` | `epidemic::gameplay::navigation_semantics::NavigationSemanticsService` | `[[nodiscard]] NavigationChangeBatch ReadChangesSince(ChangeCursor cursor)const`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:207::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:207::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:65::const auto *stored_layer = n.FindLayer(lid.Value());",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:66::if (stored_layer == nullptr)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:5::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:5::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/NavigationSemantics.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:12::class TimedFactProvider final : public INavigationFactProvider",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:17::return fact == TypeId::FromString(\"game.fact.open\") && context.time.ticks >= 50;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:285::.RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:285::.RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:66::if (stored_layer == nullptr)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:66::if (stored_layer == nullptr)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:65::const auto *stored_layer = n.FindLayer(lid.Value());",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:66::if (stored_layer == nullptr)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:199::auto invalid_generator = snap;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:203::if (restored.RestoreSnapshot(std::move(invalid_generator)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:265::using FaultPoint = epidemic::gameplay::navigation_semantics::internal_test::AllocationFaultPoint;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:273::if (result)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:73::if (!n.UpdateLayer(lid.Value(), moved, stored_layer->revision))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:73::if (!n.UpdateLayer(lid.Value(), moved, stored_layer->revision))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:207::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:207::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+            }
+          ],
+          "rationale": "NavigationSemantics TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkNavigationSemanticsTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/Perception": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Perception API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:3::#include \"Epidemic/Foundation/error.h\"",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:3::#include \"Epidemic/Foundation/error.h\""
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Perception API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:374::auto missing_sample = service.ProcessStimulus(",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:376::if (!missing_sample || !missing_sample.Value().empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:50::return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:50::return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Perception ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Perception ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Perception ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "Perception ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:483::auto before_ready = delayed.AdvanceTime({14});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:484::if (!before_ready || !before_ready.Value().empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:942::using FaultPoint = epidemic::gameplay::perception::internal_test::AllocationFaultPoint;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:942::using FaultPoint = epidemic::gameplay::perception::internal_test::AllocationFaultPoint;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:483::auto before_ready = delayed.AdvanceTime({14});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:484::if (!before_ready || !before_ready.Value().empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:120::service.Freeze();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:121::if (!service.RegisterPerceiver(observer, profile_id))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:942::using FaultPoint = epidemic::gameplay::perception::internal_test::AllocationFaultPoint;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:942::using FaultPoint = epidemic::gameplay::perception::internal_test::AllocationFaultPoint;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:826::auto snapshot = delayed.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:828::if (!restored.RegisterSense(delayed_hearing) || !restored.RegisterProfileDefinition(delayed_profile))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:825::const auto saved_change_cursor = delayed.ReadChangesSince(ChangeCursor{}).latest_cursor;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:828::if (!restored.RegisterSense(delayed_hearing) || !restored.RegisterProfileDefinition(delayed_profile))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:831::if (!restored.RestoreSnapshot(snapshot))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:831::if (!restored.RestoreSnapshot(snapshot))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:826::auto snapshot = delayed.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:828::if (!restored.RegisterSense(delayed_hearing) || !restored.RegisterProfileDefinition(delayed_profile))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:831::if (!restored.RestoreSnapshot(snapshot))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:831::if (!restored.RestoreSnapshot(snapshot))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:758::const auto duplicate_revision = duplicate_samples.CurrentRevision();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:763::if (duplicate_out || duplicate_samples.CurrentRevision() != duplicate_revision ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:279::const auto *boundary_awareness = boundary.GetAwareness(observer, source);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:280::if (!boundary_awareness || boundary_awareness->last_decay_at != boundary_now ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:483::auto before_ready = delayed.AdvanceTime({14});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:484::if (!before_ready || !before_ready.Value().empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:61::- `0324b9a9dd92a26c` | `QUERY` | `epidemic::gameplay::perception::PerceptionService` | `[[nodiscard]] std::vector<PerceptionObservation> FindActiveObservations(GameplayObjectRef perceiver,GameplayTimePoint now)const;`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:743::PerceptionService duplicate_samples;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:744::if (!duplicate_samples.RegisterSense(hear))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:279::const auto *boundary_awareness = boundary.GetAwareness(observer, source);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:280::if (!boundary_awareness || boundary_awareness->last_decay_at != boundary_now ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:5::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:5::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Perception.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:64::class FailingEvaluator final : public ISenseEvaluator",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:69::return epidemic::foundation::Result<SenseEvaluationResult>::Failure("
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:743::PerceptionService duplicate_samples;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:744::if (!duplicate_samples.RegisterSense(hear))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:349::if (!observations || observations.Value().size() != 1)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:349::if (!observations || observations.Value().size() != 1)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:50::return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:50::return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:942::using FaultPoint = epidemic::gameplay::perception::internal_test::AllocationFaultPoint;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:942::using FaultPoint = epidemic::gameplay::perception::internal_test::AllocationFaultPoint;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:758::const auto duplicate_revision = duplicate_samples.CurrentRevision();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:763::if (duplicate_out || duplicate_samples.CurrentRevision() != duplicate_revision ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkPerceptionTests"
+            }
+          ],
+          "rationale": "Perception TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    },
+    "EngineFramework/GameplayWorldStateOwners/Simulation": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Simulation API-CLASSIFIED was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:3::#include \"Epidemic/Foundation/error.h\"",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:3::#include \"Epidemic/Foundation/error.h\""
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation API-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:244::corrupt.active_intervals[0].layers[0].task.layer = SimulationLayerId::FromString(\"test.unknown_layer\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:245::if (target.RestoreSnapshot(corrupt))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation API-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Simulation API-OVERLOADS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:244::corrupt.active_intervals[0].layers[0].task.layer = SimulationLayerId::FromString(\"test.unknown_layer\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:245::if (target.RestoreSnapshot(corrupt))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation API-PRECONDITIONS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:46::return foundation::Result<SimulationLayerSummary>::Success(",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:46::return foundation::Result<SimulationLayerSummary>::Success("
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation API-SUCCESS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Simulation ARCH-DIRECT-DEPS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "Simulation ARCH-PORTS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "Simulation ARCH-RESPONSIBILITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:5::## Responsibility and ownership",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            }
+          ],
+          "rationale": "Simulation ARCH-SINGLE-OWNER was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:20::class Exec final : public ISimulationLayerExecutor",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:20::class Exec final : public ISimulationLayerExecutor"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation ATOMIC-EXTERNAL was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:83::bool EquivalentMutationState(const SimulationSnapshot &a, const SimulationSnapshot &b)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation ATOMIC-MULTI was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:28::int commits = 0;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:35::return id;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation ATOMIC-RECONCILE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:83::bool EquivalentMutationState(const SimulationSnapshot &a, const SimulationSnapshot &b)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation ATOMIC-SINGLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:28::int commits = 0;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:35::return id;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation LIFE-ALLOWED was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation LIFE-FORBIDDEN was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:148::SimulationService retry;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:153::if (!retry_region || !retry.RegisterLayer(Layer(layer_a, 10), &layer_a) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation LIFE-RETRY-CLEANUP was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:23::## Lifecycle and identity",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:83::bool EquivalentMutationState(const SimulationSnapshot &a, const SimulationSnapshot &b)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation PERSIST-CANDIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:87::a.next_change_sequence != b.next_change_sequence || a.change_epoch != b.change_epoch ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:90::return false;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation PERSIST-CONTINUITY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:215::if (!restored.RestoreSnapshot(pending_snapshot))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:215::if (!restored.RestoreSnapshot(pending_snapshot))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation PERSIST-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:205::auto pending_snapshot = before_save.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:210::if (!restored.RegisterLayer(Layer(restored_a, 10), &restored_a) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation PERSIST-SNAPSHOT was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:27::## Persistence",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:215::if (!restored.RestoreSnapshot(pending_snapshot))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:215::if (!restored.RestoreSnapshot(pending_snapshot))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation PERSIST-VALIDATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation STATE-COUNTERS was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:160::const auto *retry_state = retry.FindRegion(retry_region.Value());",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:161::if (!retry_state || retry_state->last_simulated_at.ticks != 0 || retry.FindActiveInterval(retry_region.Value()) == nullptr)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation STATE-INDEXES was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:83::bool EquivalentMutationState(const SimulationSnapshot &a, const SimulationSnapshot &b)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation STATE-NO-FALSE-PUBLISH was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:64::- `072013adb1839b82` | `QUERY` | `epidemic::gameplay::simulation::SimulationService` | `[[nodiscard]] bool DefinitionsFrozen()const noexcept`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation STATE-NOOP was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:11::## Authoritative state and indexes",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:83::bool EquivalentMutationState(const SimulationSnapshot &a, const SimulationSnapshot &b)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation STATE-PRIMARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:6::#include <limits>",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:6::#include <limits>"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-BOUNDARY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/Simulation.md:17::## Public contracts and failure atomicity",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:17::return foundation::Error::Create(code, \"test failure\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:17::return foundation::Error::Create(code, \"test failure\");"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-CALLBACK-FAILURE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-DUPLICATE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:88::a.regions.size() != b.regions.size() || a.active_intervals.size() != b.active_intervals.size() ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:90::return false;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-EMPTY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:46::return foundation::Result<SimulationLayerSummary>::Success(",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:46::return foundation::Result<SimulationLayerSummary>::Success("
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-HAPPY was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:244::corrupt.active_intervals[0].layers[0].task.layer = SimulationLayerId::FromString(\"test.unknown_layer\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:245::if (target.RestoreSnapshot(corrupt))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-INVALID was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:284::using SimFaultPoint = epidemic::gameplay::simulation::internal_test::AllocationFaultPoint;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:292::if (result || !EquivalentMutationState(allocation_before, restored.CaptureSnapshot()))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-REGRESSION was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:85::if (a.revision != b.revision || a.task_ids.scope != b.task_ids.scope || a.task_ids.next != b.task_ids.next ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-STALE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSimulationTests"
+            }
+          ],
+          "rationale": "Simulation TEST-WRONG-LIFECYCLE was reviewed against the exact module contract and the registered EpidemicGameFrameworkSimulationTests assertion recorded above.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY_CANDIDATE"
+    }
+  },
+  "qualification_note": "B05 block-local Goal 4 projection only; canonical Framework state is regenerated by serial integrator after all eight deltas merge.",
+  "schema_version": 1
+}

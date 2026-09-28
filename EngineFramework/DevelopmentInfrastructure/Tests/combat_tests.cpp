@@ -263,6 +263,107 @@ int main()
         exhausted_before.Value().current_micro != exhausted_after.Value().current_micro)
         return 49;
 
+    // G4-COMBAT-001: preserve-ratio scaling is exact at the signed 64-bit boundary on every toolchain.
+    CombatService ratio_service;
+    CombatResourceDefinition ratio_resource;
+    ratio_resource.canonical_name = "game.ratio_boundary";
+    ratio_resource.default_maximum_micro = std::numeric_limits<std::int64_t>::max();
+    ratio_resource.minimum_micro = 0;
+    auto ratio_id = ratio_service.RegisterResource(ratio_resource);
+    if (!ratio_id)
+        return 50;
+    ratio_service.Freeze();
+    const auto ratio_subject = Obj("ratio_boundary");
+    const auto kMax = std::numeric_limits<std::int64_t>::max();
+    if (!ratio_service.RegisterCombatant(ratio_subject, {{ratio_id.Value(), kMax - 1, kMax}}))
+        return 51;
+    if (!ratio_service.SetResourceMaximum(ratio_subject, ratio_id.Value(), kMax - 1, true))
+        return 52;
+    const auto ratio_state = ratio_service.GetResource(ratio_subject, ratio_id.Value());
+    if (!ratio_state || ratio_state.Value().maximum_micro != kMax - 1 ||
+        ratio_state.Value().current_micro != kMax - 2)
+        return 53;
+
+    // Cover normal, signed and zero-policy combinations allowed by the resource API.
+    CombatService signed_ratio_service;
+    CombatResourceDefinition signed_resource;
+    signed_resource.canonical_name = "game.ratio_signed";
+    signed_resource.default_maximum_micro = kMax;
+    signed_resource.minimum_micro = std::numeric_limits<std::int64_t>::min();
+    auto signed_id = signed_ratio_service.RegisterResource(signed_resource);
+    if (!signed_id)
+        return 54;
+    signed_ratio_service.Freeze();
+
+    const auto normal_subject = Obj("ratio_normal");
+    if (!signed_ratio_service.RegisterCombatant(normal_subject, {{signed_id.Value(), 50, 100}}) ||
+        !signed_ratio_service.SetResourceMaximum(normal_subject, signed_id.Value(), 200, true))
+        return 55;
+    auto signed_state = signed_ratio_service.GetResource(normal_subject, signed_id.Value());
+    if (!signed_state || signed_state.Value().current_micro != 100)
+        return 56;
+
+    const auto negative_value_subject = Obj("ratio_negative_value");
+    if (!signed_ratio_service.RegisterCombatant(negative_value_subject, {{signed_id.Value(), -50, 100}}) ||
+        !signed_ratio_service.SetResourceMaximum(negative_value_subject, signed_id.Value(), 200, true))
+        return 57;
+    signed_state = signed_ratio_service.GetResource(negative_value_subject, signed_id.Value());
+    if (!signed_state || signed_state.Value().current_micro != -100)
+        return 58;
+
+    const auto negative_new_max_subject = Obj("ratio_negative_new_max");
+    if (!signed_ratio_service.RegisterCombatant(negative_new_max_subject, {{signed_id.Value(), 50, 100}}) ||
+        !signed_ratio_service.SetResourceMaximum(negative_new_max_subject, signed_id.Value(), -200, true))
+        return 59;
+    signed_state = signed_ratio_service.GetResource(negative_new_max_subject, signed_id.Value());
+    if (!signed_state || signed_state.Value().maximum_micro != -200 || signed_state.Value().current_micro != -200)
+        return 60;
+
+    const auto negative_old_max_subject = Obj("ratio_negative_old_max");
+    if (!signed_ratio_service.RegisterCombatant(negative_old_max_subject, {{signed_id.Value(), -100, -100}}) ||
+        !signed_ratio_service.SetResourceMaximum(negative_old_max_subject, signed_id.Value(), 100, true))
+        return 61;
+    signed_state = signed_ratio_service.GetResource(negative_old_max_subject, signed_id.Value());
+    if (!signed_state || signed_state.Value().current_micro != 100)
+        return 62;
+
+    const auto min_boundary_subject = Obj("ratio_min_boundary");
+    const auto kMin = std::numeric_limits<std::int64_t>::min();
+    if (!signed_ratio_service.RegisterCombatant(min_boundary_subject, {{signed_id.Value(), kMin, kMin}}) ||
+        !signed_ratio_service.SetResourceMaximum(min_boundary_subject, signed_id.Value(), kMax, true))
+        return 63;
+    signed_state = signed_ratio_service.GetResource(min_boundary_subject, signed_id.Value());
+    if (!signed_state || signed_state.Value().current_micro != kMax)
+        return 64;
+
+    CombatService zero_ratio_service;
+    CombatResourceDefinition zero_resource;
+    zero_resource.canonical_name = "game.ratio_zero";
+    zero_resource.default_maximum_micro = 0;
+    zero_resource.minimum_micro = -100;
+    auto zero_id = zero_ratio_service.RegisterResource(zero_resource);
+    if (!zero_id)
+        return 65;
+    zero_ratio_service.Freeze();
+    const auto zero_subject = Obj("ratio_zero_old_max");
+    if (!zero_ratio_service.RegisterCombatant(zero_subject, {{zero_id.Value(), 0, 0}}) ||
+        !zero_ratio_service.SetResourceMaximum(zero_subject, zero_id.Value(), 100, true))
+        return 66;
+    const auto zero_state = zero_ratio_service.GetResource(zero_subject, zero_id.Value());
+    if (!zero_state || zero_state.Value().current_micro != 0)
+        return 67;
+
+    // Increasing the maximum with a fixed non-negative ratio must not decrease current value.
+    const auto monotonic_subject = Obj("ratio_monotonic");
+    if (!signed_ratio_service.RegisterCombatant(monotonic_subject, {{signed_id.Value(), kMax / 3, kMax}}))
+        return 68;
+    const auto monotonic_before = signed_ratio_service.GetResource(monotonic_subject, signed_id.Value());
+    if (!signed_ratio_service.SetResourceMaximum(monotonic_subject, signed_id.Value(), kMax - 1, true))
+        return 69;
+    const auto monotonic_after = signed_ratio_service.GetResource(monotonic_subject, signed_id.Value());
+    if (!monotonic_before || !monotonic_after || monotonic_after.Value().current_micro > monotonic_before.Value().current_micro)
+        return 70;
+
     (void)reservation_before;
     return 0;
 }

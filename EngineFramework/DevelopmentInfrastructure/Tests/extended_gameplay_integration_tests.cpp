@@ -15,6 +15,13 @@ namespace ownership = epidemic::gameplay::ownership;
 namespace processes = epidemic::gameplay::processes;
 namespace integration = epidemic::gameplay::integration;
 
+namespace epidemic::gameplay::integration::test_support
+{
+void FailNextTradePublicationForTest() noexcept;
+void FailAfterTradeGoodsReservationsForTest(std::size_t accepted_goods) noexcept;
+void ResetTradeCoordinatorFailureSeamsForTest() noexcept;
+}
+
 namespace
 {
 void Check(bool value, const char* message)
@@ -266,6 +273,179 @@ int main()
     seller_account.currency = coin_id.Value();
     auto seller_account_id = economy_service.CreateAccount(seller_account);
     Check(static_cast<bool>(seller_account_id), "create seller account");
+
+    // G4-EXTINT-001: invalid goods validation must not consume the persisted
+    // coordinator execution ID generator or publish an execution record.
+    integration::TradeCoordinator validation_trade(economy_service, item_service, ownership_service);
+    const auto validation_before = validation_trade.CaptureSnapshot();
+    auto MakeValidationPlan = [&](items::ItemInstanceId item, items::ContainerId destination) {
+        integration::CoordinatedTradePlan plan;
+        plan.money.buyer = buyer;
+        plan.money.seller = seller;
+        plan.money.monetary_transfers.push_back({buyer_account_id.Value(), seller_account_id.Value(), 1, coin_id.Value()});
+        plan.goods.push_back({item, destination, seller, buyer});
+        return plan;
+    };
+
+    auto malformed = MakeValidationPlan({}, buyer_container_id.Value());
+    Check(!validation_trade.Prepare(std::move(malformed)), "G4-EXTINT-001 malformed goods rejected");
+    auto validation_after = validation_trade.CaptureSnapshot();
+    Check(validation_after.executions.size() == validation_before.executions.size() &&
+              validation_after.execution_ids.scope == validation_before.execution_ids.scope &&
+              validation_after.execution_ids.next == validation_before.execution_ids.next,
+          "G4-EXTINT-001 malformed goods preserve coordinator snapshot and generator");
+
+    items::ItemInstance duplicate_probe;
+    duplicate_probe.definition = ingot_definition_id.Value();
+    duplicate_probe.location.kind = items::ItemLocationKind::Container;
+    duplicate_probe.location.container = seller_container_id.Value();
+    auto duplicate_probe_id = item_service.CreateItem(duplicate_probe);
+    Check(static_cast<bool>(duplicate_probe_id), "create duplicate trade probe item");
+    ownership::OwnershipRecord duplicate_probe_owner;
+    duplicate_probe_owner.property = integration::ItemPropertyRef(duplicate_probe_id.Value());
+    duplicate_probe_owner.owner = seller;
+    duplicate_probe_owner.domain = ownership::PropertyDomainId::FromString("personal");
+    Check(static_cast<bool>(ownership_service.AssignOwnership(duplicate_probe_owner)), "assign duplicate trade probe ownership");
+
+    auto duplicate_plan = MakeValidationPlan(duplicate_probe_id.Value(), buyer_container_id.Value());
+    duplicate_plan.goods.push_back(duplicate_plan.goods.front());
+    Check(!validation_trade.Prepare(std::move(duplicate_plan)), "G4-EXTINT-001 duplicate goods rejected");
+    validation_after = validation_trade.CaptureSnapshot();
+    Check(validation_after.executions.size() == validation_before.executions.size() &&
+              validation_after.execution_ids.next == validation_before.execution_ids.next,
+          "G4-EXTINT-001 duplicate goods preserve execution generator");
+
+    items::ItemInstance unavailable_probe;
+    unavailable_probe.definition = ingot_definition_id.Value();
+    unavailable_probe.location.kind = items::ItemLocationKind::Container;
+    unavailable_probe.location.container = seller_container_id.Value();
+    auto unavailable_probe_id = item_service.CreateItem(unavailable_probe);
+    Check(static_cast<bool>(unavailable_probe_id), "create unavailable trade probe item");
+    ownership::OwnershipRecord unavailable_probe_owner;
+    unavailable_probe_owner.property = integration::ItemPropertyRef(unavailable_probe_id.Value());
+    unavailable_probe_owner.owner = seller;
+    unavailable_probe_owner.domain = ownership::PropertyDomainId::FromString("personal");
+    Check(static_cast<bool>(ownership_service.AssignOwnership(unavailable_probe_owner)), "assign unavailable trade probe ownership");
+    auto held_probe = item_service.ReserveItem(unavailable_probe_id.Value(), 1, seller, TypeId::FromString("test.hold"));
+    Check(static_cast<bool>(held_probe), "reserve unavailable trade probe");
+    auto unavailable_plan = MakeValidationPlan(unavailable_probe_id.Value(), buyer_container_id.Value());
+    Check(!validation_trade.Prepare(std::move(unavailable_plan)), "G4-EXTINT-001 unavailable goods rejected");
+    validation_after = validation_trade.CaptureSnapshot();
+    Check(validation_after.executions.size() == validation_before.executions.size() &&
+              validation_after.execution_ids.next == validation_before.execution_ids.next,
+          "G4-EXTINT-001 unavailable goods preserve execution generator");
+    Check(static_cast<bool>(item_service.ReleaseReservation(held_probe.Value())), "release unavailable trade probe hold");
+
+    items::ItemInstance owner_mismatch_probe;
+    owner_mismatch_probe.definition = ingot_definition_id.Value();
+    owner_mismatch_probe.location.kind = items::ItemLocationKind::Container;
+    owner_mismatch_probe.location.container = seller_container_id.Value();
+    auto owner_mismatch_probe_id = item_service.CreateItem(owner_mismatch_probe);
+    Check(static_cast<bool>(owner_mismatch_probe_id), "create owner mismatch trade probe item");
+    ownership::OwnershipRecord owner_mismatch_probe_owner;
+    owner_mismatch_probe_owner.property = integration::ItemPropertyRef(owner_mismatch_probe_id.Value());
+    owner_mismatch_probe_owner.owner = third_party;
+    owner_mismatch_probe_owner.domain = ownership::PropertyDomainId::FromString("personal");
+    Check(static_cast<bool>(ownership_service.AssignOwnership(owner_mismatch_probe_owner)), "assign mismatched trade probe ownership");
+    auto owner_mismatch_plan = MakeValidationPlan(owner_mismatch_probe_id.Value(), buyer_container_id.Value());
+    Check(!validation_trade.Prepare(std::move(owner_mismatch_plan)), "G4-EXTINT-001 ownership mismatch rejected");
+    validation_after = validation_trade.CaptureSnapshot();
+    Check(validation_after.executions.size() == validation_before.executions.size() &&
+              validation_after.execution_ids.next == validation_before.execution_ids.next,
+          "G4-EXTINT-001 ownership mismatch preserves execution generator");
+
+    // G4-EXTINT-002: durable local publication must happen before the first
+    // external reservation. A deterministic module-local seam fails exactly at
+    // that boundary and proves that Items/Economy were untouched.
+    items::ItemInstance publication_probe;
+    publication_probe.definition = ingot_definition_id.Value();
+    publication_probe.location.kind = items::ItemLocationKind::Container;
+    publication_probe.location.container = seller_container_id.Value();
+    auto publication_probe_id = item_service.CreateItem(publication_probe);
+    Check(static_cast<bool>(publication_probe_id), "create trade publication probe item");
+    ownership::OwnershipRecord publication_probe_owner;
+    publication_probe_owner.property = integration::ItemPropertyRef(publication_probe_id.Value());
+    publication_probe_owner.owner = seller;
+    publication_probe_owner.domain = ownership::PropertyDomainId::FromString("personal");
+    Check(static_cast<bool>(ownership_service.AssignOwnership(publication_probe_owner)), "assign trade publication probe ownership");
+
+    integration::TradeCoordinator publication_trade(economy_service, item_service, ownership_service);
+    const auto publication_before = publication_trade.CaptureSnapshot();
+    const auto items_before_publication = item_service.CaptureSnapshot();
+    const auto economy_before_publication = economy_service.CaptureSnapshot();
+    integration::test_support::FailNextTradePublicationForTest();
+    auto publication_plan = MakeValidationPlan(publication_probe_id.Value(), buyer_container_id.Value());
+    Check(!publication_trade.Prepare(std::move(publication_plan)), "G4-EXTINT-002 local publication failure is surfaced");
+    const auto publication_after = publication_trade.CaptureSnapshot();
+    const auto items_after_publication = item_service.CaptureSnapshot();
+    const auto economy_after_publication = economy_service.CaptureSnapshot();
+    Check(publication_after.executions.size() == publication_before.executions.size() &&
+              publication_after.execution_ids.next == publication_before.execution_ids.next,
+          "G4-EXTINT-002 failed local publication preserves coordinator state");
+    Check(items_after_publication.reservations.size() == items_before_publication.reservations.size() &&
+              items_after_publication.reservation_ids.next == items_before_publication.reservation_ids.next &&
+              item_service.ReservedQuantity(publication_probe_id.Value()) == 0,
+          "G4-EXTINT-002 failed local publication performs zero Items reservation work");
+    Check(economy_after_publication.transactions.size() == economy_before_publication.transactions.size() &&
+              economy_after_publication.transaction_ids.next == economy_before_publication.transaction_ids.next,
+          "G4-EXTINT-002 failed local publication performs zero Economy transaction work");
+
+    // Once one external goods reservation has been accepted, the local execution
+    // already exists. A post-acceptance failure therefore remains restorable and
+    // repeated Continue calls cannot reserve the remaining leg again.
+    items::ItemInstance partial_probe_a;
+    partial_probe_a.definition = ingot_definition_id.Value();
+    partial_probe_a.location.kind = items::ItemLocationKind::Container;
+    partial_probe_a.location.container = seller_container_id.Value();
+    auto partial_probe_a_id = item_service.CreateItem(partial_probe_a);
+    Check(static_cast<bool>(partial_probe_a_id), "create first partial trade probe");
+    items::ItemInstance partial_probe_b = partial_probe_a;
+    auto partial_probe_b_id = item_service.CreateItem(partial_probe_b);
+    Check(static_cast<bool>(partial_probe_b_id), "create second partial trade probe");
+    for (auto item : {partial_probe_a_id.Value(), partial_probe_b_id.Value()})
+    {
+        ownership::OwnershipRecord record;
+        record.property = integration::ItemPropertyRef(item);
+        record.owner = seller;
+        record.domain = ownership::PropertyDomainId::FromString("personal");
+        Check(static_cast<bool>(ownership_service.AssignOwnership(record)), "assign partial trade probe ownership");
+    }
+
+    integration::TradeCoordinator partial_trade(economy_service, item_service, ownership_service);
+    integration::CoordinatedTradePlan partial_plan;
+    partial_plan.money.buyer = buyer;
+    partial_plan.money.seller = seller;
+    partial_plan.money.monetary_transfers.push_back({buyer_account_id.Value(), seller_account_id.Value(), 1, coin_id.Value()});
+    partial_plan.goods.push_back({partial_probe_a_id.Value(), buyer_container_id.Value(), seller, buyer});
+    partial_plan.goods.push_back({partial_probe_b_id.Value(), buyer_container_id.Value(), seller, buyer});
+    integration::test_support::FailAfterTradeGoodsReservationsForTest(1);
+    auto partial_execution = partial_trade.Prepare(std::move(partial_plan));
+    Check(static_cast<bool>(partial_execution), "G4-EXTINT-002 accepted external work returns durable reconciliation execution");
+    const auto* partial_record = partial_trade.FindExecution(partial_execution.Value());
+    Check(partial_record && partial_record->state == integration::CoordinatedTradeState::ReconciliationRequired &&
+              partial_record->goods.size() == 2 &&
+              partial_record->goods[0].state == integration::TradeGoodsLegState::Reserved &&
+              partial_record->goods[1].state == integration::TradeGoodsLegState::NotReserved,
+          "G4-EXTINT-002 partial accepted work is durably classified for reconciliation");
+    Check(item_service.ReservedQuantity(partial_probe_a_id.Value()) == 1 &&
+              item_service.ReservedQuantity(partial_probe_b_id.Value()) == 0,
+          "G4-EXTINT-002 only the accepted goods leg is reserved");
+    const auto partial_snapshot = partial_trade.CaptureSnapshot();
+    integration::TradeCoordinator restored_partial_trade(economy_service, item_service, ownership_service);
+    Check(static_cast<bool>(restored_partial_trade.RestoreSnapshot(partial_snapshot)),
+          "G4-EXTINT-002 partial reconciliation execution survives snapshot restore");
+    Check(!restored_partial_trade.Continue(partial_execution.Value()),
+          "G4-EXTINT-002 incomplete reconciliation execution cannot be committed");
+    Check(!restored_partial_trade.Continue(partial_execution.Value()),
+          "G4-EXTINT-002 repeated retry remains idempotently incomplete");
+    Check(item_service.ReservedQuantity(partial_probe_a_id.Value()) == 1 &&
+              item_service.ReservedQuantity(partial_probe_b_id.Value()) == 0,
+          "G4-EXTINT-002 retry does not double-reserve or reserve later goods");
+    Check(static_cast<bool>(restored_partial_trade.Cancel(partial_execution.Value())),
+          "G4-EXTINT-002 reconciliation execution can release accepted reservation");
+    Check(item_service.ReservedQuantity(partial_probe_a_id.Value()) == 0,
+          "G4-EXTINT-002 reconciliation cancellation releases accepted work");
+    integration::test_support::ResetTradeCoordinatorFailureSeamsForTest();
 
     integration::TradeCoordinator trade(economy_service, item_service, ownership_service);
     integration::CoordinatedTradePlan trade_plan;

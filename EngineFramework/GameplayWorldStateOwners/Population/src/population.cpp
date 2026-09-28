@@ -9,6 +9,26 @@
 
 namespace epidemic::gameplay::population
 {
+namespace testing
+{
+namespace
+{
+thread_local bool g_fail_next_local_allocation = false;
+}
+
+void FailNextLocalAllocationForTest() noexcept
+{
+    g_fail_next_local_allocation = true;
+}
+
+[[nodiscard]] bool ConsumeLocalAllocationFailureForTest() noexcept
+{
+    if (!g_fail_next_local_allocation)
+        return false;
+    g_fail_next_local_allocation = false;
+    return true;
+}
+} // namespace testing
 namespace
 {
 foundation::Error Error(std::string_view code, std::string_view message)
@@ -380,9 +400,12 @@ foundation::Result<PopulationMigrationId> PopulationService::StartMigration(Popu
 {
     auto *unit=FindMutableUnit(migration.unit);if(!unit||!migration.to.IsValid()||IsTerminalUnitState(unit?unit->state:PopulationUnitState::Removed)||!IsValidMigrationState(migration.state))return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.invalid_migration","invalid migration"));
     if(active_migration_by_unit_.contains(migration.unit))return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.migration_already_active","population unit already has an active migration"));
-    if(!migration.from.IsValid())migration.from=unit->current_area;if(migration.from!=unit->current_area)return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.migration_source_stale","migration source area does not match unit current area"));if(migration.to==migration.from)return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.invalid_migration","migration destination must differ from source"));
+    if(!migration.from.IsValid()) migration.from=unit->current_area;
+    if(migration.from!=unit->current_area) return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.migration_source_stale","migration source area does not match unit current area"));
+    if(migration.to==migration.from) return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.invalid_migration","migration destination must differ from source"));
     auto staged_ids=migration_ids_;if(!migration.id.IsValid())migration.id=PopulationMigrationId{staged_ids.Next()};if(!migration.id.IsValid())return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.id_exhausted","population migration id generator exhausted"));if(migrations_.contains(migration.id))return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.duplicate_migration","duplicate migration"));AdvanceGeneratorPast(staged_ids,migration.id);
-    if(!CanAdvanceRevision()||!CanRecordChanges())return foundation::Result<PopulationMigrationId>::Failure(Error(!CanAdvanceRevision()?"gameplay.population.revision_exhausted":"gameplay.population.change_sequence_exhausted","population mutation metadata is exhausted"));const Revision next{revision_.value+1};migration.state=MigrationState::Active;if(migration.started_at.ticks==0)migration.started_at=context.time;migration.revision=next;const auto mid=migration.id;bool primary=false,indexed=false;std::deque<PopulationChange> staged;auto seq=next_change_sequence_;
+    if(!CanAdvanceRevision()||!CanRecordChanges()) return foundation::Result<PopulationMigrationId>::Failure(Error(!CanAdvanceRevision()?"gameplay.population.revision_exhausted":"gameplay.population.change_sequence_exhausted","population mutation metadata is exhausted"));
+    const Revision next{revision_.value+1};migration.state=MigrationState::Active;if(migration.started_at.ticks==0)migration.started_at=context.time;migration.revision=next;const auto mid=migration.id;bool primary=false,indexed=false;std::deque<PopulationChange> staged;auto seq=next_change_sequence_;
     try{migrations_.reserve(migrations_.size()+1);active_migration_by_unit_.reserve(active_migration_by_unit_.size()+1);staged=changes_;AppendStagedChange(staged,seq,{0,PopulationChangeKind::MigrationStarted,unit->group,unit->id,unit->entity.value_or(GameplayObjectRef{}),migration.to,context,next},change_journal_capacity_);primary=migrations_.emplace(mid,migration).second;indexed=active_migration_by_unit_.emplace(migration.unit,mid).second;if(!primary||!indexed)throw 1;}catch(...){if(indexed)active_migration_by_unit_.erase(migration.unit);if(primary)migrations_.erase(mid);return foundation::Result<PopulationMigrationId>::Failure(Error("gameplay.population.publication_failed","migration publication failed"));}
     changes_.swap(staged);next_change_sequence_=seq;(void)migration_ids_.Restore(staged_ids.GetSnapshot());revision_=next;return foundation::Result<PopulationMigrationId>::Success(mid);
 }
@@ -757,6 +780,10 @@ PopulationSnapshot PopulationService::CaptureSnapshot() const
 
 foundation::Result<void> PopulationService::RestoreSnapshot(PopulationSnapshot snapshot)
 {
+    if (testing::ConsumeLocalAllocationFailureForTest())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.population.allocation_failed", "module-local injected allocation failure"));
+
     const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
     if (!next_journal_epoch)
     {

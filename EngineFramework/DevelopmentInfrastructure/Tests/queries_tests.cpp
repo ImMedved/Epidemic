@@ -1,5 +1,4 @@
 #include "Epidemic/GameFramework/Queries/gameplay_queries.h"
-#include "allocation_fault_injection.h"
 
 #include <atomic>
 #include <cstdlib>
@@ -15,6 +14,12 @@
 using namespace epidemic;
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::queries;
+
+namespace epidemic::gameplay::queries::detail
+{
+void SetQueryFaultPointForTesting(std::string_view point) noexcept;
+void ClearQueryFaultPointForTesting() noexcept;
+}
 
 namespace
 {
@@ -475,66 +480,55 @@ int main()
     emit_bad_order = false;
     Check(publish_id_service.Execute(NumberQuery{1}), 33);
 
-    bool registration_fault_observed = false;
-    for (long long fail_after = 0; fail_after < 64 && !registration_fault_observed; ++fail_after)
     {
         GameplayQueryService fault_service;
-        const auto before_count = fault_service.ProviderCount();
+        const auto before = fault_service.ProviderCount();
+        epidemic::gameplay::queries::detail::SetQueryFaultPointForTesting("provider_registration.publish");
         bool threw = false;
+        try
         {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                (void)fault_service.RegisterProvider<TextQuery>(
-                    "framework.test.text", {}, [](const TextQuery &, const QueryContext &) {
-                        return foundation::Result<QueryResponse<TextQuery::ResultType>>::Success(
-                            {std::string{"ok"}, MakeMetadata(Revision{1}, QueryCoverage::Complete, 1)});
-                    });
-            }
-            catch (const std::bad_alloc &)
-            {
-                threw = true;
-            }
+            (void)fault_service.RegisterProvider<NumberQuery>(
+                "framework.test.numbers", QueryProviderCapabilities{},
+                [](const NumberQuery&, const QueryContext&) {
+                    return foundation::Result<QueryResponse<NumberQuery::ResultType>>::Success(
+                        {std::vector<int>{1}, MakeMetadata(Revision{1}, QueryCoverage::Complete, 1)});
+                });
         }
-        if (threw)
+        catch (const std::bad_alloc&)
         {
-            registration_fault_observed = true;
-            Check(fault_service.ProviderCount() == before_count && !fault_service.IsFrozen(), 34);
+            threw = true;
         }
+        epidemic::gameplay::queries::detail::ClearQueryFaultPointForTesting();
+        if (!threw || fault_service.ProviderCount() != before)
+            return 36;
     }
-    Check(registration_fault_observed, 35);
 
-    bool freeze_fault_observed = false;
-    for (long long fail_after = 0; fail_after < 64 && !freeze_fault_observed; ++fail_after)
     {
         GameplayQueryService fault_service;
-        Check(fault_service.RegisterProvider<TextQuery>(
-                  "framework.test.text", {}, [](const TextQuery &, const QueryContext &) {
-                      return foundation::Result<QueryResponse<TextQuery::ResultType>>::Success(
-                          {std::string{"ok"}, MakeMetadata(Revision{1}, QueryCoverage::Complete, 1)});
-                  }),
-              36);
-        const auto before_count = fault_service.ProviderCount();
+        const auto registered = fault_service.RegisterProvider<NumberQuery>(
+            "framework.test.numbers", QueryProviderCapabilities{},
+            [](const NumberQuery&, const QueryContext&) {
+                return foundation::Result<QueryResponse<NumberQuery::ResultType>>::Success(
+                    {std::vector<int>{1}, MakeMetadata(Revision{1}, QueryCoverage::Complete, 1)});
+            });
+        if (!registered)
+            return 37;
+        epidemic::gameplay::queries::detail::SetQueryFaultPointForTesting("freeze.publish");
         bool threw = false;
+        try
         {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                (void)fault_service.Freeze();
-            }
-            catch (const std::bad_alloc &)
-            {
-                threw = true;
-            }
+            (void)fault_service.Freeze();
         }
-        if (threw)
+        catch (const std::bad_alloc&)
         {
-            freeze_fault_observed = true;
-            Check(!fault_service.IsFrozen() && fault_service.ProviderCount() == before_count, 37);
-            Check(fault_service.Freeze(), 38);
+            threw = true;
         }
+        epidemic::gameplay::queries::detail::ClearQueryFaultPointForTesting();
+        if (!threw || fault_service.IsFrozen())
+            return 38;
+        if (!fault_service.Freeze() || !fault_service.IsFrozen())
+            return 39;
     }
-    Check(freeze_fault_observed, 39);
 
     return 0;
 }

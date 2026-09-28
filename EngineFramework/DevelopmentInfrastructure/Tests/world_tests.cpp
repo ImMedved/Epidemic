@@ -1,6 +1,5 @@
 #include "Epidemic/GameFramework/World/world.h"
 
-#include "allocation_fault_injection.h"
 
 #include <cstdlib>
 
@@ -13,6 +12,12 @@
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::world;
+
+namespace epidemic::gameplay::world::detail
+{
+void SetWorldFaultPointForTesting(std::string_view point) noexcept;
+void ClearWorldFaultPointForTesting() noexcept;
+}
 
 namespace
 {
@@ -159,6 +164,18 @@ int main()
     CHECK(restored.CurrentRevision() == revision_before_corrupt &&
           restored.FindAlteration(first_id.Value()).has_value());
 
+    const auto before_fault_restore = restored.CaptureSnapshot();
+    epidemic::gameplay::world::detail::SetWorldFaultPointForTesting("restore.publish");
+    CHECK(!restored.RestoreSnapshot(snapshot));
+    epidemic::gameplay::world::detail::ClearWorldFaultPointForTesting();
+    const auto after_fault_restore = restored.CaptureSnapshot();
+    CHECK(after_fault_restore.revision == before_fault_restore.revision &&
+          after_fault_restore.alteration_ids.scope == before_fault_restore.alteration_ids.scope &&
+          after_fault_restore.alteration_ids.next == before_fault_restore.alteration_ids.next &&
+          after_fault_restore.dynamic_features.size() == before_fault_restore.dynamic_features.size() &&
+          after_fault_restore.object_placements.size() == before_fault_restore.object_placements.size() &&
+          after_fault_restore.alterations.size() == before_fault_restore.alterations.size());
+
     // Caller-supplied IDs in the service scope advance the generator and cannot
     // be reproduced later.
     auto id_snapshot = restored.CaptureSnapshot();
@@ -211,10 +228,9 @@ int main()
     fault_feature.bounds = {{0, 0, 0}, {10, 10, 10}};
     const auto direct_revision_before = restored.CurrentRevision();
     const auto direct_cursor_before = restored.LatestChangeCursor();
-    {
-        epidemic::tests::allocation_fault::FailAfter fault(0);
-        CHECK(!restored.AddDynamicFeature(fault_feature));
-    }
+    epidemic::gameplay::world::detail::SetWorldFaultPointForTesting("dynamic_feature.publish");
+    CHECK(!restored.AddDynamicFeature(fault_feature));
+    epidemic::gameplay::world::detail::ClearWorldFaultPointForTesting();
     CHECK(!restored.FindFeature(fault_feature.id));
     CHECK(restored.CurrentRevision() == direct_revision_before &&
           restored.LatestChangeCursor() == direct_cursor_before);
@@ -226,10 +242,9 @@ int main()
     fault_alteration.affected_area = {{7000, 0, 0}, {8000, 1000, 1000}};
     const auto fault_id = fault_tx.Create(fault_alteration);
     CHECK(fault_id);
-    {
-        epidemic::tests::allocation_fault::FailAfter fault(0);
-        CHECK(!fault_tx.Commit());
-    }
+    epidemic::gameplay::world::detail::SetWorldFaultPointForTesting("alteration_transaction.publish");
+    CHECK(!fault_tx.Commit());
+    epidemic::gameplay::world::detail::ClearWorldFaultPointForTesting();
     const auto transaction_after = restored.CaptureSnapshot();
     CHECK(!restored.FindAlteration(fault_id.Value()));
     CHECK(transaction_after.revision == transaction_before.revision &&

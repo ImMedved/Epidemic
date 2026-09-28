@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Knowledge/knowledge.h"
+#include "knowledge_test_seam.h"
 #include "Epidemic/Foundation/error.h"
 
 #include <limits>
@@ -357,12 +358,18 @@ foundation::Result<void> KnowledgeService::RestoreSnapshot(KnowledgeSnapshot s)
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
     std::unordered_map<GameplayObjectRef,KnowledgeProfile,RefHash> new_profiles;std::unordered_map<KnowledgeRecordId,KnowledgeRecord,IdHash> new_knowledge;std::unordered_map<MemoryRecordId,MemoryRecord,IdHash> new_memories;
-    new_profiles.reserve(s.profiles.size());new_knowledge.reserve(s.knowledge.size());new_memories.reserve(s.memories.size());std::uint64_t max_k=0,max_m=0;
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreProfiles))
+        return foundation::Result<void>::Failure(Error("gameplay.knowledge.allocation_failed", "profile restore staging failed"));
+    try { new_profiles.reserve(s.profiles.size());new_knowledge.reserve(s.knowledge.size());new_memories.reserve(s.memories.size()); }
+    catch (...) { return foundation::Result<void>::Failure(Error("gameplay.knowledge.allocation_failed", "restore staging failed")); }
+    std::uint64_t max_k=0,max_m=0;
     for(const auto& p:s.profiles)
     {
         if(!p.subject.IsValid()||!EnumInRange(p.retention,MemoryPersistencePolicy::Timed)||p.revision.value>s.revision.value||(p.default_decay_rule.IsValid()&&!decay_rules_.contains(p.default_decay_rule))||!new_profiles.emplace(p.subject,p).second)
             return foundation::Result<void>::Failure(Error("gameplay.knowledge.restore_invalid","invalid or duplicate profile"));
     }
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreKnowledge))
+        return foundation::Result<void>::Failure(Error("gameplay.knowledge.allocation_failed", "knowledge restore staging failed"));
     for(const auto& k:s.knowledge)
     {
         if(!k.id.IsValid()||!new_profiles.contains(k.owner)||!k.type.IsValid()||!k.topic.id.IsValid()||!k.source_kind.IsValid()||!EnumInRange(k.assertion,KnowledgeAssertionValue::Denied)||!EnumInRange(k.epistemic_state,KnowledgeEpistemicState::Outdated)||!EnumInRange(k.confidence,KnowledgeConfidence::Certain)||!EnumInRange(k.persistence,MemoryPersistencePolicy::Timed)||k.revision.value>s.revision.value||k.last_confirmed_at<k.learned_at||k.last_decay_at<k.learned_at||(k.decay_rule.IsValid()&&!decay_rules_.contains(k.decay_rule))||
@@ -370,6 +377,8 @@ foundation::Result<void> KnowledgeService::RestoreSnapshot(KnowledgeSnapshot s)
             return foundation::Result<void>::Failure(Error("gameplay.knowledge.restore_invalid","invalid or duplicate knowledge record"));
         max_k=std::max(max_k,k.id.value.Low());
     }
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreMemories))
+        return foundation::Result<void>::Failure(Error("gameplay.knowledge.allocation_failed", "memory restore staging failed"));
     for(const auto& m:s.memories)
     {
         if(!m.id.IsValid()||!new_profiles.contains(m.owner)||!m.type.IsValid()||!EnumInRange(m.importance,MemoryImportance::Critical)||!EnumInRange(m.persistence,MemoryPersistencePolicy::Timed)||m.decay_after.ticks<0||m.revision.value>s.revision.value||!new_memories.emplace(m.id,m).second)
@@ -381,6 +390,8 @@ foundation::Result<void> KnowledgeService::RestoreSnapshot(KnowledgeSnapshot s)
     if(s.next_change_sequence==0)
         return foundation::Result<void>::Failure(Error("gameplay.knowledge.restore_invalid","snapshot cannot restore an exhausted transient journal"));
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreIndexes))
+        return foundation::Result<void>::Failure(Error("gameplay.knowledge.allocation_failed", "index restore staging failed"));
     decltype(knowledge_by_owner_) new_owner_index; decltype(knowledge_by_topic_) new_topic_index; decltype(knowledge_by_subject_) new_subject_index; decltype(memories_by_owner_) new_memory_index;
     for(const auto& [id,k]:new_knowledge){InsertSorted(new_owner_index[k.owner],id);InsertSorted(new_topic_index[k.owner][k.topic.id],id);if(k.subject.IsValid())InsertSorted(new_subject_index[k.owner][k.subject],id);}
     for(const auto& [id,m]:new_memories)InsertSorted(new_memory_index[m.owner],id);

@@ -1,5 +1,6 @@
 #include "Epidemic/GameFramework/RuntimeBridge/runtime_bridge.h"
 
+#include <cmath>
 #include <cstdlib>
 #include <limits>
 #include <unordered_set>
@@ -15,6 +16,12 @@
 using namespace epidemic;
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::runtime_bridge;
+
+namespace epidemic::gameplay::runtime_bridge::detail
+{
+foundation::Result<void> ComputeVisibilityRayGeometry(
+    RuntimeVector3 observer, RuntimeVector3 target, RuntimeVector3& direction, float& distance);
+}
 
 namespace
 {
@@ -155,6 +162,34 @@ GameplayObjectRef Object(std::string_view name)
 
 int main()
 {
+    {
+        RuntimeVector3 direction{};
+        float distance = 0.0f;
+        const auto normal = epidemic::gameplay::runtime_bridge::detail::ComputeVisibilityRayGeometry({0.0f, 0.0f, 0.0f}, {3.0f, 4.0f, 0.0f}, direction, distance);
+        CHECK(normal && std::abs(distance - 5.0f) < 0.0001f);
+        CHECK(std::abs(direction.x - 0.6f) < 0.0001f && std::abs(direction.y - 0.8f) < 0.0001f);
+
+        const auto near_zero = epidemic::gameplay::runtime_bridge::detail::ComputeVisibilityRayGeometry(
+            {1.0f, 2.0f, 3.0f}, {1.0f, 2.0f, 3.0f}, direction, distance);
+        CHECK(near_zero && distance == 0.0f);
+
+        const float maximum = std::numeric_limits<float>::max();
+        const auto large_representable = epidemic::gameplay::runtime_bridge::detail::ComputeVisibilityRayGeometry(
+            {0.0f, 0.0f, 0.0f}, {maximum, 0.0f, 0.0f}, direction, distance);
+        CHECK(large_representable && std::isfinite(distance) && distance == maximum);
+        CHECK(std::isfinite(direction.x) && std::isfinite(direction.y) && std::isfinite(direction.z));
+
+        const auto unrepresentable = epidemic::gameplay::runtime_bridge::detail::ComputeVisibilityRayGeometry(
+            {-maximum, 0.0f, 0.0f}, {maximum, 0.0f, 0.0f}, direction, distance);
+        CHECK(!unrepresentable);
+        CHECK(unrepresentable.GetError().HasCode("gameplay.runtime_bridge.visibility_range"));
+
+        const auto diagonal_unrepresentable = epidemic::gameplay::runtime_bridge::detail::ComputeVisibilityRayGeometry(
+            {0.0f, 0.0f, 0.0f}, {maximum, maximum, 0.0f}, direction, distance);
+        CHECK(!diagonal_unrepresentable);
+        CHECK(diagonal_unrepresentable.GetError().HasCode("gameplay.runtime_bridge.visibility_range"));
+    }
+
     Backend backend;
     RuntimeBridgeQueuePolicy main_policy;
     main_policy.max_projection_attempts = 1;

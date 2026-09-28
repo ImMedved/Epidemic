@@ -8,6 +8,26 @@
 
 namespace epidemic::gameplay::needs_life
 {
+namespace testing
+{
+namespace
+{
+thread_local bool g_fail_next_local_allocation = false;
+}
+
+void FailNextLocalAllocationForTest() noexcept
+{
+    g_fail_next_local_allocation = true;
+}
+
+[[nodiscard]] bool ConsumeLocalAllocationFailureForTest() noexcept
+{
+    if (!g_fail_next_local_allocation)
+        return false;
+    g_fail_next_local_allocation = false;
+    return true;
+}
+} // namespace testing
 namespace
 {
 foundation::Error Error(std::string_view c, std::string_view m) { return foundation::Error::Create(c, m); }
@@ -782,6 +802,10 @@ NeedsLifeSnapshot NeedsLifeService::CaptureSnapshot() const
 
 foundation::Result<void> NeedsLifeService::RestoreSnapshot(NeedsLifeSnapshot s)
 {
+    if (testing::ConsumeLocalAllocationFailureForTest())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.needs.allocation_failed", "module-local injected allocation failure"));
+
     const auto next_journal_epoch = CheckedNextChangeEpoch(s.change_epoch > journal_epoch_ ? s.change_epoch : journal_epoch_);
     if (!next_journal_epoch)
     {

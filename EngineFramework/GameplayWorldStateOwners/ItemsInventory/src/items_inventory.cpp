@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/ItemsInventory/items_inventory.h"
+#include "items_inventory_test_seam.h"
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
@@ -1286,6 +1287,8 @@ foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
     if (s.revision.value == 0 && (!s.items.empty() || !s.containers.empty() || !s.reservations.empty()))
         return foundation::Result<void>::Failure(Error("gameplay.items.restore_invalid", "non-empty snapshot requires a non-zero revision"));
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreContainers))
+        return foundation::Result<void>::Failure(Error("gameplay.items.publication_failed", "container restore staging failed"));
     std::unordered_map<ContainerId, ContainerRecord, IdHash> containers;
     containers.reserve(s.containers.size());
     std::uint64_t max_container_low = 0;
@@ -1340,6 +1343,8 @@ foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
         }
     };
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreItems))
+        return foundation::Result<void>::Failure(Error("gameplay.items.publication_failed", "item restore staging failed"));
     std::unordered_map<ItemInstanceId, ItemInstance, IdHash> items;
     items.reserve(s.items.size());
     std::unordered_set<GameplayObjectRef> world_objects;
@@ -1456,6 +1461,8 @@ foundation::Result<void> ItemsInventoryService::RestoreSnapshot(ItemsSnapshot s)
         }
     }
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreReservations))
+        return foundation::Result<void>::Failure(Error("gameplay.items.publication_failed", "reservation restore staging failed"));
     std::unordered_map<ItemReservationId, ItemReservation, IdHash> reservations;
     reservations.reserve(s.reservations.size());
     std::unordered_map<ItemInstanceId, Fixed, IdHash> reserved_sums;

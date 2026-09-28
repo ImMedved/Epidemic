@@ -1,0 +1,56 @@
+{
+  "defects": {
+    "g4-doc-001-framework-doc-root": {
+      "defect": "G4-DOC-001: Framework README referenced a non-existent documentation root.",
+      "fix": "EngineFramework/README.md + docs/EngineFramework/README.md + B01 module docs",
+      "logical_id": "G4-DOC-001",
+      "module": "EngineFramework",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:84::void TestFrameworkDocumentationRoot()",
+      "regressions": {
+        "EpidemicGameFrameworkFoundationTests": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:84::void TestFrameworkDocumentationRoot()"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkFoundationTests",
+      "targets": [
+        "EpidemicGameFrameworkFoundationTests"
+      ]
+    },
+    "g4-infra-001-b01": {
+      "defect": "G4-INFRA-001: B01 Foundation/Queries/Facts/Time tests relied on process-global allocation fault injection.",
+      "fix": "B01-owned tests now use narrow deterministic module-local publication fail points; the shared helper and shared sweep headers remain untouched for other blocks.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B01 distributed",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:272::epidemic::gameplay::detail::SetFoundationFaultPointForTesting(\"type_registry.publish\");",
+      "regressions": {
+        "EpidemicGameFrameworkFoundationTests": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:272::epidemic::gameplay::detail::SetFoundationFaultPointForTesting(\"type_registry.publish\");",
+        "EpidemicGameplayFactsTests": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:460::epidemic::gameplay::facts::detail::SetFactsFaultPointForTesting(\"transaction_commit.publish\");",
+        "EpidemicGameplayQueriesTests": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:486::epidemic::gameplay::queries::detail::SetQueryFaultPointForTesting(\"provider_registration.publish\");",
+        "EpidemicGameplayTimeTests": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:281::epidemic::gameplay::time::detail::SetTimeFaultPointForTesting(\"clock_registration.publish\");"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkFoundationTests",
+      "targets": [
+        "EpidemicGameFrameworkFoundationTests",
+        "EpidemicGameplayQueriesTests",
+        "EpidemicGameplayFactsTests",
+        "EpidemicGameplayTimeTests"
+      ]
+    },
+    "g4-rb-001-visibility-wide-math": {
+      "defect": "G4-RB-001: visibility subtraction/squared norm in float can overflow for finite Runtime positions.",
+      "fix": "RuntimeBridge/src/runtime_bridge.cpp::detail::ComputeVisibilityRayGeometry",
+      "logical_id": "G4-RB-001",
+      "module": "EngineFramework/RuntimeBoundary/RuntimeBridge",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:185::CHECK(unrepresentable.GetError().HasCode(\"gameplay.runtime_bridge.visibility_range\"));",
+      "regressions": {
+        "EpidemicGameFrameworkRuntimeBridgeTests": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:185::CHECK(unrepresentable.GetError().HasCode(\"gameplay.runtime_bridge.visibility_range\"));"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkRuntimeBridgeTests",
+      "targets": [
+        "EpidemicGameFrameworkRuntimeBridgeTests"
+      ]
+    }
+  },
+  "schema_version": 1
+}

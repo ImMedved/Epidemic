@@ -12,6 +12,12 @@ using namespace epidemic::gameplay::queries;
 using namespace epidemic::gameplay::savegame;
 using namespace epidemic::gameplay::time;
 
+namespace epidemic::gameplay::integration::test_support
+{
+void FailNextTriggerCompletionPublicationForTest() noexcept;
+void ResetTriggerDispatcherFailureSeamsForTest() noexcept;
+}
+
 namespace
 {
 class TestSnapshotCoordinator final : public IQuerySnapshotCoordinator
@@ -651,6 +657,49 @@ int main()
     {
         return 61;
     }
+
+    // B08-INT-001: completion bookkeeping capacity is prepared before invoking
+    // an external handler. A local publication failure therefore preserves the
+    // pending delivery and performs zero callback side effects.
+    GameplayTimeService allocation_time;
+    const auto allocation_clock = allocation_time.RegisterClock("framework.clock.trigger_allocation", CalendarDefinition{});
+    const auto allocation_action = allocation_time.RegisterAction("framework.test.trigger_allocation", test_domain);
+    if (!allocation_clock || !allocation_action)
+    {
+        return 62;
+    }
+    int allocation_handler_calls = 0;
+    ScheduledTriggerDispatcher allocation_dispatcher(allocation_time, ScheduledTriggerDispatcherPolicy{4, 4});
+    if (!allocation_dispatcher.RegisterActionHandler(
+            allocation_action.Value(), ScheduledTriggerHandlerId::FromString("framework.test.trigger_allocation_handler"),
+            [&allocation_handler_calls](const ScheduledTrigger&, const GameplayContext&) {
+                ++allocation_handler_calls;
+                return foundation::Result<ScheduledTriggerDisposition>::Success(ScheduledTriggerDisposition::Ack);
+            }) ||
+        !allocation_dispatcher.Freeze())
+    {
+        return 63;
+    }
+    allocation_time.Freeze();
+    if (!allocation_time.AdvanceTo(allocation_clock.Value(), GameplayTimePoint{70}) ||
+        !allocation_time.Schedule(allocation_clock.Value(), GameplayTimePoint{70}, object, allocation_action.Value()) ||
+        !allocation_dispatcher.CollectDue(allocation_clock.Value(), GameplayContext{}))
+    {
+        return 64;
+    }
+    integration::test_support::FailNextTriggerCompletionPublicationForTest();
+    const auto allocation_failed_dispatch = allocation_dispatcher.DispatchPending();
+    if (allocation_failed_dispatch.pending != 1 || allocation_failed_dispatch.retry_requests != 1 ||
+        allocation_handler_calls != 0 || allocation_dispatcher.PendingCount() != 1)
+    {
+        return 65;
+    }
+    const auto allocation_retry = allocation_dispatcher.DispatchPending();
+    if (allocation_retry.pending != 0 || allocation_handler_calls != 1 || allocation_dispatcher.PendingCount() != 0)
+    {
+        return 66;
+    }
+    integration::test_support::ResetTriggerDispatcherFailureSeamsForTest();
 
     return 0;
 }

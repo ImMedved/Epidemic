@@ -5,13 +5,47 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <new>
+#include <optional>
 #include <type_traits>
 #include <unordered_set>
 
 namespace epidemic::gameplay::narrative_integration
 {
+namespace detail
+{
 namespace
 {
+thread_local std::string_view g_narrative_integration_fault_point;
+}
+void SetNarrativeIntegrationFaultPointForTesting(std::string_view point) noexcept
+{
+    g_narrative_integration_fault_point = point;
+}
+void ClearNarrativeIntegrationFaultPointForTesting() noexcept
+{
+    g_narrative_integration_fault_point = {};
+}
+}
+
+namespace
+{
+void NarrativeIntegrationPublicationFaultPointForInternalTest(std::string_view point)
+{
+    if (!detail::g_narrative_integration_fault_point.empty() &&
+        detail::g_narrative_integration_fault_point == point)
+    {
+        detail::g_narrative_integration_fault_point = {};
+        throw std::bad_alloc{};
+    }
+}
+
+[[nodiscard]] std::optional<Revision> NextOutboxRevision(Revision current) noexcept
+{
+    if (current.value == std::numeric_limits<std::uint64_t>::max())
+        return std::nullopt;
+    return Revision{current.value + 1};
+}
 constexpr std::uint32_t kOutboxWireMagic = 0x314F494Eu; // NIO1, little-endian on the wire.
 constexpr std::uint32_t kOutboxWireVersion = 1;
 constexpr std::size_t kMaxPersistentPayloadBytes = 1024u * 1024u;
@@ -576,25 +610,37 @@ narrative::NarrativeConsequenceResult NarrativeExternalConsequenceOutbox::Execut
     if (deliveries_.size() >= max_records_)
         return {narrative::ConsequenceExecutionState::FailedRetryable, revision_};
 
-    Bump();
-    NarrativeExternalConsequenceDelivery delivery;
-    delivery.execution = execution.id;
-    delivery.consequence = definition.id;
-    delivery.type = definition.type;
-    delivery.thread = execution.thread;
-    delivery.objective = execution.objective;
-    delivery.owner = context.default_owner;
-    delivery.correlation = execution.correlation;
-    delivery.state = ExternalConsequenceDeliveryState::Pending;
-    delivery.payload = definition.payload;
-    delivery.external_operation = StableExternalOperation(execution.id);
-    delivery.created_at = context.now;
-    delivery.updated_at = context.now;
-    delivery.revision = revision_;
-    deliveries_.push_back(std::move(delivery));
+    const auto next_revision = NextOutboxRevision(revision_);
+    if (!next_revision)
+        return {narrative::ConsequenceExecutionState::FailedPermanent, revision_};
+
+    try
+    {
+        NarrativeExternalConsequenceDelivery delivery;
+        delivery.execution = execution.id;
+        delivery.consequence = definition.id;
+        delivery.type = definition.type;
+        delivery.thread = execution.thread;
+        delivery.objective = execution.objective;
+        delivery.owner = context.default_owner;
+        delivery.correlation = execution.correlation;
+        delivery.state = ExternalConsequenceDeliveryState::Pending;
+        delivery.payload = definition.payload;
+        delivery.external_operation = StableExternalOperation(execution.id);
+        delivery.created_at = context.now;
+        delivery.updated_at = context.now;
+        delivery.revision = *next_revision;
+        NarrativeIntegrationPublicationFaultPointForInternalTest("outbox.execute.publish");
+        deliveries_.push_back(std::move(delivery));
+    }
+    catch (const std::bad_alloc &)
+    {
+        return {narrative::ConsequenceExecutionState::FailedRetryable, revision_};
+    }
+
+    revision_ = *next_revision;
     return {narrative::ConsequenceExecutionState::Deferred, revision_};
 }
-
 std::vector<NarrativeExternalConsequenceDelivery> NarrativeExternalConsequenceOutbox::PendingDeliveries() const
 {
     std::vector<NarrativeExternalConsequenceDelivery> result;
@@ -627,11 +673,15 @@ foundation::Result<void> NarrativeExternalConsequenceOutbox::MarkRetryable(
     if (delivery->state == ExternalConsequenceDeliveryState::Retryable &&
         (now.ticks == 0 || delivery->updated_at == now))
         return foundation::Result<void>::Success();
-    Bump();
+    const auto next_revision = NextOutboxRevision(revision_);
+    if (!next_revision)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.revision_exhausted", "narrative external consequence revision is exhausted"));
     delivery->state = ExternalConsequenceDeliveryState::Retryable;
     if (now.ticks != 0)
         delivery->updated_at = now;
-    delivery->revision = revision_;
+    delivery->revision = *next_revision;
+    revision_ = *next_revision;
     return foundation::Result<void>::Success();
 }
 
@@ -656,11 +706,15 @@ foundation::Result<void> NarrativeExternalConsequenceOutbox::AcknowledgeApplied(
     if (delivery->state == ExternalConsequenceDeliveryState::FailedTerminal)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative_integration.delivery_terminal", "external consequence delivery already failed"));
-    Bump();
+    const auto next_revision = NextOutboxRevision(revision_);
+    if (!next_revision)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.revision_exhausted", "narrative external consequence revision is exhausted"));
     delivery->state = ExternalConsequenceDeliveryState::Applied;
     if (now.ticks != 0)
         delivery->updated_at = now;
-    delivery->revision = revision_;
+    delivery->revision = *next_revision;
+    revision_ = *next_revision;
     return foundation::Result<void>::Success();
 }
 
@@ -677,11 +731,15 @@ foundation::Result<void> NarrativeExternalConsequenceOutbox::FailTerminal(
     if (delivery->state == ExternalConsequenceDeliveryState::Applied)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative_integration.delivery_terminal", "applied delivery cannot be failed"));
-    Bump();
+    const auto next_revision = NextOutboxRevision(revision_);
+    if (!next_revision)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.revision_exhausted", "narrative external consequence revision is exhausted"));
     delivery->state = ExternalConsequenceDeliveryState::FailedTerminal;
     if (now.ticks != 0)
         delivery->updated_at = now;
-    delivery->revision = revision_;
+    delivery->revision = *next_revision;
+    revision_ = *next_revision;
     return foundation::Result<void>::Success();
 }
 
@@ -696,8 +754,12 @@ foundation::Result<void> NarrativeExternalConsequenceOutbox::PruneConfirmedTermi
         it->state != ExternalConsequenceDeliveryState::FailedTerminal)
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative_integration.delivery_not_terminal", "only confirmed terminal delivery may be pruned"));
-    Bump();
+    const auto next_revision = NextOutboxRevision(revision_);
+    if (!next_revision)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.revision_exhausted", "narrative external consequence revision is exhausted"));
     deliveries_.erase(it);
+    revision_ = *next_revision;
     return foundation::Result<void>::Success();
 }
 

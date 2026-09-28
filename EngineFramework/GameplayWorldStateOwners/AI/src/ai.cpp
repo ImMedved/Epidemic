@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/AI/ai.h"
+#include "ai_test_seam.h"
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
@@ -165,6 +166,8 @@ foundation::Result<void> AIService::RegisterProfile(AIProfile profile)
     std::sort(profile.default_goals.begin(), profile.default_goals.end());
     const Revision next{revision_.value + 1};
     profile.revision = next;
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RegisterProfilePublication))
+        return foundation::Result<void>::Failure(Error("gameplay.ai.allocation_failed", "failed to publish ai profile"));
     try
     {
         auto staged = profiles_;
@@ -321,12 +324,19 @@ foundation::Result<void> AIService::RegisterAgent(GameplayObjectRef subject, AIP
     state.next_think_at = next_think;
     state.revision = next;
     bool agent_inserted = false;
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RegisterAgentPrimary))
+        return foundation::Result<void>::Failure(Error("gameplay.ai.allocation_failed", "failed to publish ai agent"));
     try
     {
         const auto [agent_it, inserted] = agents_.emplace(subject, std::move(state));
         if (!inserted)
             return foundation::Result<void>::Failure(Error("gameplay.ai.invalid_agent", "duplicate ai agent"));
         agent_inserted = true;
+        if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RegisterAgentSchedule))
+        {
+            agents_.erase(agent_it);
+            return foundation::Result<void>::Failure(Error("gameplay.ai.allocation_failed", "failed to publish ai schedule"));
+        }
         const auto [due_it, due_inserted] = due_agents_.insert(DueKey{agent_it->second.next_think_at, subject});
         (void)due_it;
         if (!due_inserted)
@@ -391,6 +401,8 @@ foundation::Result<void> AIService::SetNextThink(AIAgentState &agent, GameplayTi
         return foundation::Result<void>::Success();
     if (agent.activity == AIAgentActivity::Idle)
     {
+        if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::ScheduleThinkIndex))
+            return foundation::Result<void>::Failure(Error("gameplay.ai.allocation_failed", "failed to update ai due index"));
         try
         {
             const auto [it, inserted] = due_agents_.insert(DueKey{when, agent.subject});
@@ -824,6 +836,8 @@ foundation::Result<AIThinkResult> AIService::Think(GameplayObjectRef subject, co
     AIIntentId intent_id{};
     DueKey next_due{};
     bool due_key_changed = false;
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::ThinkDecisionStaging))
+        return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.allocation_failed", "failed to stage ai decision"));
     try
     {
         staged_agent = *agent;
@@ -856,6 +870,8 @@ foundation::Result<AIThinkResult> AIService::Think(GameplayObjectRef subject, co
             result.goal = goal;
             result.intent = intent;
 
+            if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::ThinkIntentIndex))
+                return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.allocation_failed", "failed to publish ai intent index"));
             const auto [_, inserted] = intent_to_agent_.emplace(intent.id, subject);
             if (!inserted)
                 return foundation::Result<AIThinkResult>::Failure(
@@ -871,6 +887,8 @@ foundation::Result<AIThinkResult> AIService::Think(GameplayObjectRef subject, co
             due_key_changed = next_due.when != previous_due.when;
             if (due_key_changed)
             {
+                if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::ThinkDueIndex))
+                    return foundation::Result<AIThinkResult>::Failure(Error("gameplay.ai.allocation_failed", "failed to publish ai due index"));
                 const auto [_, inserted] = due_agents_.insert(next_due);
                 if (!inserted)
                     return foundation::Result<AIThinkResult>::Failure(

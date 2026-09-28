@@ -1,10 +1,12 @@
 #include "Epidemic/GameFramework/Effects/effects.h"
+#include "effects_test_seam.h"
 
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
 #include <exception>
 #include <limits>
+#include <new>
 #include <optional>
 
 namespace epidemic::gameplay::effects
@@ -131,7 +133,11 @@ foundation::Result<EffectTypeId> EffectService::RegisterHandler(
     {
         return foundation::Result<EffectTypeId>::Failure(Error("gameplay.effect_payload_schema_invalid", "typed effect payload requires non-zero max bytes"));
     }
-    handlers_.emplace(id, HandlerEntry{std::string(canonical_name), std::move(handler), payload_type, max_payload_bytes, std::move(validator)});
+    HandlerEntry entry{std::string(canonical_name), std::move(handler), payload_type, max_payload_bytes, std::move(validator)};
+    if (test_seam::Consume(test_seam::FaultPoint::RegisterHandlerBeforePublish))
+        return foundation::Result<EffectTypeId>::Failure(
+            Error("gameplay.effect_storage_failed", "failed to stage effect handler registration"));
+    handlers_.emplace(id, std::move(entry));
     return foundation::Result<EffectTypeId>::Success(id);
 }
 
@@ -172,6 +178,9 @@ foundation::Result<EffectDefinitionId> EffectService::RegisterDefinition(EffectD
         }
     }
     const auto id = definition.id;
+    if (test_seam::Consume(test_seam::FaultPoint::RegisterDefinitionBeforePublish))
+        return foundation::Result<EffectDefinitionId>::Failure(
+            Error("gameplay.effect_storage_failed", "failed to stage effect definition registration"));
     definitions_.emplace(id, std::move(definition));
     return foundation::Result<EffectDefinitionId>::Success(id);
 }
@@ -346,6 +355,9 @@ foundation::Result<std::vector<EffectService::PreparedOperation>> EffectService:
     });
 
     std::vector<PreparedOperation> prepared;
+    if (test_seam::Consume(test_seam::FaultPoint::PrepareWaveStorage))
+        return foundation::Result<std::vector<PreparedOperation>>::Failure(
+            Error("gameplay.effect_prepare_storage_failed", "unable to stage prepared effect operations"));
     try
     {
         prepared.resize(operations.size());
@@ -460,7 +472,7 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
     bool use_prepared_first_wave = false;
     try
     {
-        result.operations.reserve(budget.max_effects);
+        result.operations.reserve(std::max<std::size_t>(budget.max_effects, wave.size()));
         wave.reserve(budget.max_effects);
         next_wave.reserve(budget.max_effects);
     }
@@ -487,6 +499,9 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
 
     // From this point the execution is accepted and all framework-owned result scratch
     // storage needed by commit has been prepared. Publish the ID only now.
+    if (test_seam::Consume(test_seam::FaultPoint::ExecuteBeforeAccept))
+        return foundation::Result<EffectExecutionResult>::Failure(
+            Error("gameplay.effect_execution_storage_failed", "unable to publish staged effect execution"));
     execution_ids_ = staged_execution_ids;
     ++executions_;
     targets_ += request.targets.size();
@@ -528,12 +543,24 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
             auto prepared_result = PrepareWave(std::move(wave), definition->policy);
             if (!prepared_result)
             {
-                return foundation::Result<EffectExecutionResult>::Failure(prepared_result.GetError());
+                // The execution was already accepted and an earlier wave may have committed handler side effects.
+                // A later framework-local staging failure therefore terminates this accepted execution as Failed
+                // instead of returning a top-level Failure that would invite the caller to retry committed work.
+                any_failed = true;
+                RecordChange(EffectChange{0, EffectChangeKind::Failed, execution, {}, {}, {},
+                                          EffectOperationDisposition::Failed, request.context});
+                break;
             }
             prepared = std::move(prepared_result).Value();
         }
         next_wave.clear();
         std::uint64_t derived_sequence = 0;
+        const auto committed_before_wave = total_operations;
+        const auto prepared_count = static_cast<std::uint64_t>(prepared.size());
+        const auto next_wave_budget =
+            budget.max_effects >= committed_before_wave + prepared_count
+                ? static_cast<std::uint64_t>(budget.max_effects) - committed_before_wave - prepared_count
+                : 0;
 
         for (auto& item : prepared)
         {
@@ -560,9 +587,15 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
                         disposition = commit_value.disposition == EffectCommitDisposition::Applied
                                           ? EffectOperationDisposition::Applied
                                           : EffectOperationDisposition::NoOp;
-                        if (commit_value.derived_effects.size() > budget.max_derived_per_parent)
+                        const auto derived_count = static_cast<std::uint64_t>(commit_value.derived_effects.size());
+                        const auto queued_count = static_cast<std::uint64_t>(next_wave.size());
+                        const bool exceeds_parent_budget = derived_count > budget.max_derived_per_parent;
+                        const bool exceeds_execution_budget =
+                            queued_count > next_wave_budget || derived_count > next_wave_budget - queued_count;
+                        if (exceeds_parent_budget || exceeds_execution_budget)
                         {
-                            ++budget_exhaustions_;
+                            if (budget_exhaustions_ != std::numeric_limits<std::uint64_t>::max())
+                                ++budget_exhaustions_;
                             any_failed = true;
                             RecordChange(EffectChange{0, EffectChangeKind::BudgetExceeded, execution, item.operation.type,
                                                       item.operation.target, {}, EffectOperationDisposition::BudgetExceeded,
@@ -581,7 +614,11 @@ foundation::Result<EffectExecutionResult> EffectService::Execute(
                                 derived.context = MergeContext(item.operation.context, derived.context);
                                 next_wave.push_back(std::move(derived));
                             }
-                            derived_effects_ += commit_value.derived_effects.size();
+                            const auto derived_to_add = static_cast<std::uint64_t>(commit_value.derived_effects.size());
+                            if (derived_to_add > std::numeric_limits<std::uint64_t>::max() - derived_effects_)
+                                derived_effects_ = std::numeric_limits<std::uint64_t>::max();
+                            else
+                                derived_effects_ += derived_to_add;
                         }
                     }
                 }
@@ -677,6 +714,9 @@ foundation::Result<DeferredEffectId> EffectService::Defer(
             request.targets.push_back(operation.target);
         }
     }
+    if (test_seam::Consume(test_seam::FaultPoint::DeferBeforePublish))
+        return foundation::Result<DeferredEffectId>::Failure(
+            Error("gameplay.effect_storage_failed", "failed to stage deferred effect"));
     const auto inserted = deferred_.emplace(id, DeferredEffectRecord{id, std::move(request), clock, due, std::nullopt, persistence});
     if (!inserted.second)
     {
@@ -702,6 +742,9 @@ foundation::Result<void> EffectService::BindDeferredSchedule(DeferredEffectId id
     const auto existing = deferred_by_schedule_.find(schedule);
     if (existing != deferred_by_schedule_.end() && existing->second != id)
         return foundation::Result<void>::Failure(Error("gameplay.deferred_effect_schedule_conflict", "schedule is already bound to another deferred effect"));
+    if (test_seam::Consume(test_seam::FaultPoint::BindDeferredScheduleBeforePublish))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.effect_storage_failed", "failed to stage deferred schedule binding"));
     const auto inserted = deferred_by_schedule_.emplace(schedule, id);
     if (!inserted.second && inserted.first->second != id)
         return foundation::Result<void>::Failure(Error("gameplay.deferred_effect_schedule_conflict", "schedule is already bound to another deferred effect"));
@@ -841,6 +884,9 @@ foundation::Result<EffectRequest> EffectService::TakeDeferredBySchedule(Schedule
     {
         return foundation::Result<EffectRequest>::Failure(request.GetError());
     }
+    if (test_seam::Consume(test_seam::FaultPoint::TakeDeferredBeforeAcknowledge))
+        return foundation::Result<EffectRequest>::Failure(
+            Error("gameplay.effect_storage_failed", "failed to stage deferred effect take"));
     const auto acknowledged = AcknowledgeDeferredBySchedule(schedule, request.Value().context);
     if (!acknowledged)
     {
@@ -866,6 +912,8 @@ void EffectService::RecordChange(EffectChange change) noexcept
     change.sequence = sequence;
     try
     {
+        if (test_seam::Consume(test_seam::FaultPoint::JournalAppend))
+            throw std::bad_alloc{};
         changes_.push_back(std::move(change));
     }
     catch (...)
@@ -976,6 +1024,10 @@ foundation::Result<void> EffectService::RestoreSnapshot(EffectsSnapshot snapshot
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (!frozen_)
+        return foundation::Result<void>::Failure(
+            Error("gameplay.registry_not_frozen", "effect registry must be frozen before restore"));
+
     const auto expected_execution_scope = execution_ids_.Scope().Raw();
     const auto expected_deferred_scope = deferred_ids_.Scope().Raw();
     if (!MonotonicIdGenerator<GameplayObjectId>::IsValidSnapshot(snapshot.execution_ids) ||
@@ -999,6 +1051,9 @@ foundation::Result<void> EffectService::RestoreSnapshot(EffectsSnapshot snapshot
         }
         max_deferred_low = std::max(max_deferred_low, record.id.value.Low());
         record.schedule.reset();
+        if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.effect_storage_failed", "failed while constructing effects snapshot candidates"));
         rebuilt.emplace(record.id, std::move(record));
     }
 
@@ -1007,6 +1062,10 @@ foundation::Result<void> EffectService::RestoreSnapshot(EffectsSnapshot snapshot
         return foundation::Result<void>::Failure(
             Error("gameplay.effects_snapshot_generator_behind", "deferred effect id generator is not ahead of restored ids"));
     }
+
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.effect_storage_failed", "failed to stage effects snapshot"));
 
     deferred_ = std::move(rebuilt);
     deferred_by_schedule_.clear();

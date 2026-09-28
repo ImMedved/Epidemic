@@ -6,7 +6,6 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -457,7 +456,11 @@ class SocietyService
     std::unordered_map<ReputationKey, ReputationRecord, ReputationKeyHash> reputations_;
     std::unordered_map<GameplayObjectRef, std::vector<ReputationKey>, RefHash> reputations_by_subject_;
 
-    std::deque<SocietyChange> changes_;
+    std::vector<SocietyChange> changes_ = [] {
+        std::vector<SocietyChange> journal;
+        journal.reserve(4096);
+        return journal;
+    }();
     std::uint64_t next_change_sequence_ = 1;
     std::uint64_t journal_epoch_ = 1;
     mutable SocietyDiagnostics diagnostics_{};

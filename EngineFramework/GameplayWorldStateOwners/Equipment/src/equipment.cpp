@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Equipment/equipment.h"
+#include "equipment_test_seam.h"
 #include "Epidemic/Foundation/error.h"
 
 #include <algorithm>
@@ -764,6 +765,8 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreProfiles))
+        return foundation::Result<void>::Failure(Error("gameplay.equipment.publication_failed", "profile restore staging failed"));
     std::unordered_map<EquipmentProfileId, EquipmentProfile, IdHash> profiles;
     std::unordered_map<GameplayObjectRef, EquipmentProfileId> by_subject;
     std::uint64_t max_profile_low = 0;
@@ -790,6 +793,8 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
         profiles.emplace(v.id, std::move(v));
     }
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreBindings))
+        return foundation::Result<void>::Failure(Error("gameplay.equipment.publication_failed", "binding restore staging failed"));
     std::unordered_map<EquipmentBindingId, EquipmentBinding, IdHash> bindings;
     std::unordered_set<EquipmentItemId, IdHash> bound_items;
     for (auto &v : s.bindings)
@@ -831,6 +836,8 @@ foundation::Result<void> EquipmentService::RestoreSnapshot(EquipmentSnapshot s)
                     return foundation::Result<void>::Failure(Error("gameplay.equipment.restore_invalid", "snapshot contains conflicting bindings"));
             }
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreLoadouts))
+        return foundation::Result<void>::Failure(Error("gameplay.equipment.publication_failed", "loadout restore staging failed"));
     std::unordered_map<EquipmentLoadoutId, EquipmentLoadout, IdHash> loadouts;
     for (auto &v : s.loadouts)
     {

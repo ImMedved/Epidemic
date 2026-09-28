@@ -10,6 +10,30 @@
 
 namespace epidemic::gameplay::integration
 {
+namespace test_support
+{
+namespace
+{
+bool g_fail_next_trigger_completion_publication = false;
+}
+
+void FailNextTriggerCompletionPublicationForTest() noexcept
+{
+    g_fail_next_trigger_completion_publication = true;
+}
+
+void ResetTriggerDispatcherFailureSeamsForTest() noexcept
+{
+    g_fail_next_trigger_completion_publication = false;
+}
+
+[[nodiscard]] bool ConsumeTriggerCompletionPublicationFailure() noexcept
+{
+    if (!g_fail_next_trigger_completion_publication) return false;
+    g_fail_next_trigger_completion_publication = false;
+    return true;
+}
+}
 namespace
 {
 [[nodiscard]] bool ContainsHandler(
@@ -728,13 +752,41 @@ ScheduledTriggerPumpReport ScheduledTriggerDispatcher::DispatchPending(std::uint
     }
 
     std::vector<ScheduledTriggerDeliveryRecord> remaining;
-    remaining.reserve(pending_.size());
+    try
+    {
+        remaining.reserve(pending_.size());
+    }
+    catch (const std::bad_alloc&)
+    {
+        // No handler has run yet, so retaining the current pending queue is a
+        // safe retryable outcome.
+        ++report.retry_requests;
+        report.pending = static_cast<std::uint64_t>(pending_.size());
+        return report;
+    }
     std::uint64_t attempts = 0;
 
     for (std::size_t index = 0; index < pending_.size(); ++index)
     {
         auto delivery = std::move(pending_[index]);
-        const auto required = RequiredHandlersFor(delivery);
+        std::vector<ScheduledTriggerHandlerId> required;
+        try
+        {
+            required = RequiredHandlersFor(delivery);
+            if (test_support::ConsumeTriggerCompletionPublicationFailure())
+                throw std::bad_alloc{};
+            // Every accepted handler result is durably represented in completed_handlers.
+            // Reserve the full completion set before the first callback so an allocation
+            // failure can never happen after external handler work was accepted.
+            delivery.completed_handlers.reserve(required.size());
+        }
+        catch (const std::bad_alloc&)
+        {
+            ++report.retry_requests;
+            remaining.push_back(std::move(delivery));
+            continue;
+        }
+
         const bool action_known = delivery.action_declared;
         if (!action_known && required.empty())
         {

@@ -1,4 +1,3 @@
-#include "allocation_fault_injection.h"
 #include "Epidemic/GameFramework/Society/society.h"
 
 #include <cstdint>
@@ -6,6 +5,11 @@
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::society;
+
+namespace epidemic::gameplay::society::testing
+{
+void FailNextLocalAllocationForTest() noexcept;
+}
 
 static GameplayObjectRef Ref(const char *name)
 {
@@ -25,6 +29,58 @@ static RelationshipTypeDefinition TrustDefinition(RelationshipTypeId id)
     definition.direct_attitude_weight_micro = 1'000'000;
     definition.group_attitude_weight_micro = 500'000;
     return definition;
+}
+
+
+static bool SameMembership(const MembershipRecord &a, const MembershipRecord &b)
+{
+    return a.id == b.id && a.member == b.member && a.group == b.group && a.role == b.role && a.rank == b.rank &&
+           a.state == b.state && a.joined_at == b.joined_at && a.revision == b.revision;
+}
+
+static bool SameRelationship(const RelationshipRecord &a, const RelationshipRecord &b)
+{
+    return a.id == b.id && a.subject == b.subject && a.target == b.target && a.type == b.type &&
+           a.value_micro == b.value_micro && a.state == b.state && a.updated_at == b.updated_at &&
+           a.revision == b.revision;
+}
+
+static bool SameReputation(const ReputationRecord &a, const ReputationRecord &b)
+{
+    return a.subject == b.subject && a.scope == b.scope && a.track == b.track && a.value_micro == b.value_micro &&
+           a.revision == b.revision;
+}
+
+static bool SameChange(const SocietyChange &a, const SocietyChange &b)
+{
+    return a.sequence == b.sequence && a.kind == b.kind && a.subject == b.subject && a.target == b.target &&
+           a.relationship_type == b.relationship_type && a.reputation_track == b.reputation_track &&
+           a.membership == b.membership && a.context == b.context && a.revision == b.revision;
+}
+
+template <typename T, typename Equal>
+static bool SameVector(const std::vector<T> &a, const std::vector<T> &b, Equal equal)
+{
+    if (a.size() != b.size())
+        return false;
+    for (std::size_t i = 0; i < a.size(); ++i)
+    {
+        if (!equal(a[i], b[i]))
+            return false;
+    }
+    return true;
+}
+
+static bool SameMutableSnapshot(const SocietySnapshot &a, const SocietySnapshot &b)
+{
+    return a.definitions_frozen == b.definitions_frozen && a.groups.size() == b.groups.size() &&
+           a.relationship_types.size() == b.relationship_types.size() && a.reputation_tracks.size() == b.reputation_tracks.size() &&
+           SameVector(a.memberships, b.memberships, SameMembership) &&
+           SameVector(a.relationships, b.relationships, SameRelationship) &&
+           SameVector(a.reputations, b.reputations, SameReputation) &&
+           a.membership_ids.next == b.membership_ids.next && a.relationship_ids.next == b.relationship_ids.next &&
+           a.revision == b.revision && SameVector(a.journal, b.journal, SameChange) &&
+           a.next_change_sequence == b.next_change_sequence && a.change_epoch == b.change_epoch;
 }
 
 static ReputationTrackDefinition CrimeReputationDefinition(ReputationTrackId id)
@@ -189,6 +245,104 @@ int main()
     if (restored.GetEffectiveAttitude({npc, player, time_context}) != -1'350'000)
         return 35;
 
+    // Goal 4 G4-SOC-001: every revision-bearing mutation rejects UINT64_MAX without state drift.
+    auto max_revision_snapshot = stable_snapshot;
+    max_revision_snapshot.revision.value = std::numeric_limits<std::uint64_t>::max();
+    const auto max_revision_atomic = [&](auto &&mutation) {
+        SocietyService candidate;
+        if (!candidate.RestoreSnapshot(max_revision_snapshot))
+            return false;
+        const auto before = candidate.CaptureSnapshot();
+        if (mutation(candidate))
+            return false;
+        const auto after = candidate.CaptureSnapshot();
+        return SameMutableSnapshot(before, after);
+    };
+    if (!max_revision_atomic([&](SocietyService &candidate) {
+            return static_cast<bool>(candidate.SetMembershipRole(membership_id, guard_role, time_context));
+        }))
+        return 39;
+    if (!max_revision_atomic([&](SocietyService &candidate) {
+            return static_cast<bool>(candidate.RemoveMembership(membership_id, time_context));
+        }))
+        return 40;
+    if (!max_revision_atomic([&](SocietyService &candidate) {
+            RelationshipRecord update = *candidate.GetRelationship(npc, player, trust);
+            update.value_micro = -900'000;
+            return static_cast<bool>(candidate.SetRelationship(update, time_context));
+        }))
+        return 41;
+    if (!max_revision_atomic([&](SocietyService &candidate) {
+            RelationshipRecord fresh;
+            fresh.subject = Ref("fresh.subject");
+            fresh.target = Ref("fresh.target");
+            fresh.type = trust;
+            fresh.value_micro = 1;
+            return static_cast<bool>(candidate.SetRelationship(fresh, time_context));
+        }))
+        return 42;
+    if (!max_revision_atomic([&](SocietyService &candidate) {
+            return static_cast<bool>(candidate.ApplySocialChange({npc, player, trust, 1, {}, time_context}));
+        }))
+        return 43;
+    if (!max_revision_atomic([&](SocietyService &candidate) {
+            return static_cast<bool>(candidate.SetReputation({player, guards, crime_rep, -999'999, {}}, time_context));
+        }))
+        return 44;
+
+    // Goal 4 G4-SOC-002/G4-INFRA-001: narrow Society-local publication failures are atomic.
+    {
+        SocietyService candidate;
+        if (!candidate.RestoreSnapshot(stable_snapshot))
+            return 45;
+        const auto before = candidate.CaptureSnapshot();
+        MembershipRecord injected;
+        injected.member = Ref("allocation.member");
+        injected.group = guards;
+        const auto before_groups = candidate.FindGroupsOf(injected.member);
+        const auto before_members = candidate.FindMembersOf(guards);
+        epidemic::gameplay::society::testing::FailNextLocalAllocationForTest();
+        if (candidate.AddMembership(injected))
+            return 46;
+        const auto after = candidate.CaptureSnapshot();
+        if (!SameMutableSnapshot(before, after) || candidate.FindGroupsOf(injected.member).size() != before_groups.size() ||
+            candidate.FindMembersOf(guards).size() != before_members.size())
+            return 47;
+    }
+    {
+        SocietyService candidate;
+        if (!candidate.RestoreSnapshot(stable_snapshot))
+            return 48;
+        const auto before = candidate.CaptureSnapshot();
+        RelationshipRecord injected;
+        injected.subject = Ref("allocation.relationship.subject");
+        injected.target = Ref("allocation.relationship.target");
+        injected.type = trust;
+        epidemic::gameplay::society::testing::FailNextLocalAllocationForTest();
+        if (candidate.SetRelationship(injected, time_context))
+            return 49;
+        const auto after = candidate.CaptureSnapshot();
+        if (!SameMutableSnapshot(before, after) ||
+            candidate.GetRelationship(injected.subject, injected.target, injected.type).has_value())
+            return 50;
+    }
+    {
+        SocietyService candidate;
+        if (!candidate.RestoreSnapshot(stable_snapshot))
+            return 51;
+        const auto before = candidate.CaptureSnapshot();
+        ReputationRecord injected;
+        injected.subject = Ref("allocation.reputation.subject");
+        injected.scope = guards;
+        injected.track = crime_rep;
+        epidemic::gameplay::society::testing::FailNextLocalAllocationForTest();
+        if (candidate.SetReputation(injected, time_context))
+            return 52;
+        const auto after = candidate.CaptureSnapshot();
+        if (!SameMutableSnapshot(before, after) || candidate.GetReputation(injected.subject, injected.scope, injected.track).has_value())
+            return 53;
+    }
+
     // Exercise bounded journal and explicit gap reporting.
     for (std::uint64_t i = 0; i < 4200; ++i)
     {
@@ -203,30 +357,15 @@ int main()
     if (latest.snapshot_required || !latest.changes.empty())
         return 38;
 
-    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
+    // Goal 4: module-local failure seam proves RestoreSnapshot pre-state atomicity.
     const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
-    {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
-            return 947;
-    }
-    if (!saw_restore_allocation_failure)
+    epidemic::gameplay::society::testing::FailNextLocalAllocationForTest();
+    const auto injected_restore = restored.RestoreSnapshot(allocation_before);
+    if (injected_restore)
+        return 947;
+    const auto allocation_after = restored.CaptureSnapshot();
+    if (allocation_after.revision != allocation_before.revision ||
+        allocation_after.change_epoch != allocation_before.change_epoch)
         return 948;
     return 0;
 }

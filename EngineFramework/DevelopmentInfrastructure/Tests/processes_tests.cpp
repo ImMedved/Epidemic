@@ -1,4 +1,4 @@
-#include "allocation_fault_injection.h"
+#include "../../GameplayWorldStateOwners/Processes/src/processes_test_seam.h"
 #include "Epidemic/Foundation/error.h"
 #include "Epidemic/GameFramework/Processes/processes.h"
 
@@ -174,7 +174,8 @@ struct ConfiguredProcess
 
 [[nodiscard]] ConfiguredProcess Configure(ProcessesService &service, ProcessTimingPolicy timing,
                                           ProcessPersistencePolicy persistence, int input_count,
-                                          std::vector<OutputDeliveryPolicy> outputs)
+                                          std::vector<OutputDeliveryPolicy> outputs,
+                                          std::int64_t timed_duration = 10)
 {
     ConfiguredProcess configured;
     configured.definition.canonical_name = "test.process";
@@ -183,7 +184,7 @@ struct ConfiguredProcess
     configured.definition.persistence = persistence;
     if (timing == ProcessTimingPolicy::Timed)
         configured.definition.steps.push_back(
-            {ProcessStepId::FromString("test.step"), TypeId::FromString("test.step.kind"), GameplayDuration{10}, {}, {}});
+            {ProcessStepId::FromString("test.step"), TypeId::FromString("test.step.kind"), GameplayDuration{timed_duration}, {}, {}});
     auto definition_id = service.RegisterDefinition(configured.definition);
     if (!definition_id)
         return configured;
@@ -441,6 +442,42 @@ struct ConfiguredProcess
                         early.Value(), GameplayTimePoint{std::numeric_limits<std::int64_t>::max()}) == 1'000'000;
 }
 
+[[nodiscard]] bool TestExactProgressScaling()
+{
+    const GameplayObjectRef actor{GameplayDomainId::FromString("test"), GameplayObjectId::FromString("actor.progress")};
+
+    ProcessesService huge;
+    const auto huge_config = Configure(huge, ProcessTimingPolicy::Timed, ProcessPersistencePolicy::Transient, 0, {},
+                                       std::numeric_limits<std::int64_t>::max());
+    auto huge_started = huge.StartProcess(Request(huge_config.recipe_id, actor, GameplayTimePoint{0}));
+    if (!huge_started || huge.EvaluateProgress(huge_started.Value(), GameplayTimePoint{0}) != 0 ||
+        huge.EvaluateProgress(huge_started.Value(), GameplayTimePoint{std::numeric_limits<std::int64_t>::max() - 1}) !=
+            999'999 ||
+        huge.EvaluateProgress(huge_started.Value(), GameplayTimePoint{std::numeric_limits<std::int64_t>::max()}) !=
+            1'000'000)
+        return false;
+    if (!huge.Pause(huge_started.Value(), GameplayTimePoint{std::numeric_limits<std::int64_t>::max() - 1}) ||
+        huge.EvaluateProgress(huge_started.Value(), GameplayTimePoint{0}) != 999'999)
+        return false;
+
+    ProcessesService half;
+    const auto half_config = Configure(half, ProcessTimingPolicy::Timed, ProcessPersistencePolicy::Transient, 0, {}, 12);
+    auto half_started = half.StartProcess(Request(half_config.recipe_id, actor, GameplayTimePoint{0}));
+    if (!half_started || half.EvaluateProgress(half_started.Value(), GameplayTimePoint{6}) != 500'000)
+        return false;
+
+    ProcessesService third;
+    const auto third_config = Configure(third, ProcessTimingPolicy::Timed, ProcessPersistencePolicy::Transient, 0, {}, 3);
+    auto third_started = third.StartProcess(Request(third_config.recipe_id, actor, GameplayTimePoint{0}));
+    if (!third_started || third.EvaluateProgress(third_started.Value(), GameplayTimePoint{1}) != 333'333 ||
+        third.EvaluateProgress(third_started.Value(), GameplayTimePoint{2}) != 666'666)
+        return false;
+
+    const auto first_partition = third.EvaluateProgress(third_started.Value(), GameplayTimePoint{1});
+    const auto second_partition = third.EvaluateProgress(third_started.Value(), GameplayTimePoint{2});
+    return first_partition == 333'333 && second_partition == 666'666;
+}
+
 [[nodiscard]] bool TestJournalSequenceSurvivesSnapshot()
 {
     ProcessesService service;
@@ -495,32 +532,29 @@ int main()
         return 12;
     if (!TestJournalSequenceSurvivesSnapshot())
         return 13;
-    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
+    if (!TestExactProgressScaling())
+        return 14;
+
     ProcessesService restore_fault_service;
     (void)Configure(restore_fault_service, ProcessTimingPolicy::Timed, ProcessPersistencePolicy::Transient, 0, {});
+    auto restore_actor = GameplayObjectRef{GameplayDomainId::FromString("test"), GameplayObjectId::FromString("actor.restore")};
+    if (!restore_fault_service.StartProcess(Request(ProcessRecipeId::FromString("test.recipe"), restore_actor)))
+        return 937;
     const auto allocation_before = restore_fault_service.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    for (const auto point : {internal_test::AllocationFaultPoint::RestoreStations,
+                             internal_test::AllocationFaultPoint::RestoreInstances})
     {
         auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restore_fault_service.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restore_fault_service.CaptureSnapshot().revision != allocation_before.revision)
-            return 937;
+        internal_test::ArmAllocationFault(point);
+        const auto restored_under_fault = restore_fault_service.RestoreSnapshot(std::move(allocation_target));
+        internal_test::ResetAllocationFault();
+        const auto after = restore_fault_service.CaptureSnapshot();
+        if (restored_under_fault || after.revision != allocation_before.revision ||
+            after.instances.size() != allocation_before.instances.size() ||
+            after.station_ids.next != allocation_before.station_ids.next ||
+            after.instance_ids.next != allocation_before.instance_ids.next ||
+            after.reservation_ids.next != allocation_before.reservation_ids.next)
+            return 938;
     }
-    if (!saw_restore_allocation_failure)
-        return 938;
     return 0;
 }

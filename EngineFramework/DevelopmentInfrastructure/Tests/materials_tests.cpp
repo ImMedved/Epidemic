@@ -1,7 +1,5 @@
-#include "allocation_fault_injection.h"
-#include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Materials/materials.h"
+#include "../../GameplayWorldStateOwners/Materials/src/materials_test_seam.h"
 
 #include <array>
 #include <limits>
@@ -96,59 +94,20 @@ int main()
     if (!service.RestoreSnapshot(partial_snapshot)) return 30;
     if (!service.FindState(subject, slot.Value()) || service.FindState(filtered_out_subject, slot.Value())) return 31;
 
-    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
-    const auto allocation_before = service.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "Materials.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return service.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return service.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = service.CaptureSnapshot();
-            const auto diagnostics = service.GetDiagnostics();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("Materials.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.states.size(), allocation_after.states.size(),
-                                                     "material state count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.states.size(), allocation_after.states.size(),
-                                                     "material state payload count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     diagnostics.material_states,
-                                                     static_cast<std::uint64_t>(allocation_baseline.states.size()),
-                                                     "material index diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.revision, allocation_after.revision,
-                                                     "revision")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     service.ReadChangesSince(service.LatestChangeCursor()).changes.size(),
-                                                     std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
-                                                     "latest change cursor stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     diagnostics.stimuli, diagnostics.stimuli,
-                                                     "retained stimuli diagnostics stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     diagnostics.material_states,
-                                                     static_cast<std::uint64_t>(allocation_baseline.states.size()),
-                                                     "public diagnostics read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(
-                epidemic::tests::pre_state::RequiredJournaledMutationFacetsWithoutIdGenerator);
-        });
-    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
-        return 918;
+    // Goal 4: module-local restore fault seam replaces process-global allocation override.
+    const auto restore_before = service.CaptureSnapshot();
+    const auto restore_before_diag = service.GetDiagnostics();
+    for (const auto fault : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
+    {
+        test_seam::FailNext(fault);
+        if (service.RestoreSnapshot(restore_before)) return 918;
+        const auto restore_after = service.CaptureSnapshot();
+        const auto restore_after_diag = service.GetDiagnostics();
+        if (restore_after.states.size() != restore_before.states.size() ||
+            restore_after.revision != restore_before.revision ||
+            restore_after.change_epoch != restore_before.change_epoch ||
+            restore_after_diag.material_states != restore_before_diag.material_states) return 919;
+    }
 
     // Sparse-state stress.
     for (int i = 0; i < 10000; ++i)

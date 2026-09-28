@@ -1,6 +1,5 @@
-#include "allocation_fault_injection.h"
 #include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
+#include "../../GameplayWorldStateOwners/ItemsInventory/src/items_inventory_test_seam.h"
 #include "Epidemic/GameFramework/ItemsInventory/items_inventory.h"
 #include <algorithm>
 #include <cstdlib>
@@ -226,60 +225,28 @@ int main()
     auto old_batch = journal_service.ReadChangesSince(ChangeCursor{});
     Check(old_batch.snapshot_required, "bounded journal requires snapshot for stale sequence");
 
-    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
+    // Goal 4: module-local deterministic allocation publication seams replace process-global operator new hooks.
     const auto allocation_before = restored.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "ItemsInventory.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return restored.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return restored.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = restored.CaptureSnapshot();
-            const auto diagnostics = restored.GetDiagnostics();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("ItemsInventory.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.items.size() + allocation_baseline.containers.size(),
-                                                     allocation_after.items.size() + allocation_after.containers.size(),
-                                                     "item and container record count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.reservations.size(), allocation_after.reservations.size(),
-                                                     "reservation payload count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     diagnostics.items, static_cast<std::uint64_t>(allocation_baseline.items.size()),
-                                                     "item index diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
-                                                     allocation_baseline.item_ids.next, allocation_after.item_ids.next,
-                                                     "item id generator next")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.revision, allocation_after.revision,
-                                                     "revision")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     restored.ReadChangesSince(restored.LatestChangeCursor()).changes.size(),
-                                                     std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
-                                                     "latest change cursor stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     diagnostics.transfers, diagnostics.transfers,
-                                                     "retained transfer diagnostics stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     diagnostics.containers,
-                                                     static_cast<std::uint64_t>(allocation_baseline.containers.size()),
-                                                     "public diagnostics read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
-        });
-    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
-        return 912;
+    for (const auto point : {internal_test::AllocationFaultPoint::RestoreContainers,
+                             internal_test::AllocationFaultPoint::RestoreItems,
+                             internal_test::AllocationFaultPoint::RestoreReservations})
+    {
+        auto allocation_target = allocation_before;
+        internal_test::ArmAllocationFault(point);
+        const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
+        internal_test::ResetAllocationFault();
+        Check(!restored_under_fault, "module-local restore fault must fail");
+        const auto allocation_after = restored.CaptureSnapshot();
+        Check(allocation_after.items.size() == allocation_before.items.size() &&
+                  allocation_after.containers.size() == allocation_before.containers.size() &&
+                  allocation_after.reservations.size() == allocation_before.reservations.size() &&
+                  allocation_after.item_ids.next == allocation_before.item_ids.next &&
+                  allocation_after.container_ids.next == allocation_before.container_ids.next &&
+                  allocation_after.transfer_ids.next == allocation_before.transfer_ids.next &&
+                  allocation_after.reservation_ids.next == allocation_before.reservation_ids.next &&
+                  allocation_after.revision == allocation_before.revision &&
+                  allocation_after.change_epoch == allocation_before.change_epoch,
+              "module-local restore fault changed item inventory state");
+    }
     return 0;
 }

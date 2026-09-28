@@ -1,4 +1,4 @@
-#include "allocation_fault_injection.h"
+#include "../../GameplayWorldStateOwners/Perception/src/perception_test_seam.h"
 #include "Epidemic/GameFramework/Perception/perception.h"
 #include "Epidemic/Foundation/error.h"
 
@@ -82,6 +82,217 @@ class CountingEvaluator final : public ISenseEvaluator
         return epidemic::foundation::Result<SenseEvaluationResult>::Success(result);
     }
 };
+
+
+bool TestSpatialBoundaryMath()
+{
+    const auto hearing = SenseTypeId::FromString("test.boundary.hearing");
+    const auto vision = SenseTypeId::FromString("test.boundary.vision");
+    const auto profile_id = PerceiverProfileId::FromString("test.boundary.profile");
+    const auto observer = Ref("boundary.observer");
+    const auto source = Ref("boundary.source");
+
+    PerceptionService service;
+    SenseDefinition hear;
+    hear.id = hearing;
+    hear.canonical_name = "test.boundary.hearing";
+    hear.evaluation_model = SenseEvaluationModel::Hearing;
+    hear.base_range_mm = 3'100'000'000LL;
+    hear.identify_threshold_micro = 1;
+    hear.direction_threshold_micro = 1;
+
+    SenseDefinition see;
+    see.id = vision;
+    see.canonical_name = "test.boundary.vision";
+    see.evaluation_model = SenseEvaluationModel::Vision;
+    see.base_range_mm = std::numeric_limits<Fixed>::max();
+    see.field_of_view_cosine_micro = 1'000'000;
+    see.identify_threshold_micro = 1;
+
+    if (!service.RegisterSense(hear) || !service.RegisterSense(see))
+        return false;
+    PerceiverProfileDefinition profile;
+    profile.id = profile_id;
+    profile.canonical_name = "test.boundary.profile";
+    profile.senses = {hearing, vision};
+    if (!service.RegisterProfileDefinition(profile))
+        return false;
+    service.Freeze();
+    if (!service.RegisterPerceiver(observer, profile_id))
+        return false;
+
+    auto create_stimulus = [&](WorldPosition position) -> PerceptionStimulusId {
+        PerceptionStimulus stimulus;
+        stimulus.sense = hearing;
+        stimulus.source = source;
+        stimulus.position = position;
+        stimulus.strength_micro = 1'000'000;
+        stimulus.created_at = {0};
+        stimulus.lifetime = {100};
+        auto id = service.CreateStimulus(stimulus);
+        return id ? id.Value() : PerceptionStimulusId{};
+    };
+
+    const auto below = create_stimulus({3'000'000'000LL, 0, 0});
+    const auto at = create_stimulus({3'037'000'499LL, 0, 0});
+    const auto above = create_stimulus({3'050'000'000LL, 0, 0});
+    const auto outside = create_stimulus({4'000'000'000LL, 0, 0});
+    if (!below.IsValid() || !at.IsValid() || !above.IsValid() || !outside.IsValid())
+        return false;
+    const auto origin_sample = Sample(observer, {0, 0, 0});
+    const auto below_result = service.EvaluateAudibility(observer, below, origin_sample);
+    const auto at_result = service.EvaluateAudibility(observer, at, origin_sample);
+    const auto above_result = service.EvaluateAudibility(observer, above, origin_sample);
+    const auto outside_result = service.EvaluateAudibility(observer, outside, origin_sample);
+    if (!(below_result.score_micro > at_result.score_micro && at_result.score_micro > above_result.score_micro) ||
+        above_result.score_micro <= 0 || outside_result.score_micro != 0 ||
+        outside_result.state != PerceptionAudibilityState::NotHeard)
+        return false;
+
+    PerceptionService four_billion;
+    auto four_billion_hear = hear;
+    four_billion_hear.id = SenseTypeId::FromString("test.boundary.four_billion.hearing");
+    four_billion_hear.canonical_name = "test.boundary.four_billion.hearing";
+    four_billion_hear.base_range_mm = 3'500'000'000LL;
+    if (!four_billion.RegisterSense(four_billion_hear))
+        return false;
+    auto four_billion_profile = profile;
+    four_billion_profile.id = PerceiverProfileId::FromString("test.boundary.four_billion.profile");
+    four_billion_profile.canonical_name = "test.boundary.four_billion.profile";
+    four_billion_profile.senses = {four_billion_hear.id};
+    if (!four_billion.RegisterProfileDefinition(four_billion_profile))
+        return false;
+    four_billion.Freeze();
+    if (!four_billion.RegisterPerceiver(observer, four_billion_profile.id))
+        return false;
+    PerceptionStimulus four_billion_stimulus;
+    four_billion_stimulus.sense = four_billion_hear.id;
+    four_billion_stimulus.source = source;
+    four_billion_stimulus.position = {4'000'000'000LL, 0, 0};
+    four_billion_stimulus.strength_micro = 1'000'000;
+    four_billion_stimulus.created_at = {0};
+    four_billion_stimulus.lifetime = {100};
+    auto four_billion_id = four_billion.CreateStimulus(four_billion_stimulus);
+    if (!four_billion_id ||
+        four_billion.EvaluateAudibility(observer, four_billion_id.Value(), origin_sample).score_micro != 0)
+        return false;
+
+    // A 4e9 x 4e9 diagonal is farther than a 5e9 range. The old squared-distance saturation
+    // incorrectly collapsed it to roughly sqrt(INT64_MAX).
+    PerceptionService diagonal;
+    auto diagonal_hear = hear;
+    diagonal_hear.id = SenseTypeId::FromString("test.boundary.diagonal.hearing");
+    diagonal_hear.canonical_name = "test.boundary.diagonal.hearing";
+    diagonal_hear.base_range_mm = 5'000'000'000LL;
+    if (!diagonal.RegisterSense(diagonal_hear))
+        return false;
+    auto diagonal_profile = profile;
+    diagonal_profile.id = PerceiverProfileId::FromString("test.boundary.diagonal.profile");
+    diagonal_profile.canonical_name = "test.boundary.diagonal.profile";
+    diagonal_profile.senses = {diagonal_hear.id};
+    if (!diagonal.RegisterProfileDefinition(diagonal_profile))
+        return false;
+    diagonal.Freeze();
+    if (!diagonal.RegisterPerceiver(observer, diagonal_profile.id))
+        return false;
+    PerceptionStimulus diagonal_stimulus;
+    diagonal_stimulus.sense = diagonal_hear.id;
+    diagonal_stimulus.source = source;
+    diagonal_stimulus.position = {4'000'000'000LL, 4'000'000'000LL, 0};
+    diagonal_stimulus.strength_micro = 1'000'000;
+    diagonal_stimulus.created_at = {0};
+    diagonal_stimulus.lifetime = {100};
+    auto diagonal_id = diagonal.CreateStimulus(diagonal_stimulus);
+    if (!diagonal_id || diagonal.EvaluateAudibility(observer, diagonal_id.Value(), origin_sample).score_micro != 0)
+        return false;
+
+    // Exact difference is formed before floating conversion. This remains one millimetre even
+    // on MSVC where long double has binary64 precision.
+    constexpr Fixed kTwoTo53 = 9'007'199'254'740'992LL;
+    const auto shifted_sample = Sample(observer, {kTwoTo53, kTwoTo53, 0}, {1'000'000, 0, 0});
+    const auto exact_forward = service.EvaluateVisibility(observer, source, shifted_sample,
+                                                           {kTwoTo53 + 1, kTwoTo53, 0});
+    if (exact_forward.state == PerceptionVisibilityState::Hidden || exact_forward.score_micro <= 0)
+        return false;
+    const auto diagonal_fov = service.EvaluateVisibility(observer, source, shifted_sample,
+                                                          {kTwoTo53 + 1, kTwoTo53 + 1, 0});
+    if (diagonal_fov.state != PerceptionVisibilityState::Hidden)
+        return false;
+    const auto zero_vector = service.EvaluateVisibility(observer, source, shifted_sample,
+                                                         {kTwoTo53, kTwoTo53, 0});
+    if (zero_vector.state != PerceptionVisibilityState::Hidden)
+        return false;
+    const auto extreme = service.EvaluateVisibility(observer, source,
+                                                     Sample(observer, {std::numeric_limits<Fixed>::min(), 0, 0},
+                                                            {1'000'000, 0, 0}),
+                                                     {std::numeric_limits<Fixed>::max(), 0, 0});
+    return extreme.state == PerceptionVisibilityState::Hidden && extreme.score_micro == 0;
+}
+
+bool TestDecayBoundaryArithmetic()
+{
+    const auto hearing = SenseTypeId::FromString("test.decay.hearing");
+    const auto profile_id = PerceiverProfileId::FromString("test.decay.profile");
+    const auto observer = Ref("decay.observer");
+    const auto source = Ref("decay.source");
+
+    auto make_service = [&](Fixed decay, GameplayDuration interval) {
+        PerceptionService service;
+        SenseDefinition hear;
+        hear.id = hearing;
+        hear.canonical_name = "test.decay.hearing";
+        hear.evaluation_model = SenseEvaluationModel::Hearing;
+        hear.base_range_mm = 100;
+        hear.identify_threshold_micro = 1;
+        hear.direction_threshold_micro = 1;
+        if (!service.RegisterSense(hear))
+            return service;
+        PerceiverProfileDefinition profile;
+        profile.id = profile_id;
+        profile.canonical_name = "test.decay.profile";
+        profile.senses = {hearing};
+        if (!service.RegisterProfileDefinition(profile))
+            return service;
+        service.SetTemporalPolicy({GameplayDuration{0}, interval, decay});
+        service.Freeze();
+        if (!service.RegisterPerceiver(observer, profile_id))
+            return service;
+        PerceptionStimulus stimulus;
+        stimulus.sense = hearing;
+        stimulus.source = source;
+        stimulus.position = {0, 0, 0};
+        stimulus.strength_micro = 1'000'000;
+        stimulus.created_at = {0};
+        stimulus.lifetime = {std::numeric_limits<Fixed>::max()};
+        auto id = service.CreateStimulus(stimulus);
+        if (id)
+            (void)service.ProcessStimulus(id.Value(),
+                                          PerceptionProcessingContext{GameplayTickId{1}, GameplayTimePoint{0}, {},
+                                                                      {Sample(observer)}});
+        return service;
+    };
+
+    auto boundary = make_service(1, GameplayDuration{1});
+    const auto boundary_now = GameplayTimePoint{std::numeric_limits<Fixed>::max() - 1};
+    if (!boundary.AdvanceTime(boundary_now))
+        return false;
+    const auto *boundary_awareness = boundary.GetAwareness(observer, source);
+    if (!boundary_awareness || boundary_awareness->last_decay_at != boundary_now ||
+        boundary_awareness->last_decay_at.ticks > boundary_now.ticks)
+        return false;
+
+    auto combined = make_service(1'000, GameplayDuration{3});
+    auto partitioned = make_service(1'000, GameplayDuration{3});
+    if (!combined.AdvanceTime({10}) || !partitioned.AdvanceTime({4}) || !partitioned.AdvanceTime({10}))
+        return false;
+    const auto *combined_awareness = combined.GetAwareness(observer, source);
+    const auto *partitioned_awareness = partitioned.GetAwareness(observer, source);
+    return combined_awareness && partitioned_awareness && combined_awareness->last_decay_at.ticks == 9 &&
+           partitioned_awareness->last_decay_at.ticks == 9 &&
+           combined_awareness->suspicion_micro == partitioned_awareness->suspicion_micro &&
+           combined_awareness->level == partitioned_awareness->level;
+}
+
 } // namespace
 
 int main()
@@ -726,30 +937,35 @@ int main()
     if (!generated_id || generated_id.Value().value.Low() <= 100)
         return 72;
 
-    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
+    // Goal 4: deterministic module-local restore fault seams replace process-global allocator overrides.
     const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    using FaultPoint = epidemic::gameplay::perception::internal_test::AllocationFaultPoint;
+    for (const auto point : {FaultPoint::RestorePerceivers, FaultPoint::RestoreStimuli,
+                             FaultPoint::RestorePendingObservations, FaultPoint::RestoreObservations,
+                             FaultPoint::RestoreAwareness})
     {
         auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
+        epidemic::gameplay::perception::internal_test::ArmAllocationFault(point);
+        const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
+        epidemic::gameplay::perception::internal_test::ResetAllocationFault();
+        if (restored_under_fault)
             return 933;
+        const auto after_fault = restored.CaptureSnapshot();
+        if (after_fault.revision != allocation_before.revision ||
+            after_fault.stimulus_ids.next != allocation_before.stimulus_ids.next ||
+            after_fault.observation_ids.next != allocation_before.observation_ids.next ||
+            after_fault.next_change_sequence != allocation_before.next_change_sequence ||
+            after_fault.perceivers.size() != allocation_before.perceivers.size() ||
+            after_fault.stimuli.size() != allocation_before.stimuli.size() ||
+            after_fault.pending_observations.size() != allocation_before.pending_observations.size() ||
+            after_fault.observations.size() != allocation_before.observations.size() ||
+            after_fault.awareness.size() != allocation_before.awareness.size())
+            return 934;
     }
-    if (!saw_restore_allocation_failure)
-        return 934;
+
+    if (!TestSpatialBoundaryMath())
+        return 935;
+    if (!TestDecayBoundaryArithmetic())
+        return 936;
     return 0;
 }

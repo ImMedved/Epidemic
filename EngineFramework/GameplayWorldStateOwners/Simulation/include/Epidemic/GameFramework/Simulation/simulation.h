@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
+#include <list>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -387,12 +388,12 @@ class SimulationService
     std::unordered_map<SimulationLayerId, SimulationLayerDefinition, IdHash> layers_;
     std::unordered_map<SimulationLayerId, ISimulationLayerExecutor *, IdHash> executors_;
     std::unordered_map<SimulationRegionId, SimulationIntervalExecution, IdHash> active_intervals_;
-    std::deque<SimulationSummary> summaries_;
+    std::list<SimulationSummary> summaries_;
     MonotonicIdGenerator<GameplayObjectId> task_ids_;
     MonotonicIdGenerator<GameplayObjectId> summary_ids_;
     SimulationBudget budget_{};
     SimulationRetentionPolicy retention_{};
-    std::deque<SimulationChange> changes_;
+    std::list<SimulationChange> changes_;
     std::uint64_t next_change_sequence_ = 1;
     std::uint64_t journal_epoch_ = 1;
     SimulationDiagnostics diagnostics_{};

@@ -7,6 +7,26 @@
 
 namespace epidemic::gameplay::society
 {
+namespace testing
+{
+namespace
+{
+thread_local bool g_fail_next_local_allocation = false;
+}
+
+void FailNextLocalAllocationForTest() noexcept
+{
+    g_fail_next_local_allocation = true;
+}
+
+[[nodiscard]] bool ConsumeLocalAllocationFailureForTest() noexcept
+{
+    if (!g_fail_next_local_allocation)
+        return false;
+    g_fail_next_local_allocation = false;
+    return true;
+}
+} // namespace testing
 namespace
 {
 constexpr std::int64_t kMicroOne = 1'000'000;
@@ -167,11 +187,20 @@ foundation::Result<void> SocietyService::RegisterGroup(SocialGroupDefinition gro
             Error("gameplay.society.definitions_frozen", "society definitions are frozen"));
     if (!group.group.IsValid() || !group.type.IsValid() || groups_.contains(group.group))
         return foundation::Result<void>::Failure(Error("gameplay.society.invalid_group", "invalid or duplicate group"));
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
-    group.revision = revision_;
+    const Revision next_revision{revision_.value + 1};
+    group.revision = next_revision;
     const auto group_ref = group.group;
-    groups_.emplace(group_ref, std::move(group));
+    try
+    {
+        groups_.emplace(group_ref, std::move(group));
+    }
+    catch (const std::bad_alloc &)
+    {
+        return foundation::Result<void>::Failure(Error("gameplay.society.allocation_failed", "failed to register group"));
+    }
+    revision_ = next_revision;
     Record({0, SocietyChangeKind::GroupCreated, group_ref, {}, {}, {}, {}, {}, revision_});
     return foundation::Result<void>::Success();
 }
@@ -209,10 +238,20 @@ foundation::Result<void> SocietyService::RegisterRelationshipType(RelationshipTy
                                                            "invalid or duplicate relationship threshold"));
         }
     }
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
-    definition.revision = revision_;
-    relationship_types_.emplace(definition.id, std::move(definition));
+    const Revision next_revision{revision_.value + 1};
+    definition.revision = next_revision;
+    try
+    {
+        relationship_types_.emplace(definition.id, std::move(definition));
+    }
+    catch (const std::bad_alloc &)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.society.allocation_failed", "failed to register relationship definition"));
+    }
+    revision_ = next_revision;
     return foundation::Result<void>::Success();
 }
 
@@ -244,10 +283,20 @@ foundation::Result<void> SocietyService::RegisterReputationTrack(ReputationTrack
                                                            "invalid or duplicate reputation standing threshold"));
         }
     }
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
-    definition.revision = revision_;
-    reputation_tracks_.emplace(definition.id, std::move(definition));
+    const Revision next_revision{revision_.value + 1};
+    definition.revision = next_revision;
+    try
+    {
+        reputation_tracks_.emplace(definition.id, std::move(definition));
+    }
+    catch (const std::bad_alloc &)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.society.allocation_failed", "failed to register reputation definition"));
+    }
+    revision_ = next_revision;
     return foundation::Result<void>::Success();
 }
 
@@ -283,27 +332,44 @@ foundation::Result<MembershipId> SocietyService::AddMembership(MembershipRecord 
     if (record.id.IsValid() && memberships_.contains(record.id))
         return foundation::Result<MembershipId>::Failure(
             Error("gameplay.society.duplicate_membership", "duplicate membership id"));
+    auto staged_membership_ids = membership_ids_;
     if (!record.id.IsValid())
     {
-        record.id = MembershipId{membership_ids_.Next()};
+        record.id = MembershipId{staged_membership_ids.Next()};
         if (!record.id.IsValid())
             return foundation::Result<MembershipId>::Failure(
                 Error("gameplay.society.membership_id_exhausted", "membership id generator exhausted"));
     }
     else
     {
-        AdvanceGeneratorPast(membership_ids_, record.id);
+        AdvanceGeneratorPast(staged_membership_ids, record.id);
     }
     if (memberships_.contains(record.id))
         return foundation::Result<MembershipId>::Failure(
             Error("gameplay.society.duplicate_membership", "duplicate membership id"));
 
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<MembershipId>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
-    record.revision = revision_;
+    if (testing::ConsumeLocalAllocationFailureForTest())
+        return foundation::Result<MembershipId>::Failure(
+            Error("gameplay.society.allocation_failed", "module-local injected allocation failure"));
+    const Revision next_revision{revision_.value + 1};
+    record.revision = next_revision;
     const auto id = record.id;
-    memberships_.emplace(id, record);
-    IndexMembership(record);
+    try
+    {
+        memberships_.emplace(id, record);
+        IndexMembership(record);
+    }
+    catch (const std::bad_alloc &)
+    {
+        UnindexMembership(record);
+        memberships_.erase(id);
+        return foundation::Result<MembershipId>::Failure(
+            Error("gameplay.society.allocation_failed", "failed to publish membership"));
+    }
+    membership_ids_ = staged_membership_ids;
+    revision_ = next_revision;
     Record({0, SocietyChangeKind::MembershipAdded, record.member, record.group, {}, {}, id, {}, revision_});
     return foundation::Result<MembershipId>::Success(id);
 }
@@ -333,7 +399,8 @@ foundation::Result<void> SocietyService::SetMembershipRole(MembershipId id, Soci
     if (it->second.role == role)
         return foundation::Result<void>::Success();
     const auto old_role = it->second.role;
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
     it->second.role = role;
     it->second.revision = revision_;
     if (old_role.IsValid())
@@ -348,10 +415,11 @@ foundation::Result<void> SocietyService::RemoveMembership(MembershipId id, Gamep
     auto it = memberships_.find(id);
     if (it == memberships_.end())
         return foundation::Result<void>::Failure(Error("gameplay.society.membership_missing", "membership missing"));
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
     const auto record = it->second;
     UnindexMembership(record);
     memberships_.erase(it);
-    Bump();
     Record({0, SocietyChangeKind::MembershipRemoved, record.member, record.group, {}, {}, id, context, revision_});
     return foundation::Result<void>::Success();
 }
@@ -380,7 +448,9 @@ foundation::Result<RelationshipId> SocietyService::SetRelationship(RelationshipR
         if (record.id.IsValid() && record.id != existing.id)
             return foundation::Result<RelationshipId>::Failure(
                 Error("gameplay.society.relationship_key_conflict", "relationship semantic key already has another id"));
-        Bump();
+        if (!Bump())
+            return foundation::Result<RelationshipId>::Failure(
+                Error("gameplay.society.revision_exhausted", "society revision exhausted"));
         existing.value_micro = record.value_micro;
         existing.state = ResolveRelationshipState(record.type, record.value_micro);
         existing.updated_at = record.updated_at.ticks != 0 ? record.updated_at : context.time;
@@ -394,29 +464,54 @@ foundation::Result<RelationshipId> SocietyService::SetRelationship(RelationshipR
     if (record.id.IsValid() && relationships_.contains(record.id))
         return foundation::Result<RelationshipId>::Failure(
             Error("gameplay.society.duplicate_relationship", "duplicate relationship id"));
+    auto staged_relationship_ids = relationship_ids_;
     if (!record.id.IsValid())
     {
-        record.id = RelationshipId{relationship_ids_.Next()};
+        record.id = RelationshipId{staged_relationship_ids.Next()};
         if (!record.id.IsValid())
             return foundation::Result<RelationshipId>::Failure(
                 Error("gameplay.society.relationship_id_exhausted", "relationship id generator exhausted"));
     }
     else
     {
-        AdvanceGeneratorPast(relationship_ids_, record.id);
+        AdvanceGeneratorPast(staged_relationship_ids, record.id);
     }
     if (relationships_.contains(record.id))
         return foundation::Result<RelationshipId>::Failure(
             Error("gameplay.society.duplicate_relationship", "duplicate relationship id"));
 
-    Bump();
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<RelationshipId>::Failure(
+            Error("gameplay.society.revision_exhausted", "society revision exhausted"));
+    if (testing::ConsumeLocalAllocationFailureForTest())
+        return foundation::Result<RelationshipId>::Failure(
+            Error("gameplay.society.allocation_failed", "module-local injected allocation failure"));
+    const Revision next_revision{revision_.value + 1};
     record.state = ResolveRelationshipState(record.type, record.value_micro);
     if (record.updated_at.ticks == 0)
         record.updated_at = context.time;
-    record.revision = revision_;
+    record.revision = next_revision;
     const auto id = record.id;
-    relationships_.emplace(id, record);
-    IndexRelationship(record);
+    try
+    {
+        relationships_.emplace(id, record);
+        IndexRelationship(record);
+    }
+    catch (const std::bad_alloc &)
+    {
+        relationship_by_key_.erase(RelationshipKey{record.subject, record.target, record.type});
+        if (auto it = relationships_by_subject_.find(record.subject); it != relationships_by_subject_.end())
+        {
+            EraseId(it->second, record.id);
+            if (it->second.empty())
+                relationships_by_subject_.erase(it);
+        }
+        relationships_.erase(id);
+        return foundation::Result<RelationshipId>::Failure(
+            Error("gameplay.society.allocation_failed", "failed to publish relationship"));
+    }
+    relationship_ids_ = staged_relationship_ids;
+    revision_ = next_revision;
     ++diagnostics_.relationship_changes;
     Record({0, SocietyChangeKind::RelationshipChanged, record.subject, record.target, record.type, {}, {}, context,
             revision_});
@@ -479,7 +574,8 @@ foundation::Result<void> SocietyService::ApplySocialChange(SocialChangeRequest r
         return foundation::Result<void>::Success();
     }
 
-    Bump();
+    if (!Bump())
+        return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
     record->value_micro = after;
     record->state = ResolveRelationshipState(request.type, after);
     record->updated_at = request.context.time;
@@ -508,17 +604,41 @@ foundation::Result<void> SocietyService::SetReputation(ReputationRecord record, 
             Error("gameplay.society.reputation_value_out_of_range", "reputation value outside definition range"));
 
     const ReputationKey key{record.subject, record.scope, record.track};
-    Bump();
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(Error("gameplay.society.revision_exhausted", "society revision exhausted"));
+    const Revision next_revision{revision_.value + 1};
     if (auto it = reputations_.find(key); it != reputations_.end())
     {
+        revision_ = next_revision;
         it->second.value_micro = record.value_micro;
         it->second.revision = revision_;
     }
     else
     {
-        record.revision = revision_;
-        reputations_.emplace(key, record);
-        IndexReputation(record);
+        if (testing::ConsumeLocalAllocationFailureForTest())
+            return foundation::Result<void>::Failure(
+                Error("gameplay.society.allocation_failed", "module-local injected allocation failure"));
+        record.revision = next_revision;
+        try
+        {
+            reputations_.emplace(key, record);
+            IndexReputation(record);
+        }
+        catch (const std::bad_alloc &)
+        {
+            if (auto subject_index_it = reputations_by_subject_.find(record.subject);
+                subject_index_it != reputations_by_subject_.end())
+            {
+                const ReputationKey rollback_key{record.subject, record.scope, record.track};
+                EraseId(subject_index_it->second, rollback_key);
+                if (subject_index_it->second.empty())
+                    reputations_by_subject_.erase(subject_index_it);
+            }
+            reputations_.erase(key);
+            return foundation::Result<void>::Failure(
+                Error("gameplay.society.allocation_failed", "failed to publish reputation"));
+        }
+        revision_ = next_revision;
     }
     ++diagnostics_.reputation_changes;
     Record({0, SocietyChangeKind::ReputationChanged, record.subject, record.scope, {}, record.track, {}, context,
@@ -754,7 +874,7 @@ SocietyChangeBatch SocietyService::ReadChangesSinceSequence(std::uint64_t sequen
 void SocietyService::PruneChangesThrough(std::uint64_t sequence)
 {
     while (!changes_.empty() && changes_.front().sequence <= sequence)
-        changes_.pop_front();
+        changes_.erase(changes_.begin());
 }
 
 SocietySnapshot SocietyService::CaptureSnapshot() const
@@ -817,6 +937,10 @@ SocietySnapshot SocietyService::CaptureSnapshot() const
 
 foundation::Result<void> SocietyService::RestoreSnapshot(SocietySnapshot snapshot)
 {
+    if (testing::ConsumeLocalAllocationFailureForTest())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.society.allocation_failed", "module-local injected allocation failure"));
+
     const auto next_journal_epoch = CheckedNextChangeEpoch(snapshot.change_epoch > journal_epoch_ ? snapshot.change_epoch : journal_epoch_);
     if (!next_journal_epoch)
     {
@@ -988,7 +1112,8 @@ foundation::Result<void> SocietyService::RestoreSnapshot(SocietySnapshot snapsho
     if (snapshot.next_change_sequence == 0 || snapshot.journal.size() > kChangeJournalCapacity)
         return foundation::Result<void>::Failure(
             Error("gameplay.society.restore_invalid_journal", "invalid society change journal snapshot"));
-    std::deque<SocietyChange> new_journal;
+    std::vector<SocietyChange> new_journal;
+    new_journal.reserve(kChangeJournalCapacity);
     new_journal.assign(snapshot.journal.begin(), snapshot.journal.end());
     std::uint64_t previous_sequence = 0;
     for (const auto &change : new_journal)
@@ -1038,10 +1163,10 @@ void SocietyService::Record(SocietyChange change)
         return;
     const auto assigned = next_change_sequence_;
     change.sequence = assigned;
+    if (changes_.size() == kChangeJournalCapacity)
+        changes_.erase(changes_.begin());
     changes_.push_back(std::move(change));
     next_change_sequence_ = assigned == std::numeric_limits<std::uint64_t>::max() ? 0 : assigned + 1;
-    while (changes_.size() > kChangeJournalCapacity)
-        changes_.pop_front();
 }
 
 void SocietyService::IndexMembership(const MembershipRecord &record)
@@ -1078,4 +1203,5 @@ void SocietyService::IndexReputation(const ReputationRecord &record)
 {
     reputations_by_subject_[record.subject].push_back(ReputationKey{record.subject, record.scope, record.track});
 }
+
 } // namespace epidemic::gameplay::society

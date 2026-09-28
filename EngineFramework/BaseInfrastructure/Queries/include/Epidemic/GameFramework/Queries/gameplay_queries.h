@@ -447,6 +447,8 @@ class GameplayQueryService
             staged_order.push_back(type);
         }
         std::sort(staged_order.begin(), staged_order.end());
+        extern void QueryPublicationFaultPointForInternalTest(std::string_view point);
+        QueryPublicationFaultPointForInternalTest("freeze.publish");
         state_->provider_order.swap(staged_order);
         frozen_ = true;
         return foundation::Result<void>::Success();
@@ -631,6 +633,8 @@ class GameplayQueryService
         auto staged_names = state_->names;
         staged_providers.emplace(expected, std::move(provider));
         staged_names.emplace(expected, std::move(name));
+        extern void QueryPublicationFaultPointForInternalTest(std::string_view point);
+        QueryPublicationFaultPointForInternalTest("provider_registration.publish");
         state_->providers.swap(staged_providers);
         state_->names.swap(staged_names);
         return foundation::Result<void>::Success();

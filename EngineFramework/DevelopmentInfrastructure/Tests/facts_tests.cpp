@@ -1,5 +1,4 @@
 #include "Epidemic/GameFramework/Facts/gameplay_facts.h"
-#include "allocation_fault_injection.h"
 
 #include <algorithm>
 #include <string>
@@ -11,6 +10,12 @@
 using namespace epidemic;
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::facts;
+
+namespace epidemic::gameplay::facts::detail
+{
+void SetFactsFaultPointForTesting(std::string_view point) noexcept;
+void ClearFactsFaultPointForTesting() noexcept;
+}
 
 namespace
 {
@@ -437,9 +442,7 @@ int main()
     }
 
 
-    // Service-owned allocation failures must not partially commit a fact transaction.
-    bool commit_fault_observed = false;
-    for (long long fail_after = 0; fail_after < 96 && !commit_fault_observed; ++fail_after)
+    // Module-local deterministic publication faults replace process-global allocator injection.
     {
         GameplayFactsService fault_service;
         const auto fault_fact = fault_service.RegisterFactType<int>("framework.test.fault_fact", owner);
@@ -454,34 +457,24 @@ int main()
         if (!before)
             return 42;
         bool threw = false;
+        epidemic::gameplay::facts::detail::SetFactsFaultPointForTesting("transaction_commit.publish");
+        try
         {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                (void)fault_service.Commit(std::move(tx), context);
-            }
-            catch (const std::bad_alloc &)
-            {
-                threw = true;
-            }
+            (void)fault_service.Commit(std::move(tx), context);
         }
-        if (threw)
+        catch (const std::bad_alloc&)
         {
-            commit_fault_observed = true;
-            const auto after = fault_service.CaptureSnapshot();
-            if (!after || fault_service.FindFact(fault_key).has_value() ||
-                after.Value().fact_revision != before.Value().fact_revision ||
-                after.Value().fact_ids.scope != before.Value().fact_ids.scope ||
-                after.Value().fact_ids.next != before.Value().fact_ids.next)
-                return 43;
+            threw = true;
         }
+        epidemic::gameplay::facts::detail::ClearFactsFaultPointForTesting();
+        const auto after = fault_service.CaptureSnapshot();
+        if (!threw || !after || fault_service.FindFact(fault_key).has_value() ||
+            after.Value().fact_revision != before.Value().fact_revision ||
+            after.Value().fact_ids.scope != before.Value().fact_ids.scope ||
+            after.Value().fact_ids.next != before.Value().fact_ids.next)
+            return 43;
     }
-    if (!commit_fault_observed)
-        return 44;
 
-    // Direct publish ordering and accepted-event ownership are unchanged on allocation failure.
-    bool publish_fault_observed = false;
-    for (long long fail_after = 0; fail_after < 64 && !publish_fault_observed; ++fail_after)
     {
         GameplayFactsService fault_service;
         const auto type = fault_service.RegisterEventType<TestEvent>(
@@ -491,36 +484,26 @@ int main()
         fault_service.Freeze();
         const auto before_diag = fault_service.GetDiagnostics();
         bool threw = false;
+        epidemic::gameplay::facts::detail::SetFactsFaultPointForTesting("direct_publish.publish");
+        try
         {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                (void)fault_service.Publish<TestEvent>(type.Value(), context, subject, TestEvent{91});
-            }
-            catch (const std::bad_alloc &)
-            {
-                threw = true;
-            }
+            (void)fault_service.Publish<TestEvent>(type.Value(), context, subject, TestEvent{91});
         }
-        if (threw)
+        catch (const std::bad_alloc&)
         {
-            publish_fault_observed = true;
-            const auto after_diag = fault_service.GetDiagnostics();
-            if (after_diag.published_events != before_diag.published_events || fault_service.HistoryCount() != 0)
-                return 46;
-            if (!fault_service.Publish<TestEvent>(type.Value(), context, subject, TestEvent{92}))
-                return 47;
-            const auto retry = fault_service.Dispatch();
-            if (!retry || retry.Value() != 1 || fault_service.HistoryCount() != 1)
-                return 48;
+            threw = true;
         }
+        epidemic::gameplay::facts::detail::ClearFactsFaultPointForTesting();
+        const auto after_diag = fault_service.GetDiagnostics();
+        if (!threw || after_diag.published_events != before_diag.published_events || fault_service.HistoryCount() != 0)
+            return 46;
+        if (!fault_service.Publish<TestEvent>(type.Value(), context, subject, TestEvent{92}))
+            return 47;
+        const auto retry = fault_service.Dispatch();
+        if (!retry || retry.Value() != 1 || fault_service.HistoryCount() != 1)
+            return 48;
     }
-    if (!publish_fault_observed)
-        return 49;
 
-    // Submitted batches remain owned by the service if merge/dispatch staging throws.
-    bool merge_fault_observed = false;
-    for (long long fail_after = 0; fail_after < 128 && !merge_fault_observed; ++fail_after)
     {
         GameplayFactsService fault_service;
         const auto type = fault_service.RegisterEventType<TestEvent>(
@@ -529,7 +512,7 @@ int main()
             return 50;
         int delivered = 0;
         if (!fault_service.Subscribe<TestEvent>(type.Value(), SubscriberId::FromString("fault.batch.sub"), 0,
-                                                 [&delivered](const EventEnvelope &, const TestEvent &) { ++delivered; }))
+                                                 [&delivered](const EventEnvelope&, const TestEvent&) { ++delivered; }))
             return 51;
         fault_service.Freeze();
         auto batch = fault_service.CreateBatch(ProducerId::FromString("fault.batch.producer"), 0);
@@ -537,27 +520,22 @@ int main()
         if (!fault_service.SubmitBatch(std::move(batch)))
             return 52;
         bool threw = false;
+        epidemic::gameplay::facts::detail::SetFactsFaultPointForTesting("batch_merge.publish");
+        try
         {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                (void)fault_service.Dispatch();
-            }
-            catch (const std::bad_alloc &)
-            {
-                threw = true;
-            }
+            (void)fault_service.Dispatch();
         }
-        if (threw)
+        catch (const std::bad_alloc&)
         {
-            merge_fault_observed = true;
-            const auto retry = fault_service.Dispatch();
-            if (!retry || retry.Value() != 1 || delivered != 1 || fault_service.HistoryCount() != 1)
-                return 53;
+            threw = true;
         }
+        epidemic::gameplay::facts::detail::ClearFactsFaultPointForTesting();
+        if (!threw)
+            return 53;
+        const auto retry = fault_service.Dispatch();
+        if (!retry || retry.Value() != 1 || delivered != 1 || fault_service.HistoryCount() != 1)
+            return 54;
     }
-    if (!merge_fault_observed)
-        return 54;
 
 
     return 0;

@@ -1,0 +1,3248 @@
+{
+  "contract": "LOCAL_READY",
+  "modules": {
+    "EngineFramework/BaseInfrastructure/Facts": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:25::`0482e2f1948220f0`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-CLASSIFIED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:25::`0482e2f1948220f0`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:15::Failure and atomicity: failed transaction staging/commit does not publish half-state. Subscriber failure follows the documented isolation policy and must not corrupt authoritative",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:430::[[nodiscard]] std::vector<EventRecord> Compact(std::span<const EventRecord>) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:422::if (!subscriber_dispatch || subscriber_dispatch.Value() != 1 || delivered_after_failure != 1 ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:25::`0482e2f1948220f0`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:59::GameplayFactsService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:25::`0482e2f1948220f0`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-OVERLOADS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:25::`0482e2f1948220f0`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:330::[[nodiscard]] std::vector<EventRecord> Compact(std::span<const EventRecord> records) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:332::if (records.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-PRECONDITIONS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:25::`0482e2f1948220f0`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:371::if (!scoped_service.Publish<TestEvent>(scoped_type.Value(), context, scope_a, subject, TestEvent{41}))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:371::if (!scoped_service.Publish<TestEvent>(scoped_type.Value(), context, scope_a, subject, TestEvent{41}))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-SUCCESS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-DIRECT-DEPS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:25::`0482e2f1948220f0`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-PORTS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-RESPONSIBILITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:197::## EngineFramework/BaseInfrastructure/Facts",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-SINGLE-OWNER against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Subscriber dispatch is isolated callback publication, not an external prepare/commit/cancel transaction.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:15::Failure and atomicity: failed transaction staging/commit does not publish half-state. Subscriber failure follows the documented isolation policy and must not corrupt authoritative",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:430::[[nodiscard]] std::vector<EventRecord> Compact(std::span<const EventRecord>) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:422::if (!subscriber_dispatch || subscriber_dispatch.Value() != 1 || delivered_after_failure != 1 ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-MULTI against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Facts has no fallible external rollback requiring durable reconciliation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:15::Failure and atomicity: failed transaction staging/commit does not publish half-state. Subscriber failure follows the documented isolation policy and must not corrupt authoritative",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:430::[[nodiscard]] std::vector<EventRecord> Compact(std::span<const EventRecord>) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:422::if (!subscriber_dispatch || subscriber_dispatch.Value() != 1 || delivered_after_failure != 1 ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-SINGLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:11::Lifecycle and identity: fact assert/update/remove transitions are keyed by stable fact identity. Event/fact type registration freezes before steady-state use. Duplicate identities",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:163::if (!service.SubmitBatch(std::move(batch_b)) || !service.SubmitBatch(std::move(batch_a)))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:163::if (!service.SubmitBatch(std::move(batch_b)) || !service.SubmitBatch(std::move(batch_a)))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-ALLOWED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:11::Lifecycle and identity: fact assert/update/remove transitions are keyed by stable fact identity. Event/fact type registration freezes before steady-state use. Duplicate identities",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:485::const auto before_diag = fault_service.GetDiagnostics();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:482::if (!type)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-FORBIDDEN against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Facts has no fallible external cleanup protocol.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Facts has no module Shutdown API; local subscriptions and containers have ordinary object lifetime.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:5::Responsibility: typed fact state, typed gameplay events, transactions/batches, subscriber dispatch, retained history/journal cursors, type registration/freeze and snapshot/restore.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:293::const auto disk_fact = disk_restored.RegisterFactType<int>(\"framework.test.fact\", owner);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:294::if (!disk_event || !disk_fact ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-CANDIDATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:5::Responsibility: typed fact state, typed gameplay events, transactions/batches, subscriber dispatch, retained history/journal cursors, type registration/freeze and snapshot/restore.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:255::if (!noop_result || !noop_result.Value().empty() || service.FactRevision() != revision_before_noop)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:255::if (!noop_result || !noop_result.Value().empty() || service.FactRevision() != revision_before_noop)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-CONTINUITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:15::Failure and atomicity: failed transaction staging/commit does not publish half-state. Subscriber failure follows the documented isolation policy and must not corrupt authoritative",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:5::Responsibility: typed fact state, typed gameplay events, transactions/batches, subscriber dispatch, retained history/journal cursors, type registration/freeze and snapshot/restore.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:430::[[nodiscard]] std::vector<EventRecord> Compact(std::span<const EventRecord>) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:422::if (!subscriber_dispatch || subscriber_dispatch.Value() != 1 || delivered_after_failure != 1 ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:5::Responsibility: typed fact state, typed gameplay events, transactions/batches, subscriber dispatch, retained history/journal cursors, type registration/freeze and snapshot/restore.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:59::GameplayFactsService service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-SNAPSHOT against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:15::Failure and atomicity: failed transaction staging/commit does not publish half-state. Subscriber failure follows the documented isolation policy and must not corrupt authoritative",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:5::Responsibility: typed fact state, typed gameplay events, transactions/batches, subscriber dispatch, retained history/journal cursors, type registration/freeze and snapshot/restore.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:299::if (!disk_restored.RestorePersistenceSnapshot(disk_snapshot.Value())) return 263;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:299::if (!disk_restored.RestorePersistenceSnapshot(disk_snapshot.Value())) return 263;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-VALIDATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:479::GameplayFactsService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:482::if (!type)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-COUNTERS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:508::GameplayFactsService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:511::if (!type)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-INDEXES against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:15::Failure and atomicity: failed transaction staging/commit does not publish half-state. Subscriber failure follows the documented isolation policy and must not corrupt authoritative",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:430::[[nodiscard]] std::vector<EventRecord> Compact(std::span<const EventRecord>) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:422::if (!subscriber_dispatch || subscriber_dispatch.Value() != 1 || delivered_after_failure != 1 ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NO-FALSE-PUBLISH against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:25::`0482e2f1948220f0`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:255::if (!noop_result || !noop_result.Value().empty() || service.FactRevision() != revision_before_noop)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:255::if (!noop_result || !noop_result.Value().empty() || service.FactRevision() != revision_before_noop)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NOOP against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:7::Authoritative state: current fact records, registered fact/event types, pending submitted batches, sequence/generator state and retained history. Derived state consists of lookup/i",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:456::const auto before = fault_service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:457::if (!before)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-PRIMARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:299::if (!disk_restored.RestorePersistenceSnapshot(disk_snapshot.Value())) return 263;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:299::if (!disk_restored.RestorePersistenceSnapshot(disk_snapshot.Value())) return 263;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-BOUNDARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/facts.md:15::Failure and atomicity: failed transaction staging/commit does not publish half-state. Subscriber failure follows the documented isolation policy and must not corrupt authoritative",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:398::GameplayFactsService subscriber_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:401::if (!subscriber_type)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-CALLBACK-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:456::const auto before = fault_service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:457::if (!before)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-DUPLICATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:255::if (!noop_result || !noop_result.Value().empty() || service.FactRevision() != revision_before_noop)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:255::if (!noop_result || !noop_result.Value().empty() || service.FactRevision() != revision_before_noop)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-EMPTY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:115::denied.Set<int>(fact_type.Value(), subject, {}, 5, FactPersistence::Persistent);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:117::if (denied_result || !denied_result.GetError().HasCode(\"gameplay.fact_owner_violation\"))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-HAPPY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:293::const auto disk_fact = disk_restored.RegisterFactType<int>(\"framework.test.fact\", owner);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:294::if (!disk_event || !disk_fact ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:114::auto denied = service.BeginTransaction(other);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:117::if (denied_result || !denied_result.GetError().HasCode(\"gameplay.fact_owner_violation\"))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-REGRESSION against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:255::if (!noop_result || !noop_result.Value().empty() || service.FactRevision() != revision_before_noop)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:255::if (!noop_result || !noop_result.Value().empty() || service.FactRevision() != revision_before_noop)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-STALE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:293::const auto disk_fact = disk_restored.RegisterFactType<int>(\"framework.test.fact\", owner);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:294::if (!disk_event || !disk_fact ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayFactsTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-WRONG-LIFECYCLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/BaseInfrastructure/Foundation": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:25::`007859afafa7ca12`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-CLASSIFIED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:25::`007859afafa7ca12`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:15::Failure and atomicity: validation failures do not modify registry/generator state. Container allocation failure is required to preserve pre-state for registrations. No external sid",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:25::`007859afafa7ca12`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:393::const GameplayObjectRef invalid_ref{GameplayDomainId::FromString(\"framework.world\"), {}};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:394::Check(valid_ref.IsValid() && !invalid_ref.IsValid(), 48);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:25::`007859afafa7ca12`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-OVERLOADS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:25::`007859afafa7ca12`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:315::Check(registry.Find(\"framework..test\") == nullptr, 19);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:315::Check(registry.Find(\"framework..test\") == nullptr, 19);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-PRECONDITIONS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:25::`007859afafa7ca12`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:143::Check(generator_restore_ok.Code() == \"gameplay.id_generator_snapshot_valid\", 902);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:143::Check(generator_restore_ok.Code() == \"gameplay.id_generator_snapshot_valid\", 902);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-SUCCESS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-DIRECT-DEPS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:25::`007859afafa7ca12`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-PORTS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-RESPONSIBILITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:204::## EngineFramework/BaseInfrastructure/Foundation",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-SINGLE-OWNER against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Foundation performs no external transactional work.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:15::Failure and atomicity: validation failures do not modify registry/generator state. Container allocation failure is required to preserve pre-state for registrations. No external sid",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:121::Check(object.IsValid() && object == same && object != different, 1);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:121::Check(object.IsValid() && object == same && object != different, 1);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-MULTI against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Foundation has no fallible external rollback requiring durable reconciliation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:15::Failure and atomicity: validation failures do not modify registry/generator state. Container allocation failure is required to preserve pre-state for registrations. No external sid",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:178::Check(last.IsValid() && last.High() == 7 && last.Low() == std::numeric_limits<std::uint64_t>::max(), 10);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:178::Check(last.IsValid() && last.High() == 7 && last.Low() == std::numeric_limits<std::uint64_t>::max(), 10);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-SINGLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:11::Identity and lifecycle: invalid IDs use their documented zero/invalid forms. Monotonic generators preserve scope and exhaustion state across snapshot/restore and never wrap into a",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:126::Check(std::hash<GameplayObjectId>{}(object) == std::hash<GameplayObjectId>{}(same), 6);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:126::Check(std::hash<GameplayObjectId>{}(object) == std::hash<GameplayObjectId>{}(same), 6);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-ALLOWED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:11::Identity and lifecycle: invalid IDs use their documented zero/invalid forms. Monotonic generators preserve scope and exhaustion state across snapshot/restore and never wrap into a",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-FORBIDDEN against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Foundation has no fallible external cleanup protocol.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Foundation owns no shutdown-capable external resource; registry destruction is ordinary value lifetime.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:11::Identity and lifecycle: invalid IDs use their documented zero/invalid forms. Monotonic generators preserve scope and exhaustion state across snapshot/restore and never wrap into a",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:121::Check(object.IsValid() && object == same && object != different, 1);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:121::Check(object.IsValid() && object == same && object != different, 1);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-CANDIDATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:11::Identity and lifecycle: invalid IDs use their documented zero/invalid forms. Monotonic generators preserve scope and exhaustion state across snapshot/restore and never wrap into a",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:364::Check(GameplayTimeSeconds(20).ticks == 20, 422);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:364::Check(GameplayTimeSeconds(20).ticks == 20, 422);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-CONTINUITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:15::Failure and atomicity: validation failures do not modify registry/generator state. Container allocation failure is required to preserve pre-state for registrations. No external sid",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:11::Identity and lifecycle: invalid IDs use their documented zero/invalid forms. Monotonic generators preserve scope and exhaustion state across snapshot/restore and never wrap into a",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:143::Check(generator_restore_ok.Code() == \"gameplay.id_generator_snapshot_valid\", 902);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:143::Check(generator_restore_ok.Code() == \"gameplay.id_generator_snapshot_valid\", 902);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:11::Identity and lifecycle: invalid IDs use their documented zero/invalid forms. Monotonic generators preserve scope and exhaustion state across snapshot/restore and never wrap into a",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:339::GameplayTagSet set;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-SNAPSHOT against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:15::Failure and atomicity: validation failures do not modify registry/generator state. Container allocation failure is required to preserve pre-state for registrations. No external sid",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:11::Identity and lifecycle: invalid IDs use their documented zero/invalid forms. Monotonic generators preserve scope and exhaustion state across snapshot/restore and never wrap into a",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:196::Check(checked_restore.GetSnapshot().next == before_stale_restore.next, 914);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:196::Check(checked_restore.GetSnapshot().next == before_stale_restore.next, 914);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-VALIDATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:122::Check(!GameplayObjectId::FromString(\"\").IsValid(), 2);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:122::Check(!GameplayObjectId::FromString(\"\").IsValid(), 2);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-COUNTERS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:376::const GameplayObjectPartRef actor_part{actor, TypeId::FromString(\"entity.part.hand\")};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:377::Check(actor_part.IsValid() && actor_part.object == actor, 453);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-INDEXES against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:15::Failure and atomicity: validation failures do not modify registry/generator state. Container allocation failure is required to preserve pre-state for registrations. No external sid",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:359::Check((GameplayTimePoint{10} - GameplayDuration{3}).ticks == 7, 41);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:359::Check((GameplayTimePoint{10} - GameplayDuration{3}).ticks == 7, 41);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NO-FALSE-PUBLISH against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:25::`007859afafa7ca12`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:163::Check(ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(MonotonicIdGenerator<ScheduleId>::Snapshot{42, 0},",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:163::Check(ValidateMonotonicIdGeneratorSnapshot<ScheduleId>(MonotonicIdGenerator<ScheduleId>::Snapshot{42, 0},"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NOOP against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/foundation.md:7::Authoritative state is confined to explicit value objects and caller-owned registry/generator instances. `MonotonicIdGenerator` owns scope/next state. `StableTypeRegistry` and `Gam",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:352::Check(!CheckedAdd(max_time, GameplayDuration{1}).has_value(), 34);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:352::Check(!CheckedAdd(max_time, GameplayDuration{1}).has_value(), 34);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-PRIMARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:175::Check(exhausted.Restore(MonotonicIdGenerator<ScheduleId>::Snapshot{7, std::numeric_limits<std::uint64_t>::max()}),",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:175::Check(exhausted.Restore(MonotonicIdGenerator<ScheduleId>::Snapshot{7, std::numeric_limits<std::uint64_t>::max()}),"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-BOUNDARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "Foundation invokes no external callback or backend.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:325::Check(!malformed && tags.Size() == size_before_invalid, 22);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:325::Check(!malformed && tags.Size() == size_before_invalid, 22);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-DUPLICATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:123::Check(TypeId::FromString(\"non_empty_type\").IsValid(), 3);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:123::Check(TypeId::FromString(\"non_empty_type\").IsValid(), 3);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-EMPTY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:283::Check(fault_registry.Size() == size_before && fault_registry.Find(\"framework.fault.target\") == nullptr, 916);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:283::Check(fault_registry.Size() == size_before && fault_registry.Find(\"framework.fault.target\") == nullptr, 916);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-HAPPY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:393::const GameplayObjectRef invalid_ref{GameplayDomainId::FromString(\"framework.world\"), {}};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:394::Check(valid_ref.IsValid() && !invalid_ref.IsValid(), 48);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:343::Check(set.Values().size() == 1 && set.HasExact(oak.Value()), 31);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:343::Check(set.Values().size() == 1 && set.HasExact(oak.Value()), 31);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-REGRESSION against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [],
+          "rationale": "Foundation defines reference/generation value semantics but does not own a removable/reusable identity store that can reject a stale generation.",
+          "status": "N/A"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkFoundationTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-WRONG-LIFECYCLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/BaseInfrastructure/Queries": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:25::`01d60d2a8dbbee45`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-CLASSIFIED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:25::`01d60d2a8dbbee45`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:11::Lifecycle and identity: provider registration occurs before freeze. Duplicate provider/type registrations are rejected. Query/type mismatch, invalid requirements and exhausted budg",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:148::Check(!lifecycle.Execute(NumberQuery{1}) && lifecycle.Execute(NumberQuery{1}).GetError().HasCode(\"gameplay.query_registry_not_frozen\"), 3);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:148::Check(!lifecycle.Execute(NumberQuery{1}) && lifecycle.Execute(NumberQuery{1}).GetError().HasCode(\"gameplay.query_registry_not_frozen\"), 3);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:25::`01d60d2a8dbbee45`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:253::Check(!missing_epoch && missing_epoch.GetError().HasCode(\"gameplay.query_snapshot_coordinator_missing\"), 31);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:253::Check(!missing_epoch && missing_epoch.GetError().HasCode(\"gameplay.query_snapshot_coordinator_missing\"), 31);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:25::`01d60d2a8dbbee45`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-OVERLOADS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:25::`01d60d2a8dbbee45`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:100::if (mutex != nullptr)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:100::if (mutex != nullptr)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-PRECONDITIONS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:25::`01d60d2a8dbbee45`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:221::Check(snapshot && snapshot.Value().IsValid() && snapshot.Value().ProviderCount() == 2 && snapshot.Value().Tick() == GameplayTickId{77}, 9);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:221::Check(snapshot && snapshot.Value().IsValid() && snapshot.Value().ProviderCount() == 2 && snapshot.Value().Tick() == GameplayTickId{77}, 9);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-SUCCESS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-DIRECT-DEPS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:25::`01d60d2a8dbbee45`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-PORTS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-RESPONSIBILITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:211::## EngineFramework/BaseInfrastructure/Queries",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:7::Authoritative state: provider registry/freeze state and snapshot-coordinator epoch where configured. Query responses are caller-owned detached values. Diagnostics are observational",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-SINGLE-OWNER against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Provider calls are query execution, not prepare/commit/cancel external transactions.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [],
+          "rationale": "Queries has no owned mutator whose authoritative commit spans multiple containers.",
+          "status": "N/A"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Queries has no fallible external rollback requiring durable reconciliation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:11::Lifecycle and identity: provider registration occurs before freeze. Duplicate provider/type registrations are rejected. Query/type mismatch, invalid requirements and exhausted budg",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:7::Authoritative state: provider registry/freeze state and snapshot-coordinator epoch where configured. Query responses are caller-owned detached values. Diagnostics are observational",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:148::Check(!lifecycle.Execute(NumberQuery{1}) && lifecycle.Execute(NumberQuery{1}).GetError().HasCode(\"gameplay.query_registry_not_frozen\"), 3);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:148::Check(!lifecycle.Execute(NumberQuery{1}) && lifecycle.Execute(NumberQuery{1}).GetError().HasCode(\"gameplay.query_registry_not_frozen\"), 3);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-SINGLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:11::Lifecycle and identity: provider registration occurs before freeze. Duplicate provider/type registrations are rejected. Query/type mismatch, invalid requirements and exhausted budg",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:527::if (!threw || fault_service.IsFrozen())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:527::if (!threw || fault_service.IsFrozen())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-ALLOWED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:11::Lifecycle and identity: provider registration occurs before freeze. Duplicate provider/type registrations are rejected. Query/type mismatch, invalid requirements and exhausted budg",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:148::Check(!lifecycle.Execute(NumberQuery{1}) && lifecycle.Execute(NumberQuery{1}).GetError().HasCode(\"gameplay.query_registry_not_frozen\"), 3);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:148::Check(!lifecycle.Execute(NumberQuery{1}) && lifecycle.Execute(NumberQuery{1}).GetError().HasCode(\"gameplay.query_registry_not_frozen\"), 3);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-FORBIDDEN against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Queries has no fallible external cleanup protocol.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Queries owns no shutdown-capable external resource; provider lifetime is caller-owned.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "Queries exposes no durable restore operation.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "Queries owns no durable restored generator/revision state.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "Queries exposes no durable restore operation.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "QuerySnapshot is an observational detached provider snapshot, not a durable service persistence format.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "Queries exposes no durable restore operation.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:7::Authoritative state: provider registry/freeze state and snapshot-coordinator epoch where configured. Query responses are caller-owned detached values. Diagnostics are observational",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:327::Check(throwing_service.GetDiagnostics().provider_exceptions == 1, 43);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:327::Check(throwing_service.GetDiagnostics().provider_exceptions == 1, 43);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-COUNTERS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:7::Authoritative state: provider registry/freeze state and snapshot-coordinator epoch where configured. Query responses are caller-owned detached values. Diagnostics are observational",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:527::if (!threw || fault_service.IsFrozen())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:527::if (!threw || fault_service.IsFrozen())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-INDEXES against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:11::Lifecycle and identity: provider registration occurs before freeze. Duplicate provider/type registrations are rejected. Query/type mismatch, invalid requirements and exhausted budg",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:7::Authoritative state: provider registry/freeze state and snapshot-coordinator epoch where configured. Query responses are caller-owned detached values. Diagnostics are observational",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:468::GameplayQueryService publish_id_service{std::numeric_limits<std::uint64_t>::max() - 1};",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:469::Check(publish_id_service.RegisterProvider<NumberQuery>("
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NO-FALSE-PUBLISH against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:25::`01d60d2a8dbbee45`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:221::Check(snapshot && snapshot.Value().IsValid() && snapshot.Value().ProviderCount() == 2 && snapshot.Value().Tick() == GameplayTickId{77}, 9);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:221::Check(snapshot && snapshot.Value().IsValid() && snapshot.Value().ProviderCount() == 2 && snapshot.Value().Tick() == GameplayTickId{77}, 9);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NOOP against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:7::Authoritative state: provider registry/freeze state and snapshot-coordinator epoch where configured. Query responses are caller-owned detached values. Diagnostics are observational",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:221::Check(snapshot && snapshot.Value().IsValid() && snapshot.Value().ProviderCount() == 2 && snapshot.Value().Tick() == GameplayTickId{77}, 9);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:221::Check(snapshot && snapshot.Value().IsValid() && snapshot.Value().ProviderCount() == 2 && snapshot.Value().Tick() == GameplayTickId{77}, 9);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-PRIMARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:428::Check(!budget_violation && budget_violation.GetError().HasCode(\"gameplay.query_budget_exceeded\"), 24);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:428::Check(!budget_violation && budget_violation.GetError().HasCode(\"gameplay.query_budget_exceeded\"), 24);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-BOUNDARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/queries.md:11::Lifecycle and identity: provider registration occurs before freeze. Duplicate provider/type registrations are rejected. Query/type mismatch, invalid requirements and exhausted budg",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:529::if (!fault_service.Freeze() || !fault_service.IsFrozen())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:529::if (!fault_service.Freeze() || !fault_service.IsFrozen())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-CALLBACK-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:326::Check(!throwing_result && throwing_result.GetError().HasCode(\"gameplay.query_provider_exception\"), 42);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:326::Check(!throwing_result && throwing_result.GetError().HasCode(\"gameplay.query_provider_exception\"), 42);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-DUPLICATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:529::if (!fault_service.Freeze() || !fault_service.IsFrozen())",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:529::if (!fault_service.Freeze() || !fault_service.IsFrozen())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-EMPTY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:84::[[nodiscard]] static constexpr QueryTypeId Type() noexcept { return QueryTypeId::FromString(\"framework.test.throwing\"); }",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:100::if (mutex != nullptr)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-HAPPY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:253::Check(!missing_epoch && missing_epoch.GetError().HasCode(\"gameplay.query_snapshot_coordinator_missing\"), 31);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:253::Check(!missing_epoch && missing_epoch.GetError().HasCode(\"gameplay.query_snapshot_coordinator_missing\"), 31);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:326::Check(!throwing_result && throwing_result.GetError().HasCode(\"gameplay.query_provider_exception\"), 42);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:326::Check(!throwing_result && throwing_result.GetError().HasCode(\"gameplay.query_provider_exception\"), 42);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-REGRESSION against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [],
+          "rationale": "Query/provider identities are not removed and reused as generation-bearing handles.",
+          "status": "N/A"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:148::Check(!lifecycle.Execute(NumberQuery{1}) && lifecycle.Execute(NumberQuery{1}).GetError().HasCode(\"gameplay.query_registry_not_frozen\"), 3);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:148::Check(!lifecycle.Execute(NumberQuery{1}) && lifecycle.Execute(NumberQuery{1}).GetError().HasCode(\"gameplay.query_registry_not_frozen\"), 3);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayQueriesTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-WRONG-LIFECYCLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/BaseInfrastructure/SupportRandom": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-CLASSIFIED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:176::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.real\"))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:176::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.real\"))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:170::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.real\")).TryUniformReal(2.0, 2.0).has_value(), 65);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:170::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.real\")).TryUniformReal(2.0, 2.0).has_value(), 65);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-OVERLOADS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:168::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.range\")).TryUniformRange(9, 9).has_value(), 63);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:168::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.range\")).TryUniformRange(9, 9).has_value(), 63);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-PRECONDITIONS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:79::Check(RandomSequence({42}, combat).UniformUnchecked(10) == RandomSequence({42}, combat).UniformUnchecked(10), 25);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:79::Check(RandomSequence({42}, combat).UniformUnchecked(10) == RandomSequence({42}, combat).UniformUnchecked(10), 25);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-SUCCESS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-DIRECT-DEPS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-PORTS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-RESPONSIBILITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:218::## EngineFramework/BaseInfrastructure/SupportRandom",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-SINGLE-OWNER against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "SupportRandom performs no external transactional work.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [],
+          "rationale": "SupportRandom mutators do not span multiple authoritative containers.",
+          "status": "N/A"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "SupportRandom has no fallible external rollback or reconciliation state.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:169::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.range\")).TryUniformRange(10, 9).has_value(), 64);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:169::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.range\")).TryUniformRange(10, 9).has_value(), 64);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-SINGLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [],
+          "rationale": "SupportRandom exposes no lifecycle state machine.",
+          "status": "N/A"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [],
+          "rationale": "SupportRandom exposes no lifecycle state machine.",
+          "status": "N/A"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "SupportRandom has no external cleanup protocol.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "SupportRandom owns no shutdown-capable resource or registration.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:13::Persistence boundary: snapshot/restore covers future sequence state. Whole-engine deterministic replay is Goal 5.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:74::Check(uniform.UniformUnchecked(10) == 5, 23);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:74::Check(uniform.UniformUnchecked(10) == 5, 23);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-CANDIDATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:13::Persistence boundary: snapshot/restore covers future sequence state. Whole-engine deterministic replay is Goal 5.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:70::Check(RandomSequence({42}, combat).NextU64Unchecked() != different_stream.NextU64Unchecked(), 21);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:70::Check(RandomSequence({42}, combat).NextU64Unchecked() != different_stream.NextU64Unchecked(), 21);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-CONTINUITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:13::Persistence boundary: snapshot/restore covers future sequence state. Whole-engine deterministic replay is Goal 5.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:143::Check(restored.NextU64Unchecked() == after_snapshot, 46);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:143::Check(restored.NextU64Unchecked() == after_snapshot, 46);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:13::Persistence boundary: snapshot/restore covers future sequence state. Whole-engine deterministic replay is Goal 5.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:38::Check(!RandomStream::FromString(\"\").IsValid(), 4);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:38::Check(!RandomStream::FromString(\"\").IsValid(), 4);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-SNAPSHOT against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:13::Persistence boundary: snapshot/restore covers future sequence state. Whole-engine deterministic replay is Goal 5.",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:170::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.real\")).TryUniformReal(2.0, 2.0).has_value(), 65);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:170::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.real\")).TryUniformReal(2.0, 2.0).has_value(), 65);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-VALIDATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:38::Check(!RandomStream::FromString(\"\").IsValid(), 4);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:38::Check(!RandomStream::FromString(\"\").IsValid(), 4);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-COUNTERS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [],
+          "rationale": "SupportRandom owns only scalar stream state and has no secondary index/cache.",
+          "status": "N/A"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:172::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.real\"))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:172::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.real\"))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NO-FALSE-PUBLISH against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:23::`02b4c82924d23ddb`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:168::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.range\")).TryUniformRange(9, 9).has_value(), 63);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:168::Check(!RandomSequence({1}, RandomStream::FromString(\"invalid.range\")).TryUniformRange(9, 9).has_value(), 63);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NOOP against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/support_random.md:7::Authoritative state is the explicit stream seed/state/counter. Streams do not share hidden mutable state and do not consult wall clock after construction. Derived sampled values ar",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:80::Check(RandomSequence({42}, combat).UniformUnchecked(std::numeric_limits<std::uint64_t>::max()) <",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:80::Check(RandomSequence({42}, combat).UniformUnchecked(std::numeric_limits<std::uint64_t>::max()) <"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-PRIMARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:80::Check(RandomSequence({42}, combat).UniformUnchecked(std::numeric_limits<std::uint64_t>::max()) <",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:80::Check(RandomSequence({42}, combat).UniformUnchecked(std::numeric_limits<std::uint64_t>::max()) <"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-BOUNDARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "SupportRandom invokes no callback or backend.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [],
+          "rationale": "SupportRandom does not register or create identities in a duplicate-sensitive registry.",
+          "status": "N/A"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:70::Check(RandomSequence({42}, combat).NextU64Unchecked() != different_stream.NextU64Unchecked(), 21);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:70::Check(RandomSequence({42}, combat).NextU64Unchecked() != different_stream.NextU64Unchecked(), 21);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-EMPTY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:41::Check(StableMix(1) == 10451216379200822465ull, 6);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:41::Check(StableMix(1) == 10451216379200822465ull, 6);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-HAPPY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:155::Check(!RandomSequence::IsValidSnapshot(invalid_snapshot), 51);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:155::Check(!RandomSequence::IsValidSnapshot(invalid_snapshot), 51);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:80::Check(RandomSequence({42}, combat).UniformUnchecked(std::numeric_limits<std::uint64_t>::max()) <",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/random_support_tests.cpp:80::Check(RandomSequence({42}, combat).UniformUnchecked(std::numeric_limits<std::uint64_t>::max()) <"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRandomSupportTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-REGRESSION against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [],
+          "rationale": "SupportRandom owns no removable/reusable identity space.",
+          "status": "N/A"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [],
+          "rationale": "SupportRandom exposes no lifecycle state machine.",
+          "status": "N/A"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/BaseInfrastructure/Time": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:25::`05dbbb2a604c6830`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-CLASSIFIED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:25::`05dbbb2a604c6830`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:15::Failure and atomicity: registration, scheduling, rescheduling, due collection and synchronization must not expose partial record/index/revision state when local publication fails.",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:216::if (calendar_service.ValidateCalendarDate(custom_clock.Value(), CalendarDate{1, 9, 1, 0, 0, 0}))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:216::if (calendar_service.ValidateCalendarDate(custom_clock.Value(), CalendarDate{1, 9, 1, 0, 0, 0}))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:25::`05dbbb2a604c6830`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:25::`05dbbb2a604c6830`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-OVERLOADS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:25::`05dbbb2a604c6830`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:305::const auto before = fault_service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-PRECONDITIONS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:25::`05dbbb2a604c6830`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:292::if (!threw || fault_service.GetClockDefinition(ClockId::FromString(\"framework.clock.fault\")).has_value() ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:292::if (!threw || fault_service.GetClockDefinition(ClockId::FromString(\"framework.clock.fault\")).has_value() ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-SUCCESS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-DIRECT-DEPS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:25::`05dbbb2a604c6830`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-PORTS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-RESPONSIBILITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:225::## EngineFramework/BaseInfrastructure/Time",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-SINGLE-OWNER against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "Time performs no external prepare/commit/cancel transaction.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:15::Failure and atomicity: registration, scheduling, rescheduling, due collection and synchronization must not expose partial record/index/revision state when local publication fails.",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:305::const auto before = fault_service.CaptureSnapshot();",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-MULTI against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "Time has no fallible external rollback requiring durable reconciliation.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:15::Failure and atomicity: registration, scheduling, rescheduling, due collection and synchronization must not expose partial record/index/revision state when local publication fails.",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:345::GameplayTimeService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-SINGLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:11::Lifecycle and identity: schedule IDs are monotonic and non-reused. Create/reschedule/cancel and terminal schedule semantics are explicit. Same-timestamp trigger order is determinis",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:299::GameplayTimeService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-ALLOWED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:11::Lifecycle and identity: schedule IDs are monotonic and non-reused. Create/reschedule/cancel and terminal schedule semantics are explicit. Same-timestamp trigger order is determinis",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:318::GameplayTimeService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-FORBIDDEN against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "Time has no fallible external cleanup protocol.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "Time has no module Shutdown API or external cleanup resource.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:5::Responsibility: gameplay clocks, calendar definitions, scheduled actions, recurrence/catch-up, cancellation, synchronization, due-trigger collection, scheduler revision/journal con",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:155::if (!fractional_service.SetTimeScale(fractional_clock.Value(), 500))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:155::if (!fractional_service.SetTimeScale(fractional_clock.Value(), 500))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-CANDIDATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:5::Responsibility: gameplay clocks, calendar definitions, scheduled actions, recurrence/catch-up, cancellation, synchronization, due-trigger collection, scheduler revision/journal con",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:292::if (!threw || fault_service.GetClockDefinition(ClockId::FromString(\"framework.clock.fault\")).has_value() ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:292::if (!threw || fault_service.GetClockDefinition(ClockId::FromString(\"framework.clock.fault\")).has_value() ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-CONTINUITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:15::Failure and atomicity: registration, scheduling, rescheduling, due collection and synchronization must not expose partial record/index/revision state when local publication fails.",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:5::Responsibility: gameplay clocks, calendar definitions, scheduled actions, recurrence/catch-up, cancellation, synchronization, due-trigger collection, scheduler revision/journal con",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:280::GameplayTimeService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:5::Responsibility: gameplay clocks, calendar definitions, scheduled actions, recurrence/catch-up, cancellation, synchronization, due-trigger collection, scheduler revision/journal con",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:292::if (!threw || fault_service.GetClockDefinition(ClockId::FromString(\"framework.clock.fault\")).has_value() ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:292::if (!threw || fault_service.GetClockDefinition(ClockId::FromString(\"framework.clock.fault\")).has_value() ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-SNAPSHOT against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:15::Failure and atomicity: registration, scheduling, rescheduling, due collection and synchronization must not expose partial record/index/revision state when local publication fails.",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:5::Responsibility: gameplay clocks, calendar definitions, scheduled actions, recurrence/catch-up, cancellation, synchronization, due-trigger collection, scheduler revision/journal con",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:280::GameplayTimeService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed PERSIST-VALIDATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:352::if (!fs || !fault_service.AdvanceTo(fc.Value(), GameplayTimePoint{2}))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:352::if (!fs || !fault_service.AdvanceTo(fc.Value(), GameplayTimePoint{2}))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-COUNTERS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:85::GameplayTimeService policy_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-INDEXES against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:15::Failure and atomicity: registration, scheduling, rescheduling, due collection and synchronization must not expose partial record/index/revision state when local publication fails.",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:345::GameplayTimeService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NO-FALSE-PUBLISH against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:25::`05dbbb2a604c6830`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:216::if (calendar_service.ValidateCalendarDate(custom_clock.Value(), CalendarDate{1, 9, 1, 0, 0, 0}))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:216::if (calendar_service.ValidateCalendarDate(custom_clock.Value(), CalendarDate{1, 9, 1, 0, 0, 0}))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NOOP against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/time.md:7::Authoritative state: registered clocks/actions, clock state, schedules, due index, schedule ID generator, scheduler revision and externally synchronized-clock metadata. Derived sta",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:42::if (!service.SynchronizeClock(clock.Value(), GameplayTimePoint{35}, Revision{2}))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:42::if (!service.SynchronizeClock(clock.Value(), GameplayTimePoint{35}, Revision{2}))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-PRIMARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:242::if (!service.SynchronizeClock(clock.Value(), service.GetClock(clock.Value())->now, Revision{1}) ||",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:242::if (!service.SynchronizeClock(clock.Value(), service.GetClock(clock.Value())->now, Revision{1}) ||"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-BOUNDARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "Time returns due triggers to its caller and does not invoke an external callback/backend.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:301::const auto fa = fault_service.RegisterAction(\"framework.action.schedule_fault\", domain);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-DUPLICATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:301::const auto fa = fault_service.RegisterAction(\"framework.action.schedule_fault\", domain);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-EMPTY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:299::GameplayTimeService fault_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-HAPPY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:85::GameplayTimeService policy_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-REGRESSION against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:366::if (!threw || !fault_service.HasSchedule(fs.Value()) || fault_service.SchedulerRevision() != before_revision)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:366::if (!threw || !fault_service.HasSchedule(fs.Value()) || fault_service.SchedulerRevision() != before_revision)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-STALE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:85::GameplayTimeService policy_service;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameplayTimeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-WRONG-LIFECYCLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/RuntimeBoundary/RuntimeBridge": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-CLASSIFIED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:15::Failure and atomicity: accepted external work is not reported as semantic success until local terminal publication is established. Backend failure does not falsely advance semantic",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:78::RuntimeBridgeCapabilities GetCapabilities() const noexcept override { return capabilities; }",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:71::if (environment_failures_remaining > 0) --environment_failures_remaining;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed API-OVERLOADS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-PRECONDITIONS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:89::foundation::Result<std::vector<RuntimePhysicsBodyHandle>> Overlap(const RuntimeOverlapQuery&) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:99::if (!object.IsValid() || dead_objects.contains(object.value))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed API-SUCCESS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-DIRECT-DEPS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-PORTS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-RESPONSIBILITY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:554::## EngineFramework/RuntimeBoundary/RuntimeBridge",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:7::Authoritative state: Framework-side binding/generation maps, queued accepted projection work, reconciliation records, imported Runtime handles and bridge-local monotonic counters.",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B01 reviewed ARCH-SINGLE-OWNER against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:15::Failure and atomicity: accepted external work is not reported as semantic success until local terminal publication is established. Backend failure does not falsely advance semantic",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:314::CHECK(bridge.CancelPath(path_handle.Value()) && bridge.ReleasePath(path_handle.Value()));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:314::CHECK(bridge.CancelPath(path_handle.Value()) && bridge.ReleasePath(path_handle.Value()));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-EXTERNAL against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:15::Failure and atomicity: accepted external work is not reported as semantic success until local terminal publication is established. Backend failure does not falsely advance semantic",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:7::Authoritative state: Framework-side binding/generation maps, queued accepted projection work, reconciliation records, imported Runtime handles and bridge-local monotonic counters.",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:78::RuntimeBridgeCapabilities GetCapabilities() const noexcept override { return capabilities; }",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:71::if (environment_failures_remaining > 0) --environment_failures_remaining;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-MULTI against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:15::Failure and atomicity: accepted external work is not reported as semantic success until local terminal publication is established. Backend failure does not falsely advance semantic",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:7::Authoritative state: Framework-side binding/generation maps, queued accepted projection work, reconciliation records, imported Runtime handles and bridge-local monotonic counters.",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:78::RuntimeBridgeCapabilities GetCapabilities() const noexcept override { return capabilities; }",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:71::if (environment_failures_remaining > 0) --environment_failures_remaining;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-RECONCILE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:15::Failure and atomicity: accepted external work is not reported as semantic success until local terminal publication is established. Backend failure does not falsely advance semantic",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:7::Authoritative state: Framework-side binding/generation maps, queued accepted projection work, reconciliation records, imported Runtime handles and bridge-local monotonic counters.",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:410::CHECK(dead_bridge.Process().failed == 1);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:410::CHECK(dead_bridge.Process().failed == 1);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed ATOMIC-SINGLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:11::Identity and lifecycle: one active Runtime materialization corresponds to one semantic binding generation. Forward/reverse maps must agree. Stale generation observations cannot mut",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:308::const auto path_handle = bridge.RequestPath(RuntimeNavigationPathQuery{{0, 0, 0}, {1000, 0, 0}, RuntimeRegionHandle{1}, 6});",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:309::CHECK(path_handle && path_handle.Value().IsValid());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-ALLOWED against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:11::Identity and lifecycle: one active Runtime materialization corresponds to one semantic binding generation. Forward/reverse maps must agree. Stale generation observations cannot mut",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:423::CHECK(dead_bridge.RetryReconciliation(stale_sequence));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:423::CHECK(dead_bridge.RetryReconciliation(stale_sequence));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-FORBIDDEN against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:15::Failure and atomicity: accepted external work is not reported as semantic success until local terminal publication is established. Backend failure does not falsely advance semantic",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:11::Identity and lifecycle: one active Runtime materialization corresponds to one semantic binding generation. Forward/reverse maps must agree. Stale generation observations cannot mut",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:78::RuntimeBridgeCapabilities GetCapabilities() const noexcept override { return capabilities; }",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:71::if (environment_failures_remaining > 0) --environment_failures_remaining;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed LIFE-RETRY-CLEANUP against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "RuntimeBridge exposes explicit per-binding cleanup/reconciliation but no module-level Shutdown transition.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [],
+          "rationale": "RuntimeBridge exposes no durable restore operation in Goal 4.",
+          "status": "N/A"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [],
+          "rationale": "RuntimeBridge restore/re-materialization continuity is a Goal 5 whole-engine concern because no local durable checkpoint API is exposed.",
+          "status": "N/A"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [],
+          "rationale": "RuntimeBridge exposes no durable restore operation in Goal 4.",
+          "status": "N/A"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [],
+          "rationale": "RuntimeBridge exposes no durable snapshot/checkpoint API in Goal 4; whole-engine persistence/re-materialization is Goal 5.",
+          "status": "N/A"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [],
+          "rationale": "RuntimeBridge exposes no durable restore operation in Goal 4.",
+          "status": "N/A"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:7::Authoritative state: Framework-side binding/generation maps, queued accepted projection work, reconciliation records, imported Runtime handles and bridge-local monotonic counters.",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:314::CHECK(bridge.CancelPath(path_handle.Value()) && bridge.ReleasePath(path_handle.Value()));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:314::CHECK(bridge.CancelPath(path_handle.Value()) && bridge.ReleasePath(path_handle.Value()));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-COUNTERS against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:7::Authoritative state: Framework-side binding/generation maps, queued accepted projection work, reconciliation records, imported Runtime handles and bridge-local monotonic counters.",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-INDEXES against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:15::Failure and atomicity: accepted external work is not reported as semantic success until local terminal publication is established. Backend failure does not falsely advance semantic",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:7::Authoritative state: Framework-side binding/generation maps, queued accepted projection work, reconciliation records, imported Runtime handles and bridge-local monotonic counters.",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:245::CHECK(bridge.Process().failed == 0);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:245::CHECK(bridge.Process().failed == 0);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NO-FALSE-PUBLISH against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:27::`02029ca15a13013a`",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:410::CHECK(dead_bridge.Process().failed == 1);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:410::CHECK(dead_bridge.Process().failed == 1);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-NOOP against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:7::Authoritative state: Framework-side binding/generation maps, queued accepted projection work, reconciliation records, imported Runtime handles and bridge-local monotonic counters.",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed STATE-PRIMARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-BOUNDARY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/runtime_bridge.md:15::Failure and atomicity: accepted external work is not reported as semantic success until local terminal publication is established. Backend failure does not falsely advance semantic",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:85::foundation::Result<std::vector<RuntimeRayHit>> Raycast(const RuntimeRayQuery&) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:71::if (environment_failures_remaining > 0) --environment_failures_remaining;"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-CALLBACK-FAILURE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:66::foundation::Result<void> ProjectEnvironment(RuntimeRegionHandle, const RuntimeEnvironmentValues&, Revision) override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:69::if (environment_always_fails || environment_failures_remaining > 0)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-DUPLICATE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:119::foundation::Result<RuntimeNavigationPathState> GetPathState(RuntimeNavigationQueryHandle handle) const override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:128::if (handle.value != 91)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-EMPTY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:66::foundation::Result<void> ProjectEnvironment(RuntimeRegionHandle, const RuntimeEnvironmentValues&, Revision) override",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:69::if (environment_always_fails || environment_failures_remaining > 0)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-HAPPY against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-INVALID against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:309::CHECK(path_handle && path_handle.Value().IsValid());",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:309::CHECK(path_handle && path_handle.Value().IsValid());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-REGRESSION against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:375::CHECK(after_forget && after_forget->generation.value == 1);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:375::CHECK(after_forget && after_forget->generation.value == 1);"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-STALE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:314::CHECK(bridge.CancelPath(path_handle.Value()) && bridge.ReleasePath(path_handle.Value()));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:314::CHECK(bridge.CancelPath(path_handle.Value()) && bridge.ReleasePath(path_handle.Value()));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkRuntimeBridgeTests"
+            }
+          ],
+          "rationale": "B01 reviewed TEST-WRONG-LIFECYCLE against the current module contract, implementation, per-item coverage review and module-specific regression suite.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    }
+  },
+  "schema_version": 1
+}

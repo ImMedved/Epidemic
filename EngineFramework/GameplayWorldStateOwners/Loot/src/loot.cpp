@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Loot/loot.h"
+#include "loot_test_seam.h"
 #include "Epidemic/Foundation/error.h"
 #include <algorithm>
 #include <iterator>
@@ -627,6 +628,8 @@ foundation::Result<void> LootService::RestoreSnapshot(LootSnapshot snapshot)
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreGenerated))
+        return foundation::Result<void>::Failure(Error("gameplay.loot.publication_failed", "generated restore staging failed"));
     std::unordered_map<RewardExecutionId, RewardBundle, IdHash> restored_generated;
     std::unordered_map<RewardExecutionId, PendingReward, IdHash> restored_pending;
     std::unordered_set<RewardExecutionId, IdHash> restored_claimed;
@@ -654,6 +657,8 @@ foundation::Result<void> LootService::RestoreSnapshot(LootSnapshot snapshot)
         max_execution_low = std::max(max_execution_low, bundle.id.value.Low());
         restored_generated.emplace(bundle.id, std::move(bundle));
     }
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestorePending))
+        return foundation::Result<void>::Failure(Error("gameplay.loot.publication_failed", "pending restore staging failed"));
     for (auto &pending : snapshot.pending)
     {
         if (!pending.bundle.id.IsValid() || pending.bundle.id.value.High() != expected_scope ||
@@ -681,6 +686,8 @@ foundation::Result<void> LootService::RestoreSnapshot(LootSnapshot snapshot)
         return foundation::Result<void>::Failure(
             Error("gameplay.loot.restore_invalid", "exhausted loot journal is missing terminal sequence"));
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreJournal))
+        return foundation::Result<void>::Failure(Error("gameplay.loot.publication_failed", "journal restore staging failed"));
     std::uint64_t previous = 0;
     for (const auto &change : snapshot.journal)
     {

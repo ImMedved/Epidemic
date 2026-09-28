@@ -4,10 +4,35 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <new>
 #include <utility>
 
 namespace epidemic::gameplay::integration
 {
+namespace test_support
+{
+namespace
+{
+bool g_fail_next_resource_reservation_token_publication = false;
+}
+
+void FailNextResourceReservationTokenPublicationForTest() noexcept
+{
+    g_fail_next_resource_reservation_token_publication = true;
+}
+
+void ResetProcessResourceFailureSeamsForTest() noexcept
+{
+    g_fail_next_resource_reservation_token_publication = false;
+}
+
+[[nodiscard]] bool ConsumeResourceReservationTokenPublicationFailure() noexcept
+{
+    if (!g_fail_next_resource_reservation_token_publication) return false;
+    g_fail_next_resource_reservation_token_publication = false;
+    return true;
+}
+}
 namespace
 {
 constexpr std::uint32_t kResourcePayloadVersion = 1;
@@ -150,19 +175,44 @@ foundation::Result<void> ResourceProcessInputProvider::Validate(const processes:
 foundation::Result<processes::ReservedProcessInput> ResourceProcessInputProvider::Reserve(const processes::ProcessInputDefinition& input, const processes::StartProcessRequest& request, processes::ProcessInstanceId instance)
 {
     auto payload = DecodeProcessResourcePayload(input.payload);
-    if (!payload) return foundation::Result<processes::ReservedProcessInput>::Failure(Error("gameplay.integration.resource_payload_invalid", "process input payload is not a resource payload"));
-    std::vector<resources::ResourceQuantity> required{{payload->resource, input.amount}};
-    auto resource_reservation = resources_.Reserve(payload->stockpile, std::move(required), request.actor, TypeId::FromString("framework.process.input"), request.context);
-    if (!resource_reservation)
-    {
-        return foundation::Result<processes::ReservedProcessInput>::Failure(resource_reservation.GetError());
-    }
+    if (!payload)
+        return foundation::Result<processes::ReservedProcessInput>::Failure(
+            Error("gameplay.integration.resource_payload_invalid", "process input payload is not a resource payload"));
+
     processes::ReservedProcessInput reservation;
     reservation.id = processes::ProcessReservationId::FromRaw(instance.value.High(), input.id.value.Raw());
     reservation.input = input.id;
     reservation.type = input.type;
     reservation.amount = input.amount;
-    reservation.provider_token = EncodeProcessResourceReservationPayload(ProcessResourceReservationPayload{resource_reservation.Value()});
+    reservation.provider_token.type = ReservationPayloadType();
+    reservation.provider_token.schema_version = kReservationPayloadVersion;
+    reservation.provider_token.portable = true;
+
+    std::vector<resources::ResourceQuantity> required;
+    try
+    {
+        required.push_back({payload->resource, input.amount});
+        if (test_support::ConsumeResourceReservationTokenPublicationFailure())
+            throw std::bad_alloc{};
+        // Reserve the durable provider-token storage before Resources accepts the
+        // reservation. Filling bytes after acceptance is then non-allocating.
+        reservation.provider_token.bytes.reserve(kReservationPayloadSize);
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<processes::ReservedProcessInput>::Failure(
+            Error("gameplay.integration.resource_token_allocation", "failed to stage resource reservation token"));
+    }
+
+    auto resource_reservation = resources_.Reserve(payload->stockpile, std::move(required), request.actor,
+                                                   TypeId::FromString("framework.process.input"), request.context);
+    if (!resource_reservation)
+        return foundation::Result<processes::ReservedProcessInput>::Failure(resource_reservation.GetError());
+
+    reservation.provider_token.bytes.clear();
+    AppendU32(reservation.provider_token.bytes, kReservationPayloadVersion);
+    AppendU64(reservation.provider_token.bytes, resource_reservation.Value().value.High());
+    AppendU64(reservation.provider_token.bytes, resource_reservation.Value().value.Low());
     return foundation::Result<processes::ReservedProcessInput>::Success(std::move(reservation));
 }
 foundation::Result<void> ResourceProcessInputProvider::Consume(const processes::ReservedProcessInput& reservation, GameplayContext context)

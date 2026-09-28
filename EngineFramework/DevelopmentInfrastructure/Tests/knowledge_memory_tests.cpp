@@ -1,6 +1,5 @@
-#include "allocation_fault_injection.h"
 #include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
+#include "../../GameplayWorldStateOwners/Knowledge/src/knowledge_test_seam.h"
 #include "Epidemic/GameFramework/Knowledge/knowledge.h"
 
 #include <limits>
@@ -354,62 +353,49 @@ int main()
         knowledge_exhausted_after.memory_ids.next != knowledge_exhausted_before.memory_ids.next)
         return 49;
 
-    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
+    // Goal 4: deterministic module-local restore fault seams replace process-global allocation overrides.
     const auto allocation_before = k.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "Knowledge.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return k.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return k.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = k.CaptureSnapshot();
-            const auto diagnostics = k.GetDiagnostics();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("Knowledge.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.knowledge.size() + allocation_baseline.memories.size(),
-                                                     allocation_after.knowledge.size() + allocation_after.memories.size(),
-                                                     "knowledge and memory record count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.profiles.size(), allocation_after.profiles.size(),
-                                                     "profile payload count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     diagnostics.knowledge_records,
-                                                     static_cast<std::uint64_t>(allocation_baseline.knowledge.size()),
-                                                     "knowledge index diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
-                                                     allocation_baseline.knowledge_ids.next, allocation_after.knowledge_ids.next,
-                                                     "knowledge id generator next")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.revision, allocation_after.revision,
-                                                     "revision")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     k.ReadChangesSince(k.LatestChangeCursor()).changes.size(), std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     allocation_baseline.next_change_sequence,
-                                                     allocation_after.next_change_sequence,
-                                                     "next change sequence")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     diagnostics.memory_records,
-                                                     static_cast<std::uint64_t>(allocation_baseline.memories.size()),
-                                                     "retained memory diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     k.LatestChangeCursor(), k.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     diagnostics.profiles,
-                                                     static_cast<std::uint64_t>(allocation_baseline.profiles.size()),
-                                                     "public diagnostics read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
-        });
-    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
-        return 914;
+    using FaultPoint = epidemic::gameplay::knowledge::internal_test::AllocationFaultPoint;
+    for (const auto point : {FaultPoint::RestoreProfiles, FaultPoint::RestoreKnowledge,
+                             FaultPoint::RestoreMemories, FaultPoint::RestoreIndexes})
+    {
+        auto target = allocation_before;
+        epidemic::gameplay::knowledge::internal_test::ArmAllocationFault(point);
+        const auto result = k.RestoreSnapshot(std::move(target));
+        epidemic::gameplay::knowledge::internal_test::ResetAllocationFault();
+        if (result)
+            return 913;
+        const auto after = k.CaptureSnapshot();
+        const auto diagnostics = k.GetDiagnostics();
+        const auto pre_state = epidemic::tests::pre_state::StateComparator("Knowledge.RestoreSnapshot.pre_state")
+                                   .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
+                                                 allocation_before.knowledge.size() + allocation_before.memories.size(),
+                                                 after.knowledge.size() + after.memories.size(),
+                                                 "knowledge and memory record count")
+                                   .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
+                                                 allocation_before.profiles.size(), after.profiles.size(),
+                                                 "profile payload count")
+                                   .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
+                                                 diagnostics.knowledge_records,
+                                                 static_cast<std::uint64_t>(allocation_before.knowledge.size()),
+                                                 "knowledge index diagnostics")
+                                   .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
+                                                 allocation_before.knowledge_ids.next, after.knowledge_ids.next,
+                                                 "knowledge id generator next")
+                                   .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
+                                                 allocation_before.revision, after.revision, "revision")
+                                   .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
+                                                 allocation_before.change_epoch, after.change_epoch, "journal epoch")
+                                   .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
+                                                 allocation_before.next_change_sequence, after.next_change_sequence,
+                                                 "next change sequence")
+                                   .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
+                                                 diagnostics.profiles,
+                                                 static_cast<std::uint64_t>(allocation_before.profiles.size()),
+                                                 "public diagnostics read model")
+                                   .Finish();
+        if (!pre_state.Passed())
+            return 914;
+    }
     return 0;
 }

@@ -1,6 +1,7 @@
-#include "allocation_fault_injection.h"
+#include "../../GameplayWorldStateOwners/Traversal/src/traversal_test_seam.h"
 #include "Epidemic/GameFramework/Traversal/traversal.h"
 
+#include <algorithm>
 #include <limits>
 
 using namespace epidemic::gameplay;
@@ -8,6 +9,65 @@ using namespace epidemic::gameplay::traversal;
 
 namespace
 {
+template <class T, class Pred>
+bool SameVector(const std::vector<T>& a, const std::vector<T>& b, Pred pred)
+{
+    return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);
+}
+
+bool SameState(const TraversalState& a, const TraversalState& b)
+{
+    return a.subject == b.subject && a.current_mode == b.current_mode && a.profile == b.profile &&
+           a.active_session == b.active_session && a.revision == b.revision;
+}
+
+bool SameSession(const TraversalSession& a, const TraversalSession& b)
+{
+    return a.id == b.id && a.subject == b.subject && a.mode == b.mode && a.route == b.route &&
+           a.state == b.state && a.started_at == b.started_at && a.revision == b.revision;
+}
+
+bool SameRoute(const TraversalRoute& a, const TraversalRoute& b)
+{
+    return a.id == b.id && a.subject == b.subject && a.from_area == b.from_area && a.to_area == b.to_area &&
+           a.mode == b.mode && a.lifetime == b.lifetime && a.source == b.source && a.payload == b.payload &&
+           a.revision == b.revision;
+}
+
+bool SameGrant(const TraversalCapabilityGrant& a, const TraversalCapabilityGrant& b)
+{
+    return a.id == b.id && a.subject == b.subject && a.capability == b.capability && a.source == b.source &&
+           a.parameter_micro == b.parameter_micro && a.expires_at == b.expires_at && a.persistent == b.persistent &&
+           a.revision == b.revision;
+}
+
+bool SameBinding(const TraversalCarrierBinding& a, const TraversalCarrierBinding& b)
+{
+    return a.passenger == b.passenger && a.carrier == b.carrier && a.carrier_mode == b.carrier_mode &&
+           a.previous_mode == b.previous_mode && a.role == b.role && a.revision == b.revision;
+}
+
+bool SameChange(const TraversalChange& a, const TraversalChange& b)
+{
+    return a.sequence == b.sequence && a.kind == b.kind && a.subject == b.subject && a.mode == b.mode &&
+           a.session == b.session && a.carrier == b.carrier && a.reason == b.reason && a.context == b.context &&
+           a.revision == b.revision && a.capability == b.capability && a.capability_grant == b.capability_grant;
+}
+
+bool SameSnapshot(const TraversalSnapshot& a, const TraversalSnapshot& b)
+{
+    return SameVector(a.states, b.states, SameState) && SameVector(a.sessions, b.sessions, SameSession) &&
+           SameVector(a.routes, b.routes, SameRoute) &&
+           SameVector(a.capability_grants, b.capability_grants, SameGrant) &&
+           SameVector(a.carrier_bindings, b.carrier_bindings, SameBinding) &&
+           a.session_ids.scope == b.session_ids.scope && a.session_ids.next == b.session_ids.next &&
+           a.route_ids.scope == b.route_ids.scope && a.route_ids.next == b.route_ids.next &&
+           a.capability_grant_ids.scope == b.capability_grant_ids.scope &&
+           a.capability_grant_ids.next == b.capability_grant_ids.next && a.revision == b.revision &&
+           SameVector(a.journal, b.journal, SameChange) && a.next_change_sequence == b.next_change_sequence &&
+           a.change_epoch == b.change_epoch;
+}
+
 GameplayObjectRef Ref(const char* name)
 {
     return {GameplayDomainId::FromString("test.entity"), GameplayObjectId::FromString(name)};
@@ -227,30 +287,180 @@ int main()
     if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)
         return 44;
 
-    // Milestone 2: RestoreSnapshot preserves live state at allocation boundaries.
-    const auto allocation_before = restored.CaptureSnapshot();
-    bool saw_restore_allocation_failure = false;
-    for (long long fail_after = 0; fail_after < 32; ++fail_after)
+    // Goal 4 G4-INFRA-001 / G4-TRAV-002: every named failure seam starts from a fresh fixture and preserves the full snapshot.
+    const auto seam_actor = Ref("seam-actor");
+    const auto seam_carrier = Ref("seam-carrier");
     {
-        auto allocation_target = allocation_before;
-        bool failed = false;
-        try
-        {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            const auto restored_under_fault = restored.RestoreSnapshot(std::move(allocation_target));
-            failed = !restored_under_fault;
-        }
-        catch (const std::bad_alloc &)
-        {
-            failed = true;
-        }
-        if (!failed)
-            break;
-        saw_restore_allocation_failure = true;
-        if (restored.CaptureSnapshot().revision != allocation_before.revision)
+        auto service = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+        const auto before = service.CaptureSnapshot();
+        test_seam::FailNext(test_seam::FaultPoint::AssignProfileBeforePublish);
+        if (service.AssignProfile(seam_actor, profile) || !SameSnapshot(before, service.CaptureSnapshot()))
             return 949;
     }
-    if (!saw_restore_allocation_failure)
-        return 950;
+    {
+        auto service = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+        if (!service.AssignProfile(seam_actor, profile))
+            return 950;
+        TraversalCapabilityGrant seam_grant;
+        seam_grant.subject = seam_actor;
+        seam_grant.capability = swim_cap;
+        seam_grant.parameter_micro = 3'000'000;
+        const auto before = service.CaptureSnapshot();
+        test_seam::FailNext(test_seam::FaultPoint::GrantCapabilityBeforePublish);
+        if (service.GrantCapability(seam_grant) || !SameSnapshot(before, service.CaptureSnapshot()))
+            return 951;
+    }
+    {
+        auto service = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+        if (!service.AssignProfile(seam_actor, profile))
+            return 952;
+        TraversalRoute seam_route;
+        seam_route.subject = seam_actor;
+        seam_route.mode = walk;
+        seam_route.lifetime = TraversalRouteLifetime::Persistent;
+        const auto before = service.CaptureSnapshot();
+        test_seam::FailNext(test_seam::FaultPoint::RegisterRouteBeforePublish);
+        if (service.RegisterRoute(seam_route) || !SameSnapshot(before, service.CaptureSnapshot()))
+            return 953;
+    }
+    {
+        auto service = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+        if (!service.AssignProfile(seam_actor, profile))
+            return 954;
+        const auto before = service.CaptureSnapshot();
+        test_seam::FailNext(test_seam::FaultPoint::StartSessionBeforePublish);
+        if (service.StartSession(seam_actor, walk, {}, {}, {}) || !SameSnapshot(before, service.CaptureSnapshot()))
+            return 955;
+    }
+    {
+        auto service = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+        if (!service.AssignProfile(seam_actor, profile))
+            return 956;
+        const auto before = service.CaptureSnapshot();
+        test_seam::FailNext(test_seam::FaultPoint::BoardCarrierBeforePublish);
+        if (service.BoardCarrier(seam_actor, seam_carrier, ride, TraversalCarrierRoleId::FromString("seam.role")) ||
+            !SameSnapshot(before, service.CaptureSnapshot()))
+            return 975;
+    }
+    {
+        auto seeded = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+        if (!seeded.AssignProfile(seam_actor, profile))
+            return 976;
+        TraversalRoute seam_route;
+        seam_route.subject = seam_actor;
+        seam_route.mode = walk;
+        seam_route.lifetime = TraversalRouteLifetime::Persistent;
+        if (!seeded.RegisterRoute(seam_route))
+            return 977;
+        const auto restore_seed = seeded.CaptureSnapshot();
+        for (const auto point : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
+        {
+            auto service = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+            const auto before = service.CaptureSnapshot();
+            auto target = restore_seed;
+            test_seam::FailNext(point);
+            if (service.RestoreSnapshot(std::move(target)) || !SameSnapshot(before, service.CaptureSnapshot()))
+                return 978;
+        }
+    }
+
+    // Journal allocation has an explicit recovery policy: accepted state remains authoritative and the cursor epoch rotates.
+    {
+        auto service = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+        const auto journal_before = service.CaptureSnapshot();
+        const auto journal_actor = Ref("journal-actor");
+        test_seam::FailNext(test_seam::FaultPoint::JournalAppend);
+        if (!service.AssignProfile(journal_actor, profile))
+            return 973;
+        const auto journal_after = service.CaptureSnapshot();
+        if (!service.FindState(journal_actor) || !journal_after.journal.empty() ||
+            journal_after.change_epoch == journal_before.change_epoch || journal_after.next_change_sequence != 1)
+            return 974;
+    }
+
+    // G4-TRAV-001: every named state-changing family rejects max revision before mutation.
+    TraversalService guard = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    const auto guard_actor = Ref("guard-actor");
+    if (!guard.AssignProfile(guard_actor, profile))
+        return 957;
+    TraversalCapabilityGrant guard_grant;
+    guard_grant.subject = guard_actor;
+    guard_grant.capability = swim_cap;
+    guard_grant.parameter_micro = 3'000'000;
+    auto guard_grant_id = guard.GrantCapability(guard_grant);
+    if (!guard_grant_id)
+        return 958;
+    TraversalRoute guard_route;
+    guard_route.subject = guard_actor;
+    guard_route.mode = walk;
+    guard_route.lifetime = TraversalRouteLifetime::Persistent;
+    auto guard_route_id = guard.RegisterRoute(guard_route);
+    if (!guard_route_id)
+        return 959;
+    auto max_base = guard.CaptureSnapshot();
+    max_base.revision.value = std::numeric_limits<std::uint64_t>::max();
+
+    TraversalService max_guard = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!max_guard.RestoreSnapshot(max_base))
+        return 960;
+    const auto stable = max_guard.CaptureSnapshot();
+    TraversalCapabilityGrant extra = guard_grant;
+    extra.id = {};
+    TraversalRoute extra_route = guard_route;
+    extra_route.id = {};
+    extra_route.source = Ref("guard-route-extra");
+    if (max_guard.GrantCapability(extra) || max_guard.RevokeCapability(guard_grant_id.Value()) ||
+        max_guard.ChangeMode({guard_actor, swim, {}}) || max_guard.RegisterRoute(extra_route) ||
+        max_guard.RemoveRoute(guard_route_id.Value()) || max_guard.StartSession(guard_actor, walk, {}, {}, {}) ||
+        max_guard.BoardCarrier(guard_actor, Ref("guard-carrier"), ride, TraversalCarrierRoleId::FromString("guard.role")))
+        return 961;
+    const auto stable_after = max_guard.CaptureSnapshot();
+    if (stable_after.revision != stable.revision || stable_after.states.size() != stable.states.size() ||
+        stable_after.routes.size() != stable.routes.size() ||
+        stable_after.capability_grants.size() != stable.capability_grants.size())
+        return 962;
+
+    // Active and suspended session transitions also reject at max revision without breaking state cross-links.
+    TraversalService active_guard = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!active_guard.AssignProfile(guard_actor, profile))
+        return 963;
+    auto active_session = active_guard.StartSession(guard_actor, walk, {}, {}, {});
+    if (!active_session)
+        return 964;
+    auto active_max = active_guard.CaptureSnapshot();
+    active_max.revision.value = std::numeric_limits<std::uint64_t>::max();
+    TraversalService active_max_guard = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!active_max_guard.RestoreSnapshot(active_max) || active_max_guard.SuspendSession(active_session.Value()) ||
+        active_max_guard.CompleteSession(active_session.Value()))
+        return 965;
+    if (!active_max_guard.FindSession(active_session.Value()) ||
+        !active_max_guard.FindState(guard_actor)->active_session)
+        return 966;
+
+    TraversalService suspended_guard = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!suspended_guard.AssignProfile(guard_actor, profile))
+        return 967;
+    auto suspended_session = suspended_guard.StartSession(guard_actor, walk, {}, {}, {});
+    if (!suspended_session || !suspended_guard.SuspendSession(suspended_session.Value()))
+        return 968;
+    auto suspended_max = suspended_guard.CaptureSnapshot();
+    suspended_max.revision.value = std::numeric_limits<std::uint64_t>::max();
+    TraversalService suspended_max_guard = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!suspended_max_guard.RestoreSnapshot(suspended_max) || suspended_max_guard.ResumeSession(suspended_session.Value()))
+        return 969;
+
+    // Disembark is destructive only after revision preflight.
+    TraversalService carrier_guard = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!carrier_guard.AssignProfile(guard_actor, profile) ||
+        !carrier_guard.BoardCarrier(guard_actor, Ref("guard-carrier"), ride, TraversalCarrierRoleId::FromString("guard.role")))
+        return 970;
+    auto carrier_max = carrier_guard.CaptureSnapshot();
+    carrier_max.revision.value = std::numeric_limits<std::uint64_t>::max();
+    TraversalService carrier_max_guard = BuildService(walk, swim, ride, swim_cap, ride_cap, profile);
+    if (!carrier_max_guard.RestoreSnapshot(carrier_max) || carrier_max_guard.Disembark(guard_actor))
+        return 971;
+    if (carrier_max_guard.FindCarrierPassengers(Ref("guard-carrier")).size() != 1)
+        return 972;
+
     return 0;
 }

@@ -6,11 +6,51 @@
 #include <bit>
 #include <cstring>
 #include <limits>
+#include <new>
 #include <type_traits>
 #include <unordered_set>
 
 namespace epidemic::gameplay::integration
 {
+
+namespace test_support
+{
+namespace
+{
+bool g_fail_next_trade_publication = false;
+std::size_t g_fail_after_trade_goods_reservations = 0;
+}
+
+void FailNextTradePublicationForTest() noexcept
+{
+    g_fail_next_trade_publication = true;
+}
+
+void FailAfterTradeGoodsReservationsForTest(std::size_t accepted_goods) noexcept
+{
+    g_fail_after_trade_goods_reservations = accepted_goods;
+}
+
+void ResetTradeCoordinatorFailureSeamsForTest() noexcept
+{
+    g_fail_next_trade_publication = false;
+    g_fail_after_trade_goods_reservations = 0;
+}
+
+[[nodiscard]] bool ConsumeTradePublicationFailure() noexcept
+{
+    if (!g_fail_next_trade_publication) return false;
+    g_fail_next_trade_publication = false;
+    return true;
+}
+
+[[nodiscard]] bool ConsumeTradeGoodsReservationFailure(std::size_t accepted_goods) noexcept
+{
+    if (g_fail_after_trade_goods_reservations == 0 || accepted_goods != g_fail_after_trade_goods_reservations) return false;
+    g_fail_after_trade_goods_reservations = 0;
+    return true;
+}
+}
 namespace
 {
 foundation::Error Error(std::string_view code, std::string_view message)
@@ -413,47 +453,80 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
         return foundation::Result<TradeExecutionId>::Failure(
             Error("gameplay.trade.parties_invalid", "coordinated trade requires distinct buyer and seller"));
 
-    const TradeExecutionId id{execution_ids_.Next()};
+    CoordinatedTradeExecution staged_execution;
+    staged_execution.buyer = plan.money.buyer;
+    staged_execution.seller = plan.money.seller;
+    staged_execution.context = plan.money.context;
+    staged_execution.state = CoordinatedTradeState::ReconciliationRequired;
+
+    try
+    {
+        staged_execution.goods.reserve(plan.goods.size());
+        std::unordered_set<items::ItemInstanceId, items::IdHash> seen_items;
+        seen_items.reserve(plan.goods.size());
+        for (const auto& line : plan.goods)
+        {
+            if (!SameTradeParty(line.from_owner, plan.money.seller) || !SameTradeParty(line.to_owner, plan.money.buyer))
+                return foundation::Result<TradeExecutionId>::Failure(
+                    Error("gameplay.trade.party_mismatch", "goods owner must be seller and destination owner must be buyer"));
+            if (!line.item.IsValid() || !line.destination.IsValid() || !seen_items.insert(line.item).second)
+                return foundation::Result<TradeExecutionId>::Failure(
+                    Error("gameplay.trade.goods_invalid", "trade goods must contain unique valid item instances and destinations"));
+            const auto item = items_.FindItemCopy(line.item);
+            if (!item || item->quantity <= 0)
+                return foundation::Result<TradeExecutionId>::Failure(Error("gameplay.trade.item_missing", "trade item missing"));
+            items::ItemLocation target;
+            target.kind = items::ItemLocationKind::Container;
+            target.container = line.destination;
+            if (!items_.CanTransfer(line.item, target, item->quantity))
+                return foundation::Result<TradeExecutionId>::Failure(
+                    Error("gameplay.trade.item_unavailable", "trade item cannot be transferred to destination"));
+            const auto* owner = ownership_.GetOwner(ItemPropertyRef(line.item));
+            if (!owner || owner->owner != plan.money.seller)
+                return foundation::Result<TradeExecutionId>::Failure(
+                    Error("gameplay.trade.owner_mismatch", "trade item is not owned by seller"));
+            CoordinatedTradeGoodsExecution prepared;
+            prepared.line = line;
+            prepared.quantity = item->quantity;
+            prepared.source = item->location;
+            prepared.ownership_revision = owner->revision;
+            prepared.ownership_domain = owner->domain;
+            staged_execution.goods.push_back(std::move(prepared));
+        }
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<TradeExecutionId>::Failure(
+            Error("gameplay.trade.allocation_failed", "failed to stage coordinated trade"));
+    }
+
+    auto staged_execution_ids = execution_ids_;
+    const TradeExecutionId id{staged_execution_ids.Next()};
     if (!id.IsValid())
         return foundation::Result<TradeExecutionId>::Failure(Error("gameplay.trade.id_exhausted", "trade execution id exhausted"));
+    staged_execution.id = id;
 
-    CoordinatedTradeExecution execution;
-    execution.id = id;
-    execution.buyer = plan.money.buyer;
-    execution.seller = plan.money.seller;
-    execution.context = plan.money.context;
-    execution.goods.reserve(plan.goods.size());
+    if (test_support::ConsumeTradePublicationFailure())
+        return foundation::Result<TradeExecutionId>::Failure(
+            Error("gameplay.trade.allocation_failed", "failed to publish coordinated trade execution"));
 
-    std::unordered_set<items::ItemInstanceId, items::IdHash> seen_items;
-    for (const auto& line : plan.goods)
+    decltype(executions_)::iterator execution_it;
+    try
     {
-        if (!SameTradeParty(line.from_owner, plan.money.seller) || !SameTradeParty(line.to_owner, plan.money.buyer))
+        auto [inserted_it, inserted] = executions_.emplace(id, std::move(staged_execution));
+        if (!inserted)
             return foundation::Result<TradeExecutionId>::Failure(
-                Error("gameplay.trade.party_mismatch", "goods owner must be seller and destination owner must be buyer"));
-        if (!line.item.IsValid() || !line.destination.IsValid() || !seen_items.insert(line.item).second)
-            return foundation::Result<TradeExecutionId>::Failure(
-                Error("gameplay.trade.goods_invalid", "trade goods must contain unique valid item instances and destinations"));
-        const auto item = items_.FindItemCopy(line.item);
-        if (!item || item->quantity <= 0)
-            return foundation::Result<TradeExecutionId>::Failure(Error("gameplay.trade.item_missing", "trade item missing"));
-        items::ItemLocation target;
-        target.kind = items::ItemLocationKind::Container;
-        target.container = line.destination;
-        if (!items_.CanTransfer(line.item, target, item->quantity))
-            return foundation::Result<TradeExecutionId>::Failure(
-                Error("gameplay.trade.item_unavailable", "trade item cannot be transferred to destination"));
-        const auto* owner = ownership_.GetOwner(ItemPropertyRef(line.item));
-        if (!owner || owner->owner != plan.money.seller)
-            return foundation::Result<TradeExecutionId>::Failure(
-                Error("gameplay.trade.owner_mismatch", "trade item is not owned by seller"));
-        CoordinatedTradeGoodsExecution prepared;
-        prepared.line = line;
-        prepared.quantity = item->quantity;
-        prepared.source = item->location;
-        prepared.ownership_revision = owner->revision;
-        prepared.ownership_domain = owner->domain;
-        execution.goods.push_back(std::move(prepared));
+                Error("gameplay.trade.execution_duplicate", "generated coordinated trade execution already exists"));
+        execution_it = inserted_it;
     }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<TradeExecutionId>::Failure(
+            Error("gameplay.trade.allocation_failed", "failed to publish coordinated trade execution"));
+    }
+
+    execution_ids_ = staged_execution_ids;
+    auto& execution = execution_it->second;
 
     std::size_t reserved_goods = 0;
     for (auto& good : execution.goods)
@@ -473,14 +546,20 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
             if (!rollback_ok)
             {
                 execution.state = CoordinatedTradeState::ReconciliationRequired;
-                executions_.emplace(id, std::move(execution));
                 return foundation::Result<TradeExecutionId>::Success(id);
             }
+            executions_.erase(execution_it);
             return foundation::Result<TradeExecutionId>::Failure(reservation.GetError());
         }
         good.reservation = reservation.Value();
         good.state = TradeGoodsLegState::Reserved;
         ++reserved_goods;
+
+        if (test_support::ConsumeTradeGoodsReservationFailure(reserved_goods))
+        {
+            execution.state = CoordinatedTradeState::ReconciliationRequired;
+            return foundation::Result<TradeExecutionId>::Success(id);
+        }
     }
 
     plan.money.id = economy::TradeTransactionId{id.value};
@@ -499,9 +578,9 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
         if (!rollback_ok)
         {
             execution.state = CoordinatedTradeState::ReconciliationRequired;
-            executions_.emplace(id, std::move(execution));
             return foundation::Result<TradeExecutionId>::Success(id);
         }
+        executions_.erase(execution_it);
         return foundation::Result<TradeExecutionId>::Failure(transaction.GetError());
     }
     execution.money_transaction = transaction.Value();
@@ -524,15 +603,14 @@ foundation::Result<TradeExecutionId> TradeCoordinator::Prepare(CoordinatedTradeP
         if (!rollback_ok)
         {
             execution.state = CoordinatedTradeState::ReconciliationRequired;
-            executions_.emplace(id, std::move(execution));
             return foundation::Result<TradeExecutionId>::Success(id);
         }
+        executions_.erase(execution_it);
         return foundation::Result<TradeExecutionId>::Failure(money_reserved.GetError());
     }
 
     execution.money_state = TradeMoneyLegState::Reserved;
     execution.state = CoordinatedTradeState::Prepared;
-    executions_.emplace(id, std::move(execution));
     return foundation::Result<TradeExecutionId>::Success(id);
 }
 

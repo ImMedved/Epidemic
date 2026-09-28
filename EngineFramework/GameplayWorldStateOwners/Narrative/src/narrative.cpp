@@ -4,14 +4,33 @@
 #include <algorithm>
 #include <iterator>
 #include <limits>
+#include <new>
 #include <type_traits>
 #include <tuple>
 #include <exception>
 
 namespace epidemic::gameplay::narrative
 {
+namespace detail
+{
 namespace
 {
+thread_local std::string_view g_narrative_fault_point;
+}
+void SetNarrativeFaultPointForTesting(std::string_view point) noexcept { g_narrative_fault_point = point; }
+void ClearNarrativeFaultPointForTesting() noexcept { g_narrative_fault_point = {}; }
+}
+
+namespace
+{
+void NarrativePublicationFaultPointForInternalTest(std::string_view point)
+{
+    if (!detail::g_narrative_fault_point.empty() && detail::g_narrative_fault_point == point)
+    {
+        detail::g_narrative_fault_point = {};
+        throw std::bad_alloc{};
+    }
+}
 foundation::Error Error(std::string_view code, std::string_view message)
 {
     return foundation::Error::Create(code, message);
@@ -2614,6 +2633,7 @@ foundation::Result<void> NarrativeService::RestoreSnapshot(NarrativeSnapshot sna
         return foundation::Result<void>::Failure(
             Error("gameplay.narrative.restore_generator_invalid", "narrative id generator snapshot is invalid"));
 
+    NarrativePublicationFaultPointForInternalTest("restore.publish");
     threads_.swap(threads);
     objectives_.swap(objectives);
     consequences_.swap(consequences);

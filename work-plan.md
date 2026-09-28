@@ -227,74 +227,69 @@ Top-level `CMakeLists.txt` включает:
 ---
 # Цель 4. Полный локальный freeze-аудит EngineFramework
 
-Статус: `IN_AUDIT` (admission baseline 2026-09-22). EngineFramework = 52/52 `IN_AUDIT`. Подробный рабочий план, причины проблем, места, способы исправления, environment/risks и ownership 20 блоков: `Milestone_4_EngineFramework_Local_Closure_20_Block_Plan_2026-09-22 (1).md`.
+Статус: `EVIDENCE_REVIEW_REQUIRED` (baseline `Epidemic 22-09-2026-2.zip`). Все B01–B08 интегрированы, но канонический ledger после проверки evidence содержит 0/52 `LOCAL_READY` и 52/52 `BLOCKED`: merge больше не подменяет per-criterion proof первым API-якорем. Формально зелёные schema gates не доказывают семантическую полноту. Remote CI на итоговом SHA также ещё не записан.
+
+Действующий подробный план: `Milestone 4.md`.
 
 Goal 4 присваивает только `LOCAL_READY`. Whole-engine persistence/determinism, sanitizer/lifetime/concurrency, реальные causal chains, load/degradation и финальный `FROZEN` остаются Goals 5–9.
 
-## 4.1. Admission и shared preflight
+## 4.1. Общий Framework contract
 
-[ ] `G4-INFRA-001`: убрать process-global allocator fault injector как источник Goal 4 evidence; перейти на narrow module-local/private fault seams.
-[ ] `G4-DOC-001`: исправить broken Framework docs root и создать стабильные contract/audit anchors для 52 модулей.
-[ ] Зафиксировать post-preflight Debug/Release baseline и exact CTest manifest.
-[ ] Shared canonical freeze files, общий `work-plan.md`, top-level/shared CMake и shared helpers изменяются только serial integrator.
+[ ] Все 52 production modules пройти 37-criteria local audit и 15-field dossier review (dossier fields размечены; 47 module criteria требуют точного evidence).
+[ ] Все 3054 admission public callables получить reviewed classification и contract/test anchors; любой surface delta отдельно объяснить (classification есть, 1729 test/audit anchors и 621 contract anchors требуют содержательной замены).
+[ ] Все 3348 mutation obligations, 73 lifecycle, 770 stale-identity и 17 external-boundary candidates получить проверенное reviewed decision (формальные flags выставлены, но semantic evidence ещё требует ревизии).
+[x] `G4-INFRA-001`: мигрировать Framework fault evidence с process-global allocator injection на narrow private/module-local seams; общий helper удалить только после merge восьми delta.
+[ ] `G4-DOC-001`: создать корректный Framework docs root и contract docs для всех 52 модулей (52 файла и индекс существуют; статусы/контракты нужно сверить с canonical ledger).
+[x] Зафиксировать post-preflight Debug/Release baseline и exact CTest manifest.
 
-## 4.2. BaseInfrastructure и RuntimeBoundary, 6/6
+## 4.2. Восемь независимых delta-блоков
 
-[ ] Foundation, SupportRandom, Queries, Facts и Time пройти полный 37-criteria local audit.
-[ ] RuntimeBridge пройти полный audit World/Physics/Environment/Navigation boundary, stale generation и retry/reconciliation.
-[ ] `G4-RB-001`: исправить overflow/representability visibility math на больших finite Runtime coordinates.
-[ ] Все 6 модулей: 15/15 dossier fields, complete API/obligation evidence, `LOCAL_READY`.
+[x] B01 Core Infrastructure + Runtime Boundary: Foundation, SupportRandom, Queries, Facts, Time, RuntimeBridge. Закрыть `G4-RB-001` и Framework docs root.
+[x] B02 Identity, Materials and Local Effects: Entities, Materials, Environment, Conditions, Effects, Interaction, Ownership.
+[x] B03 Inventory, Economy and Production: ItemsInventory, Equipment, Economy, Processes, ResourcesProduction, Loot. Закрыть `G4-PROC-001`, `G4-RESPROD-001`, `G4-RESPROD-002`.
+[x] B04 Population, Life and Society: RolesJobs, NeedsLife, Population, Encounters, Society, Crime. Закрыть `G4-SOC-001`, `G4-SOC-002`.
+[x] B05 Perception, Knowledge, AI and Simulation: Perception, Knowledge, NavigationSemantics, AI, Simulation. Закрыть `G4-PER-001`, `G4-PER-002`, `G4-PER-003`, `G4-SIM-001`, `G4-SIM-002`.
+[x] B06 Combat, Abilities, Progression and Traversal: Combat, Abilities, Progression, Construction, Traversal. Закрыть `G4-COMBAT-001`, `G4-PROG-001`, `G4-PROG-002`, `G4-PROG-003`, `G4-TRAV-001`, `G4-TRAV-002`.
+[x] B07 World, Save/Restore and Narrative: World, SaveGame, Narrative, Dialogue, NarrativeIntegration, WorldIntegration. Закрыть `G4-NARRINT-001`, `G4-NARRINT-002`.
+[x] B08 Integration Layer and Cross-owner Adapters: Integration, StateIntegration, InteractionTimeIntegration, InteractionEffectsIntegration, GameplayIntegration, ExtendedGameplayIntegration, PerceptionKnowledgeAIIntegration, PopulationSimulationIntegration, ProcessResourceSimulationIntegration, SocialLegalIntegration, TraversalNavigationConstructionIntegration. Закрыть `G4-EXTINT-001`, `G4-EXTINT-002`.
 
-## 4.3. GameplayWorldStateOwners, 33/33
+Каждый Bxx работает только в своих production directories, existing module-specific tests, unique module docs и `_goal4_handoff/Bxx/**`. Каждый блок возвращает delta ZIP с project-relative changed files. `docs/freeze/**`, общий `work-plan.md`, shared CMake, `.github/**`, `cmake/**` и shared allocation/sweep helpers read-only для workers.
 
-[ ] Все 33 owners пройти authoritative/derived state, multi-index, ID/generator/revision/journal, lifecycle, failure-atomicity, provider и snapshot/restore audit.
-[ ] `G4-PROC-001`: exact portable progress ratio near `INT64_MAX`.
-[ ] `G4-RESPROD-001`, `G4-RESPROD-002`: staged generators + strong publication atomicity ResourcesProduction.
-[ ] `G4-SOC-001`, `G4-SOC-002`: checked revision preflight + strong primary/index/journal publication Society.
-[ ] `G4-PER-001`, `G4-PER-002`, `G4-PER-003`: exact spatial deltas/FOV, exact decay time advance и устранение premature squared-distance saturation.
-[ ] `G4-COMBAT-001`: portable exact preserve-ratio scaling near int64 boundaries.
-[ ] `G4-PROG-001`, `G4-PROG-002`, `G4-PROG-003`: revision/reservation/generator failure atomicity Progression.
-[ ] `G4-TRAV-001`, `G4-TRAV-002`: checked revision + staged session/route/grant/binding publication Traversal.
-[ ] SaveGame закрывается как in-memory capture/validate/migrate/stage/commit orchestrator; storage/file I/O остаётся Goal 5.
-[ ] Все 33 owners: 15/15 dossier fields, complete API/obligation/candidate evidence, `LOCAL_READY`.
+Дополнительные обязательства блоков:
 
-## 4.4. IntegrationLayer, 13/13
+[x] SaveGame закрывается как in-memory capture/validate/migrate/stage/commit orchestrator; storage/file I/O остаётся Goal 5.
+[x] Durable/checkpoint/outbox adapters имеют duplicate, retry, stale cursor/reference, partial-progress и restore/reconciliation regressions.
+[x] TraversalNavigationConstructionIntegration проверяется по durable placement-output protocol, stable layer IDs, acknowledge-after-Navigation-commit и retry/idempotence.
+[x] Реальные multi-owner causal chains не подменяются локальными fake/port tests и остаются Goal 7.
 
-[ ] Все 13 integration modules доказаны локально на fakes/ports; реальные multi-owner causal chains остаются Goal 7.
-[ ] Durable/checkpoint/outbox adapters имеют duplicate, retry, stale cursor/reference, partial-progress, restore/reconciliation regressions.
-[ ] `G4-NARRINT-001`, `G4-NARRINT-002`: checked revision и publish-before-bump atomicity Narrative external consequence outbox.
-[ ] `G4-EXTINT-001`, `G4-EXTINT-002`: TradeCoordinator не расходует execution ID на invalid input и создаёт durable local execution/reconciliation state до accepted external work.
-[ ] TraversalNavigationConstructionIntegration проверяется по durable placement-output protocol, stable layer IDs, acknowledge-after-Navigation-commit и retry/idempotence.
-[ ] Все 13 integration modules: 15/15 dossier fields, complete API anchors, `LOCAL_READY`.
+## 4.3. Serial convergence после восьми delta
 
-## 4.5. Параллельное исполнение
+[x] Применить B01–B08 delta, проверяя single-writer ownership и cross-block findings.
+[x] Удалить/deprecate старый global allocation helper только после подтверждения 0 remaining Goal 4 users.
+[ ] Слить восемь handoff в canonical dossiers, coverage reviews, exact API anchors, defect registry и ledger (B06 пропуски восстановлены; exact evidence review не завершён).
+[x] Перегенерировать `module_dossiers`, `coverage_manifests`, `public_api_inventory`, `public_surface_manifest`, `local_ready_contract`.
+[ ] EngineFramework = 52/52 `LOCAL_READY`; каждый модуль = 37/37 `PASS/N/A`, dossiers = 15/15 reviewed (сейчас 0/52; 52 `BLOCKED`).
+[ ] Framework API/obligations/lifecycle/stale/external unresolved = 0; `UNCLASSIFIED = 0` (классификация полная, содержательное evidence ещё не закрыто).
+[ ] Каждый confirmed defect имеет существующий вызываемый regression target/symbol (все G4 targets перечислены точно и зарегистрированы; 19 Framework/Goal 4 regression entries без точного line anchor).
+[x] Шесть public-header deltas относительно admission baseline 3054 callables reviewed с rationale и regressions в `docs/freeze/goal4_public_surface_review.md`; public callable IDs/signatures не изменились.
 
-[ ] Использовать 20 ownership blocks A01–A20 из подробного плана. Это границы single-writer ownership; фактическое число одновременно работающих workers определяется доступной capacity.
-[ ] Каждый block возвращает module-local code/tests/docs и `_goal4_handoff/<block>/` с dossier reviews, coverage decisions, API anchors, defects и notes.
-[ ] Workers мигрируют fault injection только в owned modules; не используют старый global allocator helper как финальное доказательство.
-[ ] Параллельные workers не регенерируют и не перетирают общие canonical `docs/freeze/*`.
-[ ] При 16 workers использовать только схему объединения ownership blocks из подробного плана.
+## 4.4. Финальный выход Goal 4
 
-## 4.6. Serial convergence
-
-[ ] Объединить A01–A20 handoff в canonical dossiers, coverage reviews, exact public API anchors и defect registry.
-[ ] Перегенерировать `module_dossiers`, `coverage_manifests`, `public_api_inventory`, `public_surface_manifest`, `local_ready_contract`.
-[ ] EngineFramework = 52/52 `LOCAL_READY`; каждый модуль = 37/37 `PASS/N/A`, dossiers = 15/15 reviewed.
-[ ] Все Framework API, mutation obligations, lifecycle/stale/external candidates reviewed; `UNCLASSIFIED = 0`, unresolved audit candidates = 0.
-[ ] Каждый confirmed defect имеет существующий вызываемый regression target/symbol.
-[ ] Любой public-surface delta относительно admission baseline 3054 callables отдельно reviewed и объяснён.
-
-## 4.7. Финальный выход Goal 4
-
-[ ] Base Debug/Release, Runtime Debug/Release и Full Debug/Release green; exact CTest manifests совпадают.
-[ ] Disabled/skipped tests без explicit freeze exception = 0.
-[ ] MSVC `/W4 /WX`, public-header self-containment, architecture/freeze validators и все validator self-tests green.
-[ ] Process-global allocator override как Goal 4 fault mechanism = 0.
-[ ] `git diff --check` clean.
+[x] Base Debug/Release, Runtime Debug/Release и Full Debug/Release green; exact CTest manifests совпадают. Base/Runtime qualification перенесена без изменений из Goal 3, Full Debug/Release перепроверены после merge Goal 4.
+[x] Disabled/skipped tests без explicit freeze exception = 0.
+[x] MSVC `/W4 /WX`, public-header self-containment, architecture/freeze validators и validator self-tests green.
+[x] Process-global allocator override как Goal 4 fault mechanism = 0.
+[x] `git diff --check` clean.
 [ ] Remote Architecture Freeze CI на recorded SHA green, включая ClangCL public-surface.
-[ ] `EngineBase = 9/9 LOCAL_READY`, `EngineRuntime = 17/17 LOCAL_READY`, `EngineFramework = 52/52 LOCAL_READY`.
+[ ] `EngineBase = 9/9 LOCAL_READY`, `EngineRuntime = 17/17 LOCAL_READY`, `EngineFramework = 52/52 LOCAL_READY` (Framework сейчас 0/52).
 
 Критерий выхода: Goal 4 = `COMPLETE`, все 52 Framework production-модуля локально закрыты без module-local code/evidence debt. `SYSTEM_READY/FROZEN` не присваивается до Goals 5–9.
+
+## 4.5. Остаток содержательного evidence-аудита (2026-09-27)
+
+`python docs/freeze/goal4_evidence_quality.py --check` является обязательным дополнительным локальным gate. Schema validators и зелёный CTest не заменяют его. Текущая очередь: 1729 общих API test/audit anchors, 621 общих API contract anchors, 712 criterion test anchors, 70 шаблонных `N/A` rationales и 19 defect regressions без точной строки. Счётчики могут пересекаться. Перепроверять нужно сами исходные `_goal4_handoff/Bxx/**`, затем повторять `python _goal4_handoff/merge_goal4_evidence.py` и оба gate; merge теперь не повышает неполный handoff до `LOCAL_READY`.
+
+Для каждого модуля: заменить `main()`/общий заголовок документа на точный callable/contract и проверяемый тестовый case/assertion; добавить регрессию, если доказательства в тестах нет; дать module-specific обоснование `N/A`; довести каждый confirmed defect до зарегистрированного target и точного regression anchor. Только после 52/52 `LOCAL_READY` и зелёного quality gate можно выполнять recorded-SHA remote Architecture Freeze CI и отмечать Goal 4 `COMPLETE`.
 
 ---
 

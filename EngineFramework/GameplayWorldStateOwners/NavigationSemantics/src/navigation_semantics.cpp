@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/NavigationSemantics/navigation_semantics.h"
+#include "navigation_semantics_test_seam.h"
 
 #include "Epidemic/Foundation/error.h"
 
@@ -682,9 +683,13 @@ foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationS
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreProfiles))
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.allocation_failed", "profile restore staging failed"));
     std::unordered_map<GameplayObjectRef, NavigationSemanticProfile, RefHash> restored_profiles;
     std::unordered_map<NavigationLayerId, NavigationSemanticLayer, IdHash> restored_layers;
     std::unordered_map<NavigationLinkId, NavigationSemanticLink, IdHash> restored_links;
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreJournal))
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.allocation_failed", "journal restore staging failed"));
     std::deque<NavigationChange> restored_changes;
     if (snapshot.journal.size() > kChangeJournalCapacity)
         return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid journal snapshot"));
@@ -694,6 +699,8 @@ foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationS
             !restored_profiles.emplace(profile.subject, profile).second)
             return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid profile snapshot"));
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreLayers))
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.allocation_failed", "layer restore staging failed"));
     std::uint64_t max_own_layer_low = 0;
     const auto expected_scope = TypeId::FromString("framework.navigation.layer").Raw();
     for (const auto& layer : snapshot.layers)
@@ -708,6 +715,8 @@ foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationS
         (snapshot.layer_ids.next != 0 && snapshot.layer_ids.next <= max_own_layer_low))
         return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid layer generator snapshot"));
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreLinks))
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.allocation_failed", "link restore staging failed"));
     for (const auto& link : snapshot.links)
         if (!IsValidLink(link) || link.revision > snapshot.revision || !restored_links.emplace(link.id, link).second)
             return foundation::Result<void>::Failure(Error("gameplay.navigation.restore_invalid", "invalid link snapshot"));
@@ -727,6 +736,8 @@ foundation::Result<void> NavigationSemanticsService::RestoreSnapshot(NavigationS
         previous = change.sequence;
     }
 
+    if (internal_test::ConsumeAllocationFault(internal_test::AllocationFaultPoint::RestoreIndexes))
+        return foundation::Result<void>::Failure(Error("gameplay.navigation.allocation_failed", "index restore staging failed"));
     decltype(layer_ids_by_area_) restored_layer_index;decltype(link_ids_by_pair_) restored_link_index;
     for(const auto& [id,layer]:restored_layers){auto& ids=restored_layer_index[layer.area];auto pos=std::lower_bound(ids.begin(),ids.end(),id);ids.insert(pos,id);}
     for(const auto& [id,link]:restored_links){auto& ids=restored_link_index[LinkPairKey{link.from_area,link.to_area}];auto pos=std::lower_bound(ids.begin(),ids.end(),id);ids.insert(pos,id);}

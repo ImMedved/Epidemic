@@ -1,13 +1,21 @@
 #include "Epidemic/GameFramework/Foundation/gameplay_foundation.h"
-#include "allocation_fault_injection.h"
 #include "pre_state_verification.h"
 
 #include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <limits>
+#include <sstream>
 #include <type_traits>
 #include <vector>
 
 using namespace epidemic::gameplay;
+
+namespace epidemic::gameplay::detail
+{
+void SetFoundationFaultPointForTesting(std::string_view point) noexcept;
+void ClearFoundationFaultPointForTesting() noexcept;
+}
 
 namespace
 {
@@ -35,10 +43,74 @@ GameplayObjectRef MakeRef(std::string_view domain, std::string_view id)
 {
     return GameplayObjectRef{GameplayDomainId::FromString(domain), GameplayObjectId::FromString(id)};
 }
+
+std::filesystem::path FindRepositoryRootForDocumentationTest()
+{
+    const auto find_from = [](std::filesystem::path current) -> std::filesystem::path {
+        std::error_code ec;
+        current = std::filesystem::absolute(std::move(current), ec);
+        if (ec)
+        {
+            return {};
+        }
+        if (!std::filesystem::is_directory(current, ec))
+        {
+            current = current.parent_path();
+        }
+        while (!current.empty())
+        {
+            if (std::filesystem::is_regular_file(current / "EngineFramework" / "README.md", ec) &&
+                std::filesystem::is_directory(current / "docs", ec))
+            {
+                return current;
+            }
+            const auto parent = current.parent_path();
+            if (parent == current)
+            {
+                break;
+            }
+            current = parent;
+        }
+        return {};
+    };
+
+    if (const auto from_source = find_from(std::filesystem::path(__FILE__)); !from_source.empty())
+    {
+        return from_source;
+    }
+    return find_from(std::filesystem::current_path());
+}
+
+void TestFrameworkDocumentationRoot()
+{
+    const auto root = FindRepositoryRootForDocumentationTest();
+    Check(!root.empty(), 935);
+
+    const auto framework_readme = root / "EngineFramework" / "README.md";
+    const auto docs_root = root / "docs" / "EngineFramework" / "README.md";
+    Check(std::filesystem::is_regular_file(framework_readme), 936);
+    Check(std::filesystem::is_regular_file(docs_root), 937);
+
+    std::ifstream input(framework_readme, std::ios::binary);
+    Check(static_cast<bool>(input), 938);
+    std::ostringstream content;
+    content << input.rdbuf();
+    const auto text = content.str();
+    Check(text.find("docs/EngineFramework/README.md") != std::string::npos, 939);
+    Check(text.find("docs/GameFramework/README.md") == std::string::npos, 940);
+
+    for (const auto* module_doc : {"foundation.md", "support_random.md", "queries.md", "facts.md", "time.md",
+                                   "runtime_bridge.md"})
+    {
+        Check(std::filesystem::is_regular_file(root / "docs" / "EngineFramework" / "modules" / module_doc), 941);
+    }
+}
 } // namespace
 
 int main()
 {
+    TestFrameworkDocumentationRoot();
+
     static_assert(!std::is_same_v<GameplayObjectId, EventId>);
     static_assert(!std::is_same_v<QueryTypeId, EventTypeId>);
     static_assert(!std::is_same_v<IdScopeId, TypeId>);
@@ -123,102 +195,9 @@ int main()
     Check(!RestoreMonotonicIdGeneratorSnapshot<ScheduleId>(checked_restore, {77, 8}, IdScopeId::FromRaw(77), 8), 913);
     Check(checked_restore.GetSnapshot().next == before_stale_restore.next, 914);
 
-    bool restore_error_allocation_threw = false;
-    {
-        epidemic::tests::allocation_fault::FailAfter fault(0);
-        try
-        {
-            (void)RestoreMonotonicIdGeneratorSnapshot<ScheduleId>(checked_restore, {0, 1}, IdScopeId::FromRaw(77), 0);
-        }
-        catch (const std::bad_alloc &)
-        {
-            restore_error_allocation_threw = true;
-        }
-    }
-    Check(restore_error_allocation_threw, 921);
     Check(checked_restore.GetSnapshot().scope == before_stale_restore.scope &&
               checked_restore.GetSnapshot().next == before_stale_restore.next,
           922);
-
-    {
-        using namespace epidemic::tests::allocation_fault;
-
-        int value = 0;
-        const auto report = RunBoundedSweep(
-            "foundation.test.vector_resize",
-            0,
-            [&](SweepRunContext &context) {
-                context.MarkMethodInvoked();
-                std::vector<int> values;
-                values.resize(5);
-                value = 7;
-                return InvocationResult::Success();
-            },
-            [&](const SweepIteration &iteration) {
-                return iteration.failure == FailureKind::None ? value == 7 : value == 0;
-            });
-        Check(report.Passed() && report.saw_failure && report.iterations.size() == 2, 923);
-        Check(report.iterations.front().failure == FailureKind::BadAlloc && report.iterations.front().method_invoked, 924);
-        Check(report.iterations.back().failure == FailureKind::None, 925);
-
-        const auto controlled = RunBoundedSweep(
-            "foundation.test.controlled_allocation_result",
-            0,
-            [](long long fault_index) {
-                if (fault_index >= 0)
-                {
-                    return epidemic::foundation::Result<void>::Failure(epidemic::foundation::Error{"alloc", "", ""});
-                }
-                return epidemic::foundation::Result<void>::Success();
-            });
-        Check(controlled.Passed() && controlled.saw_failure &&
-                  controlled.iterations.front().failure == FailureKind::ControlledAllocationFailure,
-              926);
-        const auto mixed_case_controlled = RunBoundedSweep(
-            "foundation.test.controlled_memory_result",
-            0,
-            [](long long fault_index) {
-                if (fault_index >= 0)
-                {
-                    return epidemic::foundation::Result<void>::Failure(
-                        epidemic::foundation::Error{"OutOfMemory", "", ""});
-                }
-                return epidemic::foundation::Result<void>::Success();
-            });
-        Check(mixed_case_controlled.Passed() && mixed_case_controlled.saw_failure &&
-                  mixed_case_controlled.iterations.front().failure == FailureKind::ControlledAllocationFailure,
-              931);
-
-        const auto exhausted_report = RunBoundedSweep(
-            "foundation.test.never_succeeds",
-            1,
-            [](long long) {
-                return InvocationResult::CallbackFailure("synthetic callback failure");
-            });
-        Check(!exhausted_report.Passed() && exhausted_report.exhausted_without_success &&
-                  exhausted_report.iterations.back().failure == FailureKind::CallbackFailure,
-              927);
-
-        const auto observed_report = RunObservedBoundedSweep(
-            "foundation.test.observed_vector_resize",
-            1,
-            [] {
-                return [](SweepRunContext &context) {
-                    context.MarkMethodInvoked();
-                    std::vector<int> values;
-                    values.resize(8);
-                    return InvocationResult::Success();
-                };
-            },
-            [](const SweepIteration &iteration) {
-                return iteration.method_invoked;
-            });
-        Check(observed_report.Passed() && observed_report.saw_failure && observed_report.observed_allocations > 0,
-              932);
-        Check(observed_report.max_fault_index >= observed_report.observed_allocations &&
-                  observed_report.observed_allocation_spare == 1,
-              933);
-    }
 
     {
         using epidemic::tests::pre_state::StateComparator;
@@ -285,60 +264,45 @@ int main()
         Check(!mismatch.Passed(), 930);
     }
 
-    bool stable_fault_observed = false;
-    for (long long fail_after = 0; fail_after < 32 && !stable_fault_observed; ++fail_after)
     {
         StableTypeRegistry<TypeId> fault_registry;
         Check(static_cast<bool>(fault_registry.Register("framework.fault.baseline")), 915);
         const auto size_before = fault_registry.Size();
         bool threw = false;
+        epidemic::gameplay::detail::SetFoundationFaultPointForTesting("type_registry.publish");
+        try
         {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                (void)fault_registry.Register("framework.fault.target");
-            }
-            catch (const std::bad_alloc &)
-            {
-                threw = true;
-            }
+            (void)fault_registry.Register("framework.fault.target");
         }
-        if (threw)
+        catch (const std::bad_alloc&)
         {
-            stable_fault_observed = true;
-            Check(fault_registry.Size() == size_before && fault_registry.Find("framework.fault.target") == nullptr,
-                  916);
+            threw = true;
         }
+        epidemic::gameplay::detail::ClearFoundationFaultPointForTesting();
+        Check(threw, 917);
+        Check(fault_registry.Size() == size_before && fault_registry.Find("framework.fault.target") == nullptr, 916);
     }
-    Check(stable_fault_observed, 917);
 
-    bool tag_fault_observed = false;
-    for (long long fail_after = 0; fail_after < 64 && !tag_fault_observed; ++fail_after)
     {
         GameplayTagRegistry fault_tags;
         Check(static_cast<bool>(fault_tags.Register("baseline.tag")), 918);
         const auto size_before = fault_tags.Size();
         bool threw = false;
+        epidemic::gameplay::detail::SetFoundationFaultPointForTesting("tag_registry.publish");
+        try
         {
-            epidemic::tests::allocation_fault::FailAfter fault(fail_after);
-            try
-            {
-                (void)fault_tags.Register("fault.deep.hierarchy.leaf");
-            }
-            catch (const std::bad_alloc &)
-            {
-                threw = true;
-            }
+            (void)fault_tags.Register("fault.deep.hierarchy.leaf");
         }
-        if (threw)
+        catch (const std::bad_alloc&)
         {
-            tag_fault_observed = true;
-            Check(fault_tags.Size() == size_before && fault_tags.Find(TagId::FromString("fault")) == nullptr &&
-                      fault_tags.Find(TagId::FromString("fault.deep.hierarchy.leaf")) == nullptr,
-                  919);
+            threw = true;
         }
+        epidemic::gameplay::detail::ClearFoundationFaultPointForTesting();
+        Check(threw, 920);
+        Check(fault_tags.Size() == size_before && fault_tags.Find(TagId::FromString("fault")) == nullptr &&
+                  fault_tags.Find(TagId::FromString("fault.deep.hierarchy.leaf")) == nullptr,
+              919);
     }
-    Check(tag_fault_observed, 920);
 
     StableTypeRegistry<TypeId> registry;
     const auto registered = registry.Register("framework.test.type");

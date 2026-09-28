@@ -1,9 +1,11 @@
 #include "Epidemic/GameFramework/Traversal/traversal.h"
 
 #include "Epidemic/Foundation/error.h"
+#include "traversal_test_seam.h"
 
 #include <iterator>
 #include <limits>
+#include <new>
 #include <unordered_set>
 #include <utility>
 
@@ -232,13 +234,27 @@ foundation::Result<TraversalCapabilityGrantId> TraversalService::GrantCapability
         return foundation::Result<TraversalCapabilityGrantId>::Failure(
             Error("gameplay.already_registered", "capability grant id already exists"));
 
-    Bump();
-    capability_grant_ids_ = staged_ids;
-    grant.revision = revision_;
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<TraversalCapabilityGrantId>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+    const Revision next_revision{revision_.value + 1};
+    grant.revision = next_revision;
     const auto id = grant.id;
     const auto subject = grant.subject;
     const auto capability = grant.capability;
-    capability_grants_.emplace(id, std::move(grant));
+    try
+    {
+        if (test_seam::Consume(test_seam::FaultPoint::GrantCapabilityBeforePublish))
+            throw std::bad_alloc{};
+        capability_grants_.emplace(id, std::move(grant));
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<TraversalCapabilityGrantId>::Failure(
+            Error("gameplay.traversal.allocation_failed", "failed to publish capability grant"));
+    }
+    capability_grant_ids_ = staged_ids;
+    revision_ = next_revision;
     TraversalChange change{0, TraversalChangeKind::CapabilityGranted, subject, {}, {}, {}, {}, context, revision_};
     change.capability = capability;
     change.capability_grant = id;
@@ -252,8 +268,11 @@ foundation::Result<void> TraversalService::RevokeCapability(TraversalCapabilityG
     if (it == capability_grants_.end())
         return foundation::Result<void>::Success();
     const auto grant = it->second;
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
     capability_grants_.erase(it);
-    Bump();
+    ++revision_.value;
     TraversalChange change{0, TraversalChangeKind::CapabilityRevoked, grant.subject, {}, {}, {}, {}, context, revision_};
     change.capability = grant.capability;
     change.capability_grant = id;
@@ -269,9 +288,11 @@ std::uint64_t TraversalService::RevokeCapabilitiesBySource(GameplayObjectRef sub
         if (grant.subject == subject && grant.source == source)
             ids.push_back(id);
     std::sort(ids.begin(), ids.end());
+    std::uint64_t removed = 0;
     for (const auto id : ids)
-        (void)RevokeCapability(id, context);
-    return ids.size();
+        if (RevokeCapability(id, context))
+            ++removed;
+    return removed;
 }
 
 std::uint64_t TraversalService::ExpireCapabilities(GameplayTimePoint now, GameplayContext context)
@@ -281,9 +302,11 @@ std::uint64_t TraversalService::ExpireCapabilities(GameplayTimePoint now, Gamepl
         if (grant.expires_at && grant.expires_at->ticks <= now.ticks)
             ids.push_back(id);
     std::sort(ids.begin(), ids.end());
+    std::uint64_t removed = 0;
     for (const auto id : ids)
-        (void)RevokeCapability(id, context);
-    return ids.size();
+        if (RevokeCapability(id, context))
+            ++removed;
+    return removed;
 }
 
 Fixed TraversalService::EffectiveCapabilityParameter(GameplayObjectRef subject, TraversalCapabilityId capability) const noexcept
@@ -325,14 +348,28 @@ foundation::Result<void> TraversalService::AssignProfile(GameplayObjectRef subje
     if (existing != states_.end() && existing->second.active_session)
         return foundation::Result<void>::Failure(
             Error("gameplay.traversal.session_active", "cannot replace traversal profile during an active session"));
-    if (!Bump())
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
         return foundation::Result<void>::Failure(Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
-    auto& state = states_[subject];
-    state.subject = subject;
-    state.profile = profile;
-    if (!state.current_mode.IsValid() || !ProfileAllows(definition->second, state.current_mode))
-        state.current_mode = definition->second.default_mode;
-    state.revision = revision_;
+    const Revision next_revision{revision_.value + 1};
+    TraversalState candidate = existing == states_.end() ? TraversalState{} : existing->second;
+    candidate.subject = subject;
+    candidate.profile = profile;
+    if (!candidate.current_mode.IsValid() || !ProfileAllows(definition->second, candidate.current_mode))
+        candidate.current_mode = definition->second.default_mode;
+    candidate.revision = next_revision;
+    try
+    {
+        if (test_seam::Consume(test_seam::FaultPoint::AssignProfileBeforePublish))
+            throw std::bad_alloc{};
+        states_.insert_or_assign(subject, candidate);
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.allocation_failed", "failed to publish traversal profile assignment"));
+    }
+    revision_ = next_revision;
+    auto& state = states_.at(subject);
     Record({0, TraversalChangeKind::ProfileAssigned, subject, state.current_mode, {}, {}, {}, context, revision_});
     return foundation::Result<void>::Success();
 }
@@ -374,14 +411,17 @@ foundation::Result<void> TraversalService::RemoveState(GameplayObjectRef subject
                 Error("gameplay.traversal.route_in_use", "cannot remove traversal state with an active route"));
     }
 
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+
     for (const auto id : grant_ids)
         capability_grants_.erase(id);
     for (const auto id : route_ids)
         routes_.erase(id);
 
     states_.erase(state_it);
-    if (!Bump())
-        return foundation::Result<void>::Failure(Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+    ++revision_.value;
     Record({0, TraversalChangeKind::StateRemoved, subject, {}, {}, {}, {}, context, revision_});
     return foundation::Result<void>::Success();
 }
@@ -428,7 +468,10 @@ foundation::Result<TraversalResult> TraversalService::ChangeMode(ChangeTraversal
     if (state->active_session)
         return foundation::Result<TraversalResult>::Failure(
             Error("gameplay.traversal.session_active", "cannot change traversal mode outside an active session"));
-    Bump();
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<TraversalResult>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+    ++revision_.value;
     state->current_mode = request.target_mode;
     state->revision = revision_;
     ++mode_changes_;
@@ -456,13 +499,27 @@ foundation::Result<TraversalRouteId> TraversalService::RegisterRoute(TraversalRo
         return foundation::Result<TraversalRouteId>::Failure(
             Error("gameplay.already_registered", "traversal route id already exists"));
 
-    Bump();
-    route_ids_ = staged_ids;
-    route.revision = revision_;
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<TraversalRouteId>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+    const Revision next_revision{revision_.value + 1};
+    route.revision = next_revision;
     const auto id = route.id;
     const auto subject = route.subject;
     const auto mode = route.mode;
-    routes_.emplace(id, std::move(route));
+    try
+    {
+        if (test_seam::Consume(test_seam::FaultPoint::RegisterRouteBeforePublish))
+            throw std::bad_alloc{};
+        routes_.emplace(id, std::move(route));
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<TraversalRouteId>::Failure(
+            Error("gameplay.traversal.allocation_failed", "failed to publish traversal route"));
+    }
+    route_ids_ = staged_ids;
+    revision_ = next_revision;
     Record({0, TraversalChangeKind::RouteRegistered, subject, mode, {}, {}, {}, {}, revision_});
     return foundation::Result<TraversalRouteId>::Success(id);
 }
@@ -477,8 +534,11 @@ foundation::Result<void> TraversalService::RemoveRoute(TraversalRouteId route, G
             Error("gameplay.traversal.route_in_use", "cannot remove a route used by a live session"));
     const auto subject = it->second.subject;
     const auto mode = it->second.mode;
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
     routes_.erase(it);
-    Bump();
+    ++revision_.value;
     Record({0, TraversalChangeKind::RouteRemoved, subject, mode, {}, {}, {}, context, revision_});
     return foundation::Result<void>::Success();
 }
@@ -492,9 +552,11 @@ std::uint64_t TraversalService::RemoveRoutesBySource(GameplayObjectRef source, G
         if (route.source == source && !IsRouteInUse(id))
             ids.push_back(id);
     std::sort(ids.begin(), ids.end());
+    std::uint64_t removed = 0;
     for (const auto id : ids)
-        (void)RemoveRoute(id, context);
-    return ids.size();
+        if (RemoveRoute(id, context))
+            ++removed;
+    return removed;
 }
 
 const TraversalRoute* TraversalService::FindRoute(TraversalRouteId id) const noexcept
@@ -539,7 +601,6 @@ foundation::Result<TraversalSessionId> TraversalService::StartSession(GameplayOb
         if (existing != sessions_.end() && IsLiveSession(existing->second.state))
             return foundation::Result<TraversalSessionId>::Failure(
                 Error("gameplay.traversal.session_active", "subject already has an active traversal session"));
-        state->active_session.reset();
     }
     if (route.IsValid())
     {
@@ -555,9 +616,23 @@ foundation::Result<TraversalSessionId> TraversalService::StartSession(GameplayOb
         return foundation::Result<TraversalSessionId>::Failure(
             Error("gameplay.traversal.session_id_exhausted", "traversal session id exhausted"));
 
-    Bump();
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<TraversalSessionId>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+    const Revision next_revision{revision_.value + 1};
+    try
+    {
+        if (test_seam::Consume(test_seam::FaultPoint::StartSessionBeforePublish))
+            throw std::bad_alloc{};
+        sessions_.emplace(id, TraversalSession{id, subject, mode, route, TraversalSessionState::Active, started_at, next_revision});
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<TraversalSessionId>::Failure(
+            Error("gameplay.traversal.allocation_failed", "failed to publish traversal session"));
+    }
     session_ids_ = staged_ids;
-    sessions_.emplace(id, TraversalSession{id, subject, mode, route, TraversalSessionState::Active, started_at, revision_});
+    revision_ = next_revision;
     state->active_session = id;
     state->current_mode = mode;
     state->revision = revision_;
@@ -570,7 +645,10 @@ foundation::Result<void> TraversalService::SuspendSession(TraversalSessionId id,
     auto* session = FindMutableSession(id);
     if (!session || session->state != TraversalSessionState::Active)
         return foundation::Result<void>::Failure(Error("gameplay.traversal.session_state", "only an active session can be suspended"));
-    Bump();
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+    ++revision_.value;
     session->state = TraversalSessionState::Suspended;
     session->revision = revision_;
     Record({0, TraversalChangeKind::SessionSuspended, session->subject, session->mode, id, {}, {}, context, revision_});
@@ -585,7 +663,10 @@ foundation::Result<void> TraversalService::ResumeSession(TraversalSessionId id, 
     const auto can = CanUseMode(session->subject, session->mode);
     if (can.kind == TraversalResultKind::Rejected)
         return foundation::Result<void>::Failure(Error("gameplay.traversal.mode_rejected", "session mode is no longer available"));
-    Bump();
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+    ++revision_.value;
     session->state = TraversalSessionState::Active;
     session->revision = revision_;
     Record({0, TraversalChangeKind::SessionResumed, session->subject, session->mode, id, {}, {}, context, revision_});
@@ -600,9 +681,12 @@ foundation::Result<void> TraversalService::FinalizeSession(TraversalSessionId id
     if (it == sessions_.end() || !IsLiveSession(it->second.state))
         return foundation::Result<void>::Failure(Error("gameplay.traversal.session_state", "session is missing or already terminal"));
 
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
     TraversalSession session = it->second;
     session.state = terminal_state;
-    Bump();
+    ++revision_.value;
     session.revision = revision_;
     if (auto* state = FindMutableState(session.subject); state && state->active_session == id)
     {
@@ -645,8 +729,22 @@ foundation::Result<void> TraversalService::BoardCarrier(GameplayObjectRef passen
     const auto can = CanUseMode(passenger, mode);
     if (can.kind == TraversalResultKind::Rejected)
         return foundation::Result<void>::Failure(Error("gameplay.traversal.mode_rejected", "carrier mode is not usable by passenger"));
-    Bump();
-    carrier_by_passenger_.emplace(passenger, TraversalCarrierBinding{passenger, carrier, mode, previous_mode, role, revision_});
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
+    const Revision next_revision{revision_.value + 1};
+    try
+    {
+        if (test_seam::Consume(test_seam::FaultPoint::BoardCarrierBeforePublish))
+            throw std::bad_alloc{};
+        carrier_by_passenger_.emplace(passenger, TraversalCarrierBinding{passenger, carrier, mode, previous_mode, role, next_revision});
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.allocation_failed", "failed to publish carrier binding"));
+    }
+    revision_ = next_revision;
     state->current_mode = mode;
     state->revision = revision_;
     ++boarding_ops_;
@@ -671,8 +769,11 @@ foundation::Result<void> TraversalService::Disembark(GameplayObjectRef passenger
     if (binding.previous_mode.IsValid() && CanUseMode(passenger, binding.previous_mode).kind != TraversalResultKind::Rejected)
         next_mode = binding.previous_mode;
 
+    if (revision_.value == std::numeric_limits<std::uint64_t>::max())
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.revision_exhausted", "traversal revision exhausted"));
     carrier_by_passenger_.erase(it);
-    Bump();
+    ++revision_.value;
     state->current_mode = next_mode;
     state->revision = revision_;
     Record({0, TraversalChangeKind::CarrierDisembarked, passenger, next_mode, {}, binding.carrier, {}, context, revision_});
@@ -834,6 +935,11 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
         return foundation::Result<void>::Failure(
             foundation::Error::Create("gameplay.change_journal.epoch_exhausted", "change journal epoch is exhausted"));
     }
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.allocation_failed", "injected restore candidate allocation failure"));
+    try
+    {
     std::unordered_map<GameplayObjectRef, TraversalState, RefHash> restored_states;
     std::unordered_map<TraversalSessionId, TraversalSession, IdHash> restored_sessions;
     std::unordered_map<TraversalRouteId, TraversalRoute, IdHash> restored_routes;
@@ -928,6 +1034,9 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     if (!session_generator_ok || !route_generator_ok || !grant_generator_ok)
         return foundation::Result<void>::Failure(Error("gameplay.traversal.restore_invalid", "invalid generator snapshot"));
 
+    if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.allocation_failed", "injected restore pre-commit allocation failure"));
     states_.swap(restored_states);
     sessions_.swap(restored_sessions);
     routes_.swap(restored_routes);
@@ -941,6 +1050,12 @@ foundation::Result<void> TraversalService::RestoreSnapshot(TraversalSnapshot sna
     next_change_sequence_ = snapshot.next_change_sequence;
     journal_epoch_ = *next_journal_epoch;
     return foundation::Result<void>::Success();
+    }
+    catch (const std::bad_alloc&)
+    {
+        return foundation::Result<void>::Failure(
+            Error("gameplay.traversal.allocation_failed", "failed to stage traversal restore"));
+    }
 }
 
 TraversalDiagnostics TraversalService::GetDiagnostics() const noexcept
@@ -968,7 +1083,25 @@ void TraversalService::Record(TraversalChange change)
         return;
     const auto assigned = next_change_sequence_;
     change.sequence = assigned;
-    changes_.push_back(std::move(change));
+    try
+    {
+        if (test_seam::Consume(test_seam::FaultPoint::JournalAppend))
+            throw std::bad_alloc{};
+        changes_.push_back(std::move(change));
+    }
+    catch (const std::bad_alloc&)
+    {
+        changes_.clear();
+        const auto next_epoch = CheckedNextChangeEpoch(journal_epoch_);
+        if (!next_epoch)
+        {
+            next_change_sequence_ = 0;
+            return;
+        }
+        journal_epoch_ = *next_epoch;
+        next_change_sequence_ = 1;
+        return;
+    }
     next_change_sequence_ = assigned == std::numeric_limits<std::uint64_t>::max() ? 0 : assigned + 1;
     while (changes_.size() > kChangeJournalCapacity)
         changes_.pop_front();

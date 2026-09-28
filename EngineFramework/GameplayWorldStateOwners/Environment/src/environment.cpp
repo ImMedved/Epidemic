@@ -1,4 +1,5 @@
 #include "Epidemic/GameFramework/Environment/environment.h"
+#include "environment_test_seam.h"
 
 #include <algorithm>
 #include <exception>
@@ -746,6 +747,9 @@ foundation::Result<void> EnvironmentService::RestoreSnapshot(EnvironmentSnapshot
         if (auto valid = ValidateLayer(layer); !valid)
             return foundation::Result<void>::Failure(
                 Error("gameplay.environment.restore_invalid", "invalid layer in snapshot"));
+        if (test_seam::Consume(test_seam::FaultPoint::RestoreCandidateBuild))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.environment.storage_failed", "failed while constructing environment snapshot candidates"));
         if (!rebuilt.emplace(layer.id, layer).second)
             return foundation::Result<void>::Failure(
                 Error("gameplay.environment.restore_invalid", "duplicate layer in snapshot"));
@@ -762,6 +766,9 @@ foundation::Result<void> EnvironmentService::RestoreSnapshot(EnvironmentSnapshot
         EnvironmentService staged = *this;
         staged.layers_ = std::move(rebuilt);
         staged.RebuildSpatialIndex();
+        if (test_seam::Consume(test_seam::FaultPoint::RestoreBeforeCommit))
+            return foundation::Result<void>::Failure(
+                Error("gameplay.environment.storage_failed", "failed to stage environment snapshot indexes"));
         layers_.swap(staged.layers_);
         spatial_index_.swap(staged.spatial_index_);
         global_layers_.swap(staged.global_layers_);

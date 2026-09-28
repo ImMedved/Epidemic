@@ -1,0 +1,3606 @@
+{
+  "contract": "LOCAL_READY",
+  "modules": {
+    "EngineFramework/GameplayWorldStateOwners/Dialogue": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:99::- G4-CRITERION-API-CLASSIFIED: `API-CLASSIFIED` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-CLASSIFIED for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:102::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:102::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-FAILURE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:104::- G4-CRITERION-API-INVALID: `API-INVALID` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:389::invalid_handler_definition.entry_node = DialogueNodeId::FromString(\"node.invalid_handler\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-INVALID for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:103::- G4-CRITERION-API-OVERLOADS: `API-OVERLOADS` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-OVERLOADS for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:100::- G4-CRITERION-API-PRECONDITIONS: `API-PRECONDITIONS` was reviewed for this module against its authoritative state, life",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:389::invalid_handler_definition.entry_node = DialogueNodeId::FromString(\"node.invalid_handler\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-PRECONDITIONS for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:101::- G4-CRITERION-API-SUCCESS: `API-SUCCESS` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-SUCCESS for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::### EngineFramework/GameplayWorldStateOwners/Dialogue",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-DIRECT-DEPS for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::### EngineFramework/GameplayWorldStateOwners/Dialogue",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:98::- G4-CRITERION-ARCH-PORTS: `ARCH-PORTS` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-PORTS for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::### EngineFramework/GameplayWorldStateOwners/Dialogue",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-RESPONSIBILITY for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:274::### EngineFramework/GameplayWorldStateOwners/Dialogue",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:96::- G4-CRITERION-ARCH-SINGLE-OWNER: `ARCH-SINGLE-OWNER` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-SINGLE-OWNER for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "ATOMIC-EXTERNAL is not applicable to Dialogue: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:115::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:115::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-MULTI for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "ATOMIC-RECONCILE is not applicable to Dialogue: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:114::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:114::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-SINGLE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:110::- G4-CRITERION-LIFE-ALLOWED: `LIFE-ALLOWED` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-ALLOWED for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:111::- G4-CRITERION-LIFE-FORBIDDEN: `LIFE-FORBIDDEN` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-FORBIDDEN for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "LIFE-RETRY-CLEANUP is not applicable to Dialogue: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "LIFE-SHUTDOWN is not applicable to Dialogue: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:120::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:120::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:162::pending_def.entry_node = DialogueNodeId::FromString(\"node.pending.restore\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CANDIDATE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:122::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:122::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:162::pending_def.entry_node = DialogueNodeId::FromString(\"node.pending.restore\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CONTINUITY for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:121::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:121::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:121::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:162::pending_def.entry_node = DialogueNodeId::FromString(\"node.pending.restore\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-FAILURE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:118::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:118::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:162::pending_def.entry_node = DialogueNodeId::FromString(\"node.pending.restore\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-SNAPSHOT for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:119::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:119::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:162::pending_def.entry_node = DialogueNodeId::FromString(\"node.pending.restore\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-VALIDATE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:107::- G4-CRITERION-STATE-COUNTERS: `STATE-COUNTERS` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-COUNTERS for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:106::- G4-CRITERION-STATE-INDEXES: `STATE-INDEXES` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-INDEXES for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:108::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:108::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NO-FALSE-PUBLISH for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:109::- G4-CRITERION-STATE-NOOP: `STATE-NOOP` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NOOP for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:105::- G4-CRITERION-STATE-PRIMARY: `STATE-PRIMARY` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-PRIMARY for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-BOUNDARY for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/dialogue.md:130::- G4-CRITERION-TEST-CALLBACK-FAILURE: `TEST-CALLBACK-FAILURE` was reviewed for this module against its authoritative sta",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:274::callback_def.entry_node = DialogueNodeId::FromString(\"node.callback\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-CALLBACK-FAILURE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-DUPLICATE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-EMPTY for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-HAPPY for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:389::invalid_handler_definition.entry_node = DialogueNodeId::FromString(\"node.invalid_handler\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-INVALID for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-REGRESSION for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-STALE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:124::terminal.entry_node = DialogueNodeId::FromString(\"node.terminal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/dialogue_tests.cpp:11::if (!v)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkDialogueTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-WRONG-LIFECYCLE for Dialogue against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/GameplayWorldStateOwners/Narrative": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:203::- G4-CRITERION-API-CLASSIFIED: `API-CLASSIFIED` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-CLASSIFIED for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:206::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:206::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-FAILURE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:208::- G4-CRITERION-API-INVALID: `API-INVALID` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:286::invalid_thread.id = NarrativeThreadId::FromString(\"thread.invalid.enum\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-INVALID for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:207::- G4-CRITERION-API-OVERLOADS: `API-OVERLOADS` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-OVERLOADS for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:204::- G4-CRITERION-API-PRECONDITIONS: `API-PRECONDITIONS` was reviewed for this module against its authoritative state, life",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:286::invalid_thread.id = NarrativeThreadId::FromString(\"thread.invalid.enum\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-PRECONDITIONS for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:205::- G4-CRITERION-API-SUCCESS: `API-SUCCESS` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-SUCCESS for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::### EngineFramework/GameplayWorldStateOwners/Narrative",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-DIRECT-DEPS for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::### EngineFramework/GameplayWorldStateOwners/Narrative",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:202::- G4-CRITERION-ARCH-PORTS: `ARCH-PORTS` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-PORTS for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::### EngineFramework/GameplayWorldStateOwners/Narrative",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-RESPONSIBILITY for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:358::### EngineFramework/GameplayWorldStateOwners/Narrative",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:200::- G4-CRITERION-ARCH-SINGLE-OWNER: `ARCH-SINGLE-OWNER` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-SINGLE-OWNER for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "ATOMIC-EXTERNAL is not applicable to Narrative: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:219::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:219::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-MULTI for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "ATOMIC-RECONCILE is not applicable to Narrative: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:218::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:218::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-SINGLE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:214::- G4-CRITERION-LIFE-ALLOWED: `LIFE-ALLOWED` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-ALLOWED for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:215::- G4-CRITERION-LIFE-FORBIDDEN: `LIFE-FORBIDDEN` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-FORBIDDEN for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:217::- G4-CRITERION-LIFE-RETRY-CLEANUP: `LIFE-RETRY-CLEANUP` was reviewed for this module against its authoritative state, li",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:217::- G4-CRITERION-LIFE-RETRY-CLEANUP: `LIFE-RETRY-CLEANUP` was reviewed for this module against its authoritative state, li",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-RETRY-CLEANUP for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "LIFE-SHUTDOWN is not applicable to Narrative: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:224::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:224::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CANDIDATE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:226::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:226::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CONTINUITY for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:225::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:225::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:225::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-FAILURE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:222::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:222::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-SNAPSHOT for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:223::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:223::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:286::invalid_thread.id = NarrativeThreadId::FromString(\"thread.invalid.enum\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-VALIDATE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:211::- G4-CRITERION-STATE-COUNTERS: `STATE-COUNTERS` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-COUNTERS for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:210::- G4-CRITERION-STATE-INDEXES: `STATE-INDEXES` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-INDEXES for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:212::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:212::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NO-FALSE-PUBLISH for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:213::- G4-CRITERION-STATE-NOOP: `STATE-NOOP` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NOOP for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:209::- G4-CRITERION-STATE-PRIMARY: `STATE-PRIMARY` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-PRIMARY for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-BOUNDARY for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative.md:234::- G4-CRITERION-TEST-CALLBACK-FAILURE: `TEST-CALLBACK-FAILURE` was reviewed for this module against its authoritative sta",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:316::callback_option.id = NarrativeChoiceOptionId::FromString(\"option.callback\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-CALLBACK-FAILURE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-DUPLICATE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:28::const auto required=definition.payload.empty()?TagId::FromString(\"event.match\"):TagId::FromString(std::string_view(reint",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-EMPTY for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-HAPPY for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:286::invalid_thread.id = NarrativeThreadId::FromString(\"thread.invalid.enum\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-INVALID for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-REGRESSION for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-STALE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:77::auto journal_consequence= NarrativeConsequenceId::FromString(\"consequence.journal\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:349::if (!corrupt_enum.event_executions.empty())"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-WRONG-LIFECYCLE for Narrative against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/GameplayWorldStateOwners/SaveGame": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:69::- G4-CRITERION-API-CLASSIFIED: `API-CLASSIFIED` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-CLASSIFIED for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:72::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:72::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-FAILURE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:74::- G4-CRITERION-API-INVALID: `API-INVALID` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:25::if (!value)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:25::if (!value)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-INVALID for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:73::- G4-CRITERION-API-OVERLOADS: `API-OVERLOADS` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-OVERLOADS for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:70::- G4-CRITERION-API-PRECONDITIONS: `API-PRECONDITIONS` was reviewed for this module against its authoritative state, life",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:25::if (!value)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:25::if (!value)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-PRECONDITIONS for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:71::- G4-CRITERION-API-SUCCESS: `API-SUCCESS` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-SUCCESS for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::### EngineFramework/GameplayWorldStateOwners/SaveGame",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-DIRECT-DEPS for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::### EngineFramework/GameplayWorldStateOwners/SaveGame",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:68::- G4-CRITERION-ARCH-PORTS: `ARCH-PORTS` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-PORTS for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::### EngineFramework/GameplayWorldStateOwners/SaveGame",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-RESPONSIBILITY for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:428::### EngineFramework/GameplayWorldStateOwners/SaveGame",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:66::- G4-CRITERION-ARCH-SINGLE-OWNER: `ARCH-SINGLE-OWNER` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-SINGLE-OWNER for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:86::- G4-CRITERION-ATOMIC-EXTERNAL: `ATOMIC-EXTERNAL` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:86::- G4-CRITERION-ATOMIC-EXTERNAL: `ATOMIC-EXTERNAL` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-EXTERNAL for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:85::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:85::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-MULTI for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:87::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:87::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:87::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-RECONCILE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:84::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:84::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-SINGLE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:80::- G4-CRITERION-LIFE-ALLOWED: `LIFE-ALLOWED` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-ALLOWED for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:81::- G4-CRITERION-LIFE-FORBIDDEN: `LIFE-FORBIDDEN` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-FORBIDDEN for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:83::- G4-CRITERION-LIFE-RETRY-CLEANUP: `LIFE-RETRY-CLEANUP` was reviewed for this module against its authoritative state, li",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:83::- G4-CRITERION-LIFE-RETRY-CLEANUP: `LIFE-RETRY-CLEANUP` was reviewed for this module against its authoritative state, li",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-RETRY-CLEANUP for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "LIFE-SHUTDOWN is not applicable to SaveGame: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:90::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:90::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CANDIDATE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:92::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:92::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CONTINUITY for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:91::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:91::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:91::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-FAILURE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:88::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:88::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-SNAPSHOT for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:89::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:89::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-VALIDATE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:77::- G4-CRITERION-STATE-COUNTERS: `STATE-COUNTERS` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-COUNTERS for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [],
+          "rationale": "STATE-INDEXES is not applicable to SaveGame: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:78::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:78::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NO-FALSE-PUBLISH for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:79::- G4-CRITERION-STATE-NOOP: `STATE-NOOP` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NOOP for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:75::- G4-CRITERION-STATE-PRIMARY: `STATE-PRIMARY` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-PRIMARY for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:378::SaveGameOrchestrator limited_orchestrator({}, small_limits);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-BOUNDARY for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/save_game.md:100::- G4-CRITERION-TEST-CALLBACK-FAILURE: `TEST-CALLBACK-FAILURE` was reviewed for this module against its authoritative sta",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:69::if (fail_restore)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-CALLBACK-FAILURE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-DUPLICATE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-EMPTY for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-HAPPY for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-INVALID for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-REGRESSION for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-STALE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:226::section.payload_hash = SaveGameOrchestrator::HashBytes(section.payload);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkSaveGameTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-WRONG-LIFECYCLE for SaveGame against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/GameplayWorldStateOwners/World": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:111::- G4-CRITERION-API-CLASSIFIED: `API-CLASSIFIED` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-CLASSIFIED for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:114::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:114::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:234::CHECK(!restored.FindFeature(fault_feature.id));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:234::CHECK(!restored.FindFeature(fault_feature.id));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-FAILURE for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:116::- G4-CRITERION-API-INVALID: `API-INVALID` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:221::CHECK(!restored.RestoreSnapshot(std::move(invalid_enum_snapshot)));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:221::CHECK(!restored.RestoreSnapshot(std::move(invalid_enum_snapshot)));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-INVALID for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:115::- G4-CRITERION-API-OVERLOADS: `API-OVERLOADS` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-OVERLOADS for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:112::- G4-CRITERION-API-PRECONDITIONS: `API-PRECONDITIONS` was reviewed for this module against its authoritative state, life",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:221::CHECK(!restored.RestoreSnapshot(std::move(invalid_enum_snapshot)));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:221::CHECK(!restored.RestoreSnapshot(std::move(invalid_enum_snapshot)));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-PRECONDITIONS for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:113::- G4-CRITERION-API-SUCCESS: `API-SUCCESS` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-SUCCESS for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::### EngineFramework/GameplayWorldStateOwners/World",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-DIRECT-DEPS for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::### EngineFramework/GameplayWorldStateOwners/World",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:110::- G4-CRITERION-ARCH-PORTS: `ARCH-PORTS` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-PORTS for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::### EngineFramework/GameplayWorldStateOwners/World",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-RESPONSIBILITY for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:456::### EngineFramework/GameplayWorldStateOwners/World",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:108::- G4-CRITERION-ARCH-SINGLE-OWNER: `ARCH-SINGLE-OWNER` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-SINGLE-OWNER for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "ATOMIC-EXTERNAL is not applicable to World: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:127::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:127::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-MULTI for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [],
+          "rationale": "ATOMIC-RECONCILE is not applicable to World: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:126::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:126::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-SINGLE for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:122::- G4-CRITERION-LIFE-ALLOWED: `LIFE-ALLOWED` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-ALLOWED for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:123::- G4-CRITERION-LIFE-FORBIDDEN: `LIFE-FORBIDDEN` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-FORBIDDEN for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:125::- G4-CRITERION-LIFE-RETRY-CLEANUP: `LIFE-RETRY-CLEANUP` was reviewed for this module against its authoritative state, li",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:125::- G4-CRITERION-LIFE-RETRY-CLEANUP: `LIFE-RETRY-CLEANUP` was reviewed for this module against its authoritative state, li",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-RETRY-CLEANUP for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "LIFE-SHUTDOWN is not applicable to World: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:132::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:132::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:155::CHECK(restored.RestoreSnapshot(snapshot));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:155::CHECK(restored.RestoreSnapshot(snapshot));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CANDIDATE for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:134::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:134::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:235::CHECK(restored.CurrentRevision() == direct_revision_before &&",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:235::CHECK(restored.CurrentRevision() == direct_revision_before &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CONTINUITY for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:133::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:133::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:133::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:234::CHECK(!restored.FindFeature(fault_feature.id));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:234::CHECK(!restored.FindFeature(fault_feature.id));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-FAILURE for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:130::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:130::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:155::CHECK(restored.RestoreSnapshot(snapshot));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:155::CHECK(restored.RestoreSnapshot(snapshot));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-SNAPSHOT for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:131::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:131::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:221::CHECK(!restored.RestoreSnapshot(std::move(invalid_enum_snapshot)));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:221::CHECK(!restored.RestoreSnapshot(std::move(invalid_enum_snapshot)));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-VALIDATE for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:119::- G4-CRITERION-STATE-COUNTERS: `STATE-COUNTERS` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-COUNTERS for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:118::- G4-CRITERION-STATE-INDEXES: `STATE-INDEXES` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-INDEXES for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:120::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:120::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:172::CHECK(after_fault_restore.revision == before_fault_restore.revision &&",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:172::CHECK(after_fault_restore.revision == before_fault_restore.revision &&"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NO-FALSE-PUBLISH for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:121::- G4-CRITERION-STATE-NOOP: `STATE-NOOP` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NOOP for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world.md:117::- G4-CRITERION-STATE-PRIMARY: `STATE-PRIMARY` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-PRIMARY for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-BOUNDARY for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "TEST-CALLBACK-FAILURE is not applicable to World: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-DUPLICATE for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-EMPTY for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-HAPPY for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-INVALID for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-REGRESSION for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-STALE for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:35::const auto feature_type = WorldFeatureTypeId::FromString(\"game.test.road\");",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:41::CHECK(world.RegisterRegion(region));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-WRONG-LIFECYCLE for World against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/IntegrationLayer/NarrativeIntegration": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:77::- G4-CRITERION-API-CLASSIFIED: `API-CLASSIFIED` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-CLASSIFIED for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:80::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:80::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:178::NarrativeExternalConsequenceOutbox exhausted_fail;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-FAILURE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:82::- G4-CRITERION-API-INVALID: `API-INVALID` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-INVALID for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:81::- G4-CRITERION-API-OVERLOADS: `API-OVERLOADS` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-OVERLOADS for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:78::- G4-CRITERION-API-PRECONDITIONS: `API-PRECONDITIONS` was reviewed for this module against its authoritative state, life",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-PRECONDITIONS for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:79::- G4-CRITERION-API-SUCCESS: `API-SUCCESS` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-SUCCESS for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::### EngineFramework/IntegrationLayer/NarrativeIntegration",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-DIRECT-DEPS for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::### EngineFramework/IntegrationLayer/NarrativeIntegration",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:76::- G4-CRITERION-ARCH-PORTS: `ARCH-PORTS` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-PORTS for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::### EngineFramework/IntegrationLayer/NarrativeIntegration",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-RESPONSIBILITY for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:498::### EngineFramework/IntegrationLayer/NarrativeIntegration",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:74::- G4-CRITERION-ARCH-SINGLE-OWNER: `ARCH-SINGLE-OWNER` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-SINGLE-OWNER for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:94::- G4-CRITERION-ATOMIC-EXTERNAL: `ATOMIC-EXTERNAL` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:94::- G4-CRITERION-ATOMIC-EXTERNAL: `ATOMIC-EXTERNAL` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-EXTERNAL for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:93::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:93::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-MULTI for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:95::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:95::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:95::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:164::NarrativeExternalConsequenceOutbox exhausted_retry;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-RECONCILE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:92::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:92::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-SINGLE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:88::- G4-CRITERION-LIFE-ALLOWED: `LIFE-ALLOWED` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-ALLOWED for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:89::- G4-CRITERION-LIFE-FORBIDDEN: `LIFE-FORBIDDEN` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-FORBIDDEN for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:91::- G4-CRITERION-LIFE-RETRY-CLEANUP: `LIFE-RETRY-CLEANUP` was reviewed for this module against its authoritative state, li",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:91::- G4-CRITERION-LIFE-RETRY-CLEANUP: `LIFE-RETRY-CLEANUP` was reviewed for this module against its authoritative state, li",
+              "kind": "lifecycle"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:164::NarrativeExternalConsequenceOutbox exhausted_retry;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed LIFE-RETRY-CLEANUP for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "LIFE-SHUTDOWN is not applicable to NarrativeIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:98::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:98::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CANDIDATE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:100::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:100::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CONTINUITY for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:99::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:99::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:99::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-FAILURE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:96::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:96::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-SNAPSHOT for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:97::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:97::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-VALIDATE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:85::- G4-CRITERION-STATE-COUNTERS: `STATE-COUNTERS` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-COUNTERS for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [],
+          "rationale": "STATE-INDEXES is not applicable to NarrativeIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:86::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:86::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NO-FALSE-PUBLISH for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:87::- G4-CRITERION-STATE-NOOP: `STATE-NOOP` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NOOP for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:83::- G4-CRITERION-STATE-PRIMARY: `STATE-PRIMARY` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-PRIMARY for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-BOUNDARY for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/narrative_integration.md:108::- G4-CRITERION-TEST-CALLBACK-FAILURE: `TEST-CALLBACK-FAILURE` was reviewed for this module against its authoritative sta",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:178::NarrativeExternalConsequenceOutbox exhausted_fail;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-CALLBACK-FAILURE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-DUPLICATE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-EMPTY for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-HAPPY for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-INVALID for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-REGRESSION for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-STALE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkNarrativeIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-WRONG-LIFECYCLE for NarrativeIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        }
+      },
+      "status": "LOCAL_READY"
+    },
+    "EngineFramework/IntegrationLayer/WorldIntegration": {
+      "criteria": {
+        "API-CLASSIFIED": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:50::- G4-CRITERION-API-CLASSIFIED: `API-CLASSIFIED` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-CLASSIFIED for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:53::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:53::- G4-CRITERION-API-FAILURE: `API-FAILURE` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "fault"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-FAILURE for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-INVALID": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:55::- G4-CRITERION-API-INVALID: `API-INVALID` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-INVALID for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-OVERLOADS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:54::- G4-CRITERION-API-OVERLOADS: `API-OVERLOADS` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed API-OVERLOADS for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-PRECONDITIONS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:51::- G4-CRITERION-API-PRECONDITIONS: `API-PRECONDITIONS` was reviewed for this module against its authoritative state, life",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-PRECONDITIONS for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "API-SUCCESS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:52::- G4-CRITERION-API-SUCCESS: `API-SUCCESS` was reviewed for this module against its authoritative state, lifecycle, failu",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed API-SUCCESS for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-DIRECT-DEPS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::### EngineFramework/IntegrationLayer/WorldIntegration",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-DIRECT-DEPS for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-PORTS": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::### EngineFramework/IntegrationLayer/WorldIntegration",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:49::- G4-CRITERION-ARCH-PORTS: `ARCH-PORTS` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-PORTS for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-RESPONSIBILITY": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::### EngineFramework/IntegrationLayer/WorldIntegration",
+              "kind": "architecture"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-RESPONSIBILITY for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ARCH-SINGLE-OWNER": {
+          "evidence": [
+            {
+              "anchor": "docs/freeze/architecture_ownership_matrix.md:547::### EngineFramework/IntegrationLayer/WorldIntegration",
+              "kind": "architecture"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:47::- G4-CRITERION-ARCH-SINGLE-OWNER: `ARCH-SINGLE-OWNER` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            }
+          ],
+          "rationale": "B07 reviewed ARCH-SINGLE-OWNER for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-EXTERNAL": {
+          "evidence": [],
+          "rationale": "ATOMIC-EXTERNAL is not applicable to WorldIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "ATOMIC-MULTI": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:66::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:66::- G4-CRITERION-ATOMIC-MULTI: `ATOMIC-MULTI` was reviewed for this module against its authoritative state, lifecycle, fai",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-MULTI for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-RECONCILE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:68::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "contract"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:68::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:68::- G4-CRITERION-ATOMIC-RECONCILE: `ATOMIC-RECONCILE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-RECONCILE for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "ATOMIC-SINGLE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:65::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:65::- G4-CRITERION-ATOMIC-SINGLE: `ATOMIC-SINGLE` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed ATOMIC-SINGLE for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "LIFE-ALLOWED": {
+          "evidence": [],
+          "rationale": "LIFE-ALLOWED is not applicable to WorldIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "LIFE-FORBIDDEN": {
+          "evidence": [],
+          "rationale": "LIFE-FORBIDDEN is not applicable to WorldIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "LIFE-RETRY-CLEANUP": {
+          "evidence": [],
+          "rationale": "LIFE-RETRY-CLEANUP is not applicable to WorldIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "LIFE-SHUTDOWN": {
+          "evidence": [],
+          "rationale": "LIFE-SHUTDOWN is not applicable to WorldIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "PERSIST-CANDIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:71::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:71::- G4-CRITERION-PERSIST-CANDIDATE: `PERSIST-CANDIDATE` was reviewed for this module against its authoritative state, life",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:182::CHECK(interaction.RestoreSnapshot(interaction_snapshot));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:182::CHECK(interaction.RestoreSnapshot(interaction_snapshot));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CANDIDATE for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-CONTINUITY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:73::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:73::- G4-CRITERION-PERSIST-CONTINUITY: `PERSIST-CONTINUITY` was reviewed for this module against its authoritative state, li",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-CONTINUITY for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-FAILURE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:72::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:72::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:72::- G4-CRITERION-PERSIST-FAILURE: `PERSIST-FAILURE` was reviewed for this module against its authoritative state, lifecycl",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-FAILURE for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-SNAPSHOT": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:69::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:69::- G4-CRITERION-PERSIST-SNAPSHOT: `PERSIST-SNAPSHOT` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:182::CHECK(interaction.RestoreSnapshot(interaction_snapshot));",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:182::CHECK(interaction.RestoreSnapshot(interaction_snapshot));"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-SNAPSHOT for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "PERSIST-VALIDATE": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:70::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:70::- G4-CRITERION-PERSIST-VALIDATE: `PERSIST-VALIDATE` was reviewed for this module against its authoritative state, lifecy",
+              "kind": "persistence"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed PERSIST-VALIDATE for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-COUNTERS": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:58::- G4-CRITERION-STATE-COUNTERS: `STATE-COUNTERS` was reviewed for this module against its authoritative state, lifecycle,",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-COUNTERS for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-INDEXES": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:57::- G4-CRITERION-STATE-INDEXES: `STATE-INDEXES` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-INDEXES for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NO-FALSE-PUBLISH": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:59::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "fault"
+            },
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:59::- G4-CRITERION-STATE-NO-FALSE-PUBLISH: `STATE-NO-FALSE-PUBLISH` was reviewed for this module against its authoritative s",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NO-FALSE-PUBLISH for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-NOOP": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:60::- G4-CRITERION-STATE-NOOP: `STATE-NOOP` was reviewed for this module against its authoritative state, lifecycle, failure",
+              "kind": "contract"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-NOOP for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "STATE-PRIMARY": {
+          "evidence": [
+            {
+              "anchor": "docs/EngineFramework/modules/world_integration.md:56::- G4-CRITERION-STATE-PRIMARY: `STATE-PRIMARY` was reviewed for this module against its authoritative state, lifecycle, f",
+              "kind": "state"
+            },
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed STATE-PRIMARY for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-BOUNDARY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-BOUNDARY for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-CALLBACK-FAILURE": {
+          "evidence": [],
+          "rationale": "TEST-CALLBACK-FAILURE is not applicable to WorldIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        },
+        "TEST-DUPLICATE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-DUPLICATE for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-EMPTY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-EMPTY for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-HAPPY": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-HAPPY for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-INVALID": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-INVALID for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-REGRESSION": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-REGRESSION for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-STALE": {
+          "evidence": [
+            {
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "assertions": [
+                "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
+              ],
+              "kind": "test",
+              "target": "EpidemicGameFrameworkWorldIntegrationTests"
+            }
+          ],
+          "rationale": "B07 reviewed TEST-STALE for WorldIntegration against the exact module contract and owned observable regression.",
+          "status": "PASS"
+        },
+        "TEST-WRONG-LIFECYCLE": {
+          "evidence": [],
+          "rationale": "TEST-WRONG-LIFECYCLE is not applicable to WorldIntegration: the reviewed public surface has no corresponding lifecycle, external, callback, persistence or reconciliation responsibility.",
+          "status": "N/A"
+        }
+      },
+      "status": "LOCAL_READY"
+    }
+  },
+  "schema_version": 1
+}

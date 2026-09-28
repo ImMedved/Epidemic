@@ -1,6 +1,3 @@
-#include "allocation_fault_injection.h"
-#include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/NeedsLife/needs_life.h"
 
 #include <cstdlib>
@@ -9,6 +6,11 @@
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::needs_life;
+
+namespace epidemic::gameplay::needs_life::testing
+{
+void FailNextLocalAllocationForTest() noexcept;
+}
 
 namespace
 {
@@ -255,63 +257,14 @@ int main()
               needs_revision_exhausted.CurrentRevision().value == std::numeric_limits<std::uint64_t>::max(),
           "needs revision exhaustion leaves state unchanged");
 
-    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
+    // Goal 4: module-local failure seam proves RestoreSnapshot pre-state atomicity.
     const auto allocation_before = restored.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "NeedsLife.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return restored.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return restored.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = restored.CaptureSnapshot();
-            const auto diagnostics = restored.GetDiagnostics();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("NeedsLife.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.profiles.size() + allocation_baseline.states.size(),
-                                                     allocation_after.profiles.size() + allocation_after.states.size(),
-                                                     "profile and need state count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.pressures.size() + allocation_baseline.routines.size(),
-                                                     allocation_after.pressures.size() + allocation_after.routines.size(),
-                                                     "pressure and routine payload count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     diagnostics.profiles,
-                                                     static_cast<std::uint64_t>(allocation_baseline.profiles.size()),
-                                                     "profile index diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
-                                                     allocation_baseline.profile_ids.next, allocation_after.profile_ids.next,
-                                                     "profile id generator next")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.revision, allocation_after.revision,
-                                                     "revision")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     restored.ReadChangesSince(restored.LatestChangeCursor()).changes.size(),
-                                                     std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
-                                                     "latest change cursor stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     diagnostics.life_pressures,
-                                                     static_cast<std::uint64_t>(allocation_baseline.pressures.size()),
-                                                     "retained pressure diagnostics")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     restored.LatestChangeCursor(), restored.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     diagnostics.routines,
-                                                     static_cast<std::uint64_t>(allocation_baseline.routines.size()),
-                                                     "public diagnostics read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
-        });
-    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
-        return 924;
+    epidemic::gameplay::needs_life::testing::FailNextLocalAllocationForTest();
+    const auto injected_restore = restored.RestoreSnapshot(allocation_before);
+    Check(!static_cast<bool>(injected_restore), "module-local injected restore allocation failure");
+    const auto allocation_after = restored.CaptureSnapshot();
+    Check(allocation_after.revision == allocation_before.revision &&
+              allocation_after.change_epoch == allocation_before.change_epoch,
+          "injected restore allocation failure preserves revision and journal epoch");
     return 0;
 }

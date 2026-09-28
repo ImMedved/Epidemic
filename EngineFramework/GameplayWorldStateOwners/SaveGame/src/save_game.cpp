@@ -4,14 +4,33 @@
 #include <exception>
 #include <functional>
 #include <limits>
+#include <new>
 #include <string>
 #include <unordered_set>
 #include <utility>
 
 namespace epidemic::gameplay::savegame
 {
+namespace detail
+{
 namespace
 {
+thread_local std::string_view g_save_game_fault_point;
+}
+void SetSaveGameFaultPointForTesting(std::string_view point) noexcept { g_save_game_fault_point = point; }
+void ClearSaveGameFaultPointForTesting() noexcept { g_save_game_fault_point = {}; }
+}
+
+namespace
+{
+void SaveGamePublicationFaultPointForInternalTest(std::string_view point)
+{
+    if (!detail::g_save_game_fault_point.empty() && detail::g_save_game_fault_point == point)
+    {
+        detail::g_save_game_fault_point = {};
+        throw std::bad_alloc{};
+    }
+}
 foundation::Error Error(std::string_view code, std::string_view message)
 {
     return foundation::Error::Create(code, message);
@@ -922,6 +941,7 @@ foundation::Result<void> SaveGameOrchestrator::Restore(SaveGameImage image, cons
         stages.push_back({id, registration.participant, std::move(staged.Value())});
     }
 
+    SaveGamePublicationFaultPointForInternalTest("restore.pre_commit");
     diagnostics_.phase = SavePhase::Committing;
     for (auto &record : stages)
     {

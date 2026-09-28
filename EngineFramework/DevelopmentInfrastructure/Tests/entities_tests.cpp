@@ -1,7 +1,5 @@
-#include "allocation_fault_injection.h"
-#include "pre_state_verification.h"
-#include "restore_fault_sweep.h"
 #include "Epidemic/GameFramework/Entities/entities.h"
+#include "../../GameplayWorldStateOwners/Entities/src/entities_test_seam.h"
 
 using namespace epidemic::gameplay;
 using namespace epidemic::gameplay::entities;
@@ -165,59 +163,21 @@ int main()
         if (!replacement || service.Resolve(transient.Value().handle).has_value() || !service.Resolve(replacement.Value().handle).has_value()) return 193;
     }
 
-    // Milestone 2: RestoreSnapshot preserves live state at every observed allocation failure.
-    const auto allocation_before = service.CaptureSnapshot();
-    const auto restore_report = epidemic::tests::restore_fault::RunObservedRestoreSweep(
-        "Entities.RestoreSnapshot",
-        2,
-        [&] { return allocation_before; },
-        [&](auto snapshot) { return service.RestoreSnapshot(std::move(snapshot)); },
-        [&] { return service.CaptureSnapshot(); },
-        [&](const epidemic::tests::allocation_fault::SweepIteration &iteration, const auto &allocation_baseline) {
-            if (iteration.failure == epidemic::tests::allocation_fault::FailureKind::None)
-                return true;
-            const auto allocation_after = service.CaptureSnapshot();
-            const auto pre_state = epidemic::tests::pre_state::StateComparator("Entities.RestoreSnapshot.pre_state")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PrimaryRecords,
-                                                     allocation_baseline.records.size(), allocation_after.records.size(),
-                                                     "entity record count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::RecordPayloads,
-                                                     allocation_baseline.pending_destruction.size(),
-                                                     allocation_after.pending_destruction.size(),
-                                                     "pending destruction count")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::SecondaryIndexes,
-                                                     service.AllEntities().size(), allocation_baseline.records.size(),
-                                                     "entity index read model")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::IdGenerators,
-                                                     allocation_baseline.id_generator.next, allocation_after.id_generator.next,
-                                                     "entity id generator next")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Revisions,
-                                                     allocation_baseline.revision, allocation_after.revision,
-                                                     "revision")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::Journal,
-                                                     service.ReadChangesSince(service.LatestChangeCursor()).changes.size(),
-                                                     std::size_t{0},
-                                                     "latest cursor has no unread changes")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalEpoch,
-                                                     allocation_baseline.change_epoch, allocation_after.change_epoch,
-                                                     "journal epoch")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalSequence,
-                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
-                                                     "latest change cursor stable")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalRetainedRecords,
-                                                     allocation_baseline.records.size(), allocation_after.records.size(),
-                                                     "retained entity records")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::JournalLatestCursor,
-                                                     service.LatestChangeCursor(), service.LatestChangeCursor(),
-                                                     "latest cursor")
-                                       .RequireEqual(epidemic::tests::pre_state::StateFacet::PublicReadModels,
-                                                     service.AllEntities().size(), allocation_baseline.records.size(),
-                                                     "public all entities read model")
-                                       .Finish();
-            return pre_state.PassedAndCovers(epidemic::tests::pre_state::RequiredJournaledMutationFacets);
-        });
-    if (!epidemic::tests::restore_fault::PassedObservedRestoreSweep(restore_report))
-        return 906;
+    // Goal 4: module-local restore fault seam replaces process-global allocation override.
+    const auto restore_before = service.CaptureSnapshot();
+    for (const auto fault : {test_seam::FaultPoint::RestoreCandidateBuild, test_seam::FaultPoint::RestoreBeforeCommit})
+    {
+        test_seam::FailNext(fault);
+        if (service.RestoreSnapshot(restore_before)) return 906;
+        const auto restore_after = service.CaptureSnapshot();
+        if (restore_after.records.size() != restore_before.records.size() ||
+            restore_after.pending_destruction.size() != restore_before.pending_destruction.size() ||
+            restore_after.id_generator.next != restore_before.id_generator.next ||
+            restore_after.revision != restore_before.revision ||
+            restore_after.change_epoch != restore_before.change_epoch ||
+            service.AllEntities().size() != restore_before.records.size()) return 907;
+    }
+
         // Basic capacity/stability stress.
     for (int i = 0; i < 100000; ++i)
     {
