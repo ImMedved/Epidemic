@@ -227,7 +227,7 @@ Top-level `CMakeLists.txt` включает:
 ---
 # Цель 4. Полный локальный freeze-аудит EngineFramework
 
-Статус: `EVIDENCE_REVIEW_REQUIRED` (baseline `Epidemic 22-09-2026-2.zip`). Все B01–B08 интегрированы, но канонический ledger после проверки evidence содержит 0/52 `LOCAL_READY` и 52/52 `BLOCKED`: merge больше не подменяет per-criterion proof первым API-якорем. Формально зелёные schema gates не доказывают семантическую полноту. Remote CI на итоговом SHA также ещё не записан.
+Статус: `LOCAL_READY_PENDING_FINAL_WINDOWS_QUALIFICATION` (2026-09-28). Все B01–B08 и closure-delta интегрированы. Канонический ledger содержит 52/52 Framework `LOCAL_READY`, 0 `BLOCKED`; evidence-quality gate, canonical validators и validator self-tests зелёные. Перед переходом к Goal 5 остаётся записать один exact-tree Windows/MSVC Base/Runtime/Full Debug+Release serial qualification. Remote CI остаётся отдельным последующим подтверждением.
 
 Действующий подробный план: `Milestone 4.md`.
 
@@ -235,11 +235,11 @@ Goal 4 присваивает только `LOCAL_READY`. Whole-engine persisten
 
 ## 4.1. Общий Framework contract
 
-[ ] Все 52 production modules пройти 37-criteria local audit и 15-field dossier review (dossier fields размечены; 47 module criteria требуют точного evidence).
-[ ] Все 3054 admission public callables получить reviewed classification и contract/test anchors; любой surface delta отдельно объяснить (classification есть, 1729 test/audit anchors и 621 contract anchors требуют содержательной замены).
-[ ] Все 3348 mutation obligations, 73 lifecycle, 770 stale-identity и 17 external-boundary candidates получить проверенное reviewed decision (формальные flags выставлены, но semantic evidence ещё требует ревизии).
+[x] Все 52 production modules прошли 37-criteria local audit и 15-field dossier review.
+[x] Все 3054 admission public callables имеют reviewed classification и exact contract/test anchors; public-surface deltas отдельно reviewed.
+[x] Все 3348 mutation obligations, 73 lifecycle, 770 stale-identity и 17 external-boundary candidates имеют reviewed decision и canonical evidence.
 [x] `G4-INFRA-001`: мигрировать Framework fault evidence с process-global allocator injection на narrow private/module-local seams; общий helper удалить только после merge восьми delta.
-[ ] `G4-DOC-001`: создать корректный Framework docs root и contract docs для всех 52 модулей (52 файла и индекс существуют; статусы/контракты нужно сверить с canonical ledger).
+[x] `G4-DOC-001`: Framework docs root и contract docs для всех 52 модулей существуют, индекс разрешается и canonical status синхронизирован.
 [x] Зафиксировать post-preflight Debug/Release baseline и exact CTest manifest.
 
 ## 4.2. Восемь независимых delta-блоков
@@ -266,30 +266,29 @@ Goal 4 присваивает только `LOCAL_READY`. Whole-engine persisten
 
 [x] Применить B01–B08 delta, проверяя single-writer ownership и cross-block findings.
 [x] Удалить/deprecate старый global allocation helper только после подтверждения 0 remaining Goal 4 users.
-[ ] Слить восемь handoff в canonical dossiers, coverage reviews, exact API anchors, defect registry и ledger (B06 пропуски восстановлены; exact evidence review не завершён).
+[x] Слить восемь handoff и closure-delta в canonical dossiers, coverage reviews, exact API anchors, defect registry и ledger.
 [x] Перегенерировать `module_dossiers`, `coverage_manifests`, `public_api_inventory`, `public_surface_manifest`, `local_ready_contract`.
-[ ] EngineFramework = 52/52 `LOCAL_READY`; каждый модуль = 37/37 `PASS/N/A`, dossiers = 15/15 reviewed (сейчас 0/52; 52 `BLOCKED`).
-[ ] Framework API/obligations/lifecycle/stale/external unresolved = 0; `UNCLASSIFIED = 0` (классификация полная, содержательное evidence ещё не закрыто).
-[ ] Каждый confirmed defect имеет существующий вызываемый regression target/symbol (все G4 targets перечислены точно и зарегистрированы; 19 Framework/Goal 4 regression entries без точного line anchor).
+[x] EngineFramework = 52/52 `LOCAL_READY`; каждый модуль = 37/37 `PASS/N/A`, dossiers = 15/15 reviewed; `BLOCKED = 0`.
+[x] Framework API/obligations/lifecycle/stale/external unresolved = 0; `UNCLASSIFIED = 0`; evidence-quality gate green.
+[x] Каждый confirmed defect имеет существующую regression traceability; registry содержит 32 logical Goal 4 findings / 39 physical records, все `REVIEWED`.
 [x] Шесть public-header deltas относительно admission baseline 3054 callables reviewed с rationale и regressions в `docs/freeze/goal4_public_surface_review.md`; public callable IDs/signatures не изменились.
 
 ## 4.4. Финальный выход Goal 4
 
-[x] Base Debug/Release, Runtime Debug/Release и Full Debug/Release green; exact CTest manifests совпадают. Base/Runtime qualification перенесена без изменений из Goal 3, Full Debug/Release перепроверены после merge Goal 4.
-[x] Disabled/skipped tests без explicit freeze exception = 0.
-[x] MSVC `/W4 /WX`, public-header self-containment, architecture/freeze validators и validator self-tests green.
+[ ] Выполнить финальный exact-tree Windows/MSVC Base Debug/Release, Runtime Debug/Release и Full Debug/Release с `/W4 /WX`, exact CTest manifests и public-header self-containment после последнего metadata merge. Предыдущие block-local/pre-closure Windows runs зелёные; требуется только serial confirmation текущего дерева.
+[x] Disabled/skipped tests без explicit freeze exception = 0 по canonical manifest.
+[x] Architecture/freeze validators и validator self-tests green после serial merge.
 [x] Process-global allocator override как Goal 4 fault mechanism = 0.
-[x] `git diff --check` clean.
+[x] `EngineBase = 9/9 LOCAL_READY`, `EngineRuntime = 17/17 LOCAL_READY`, `EngineFramework = 52/52 LOCAL_READY`.
 [ ] Remote Architecture Freeze CI на recorded SHA green, включая ClangCL public-surface.
-[ ] `EngineBase = 9/9 LOCAL_READY`, `EngineRuntime = 17/17 LOCAL_READY`, `EngineFramework = 52/52 LOCAL_READY` (Framework сейчас 0/52).
 
 Критерий выхода: Goal 4 = `COMPLETE`, все 52 Framework production-модуля локально закрыты без module-local code/evidence debt. `SYSTEM_READY/FROZEN` не присваивается до Goals 5–9.
 
-## 4.5. Остаток содержательного evidence-аудита (2026-09-27)
+## 4.5. Содержательный evidence-аудит (закрыт 2026-09-28)
 
-`python docs/freeze/goal4_evidence_quality.py --check` является обязательным дополнительным локальным gate. Schema validators и зелёный CTest не заменяют его. Текущая очередь: 1729 общих API test/audit anchors, 621 общих API contract anchors, 712 criterion test anchors, 70 шаблонных `N/A` rationales и 19 defect regressions без точной строки. Счётчики могут пересекаться. Перепроверять нужно сами исходные `_goal4_handoff/Bxx/**`, затем повторять `python _goal4_handoff/merge_goal4_evidence.py` и оба gate; merge теперь не повышает неполный handoff до `LOCAL_READY`.
+`python docs/freeze/goal4_evidence_quality.py --check` остаётся обязательным локальным gate и сейчас проходит без findings. Generic API/contract/criterion anchors заменены exact evidence; дополнительно gate отклоняет `#include`, `using`, объявления типов, setup-only object declarations и тривиальные `return` как единственное test evidence. Для API, у которых прямого regression-вызова не было, добавлены module-local regressions в существующие targets. `N/A` rationales reviewable, defect regressions имеют точную traceability. Merge дополнительно fail-fast проверяет worker API-anchor schema и defect review statuses, чтобы несовместимый handoff не мог загрязнить canonical registry.
 
-Для каждого модуля: заменить `main()`/общий заголовок документа на точный callable/contract и проверяемый тестовый case/assertion; добавить регрессию, если доказательства в тестах нет; дать module-specific обоснование `N/A`; довести каждый confirmed defect до зарегистрированного target и точного regression anchor. Только после 52/52 `LOCAL_READY` и зелёного quality gate можно выполнять recorded-SHA remote Architecture Freeze CI и отмечать Goal 4 `COMPLETE`.
+Canonical result после serial merge: Framework 52/52 `LOCAL_READY`, 3054/3054 public callables reviewed, 3348 obligations / 73 lifecycle / 770 stale / 17 external decisions закрыты, 32 logical Goal 4 findings представлены 39 `REVIEWED` physical defect records. До начала Goal 5 остаётся только финальный exact-tree Windows/MSVC serial qualification; remote CI можно записать отдельно.
 
 ---
 

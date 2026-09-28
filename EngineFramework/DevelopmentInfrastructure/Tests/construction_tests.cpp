@@ -261,6 +261,39 @@ int main()
         plan_generator_before.scope != plan_generator_after.scope || plan_generator_before.next != plan_generator_after.next)
         return 55;
 
+
+    // Goal 4 external-provider failure evidence: provider rejection is propagated before plan publication.
+    class FailingPlacementProvider final : public IConstructionPlacementProvider
+    {
+      public:
+        [[nodiscard]] foundation::Result<PlacementSemanticProjection> Project(const PlacementRequest &) const override
+        {
+            return foundation::Result<PlacementSemanticProjection>::Failure(
+                foundation::Error::Create("test.construction.provider_failure", "forced placement provider failure"));
+        }
+        [[nodiscard]] Revision CurrentRevision() const noexcept override { return {1}; }
+    };
+    FailingPlacementProvider failing_provider;
+    ConstructionService provider_failure_service;
+    provider_failure_service.SetPlacementProvider(&failing_provider);
+    if (!provider_failure_service.RegisterPlacementDefinition(free_def) ||
+        !provider_failure_service.RegisterRecipe(recipe))
+        return 1090;
+    provider_failure_service.Freeze();
+    const auto provider_failure_before = provider_failure_service.CaptureSnapshot();
+    const auto provider_failure_result = provider_failure_service.PreparePlacementPlan(req);
+    const auto provider_failure_after = provider_failure_service.CaptureSnapshot();
+    if (provider_failure_result ||
+        !provider_failure_result.GetError().HasCode("test.construction.provider_failure") ||
+        provider_failure_after.revision != provider_failure_before.revision ||
+        provider_failure_after.plan_ids.next != provider_failure_before.plan_ids.next ||
+        provider_failure_after.plans.size() != provider_failure_before.plans.size())
+        return 1091;
+
+    // Goal 4 exact public-API evidence: virtual placement-provider destruction through the public interface.
+    IConstructionPlacementProvider *construction_destructor_probe = new PlacementProvider{};
+    delete construction_destructor_probe;
+
     return 0;
 }
 

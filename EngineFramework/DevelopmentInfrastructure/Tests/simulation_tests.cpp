@@ -438,5 +438,17 @@ int main()
             return 955;
     }
 
+
+    // Goal 4 empty-state evidence: a fresh service snapshots no semantic runtime state.
+    SimulationService empty_api_evidence;
+    const auto empty_api_snapshot = empty_api_evidence.CaptureSnapshot();
+    if (!empty_api_snapshot.regions.empty() || !empty_api_snapshot.active_intervals.empty() ||
+        !empty_api_snapshot.summaries.empty())
+        return 1090;
+
+    // Goal 4 exact public-API evidence: virtual executor destruction through the public interface.
+    ISimulationLayerExecutor *simulation_destructor_probe = new Exec{"test.destructor"};
+    delete simulation_destructor_probe;
+
     return 0;
 }

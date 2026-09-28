@@ -458,9 +458,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:5::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:273::Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:5::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/crime_tests.cpp:273::Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkCrimeTests"
@@ -616,7 +616,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
               ],
@@ -644,7 +644,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
               ],
@@ -880,7 +880,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
               ],
@@ -924,7 +924,7 @@
               "kind": "persistence"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
               ],
@@ -1032,9 +1032,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:4::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:115::Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,\"future encounter cursor incompatible\");",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:4::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:115::Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,\"future encounter cursor incompatible\");"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkEncountersTests"
@@ -1093,7 +1093,7 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:36::EncountersService invalid_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:41::Check(!invalid_service.RegisterSpawnTable(invalid_table), \"invalid roll policy rejected\");"
               ],
@@ -1606,9 +1606,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:5::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:187::Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:5::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:187::Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkNeedsLifeTests"
@@ -2180,9 +2180,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:5::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:153::Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:5::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:153::Check(restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkPopulationTests"
@@ -2255,7 +2255,7 @@
         "TEST-REGRESSION": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:43::PopulationService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:46::Check(static_cast<bool>(service.RegisterTemplate(templ)), \"register template\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:46::Check(static_cast<bool>(service.RegisterTemplate(templ)), \"register template\");"
               ],
@@ -2338,7 +2338,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:88::JobAssignment rejected;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");"
               ],
@@ -2366,7 +2366,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:88::JobAssignment rejected;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");"
               ],
@@ -2722,7 +2722,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:55::RolesJobsService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:57::Check(static_cast<bool>(service.RegisterJobDefinition(job)), \"register job\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:57::Check(static_cast<bool>(service.RegisterJobDefinition(job)), \"register job\");"
               ],
@@ -2754,9 +2754,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:4::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:182::Check(empty_journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:4::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:182::Check(empty_journal.ReadChangesSince(journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required,"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkRolesJobsTests"
@@ -2815,7 +2815,7 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:88::JobAssignment rejected;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:92::Check(!static_cast<bool>(service.AssignJob(rejected)), \"closed workplace rejects assignment\");"
               ],
@@ -2912,7 +2912,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:133::MembershipRecord unknown_group;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:136::if (society.AddMembership(unknown_group))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:136::if (society.AddMembership(unknown_group))"
               ],
@@ -3078,7 +3078,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:122::MembershipRecord before_freeze;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:125::if (society.AddMembership(before_freeze))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:125::if (society.AddMembership(before_freeze))"
               ],
@@ -3328,9 +3328,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:4::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:288::if (!max_revision_atomic([&](SocietyService &candidate) {",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:4::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:288::if (!max_revision_atomic([&](SocietyService &candidate) {"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkSocietyTests"
@@ -3389,7 +3389,7 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:133::MembershipRecord unknown_group;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:136::if (society.AddMembership(unknown_group))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:136::if (society.AddMembership(unknown_group))"
               ],

@@ -326,5 +326,26 @@ int main()
     Check(revision_exhausted.FindCrime(live_case)->state == exhausted_case_before,
           "exhausted crime mutation leaves case unchanged");
 
+
+    // Goal 4 exact public-API evidence: default/invalid crime surface.
+    CrimeService api_evidence;
+    if (!CrimeService::Domain().IsValid())
+        return 1100;
+    if (api_evidence.ExpireCrime(CrimeRecordId{}))
+        return 1101;
+    if (api_evidence.ChangeProofState(CrimeRecordId{}, CrimeProofState::Unknown))
+        return 1102;
+    if (api_evidence.GetDiagnostics().crime_records != 0)
+        return 1103;
+    if (!api_evidence.FindCrimesByJurisdiction(JurisdictionId{}).empty())
+        return 1104;
+    if (!api_evidence.FindOpenCases().empty())
+        return 1105;
+    if (!api_evidence.FindCrimesByVictim(GameplayObjectRef{}).empty())
+        return 1106;
+    api_evidence.PruneChangesThrough(0);
+    if (!api_evidence.ReadChangesSince(ChangeCursor{}).changes.empty())
+        return 1107;
+
     return 0;
 }

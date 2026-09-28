@@ -72,6 +72,36 @@ def merge_unique(target: dict, source: dict, label: str) -> None:
     target.update(source)
 
 
+def validate_worker_api_anchors(block_name: str, anchors: dict) -> None:
+    allowed_fields = {"contract", "test"}
+    for item_id, record in anchors.items():
+        if not isinstance(record, dict):
+            raise RuntimeError(f"invalid API anchor record in {block_name}/{item_id}")
+        unexpected = sorted(set(record) - allowed_fields)
+        if unexpected:
+            raise RuntimeError(
+                f"unexpected API anchor fields in {block_name}/{item_id}: {unexpected}"
+            )
+        missing = sorted(allowed_fields - set(record))
+        if missing:
+            raise RuntimeError(
+                f"incomplete API anchor record in {block_name}/{item_id}: missing {missing}"
+            )
+
+
+def validate_worker_defects(block_name: str, defects: dict) -> None:
+    allowed_statuses = {"DISCOVERED", "REVIEWED"}
+    for defect_id, record in defects.items():
+        if not isinstance(record, dict):
+            raise RuntimeError(f"invalid defect record in {block_name}/{defect_id}")
+        status = record.get("status")
+        if status not in allowed_statuses:
+            raise RuntimeError(
+                f"invalid defect review status in {block_name}/{defect_id}: {status!r}; "
+                f"expected one of {sorted(allowed_statuses)}"
+            )
+
+
 ANCHOR_PATTERN = re.compile(r"^(.*):(\d+)::(.*)$")
 line_cache: dict[str, list[str]] = {}
 rebased_anchors = 0
@@ -123,6 +153,7 @@ module_blocks: dict[str, str] = {}
 
 for block in blocks:
     anchors = load(block / "public_api_anchors.json")["anchors"]
+    validate_worker_api_anchors(block.name, anchors)
     merge_unique(handoff_anchors, anchors, f"API anchor in {block.name}")
 
     coverage = load(block / "coverage_reviews.json")
@@ -136,7 +167,9 @@ for block in blocks:
     # distinct while linking them through logical_id=G4-INFRA-001.
     defect_path = block / "defects.json"
     if defect_path.is_file():
-        for defect_id, record in load(defect_path)["defects"].items():
+        block_defects = load(defect_path)["defects"]
+        validate_worker_defects(block.name, block_defects)
+        for defect_id, record in block_defects.items():
             canonical_id = (
                 f"G4-INFRA-001/{block.name}"
                 if record.get("logical_id") == "G4-INFRA-001"

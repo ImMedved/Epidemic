@@ -478,5 +478,31 @@ int main()
         return 971;
     fanout_guard.ReleaseProgressGrant(fanout_reservation.Value());
 
+
+    // Goal 4 exact public-API evidence: default/invalid progression surface.
+    ProgressionService api_evidence;
+    if (api_evidence.IsFrozen())
+        return 1100;
+    if (!ProgressionService::Domain().IsValid())
+        return 1101;
+    if (!api_evidence.QueryPrerequisites(GameplayObjectRef{}, {}).satisfied)
+        return 1102;
+    if (api_evidence.GetDiagnostics().profiles != 0)
+        return 1103;
+    if (api_evidence.EvaluateMilestones(GameplayObjectRef{}))
+        return 1104;
+    if (api_evidence.RemoveModifier(GameplayObjectRef{}, ProgressionModifierId{}))
+        return 1105;
+    if (api_evidence.SetProgress(GameplayObjectRef{}, ProgressionTrackId{}, 0))
+        return 1106;
+    if (api_evidence.ReplaceModifiersBySource(GameplayObjectRef{}, GameplayObjectRef{}, {}))
+        return 1107;
+    if (api_evidence.RevokeUnlockFromSource(GameplayObjectRef{}, UnlockTypeId{}, TypeId{}, GameplayObjectRef{}))
+        return 1108;
+    if (api_evidence.RemoveModifiersBySource(GameplayObjectRef{}, GameplayObjectRef{}) != 0)
+        return 1109;
+    if (api_evidence.GetProfileSnapshot(GameplayObjectRef{}))
+        return 1110;
+
     return 0;
 }

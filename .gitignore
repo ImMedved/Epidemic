@@ -15,3 +15,6 @@ EngineFramework-zips/
 done/
 Deltas/
 __pycache__/
+.ci_cache/
+.enforcer/
+.ae2-reference/

@@ -160,7 +160,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:318::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)"
         ],
@@ -174,7 +174,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:340::GameplayFactsService compact_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:343::if (!compact_type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:343::if (!compact_type)"
         ],
@@ -216,7 +216,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:280::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))"
         ],
@@ -272,7 +272,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:508::GameplayFactsService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:511::if (!type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:511::if (!type)"
         ],
@@ -314,7 +314,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:329::class ThrowingCoordinator final : public IQuerySnapshotCoordinator",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:327::Check(throwing_service.GetDiagnostics().provider_exceptions == 1, 43);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:327::Check(throwing_service.GetDiagnostics().provider_exceptions == 1, 43);"
         ],
@@ -328,7 +328,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
         ],
@@ -594,7 +594,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -636,7 +636,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:447::RuntimeBridgeService limited(limited_backend, RuntimeBridgeQueuePolicy{1, 1});",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:444::CHECK(dead_bridge.DiscardReconciliation(dead_bridge.ReconciliationRequests().front().sequence));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:444::CHECK(dead_bridge.DiscardReconciliation(dead_bridge.ReconciliationRequests().front().sequence));"
         ],
@@ -664,7 +664,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:340::GameplayFactsService compact_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:343::if (!compact_type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:343::if (!compact_type)"
         ],
@@ -720,7 +720,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:280::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))"
         ],
@@ -762,7 +762,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:262::GameplayQueryService coherent_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:264::Check(coherent_service.SetSnapshotCoordinator(coherent_coordinator), 32);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:264::Check(coherent_service.SetSnapshotCoordinator(coherent_coordinator), 32);"
         ],
@@ -832,7 +832,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -860,7 +860,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:384::RuntimeBridgeService retry_bridge(retry_backend, retry_policy);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:389::CHECK(retry_bridge.Enqueue(retry_environment));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:389::CHECK(retry_bridge.Enqueue(retry_environment));"
         ],
@@ -888,7 +888,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:361::GameplayFactsService scoped_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:364::if (!scoped_type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:364::if (!scoped_type)"
         ],
@@ -944,7 +944,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
         ],
@@ -972,7 +972,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:384::RuntimeBridgeService retry_bridge(retry_backend, retry_policy);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:389::CHECK(retry_bridge.Enqueue(retry_environment));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:389::CHECK(retry_bridge.Enqueue(retry_environment));"
         ],
@@ -1000,7 +1000,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:59::GameplayFactsService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)"
         ],
@@ -1042,7 +1042,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:299::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
         ],
@@ -1056,7 +1056,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:173::GameplayTimeService aggregate_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:176::if (!aggregate_clock || !aggregate_action)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:176::if (!aggregate_clock || !aggregate_action)"
         ],
@@ -1168,7 +1168,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -1182,7 +1182,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -1280,7 +1280,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:318::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)"
         ],
@@ -1462,7 +1462,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:345::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)"
         ],
@@ -1476,7 +1476,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:345::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)"
         ],
@@ -1490,7 +1490,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:59::GameplayFactsService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)"
         ],
@@ -1532,7 +1532,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:291::GameplayFactsService disk_restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:290::if (!disk_snapshot) return 261;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:290::if (!disk_snapshot) return 261;"
         ],
@@ -1574,7 +1574,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -1616,7 +1616,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
         ],
@@ -1700,7 +1700,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:307::StableTypeRegistry<TypeId> registry;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:309::Check(static_cast<bool>(registered), 13);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:309::Check(static_cast<bool>(registered), 13);"
         ],
@@ -1714,7 +1714,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:339::GameplayTagSet set;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);"
         ],
@@ -1770,7 +1770,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -1910,7 +1910,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:447::GameplayFactsService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:449::if (!fault_fact)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:449::if (!fault_fact)"
         ],
@@ -2050,7 +2050,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:344::GameplayTagSet required;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:343::Check(set.Values().size() == 1 && set.HasExact(oak.Value()), 31);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:343::Check(set.Values().size() == 1 && set.HasExact(oak.Value()), 31);"
         ],
@@ -2064,7 +2064,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:447::RuntimeBridgeService limited(limited_backend, RuntimeBridgeQueuePolicy{1, 1});",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:444::CHECK(dead_bridge.DiscardReconciliation(dead_bridge.ReconciliationRequests().front().sequence));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:444::CHECK(dead_bridge.DiscardReconciliation(dead_bridge.ReconciliationRequests().front().sequence));"
         ],
@@ -2162,7 +2162,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:479::GameplayFactsService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:482::if (!type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:482::if (!type)"
         ],
@@ -2246,7 +2246,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:85::GameplayTimeService policy_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)"
         ],
@@ -2274,7 +2274,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:361::GameplayFactsService scoped_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:364::if (!scoped_type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:364::if (!scoped_type)"
         ],
@@ -2302,7 +2302,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:196::RuntimeBridgeService bridge(backend, main_policy);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:200::CHECK(!bridge.Enqueue(DematerializeRequest{}));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:200::CHECK(!bridge.Enqueue(DematerializeRequest{}));"
         ],
@@ -2386,7 +2386,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:17::GameplayTimeService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:21::if (!clock || !action)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:21::if (!clock || !action)"
         ],
@@ -2400,7 +2400,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -2498,7 +2498,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:316::GameplayQueryService throwing_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:317::Check(throwing_service.RegisterProvider<ThrowingQuery>(",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:317::Check(throwing_service.RegisterProvider<ThrowingQuery>("
         ],
@@ -2540,7 +2540,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:345::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)"
         ],
@@ -2582,7 +2582,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:268::StableTypeRegistry<TypeId> fault_registry;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:269::Check(static_cast<bool>(fault_registry.Register(\"framework.fault.baseline\")), 915);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:269::Check(static_cast<bool>(fault_registry.Register(\"framework.fault.baseline\")), 915);"
         ],
@@ -2876,7 +2876,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:291::GameplayFactsService disk_restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:290::if (!disk_snapshot) return 261;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:290::if (!disk_snapshot) return 261;"
         ],
@@ -2946,7 +2946,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:508::GameplayFactsService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:511::if (!type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:511::if (!type)"
         ],
@@ -3114,7 +3114,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -3156,7 +3156,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:197::GameplayTimeService calendar_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:191::if (!aggregate_due || aggregate_due.Value().size() != 1 || aggregate_due.Value().front().occurrence_count != 10'000'000)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:191::if (!aggregate_due || aggregate_due.Value().size() != 1 || aggregate_due.Value().front().occurrence_count != 10'000'000)"
         ],
@@ -3212,7 +3212,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:382::GameplayQueryService approximate_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:380::Check(unavailable && !unavailable.Value().value && unavailable.Value().metadata.coverage == QueryCoverage::Unavailable, 17);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:380::Check(unavailable && !unavailable.Value().value && unavailable.Value().metadata.coverage == QueryCoverage::Unavailable, 17);"
         ],
@@ -3352,7 +3352,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:447::RuntimeBridgeService limited(limited_backend, RuntimeBridgeQueuePolicy{1, 1});",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:444::CHECK(dead_bridge.DiscardReconciliation(dead_bridge.ReconciliationRequests().front().sequence));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:444::CHECK(dead_bridge.DiscardReconciliation(dead_bridge.ReconciliationRequests().front().sequence));"
         ],
@@ -3394,7 +3394,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
         ],
@@ -3576,7 +3576,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:197::GameplayTimeService calendar_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:191::if (!aggregate_due || aggregate_due.Value().size() != 1 || aggregate_due.Value().front().occurrence_count != 10'000'000)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:191::if (!aggregate_due || aggregate_due.Value().size() != 1 || aggregate_due.Value().front().occurrence_count != 10'000'000)"
         ],
@@ -3590,7 +3590,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:398::GameplayFactsService subscriber_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:401::if (!subscriber_type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:401::if (!subscriber_type)"
         ],
@@ -3646,7 +3646,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -3758,7 +3758,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:398::GameplayFactsService subscriber_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:401::if (!subscriber_type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:401::if (!subscriber_type)"
         ],
@@ -3912,7 +3912,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:479::GameplayFactsService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:482::if (!type)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:482::if (!type)"
         ],
@@ -4080,7 +4080,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:318::GameplayTimeService fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)"
         ],
@@ -4234,7 +4234,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:287::GameplayTagRegistry fault_tags;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:288::Check(static_cast<bool>(fault_tags.Register(\"baseline.tag\")), 918);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:288::Check(static_cast<bool>(fault_tags.Register(\"baseline.tag\")), 918);"
         ],
@@ -4290,7 +4290,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:328::struct DuplicateCompactor final : IHistoryCompactor",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:332::if (records.empty())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:332::if (records.empty())"
         ],
@@ -4360,7 +4360,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:307::StableTypeRegistry<TypeId> registry;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:309::Check(static_cast<bool>(registered), 13);",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:309::Check(static_cast<bool>(registered), 13);"
         ],
@@ -4374,7 +4374,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
         ],
@@ -4444,7 +4444,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:400::GameplayQueryService bad_order_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:401::Check(bad_order_service.RegisterProvider<BadOrderQuery>(",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:401::Check(bad_order_service.RegisterProvider<BadOrderQuery>("
         ],
@@ -4486,7 +4486,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:400::GameplayQueryService bad_order_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:401::Check(bad_order_service.RegisterProvider<BadOrderQuery>(",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:401::Check(bad_order_service.RegisterProvider<BadOrderQuery>("
         ],
@@ -4528,7 +4528,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:338::GameplayQueryService throwing_snapshot_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:339::Check(throwing_snapshot_service.RegisterSnapshotProvider<TextQuery, std::string>(",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:339::Check(throwing_snapshot_service.RegisterSnapshotProvider<TextQuery, std::string>("
         ],
@@ -4542,7 +4542,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
         ],

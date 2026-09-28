@@ -16,7 +16,7 @@
         "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:300::if (restored_under_fault || !SameCoreSnapshot(allocation_before, restored.CaptureSnapshot()))"
       },
       "root_cause": "Owned restore/allocation evidence used shared process-global allocator fault helpers.",
-      "status": "CLOSED_FOR_B03",
+      "status": "REVIEWED",
       "target": "EpidemicGameFrameworkItemsInventoryTests",
       "targets": [
         "EpidemicGameFrameworkItemsInventoryTests",
@@ -38,7 +38,7 @@
         "EpidemicGameFrameworkProcessesTests": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:445::[[nodiscard]] bool TestExactProgressScaling()"
       },
       "root_cause": "EvaluateProgress converted very large int64 durations through floating point; MSVC binary64 can round the exact one-tick-before-complete ratio up to 1,000,000.",
-      "status": "CLOSED",
+      "status": "REVIEWED",
       "target": "EpidemicGameFrameworkProcessesTests",
       "targets": [
         "EpidemicGameFrameworkProcessesTests"
@@ -54,7 +54,7 @@
         "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:45::[[nodiscard]] bool TestRevisionExhaustionKeepsAllGenerators()"
       },
       "root_cause": "Live monotonic ID generators advanced before revision/publication preflight on create/reserve/transfer paths.",
-      "status": "CLOSED",
+      "status": "REVIEWED",
       "target": "EpidemicGameFrameworkResourcesProductionTests",
       "targets": [
         "EpidemicGameFrameworkResourcesProductionTests"
@@ -70,7 +70,7 @@
         "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:101::[[nodiscard]] bool TestPublicationFaultAtomicity()"
       },
       "root_cause": "Revision/state changes could precede fallible primary/index/journal publication, allowing partial state or an escaping allocation exception.",
-      "status": "CLOSED",
+      "status": "REVIEWED",
       "target": "EpidemicGameFrameworkResourcesProductionTests",
       "targets": [
         "EpidemicGameFrameworkResourcesProductionTests"

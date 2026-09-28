@@ -82,21 +82,41 @@ def generic_contract(anchor: object) -> bool:
     }
 
 
+def nonsemantic_test_line(anchor: object) -> bool:
+    value = str(anchor)
+    if not ANCHOR_RE.fullmatch(value):
+        return True
+    text = value.rsplit("::", 1)[-1].strip()
+    lowered = text.lower()
+    if re.match(r"^#\s*include\b", text):
+        return True
+    if re.match(r"^(?:using|namespace|class|struct|enum|typedef)\b", text):
+        return True
+    if re.match(r"^return\s+(?:0|false|true|nullptr);$", text):
+        return True
+    if re.match(r"^return\s+[A-Za-z_][\w:<>]*\s*\{.*\};$", text):
+        return True
+    # A stand-alone object declaration is setup, not evidence. Keep executable
+    # statements such as delete, calls, checks and member expressions valid.
+    if not re.match(r"^(?:delete|return|if|for|while|switch|CHECK|Check|static_assert)\b", text):
+        if "." not in text and "->" not in text and "::" not in text:
+            if re.match(r"^(?:const\s+)?[A-Za-z_]\w*(?:<[^;]+>)?(?:\s*[*&])?\s+[A-Za-z_]\w*"
+                        r"\s*(?:\{[^;]*\}|\([^;]*\))?\s*;$", text):
+                return True
+    return False
+
+
 def generic_test(record: object) -> bool:
     if not isinstance(record, dict):
         return True
     anchor = str(record.get("anchor", ""))
     assertions = record.get("assertions")
-    if not ANCHOR_RE.fullmatch(anchor) or re.search(r"::int\s+main(?:\(\))?$", anchor):
+    if (not ANCHOR_RE.fullmatch(anchor) or re.search(r"::int\s+main(?:\(\))?$", anchor)
+            or nonsemantic_test_line(anchor)):
         return True
     if not isinstance(assertions, list) or not assertions:
         return True
-    generic = re.compile(
-        r"::(?:if\s*\(|return\b|(?:void\s+)?Check\s*\(|#define\s+CHECK\b|CHECK\s*\()$",
-        re.IGNORECASE,
-    )
-    return all(not isinstance(item, str) or not ANCHOR_RE.fullmatch(item) or generic.search(item)
-               for item in assertions)
+    return all(not isinstance(item, str) or nonsemantic_test_line(item) for item in assertions)
 
 
 def generic_na(module: str, rationale: object) -> bool:
@@ -311,6 +331,14 @@ def audit() -> tuple[Counter, list[str]]:
 
 def self_test() -> None:
     assert generic_test({"anchor": "x.cpp:4::int main()", "assertions": ["x.cpp:5::return 0;"]})
+    assert generic_test({"anchor": "x.cpp:4::#include <limits>",
+                         "assertions": ["x.cpp:4::#include <limits>"]})
+    assert generic_test({"anchor": "x.cpp:4::WidgetService service;",
+                         "assertions": ["x.cpp:4::WidgetService service;"]})
+    assert generic_test({"anchor": "x.cpp:4::class Fake final : public IFake",
+                         "assertions": ["x.cpp:4::class Fake final : public IFake"]})
+    assert not generic_test({"anchor": "x.cpp:4::if (!service.DoWork()) return 7;",
+                             "assertions": ["x.cpp:4::if (!service.DoWork()) return 7;"]})
     assert generic_contract("docs/x.md:7::## Public contract review")
     assert raw_criterion_errors("EngineFramework/X/Widget", "TEST-HAPPY", "docs/x.md", set())
     assert generic_test({"anchor": "x.cpp:4::Scenario", "assertions": []})
@@ -318,7 +346,7 @@ def self_test() -> None:
     assert {"G4-A-001", "G4-EXTRA-001"} - {"G4-A-001"} == {"G4-EXTRA-001"}
     multi = {"target": "One", "targets": ["One", "Two"], "regression": "x.cpp:4::Scenario"}
     assert defect_regression_errors(multi, {"One", "Two"})
-    print("Goal 4 evidence quality self-test passed (7 negative fixtures).")
+    print("Goal 4 evidence quality self-test passed (11 fixtures, including semantic-anchor negatives).")
 
 
 def main() -> int:

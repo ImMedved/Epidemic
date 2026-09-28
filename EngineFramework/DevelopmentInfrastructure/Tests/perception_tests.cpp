@@ -967,5 +967,30 @@ int main()
         return 935;
     if (!TestDecayBoundaryArithmetic())
         return 936;
+
+    // Goal 4 exact public-API evidence: default/empty surface and virtual interface destruction.
+    PerceptionService api_evidence;
+    const auto wrong_lifecycle = api_evidence.RegisterPerceiver(GameplayObjectRef{}, PerceiverProfileId{});
+    if (wrong_lifecycle || !wrong_lifecycle.GetError().HasCode("gameplay.perception.registry_not_frozen"))
+        return 1099;
+    if (api_evidence.IsFrozen())
+        return 1100;
+    if (!PerceptionService::Domain().IsValid())
+        return 1101;
+    if (api_evidence.FindSense(SenseTypeId{}) != nullptr)
+        return 1102;
+    if (api_evidence.FindProfileDefinition(PerceiverProfileId{}) != nullptr)
+        return 1103;
+    if (api_evidence.FindStimulus(PerceptionStimulusId{}) != nullptr)
+        return 1104;
+    if (!api_evidence.FindStimuliInArea(GameplayObjectRef{}).empty())
+        return 1105;
+    if (!api_evidence.FindActiveObservations(GameplayObjectRef{}, GameplayTimePoint{}).empty())
+        return 1106;
+    if (!api_evidence.ExpireStimuli(GameplayTimePoint{}))
+        return 1107;
+    ISenseEvaluator *perception_destructor_probe = new ThrowingEvaluator{};
+    delete perception_destructor_probe;
+
     return 0;
 }

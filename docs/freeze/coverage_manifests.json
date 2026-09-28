@@ -45332,50 +45332,92 @@
     "G4-B02-COND-001": {
       "defect": "ConditionService::RestoreSnapshot accepted restore while the definition/provider registry was still mutable, so restored instances could be admitted before the current-build registry contract was frozen.",
       "fix": "EngineFramework/GameplayWorldStateOwners/Conditions/src/conditions.cpp::ConditionService::RestoreSnapshot now requires frozen registry before snapshot validation/publication.",
+      "logical_id": "G4-B02-COND-001",
       "module": "EngineFramework/GameplayWorldStateOwners/Conditions",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp::main pre-freeze RestoreSnapshot rejection and module-local RestoreBeforeCommit preservation",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:94::if (service.RestoreSnapshot(pre_freeze_snapshot)) return 229;",
+      "regressions": {
+        "EpidemicGameFrameworkConditionsTests": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:94::if (service.RestoreSnapshot(pre_freeze_snapshot)) return 229;"
+      },
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkConditionsTests"
+      "target": "EpidemicGameFrameworkConditionsTests",
+      "targets": [
+        "EpidemicGameFrameworkConditionsTests"
+      ]
     },
     "G4-B02-EFF-001": {
       "defect": "EffectService::Execute bounded derived effects per parent but not the aggregate next wave against remaining max_effects. Multiple committed parents could therefore queue more derived work than the total execution budget and force result/vector growth after handler side effects had already committed.",
       "fix": "EngineFramework/GameplayWorldStateOwners/Effects/src/effects.cpp::EffectService::Execute pre-reserves accepted result storage and admits derived work only when it fits both per-parent and remaining total execution budget; counters saturate instead of wrapping.",
+      "logical_id": "G4-B02-EFF-001",
       "module": "EngineFramework/GameplayWorldStateOwners/Effects",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp::main aggregate derived budget regression (burst_service)",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:688::const auto burst_result = burst_service.Execute(std::move(burst_request), burst_budget);",
+      "regressions": {
+        "EpidemicGameFrameworkEffectsTests": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:688::const auto burst_result = burst_service.Execute(std::move(burst_request), burst_budget);"
+      },
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkEffectsTests"
+      "target": "EpidemicGameFrameworkEffectsTests",
+      "targets": [
+        "EpidemicGameFrameworkEffectsTests"
+      ]
     },
     "G4-B02-EFF-002": {
       "defect": "EffectService::RestoreSnapshot accepted restore before handler/definition registry Freeze, allowing persistence validation against registry state that could still change afterward.",
       "fix": "EngineFramework/GameplayWorldStateOwners/Effects/src/effects.cpp::EffectService::RestoreSnapshot requires frozen registry.",
+      "logical_id": "G4-B02-EFF-002",
       "module": "EngineFramework/GameplayWorldStateOwners/Effects",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp::main pre-freeze RestoreSnapshot rejection",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:605::if (service.RestoreSnapshot(pre_freeze_snapshot)) return 22;",
+      "regressions": {
+        "EpidemicGameFrameworkEffectsTests": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:605::if (service.RestoreSnapshot(pre_freeze_snapshot)) return 22;"
+      },
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkEffectsTests"
+      "target": "EpidemicGameFrameworkEffectsTests",
+      "targets": [
+        "EpidemicGameFrameworkEffectsTests"
+      ]
     },
     "G4-B02-EFF-003": {
       "defect": "EffectService::Execute could return a top-level Failure when framework-owned PrepareWave storage failed on a derived wave after an earlier handler Commit had already succeeded. A caller could interpret that result as an unaccepted execution and retry an already committed side effect.",
       "fix": "EngineFramework/GameplayWorldStateOwners/Effects/src/effects.cpp::EffectService::Execute now treats post-accept derived-wave staging failure as a terminal failed batch within the already accepted execution. Pre-accept first-wave staging failure still returns top-level Failure.",
+      "logical_id": "G4-B02-EFF-003",
       "module": "EngineFramework/GameplayWorldStateOwners/Effects",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp::EffectsModuleLocalFaultChecksPassed arms PrepareWaveStorage from the first handler Commit and verifies the execution returns Success with Failed disposition while the committed side effect occurs exactly once.",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:421::[[nodiscard]] bool EffectsModuleLocalFaultChecksPassed()",
+      "regressions": {
+        "EpidemicGameFrameworkEffectsTests": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:421::[[nodiscard]] bool EffectsModuleLocalFaultChecksPassed()"
+      },
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkEffectsTests"
+      "target": "EpidemicGameFrameworkEffectsTests",
+      "targets": [
+        "EpidemicGameFrameworkEffectsTests"
+      ]
     },
     "G4-B02-INT-001": {
       "defect": "InteractionService::RestoreSnapshot accepted restore before definition/provider/executor registry Freeze, weakening restore validation against the final current-build interaction registry.",
       "fix": "EngineFramework/GameplayWorldStateOwners/Interaction/src/interaction.cpp::InteractionService::RestoreSnapshot requires frozen registry.",
+      "logical_id": "G4-B02-INT-001",
       "module": "EngineFramework/GameplayWorldStateOwners/Interaction",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp::main pre-freeze RestoreSnapshot rejection",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:76::CHECK(!s.RestoreSnapshot(pre_freeze_snapshot));",
+      "regressions": {
+        "EpidemicGameFrameworkInteractionTests": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:76::CHECK(!s.RestoreSnapshot(pre_freeze_snapshot));"
+      },
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkInteractionTests"
+      "target": "EpidemicGameFrameworkInteractionTests",
+      "targets": [
+        "EpidemicGameFrameworkInteractionTests"
+      ]
     },
     "G4-B02-OWN-001": {
       "defect": "OwnershipService::ResolveClaim used compressed single-line control flow that triggers GCC -Wmisleading-indentation under the B02 portable warnings-as-errors audit.",
       "fix": "EngineFramework/GameplayWorldStateOwners/Ownership/src/ownership.cpp::OwnershipService::ResolveClaim was reformatted into unambiguous structured control flow without semantic changes.",
+      "logical_id": "G4-B02-OWN-001",
       "module": "EngineFramework/GameplayWorldStateOwners/Ownership",
-      "regression": "Warnings-as-errors compile and run of EpidemicGameFrameworkOwnershipTests in Debug-like and Release-like B02 portable profiles.",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:204::if (!o.ResolveClaim(cid.Value()) || !o.FindClaims(item).empty())",
+      "regressions": {
+        "EpidemicGameFrameworkOwnershipTests": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:204::if (!o.ResolveClaim(cid.Value()) || !o.FindClaims(item).empty())"
+      },
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkOwnershipTests"
+      "target": "EpidemicGameFrameworkOwnershipTests",
+      "targets": [
+        "EpidemicGameFrameworkOwnershipTests"
+      ]
     },
     "G4-B06-PROG-004": {
       "defect": "Progression journal allocation could throw after authoritative state was already committed, exposing a retryable exception after accepted mutation.",
@@ -45437,11 +45479,42 @@
         "EpidemicGameFrameworkExtendedGameplayIntegrationTests"
       ]
     },
-    "G4-INFRA-001": {
+    "G4-INFRA-001/B01": {
+      "defect": "G4-INFRA-001: B01 Foundation/Queries/Facts/Time tests relied on process-global allocation fault injection.",
+      "fix": "B01-owned tests now use narrow deterministic module-local publication fail points; the shared helper and shared sweep headers remain untouched for other blocks.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B01 distributed",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:272::epidemic::gameplay::detail::SetFoundationFaultPointForTesting(\"type_registry.publish\");",
+      "regressions": {
+        "EpidemicGameFrameworkFoundationTests": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:272::epidemic::gameplay::detail::SetFoundationFaultPointForTesting(\"type_registry.publish\");",
+        "EpidemicGameplayFactsTests": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:460::epidemic::gameplay::facts::detail::SetFactsFaultPointForTesting(\"transaction_commit.publish\");",
+        "EpidemicGameplayQueriesTests": "EngineFramework/DevelopmentInfrastructure/Tests/queries_tests.cpp:486::epidemic::gameplay::queries::detail::SetQueryFaultPointForTesting(\"provider_registration.publish\");",
+        "EpidemicGameplayTimeTests": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:281::epidemic::gameplay::time::detail::SetTimeFaultPointForTesting(\"clock_registration.publish\");"
+      },
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkFoundationTests",
+      "targets": [
+        "EpidemicGameFrameworkFoundationTests",
+        "EpidemicGameplayQueriesTests",
+        "EpidemicGameplayFactsTests",
+        "EpidemicGameplayTimeTests"
+      ]
+    },
+    "G4-INFRA-001/B02": {
       "defect": "Six B02 admission test sources used process-global allocation/fault sweep helpers as Goal 4 evidence, coupling unrelated allocations and preventing narrow ownership-local failure injection. Conditions did not use the global helper on the supplied baseline.",
       "fix": "The six baseline users were migrated to module-private/internal deterministic fault seams. Conditions uses the same local restore seam convention as additional B02 evidence. Restore coverage now exercises candidate-construction and pre-commit publication boundaries; shared allocation/sweep helpers remain read-only for serial removal after all Bxx merge.",
+      "logical_id": "G4-INFRA-001",
       "module": "B02 / seven owned modules (six baseline global-helper users)",
-      "regression": "entities_tests.cpp; materials_tests.cpp; environment_gameplay_tests.cpp; effects_tests.cpp; interaction_gameplay_tests.cpp; ownership_tests.cpp migrated fault checks, plus conditions_tests.cpp local restore fault checks",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/entities_tests.cpp:170::test_seam::FailNext(fault);",
+      "regressions": {
+        "EpidemicGameFrameworkConditionsTests": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:224::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkEffectsTests": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:426::test_seam::FailNext(test_seam::FaultPoint::RegisterHandlerBeforePublish);",
+        "EpidemicGameFrameworkEntitiesTests": "EngineFramework/DevelopmentInfrastructure/Tests/entities_tests.cpp:170::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkEnvironmentTests": "EngineFramework/DevelopmentInfrastructure/Tests/environment_gameplay_tests.cpp:302::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkInteractionTests": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:121::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkMaterialsTests": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:102::test_seam::FailNext(fault);",
+        "EpidemicGameFrameworkOwnershipTests": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:256::test_seam::FailNext(fault);"
+      },
       "status": "REVIEWED",
       "target": "EpidemicGameFrameworkEntitiesTests",
       "targets": [
@@ -45454,11 +45527,61 @@
         "EpidemicGameFrameworkOwnershipTests"
       ]
     },
+    "G4-INFRA-001/B03": {
+      "fix": "Replaced all owned helper use with module-private source seams. No shared fault helper or CMake file was modified.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B03 owned test surface",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:238::Check(!restored_under_fault, \"module-local restore fault must fail\");",
+      "regressions": {
+        "EpidemicGameFrameworkEconomyTests": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:400::\"failed lifecycle restore preserves live economy\");",
+        "EpidemicGameFrameworkEquipmentTests": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:218::Check(!restored_under_fault, \"module-local restore fault must fail\");",
+        "EpidemicGameFrameworkItemsInventoryTests": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:238::Check(!restored_under_fault, \"module-local restore fault must fail\");",
+        "EpidemicGameFrameworkLootTests": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:303::if (restored_under_fault)",
+        "EpidemicGameFrameworkProcessesTests": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:552::if (restored_under_fault || after.revision != allocation_before.revision ||",
+        "EpidemicGameFrameworkResourcesProductionSeparationTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:63::\"capability/plan restored\");",
+        "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:300::if (restored_under_fault || !SameCoreSnapshot(allocation_before, restored.CaptureSnapshot()))"
+      },
+      "root_cause": "Owned restore/allocation evidence used shared process-global allocator fault helpers.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkItemsInventoryTests",
+      "targets": [
+        "EpidemicGameFrameworkItemsInventoryTests",
+        "EpidemicGameFrameworkEquipmentTests",
+        "EpidemicGameFrameworkEconomyTests",
+        "EpidemicGameFrameworkProcessesTests",
+        "EpidemicGameFrameworkResourcesProductionTests",
+        "EpidemicGameFrameworkLootTests",
+        "EpidemicGameFrameworkResourcesProductionSeparationTests"
+      ]
+    },
     "G4-INFRA-001/B04": {
       "defect": "Owned allocation-failure evidence depended on process-global allocator override.",
       "fix": "RolesJobs, NeedsLife, Population, Encounters and Society tests now use narrow module-local one-shot failure seams for restore/publication evidence; shared helper files are untouched.",
+      "logical_id": "G4-INFRA-001",
       "module": "B04",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/{roles_jobs,needs_life,population,encounters,society}_tests.cpp",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/roles_jobs_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkRolesJobsTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/needs_life_tests.cpp:12::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkNeedsLifeTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/population_tests.cpp:12::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkPopulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/encounters_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkEncountersTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:11::void FailNextLocalAllocationForTest() noexcept;",
+          "target": "EpidemicGameFrameworkSocietyTests"
+        }
+      ],
       "status": "REVIEWED",
       "target": "EpidemicGameFrameworkRolesJobsTests",
       "targets": [
@@ -45467,6 +45590,44 @@
         "EpidemicGameFrameworkPopulationTests",
         "EpidemicGameFrameworkEncountersTests",
         "EpidemicGameFrameworkSocietyTests"
+      ]
+    },
+    "G4-INFRA-001/B05": {
+      "fix": "Replaced owned helper use with private seams in Perception, Knowledge, NavigationSemantics, AI and Simulation.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B05 owned test surface",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:948::epidemic::gameplay::perception::internal_test::ArmAllocationFault(point);",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:948::epidemic::gameplay::perception::internal_test::ArmAllocationFault(point);",
+          "target": "EpidemicGameFrameworkPerceptionTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:363::epidemic::gameplay::knowledge::internal_test::ArmAllocationFault(point);",
+          "target": "EpidemicGameFrameworkKnowledgeTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:270::epidemic::gameplay::navigation_semantics::internal_test::ArmAllocationFault(point);",
+          "target": "EpidemicGameFrameworkNavigationSemanticsTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:465::epidemic::gameplay::ai::internal_test::ArmAllocationFault(",
+          "target": "EpidemicGameFrameworkAITests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:289::epidemic::gameplay::simulation::internal_test::ArmAllocationFault(point);",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        }
+      ],
+      "root_cause": "Owned restore/allocation evidence depended on shared process-global injection helpers.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkPerceptionTests",
+      "targets": [
+        "EpidemicGameFrameworkPerceptionTests",
+        "EpidemicGameFrameworkKnowledgeTests",
+        "EpidemicGameFrameworkNavigationSemanticsTests",
+        "EpidemicGameFrameworkAITests",
+        "EpidemicGameFrameworkSimulationTests"
       ]
     },
     "G4-INFRA-001/B06": {
@@ -45497,6 +45658,28 @@
         "EpidemicGameFrameworkTraversalTests"
       ]
     },
+    "G4-INFRA-001/B07": {
+      "defect": "G4-INFRA-001: B07 World/SaveGame/Narrative allocation-failure evidence depended on process-global allocation injection/sweeps.",
+      "fix": "B07-owned tests now use narrow deterministic module-local publication seams at World dynamic feature/transaction/restore publication, SaveGame restore pre-commit, Narrative restore publication, and NarrativeIntegration outbox publication. Shared fault helpers remain untouched.",
+      "logical_id": "G4-INFRA-001",
+      "module": "B07 distributed",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:232::CHECK(!restored.AddDynamicFeature(fault_feature));",
+      "regressions": {
+        "EpidemicGameFrameworkNarrativeIntegrationTests": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:102::TestNarrativeOutboxPublicationAtomicity",
+        "EpidemicGameFrameworkNarrativeTests": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:362::Check(!static_cast<bool>(failed_restore)",
+        "EpidemicGameFrameworkSaveGameTests": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:409::SetSaveGameFaultPointForTesting(\"restore.pre_commit\")",
+        "EpidemicGameFrameworkWorldTests": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:232::CHECK(!restored.AddDynamicFeature(fault_feature));"
+      },
+      "root_cause": "The owned tests injected failures through process-global operator-new interception instead of deterministic module-private publication boundaries, so evidence could fail at unrelated allocations and was not narrow enough for Goal 4.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkWorldTests",
+      "targets": [
+        "EpidemicGameFrameworkWorldTests",
+        "EpidemicGameFrameworkSaveGameTests",
+        "EpidemicGameFrameworkNarrativeTests",
+        "EpidemicGameFrameworkNarrativeIntegrationTests"
+      ]
+    },
     "G4-INFRA-001/B08": {
       "defect": "Goal 4 allocation-failure evidence must not depend on the process-global allocator override.",
       "fix": "B08 owned tests have zero direct users of the shared allocator/sweep helpers. New allocation/publication regressions use narrow one-shot test seams scoped to Integration, ExtendedGameplayIntegration and ProcessResourceSimulationIntegration; shared helpers are untouched.",
@@ -45514,6 +45697,79 @@
         "EpidemicGameFrameworkCoreIntegrationTests",
         "EpidemicGameFrameworkExtendedGameplayIntegrationTests",
         "EpidemicGameFrameworkProcessResourceSimulationIntegrationTests"
+      ]
+    },
+    "G4-PER-001": {
+      "fix": "ExactDifference computes sign/magnitude without signed overflow before any floating conversion; FOV uses the exact delta sign and scaled norm.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Perception/src/perception.cpp::ExactDifference / ExactNorm / WithinFieldOfView",
+      "logical_id": "G4-PER-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:87::bool TestSpatialBoundaryMath()",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:87::bool TestSpatialBoundaryMath()",
+          "target": "EpidemicGameFrameworkPerceptionTests"
+        }
+      ],
+      "root_cause": "Spatial coordinate subtraction happened after conversion to long double; on MSVC this is binary64 and loses adjacent int64 values above 2^53.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkPerceptionTests",
+      "targets": [
+        "EpidemicGameFrameworkPerceptionTests"
+      ]
+    },
+    "G4-PER-002": {
+      "fix": "Awareness decay uses integer whole-interval arithmetic and exact bounded timestamp advancement.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Perception/src/perception.cpp::PerceptionService::AdvanceTime",
+      "logical_id": "G4-PER-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:232::bool TestDecayBoundaryArithmetic()",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:232::bool TestDecayBoundaryArithmetic()",
+          "target": "EpidemicGameFrameworkPerceptionTests"
+        }
+      ],
+      "root_cause": "Decay timestamp advancement converted exact integer steps*interval through long double and could round to INT64_MAX.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkPerceptionTests",
+      "targets": [
+        "EpidemicGameFrameworkPerceptionTests"
+      ]
+    },
+    "G4-PER-003": {
+      "fix": "DistanceMm uses scaled linear norm; range checks use exact portable wide squared comparison so only final linear distance narrows.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Perception/src/perception.cpp::DistanceStrictlyWithinRange / DistanceMm",
+      "logical_id": "G4-PER-003",
+      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:138::const auto above = create_stimulus({3'050'000'000LL, 0, 0});",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:138::const auto above = create_stimulus({3'050'000'000LL, 0, 0});",
+          "target": "EpidemicGameFrameworkPerceptionTests"
+        }
+      ],
+      "root_cause": "Squared distance was saturated into signed 64-bit Fixed before taking sqrt, collapsing large true distances.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkPerceptionTests",
+      "targets": [
+        "EpidemicGameFrameworkPerceptionTests"
+      ]
+    },
+    "G4-PROC-001": {
+      "fix": "Portable integer ScaleProgressFloor computes floor(elapsed*1,000,000/total) without __int128 or floating point.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Processes/src/processes.cpp::ScaleProgressFloor / ProcessesService::EvaluateProgress",
+      "logical_id": "G4-PROC-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Processes",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:445::[[nodiscard]] bool TestExactProgressScaling()",
+      "regressions": {
+        "EpidemicGameFrameworkProcessesTests": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:445::[[nodiscard]] bool TestExactProgressScaling()"
+      },
+      "root_cause": "EvaluateProgress converted very large int64 durations through floating point; MSVC binary64 can round the exact one-tick-before-complete ratio up to 1,000,000.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkProcessesTests",
+      "targets": [
+        "EpidemicGameFrameworkProcessesTests"
       ]
     },
     "G4-PROG-001": {
@@ -45570,21 +45826,127 @@
         "EpidemicGameFrameworkProgressionTests"
       ]
     },
+    "G4-RESPROD-001": {
+      "fix": "All affected operations allocate/advance IDs from a staged generator and publish generator + revision only after fallible primary/index/journal staging succeeds.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction/src/resources_production.cpp",
+      "logical_id": "G4-RESPROD-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:45::[[nodiscard]] bool TestRevisionExhaustionKeepsAllGenerators()",
+      "regressions": {
+        "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:45::[[nodiscard]] bool TestRevisionExhaustionKeepsAllGenerators()"
+      },
+      "root_cause": "Live monotonic ID generators advanced before revision/publication preflight on create/reserve/transfer paths.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkResourcesProductionTests",
+      "targets": [
+        "EpidemicGameFrameworkResourcesProductionTests"
+      ]
+    },
+    "G4-RESPROD-002": {
+      "fix": "Mutation paths stage journal and all fallible inserts before no-throw authoritative updates; private source-local fault seams cover each required publication phase.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction/src/resources_production.cpp::TryStageJournal and staged mutation paths",
+      "logical_id": "G4-RESPROD-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:101::[[nodiscard]] bool TestPublicationFaultAtomicity()",
+      "regressions": {
+        "EpidemicGameFrameworkResourcesProductionTests": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:101::[[nodiscard]] bool TestPublicationFaultAtomicity()"
+      },
+      "root_cause": "Revision/state changes could precede fallible primary/index/journal publication, allowing partial state or an escaping allocation exception.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkResourcesProductionTests",
+      "targets": [
+        "EpidemicGameFrameworkResourcesProductionTests"
+      ]
+    },
+    "G4-SIM-001": {
+      "fix": "Stage TaskCommitted capacity before every external Commit; when the current layer is the last unfinished layer, also preflight the terminal revision, SummaryGenerated journal record and summary storage before Commit. After accepted work, terminal task/interval/region/summary/journal publication uses only no-throw operations.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Simulation/src/simulation.cpp::SimulationService::ContinueIntervalExecution",
+      "logical_id": "G4-SIM-001",
+      "module": "EngineFramework/GameplayWorldStateOwners/Simulation",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:312::if (max_result || !max_result.GetError().HasCode(\"gameplay.simulation.revision_exhausted\") ||",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:312::if (max_result || !max_result.GetError().HasCode(\"gameplay.simulation.revision_exhausted\") ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:333::if (one_revision_result ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:354::if (one_sequence_result ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:376::if (summary_preflight_result ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        }
+      ],
+      "root_cause": "Executor Commit could succeed before revision/journal capacity for terminal local publication was established.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkSimulationTests",
+      "targets": [
+        "EpidemicGameFrameworkSimulationTests"
+      ]
+    },
+    "G4-SIM-002": {
+      "fix": "Stage interval nodes, summary nodes and journal nodes first; commit generators/revision/primary state with no-throw node insertion/splice.",
+      "fix_symbol": "EngineFramework/GameplayWorldStateOwners/Simulation/src/simulation.cpp::CreateIntervalExecution / ContinueIntervalExecution / StageJournalChange",
+      "logical_id": "G4-SIM-002",
+      "module": "EngineFramework/GameplayWorldStateOwners/Simulation",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:401::!EquivalentMutationState(before, atomic_interval.CaptureSnapshot()) || atomic_exec.commits != 0)",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:401::!EquivalentMutationState(before, atomic_interval.CaptureSnapshot()) || atomic_exec.commits != 0)",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        },
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:432::!EquivalentMutationState(before, atomic_summary.CaptureSnapshot()) || summary_a.commits != 0 ||",
+          "target": "EpidemicGameFrameworkSimulationTests"
+        }
+      ],
+      "root_cause": "Interval/summary/revision state could begin committing before fallible container/journal publication.",
+      "status": "REVIEWED",
+      "target": "EpidemicGameFrameworkSimulationTests",
+      "targets": [
+        "EpidemicGameFrameworkSimulationTests"
+      ]
+    },
     "G4-SOC-001": {
       "defect": "Revision exhaustion was ignored by several Society mutators after restoring revision UINT64_MAX.",
       "fix": "EngineFramework/GameplayWorldStateOwners/Society/src/society.cpp:394::SetMembershipRole and related revision-bearing mutators now reject exhaustion before authoritative mutation.",
+      "logical_id": "G4-SOC-001",
       "module": "EngineFramework/GameplayWorldStateOwners/Society",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:261::if (!max_revision_atomic",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:251::const auto max_revision_atomic = [&](auto &&mutation) {",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:251::const auto max_revision_atomic = [&](auto &&mutation) {",
+          "target": "EpidemicGameFrameworkSocietyTests"
+        }
+      ],
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkSocietyTests"
+      "target": "EpidemicGameFrameworkSocietyTests",
+      "targets": [
+        "EpidemicGameFrameworkSocietyTests"
+      ]
     },
     "G4-SOC-002": {
       "defect": "Society generator/revision/state/index/journal publication had fallible steps after partial commit.",
       "fix": "EngineFramework/GameplayWorldStateOwners/Society/src/society.cpp:427::SetRelationship and related create paths stage generators/revisions, roll back indices, and use pre-reserved bounded journal storage.",
+      "logical_id": "G4-SOC-002",
       "module": "EngineFramework/GameplayWorldStateOwners/Society",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:308::if (!SameMutableSnapshot(before, after)",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:259::return SameMutableSnapshot(before, after);",
+      "regressions": [
+        {
+          "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/society_tests.cpp:259::return SameMutableSnapshot(before, after);",
+          "target": "EpidemicGameFrameworkSocietyTests"
+        }
+      ],
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkSocietyTests"
+      "target": "EpidemicGameFrameworkSocietyTests",
+      "targets": [
+        "EpidemicGameFrameworkSocietyTests"
+      ]
     },
     "G4-TRAV-001": {
       "defect": "Traversal state-changing families could ignore failed revision bump and mutate at UINT64_MAX.",
@@ -45875,77 +46237,16 @@
     "g4-doc-001-framework-doc-root": {
       "defect": "G4-DOC-001: Framework README referenced a non-existent documentation root.",
       "fix": "EngineFramework/README.md + docs/EngineFramework/README.md + B01 module docs",
+      "logical_id": "G4-DOC-001",
       "module": "EngineFramework",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:84::TestFrameworkDocumentationRoot",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkFoundationTests"
-    },
-    "g4-infra-001-b01": {
-      "defect": "G4-INFRA-001: B01 Foundation/Queries/Facts/Time tests relied on process-global allocation fault injection.",
-      "fix": "B01-owned tests now use narrow deterministic module-local publication fail points; the shared helper and shared sweep headers remain untouched for other blocks.",
-      "module": "B01 distributed",
-      "regression": "foundation_tests.cpp type/tag publication; queries_tests.cpp provider/freeze publication; facts_tests.cpp transaction/direct-event/batch-merge publication; time_tests.cpp clock/schedule/index/reschedule/collect/sync publication",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:84::void TestFrameworkDocumentationRoot()",
+      "regressions": {
+        "EpidemicGameFrameworkFoundationTests": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:84::void TestFrameworkDocumentationRoot()"
+      },
       "status": "REVIEWED",
       "target": "EpidemicGameFrameworkFoundationTests",
       "targets": [
-        "EpidemicGameFrameworkFoundationTests",
-        "EpidemicGameplayQueriesTests",
-        "EpidemicGameplayFactsTests",
-        "EpidemicGameplayTimeTests"
-      ]
-    },
-    "g4-infra-001-b03-private-fault-seams": {
-      "defect": "G4-INFRA-001: owned tests depended on process-global allocator injection for restore/publication evidence.",
-      "fix": "B03 replaces owned global allocator/sweep use with source-private thread_local module fault seams in ItemsInventory, Equipment, Processes, ResourcesProduction and Loot; Economy and ResourcesProductionSeparation had no such dependency.",
-      "module": "B03 distributed obligation",
-      "regression": "All seven B03 registered test executables; grep audit reports zero owned references to allocation_fault_injection.h, restore_fault_sweep.h or mutation_fault_sweep.h.",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkItemsInventoryTests",
-      "targets": [
-        "EpidemicGameFrameworkItemsInventoryTests",
-        "EpidemicGameFrameworkEquipmentTests",
-        "EpidemicGameFrameworkEconomyTests",
-        "EpidemicGameFrameworkProcessesTests",
-        "EpidemicGameFrameworkResourcesProductionTests",
-        "EpidemicGameFrameworkLootTests",
-        "EpidemicGameFrameworkResourcesProductionSeparationTests"
-      ]
-    },
-    "g4-infra-001-b05": {
-      "defect": "G4-INFRA-001/B05: owned fault evidence used process-global allocator/restore helpers.",
-      "fix": "All five owned test sources use module-private source-local seams; shared helpers and shared CMake remain untouched.",
-      "module": "B05 owned test surface",
-      "regression": "Five B05 module executables plus zero-reference grep audit.",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkPerceptionTests",
-      "targets": [
-        "EpidemicGameFrameworkPerceptionTests",
-        "EpidemicGameFrameworkKnowledgeTests",
-        "EpidemicGameFrameworkNavigationSemanticsTests",
-        "EpidemicGameFrameworkAITests",
-        "EpidemicGameFrameworkSimulationTests"
-      ]
-    },
-    "g4-infra-001-b07": {
-      "defect": "G4-INFRA-001: B07 World/SaveGame/Narrative allocation-failure evidence depended on process-global allocation injection/sweeps.",
-      "fix": "B07-owned tests now use narrow deterministic module-local publication seams at World dynamic feature/transaction/restore publication, SaveGame restore pre-commit, Narrative restore publication, and NarrativeIntegration outbox publication. Shared fault helpers remain untouched.",
-      "logical_id": "G4-INFRA-001",
-      "module": "B07 distributed",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:232::CHECK(!restored.AddDynamicFeature(fault_feature));",
-      "regressions": {
-        "EpidemicGameFrameworkNarrativeIntegrationTests": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:102::TestNarrativeOutboxPublicationAtomicity",
-        "EpidemicGameFrameworkNarrativeTests": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_tests.cpp:362::Check(!static_cast<bool>(failed_restore)",
-        "EpidemicGameFrameworkSaveGameTests": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:409::SetSaveGameFaultPointForTesting(\"restore.pre_commit\")",
-        "EpidemicGameFrameworkWorldTests": "EngineFramework/DevelopmentInfrastructure/Tests/world_tests.cpp:232::CHECK(!restored.AddDynamicFeature(fault_feature));"
-      },
-      "root_cause": "The owned tests injected failures through process-global operator-new interception instead of deterministic module-private publication boundaries, so evidence could fail at unrelated allocations and was not narrow enough for Goal 4.",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkWorldTests",
-      "targets": [
-        "EpidemicGameFrameworkWorldTests",
-        "EpidemicGameFrameworkSaveGameTests",
-        "EpidemicGameFrameworkNarrativeTests",
-        "EpidemicGameFrameworkNarrativeIntegrationTests"
+        "EpidemicGameFrameworkFoundationTests"
       ]
     },
     "g4-narrint-001-revision-exhaustion": {
@@ -45974,77 +46275,20 @@
         "EpidemicGameFrameworkNarrativeIntegrationTests"
       ]
     },
-    "g4-per-001-exact-spatial-delta": {
-      "defect": "G4-PER-001: converting int64 coordinates before subtraction loses adjacent values above 2^53 on MSVC binary64 long double.",
-      "fix": "Perception exact signed coordinate difference is formed in unsigned ordered space before floating normalization/FOV math.",
-      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:87::bool TestSpatialBoundaryMath()",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkPerceptionTests"
-    },
-    "g4-per-002-decay-integer-advance": {
-      "defect": "G4-PER-002: awareness decay interval advancement used floating multiplication and could overshoot near INT64_MAX.",
-      "fix": "Whole-interval advancement and suspicion decay use bounded integer arithmetic; timestamp advance is steps*interval under the mathematically proven elapsed bound.",
-      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:232::bool TestDecayBoundaryArithmetic()",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkPerceptionTests"
-    },
-    "g4-per-003-wide-range": {
-      "defect": "G4-PER-003: squared distance saturated to int64 before sqrt, collapsing all distances above sqrt(INT64_MAX).",
-      "fix": "Linear norm is computed directly with scaled components; range rejection uses portable exact 128-bit-equivalent base-2^32 wide squared comparison without narrowing.",
-      "module": "EngineFramework/GameplayWorldStateOwners/Perception",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:87::bool TestSpatialBoundaryMath()",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkPerceptionTests"
-    },
-    "g4-proc-001-exact-progress": {
-      "defect": "G4-PROC-001: EvaluateProgress used floating-point scaling and could round a huge one-tick-before-completion duration to complete on MSVC.",
-      "fix": "EngineFramework/GameplayWorldStateOwners/Processes/src/processes.cpp::ScaleProgressFloor / ProcessesService::EvaluateProgress",
-      "module": "EngineFramework/GameplayWorldStateOwners/Processes",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:445::TestExactProgressScaling",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkProcessesTests"
-    },
     "g4-rb-001-visibility-wide-math": {
       "defect": "G4-RB-001: visibility subtraction/squared norm in float can overflow for finite Runtime positions.",
       "fix": "RuntimeBridge/src/runtime_bridge.cpp::detail::ComputeVisibilityRayGeometry",
+      "logical_id": "G4-RB-001",
       "module": "EngineFramework/RuntimeBoundary/RuntimeBridge",
-      "regression": "runtime_bridge_tests.cpp visibility geometry block",
+      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:185::CHECK(unrepresentable.GetError().HasCode(\"gameplay.runtime_bridge.visibility_range\"));",
+      "regressions": {
+        "EpidemicGameFrameworkRuntimeBridgeTests": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:185::CHECK(unrepresentable.GetError().HasCode(\"gameplay.runtime_bridge.visibility_range\"));"
+      },
       "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkRuntimeBridgeTests"
-    },
-    "g4-resprod-001-generator-atomicity": {
-      "defect": "G4-RESPROD-001: create/reserve/transfer paths could consume live IDs before revision exhaustion was known.",
-      "fix": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction/src/resources_production.cpp staged generator publication across stockpile/node/site/reservation/transaction/capability/plan paths",
-      "module": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:45::TestRevisionExhaustionKeepsAllGenerators",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkResourcesProductionTests"
-    },
-    "g4-resprod-002-publication-atomicity": {
-      "defect": "G4-RESPROD-002: fallible primary/index/journal publication could occur after authoritative revision/state mutation.",
-      "fix": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction/src/resources_production.cpp staged primary/index/journal deltas with module-private publication fault seams",
-      "module": "EngineFramework/GameplayWorldStateOwners/ResourcesProduction",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:101::TestPublicationFaultAtomicity",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkResourcesProductionTests"
-    },
-    "g4-sim-001-external-preflight": {
-      "defect": "G4-SIM-001: external executor Commit could accept work before local terminal revision/journal publication was known possible.",
-      "fix": "TaskCommitted revision/journal capacity is staged before every external Commit. For the last unfinished layer, the terminal interval revision, SummaryGenerated journal record and summary node are also staged before Commit; accepted work is followed only by no-throw publication.",
-      "module": "EngineFramework/GameplayWorldStateOwners/Simulation",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp::main / G4-SIM-001 MAX, MAX-1 finalization, journal exhaustion and terminal summary allocation preflight blocks",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkSimulationTests"
-    },
-    "g4-sim-002-staged-publication": {
-      "defect": "G4-SIM-002: revision could advance before fallible interval/summary/journal publication.",
-      "fix": "Interval node, summary node and journal changes are staged before authoritative commit; private source-local fault seams cover each publication boundary.",
-      "module": "EngineFramework/GameplayWorldStateOwners/Simulation",
-      "regression": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp::main / G4-SIM-002 publication fault blocks",
-      "status": "REVIEWED",
-      "target": "EpidemicGameFrameworkSimulationTests"
+      "target": "EpidemicGameFrameworkRuntimeBridgeTests",
+      "targets": [
+        "EpidemicGameFrameworkRuntimeBridgeTests"
+      ]
     },
     "m3c-anim-001-portable-scaling": {
       "defect": "M3C-ANIM-001: playback scaling used non-portable long-double precision at int64 boundary.",

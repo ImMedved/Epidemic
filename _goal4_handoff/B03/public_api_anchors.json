@@ -6,7 +6,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
         ],
@@ -20,7 +20,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -48,7 +48,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:26::ItemsInventoryService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");"
         ],
@@ -76,7 +76,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:483::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:488::if (!started)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:488::if (!started)"
         ],
@@ -90,7 +90,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:56::LootService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
         ],
@@ -104,7 +104,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
         ],
@@ -118,7 +118,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:26::ItemsInventoryService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");"
         ],
@@ -202,7 +202,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:235::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:237::if (!configured.recipe_id.IsValid())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:237::if (!configured.recipe_id.IsValid())"
         ],
@@ -230,7 +230,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:252::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:254::if (!configured.recipe_id.IsValid())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:254::if (!configured.recipe_id.IsValid())"
         ],
@@ -342,7 +342,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:363::EconomyService expiration_seed;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:365::Check(static_cast<bool>(expiration_currency), \"expiration currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:365::Check(static_cast<bool>(expiration_currency), \"expiration currency\");"
         ],
@@ -510,7 +510,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:29::class MockItems final : public IEquipmentItemProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:39::if (it == descriptors.end()) return std::nullopt;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:39::if (it == descriptors.end()) return std::nullopt;"
         ],
@@ -678,7 +678,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:166::ResourceTypeId wood;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:167::if (!RegisterWood(s, wood)) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:167::if (!RegisterWood(s, wood)) return 1;"
         ],
@@ -734,7 +734,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:328::EconomyService aggregate;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");"
         ],
@@ -748,7 +748,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:252::LootService empty_journal;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:253::if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:253::if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;"
         ],
@@ -804,7 +804,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:26::ItemsInventoryService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");"
         ],
@@ -846,7 +846,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:47::ResourcesProductionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:49::if (!RegisterWood(service, wood))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:49::if (!RegisterWood(service, wood))"
         ],
@@ -860,7 +860,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:109::class FaultOutput final : public IProcessOutputHandler",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)"
         ],
@@ -874,7 +874,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -888,7 +888,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:22::RewardTypeId type{};",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:33::if (throw_prepare)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:33::if (throw_prepare)"
         ],
@@ -916,7 +916,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:49::class FaultInput final : public IProcessInputProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)"
         ],
@@ -986,7 +986,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:44::class ThrowingConditionProvider final : public ILootConditionProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)"
         ],
@@ -1028,7 +1028,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:210::ItemsInventoryService over_capacity_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");"
         ],
@@ -1042,7 +1042,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -1084,7 +1084,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:221::EconomyService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:222::Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), \"generator restore currency def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:222::Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), \"generator restore currency def\");"
         ],
@@ -1112,7 +1112,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:328::EconomyService aggregate;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");"
         ],
@@ -1154,7 +1154,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:56::LootService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
         ],
@@ -1224,7 +1224,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:210::ItemsInventoryService over_capacity_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");"
         ],
@@ -1252,7 +1252,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:302::EconomyService invalid_states;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:304::Check(static_cast<bool>(invalid_states_currency), \"invalid states currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:304::Check(static_cast<bool>(invalid_states_currency), \"invalid states currency\");"
         ],
@@ -1322,7 +1322,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:183::ItemsInventoryService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");"
         ],
@@ -1476,7 +1476,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:171::LootService throwing_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:172::if (!throwing_service.RegisterRewardHandler(\"test.reward.throw\", &throwing)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:172::if (!throwing_service.RegisterRewardHandler(\"test.reward.throw\", &throwing)) return 21;"
         ],
@@ -1672,7 +1672,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:328::EconomyService aggregate;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");"
         ],
@@ -1686,7 +1686,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:210::ItemsInventoryService over_capacity_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");"
         ],
@@ -1798,7 +1798,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:108::ResourcesProductionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:110::if (!RegisterWood(service, wood))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:110::if (!RegisterWood(service, wood))"
         ],
@@ -1840,7 +1840,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:216::ItemsInventoryService journal_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:217::Check(static_cast<bool>(journal_service.RegisterDefinition(apple)), \"journal apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:217::Check(static_cast<bool>(journal_service.RegisterDefinition(apple)), \"journal apple def\");"
         ],
@@ -1868,7 +1868,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
         ],
@@ -1952,7 +1952,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:284::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:295::if (mode == CallbackMode::Success)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:295::if (mode == CallbackMode::Success)"
         ],
@@ -1966,7 +1966,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:381::EconomyService expiration_exhausted;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:383::Check(static_cast<bool>(expiration_exhausted_currency), \"expiration exhausted currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:383::Check(static_cast<bool>(expiration_exhausted_currency), \"expiration exhausted currency\");"
         ],
@@ -2036,7 +2036,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:191::EquipmentService bounded(2);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");"
         ],
@@ -2064,7 +2064,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:195::ItemsInventoryService duplicate_world_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");"
         ],
@@ -2120,7 +2120,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:284::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:295::if (mode == CallbackMode::Success)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:295::if (mode == CallbackMode::Success)"
         ],
@@ -2190,7 +2190,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:183::ItemsInventoryService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");"
         ],
@@ -2204,7 +2204,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:268::ProcessesService invalid_id_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:264::if (!instance || instance->reserved_inputs.size() != 2 ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:264::if (!instance || instance->reserved_inputs.size() != 2 ||"
         ],
@@ -2302,7 +2302,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:183::ItemsInventoryService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");"
         ],
@@ -2358,7 +2358,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
         ],
@@ -2372,7 +2372,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:238::ResourcesProductionService p;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:240::if (!RegisterWood(p, pwood)) return 25;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:240::if (!RegisterWood(p, pwood)) return 25;"
         ],
@@ -2400,7 +2400,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -2512,7 +2512,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:483::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:488::if (!started)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:488::if (!started)"
         ],
@@ -2554,7 +2554,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:191::EquipmentService bounded(2);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");"
         ],
@@ -2568,7 +2568,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:29::class MockItems final : public IEquipmentItemProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:39::if (it == descriptors.end()) return std::nullopt;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:39::if (it == descriptors.end()) return std::nullopt;"
         ],
@@ -2610,7 +2610,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:26::ItemsInventoryService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");"
         ],
@@ -2680,7 +2680,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:49::class FaultInput final : public IProcessInputProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)"
         ],
@@ -2694,7 +2694,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -2708,7 +2708,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:252::LootService empty_journal;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:253::if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:253::if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;"
         ],
@@ -2722,7 +2722,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:538::ProcessesService restore_fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:535::if (!TestExactProgressScaling())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:535::if (!TestExactProgressScaling())"
         ],
@@ -2834,7 +2834,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:328::EconomyService aggregate;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");"
         ],
@@ -2876,7 +2876,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:44::class ThrowingConditionProvider final : public ILootConditionProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)"
         ],
@@ -3002,7 +3002,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:171::LootService throwing_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:172::if (!throwing_service.RegisterRewardHandler(\"test.reward.throw\", &throwing)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:172::if (!throwing_service.RegisterRewardHandler(\"test.reward.throw\", &throwing)) return 21;"
         ],
@@ -3030,7 +3030,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:252::ResourcesProductionService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:250::if (pre_restore_cursor.sequence < 2) return 57;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:250::if (pre_restore_cursor.sequence < 2) return 57;"
         ],
@@ -3086,7 +3086,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:350::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:362::if (!started)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:362::if (!started)"
         ],
@@ -3156,7 +3156,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:58::ResourcesProductionService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:59::Check(static_cast<bool>(restored.RegisterResourceType(iron)), \"restore resource type\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:59::Check(static_cast<bool>(restored.RegisterResourceType(iron)), \"restore resource type\");"
         ],
@@ -3226,7 +3226,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:245::EconomyService journal;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:246::Check(static_cast<bool>(journal.RegisterCurrency(coin)), \"journal currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:246::Check(static_cast<bool>(journal.RegisterCurrency(coin)), \"journal currency\");"
         ],
@@ -3352,7 +3352,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:49::class FaultInput final : public IProcessInputProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)"
         ],
@@ -3366,7 +3366,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
         ],
@@ -3394,7 +3394,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
         ],
@@ -3408,7 +3408,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:59::LootTableId table_id{};",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
         ],
@@ -3590,7 +3590,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:47::ResourcesProductionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:49::if (!RegisterWood(service, wood))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:49::if (!RegisterWood(service, wood))"
         ],
@@ -3604,7 +3604,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
         ],
@@ -3632,7 +3632,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:183::ItemsInventoryService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");"
         ],
@@ -3646,7 +3646,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:221::EconomyService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:222::Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), \"generator restore currency def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:222::Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), \"generator restore currency def\");"
         ],
@@ -3674,7 +3674,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:136::LootService tx;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:137::if (!tx.RegisterRewardHandler(\"test.reward.good\", &good) || !tx.RegisterRewardHandler(\"test.reward.bad\", &bad)) return 14;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:137::if (!tx.RegisterRewardHandler(\"test.reward.good\", &good) || !tx.RegisterRewardHandler(\"test.reward.bad\", &bad)) return 14;"
         ],
@@ -3730,7 +3730,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:58::ResourcesProductionService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:59::Check(static_cast<bool>(restored.RegisterResourceType(iron)), \"restore resource type\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:59::Check(static_cast<bool>(restored.RegisterResourceType(iron)), \"restore resource type\");"
         ],
@@ -3744,7 +3744,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:14::class Handler final : public IRewardHandler",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:33::if (throw_prepare)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:33::if (throw_prepare)"
         ],
@@ -3870,7 +3870,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:29::class MockItems final : public IEquipmentItemProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:39::if (it == descriptors.end()) return std::nullopt;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:39::if (it == descriptors.end()) return std::nullopt;"
         ],
@@ -3968,7 +3968,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:49::class FaultInput final : public IProcessInputProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)"
         ],
@@ -3996,7 +3996,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:195::ItemsInventoryService duplicate_world_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");"
         ],
@@ -4122,7 +4122,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:109::class FaultOutput final : public IProcessOutputHandler",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)"
         ],
@@ -4150,7 +4150,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
         ],
@@ -4276,7 +4276,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:418::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:423::if (!started)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:423::if (!started)"
         ],
@@ -4290,7 +4290,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -4332,7 +4332,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:56::EconomyService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:60::Check(static_cast<bool>(cid), \"currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:60::Check(static_cast<bool>(cid), \"currency\");"
         ],
@@ -4360,7 +4360,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:191::EquipmentService bounded(2);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");"
         ],
@@ -4374,7 +4374,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:221::EconomyService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:222::Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), \"generator restore currency def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:222::Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), \"generator restore currency def\");"
         ],
@@ -4388,7 +4388,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:483::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:488::if (!started)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:488::if (!started)"
         ],
@@ -4430,7 +4430,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -4458,7 +4458,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:183::ItemsInventoryService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");"
         ],
@@ -4472,7 +4472,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:56::LootService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
         ],
@@ -4500,7 +4500,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -4514,7 +4514,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:195::ItemsInventoryService duplicate_world_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");"
         ],
@@ -4612,7 +4612,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:87::LootService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:88::if (!s.RegisterRewardHandler(\"test.reward\", &h)) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:88::if (!s.RegisterRewardHandler(\"test.reward\", &h)) return 1;"
         ],
@@ -4780,7 +4780,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:463::ProcessesService half;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:466::if (!half_started || half.EvaluateProgress(half_started.Value(), GameplayTimePoint{6}) != 500'000)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:466::if (!half_started || half.EvaluateProgress(half_started.Value(), GameplayTimePoint{6}) != 500'000)"
         ],
@@ -4794,7 +4794,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:26::ItemsInventoryService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:33::Check(static_cast<bool>(apple_id), \"register apple\");"
         ],
@@ -4850,7 +4850,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:49::class FaultInput final : public IProcessInputProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)"
         ],
@@ -4934,7 +4934,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:195::ItemsInventoryService duplicate_world_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");"
         ],
@@ -5018,7 +5018,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:418::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:423::if (!started)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:423::if (!started)"
         ],
@@ -5088,7 +5088,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:56::LootService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
         ],
@@ -5102,7 +5102,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:191::EquipmentService bounded(2);",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");"
         ],
@@ -5116,7 +5116,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:394::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:402::if (!started)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:402::if (!started)"
         ],
@@ -5172,7 +5172,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:316::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:328::if (mode == CallbackMode::Success)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:328::if (mode == CallbackMode::Success)"
         ],
@@ -5270,7 +5270,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:363::EconomyService expiration_seed;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:365::Check(static_cast<bool>(expiration_currency), \"expiration currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:365::Check(static_cast<bool>(expiration_currency), \"expiration currency\");"
         ],
@@ -5284,7 +5284,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:123::ResourcesProductionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:125::if (!RegisterWood(service, wood))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:125::if (!RegisterWood(service, wood))"
         ],
@@ -5326,7 +5326,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:252::LootService empty_journal;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:253::if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:253::if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;"
         ],
@@ -5340,7 +5340,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:120::RegisteredPayload last_cancelled_token;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:131::if (fail_prepare_on_call == prepare_calls)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:131::if (fail_prepare_on_call == prepare_calls)"
         ],
@@ -5354,7 +5354,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -5382,7 +5382,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:210::ItemsInventoryService over_capacity_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");"
         ],
@@ -5410,7 +5410,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
         ],
@@ -5452,7 +5452,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:235::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:237::if (!configured.recipe_id.IsValid())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:237::if (!configured.recipe_id.IsValid())"
         ],
@@ -5480,7 +5480,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:136::LootService tx;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:137::if (!tx.RegisterRewardHandler(\"test.reward.good\", &good) || !tx.RegisterRewardHandler(\"test.reward.bad\", &bad)) return 14;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:137::if (!tx.RegisterRewardHandler(\"test.reward.good\", &good) || !tx.RegisterRewardHandler(\"test.reward.bad\", &bad)) return 14;"
         ],
@@ -5494,7 +5494,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -5536,7 +5536,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:183::ItemsInventoryService invalid_generator_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:184::Check(static_cast<bool>(invalid_generator_restore.RegisterDefinition(apple)), \"bad restore apple def\");"
         ],
@@ -5550,7 +5550,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:449::ProcessesService huge;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:453::if (!huge_started || huge.EvaluateProgress(huge_started.Value(), GameplayTimePoint{0}) != 0 ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:453::if (!huge_started || huge.EvaluateProgress(huge_started.Value(), GameplayTimePoint{0}) != 0 ||"
         ],
@@ -5564,7 +5564,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:109::class FaultOutput final : public IProcessOutputHandler",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)"
         ],
@@ -5662,7 +5662,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:258::LootService invalid_policy_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:259::if (!invalid_policy_service.RegisterRewardHandler(\"test.reward.invalid_policy\", &invalid_policy_handler)) return 44;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:259::if (!invalid_policy_service.RegisterRewardHandler(\"test.reward.invalid_policy\", &invalid_policy_handler)) return 44;"
         ],
@@ -5676,7 +5676,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:275::ResourcesProductionService journal;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:273::if (resources_current.snapshot_required || !resources_current.changes.empty()) return 54;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:273::if (resources_current.snapshot_required || !resources_current.changes.empty()) return 54;"
         ],
@@ -5760,7 +5760,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:495::ProcessesService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:498::if (!restored.RestoreSnapshot(std::move(snapshot)))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:498::if (!restored.RestoreSnapshot(std::move(snapshot)))"
         ],
@@ -5774,7 +5774,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:302::EconomyService invalid_states;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:304::Check(static_cast<bool>(invalid_states_currency), \"invalid states currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:304::Check(static_cast<bool>(invalid_states_currency), \"invalid states currency\");"
         ],
@@ -5802,7 +5802,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
         ],
@@ -5872,7 +5872,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
         ],
@@ -6138,7 +6138,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:302::EconomyService invalid_states;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:304::Check(static_cast<bool>(invalid_states_currency), \"invalid states currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:304::Check(static_cast<bool>(invalid_states_currency), \"invalid states currency\");"
         ],
@@ -6222,7 +6222,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:483::ProcessesService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:488::if (!started)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:488::if (!started)"
         ],
@@ -6390,7 +6390,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:165::ResourcesProductionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:167::if (!RegisterWood(s, wood)) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:167::if (!RegisterWood(s, wood)) return 1;"
         ],
@@ -6432,7 +6432,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:47::ResourcesProductionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:49::if (!RegisterWood(service, wood))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:49::if (!RegisterWood(service, wood))"
         ],
@@ -6474,7 +6474,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
         ],
@@ -6516,7 +6516,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:469::ProcessesService third;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:466::if (!half_started || half.EvaluateProgress(half_started.Value(), GameplayTimePoint{6}) != 500'000)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:466::if (!half_started || half.EvaluateProgress(half_started.Value(), GameplayTimePoint{6}) != 500'000)"
         ],
@@ -6530,7 +6530,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:239::ResourceTypeId pwood;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:240::if (!RegisterWood(p, pwood)) return 25;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:240::if (!RegisterWood(p, pwood)) return 25;"
         ],
@@ -6558,7 +6558,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:538::ProcessesService restore_fault_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:535::if (!TestExactProgressScaling())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:535::if (!TestExactProgressScaling())"
         ],
@@ -6572,7 +6572,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:21::class Price final : public IPriceProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:11::if (!v)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:11::if (!v)"
         ],
@@ -6600,7 +6600,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
         ],
@@ -6656,7 +6656,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:195::ItemsInventoryService duplicate_world_restore;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:196::Check(static_cast<bool>(duplicate_world_restore.RegisterDefinition(apple)), \"duplicate world restore apple def\");"
         ],
@@ -6670,7 +6670,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:58::RewardDefinitionId reward_id{};",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
         ],
@@ -6810,7 +6810,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:495::ProcessesService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:498::if (!restored.RestoreSnapshot(std::move(snapshot)))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:498::if (!restored.RestoreSnapshot(std::move(snapshot)))"
         ],
@@ -6838,7 +6838,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:363::EconomyService expiration_seed;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:365::Check(static_cast<bool>(expiration_currency), \"expiration currency\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:365::Check(static_cast<bool>(expiration_currency), \"expiration currency\");"
         ],
@@ -6852,7 +6852,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:268::ProcessesService invalid_id_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:264::if (!instance || instance->reserved_inputs.size() != 2 ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:264::if (!instance || instance->reserved_inputs.size() != 2 ||"
         ],

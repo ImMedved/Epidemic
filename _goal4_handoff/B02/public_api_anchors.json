@@ -76,7 +76,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -202,7 +202,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:12::class TestRoles final : public IOwnershipRoleProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)"
         ],
@@ -216,7 +216,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:19::class TestSubjectStateProvider final : public IConditionSubjectStateProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:27::if (throw_on_query)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:27::if (throw_on_query)"
         ],
@@ -286,7 +286,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:666::EffectService burst_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:670::if (!burst_service.RegisterHandler(",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:670::if (!burst_service.RegisterHandler("
         ],
@@ -356,7 +356,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:78::class DerivedPrepareFaultArmingHandler final : public IEffectHandler",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:54::if (derived_.IsValid())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:54::if (derived_.IsValid())"
         ],
@@ -384,7 +384,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -398,7 +398,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:43::ConditionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;"
         ],
@@ -454,7 +454,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:25::OwnershipService o;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)"
         ],
@@ -510,7 +510,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -608,7 +608,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:116::MaterialComposition c{{MaterialConstituent{wood_id.Value(), 1000000}}};",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:117::if (!service.AssignComposition(object_ref, slot.Value(), std::move(c))) return 14;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:117::if (!service.AssignComposition(object_ref, slot.Value(), std::move(c))) return 14;"
         ],
@@ -622,7 +622,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:554::EffectService lifecycle;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:548::if (!result || result.Value().disposition != EffectBatchDisposition::Failed ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:548::if (!result || result.Value().disposition != EffectBatchDisposition::Failed ||"
         ],
@@ -650,7 +650,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -734,7 +734,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:209::OwnershipService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))"
         ],
@@ -776,7 +776,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:18::MaterialService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;"
         ],
@@ -832,7 +832,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:565::EffectService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:576::if (!service.RegisterHandler(\"test.effect.derived\", std::make_shared<CountingHandler>(derived_type, values, EffectTypeId{}, &observed_derived_context)) ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:576::if (!service.RegisterHandler(\"test.effect.derived\", std::make_shared<CountingHandler>(derived_type, values, EffectTypeId{}, &observed_derived_context)) ||"
         ],
@@ -860,7 +860,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -888,7 +888,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:209::OwnershipService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))"
         ],
@@ -902,7 +902,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:716::EffectService empty_journal;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:715::if (!service.ReadChangesSince(service.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 19;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:715::if (!service.ReadChangesSince(service.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 19;"
         ],
@@ -916,7 +916,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:25::OwnershipService o;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)"
         ],
@@ -1000,7 +1000,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:295::ConditionService batch_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;"
         ],
@@ -1070,7 +1070,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -1224,7 +1224,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:18::MaterialService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;"
         ],
@@ -1252,7 +1252,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -1294,7 +1294,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:255::ConditionService no_provider_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||"
         ],
@@ -1322,7 +1322,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:25::OwnershipService o;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)"
         ],
@@ -1364,7 +1364,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:520::EffectService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:515::if (!fixture.service.ReadChangesSince(stale_cursor).snapshot_required)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:515::if (!fixture.service.ReadChangesSince(stale_cursor).snapshot_required)"
         ],
@@ -1448,7 +1448,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:554::EffectService lifecycle;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:548::if (!result || result.Value().disposition != EffectBatchDisposition::Failed ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:548::if (!result || result.Value().disposition != EffectBatchDisposition::Failed ||"
         ],
@@ -1490,7 +1490,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -1518,7 +1518,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -1588,7 +1588,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:17::struct Provider final : IInteractionProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:9::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:9::if (!(expr))                                                                                                   \\"
         ],
@@ -1658,7 +1658,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:209::OwnershipService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))"
         ],
@@ -1672,7 +1672,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:45::struct State final : IInteractionStateProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");"
         ],
@@ -1686,7 +1686,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:209::OwnershipService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))"
         ],
@@ -1770,7 +1770,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:255::ConditionService no_provider_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||"
         ],
@@ -1854,7 +1854,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:255::ConditionService no_provider_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||"
         ],
@@ -1952,7 +1952,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -1980,7 +1980,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:45::struct State final : IInteractionStateProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");"
         ],
@@ -1994,7 +1994,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:363::EffectService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:351::.Require(epidemic::tests::pre_state::StateFacet::PublicReadModels,",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:351::.Require(epidemic::tests::pre_state::StateFacet::PublicReadModels,"
         ],
@@ -2022,7 +2022,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -2036,7 +2036,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:18::MaterialService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;"
         ],
@@ -2246,7 +2246,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:18::MaterialService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;"
         ],
@@ -2274,7 +2274,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -2344,7 +2344,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:209::OwnershipService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))"
         ],
@@ -2372,7 +2372,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:32::struct Exec final : IInteractionExecutor",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");"
         ],
@@ -2554,7 +2554,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:19::class TestSubjectStateProvider final : public IConditionSubjectStateProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:27::if (throw_on_query)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:27::if (throw_on_query)"
         ],
@@ -2694,7 +2694,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:25::OwnershipService o;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)"
         ],
@@ -2764,7 +2764,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:295::ConditionService batch_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;"
         ],
@@ -2792,7 +2792,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -2918,7 +2918,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:25::OwnershipService o;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:39::if (!rid)"
         ],
@@ -2974,7 +2974,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:19::InteractionTypeId type;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");"
         ],
@@ -3086,7 +3086,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:34::class CountingHandler final : public IEffectHandler",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:52::if (observed_context_ != nullptr) *observed_context_ = operation.context;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:52::if (observed_context_ != nullptr) *observed_context_ = operation.context;"
         ],
@@ -3100,7 +3100,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/environment_gameplay_tests.cpp:22::EnvironmentService environment;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/environment_gameplay_tests.cpp:23::CHECK(environment.RegisterLayerType(weather, \"game.weather\"));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/environment_gameplay_tests.cpp:23::CHECK(environment.RegisterLayerType(weather, \"game.weather\"));"
         ],
@@ -3128,7 +3128,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:209::OwnershipService restored;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/ownership_tests.cpp:210::if (!restored.RestoreSnapshot(valid))"
         ],
@@ -3142,7 +3142,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:223::DeferredEffectId deferred{};",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:237::if (registered)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:237::if (registered)"
         ],
@@ -3184,7 +3184,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -3226,7 +3226,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:18::MaterialService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;"
         ],
@@ -3436,7 +3436,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:295::ConditionService batch_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;"
         ],
@@ -3562,7 +3562,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:295::ConditionService batch_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;"
         ],
@@ -3716,7 +3716,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -3744,7 +3744,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:255::ConditionService no_provider_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||"
         ],
@@ -3786,7 +3786,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:43::ConditionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;"
         ],
@@ -3856,7 +3856,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -3898,7 +3898,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -3926,7 +3926,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:255::ConditionService no_provider_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:251::if (paused_after == nullptr || !paused_after->paused_for_materialization ||"
         ],
@@ -4066,7 +4066,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:25::class ThrowingTargetState final : public IEffectTargetStateProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:52::if (observed_context_ != nullptr) *observed_context_ = operation.context;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:52::if (observed_context_ != nullptr) *observed_context_ = operation.context;"
         ],
@@ -4276,7 +4276,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -4346,7 +4346,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:363::EffectService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:351::.Require(epidemic::tests::pre_state::StateFacet::PublicReadModels,",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:351::.Require(epidemic::tests::pre_state::StateFacet::PublicReadModels,"
         ],
@@ -4402,7 +4402,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:78::class DerivedPrepareFaultArmingHandler final : public IEffectHandler",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:54::if (derived_.IsValid())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:54::if (derived_.IsValid())"
         ],
@@ -4416,7 +4416,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:716::EffectService empty_journal;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:715::if (!service.ReadChangesSince(service.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 19;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:715::if (!service.ReadChangesSince(service.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 19;"
         ],
@@ -4528,7 +4528,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:295::ConditionService batch_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;"
         ],
@@ -4598,7 +4598,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:18::MaterialService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;"
         ],
@@ -4654,7 +4654,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:16::class TargetState final : public IEffectTargetStateProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:52::if (observed_context_ != nullptr) *observed_context_ = operation.context;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:52::if (observed_context_ != nullptr) *observed_context_ = operation.context;"
         ],
@@ -4668,7 +4668,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -4752,7 +4752,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -4822,7 +4822,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:295::ConditionService batch_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:297::if (!batch_service.SetSubjectStateProvider(&batch_provider)) return 220;"
         ],
@@ -4878,7 +4878,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:43::ConditionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;"
         ],
@@ -5018,7 +5018,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:17::struct Provider final : IInteractionProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:9::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:9::if (!(expr))                                                                                                   \\"
         ],
@@ -5032,7 +5032,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:130::class ThrowingPrepareHandler final : public IEffectHandler",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:174::if (left.size() != right.size())",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:174::if (left.size() != right.size())"
         ],
@@ -5088,7 +5088,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:19::InteractionTypeId type;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");"
         ],
@@ -5144,7 +5144,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:520::EffectService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:515::if (!fixture.service.ReadChangesSince(stale_cursor).snapshot_required)",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:515::if (!fixture.service.ReadChangesSince(stale_cursor).snapshot_required)"
         ],
@@ -5186,7 +5186,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:135::MaterialService invalid_service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:136::if (invalid_service.RegisterMaterial(invalid_material)) return 21;"
         ],
@@ -5228,7 +5228,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -5242,7 +5242,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:18::MaterialService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/materials_tests.cpp:15::if (!wood_tag || !liquid_tag) return 1;"
         ],
@@ -5270,7 +5270,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:43::ConditionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;"
         ],
@@ -5284,7 +5284,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:17::struct Provider final : IInteractionProvider",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:9::if (!(expr))                                                                                                   \\",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:9::if (!(expr))                                                                                                   \\"
         ],
@@ -5396,7 +5396,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -5410,7 +5410,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:565::EffectService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:576::if (!service.RegisterHandler(\"test.effect.derived\", std::make_shared<CountingHandler>(derived_type, values, EffectTypeId{}, &observed_derived_context)) ||",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/effects_tests.cpp:576::if (!service.RegisterHandler(\"test.effect.derived\", std::make_shared<CountingHandler>(derived_type, values, EffectTypeId{}, &observed_derived_context)) ||"
         ],
@@ -5438,7 +5438,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:32::struct Exec final : IInteractionExecutor",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:28::if (throw_on_collect) throw std::runtime_error(\"provider failed\");"
         ],
@@ -5452,7 +5452,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:59::InteractionService s;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/interaction_gameplay_tests.cpp:67::CHECK(s.RegisterDefinition(d));"
         ],
@@ -5536,7 +5536,7 @@
         "reviewed": true
       },
       "test": {
-        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:43::ConditionService service;",
+        "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;",
         "assertions": [
           "EngineFramework/DevelopmentInfrastructure/Tests/conditions_tests.cpp:45::if (!service.SetSubjectStateProvider(&subject_state_provider)) return 201;"
         ],

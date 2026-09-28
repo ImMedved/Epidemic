@@ -42,7 +42,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:59::GameplayFactsService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)"
               ],
@@ -328,7 +328,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:59::GameplayFactsService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:64::if (!event_type || !fact_type)"
               ],
@@ -368,7 +368,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:479::GameplayFactsService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:482::if (!type)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:482::if (!type)"
               ],
@@ -386,7 +386,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:508::GameplayFactsService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:511::if (!type)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:511::if (!type)"
               ],
@@ -476,7 +476,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:398::GameplayFactsService subscriber_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:401::if (!subscriber_type)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/facts_tests.cpp:401::if (!subscriber_type)"
               ],
@@ -915,7 +915,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:339::GameplayTagSet set;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/foundation_tests.cpp:337::Check(!frozen_tag && frozen_tag.GetError().HasCode(\"gameplay.registry_frozen\"), 30);"
               ],
@@ -2305,7 +2305,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:345::GameplayTimeService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)"
               ],
@@ -2323,7 +2323,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:299::GameplayTimeService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
               ],
@@ -2341,7 +2341,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:318::GameplayTimeService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:321::if (!fc || !fa)"
               ],
@@ -2421,7 +2421,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:280::GameplayTimeService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))"
               ],
@@ -2465,7 +2465,7 @@
               "kind": "persistence"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:280::GameplayTimeService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:272::if (service.RestoreSnapshot(invalid_sync_snapshot) || !service.HasSchedule(schedule.Value()))"
               ],
@@ -2501,7 +2501,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:85::GameplayTimeService policy_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)"
               ],
@@ -2523,7 +2523,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:345::GameplayTimeService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:348::if (!fc || !fa)"
               ],
@@ -2620,7 +2620,7 @@
         "TEST-HAPPY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:299::GameplayTimeService fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:302::if (!fc || !fa)"
               ],
@@ -2648,7 +2648,7 @@
         "TEST-REGRESSION": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:85::GameplayTimeService policy_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)"
               ],
@@ -2676,7 +2676,7 @@
         "TEST-WRONG-LIFECYCLE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:85::GameplayTimeService policy_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/time_tests.cpp:88::if (!policy_clock || !policy_action)"
               ],
@@ -2731,7 +2731,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
               ],
@@ -2759,7 +2759,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
               ],
@@ -3041,7 +3041,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
               ],
@@ -3099,7 +3099,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
               ],
@@ -3113,7 +3113,7 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:405::RuntimeBridgeService dead_bridge(dead_backend, dead_policy);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:409::CHECK(dead_bridge.Enqueue(dead_environment));"
               ],
@@ -3187,7 +3187,7 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:28::struct Backend final : IRuntimeBridgeBackend",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/runtime_bridge_tests.cpp:12::if (!(expr))                                                                                                   \\"
               ],

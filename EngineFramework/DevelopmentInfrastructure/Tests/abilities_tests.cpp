@@ -536,5 +536,33 @@ int main()
             return 62;
     }
 
+
+    // Goal 4 exact public-API evidence: default/invalid ability surface and virtual provider destruction.
+    AbilityService api_evidence;
+    if (!AbilityService::Domain().IsValid())
+        return 1100;
+    if (api_evidence.FindDefinition(AbilityDefinitionId{}) != nullptr)
+        return 1101;
+    if (!api_evidence.GetAbilities(GameplayObjectRef{}).empty())
+        return 1102;
+    if (api_evidence.CooldownRemaining(GameplayObjectRef{}, CooldownGroupId{}, GameplayTimePoint{}).ticks != 0)
+        return 1103;
+    if (api_evidence.LatestChangeCursor().sequence != 0)
+        return 1104;
+    if (api_evidence.Revoke(AbilityInstanceId{}))
+        return 1105;
+    if (api_evidence.RevokeBySource(GameplayObjectRef{}, GameplayObjectRef{}) != 0)
+        return 1106;
+    if (api_evidence.Cancel(AbilityExecutionId{}, GameplayTimePoint{}))
+        return 1107;
+    if (api_evidence.ChannelTick(AbilityExecutionId{}, GameplayTimePoint{}, 1))
+        return 1108;
+    std::vector<AbilityOutput> api_evidence_outputs;
+    if (api_evidence.NotifyScheduleDue(ScheduleId{}, GameplayTimePoint{}, api_evidence_outputs))
+        return 1109;
+    api_evidence.SetRequirementProvider(nullptr);
+    IAbilityResourceProvider *ability_destructor_probe = new Resource{};
+    delete ability_destructor_probe;
+
     return 0;
 }

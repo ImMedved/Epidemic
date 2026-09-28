@@ -43,6 +43,8 @@ jobs:
           python docs/freeze/ctest_manifest.py --self-test
           python docs/freeze/local_ready_contract.py --check
           python docs/freeze/local_ready_contract.py --self-test
+          python docs/freeze/goal4_evidence_quality.py --check
+          python docs/freeze/goal4_evidence_quality.py --self-test
           python docs/freeze/public_api_inventory.py --check
           python docs/freeze/public_api_inventory.py --self-test
           python docs/freeze/public_surface_manifest.py --check

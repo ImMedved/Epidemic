@@ -304,7 +304,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:328::EconomyService aggregate;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:330::Check(static_cast<bool>(aggregate_currency), \"aggregate currency\");"
               ],
@@ -374,7 +374,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:221::EconomyService invalid_generator_restore;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:222::Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), \"generator restore currency def\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:222::Check(static_cast<bool>(invalid_generator_restore.RegisterCurrency(coin)), \"generator restore currency def\");"
               ],
@@ -436,7 +436,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:56::EconomyService s;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:60::Check(static_cast<bool>(cid), \"currency\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/economy_tests.cpp:60::Check(static_cast<bool>(cid), \"currency\");"
               ],
@@ -679,7 +679,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
               ],
@@ -725,7 +725,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
               ],
@@ -813,7 +813,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
               ],
@@ -835,7 +835,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:191::EquipmentService bounded(2);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");"
               ],
@@ -981,7 +981,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:116::EquipmentService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:123::Check(static_cast<bool>(profile_id), \"profile creation failed\");"
               ],
@@ -1109,7 +1109,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
               ],
@@ -1131,7 +1131,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:191::EquipmentService bounded(2);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:189::Check(restored.FindProfile(profile.subject) != nullptr, \"failed restore must not replace current equipment state\");"
               ],
@@ -1181,7 +1181,7 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:159::EquipmentService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/equipment_tests.cpp:162::Check(static_cast<bool>(restored.RestoreSnapshot(bound_snapshot)), \"restore bound equipment failed\");"
               ],
@@ -1398,7 +1398,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
               ],
@@ -1596,7 +1596,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
               ],
@@ -1822,7 +1822,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:107::ItemsInventoryService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:108::Check(static_cast<bool>(restored.RegisterDefinition(apple)), \"restore apple def\");"
               ],
@@ -1836,7 +1836,7 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:210::ItemsInventoryService over_capacity_restore;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/items_inventory_tests.cpp:211::Check(static_cast<bool>(over_capacity_restore.RegisterDefinition(apple)), \"over capacity restore apple def\");"
               ],
@@ -1989,7 +1989,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:44::class ThrowingConditionProvider final : public ILootConditionProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)"
               ],
@@ -2123,7 +2123,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:44::class ThrowingConditionProvider final : public ILootConditionProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)"
               ],
@@ -2145,7 +2145,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:44::class ThrowingConditionProvider final : public ILootConditionProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)"
               ],
@@ -2229,7 +2229,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:44::class ThrowingConditionProvider final : public ILootConditionProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)"
               ],
@@ -2441,7 +2441,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:44::class ThrowingConditionProvider final : public ILootConditionProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)"
               ],
@@ -2459,7 +2459,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:56::LootService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
               ],
@@ -2477,7 +2477,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:44::class ThrowingConditionProvider final : public ILootConditionProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:35::if (fail_prepare)"
               ],
@@ -2491,7 +2491,7 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:252::LootService empty_journal;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:253::if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:253::if (!empty_journal.ReadChangesSince(empty_journal.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required) return 44;"
               ],
@@ -2509,7 +2509,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:171::LootService throwing_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:172::if (!throwing_service.RegisterRewardHandler(\"test.reward.throw\", &throwing)) return 21;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:172::if (!throwing_service.RegisterRewardHandler(\"test.reward.throw\", &throwing)) return 21;"
               ],
@@ -2523,7 +2523,7 @@
         "TEST-DUPLICATE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:56::LootService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
               ],
@@ -2579,7 +2579,7 @@
         "TEST-REGRESSION": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:58::RewardDefinitionId reward_id{};",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/loot_tests.cpp:65::if (!cfg.service.RegisterRewardHandler(\"test.reward\", &cfg.handler)) return false;"
               ],
@@ -2662,7 +2662,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:394::ProcessesService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:402::if (!started)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:402::if (!started)"
               ],
@@ -2690,7 +2690,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:284::ProcessesService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:295::if (mode == CallbackMode::Success)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:295::if (mode == CallbackMode::Success)"
               ],
@@ -2848,7 +2848,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:109::class FaultOutput final : public IProcessOutputHandler",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)"
               ],
@@ -2884,7 +2884,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:49::class FaultInput final : public IProcessInputProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)"
               ],
@@ -2906,7 +2906,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:109::class FaultOutput final : public IProcessOutputHandler",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:103::if (release_mode == CallbackMode::Failure)"
               ],
@@ -2924,7 +2924,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:235::ProcessesService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:237::if (!configured.recipe_id.IsValid())",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:237::if (!configured.recipe_id.IsValid())"
               ],
@@ -3132,7 +3132,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:350::ProcessesService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:362::if (!started)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:362::if (!started)"
               ],
@@ -3164,7 +3164,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:316::ProcessesService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:328::if (mode == CallbackMode::Success)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:328::if (mode == CallbackMode::Success)"
               ],
@@ -3220,7 +3220,7 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:235::ProcessesService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:237::if (!configured.recipe_id.IsValid())",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:237::if (!configured.recipe_id.IsValid())"
               ],
@@ -3234,7 +3234,7 @@
         "TEST-REGRESSION": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:538::ProcessesService restore_fault_service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:535::if (!TestExactProgressScaling())",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:535::if (!TestExactProgressScaling())"
               ],
@@ -3248,7 +3248,7 @@
         "TEST-STALE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:49::class FaultInput final : public IProcessInputProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/processes_tests.cpp:74::if (id_mode == ProviderIdMode::Normal)"
               ],
@@ -3317,7 +3317,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:58::ResourcesProductionService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:59::Check(static_cast<bool>(restored.RegisterResourceType(iron)), \"restore resource type\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:59::Check(static_cast<bool>(restored.RegisterResourceType(iron)), \"restore resource type\");"
               ],
@@ -3363,7 +3363,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:238::ResourcesProductionService p;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:240::if (!RegisterWood(p, pwood)) return 25;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:240::if (!RegisterWood(p, pwood)) return 25;"
               ],
@@ -3649,7 +3649,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:252::ResourcesProductionService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:250::if (pre_restore_cursor.sequence < 2) return 57;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:250::if (pre_restore_cursor.sequence < 2) return 57;"
               ],
@@ -3671,7 +3671,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:123::ResourcesProductionService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:125::if (!RegisterWood(service, wood))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:125::if (!RegisterWood(service, wood))"
               ],
@@ -3693,7 +3693,7 @@
               "kind": "persistence"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:58::ResourcesProductionService restored;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:59::Check(static_cast<bool>(restored.RegisterResourceType(iron)), \"restore resource type\");",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_separation_tests.cpp:59::Check(static_cast<bool>(restored.RegisterResourceType(iron)), \"restore resource type\");"
               ],
@@ -3787,7 +3787,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:275::ResourcesProductionService journal;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:273::if (resources_current.snapshot_required || !resources_current.changes.empty()) return 54;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/resources_production_tests.cpp:273::if (resources_current.snapshot_required || !resources_current.changes.empty()) return 54;"
               ],

@@ -549,5 +549,10 @@ int main()
         revision_target.FindAgent(guard)->next_think_at != exhausted_time)
         return 79;
 
+
+    // Goal 4 exact public-API evidence: virtual evaluator destruction through the public interface.
+    IAIConsiderationEvaluator *ai_destructor_probe = new FlakyEvaluator{};
+    delete ai_destructor_probe;
+
     return 0;
 }

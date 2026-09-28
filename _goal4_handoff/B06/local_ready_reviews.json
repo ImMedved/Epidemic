@@ -24,9 +24,9 @@
             "kind": "fault"
           },
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:2::#include \"Epidemic/Foundation/error.h\"",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:267::if (failed || tx_res.balance != 100)",
             "assertions": [
-              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:2::#include \"Epidemic/Foundation/error.h\""
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:267::if (failed || tx_res.balance != 100)"
             ],
             "kind": "test",
             "target": "EpidemicGameFrameworkAbilitiesTests"
@@ -526,9 +526,9 @@
       "TEST-BOUNDARY": {
         "evidence": [
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:6::#include <limits>",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:423::if (revision_guard.SetAbilityEnabled(revision_instance, false) ||",
             "assertions": [
-              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:6::#include <limits>"
+              "EngineFramework/DevelopmentInfrastructure/Tests/abilities_tests.cpp:423::if (revision_guard.SetAbilityEnabled(revision_instance, false) ||"
             ],
             "kind": "test",
             "target": "EpidemicGameFrameworkAbilitiesTests"
@@ -1146,7 +1146,7 @@
             "kind": "contract"
           },
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:34::CombatService s;",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)",
             "assertions": [
               "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:41::if (!hp)"
             ],
@@ -1178,9 +1178,9 @@
       "TEST-BOUNDARY": {
         "evidence": [
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:4::#include <limits>",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:223::if (huge_reservation || !huge_reservation.GetError().HasCode(\"gameplay.combat.resource_unavailable\"))",
             "assertions": [
-              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:4::#include <limits>"
+              "EngineFramework/DevelopmentInfrastructure/Tests/combat_tests.cpp:223::if (huge_reservation || !huge_reservation.GetError().HasCode(\"gameplay.combat.resource_unavailable\"))"
             ],
             "kind": "test",
             "target": "EpidemicGameFrameworkCombatTests"
@@ -1462,9 +1462,9 @@
             "kind": "fault"
           },
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:10::class PlacementProvider final : public IConstructionPlacementProvider",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:284::const auto provider_failure_result = provider_failure_service.PreparePlacementPlan(req);",
             "assertions": [
-              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:10::class PlacementProvider final : public IConstructionPlacementProvider"
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:284::const auto provider_failure_result = provider_failure_service.PreparePlacementPlan(req);"
             ],
             "kind": "test",
             "target": "EpidemicGameFrameworkConstructionTests"
@@ -1830,9 +1830,9 @@
       "TEST-BOUNDARY": {
         "evidence": [
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:3::#include <limits>",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:260::if (overflow_plan || !overflow_plan.GetError().HasCode(\"gameplay.time_overflow\") ||",
             "assertions": [
-              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:3::#include <limits>"
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:260::if (overflow_plan || !overflow_plan.GetError().HasCode(\"gameplay.time_overflow\") ||"
             ],
             "kind": "test",
             "target": "EpidemicGameFrameworkConstructionTests"
@@ -1848,9 +1848,9 @@
             "kind": "fault"
           },
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:10::class PlacementProvider final : public IConstructionPlacementProvider",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:286::if (provider_failure_result ||",
             "assertions": [
-              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:10::class PlacementProvider final : public IConstructionPlacementProvider"
+              "EngineFramework/DevelopmentInfrastructure/Tests/construction_tests.cpp:286::if (provider_failure_result ||"
             ],
             "kind": "test",
             "target": "EpidemicGameFrameworkConstructionTests"
@@ -2482,7 +2482,7 @@
       "TEST-BOUNDARY": {
         "evidence": [
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:4::#include <limits>",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:12::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);",
             "assertions": [
               "EngineFramework/DevelopmentInfrastructure/Tests/progression_tests.cpp:12::return a.size() == b.size() && std::equal(a.begin(), a.end(), b.begin(), pred);"
             ],
@@ -3134,9 +3134,9 @@
       "TEST-BOUNDARY": {
         "evidence": [
           {
-            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:5::#include <limits>",
+            "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:414::max_guard.RemoveRoute(guard_route_id.Value()) || max_guard.StartSession(guard_actor, walk, {}, {}, {}) ||",
             "assertions": [
-              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:5::#include <limits>"
+              "EngineFramework/DevelopmentInfrastructure/Tests/traversal_tests.cpp:414::max_guard.RemoveRoute(guard_route_id.Value()) || max_guard.StartSession(guard_actor, walk, {}, {}, {}) ||"
             ],
             "kind": "test",
             "target": "EpidemicGameFrameworkTraversalTests"

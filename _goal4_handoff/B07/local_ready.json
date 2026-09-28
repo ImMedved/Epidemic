@@ -1691,7 +1691,7 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:378::SaveGameOrchestrator limited_orchestrator({}, small_limits);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/save_game_tests.cpp:194::if (corrupt_identity)"
               ],
@@ -2435,7 +2435,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:178::NarrativeExternalConsequenceOutbox exhausted_fail;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2453,7 +2453,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2481,7 +2481,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2499,7 +2499,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2569,7 +2569,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2591,7 +2591,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2617,7 +2617,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:164::NarrativeExternalConsequenceOutbox exhausted_retry;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2639,7 +2639,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2657,7 +2657,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2675,7 +2675,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2697,7 +2697,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:164::NarrativeExternalConsequenceOutbox exhausted_retry;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2724,7 +2724,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2746,7 +2746,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2772,7 +2772,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2794,7 +2794,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2816,7 +2816,7 @@
               "kind": "persistence"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:352::NarrativeExternalConsequenceOutbox restored_outbox;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2834,7 +2834,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2861,7 +2861,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2879,7 +2879,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2897,7 +2897,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2911,7 +2911,7 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2929,7 +2929,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:178::NarrativeExternalConsequenceOutbox exhausted_fail;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2943,7 +2943,7 @@
         "TEST-DUPLICATE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2957,7 +2957,7 @@
         "TEST-EMPTY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2971,7 +2971,7 @@
         "TEST-HAPPY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2985,7 +2985,7 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -2999,7 +2999,7 @@
         "TEST-REGRESSION": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -3013,7 +3013,7 @@
         "TEST-STALE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -3027,7 +3027,7 @@
         "TEST-WRONG-LIFECYCLE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:152::NarrativeExternalConsequenceOutbox source;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/narrative_integration_tests.cpp:77::if (!SameDelivery(a.deliveries[i], b.deliveries[i]))"
               ],
@@ -3064,7 +3064,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3082,7 +3082,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3110,7 +3110,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3128,7 +3128,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3203,7 +3203,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3229,7 +3229,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3251,7 +3251,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3315,7 +3315,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3341,7 +3341,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3385,7 +3385,7 @@
               "kind": "persistence"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3403,7 +3403,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3421,7 +3421,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3443,7 +3443,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3461,7 +3461,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3479,7 +3479,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3493,7 +3493,7 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3512,7 +3512,7 @@
         "TEST-DUPLICATE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3526,7 +3526,7 @@
         "TEST-EMPTY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3540,7 +3540,7 @@
         "TEST-HAPPY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3554,7 +3554,7 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3568,7 +3568,7 @@
         "TEST-REGRESSION": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],
@@ -3582,7 +3582,7 @@
         "TEST-STALE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:89::world_integration::WorldQueryAdapter query_adapter(world, environment, interaction, queries);",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/world_integration_tests.cpp:90::CHECK(query_adapter.RegisterProviders());"
               ],

@@ -33,6 +33,26 @@ cmake --build build --config Debug
 
 ```powershell
 ctest --test-dir build -C Debug --output-on-failure
+
+### Единый локальный CI и отладка
+
+Проект использует адаптированную архитектуру
+[AgentEnforcer2](https://github.com/Artemonim/AgentEnforcer2). Главная точка входа:
+
+```powershell
+./run.ps1                                      # все Full Debug+Release тесты
+./run.ps1 -Mode Matrix                         # вся Base/Runtime/Full матрица
+./run.ps1 -Mode Module -Module Simulation      # тесты одного модуля
+./run.ps1 -Mode Debug -Module Combat           # подробный Debug-прогон
+./run.ps1 -Mode ListTests                      # список зарегистрированных тестов
+```
+
+Новые CTest-тесты обнаруживаются автоматически. Если меняется ожидаемый состав матрицы,
+необходимо также осознанно обновить `docs/freeze/ctest_manifest.json`.
+
+Краткий итог последнего прогона находится в `.enforcer/Enforcer_last_check.md`,
+структурированный отчёт — в `.ci_cache/report.json`, полные выводы команд — в
+`.ci_cache/logs/`.
 ```
 
 Только Runtime:

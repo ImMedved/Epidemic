@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://epidemic.local/schema/ci-report-v1.json",
+  "title": "Epidemic local CI report",
+  "type": "object",
+  "required": ["schema_version", "started_at_utc", "finished_at_utc", "duration_ms", "status", "stages", "issues"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "started_at_utc": { "type": "string", "format": "date-time" },
+    "finished_at_utc": { "type": "string", "format": "date-time" },
+    "duration_ms": { "type": "integer", "minimum": 0 },
+    "status": { "enum": ["ok", "warn", "fail"] },
+    "mode": { "enum": ["Full", "Matrix", "Module", "Debug", "Validators", "ListTests"] },
+    "stages": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "status", "note", "duration_ms"],
+        "properties": {
+          "name": { "type": "string" },
+          "status": { "enum": ["ok", "warn", "fail", "cached", "skip"] },
+          "note": { "type": "string" },
+          "duration_ms": { "type": "integer", "minimum": 0 },
+          "details": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "issues": { "type": "array", "items": { "type": "object" } },
+    "metrics": { "type": "object" }
+  },
+  "additionalProperties": false
+}

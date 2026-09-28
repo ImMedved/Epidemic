@@ -43,7 +43,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:389::AIService invalid_budget;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||"
               ],
@@ -71,7 +71,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:389::AIService invalid_budget;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||"
               ],
@@ -495,7 +495,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:394::AIContextSnapshot duplicate_context;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:402::if (invalid_budget.Think(guard, duplicate_context, same_tick))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:402::if (invalid_budget.Think(guard, duplicate_context, same_tick))"
               ],
@@ -527,9 +527,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:4::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:384::if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:4::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:384::if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkAITests"
@@ -559,7 +559,7 @@
         "TEST-DUPLICATE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:394::AIContextSnapshot duplicate_context;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:402::if (invalid_budget.Think(guard, duplicate_context, same_tick))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:402::if (invalid_budget.Think(guard, duplicate_context, same_tick))"
               ],
@@ -601,7 +601,7 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:389::AIService invalid_budget;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/ai_tests.cpp:390::if (!RegisterCoreDefinitions(invalid_budget, profile_id, goal_id, intent_type, score_key) ||"
               ],
@@ -1182,9 +1182,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:5::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:258::if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:5::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/knowledge_memory_tests.cpp:258::if (max_batch.snapshot_required || max_batch.changes.size() != 1 ||"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkKnowledgeTests"
@@ -1469,7 +1469,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:12::class TimedFactProvider final : public INavigationFactProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:17::return fact == TypeId::FromString(\"game.fact.open\") && context.time.ticks >= 50;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:17::return fact == TypeId::FromString(\"game.fact.open\") && context.time.ticks >= 50;"
               ],
@@ -1491,7 +1491,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:104::GameplayContext before_fact;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)"
               ],
@@ -1539,7 +1539,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:104::GameplayContext before_fact;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)"
               ],
@@ -1787,7 +1787,7 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:104::GameplayContext before_fact;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:108::if (n.CanUseLink(actor, link.id, {}, before_fact).availability != NavigationAvailability::Forbidden)"
               ],
@@ -1837,9 +1837,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:5::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:225::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:5::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:225::if (!restored.ReadChangesSince(restored.LatestChangeCursor().AtSequence(std::numeric_limits<std::uint64_t>::max())).snapshot_required)"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkNavigationSemanticsTests"
@@ -1855,7 +1855,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:12::class TimedFactProvider final : public INavigationFactProvider",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:17::return fact == TypeId::FromString(\"game.fact.open\") && context.time.ticks >= 50;",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/navigation_semantics_tests.cpp:17::return fact == TypeId::FromString(\"game.fact.open\") && context.time.ticks >= 50;"
               ],
@@ -1990,9 +1990,9 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:3::#include \"Epidemic/Foundation/error.h\"",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:730::if (failing_out || failing_service.GetDiagnostics().evaluator_failures != 1)",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:3::#include \"Epidemic/Foundation/error.h\""
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:730::if (failing_out || failing_service.GetDiagnostics().evaluator_failures != 1)"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkPerceptionTests"
@@ -2008,9 +2008,9 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:739::if (missing_evaluator_service.RegisterSense(missing_definition))",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:739::if (missing_evaluator_service.RegisterSense(missing_definition))"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkPerceptionTests"
@@ -2124,9 +2124,9 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:667::if (custom_out || custom_service.GetDiagnostics().evaluator_failures != 1)",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:667::if (custom_out || custom_service.GetDiagnostics().evaluator_failures != 1)"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkPerceptionTests"
@@ -2230,9 +2230,9 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:974::if (wrong_lifecycle || !wrong_lifecycle.GetError().HasCode(\"gameplay.perception.registry_not_frozen\"))",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:974::if (wrong_lifecycle || !wrong_lifecycle.GetError().HasCode(\"gameplay.perception.registry_not_frozen\"))"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkPerceptionTests"
@@ -2264,22 +2264,9 @@
           "status": "PASS"
         },
         "LIFE-SHUTDOWN": {
-          "evidence": [
-            {
-              "anchor": "docs/EngineFramework/Perception.md:23::## Lifecycle and identity",
-              "kind": "lifecycle"
-            },
-            {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
-              "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
-              ],
-              "kind": "test",
-              "target": "EpidemicGameFrameworkPerceptionTests"
-            }
-          ],
-          "rationale": "Perception LIFE-SHUTDOWN was reviewed against the exact module contract and the registered EpidemicGameFrameworkPerceptionTests assertion recorded above.",
-          "status": "PASS"
+          "status": "N/A",
+          "evidence": [],
+          "rationale": "PerceptionService has no Shutdown or teardown transition in its public contract; service lifetime ends with owner destruction, so LIFE-SHUTDOWN has no callable transition to exercise."
         },
         "PERSIST-CANDIDATE": {
           "evidence": [
@@ -2460,7 +2447,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:743::PerceptionService duplicate_samples;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:744::if (!duplicate_samples.RegisterSense(hear))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:744::if (!duplicate_samples.RegisterSense(hear))"
               ],
@@ -2492,9 +2479,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:5::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:966::if (!TestSpatialBoundaryMath())",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:5::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:966::if (!TestSpatialBoundaryMath())"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkPerceptionTests"
@@ -2510,7 +2497,7 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:64::class FailingEvaluator final : public ISenseEvaluator",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:69::return epidemic::foundation::Result<SenseEvaluationResult>::Failure(",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:69::return epidemic::foundation::Result<SenseEvaluationResult>::Failure("
               ],
@@ -2524,7 +2511,7 @@
         "TEST-DUPLICATE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:743::PerceptionService duplicate_samples;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:744::if (!duplicate_samples.RegisterSense(hear))",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:744::if (!duplicate_samples.RegisterSense(hear))"
               ],
@@ -2566,9 +2553,9 @@
         "TEST-INVALID": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:739::if (missing_evaluator_service.RegisterSense(missing_definition))",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:739::if (missing_evaluator_service.RegisterSense(missing_definition))"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkPerceptionTests"
@@ -2608,9 +2595,9 @@
         "TEST-WRONG-LIFECYCLE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:974::if (wrong_lifecycle || !wrong_lifecycle.GetError().HasCode(\"gameplay.perception.registry_not_frozen\"))",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:95::PerceptionService service;"
+                "EngineFramework/DevelopmentInfrastructure/Tests/perception_tests.cpp:974::if (wrong_lifecycle || !wrong_lifecycle.GetError().HasCode(\"gameplay.perception.registry_not_frozen\"))"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkPerceptionTests"
@@ -2645,9 +2632,9 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:3::#include \"Epidemic/Foundation/error.h\"",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:158::if (failed || layer_a.commits != 1 || layer_b.commits != 1)",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:3::#include \"Epidemic/Foundation/error.h\""
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:158::if (failed || layer_a.commits != 1 || layer_b.commits != 1)"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkSimulationTests"
@@ -2779,9 +2766,9 @@
               "kind": "fault"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:20::class Exec final : public ISimulationLayerExecutor",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:158::if (failed || layer_a.commits != 1 || layer_b.commits != 1)",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:20::class Exec final : public ISimulationLayerExecutor"
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:158::if (failed || layer_a.commits != 1 || layer_b.commits != 1)"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkSimulationTests"
@@ -2885,7 +2872,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
               ],
@@ -2907,7 +2894,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:148::SimulationService retry;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:153::if (!retry_region || !retry.RegisterLayer(Layer(layer_a, 10), &layer_a) ||",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:153::if (!retry_region || !retry.RegisterLayer(Layer(layer_a, 10), &layer_a) ||"
               ],
@@ -2925,7 +2912,7 @@
               "kind": "lifecycle"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
               ],
@@ -2969,9 +2956,9 @@
               "kind": "state"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:87::a.next_change_sequence != b.next_change_sequence || a.change_epoch != b.change_epoch ||",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:221::if (!restored_result || restored_a.commits != 0 || restored_b.commits != 1)",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:90::return false;"
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:221::if (!restored_result || restored_a.commits != 0 || restored_b.commits != 1)"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkSimulationTests"
@@ -3115,7 +3102,7 @@
               "kind": "contract"
             },
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
               ],
@@ -3147,9 +3134,9 @@
         "TEST-BOUNDARY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:6::#include <limits>",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:312::if (max_result || !max_result.GetError().HasCode(\"gameplay.simulation.revision_exhausted\") ||",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:6::#include <limits>"
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:312::if (max_result || !max_result.GetError().HasCode(\"gameplay.simulation.revision_exhausted\") ||"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkSimulationTests"
@@ -3179,7 +3166,7 @@
         "TEST-DUPLICATE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
               ],
@@ -3193,9 +3180,9 @@
         "TEST-EMPTY": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:88::a.regions.size() != b.regions.size() || a.active_intervals.size() != b.active_intervals.size() ||",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:445::if (!empty_api_snapshot.regions.empty() || !empty_api_snapshot.active_intervals.empty() ||",
               "assertions": [
-                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:90::return false;"
+                "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:445::if (!empty_api_snapshot.regions.empty() || !empty_api_snapshot.active_intervals.empty() ||"
               ],
               "kind": "test",
               "target": "EpidemicGameFrameworkSimulationTests"
@@ -3263,7 +3250,7 @@
         "TEST-WRONG-LIFECYCLE": {
           "evidence": [
             {
-              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:118::SimulationService basic;",
+              "anchor": "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)",
               "assertions": [
                 "EngineFramework/DevelopmentInfrastructure/Tests/simulation_tests.cpp:121::if (!region)"
               ],
